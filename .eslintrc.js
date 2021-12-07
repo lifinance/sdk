@@ -6,6 +6,7 @@ module.exports = {
   },
   rules: {
     'prettier/prettier': 'error',
+    'max-len': ['error', { 'code': 140 }],
   },
   plugins: ['@typescript-eslint', 'prettier'],
 }
