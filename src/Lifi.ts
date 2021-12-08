@@ -16,9 +16,10 @@ import axios from 'axios'
 import { Signer } from 'ethers'
 
 import balances from './balances'
+import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
-import { CallbackFunction } from './types'
+import { CallbackFunction, Config, ConfigUpdate } from './types'
 
 interface ExecutionData {
   route: Route
@@ -31,8 +32,16 @@ interface ActiveRouteDictionary {
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
-  private config = {
-    apiUrl: process.env.REACT_APP_API_URL || 'https://test.li.finance/api/',
+
+  private config: Config = getDefaultConfig()
+
+  getConfig = () => {
+    return this.config
+  }
+
+  setConfig = (configUpdate: ConfigUpdate) => {
+    this.config = mergeConfig(this.config, configUpdate)
+    return this.config
   }
 
   getPossibilities = async (

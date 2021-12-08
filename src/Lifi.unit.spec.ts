@@ -393,4 +393,33 @@ describe('LIFI SDK', () => {
       })
     })
   })
+
+  describe('config', () => {
+    it('should load default config with rpcs', () => {
+      const config = Lifi.getConfig()
+      for (const chainId of Object.values(ChainId)) {
+        if (typeof chainId !== 'string') {
+          expect(config.rpcs[chainId].length).toBeGreaterThan(0)
+        }
+      }
+    })
+
+    it('should allow partial updates', () => {
+      const configBefore = Lifi.getConfig()
+      const rpcETHBefore = configBefore.rpcs[ChainId.ETH]
+
+      const newRpcs = ['https://some-url.domain']
+      Lifi.setConfig({
+        rpcs: {
+          [ChainId.POL]: newRpcs,
+        },
+      })
+
+      const configAfter = Lifi.getConfig()
+      const rpcETHAfter = configAfter.rpcs[ChainId.ETH]
+
+      expect(rpcETHBefore).toEqual(rpcETHAfter)
+      expect(configAfter.rpcs[ChainId.POL]).toEqual(newRpcs)
+    })
+  })
 })

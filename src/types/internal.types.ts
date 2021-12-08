@@ -9,6 +9,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import { ChainId } from '.'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -44,3 +45,15 @@ export type ExecuteCrossParams = {
 export type UpdateStep = (step: Step, execution: Execution) => void
 export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
+
+export type Config = {
+  apiUrl: string
+  rpcs: Record<ChainId, string[]>
+  multicallAddresses: Record<ChainId, string | undefined>
+}
+
+export type ConfigUpdate = {
+  apiUrl?: string
+  rpcs?: Record<number, string[]>
+  multicallAddresses?: Record<number, string | undefined>
+}
