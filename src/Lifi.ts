@@ -93,7 +93,6 @@ class LIFI {
   ): Promise<Route> => {
     // check if route is already running
     if (this.activeRoutes[route.id]) return route
-    console.log(settings)
     const execData: ExecutionData = {
       route,
       executors: [],
@@ -114,7 +113,6 @@ class LIFI {
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      console.log(this.activeRoutes[route.id].settings.updateCallback(route))
       this.activeRoutes[route.id].settings.updateCallback(route)
     }
 
