@@ -44,3 +44,6 @@ export type ExecuteCrossParams = {
 export type UpdateStep = (step: Step, execution: Execution) => void
 export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
+export type SwitchChainHook = (
+  requiredChainId: number
+) => Promise<Signer | undefined>

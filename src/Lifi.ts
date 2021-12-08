@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { JsonRpcSigner } from '@ethersproject/providers'
+import axios from 'axios'
+import { Signer } from 'ethers'
+
+import balances from './balances'
+import { StepExecutor } from './executionFiles/StepExecutor'
+import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
+  CallbackFunction,
+  SwitchChainHook,
   Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -11,19 +19,15 @@ import {
   StepTransactionResponse,
   Token,
   TokenAmount,
-} from '@lifinance/types'
-import axios from 'axios'
-import { Signer } from 'ethers'
-
-import balances from './balances'
-import { StepExecutor } from './executionFiles/StepExecutor'
-import { isRoutesRequest, isStep, isToken } from './typeguards'
-import { CallbackFunction } from './types'
+} from './types'
 
 interface ExecutionData {
   route: Route
   executors: StepExecutor[]
-  callbackFunction: CallbackFunction
+  settings: {
+    updateCallBack: CallbackFunction
+    switchChainHook: SwitchChainHook
+  }
 }
 interface ActiveRouteDictionary {
   [k: string]: ExecutionData
@@ -93,20 +97,34 @@ class LIFI {
   executeRoute = async (
     signer: Signer,
     route: Route,
-    callback?: CallbackFunction
+    settings?: {
+      updateCallBack?: CallbackFunction
+      switchChainHook?: SwitchChainHook
+    }
   ): Promise<Route> => {
     // check if route is already running
     if (this.activeRoutes[route.id]) return route
     const execData: ExecutionData = {
       route,
       executors: [],
-      callbackFunction: callback ? callback : () => {},
+      settings: {
+        updateCallBack:
+          settings && settings.updateCallBack
+            ? settings.updateCallBack
+            : () => {},
+        switchChainHook:
+          settings && settings.switchChainHook
+            ? settings.switchChainHook
+            : () => {
+                return new Promise(() => {})
+              },
+      },
     }
     this.activeRoutes[route.id] = execData
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      this.activeRoutes[route.id].callbackFunction(route)
+      this.activeRoutes[route.id].settings.updateCallBack(route)
     }
 
     // loop over steps and execute them
@@ -125,6 +143,17 @@ class LIFI {
       ) {
         step.action.fromAmount = previousStep.execution.toAmount
       }
+
+      if ((await signer.getChainId()) !== step.action.fromChainId) {
+        const updatedSigner = await this.activeRoutes[
+          route.id
+        ].settings.switchChainHook(step.action.fromChainId)
+        if (!updatedSigner) {
+          throw Error('CHAIN SWITCH REQUIRED: No updated signer provided')
+        }
+        signer = updatedSigner
+      }
+
       try {
         const stepExecutor = new StepExecutor()
         this.activeRoutes[route.id].executors.push(stepExecutor)
@@ -144,9 +173,12 @@ class LIFI {
   }
 
   resumeRoute = async (
-    signer: JsonRpcSigner,
+    signer: Signer,
     route: Route,
-    callback?: CallbackFunction
+    settings?: {
+      updateCallBack?: CallbackFunction
+      switchChainHook?: SwitchChainHook
+    }
   ): Promise<Route> => {
     const activeRoute = this.activeRoutes[route.id]
     if (activeRoute) {
@@ -159,13 +191,24 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
-      callbackFunction: callback ? callback : () => {},
+      settings: {
+        updateCallBack:
+          settings && settings.updateCallBack
+            ? settings.updateCallBack
+            : () => {},
+        switchChainHook:
+          settings && settings.switchChainHook
+            ? settings.switchChainHook
+            : () => {
+                return new Promise(() => {})
+              },
+      },
     }
     this.activeRoutes[route.id] = execData
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      this.activeRoutes[route.id].callbackFunction(route)
+      this.activeRoutes[route.id].settings.updateCallBack(route)
     }
 
     // loop over steps and execute them
@@ -178,6 +221,16 @@ class LIFI {
       // check if step already done
       if (step.execution && step.execution.status === 'DONE') {
         continue
+      }
+
+      if ((await signer.getChainId()) !== step.action.fromChainId) {
+        const updatedSigner = await this.activeRoutes[
+          route.id
+        ].settings.switchChainHook(step.action.fromChainId)
+        if (!updatedSigner) {
+          throw Error('CHAIN SWITCH REQUIRED: No updated signer provided')
+        }
+        signer = updatedSigner
       }
 
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
@@ -209,19 +262,19 @@ class LIFI {
     return route
   }
 
-  registerCallback = (
-    callback: (updatedRoute: Route) => void,
-    route: Route
-  ): void => {
-    this.activeRoutes[route.id].callbackFunction = callback
-  }
+  // registerCallback = (
+  //   callback: (updatedRoute: Route) => void,
+  //   route: Route
+  // ): void => {
+  //   this.activeRoutes[route.id].callbackFunction = callback
+  // }
 
-  deregisterCallback = (
-    callback: (updateRoute: Route) => void,
-    route: Route
-  ): void => {
-    this.activeRoutes[route.id].callbackFunction = () => {}
-  }
+  // deregisterCallback = (
+  //   callback: (updateRoute: Route) => void,
+  //   route: Route
+  // ): void => {
+  //   this.activeRoutes[route.id].callbackFunction = () => {}
+  // }
 
   getActiveRoutes = (): Route[] => {
     return Object.values(this.activeRoutes).map((dict) => dict.route)
