@@ -1,4 +1,5 @@
 import { Signer } from 'ethers'
+import { initStatus } from '../status'
 
 import {
   CrossStep,
@@ -44,6 +45,18 @@ export class StepExecutor {
     step: Step,
     updateStatus: UpdateStep
   ): Promise<Step> => {
+    // check if signer is for correct chain
+    if ((await signer.getChainId()) !== step.action.fromChainId) {
+      // change status to CHAIN_SWITCH_REQUIRED and return step without execution
+      const { status, update } = initStatus(
+        (status: Execution) => updateStatus(step, status),
+        step.execution
+      )
+      status.status = 'CHAIN_SWITCH_REQUIRED'
+      update(status)
+      return step
+    }
+
     switch (step.type) {
       case 'lifi':
       case 'cross':

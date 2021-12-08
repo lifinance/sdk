@@ -117,11 +117,6 @@ class LIFI {
       const step = route.steps[index]
       const previousStep = index !== 0 ? route.steps[index - 1] : undefined
 
-      // check if signer is for correct chain
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        break
-      }
-
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
       if (
         previousStep &&
@@ -138,9 +133,11 @@ class LIFI {
         this.stopExecution(route)
         throw e
       }
+      // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
+      if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
+        return this.stopExecution(route)
+      }
     }
-
-    // executeRoute = (signer: Signer, route: Route): Promise<Route> => {
 
     delete this.activeRoutes[route.id]
     return route
@@ -183,11 +180,6 @@ class LIFI {
         continue
       }
 
-      // check if signer is for correct chain
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        break
-      }
-
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
       if (
         previousStep &&
@@ -204,6 +196,11 @@ class LIFI {
       } catch (e) {
         this.stopExecution(route)
         throw e
+      }
+
+      // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
+      if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
+        return this.stopExecution(route)
       }
     }
 
