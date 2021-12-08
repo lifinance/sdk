@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
@@ -52,11 +53,22 @@ export type SwitchChainHook = (
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
-  settings: ExecutionSettings
+  settings: EnforcedObjectProperties<ExecutionSettings>
 }
+
+export const DefaultExecutionSettings = {
+  updateCallback: () => {},
+  switchChainHook: () => new Promise<undefined>(() => {}),
+}
+
 export interface ExecutionSettings {
-  updateCallback: CallbackFunction
-  switchChainHook: SwitchChainHook
+  updateCallback?: CallbackFunction
+  switchChainHook?: SwitchChainHook
+}
+
+// Hard to read but this creates a new type that enforces all optional properties in a given interface
+type EnforcedObjectProperties<T> = T & {
+  [P in keyof T]-?: T[P]
 }
 export interface ActiveRouteDictionary {
   [k: string]: ExecutionData

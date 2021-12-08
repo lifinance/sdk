@@ -20,6 +20,8 @@ import {
   TokenAmount,
   ExecutionData,
   ActiveRouteDictionary,
+  ExecutionSettings,
+  DefaultExecutionSettings,
 } from './types'
 
 class LIFI {
@@ -86,28 +88,14 @@ class LIFI {
   executeRoute = async (
     signer: Signer,
     route: Route,
-    settings?: {
-      updateCallback?: CallbackFunction
-      switchChainHook?: SwitchChainHook
-    }
+    settings?: ExecutionSettings
   ): Promise<Route> => {
     // check if route is already running
     if (this.activeRoutes[route.id]) return route
     const execData: ExecutionData = {
       route,
       executors: [],
-      settings: {
-        updateCallback:
-          settings && settings.updateCallback
-            ? settings.updateCallback
-            : () => {},
-        switchChainHook:
-          settings && settings.switchChainHook
-            ? settings.switchChainHook
-            : () => {
-                return new Promise(() => {})
-              },
-      },
+      settings: { ...DefaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
@@ -137,10 +125,9 @@ class LIFI {
         const updatedSigner = await this.activeRoutes[
           route.id
         ].settings.switchChainHook(step.action.fromChainId)
-        if (!updatedSigner) {
-          throw Error('CHAIN SWITCH REQUIRED: No updated signer provided')
+        if (updatedSigner) {
+          signer = updatedSigner
         }
-        signer = updatedSigner
       }
 
       try {
@@ -153,7 +140,7 @@ class LIFI {
       }
       // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
       if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
-        return this.stopExecution(route)
+        throw Error('CHAIN SWITCH REQUIRED')
       }
     }
 
@@ -180,18 +167,7 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
-      settings: {
-        updateCallback:
-          settings && settings.updateCallback
-            ? settings.updateCallback
-            : () => {},
-        switchChainHook:
-          settings && settings.switchChainHook
-            ? settings.switchChainHook
-            : () => {
-                return new Promise(() => {})
-              },
-      },
+      settings: { ...DefaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
@@ -216,10 +192,9 @@ class LIFI {
         const updatedSigner = await this.activeRoutes[
           route.id
         ].settings.switchChainHook(step.action.fromChainId)
-        if (!updatedSigner) {
-          throw Error('CHAIN SWITCH REQUIRED: No updated signer provided')
+        if (updatedSigner) {
+          signer = updatedSigner
         }
-        signer = updatedSigner
       }
 
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
@@ -242,7 +217,7 @@ class LIFI {
 
       // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
       if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
-        return this.stopExecution(route)
+        throw Error('CHAIN SWITCH REQUIRED')
       }
     }
 
@@ -251,19 +226,15 @@ class LIFI {
     return route
   }
 
-  // registerCallback = (
-  //   callback: (updatedRoute: Route) => void,
-  //   route: Route
-  // ): void => {
-  //   this.activeRoutes[route.id].callbackFunction = callback
-  // }
-
-  // deregisterCallback = (
-  //   callback: (updateRoute: Route) => void,
-  //   route: Route
-  // ): void => {
-  //   this.activeRoutes[route.id].callbackFunction = () => {}
-  // }
+  updateExecutionSettings = (
+    settings: ExecutionSettings,
+    route: Route
+  ): void => {
+    this.activeRoutes[route.id].settings = {
+      ...DefaultExecutionSettings,
+      ...settings,
+    }
+  }
 
   getActiveRoutes = (): Route[] => {
     return Object.values(this.activeRoutes).map((dict) => dict.route)
