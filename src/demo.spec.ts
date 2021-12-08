@@ -4,6 +4,7 @@ import {
   CoinKey,
   findDefaultToken,
   RoutesRequest,
+  Route,
 } from '@lifinance/types'
 import { Wallet } from 'ethers'
 
@@ -34,9 +35,10 @@ describe.skip('LiFi SDK', () => {
     const wallet = Wallet.fromMnemonic(process.env.SEED!).connect(provider)
 
     // execute Route
-    const finalRoute = await Lifi.executeRoute(wallet, route, (updatedRoute) =>
-      console.log(updatedRoute)
-    )
+    const settings = {
+      updateCallback: (updatedRoute: Route) => console.log(updatedRoute),
+    }
+    const finalRoute = await Lifi.executeRoute(wallet, route, settings)
     const lastStep = finalRoute.steps[finalRoute.steps.length - 1]
     expect(lastStep.execution?.status).toEqual('DONE')
   })
