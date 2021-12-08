@@ -1,5 +1,5 @@
 import {
-  ChainKey,
+  ChainId,
   CoinKey,
   findDefaultCoinOnChain,
   Token,
@@ -25,7 +25,7 @@ describe('balances utils', () => {
         const tokenBalance = tokenBalances[i]
 
         // contain token properties
-        expect(token.id).toEqual(tokenBalance.id)
+        expect(token.address).toEqual(tokenBalance.address)
 
         // set amount
         expect(tokenBalance.amount).toBeDefined()
@@ -36,8 +36,8 @@ describe('balances utils', () => {
     it('should work for ERC20 on POL', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.USDC, ChainKey.POL),
-        findDefaultCoinOnChain(CoinKey.USDT, ChainKey.POL),
+        findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
+        findDefaultCoinOnChain(CoinKey.USDT, ChainId.POL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -46,8 +46,8 @@ describe('balances utils', () => {
     it('should work for MATIC on POL', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.MATIC, ChainKey.POL),
-        findDefaultCoinOnChain(CoinKey.DAI, ChainKey.POL),
+        findDefaultCoinOnChain(CoinKey.MATIC, ChainId.POL),
+        findDefaultCoinOnChain(CoinKey.DAI, ChainId.POL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -55,10 +55,10 @@ describe('balances utils', () => {
 
     it('should return empty array for invalid data on POL', async () => {
       const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultCoinOnChain(CoinKey.MATIC, ChainKey.POL)
-      invalidToken.id = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+      const invalidToken = findDefaultCoinOnChain(CoinKey.MATIC, ChainId.POL)
+      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.USDC, ChainKey.POL),
+        findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
         invalidToken,
       ]
 
@@ -68,15 +68,15 @@ describe('balances utils', () => {
 
     it('should fallback to a direct call if only one token is requested', async () => {
       const walletAddress = defaultWalletAddress
-      const tokens = [findDefaultCoinOnChain(CoinKey.DAI, ChainKey.BSC)]
+      const tokens = [findDefaultCoinOnChain(CoinKey.DAI, ChainId.BSC)]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
 
     it('should fallback to multiple calls if multicall in not available', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.ETH, ChainKey.OPT),
-        findDefaultCoinOnChain(CoinKey.USDC, ChainKey.OPT),
+        findDefaultCoinOnChain(CoinKey.ETH, ChainId.OPT),
+        findDefaultCoinOnChain(CoinKey.USDC, ChainId.OPT),
       ]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })

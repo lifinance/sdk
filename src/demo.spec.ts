@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
 import {
   ChainId,
-  ChainKey,
   CoinKey,
   findDefaultCoinOnChain,
   RoutesRequest,
@@ -20,9 +19,10 @@ describe.skip('LiFi SDK', () => {
     const routeRequest: RoutesRequest = {
       fromChainId: ChainId.POL,
       fromAmount: '1000000',
-      fromTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainKey.POL).id,
+      fromTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainId.POL)
+        .address,
       toChainId: ChainId.DAI,
-      toTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainKey.DAI).id,
+      toTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainId.DAI).address,
       options: { slippage: 0.03 },
     }
     const routeResponse = await Lifi.getRoutes(routeRequest)

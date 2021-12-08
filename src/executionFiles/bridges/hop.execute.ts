@@ -30,7 +30,7 @@ export class HopExecutionManager {
     // approval still needed?
     const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
-      if (action.fromToken.id !== constants.AddressZero) {
+      if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
         if (!this.shouldContinue) return status
         await checkAllowance(
@@ -95,6 +95,12 @@ export class HopExecutionManager {
     setStatusDone(update, status, crossProcess)
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
+    // coinKey should always be set since this data is coming from the Lifi Backend.
+    if (!action.toToken.coinKey) {
+      console.error("toToken doesn't contain coinKey, aborting")
+      throw new Error("toToken doesn't contain coinKey")
+    }
+
     const waitForTxProcess = createAndPushProcess(
       'waitForTxProcess',
       update,
@@ -106,7 +112,7 @@ export class HopExecutionManager {
       hop.init(signer, action.fromChainId, action.toChainId)
       destinationTxReceipt = await hop.waitForDestinationChainReceipt(
         crossProcess.txHash,
-        action.toToken.key,
+        action.toToken.coinKey,
         action.fromChainId,
         action.toChainId
       )

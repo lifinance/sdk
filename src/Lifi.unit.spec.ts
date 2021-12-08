@@ -1,7 +1,6 @@
 import {
   Action,
   ChainId,
-  ChainKey,
   CoinKey,
   Estimate,
   findDefaultCoinOnChain,
@@ -29,9 +28,11 @@ describe('LIFI SDK', () => {
     const getRoutesRequest = ({
       fromChainId = ChainId.BSC,
       fromAmount = '10000000000000',
-      fromTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.BSC).id,
+      fromTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainId.BSC)
+        .address,
       toChainId = ChainId.DAI,
-      toTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI).id,
+      toTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainId.DAI)
+        .address,
       options = { slippage: 0.03 },
     }: any): RoutesRequest => ({
       fromChainId,
@@ -116,10 +117,10 @@ describe('LIFI SDK', () => {
     const getAction = ({
       fromChainId = ChainId.BSC,
       fromAmount = '10000000000000',
-      fromToken = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.BSC),
+      fromToken = findDefaultCoinOnChain(CoinKey.USDC, ChainId.BSC),
       fromAddress = 'some from address', // we don't validate the format of addresses atm
       toChainId = ChainId.DAI,
-      toToken = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI),
+      toToken = findDefaultCoinOnChain(CoinKey.USDC, ChainId.DAI),
       toAddress = 'some to address',
       slippage = 0.03,
     }): Action => ({
@@ -223,7 +224,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalance', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {
@@ -269,7 +270,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalances', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {
@@ -325,7 +326,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalancesForChains', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {

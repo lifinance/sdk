@@ -81,13 +81,19 @@ export class HorizonExecutionManager {
         action.toChainId === ChainId.BSCT
           ? NETWORK_TYPE.BINANCE
           : NETWORK_TYPE.ETHEREUM
-      const token = tokenMapping[action.fromToken.key].token
+
+      // coinKey should always be set since this data is coming from the Lifi Backend.
+      if (!action.fromToken.coinKey) {
+        console.error("fromToken doesn't contain coinKey, aborting")
+        throw new Error("fromToken doesn't contain coinKey")
+      }
+      const token = tokenMapping[action.fromToken.coinKey].token
 
       const amount = new BigNumber(action.fromAmount)
         .shiftedBy(-action.fromToken.decimals)
         .toNumber()
-      const erc20Address = tokenMapping[action.fromToken.key].erc20Address
-      const hrc20Address = tokenMapping[action.fromToken.key].hrc20Address
+      const erc20Address = tokenMapping[action.fromToken.coinKey].erc20Address
+      const hrc20Address = tokenMapping[action.fromToken.coinKey].hrc20Address
 
       const params = {
         type,
