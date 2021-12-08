@@ -87,19 +87,20 @@ class LIFI {
     signer: Signer,
     route: Route,
     settings?: {
-      updateCallBack?: CallbackFunction
+      updateCallback?: CallbackFunction
       switchChainHook?: SwitchChainHook
     }
   ): Promise<Route> => {
     // check if route is already running
     if (this.activeRoutes[route.id]) return route
+    console.log(settings)
     const execData: ExecutionData = {
       route,
       executors: [],
       settings: {
-        updateCallBack:
-          settings && settings.updateCallBack
-            ? settings.updateCallBack
+        updateCallback:
+          settings && settings.updateCallback
+            ? settings.updateCallback
             : () => {},
         switchChainHook:
           settings && settings.switchChainHook
@@ -113,7 +114,8 @@ class LIFI {
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      this.activeRoutes[route.id].settings.updateCallBack(route)
+      console.log(this.activeRoutes[route.id].settings.updateCallback(route))
+      this.activeRoutes[route.id].settings.updateCallback(route)
     }
 
     // loop over steps and execute them
@@ -165,7 +167,7 @@ class LIFI {
     signer: Signer,
     route: Route,
     settings?: {
-      updateCallBack?: CallbackFunction
+      updateCallback?: CallbackFunction
       switchChainHook?: SwitchChainHook
     }
   ): Promise<Route> => {
@@ -181,9 +183,9 @@ class LIFI {
       route,
       executors: [],
       settings: {
-        updateCallBack:
-          settings && settings.updateCallBack
-            ? settings.updateCallBack
+        updateCallback:
+          settings && settings.updateCallback
+            ? settings.updateCallback
             : () => {},
         switchChainHook:
           settings && settings.switchChainHook
@@ -197,7 +199,7 @@ class LIFI {
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      this.activeRoutes[route.id].settings.updateCallBack(route)
+      this.activeRoutes[route.id].settings.updateCallback(route)
     }
 
     // loop over steps and execute them

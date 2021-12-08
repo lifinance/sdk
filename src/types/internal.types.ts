@@ -55,7 +55,7 @@ export interface ExecutionData {
   settings: ExecutionSettings
 }
 export interface ExecutionSettings {
-  updateCallBack: CallbackFunction
+  updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
 }
 export interface ActiveRouteDictionary {
