@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultCoinOnChain } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken } from '@lifinance/types'
 
 import balances from '.'
 import utils from './utils'
@@ -16,7 +16,7 @@ describe('balances', () => {
   describe('getTokenBalance', () => {
     it('should load a token', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
-      const token = findDefaultCoinOnChain(CoinKey.WETH, ChainId.ETH)
+      const token = findDefaultToken(CoinKey.WETH, ChainId.ETH)
       balances.getTokenBalance(defaultWalletAddress, token)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(1)
     })
@@ -26,8 +26,8 @@ describe('balances', () => {
     it('should load mutliple token in one request', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.WETH, ChainId.ETH),
-        findDefaultCoinOnChain(CoinKey.USDC, ChainId.ETH),
+        findDefaultToken(CoinKey.WETH, ChainId.ETH),
+        findDefaultToken(CoinKey.USDC, ChainId.ETH),
       ]
       balances.getTokenBalances(defaultWalletAddress, tokens)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(1)
@@ -36,9 +36,9 @@ describe('balances', () => {
     it('should load tokens in one request per chain', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.WETH, ChainId.ETH),
-        findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
-        findDefaultCoinOnChain(CoinKey.DAI, ChainId.POL),
+        findDefaultToken(CoinKey.WETH, ChainId.ETH),
+        findDefaultToken(CoinKey.USDC, ChainId.POL),
+        findDefaultToken(CoinKey.DAI, ChainId.POL),
       ]
       balances.getTokenBalances(defaultWalletAddress, tokens)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
@@ -49,10 +49,10 @@ describe('balances', () => {
     it('should load tokens in one request per chain', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const tokensByChain = {
-        [ChainId.ETH]: [findDefaultCoinOnChain(CoinKey.WETH, ChainId.ETH)],
+        [ChainId.ETH]: [findDefaultToken(CoinKey.WETH, ChainId.ETH)],
         [ChainId.POL]: [
-          findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
-          findDefaultCoinOnChain(CoinKey.MATIC, ChainId.POL),
+          findDefaultToken(CoinKey.USDC, ChainId.POL),
+          findDefaultToken(CoinKey.MATIC, ChainId.POL),
         ],
       }
       balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)

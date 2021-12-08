@@ -1,9 +1,4 @@
-import {
-  ChainId,
-  CoinKey,
-  findDefaultCoinOnChain,
-  Token,
-} from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 
 import utils from './utils'
@@ -36,8 +31,8 @@ describe('balances utils', () => {
     it('should work for ERC20 on POL', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
-        findDefaultCoinOnChain(CoinKey.USDT, ChainId.POL),
+        findDefaultToken(CoinKey.USDC, ChainId.POL),
+        findDefaultToken(CoinKey.USDT, ChainId.POL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -46,8 +41,8 @@ describe('balances utils', () => {
     it('should work for MATIC on POL', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.MATIC, ChainId.POL),
-        findDefaultCoinOnChain(CoinKey.DAI, ChainId.POL),
+        findDefaultToken(CoinKey.MATIC, ChainId.POL),
+        findDefaultToken(CoinKey.DAI, ChainId.POL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -55,12 +50,9 @@ describe('balances utils', () => {
 
     it('should return empty array for invalid data on POL', async () => {
       const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultCoinOnChain(CoinKey.MATIC, ChainId.POL)
+      const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const tokens = [
-        findDefaultCoinOnChain(CoinKey.USDC, ChainId.POL),
-        invalidToken,
-      ]
+      const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
 
       const tokenBalances = await utils.getBalances(walletAddress, tokens)
       expect(tokenBalances.length).toBe(0)
@@ -68,15 +60,15 @@ describe('balances utils', () => {
 
     it('should fallback to a direct call if only one token is requested', async () => {
       const walletAddress = defaultWalletAddress
-      const tokens = [findDefaultCoinOnChain(CoinKey.DAI, ChainId.BSC)]
+      const tokens = [findDefaultToken(CoinKey.DAI, ChainId.BSC)]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
 
     it('should fallback to multiple calls if multicall in not available', async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultCoinOnChain(CoinKey.ETH, ChainId.OPT),
-        findDefaultCoinOnChain(CoinKey.USDC, ChainId.OPT),
+        findDefaultToken(CoinKey.ETH, ChainId.OPT),
+        findDefaultToken(CoinKey.USDC, ChainId.OPT),
       ]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
