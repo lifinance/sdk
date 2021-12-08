@@ -9,6 +9,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -47,3 +48,16 @@ export type CallbackFunction = (updatedRoute: Route) => void
 export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
+
+export interface ExecutionData {
+  route: Route
+  executors: StepExecutor[]
+  settings: ExecutionSettings
+}
+export interface ExecutionSettings {
+  updateCallBack: CallbackFunction
+  switchChainHook: SwitchChainHook
+}
+export interface ActiveRouteDictionary {
+  [k: string]: ExecutionData
+}

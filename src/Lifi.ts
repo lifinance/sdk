@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { JsonRpcSigner } from '@ethersproject/providers'
 import axios from 'axios'
 import { Signer } from 'ethers'
 
@@ -19,19 +18,9 @@ import {
   StepTransactionResponse,
   Token,
   TokenAmount,
+  ExecutionData,
+  ActiveRouteDictionary,
 } from './types'
-
-interface ExecutionData {
-  route: Route
-  executors: StepExecutor[]
-  settings: {
-    updateCallBack: CallbackFunction
-    switchChainHook: SwitchChainHook
-  }
-}
-interface ActiveRouteDictionary {
-  [k: string]: ExecutionData
-}
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
