@@ -34,7 +34,7 @@ export class SwapExecutionManager {
     const { status, update } = initStatus(updateStatus, execution)
 
     // Approval
-    if (action.fromToken.id !== constants.AddressZero) {
+    if (action.fromToken.address !== constants.AddressZero) {
       if (!this.shouldContinue) return status
       await checkAllowance(
         signer,

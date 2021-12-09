@@ -36,7 +36,7 @@ export class NXTPExecutionManager {
     const transactionId = step.id
 
     // STEP 0: Check Allowance ////////////////////////////////////////////////
-    if (action.fromToken.id !== constants.AddressZero) {
+    if (action.fromToken.address !== constants.AddressZero) {
       // Check Token Approval only if fromToken is not the native token => no approval needed in that case
       if (!this.shouldContinue) return status
       await checkAllowance(
