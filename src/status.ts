@@ -28,7 +28,7 @@ export const createAndPushProcess = (
   status: Execution,
   message: ProcessMessage,
   params?: object
-) => {
+): Process => {
   const process = status.process.find((p) => p.id === id)
   if (process) {
     status.status = 'PENDING'
@@ -58,7 +58,7 @@ export const setStatusFailed = (
   status: Execution,
   currentProcess: Process,
   params?: object
-) => {
+): void => {
   status.status = 'FAILED'
   currentProcess.status = 'FAILED'
   currentProcess.failedAt = Date.now()
@@ -76,7 +76,7 @@ export const setStatusDone = (
   status: Execution,
   currentProcess: Process,
   params?: object
-) => {
+): void => {
   currentProcess.status = 'DONE'
   currentProcess.doneAt = Date.now()
   if (params) {
