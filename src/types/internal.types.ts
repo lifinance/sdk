@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
@@ -9,6 +10,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -44,3 +46,30 @@ export type ExecuteCrossParams = {
 export type UpdateStep = (step: Step, execution: Execution) => void
 export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
+export type SwitchChainHook = (
+  requiredChainId: number
+) => Promise<Signer | undefined>
+
+export interface ExecutionData {
+  route: Route
+  executors: StepExecutor[]
+  settings: EnforcedObjectProperties<ExecutionSettings>
+}
+
+export const DefaultExecutionSettings = {
+  updateCallback: () => {},
+  switchChainHook: () => new Promise<undefined>(() => {}),
+}
+
+export interface ExecutionSettings {
+  updateCallback?: CallbackFunction
+  switchChainHook?: SwitchChainHook
+}
+
+// Hard to read but this creates a new type that enforces all optional properties in a given interface
+export type EnforcedObjectProperties<T> = T & {
+  [P in keyof T]-?: T[P]
+}
+export interface ActiveRouteDictionary {
+  [k: string]: ExecutionData
+}
