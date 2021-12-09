@@ -121,26 +121,18 @@ class LIFI {
         step.action.fromAmount = previousStep.execution.toAmount
       }
 
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        const updatedSigner = await this.activeRoutes[
-          route.id
-        ].settings.switchChainHook(step.action.fromChainId)
-        if (updatedSigner) {
-          signer = updatedSigner
-        }
-      }
-
       try {
         const stepExecutor = new StepExecutor()
         this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(signer, step, updateFunction)
+        await stepExecutor.executeStep(
+          signer,
+          step,
+          updateFunction,
+          this.activeRoutes[route.id].settings.switchChainHook
+        )
       } catch (e) {
         this.stopExecution(route)
         throw e
-      }
-      // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
-      if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
-        throw Error('CHAIN SWITCH REQUIRED')
       }
     }
 
@@ -188,15 +180,6 @@ class LIFI {
         continue
       }
 
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        const updatedSigner = await this.activeRoutes[
-          route.id
-        ].settings.switchChainHook(step.action.fromChainId)
-        if (updatedSigner) {
-          signer = updatedSigner
-        }
-      }
-
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
       if (
         previousStep &&
@@ -209,15 +192,15 @@ class LIFI {
       try {
         const stepExecutor = new StepExecutor()
         this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(signer, step, updateFunction)
+        await stepExecutor.executeStep(
+          signer,
+          step,
+          updateFunction,
+          this.activeRoutes[route.id].settings.switchChainHook
+        )
       } catch (e) {
         this.stopExecution(route)
         throw e
-      }
-
-      // stop execution if StepExecutor has changed status to CHAIN_SWITCH_REQUIRED
-      if (step.execution?.status === 'CHAIN_SWITCH_REQUIRED') {
-        throw Error('CHAIN SWITCH REQUIRED')
       }
     }
 
@@ -230,6 +213,8 @@ class LIFI {
     settings: ExecutionSettings,
     route: Route
   ): void => {
+    if (!this.activeRoutes[route.id])
+      throw Error('Cannot set ExecutionSettings for unactive route!')
     this.activeRoutes[route.id].settings = {
       ...DefaultExecutionSettings,
       ...settings,

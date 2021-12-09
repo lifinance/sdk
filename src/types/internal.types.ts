@@ -67,7 +67,7 @@ export interface ExecutionSettings {
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface
-type EnforcedObjectProperties<T> = T & {
+export type EnforcedObjectProperties<T> = T & {
   [P in keyof T]-?: T[P]
 }
 export interface ActiveRouteDictionary {

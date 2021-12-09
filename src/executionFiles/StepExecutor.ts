@@ -8,6 +8,7 @@ import {
   Step,
   SwapStep,
   UpdateStep,
+  SwitchChainHook,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -43,7 +44,8 @@ export class StepExecutor {
   executeStep = async (
     signer: Signer,
     step: Step,
-    updateStatus: UpdateStep
+    updateStatus: UpdateStep,
+    switchChainHook: SwitchChainHook
   ): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
@@ -54,7 +56,16 @@ export class StepExecutor {
       )
       status.status = 'CHAIN_SWITCH_REQUIRED'
       update(status)
-      return step
+
+      const updatedSigner = await switchChainHook(step.action.fromChainId)
+      if (
+        updatedSigner &&
+        (await updatedSigner.getChainId()) === step.action.fromChainId
+      ) {
+        signer = updatedSigner
+      } else {
+        throw Error('CHAIN SWITCH REQUIRED')
+      }
     }
 
     switch (step.type) {
