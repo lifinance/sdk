@@ -99,10 +99,7 @@ class LIFI {
   resumeRoute = async (
     signer: Signer,
     route: Route,
-    settings?: {
-      updateCallback?: CallbackFunction
-      switchChainHook?: SwitchChainHook
-    }
+    settings?: ExecutionSettings
   ): Promise<Route> => {
     const activeRoute = this.activeRoutes[route.id]
     if (activeRoute) {
