@@ -91,53 +91,9 @@ class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     // check if route is already running
-    if (this.activeRoutes[route.id]) return route
-    const execData: ExecutionData = {
-      route,
-      executors: [],
-      settings: { ...DefaultExecutionSettings, ...settings },
-    }
-    this.activeRoutes[route.id] = execData
+    if (this.activeRoutes[route.id]) return route // TODO: maybe inform user why nothing happens?
 
-    const updateFunction = (step: Step, status: Execution) => {
-      step.execution = status
-      this.activeRoutes[route.id].settings.updateCallback(route)
-    }
-
-    // loop over steps and execute them
-    for (let index = 0; index < route.steps.length; index++) {
-      //check if execution has stopped in meantime
-      if (!this.activeRoutes[route.id]) break
-
-      const step = route.steps[index]
-      const previousStep = index !== 0 ? route.steps[index - 1] : undefined
-
-      // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
-      if (
-        previousStep &&
-        previousStep.execution &&
-        previousStep.execution.toAmount
-      ) {
-        step.action.fromAmount = previousStep.execution.toAmount
-      }
-
-      try {
-        const stepExecutor = new StepExecutor()
-        this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(
-          signer,
-          step,
-          updateFunction,
-          this.activeRoutes[route.id].settings.switchChainHook
-        )
-      } catch (e) {
-        this.stopExecution(route)
-        throw e
-      }
-    }
-
-    delete this.activeRoutes[route.id]
-    return route
+    return this.executeSteps(signer, route, settings)
   }
 
   resumeRoute = async (
@@ -156,6 +112,14 @@ class LIFI {
       if (!executionHalted) return route
     }
 
+    return this.executeSteps(signer, route, settings)
+  }
+
+  private executeSteps = async (
+    signer: Signer,
+    route: Route,
+    settings?: ExecutionSettings
+  ): Promise<Route> => {
     const execData: ExecutionData = {
       route,
       executors: [],
@@ -189,8 +153,9 @@ class LIFI {
         step.action.fromAmount = previousStep.execution.toAmount
       }
 
+      let stepExecutor: StepExecutor
       try {
-        const stepExecutor = new StepExecutor()
+        stepExecutor = new StepExecutor()
         this.activeRoutes[route.id].executors.push(stepExecutor)
         await stepExecutor.executeStep(
           signer,
@@ -201,6 +166,11 @@ class LIFI {
       } catch (e) {
         this.stopExecution(route)
         throw e
+      }
+
+      // execution stopped during the current step, we don't want to continue to the next step so we return already
+      if (stepExecutor.executionStopped) {
+        return route
       }
     }
 

@@ -30,7 +30,7 @@ export class StepExecutor {
 
   executionStopped = false
 
-  stopStepExecution = () => {
+  stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
     this.nxtpExecutionManager.setShouldContinue(false)
     this.hopExecutionManager.setShouldContinue(false)
