@@ -26,18 +26,17 @@ export class StatusManager {
     this.settings = settings
   }
 
-  initStatus = (step: Step) => {
-    const status = step.execution || (deepClone(emptyExecution) as Execution)
-    // eslint-disable-next-line no-console
-    // const update = updateStatus || console.log
-    const updateStepWithStatus = (status: Execution) => {
-      step.execution = status
+  initExecutionObject = (step: Step) => {
+    const currentExecution =
+      step.execution || (deepClone(emptyExecution) as Execution)
+    const updateExecution = (newEecution: Execution) => {
+      step.execution = newEecution
       this.settings.updateCallback(this.route)
     }
     if (!step.execution) {
-      updateStepWithStatus(status)
+      updateExecution(currentExecution)
     }
-    return { status, updateStepWithStatus }
+    return { currentExecution, updateExecution }
   }
 
   createAndPushProcess = (
