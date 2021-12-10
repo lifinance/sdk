@@ -46,8 +46,8 @@
     "url": "https://github.com/lifinance/sdk/issues"
   },
   "dependencies": {
-    "@connext/nxtp-sdk": "^0.0.99",
-    "@hop-protocol/sdk": "^0.0.1-beta.272",
+    "@connext/nxtp-sdk": "^0.0.100",
+    "@hop-protocol/sdk": "^0.0.1-beta.273",
     "@lifinance/types": "^0.7.0",
     "@makerdao/multicall": "^0.12.0",
     "axios": "^0.24.0",
