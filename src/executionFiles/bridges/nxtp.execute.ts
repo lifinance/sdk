@@ -219,38 +219,61 @@ export class NXTPExecutionManager {
     }
 
     // STEP 7: Wait for signature //////////////////////////////////////////////////////////
-    const calculatedRelayerFee = await this.calculateRelayerFee(
-      nxtpSDK,
-      preparedTransaction
-    )
+    let calculatedRelayerFee
+    let signature
+    try {
+      calculatedRelayerFee = await this.calculateRelayerFee(
+        nxtpSDK,
+        preparedTransaction
+      )
 
-    const signature = await signFulfillTransactionPayload(
-      preparedTransaction.txData.transactionId,
-      calculatedRelayerFee,
-      preparedTransaction.txData.receivingChainId,
-      preparedTransaction.txData.receivingChainTxManagerAddress,
-      signer
-    )
+      signature = await signFulfillTransactionPayload(
+        preparedTransaction.txData.transactionId,
+        calculatedRelayerFee,
+        preparedTransaction.txData.receivingChainId,
+        preparedTransaction.txData.receivingChainTxManagerAddress,
+        signer
+      )
+    } catch (e) {
+      setStatusFailed(update, status, claimProcess)
+      nxtpSDK.removeAllListeners()
+      throw e
+    }
 
+    // STEP 8: Decrypt CallData //////////////////////////////////////////////////////////
     let callData = '0x'
-    if (
-      hooks.decryptHook &&
-      preparedTransaction.txData.callDataHash !== utils.keccak256(callData)
-    ) {
-      claimProcess.status = 'PENDING'
-      claimProcess.message = 'Decrypt transaction data'
-      update(status)
+    // Does it cointain callData?
+    if (preparedTransaction.txData.callDataHash !== utils.keccak256(callData)) {
+      if (
+        preparedTransaction.txData.callDataHash ===
+        utils.keccak256(preparedTransaction.encryptedCallData)
+      ) {
+        // Call data was passed unencrypted
+        callData = preparedTransaction.encryptedCallData
+      } else if (hooks.decryptHook) {
+        // Tigger hock to decrypt data
+        claimProcess.status = 'ACTION_REQUIRED'
+        claimProcess.message = 'Decrypt transaction data'
+        update(status)
 
-      try {
-        callData = await hooks.decryptHook(
-          preparedTransaction.encryptedCallData
+        try {
+          callData = await hooks.decryptHook(
+            preparedTransaction.encryptedCallData
+          )
+        } catch (e) {
+          setStatusFailed(update, status, claimProcess)
+          nxtpSDK.removeAllListeners()
+          throw e
+        }
+      } else {
+        // Continue without call data
+        console.warn(
+          'CallData not forwared because no decryptHook is set to decypt it.'
         )
-      } catch (e) {
-        setStatusFailed(update, status, claimProcess)
-        throw e
       }
     }
 
+    // STEP 9: Wait for Claim //////////////////////////////////////////////////////////
     claimProcess.status = 'PENDING'
     claimProcess.message = 'Waiting for claim'
     update(status)
