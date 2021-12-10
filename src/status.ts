@@ -1,7 +1,6 @@
 /* eslint-disable max-params */
 /* eslint-disable @typescript-eslint/ban-types */
 import {
-  CallbackFunction,
   emptyExecution,
   EnforcedObjectProperties,
   Execution,
