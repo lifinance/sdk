@@ -24,8 +24,9 @@ export class NXTPExecutionManager {
   }
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
-    const { action, execution, estimate } = step
-    const { status, updateStepWithStatus } = statusManager.initStatus(step)
+    const { action, estimate } = step
+    const { currentExecution, updateExecution } =
+      statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
     const transactionId = step.id
@@ -33,7 +34,7 @@ export class NXTPExecutionManager {
     // STEP 0: Check Allowance ////////////////////////////////////////////////
     if (action.fromToken.address !== constants.AddressZero) {
       // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return currentExecution
       await checkAllowance(
         signer,
         step,
@@ -42,8 +43,8 @@ export class NXTPExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        updateStepWithStatus,
-        status,
+        updateExecution,
+        currentExecution,
         true
       )
     }
@@ -53,17 +54,17 @@ export class NXTPExecutionManager {
       isLifiStep(step) &&
       isSwapStep(step.includedSteps[step.includedSteps.length - 1])
     ) {
-      // -> set status
+      // -> set currentExecution
       const keyProcess = statusManager.createAndPushProcess(
         'publicKey',
-        updateStepWithStatus,
-        status,
+        updateExecution,
+        currentExecution,
         'Provide Public Key',
         {
-          status: 'ACTION_REQUIRED',
+          currentExecution: 'ACTION_REQUIRED',
         }
       )
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return currentExecution
       // -> request key
       try {
         const encryptionPublicKey = await (window as any).ethereum.request({
@@ -74,28 +75,32 @@ export class NXTPExecutionManager {
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
       } catch (e) {
-        statusManager.setStatusFailed(updateStepWithStatus, status, keyProcess)
+        statusManager.setStatusFailed(
+          updateExecution,
+          currentExecution,
+          keyProcess
+        )
         throw e
       }
-      // -> set status
-      statusManager.setStatusDone(updateStepWithStatus, status, keyProcess)
+      // -> set currentExecution
+      statusManager.setStatusDone(updateExecution, currentExecution, keyProcess)
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
     const crossProcess = statusManager.createAndPushProcess(
       'crossProcess',
-      updateStepWithStatus,
-      status,
+      updateExecution,
+      currentExecution,
       'Prepare Transaction'
     )
-    if (crossProcess.status !== 'DONE') {
+    if (crossProcess.currentExecution !== 'DONE') {
       let tx: TransactionResponse
       try {
         if (crossProcess.txHash) {
           // -> restore existing tx
-          crossProcess.status = 'PENDING'
+          crossProcess.currentExecution = 'PENDING'
           crossProcess.message = 'Wait for '
-          updateStepWithStatus(status)
+          updateExecution(currentExecution)
           tx = await signer.provider!.getTransaction(crossProcess.txHash)
         } else {
           const personalizedStep = await personalizeStep(signer, step)
@@ -104,29 +109,29 @@ export class NXTPExecutionManager {
           )
 
           // STEP 3: Send Transaction ///////////////////////////////////////////////
-          crossProcess.status = 'ACTION_REQUIRED'
+          crossProcess.currentExecution = 'ACTION_REQUIRED'
           crossProcess.message = 'Sign Transaction'
-          updateStepWithStatus(status)
-          if (!this.shouldContinue) return status
+          updateExecution(currentExecution)
+          if (!this.shouldContinue) return currentExecution
 
           tx = await signer.sendTransaction(transactionRequest)
 
           // STEP 4: Wait for Transaction ///////////////////////////////////////////
-          crossProcess.status = 'PENDING'
+          crossProcess.currentExecution = 'PENDING'
           crossProcess.txHash = tx.hash
           crossProcess.txLink =
             fromChain.metamask.blockExplorerUrls[0] +
             'tx/' +
             crossProcess.txHash
           crossProcess.message = 'Wait for'
-          updateStepWithStatus(status)
+          updateExecution(currentExecution)
         }
       } catch (e: any) {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
         statusManager.setStatusFailed(
-          updateStepWithStatus,
-          status,
+          updateExecution,
+          currentExecution,
           crossProcess
         )
         throw e
@@ -135,20 +140,24 @@ export class NXTPExecutionManager {
       await tx.wait()
 
       crossProcess.message = 'Transfer started: '
-      statusManager.setStatusDone(updateStepWithStatus, status, crossProcess)
+      statusManager.setStatusDone(
+        updateExecution,
+        currentExecution,
+        crossProcess
+      )
     }
 
     // STEP 5: Wait for ReceiverTransactionPrepared //////////////////////////////////////
     const claimProcess = statusManager.createAndPushProcess(
       'claimProcess',
-      updateStepWithStatus,
-      status,
+      updateExecution,
+      currentExecution,
       'Wait for bridge'
     )
     // reset previous process
     claimProcess.message = 'Wait for bridge'
-    claimProcess.status = 'PENDING'
-    updateStepWithStatus(status)
+    claimProcess.currentExecution = 'PENDING'
+    updateExecution(currentExecution)
 
     // init sdk
     const crossableChains = [ChainId.ETH, action.fromChainId, action.toChainId]
@@ -161,7 +170,7 @@ export class NXTPExecutionManager {
       (data) => data.txData.transactionId === transactionId
     )
 
-    // find current status
+    // find current currentExecution
     const transactions = await nxtpSDK.getActiveTransactions()
     const foundTransaction = transactions.find(
       (transfer) =>
@@ -180,26 +189,30 @@ export class NXTPExecutionManager {
         claimProcess.txLink =
           toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
         claimProcess.message = 'Swapped:'
-        status.fromAmount = estimate.fromAmount
-        status.toAmount = estimate.toAmount
-        status.status = 'DONE'
-        statusManager.setStatusDone(updateStepWithStatus, status, claimProcess)
+        currentExecution.fromAmount = estimate.fromAmount
+        currentExecution.toAmount = estimate.toAmount
+        currentExecution.status = 'DONE'
+        statusManager.setStatusDone(
+          updateExecution,
+          currentExecution,
+          claimProcess
+        )
 
         // DONE
         nxtpSDK.removeAllListeners()
-        return status
+        return currentExecution
       }
     }
 
     const preparedTransaction = await preparedTransactionPromise
 
     // STEP 6: Claim //////////////////////////////////////////////////////////
-    claimProcess.status = 'ACTION_REQUIRED'
+    claimProcess.currentExecution = 'ACTION_REQUIRED'
     claimProcess.message = 'Claim transfer'
-    updateStepWithStatus(status)
+    updateExecution(currentExecution)
     if (!this.shouldContinue) {
       nxtpSDK.removeAllListeners()
-      return status
+      return currentExecution
     }
 
     const fulfillPromise = nxtpSDK.fulfillTransfer(preparedTransaction)
@@ -211,9 +224,9 @@ export class NXTPExecutionManager {
       (data) => data.transactionId === transactionId
     )
 
-    claimProcess.status = 'PENDING'
+    claimProcess.currentExecution = 'PENDING'
     claimProcess.message = 'Waiting for claim'
-    updateStepWithStatus(status)
+    updateExecution(currentExecution)
 
     try {
       const data = await fulfillPromise
@@ -224,7 +237,11 @@ export class NXTPExecutionManager {
     } catch (e) {
       // handle errors
       nxtpSDK.removeAllListeners()
-      statusManager.setStatusFailed(updateStepWithStatus, status, claimProcess)
+      statusManager.setStatusFailed(
+        updateExecution,
+        currentExecution,
+        claimProcess
+      )
       throw e
     }
 
@@ -232,13 +249,13 @@ export class NXTPExecutionManager {
     // const provider = getRpcProvider(step.action.toChainId)
     // const receipt = await provider.waitForTransaction(claimProcess.txHash)
 
-    status.fromAmount = estimate.fromAmount
-    status.toAmount = estimate.toAmount
-    status.status = 'DONE'
-    statusManager.setStatusDone(updateStepWithStatus, status, claimProcess)
+    currentExecution.fromAmount = estimate.fromAmount
+    currentExecution.toAmount = estimate.toAmount
+    currentExecution.status = 'DONE'
+    statusManager.setStatusDone(updateExecution, currentExecution, claimProcess)
 
     // DONE
     nxtpSDK.removeAllListeners()
-    return status
+    return currentExecution
   }
 }

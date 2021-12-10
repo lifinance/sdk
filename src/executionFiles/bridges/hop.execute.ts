@@ -15,18 +15,21 @@ export class HopExecutionManager {
   }
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
-    const { action, execution, estimate } = step
-    const { status, updateStepWithStatus } = statusManager.initStatus(step)
+    const { action, estimate } = step
+    const { currentExecution, updateExecution } =
+      statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
-    const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
+    const oldCrossProcess = currentExecution.process.find(
+      (p) => p.id === 'crossProcess'
+    )
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        if (!this.shouldContinue) return status
+        if (!this.shouldContinue) return currentExecution
         await checkAllowance(
           signer,
           step,
@@ -35,8 +38,8 @@ export class HopExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          updateStepWithStatus,
-          status,
+          updateExecution,
+          currentExecution,
           true
         )
       }
@@ -45,8 +48,8 @@ export class HopExecutionManager {
     // STEP 2: Get Transaction ////////////////////////////////////////////////
     const crossProcess = statusManager.createAndPushProcess(
       'crossProcess',
-      updateStepWithStatus,
-      status,
+      updateExecution,
+      currentExecution,
       'Prepare Transaction'
     )
 
@@ -63,32 +66,36 @@ export class HopExecutionManager {
         )
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
-        crossProcess.status = 'ACTION_REQUIRED'
+        crossProcess.currentExecution = 'ACTION_REQUIRED'
         crossProcess.message = 'Sign Transaction'
-        updateStepWithStatus(status)
-        if (!this.shouldContinue) return status
+        updateExecution(currentExecution)
+        if (!this.shouldContinue) return currentExecution
 
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        crossProcess.status = 'PENDING'
+        crossProcess.currentExecution = 'PENDING'
         crossProcess.txHash = tx.hash
         crossProcess.txLink =
           fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
         crossProcess.message = 'Wait for'
-        updateStepWithStatus(status)
+        updateExecution(currentExecution)
       }
 
       await tx.wait()
     } catch (e: any) {
       if (e.message) crossProcess.errorMessage = e.message
       if (e.code) crossProcess.errorCode = e.code
-      statusManager.setStatusFailed(updateStepWithStatus, status, crossProcess)
+      statusManager.setStatusFailed(
+        updateExecution,
+        currentExecution,
+        crossProcess
+      )
       throw e
     }
 
     crossProcess.message = 'Transfer started: '
-    statusManager.setStatusDone(updateStepWithStatus, status, crossProcess)
+    statusManager.setStatusDone(updateExecution, currentExecution, crossProcess)
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
     // coinKey should always be set since this data is coming from the Lifi Backend.
@@ -99,8 +106,8 @@ export class HopExecutionManager {
 
     const waitForTxProcess = statusManager.createAndPushProcess(
       'waitForTxProcess',
-      updateStepWithStatus,
-      status,
+      updateExecution,
+      currentExecution,
       'Wait for Receiving Chain'
     )
     let destinationTxReceipt
@@ -117,14 +124,14 @@ export class HopExecutionManager {
       if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
       if (e.code) waitForTxProcess.errorCode = e.code
       statusManager.setStatusFailed(
-        updateStepWithStatus,
-        status,
+        updateExecution,
+        currentExecution,
         waitForTxProcess
       )
       throw e
     }
 
-    // -> parse receipt & set status
+    // -> parse receipt & set currentExecution
     const parsedReceipt = hop.parseReceipt(
       crossProcess.txHash,
       destinationTxReceipt
@@ -133,13 +140,17 @@ export class HopExecutionManager {
     waitForTxProcess.txLink =
       toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
     waitForTxProcess.message = 'Funds Received:'
-    status.fromAmount = parsedReceipt.fromAmount
-    status.toAmount = parsedReceipt.toAmount
-    // status.gasUsed = parsedReceipt.gasUsed
-    status.status = 'DONE'
-    statusManager.setStatusDone(updateStepWithStatus, status, waitForTxProcess)
+    currentExecution.fromAmount = parsedReceipt.fromAmount
+    currentExecution.toAmount = parsedReceipt.toAmount
+    // currentExecution.gasUsed = parsedReceipt.gasUsed
+    currentExecution.status = 'DONE'
+    statusManager.setStatusDone(
+      updateExecution,
+      currentExecution,
+      waitForTxProcess
+    )
 
     // DONE
-    return status
+    return currentExecution
   }
 }

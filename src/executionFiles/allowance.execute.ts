@@ -14,16 +14,16 @@ export const checkAllowance = async (
   spenderAddress: string,
   statusManager: StatusManager,
   update: (execution: Execution) => void,
-  status: Execution,
+  currentExecution: Execution,
   infiniteApproval = false
   // eslint-disable-next-line max-params
 ) => {
   // Ask user to set allowance
-  // -> set status
+  // -> set currentExecution
   const allowanceProcess = statusManager.createAndPushProcess(
     'allowanceProcess',
     update,
-    status,
+    currentExecution,
     `Set Allowance for ${token.symbol}`
   )
 
@@ -31,9 +31,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await signer.provider!.waitForTransaction(allowanceProcess.txHash)
-      statusManager.setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
     } else if (allowanceProcess.message === 'Already Approved') {
-      statusManager.setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -48,29 +48,29 @@ export const checkAllowance = async (
           approvaLAmount
         )
 
-        // update status
-        allowanceProcess.status = 'PENDING'
+        // update currentExecution
+        allowanceProcess.currentExecution = 'PENDING'
         allowanceProcess.txHash = approveTx.hash
         allowanceProcess.txLink =
           chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
         allowanceProcess.message = 'Approve - Wait for'
-        update(status)
+        update(currentExecution)
 
         // wait for transcation
         await approveTx.wait()
 
-        // -> set status
+        // -> set currentExecution
         allowanceProcess.message = 'Approved:'
       } else {
         allowanceProcess.message = 'Already Approved'
       }
-      statusManager.setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
     }
   } catch (e: any) {
-    // -> set status
+    // -> set currentExecution
     if (e.message) allowanceProcess.errorMessage = e.message
     if (e.code) allowanceProcess.errorCode = e.code
-    statusManager.setStatusFailed(update, status, allowanceProcess)
+    statusManager.setStatusFailed(update, currentExecution, allowanceProcess)
     throw e
   }
 }

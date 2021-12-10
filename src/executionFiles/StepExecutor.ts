@@ -1,6 +1,6 @@
 import { Signer } from 'ethers'
 import { StatusManager } from '..'
-// import { initStatus } from '../status'
+// import { initExecutionObject } from '../status'
 
 import {
   CrossStep,
@@ -57,11 +57,11 @@ export class StepExecutor {
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
-      // change status to CHAIN_SWITCH_REQUIRED and return step without execution
-      const { status, updateStepWithStatus } =
-        this.statusManager.initStatus(step)
-      status.status = 'CHAIN_SWITCH_REQUIRED'
-      updateStepWithStatus(status)
+      // change status to CHAIN_SWITCH_REQUIRED and return step without currentExecution
+      const { currentExecution, updateExecution } =
+        this.statusManager.initExecutionObject(step)
+      currentExecution.status = 'CHAIN_SWITCH_REQUIRED'
+      updateExecution(currentExecution)
 
       const updatedSigner = await this.settings.switchChainHook(
         step.action.fromChainId
