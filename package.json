@@ -5,6 +5,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "install": "( [ ! -d ./dist ] && npm run build || true )",
     "watch": "tsc -w -p ./tsconfig.json",
     "build": "node tools/cleanup types && tsc -p ./tsconfig.json",
     "clean": "node tools/cleanup",
