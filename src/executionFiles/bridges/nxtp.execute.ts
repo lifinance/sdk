@@ -1,8 +1,4 @@
-import {
-  NxtpSdk,
-  NxtpSdkEvents,
-  ReceiverTransactionPreparedPayload,
-} from '@connext/nxtp-sdk'
+import { NxtpSdk, NxtpSdkEvents } from '@connext/nxtp-sdk'
 import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants, utils } from 'ethers'
 
@@ -25,7 +21,10 @@ import { personalizeStep } from '../../utils'
 import { getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
-import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
+import {
+  getDeployedChainIdsForGasFee,
+  getDeployedTransactionManagerContract,
+} from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 
 export class NXTPExecutionManager {
@@ -45,6 +44,7 @@ export class NXTPExecutionManager {
     const { status, update } = initStatus(updateStatus, execution)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
+    const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
     const transactionId = step.id
 
     // STEP 0: Check Allowance ////////////////////////////////////////////////
@@ -68,7 +68,8 @@ export class NXTPExecutionManager {
     if (
       hooks.getPublicKeyHook &&
       isLifiStep(step) &&
-      isSwapStep(step.includedSteps[step.includedSteps.length - 1])
+      isSwapStep(step.includedSteps[step.includedSteps.length - 1]) &&
+      (!oldCrossProcess || !oldCrossProcess.txHash)
     ) {
       // -> set status
       const keyProcess = createAndPushProcess(
@@ -207,31 +208,43 @@ export class NXTPExecutionManager {
       }
     }
 
-    const preparedTransaction = await preparedTransactionPromise
-
-    // STEP 6: Claim //////////////////////////////////////////////////////////
-    claimProcess.status = 'ACTION_REQUIRED'
-    claimProcess.message = 'Claim transfer'
-    update(status)
-    if (!this.shouldContinue) {
-      nxtpSDK.removeAllListeners()
-      return status
-    }
-
-    // STEP 7: Wait for signature //////////////////////////////////////////////////////////
+    // STEP 6: Wait for signature //////////////////////////////////////////////////////////
     let calculatedRelayerFee
     let signature
     try {
-      calculatedRelayerFee = await this.calculateRelayerFee(
-        nxtpSDK,
-        preparedTransaction
+      calculatedRelayerFee = await this.calculateRelayerFee(nxtpSDK, {
+        txData: {
+          sendingChainId: action.fromChainId,
+          sendingAssetId: action.fromToken.address,
+          receivingChainId: action.toChainId,
+          receivingAssetId: action.toToken.address,
+        },
+      })
+
+      const receivingChainTxManager = getDeployedTransactionManagerContract(
+        action.toChainId
       )
+      if (!receivingChainTxManager) {
+        setStatusFailed(update, status, claimProcess)
+        nxtpSDK.removeAllListeners()
+        throw new Error(
+          'No TransactionManager definded for chain: ${action.toChainId}'
+        )
+      }
+
+      claimProcess.status = 'ACTION_REQUIRED'
+      claimProcess.message = 'Provide Signature'
+      update(status)
+      if (!this.shouldContinue) {
+        nxtpSDK.removeAllListeners()
+        return status
+      }
 
       signature = await signFulfillTransactionPayload(
-        preparedTransaction.txData.transactionId,
+        transactionId,
         calculatedRelayerFee,
-        preparedTransaction.txData.receivingChainId,
-        preparedTransaction.txData.receivingChainTxManagerAddress,
+        action.toChainId,
+        receivingChainTxManager.address,
         signer
       )
     } catch (e) {
@@ -239,6 +252,13 @@ export class NXTPExecutionManager {
       nxtpSDK.removeAllListeners()
       throw e
     }
+
+    // STEP 7: Wait for Bridge //////////////////////////////////////////////////////////
+    claimProcess.message = 'Wait for bridge (1-5 min)'
+    claimProcess.status = 'PENDING'
+    update(status)
+
+    const preparedTransaction = await preparedTransactionPromise
 
     // STEP 8: Decrypt CallData //////////////////////////////////////////////////////////
     let callData = '0x'
@@ -275,7 +295,7 @@ export class NXTPExecutionManager {
 
     // STEP 9: Wait for Claim //////////////////////////////////////////////////////////
     claimProcess.status = 'PENDING'
-    claimProcess.message = 'Waiting for claim'
+    claimProcess.message = 'Waiting for claim (1-5 min)'
     update(status)
 
     try {
@@ -313,7 +333,14 @@ export class NXTPExecutionManager {
 
   private calculateRelayerFee = async (
     nxtpSDK: NxtpSdk,
-    preparedTransaction: ReceiverTransactionPreparedPayload
+    preparedTransaction: {
+      txData: {
+        sendingChainId: number
+        sendingAssetId: string
+        receivingChainId: number
+        receivingAssetId: string
+      }
+    }
   ): Promise<string> => {
     let calculateRelayerFee = '0'
 
