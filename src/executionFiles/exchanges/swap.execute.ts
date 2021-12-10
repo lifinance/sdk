@@ -5,12 +5,7 @@ import {
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
+
 import { ExecuteSwapParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
@@ -26,22 +21,24 @@ export class SwapExecutionManager {
     signer,
     step,
     parseReceipt,
-    updateStatus,
+    statusManager,
   }: ExecuteSwapParams) => {
     // setup
     const { action, execution, estimate } = step
     const fromChain = getChainById(action.fromChainId)
-    const { status, updateStepWithStatus } = initStatus(step)
+    const { status, updateStepWithStatus } = statusManager.initStatus(step)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
       if (!this.shouldContinue) return status
       await checkAllowance(
         signer,
+        step,
         fromChain,
         action.fromToken,
         action.fromAmount,
         estimate.approvalAddress,
+        statusManager,
         updateStepWithStatus,
         status,
         true
@@ -50,7 +47,7 @@ export class SwapExecutionManager {
 
     // Start Swap
     // -> set status
-    const swapProcess = createAndPushProcess(
+    const swapProcess = statusManager.createAndPushProcess(
       'swapProcess',
       updateStepWithStatus,
       status,
@@ -83,7 +80,7 @@ export class SwapExecutionManager {
       // -> set status
       if (e.message) swapProcess.errorMessage = e.message
       if (e.code) swapProcess.errorCode = e.code
-      setStatusFailed(updateStepWithStatus, status, swapProcess)
+      statusManager.setStatusFailed(updateStepWithStatus, status, swapProcess)
       throw e
     }
 
@@ -104,7 +101,7 @@ export class SwapExecutionManager {
       // -> set status
       if (e.message) swapProcess.errorMessage = e.message
       if (e.code) swapProcess.errorCode = e.code
-      setStatusFailed(updateStepWithStatus, status, swapProcess)
+      statusManager.setStatusFailed(updateStepWithStatus, status, swapProcess)
       throw e
     }
 
@@ -115,7 +112,7 @@ export class SwapExecutionManager {
     status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
-    setStatusDone(updateStepWithStatus, status, swapProcess)
+    statusManager.setStatusDone(updateStepWithStatus, status, swapProcess)
 
     // DONE
     return status

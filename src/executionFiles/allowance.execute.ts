@@ -1,16 +1,18 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
+import { StatusManager } from '..'
 
-import { createAndPushProcess, setStatusDone, setStatusFailed } from '../status'
-import { Chain, Execution, Token } from '../types'
+import { Chain, Execution, Step, Token } from '../types'
 import { getApproved, setApproval } from '../utils'
 
 export const checkAllowance = async (
   signer: Signer,
+  step: Step,
   chain: Chain,
   token: Token,
   amount: string,
   spenderAddress: string,
+  statusManager: StatusManager,
   update: (execution: Execution) => void,
   status: Execution,
   infiniteApproval = false
@@ -18,7 +20,7 @@ export const checkAllowance = async (
 ) => {
   // Ask user to set allowance
   // -> set status
-  const allowanceProcess = createAndPushProcess(
+  const allowanceProcess = statusManager.createAndPushProcess(
     'allowanceProcess',
     update,
     status,
@@ -29,9 +31,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await signer.provider!.waitForTransaction(allowanceProcess.txHash)
-      setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, status, allowanceProcess)
     } else if (allowanceProcess.message === 'Already Approved') {
-      setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, status, allowanceProcess)
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -62,13 +64,13 @@ export const checkAllowance = async (
       } else {
         allowanceProcess.message = 'Already Approved'
       }
-      setStatusDone(update, status, allowanceProcess)
+      statusManager.setStatusDone(update, status, allowanceProcess)
     }
   } catch (e: any) {
     // -> set status
     if (e.message) allowanceProcess.errorMessage = e.message
     if (e.code) allowanceProcess.errorCode = e.code
-    setStatusFailed(update, status, allowanceProcess)
+    statusManager.setStatusFailed(update, status, allowanceProcess)
     throw e
   }
 }

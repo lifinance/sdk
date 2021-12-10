@@ -5,12 +5,6 @@ import {
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
@@ -23,9 +17,9 @@ export class CbridgeExecutionManager {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
+  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, execution, estimate } = step
-    const { status, updateStepWithStatus } = initStatus(step)
+    const { status, updateStepWithStatus } = statusManager.initStatus(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
@@ -38,10 +32,12 @@ export class CbridgeExecutionManager {
         if (!this.shouldContinue) return status
         await checkAllowance(
           signer,
+          step,
           fromChain,
           action.fromToken,
           action.fromAmount,
           estimate.approvalAddress,
+          statusManager,
           updateStepWithStatus,
           status,
           true
@@ -50,7 +46,7 @@ export class CbridgeExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = createAndPushProcess(
+    const crossProcess = statusManager.createAndPushProcess(
       'crossProcess',
       updateStepWithStatus,
       status,
@@ -90,15 +86,15 @@ export class CbridgeExecutionManager {
     } catch (e: any) {
       if (e.message) crossProcess.errorMessage = e.message
       if (e.code) crossProcess.errorCode = e.code
-      setStatusFailed(updateStepWithStatus, status, crossProcess)
+      statusManager.setStatusFailed(updateStepWithStatus, status, crossProcess)
       throw e
     }
 
     crossProcess.message = 'Transfer started: '
-    setStatusDone(updateStepWithStatus, status, crossProcess)
+    statusManager.setStatusDone(updateStepWithStatus, status, crossProcess)
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const waitForTxProcess = createAndPushProcess(
+    const waitForTxProcess = statusManager.createAndPushProcess(
       'waitForTxProcess',
       updateStepWithStatus,
       status,
@@ -111,7 +107,11 @@ export class CbridgeExecutionManager {
       waitForTxProcess.errorMessage = 'Failed waiting'
       if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
       if (e.code) waitForTxProcess.errorCode = e.code
-      setStatusFailed(updateStepWithStatus, status, waitForTxProcess)
+      statusManager.setStatusFailed(
+        updateStepWithStatus,
+        status,
+        waitForTxProcess
+      )
       throw e
     }
 
@@ -125,7 +125,7 @@ export class CbridgeExecutionManager {
     // status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
-    setStatusDone(updateStepWithStatus, status, waitForTxProcess)
+    statusManager.setStatusDone(updateStepWithStatus, status, waitForTxProcess)
 
     // DONE
     return status

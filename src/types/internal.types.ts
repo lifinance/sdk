@@ -10,6 +10,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import { StatusManager } from '..'
 import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
@@ -34,13 +35,15 @@ export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
   parseReceipt: (...args: any[]) => ParsedReceipt
-  updateStatus?: UpdateExecution
+  settings: EnforcedObjectProperties<ExecutionSettings>
+  statusManager: StatusManager
 }
 
 export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
-  updateStatus?: UpdateExecution
+  settings: EnforcedObjectProperties<ExecutionSettings>
+  statusManager: StatusManager
 }
 
 export type UpdateStep = (step: Step, execution: Execution) => void

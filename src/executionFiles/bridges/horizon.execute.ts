@@ -1,13 +1,6 @@
 /* eslint-disable no-console */
 import BigNumber from 'bignumber.js'
 import { EXCHANGE_MODE, NETWORK_TYPE, STATUS, TOKEN } from 'bridge-sdk'
-
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
 import {
   ChainId,
   CoinKey,
@@ -24,14 +17,14 @@ export class HorizonExecutionManager {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
+  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, execution } = step
     // setup
-    const { status, updateStepWithStatus } = initStatus(step)
+    const { status, updateStepWithStatus } = statusManager.initStatus(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
-    const allowanceAndCrossProcess = createAndPushProcess(
+    const allowanceAndCrossProcess = statusManager.createAndPushProcess(
       'allowanceAndCrossProcess',
       updateStepWithStatus,
       status,
@@ -155,12 +148,12 @@ export class HorizonExecutionManager {
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
             allowanceAndCrossProcess.message = 'Transaction Sent:'
-            setStatusDone(
+            statusManager.setStatusDone(
               updateStepWithStatus,
               status,
               allowanceAndCrossProcess
             )
-            waitForBlocksProcess = createAndPushProcess(
+            waitForBlocksProcess = statusManager.createAndPushProcess(
               'waitForBlocksProcess',
               updateStepWithStatus,
               status,
@@ -175,8 +168,12 @@ export class HorizonExecutionManager {
             waitForBlocksProcess.status === 'PENDING'
           ) {
             waitForBlocksProcess.message = 'Enough Block Confirmations'
-            setStatusDone(updateStepWithStatus, status, waitForBlocksProcess)
-            mintProcess = createAndPushProcess(
+            statusManager.setStatusDone(
+              updateStepWithStatus,
+              status,
+              waitForBlocksProcess
+            )
+            mintProcess = statusManager.createAndPushProcess(
               'mintProcess',
               updateStepWithStatus,
               status,
@@ -196,7 +193,11 @@ export class HorizonExecutionManager {
             mintProcess.txLink =
               toChain.metamask.blockExplorerUrls[0] + 'tx/' + mintProcess.txHash
             mintProcess.message = 'Minted in'
-            setStatusDone(updateStepWithStatus, status, mintProcess)
+            statusManager.setStatusDone(
+              updateStepWithStatus,
+              status,
+              mintProcess
+            )
           }
 
           // Ended
@@ -211,7 +212,7 @@ export class HorizonExecutionManager {
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                setStatusFailed(
+                statusManager.setStatusFailed(
                   updateStepWithStatus,
                   status,
                   allowanceAndCrossProcess
@@ -220,13 +221,17 @@ export class HorizonExecutionManager {
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                setStatusFailed(
+                statusManager.setStatusFailed(
                   updateStepWithStatus,
                   status,
                   waitForBlocksProcess
                 )
               if (mintProcess! && mintProcess.status !== 'DONE')
-                setStatusFailed(updateStepWithStatus, status, mintProcess)
+                statusManager.setStatusFailed(
+                  updateStepWithStatus,
+                  status,
+                  mintProcess
+                )
             }
           }
         }
@@ -239,11 +244,19 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusDone(updateStepWithStatus, status, allowanceAndCrossProcess)
+        statusManager.setStatusDone(
+          updateStepWithStatus,
+          status,
+          allowanceAndCrossProcess
+        )
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusDone(updateStepWithStatus, status, waitForBlocksProcess)
+        statusManager.setStatusDone(
+          updateStepWithStatus,
+          status,
+          waitForBlocksProcess
+        )
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusDone(updateStepWithStatus, status, mintProcess)
+        statusManager.setStatusDone(updateStepWithStatus, status, mintProcess)
     } catch (e: any) {
       clearInterval(intervalId!)
       const lastStep: Process = status.process[status.process.length - 1]
@@ -253,11 +266,19 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusFailed(updateStepWithStatus, status, allowanceAndCrossProcess)
+        statusManager.setStatusFailed(
+          updateStepWithStatus,
+          status,
+          allowanceAndCrossProcess
+        )
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusFailed(updateStepWithStatus, status, waitForBlocksProcess)
+        statusManager.setStatusFailed(
+          updateStepWithStatus,
+          status,
+          waitForBlocksProcess
+        )
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusFailed(updateStepWithStatus, status, mintProcess)
+        statusManager.setStatusFailed(updateStepWithStatus, status, mintProcess)
       throw e
     }
 

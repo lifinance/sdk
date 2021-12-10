@@ -3,12 +3,7 @@ import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
+
 import {
   ChainId,
   ExecuteCrossParams,
@@ -28,9 +23,9 @@ export class NXTPExecutionManager {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
+  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, execution, estimate } = step
-    const { status, updateStepWithStatus } = initStatus(step)
+    const { status, updateStepWithStatus } = statusManager.initStatus(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
     const transactionId = step.id
@@ -41,10 +36,12 @@ export class NXTPExecutionManager {
       if (!this.shouldContinue) return status
       await checkAllowance(
         signer,
+        step,
         fromChain,
         action.fromToken,
         action.fromAmount,
         estimate.approvalAddress,
+        statusManager,
         updateStepWithStatus,
         status,
         true
@@ -57,7 +54,7 @@ export class NXTPExecutionManager {
       isSwapStep(step.includedSteps[step.includedSteps.length - 1])
     ) {
       // -> set status
-      const keyProcess = createAndPushProcess(
+      const keyProcess = statusManager.createAndPushProcess(
         'publicKey',
         updateStepWithStatus,
         status,
@@ -77,15 +74,15 @@ export class NXTPExecutionManager {
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
       } catch (e) {
-        setStatusFailed(updateStepWithStatus, status, keyProcess)
+        statusManager.setStatusFailed(updateStepWithStatus, status, keyProcess)
         throw e
       }
       // -> set status
-      setStatusDone(updateStepWithStatus, status, keyProcess)
+      statusManager.setStatusDone(updateStepWithStatus, status, keyProcess)
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = createAndPushProcess(
+    const crossProcess = statusManager.createAndPushProcess(
       'crossProcess',
       updateStepWithStatus,
       status,
@@ -127,18 +124,22 @@ export class NXTPExecutionManager {
       } catch (e: any) {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        setStatusFailed(updateStepWithStatus, status, crossProcess)
+        statusManager.setStatusFailed(
+          updateStepWithStatus,
+          status,
+          crossProcess
+        )
         throw e
       }
 
       await tx.wait()
 
       crossProcess.message = 'Transfer started: '
-      setStatusDone(updateStepWithStatus, status, crossProcess)
+      statusManager.setStatusDone(updateStepWithStatus, status, crossProcess)
     }
 
     // STEP 5: Wait for ReceiverTransactionPrepared //////////////////////////////////////
-    const claimProcess = createAndPushProcess(
+    const claimProcess = statusManager.createAndPushProcess(
       'claimProcess',
       updateStepWithStatus,
       status,
@@ -182,7 +183,7 @@ export class NXTPExecutionManager {
         status.fromAmount = estimate.fromAmount
         status.toAmount = estimate.toAmount
         status.status = 'DONE'
-        setStatusDone(updateStepWithStatus, status, claimProcess)
+        statusManager.setStatusDone(updateStepWithStatus, status, claimProcess)
 
         // DONE
         nxtpSDK.removeAllListeners()
@@ -223,7 +224,7 @@ export class NXTPExecutionManager {
     } catch (e) {
       // handle errors
       nxtpSDK.removeAllListeners()
-      setStatusFailed(updateStepWithStatus, status, claimProcess)
+      statusManager.setStatusFailed(updateStepWithStatus, status, claimProcess)
       throw e
     }
 
@@ -234,7 +235,7 @@ export class NXTPExecutionManager {
     status.fromAmount = estimate.fromAmount
     status.toAmount = estimate.toAmount
     status.status = 'DONE'
-    setStatusDone(updateStepWithStatus, status, claimProcess)
+    statusManager.setStatusDone(updateStepWithStatus, status, claimProcess)
 
     // DONE
     nxtpSDK.removeAllListeners()

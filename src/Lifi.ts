@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import axios from 'axios'
 import { Signer } from 'ethers'
+import { StatusManager } from '.'
 
 import balances from './balances'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
-  CallbackFunction,
-  SwitchChainHook,
   Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -120,14 +119,11 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
+      // Populate settings with default dummy functions if a value is not provided.
+      // That way we don't have to check if a function or value exists everytime we wan't to use it.
       settings: { ...DefaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
-
-    const updateFunction = (step: Step, status: Execution) => {
-      step.execution = status
-      this.activeRoutes[route.id].settings.updateCallback(route)
-    }
 
     // loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
@@ -152,14 +148,12 @@ class LIFI {
 
       let stepExecutor: StepExecutor
       try {
-        stepExecutor = new StepExecutor()
-        this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(
-          signer,
-          step,
-          updateFunction,
-          this.activeRoutes[route.id].settings.switchChainHook
+        stepExecutor = new StepExecutor(
+          route,
+          this.activeRoutes[route.id].settings
         )
+        this.activeRoutes[route.id].executors.push(stepExecutor)
+        await stepExecutor.executeStep(signer, step)
       } catch (e) {
         this.stopExecution(route)
         throw e
