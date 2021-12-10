@@ -29,8 +29,8 @@ export class StatusManager {
   initExecutionObject = (step: Step) => {
     const currentExecution =
       step.execution || (deepClone(emptyExecution) as Execution)
-    const updateExecution = (newEecution: Execution) => {
-      step.execution = newEecution
+    const updateExecution = (newExecution: Execution) => {
+      step.execution = newExecution
       this.settings.updateCallback(this.route)
     }
     if (!step.execution) {
