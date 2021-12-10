@@ -15,7 +15,6 @@ import {
 } from '../../status'
 import {
   ChainId,
-  DecryptHook,
   ExecuteCrossParams,
   Execution,
   getChainById,
@@ -65,7 +64,9 @@ export class NXTPExecutionManager {
     }
 
     // STEP 1: Get Public Key ////////////////////////////////////////////////
+    // check that a public key hook is given and that step allows encryption
     if (
+      hooks.getPublicKeyHook &&
       isLifiStep(step) &&
       isSwapStep(step.includedSteps[step.includedSteps.length - 1])
     ) {
@@ -79,7 +80,9 @@ export class NXTPExecutionManager {
           status: 'ACTION_REQUIRED',
         }
       )
+
       if (!this.shouldContinue) return status
+
       // -> request key
       try {
         const encryptionPublicKey = await hooks.getPublicKeyHook()
@@ -229,14 +232,28 @@ export class NXTPExecutionManager {
       signer
     )
 
+    let callData = '0x'
+    if (
+      hooks.decryptHook &&
+      preparedTransaction.txData.callDataHash !== utils.keccak256(callData)
+    ) {
+      claimProcess.status = 'PENDING'
+      claimProcess.message = 'Decrypt transaction data'
+      update(status)
+
+      try {
+        callData = await hooks.decryptHook(
+          preparedTransaction.encryptedCallData
+        )
+      } catch (e) {
+        setStatusFailed(update, status, claimProcess)
+        throw e
+      }
+    }
+
     claimProcess.status = 'PENDING'
     claimProcess.message = 'Waiting for claim'
     update(status)
-
-    const callData = await this.decryptData(
-      hooks.decryptHook,
-      preparedTransaction
-    )
 
     try {
       const response = await nxtpBaseSDK.fulfillTransfer(
@@ -295,21 +312,5 @@ export class NXTPExecutionManager {
     }
 
     return calculateRelayerFee
-  }
-
-  private decryptData = async (
-    decryptHook: DecryptHook,
-    { txData, encryptedCallData }: ReceiverTransactionPreparedPayload
-  ): Promise<string> => {
-    let callData = '0x'
-    if (txData.callDataHash !== utils.keccak256(callData)) {
-      try {
-        callData = await decryptHook(encryptedCallData)
-      } catch (e) {
-        // TODO: update process failed
-      }
-    }
-
-    return callData
   }
 }

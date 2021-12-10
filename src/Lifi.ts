@@ -6,8 +6,6 @@ import balances from './balances'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
-  CallbackFunction,
-  SwitchChainHook,
   Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,

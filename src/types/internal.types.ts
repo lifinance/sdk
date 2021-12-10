@@ -53,31 +53,27 @@ export type SwitchChainHook = (
 
 export type GetPublicKeyHook = () => Promise<string | undefined>
 export type DecryptHook = (data: string) => Promise<string>
-
-export type Hooks = {
-  switchChainHook: SwitchChainHook
-  getPublicKeyHook: GetPublicKeyHook
-  decryptHook: DecryptHook
-}
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
-  settings: EnforcedObjectProperties<ExecutionSettings>
+  settings: Hooks
 }
 
-export const DefaultExecutionSettings: EnforcedObjectProperties<ExecutionSettings> =
-  {
-    getPublicKeyHook: () => Promise.resolve(undefined),
-    decryptHook: (data: string) => Promise.resolve(data),
-    updateCallback: () => {},
-    switchChainHook: () => Promise.resolve(undefined),
-  }
+export const DefaultExecutionSettings: Hooks = {
+  updateCallback: () => {},
+  switchChainHook: () => Promise.resolve(undefined),
+}
 
 export interface ExecutionSettings {
   getPublicKeyHook?: GetPublicKeyHook
   decryptHook?: DecryptHook
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
+}
+
+export interface Hooks extends ExecutionSettings {
+  updateCallback: CallbackFunction
+  switchChainHook: SwitchChainHook
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface
