@@ -158,7 +158,7 @@ class LIFI {
           signer,
           step,
           updateFunction,
-          this.activeRoutes[route.id].settings.switchChainHook
+          this.activeRoutes[route.id].settings
         )
       } catch (e) {
         this.stopExecution(route)

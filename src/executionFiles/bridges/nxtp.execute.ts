@@ -1,6 +1,10 @@
-import { NxtpSdkEvents } from '@connext/nxtp-sdk'
+import {
+  NxtpSdk,
+  NxtpSdkEvents,
+  ReceiverTransactionPreparedPayload,
+} from '@connext/nxtp-sdk'
 import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { constants } from 'ethers'
+import { constants, utils } from 'ethers'
 
 import Lifi from '../../Lifi'
 import {
@@ -11,7 +15,9 @@ import {
 } from '../../status'
 import {
   ChainId,
+  DecryptHook,
   ExecuteCrossParams,
+  Execution,
   getChainById,
   isLifiStep,
   isSwapStep,
@@ -20,15 +26,22 @@ import { personalizeStep } from '../../utils'
 import { getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
+import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
+import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 
 export class NXTPExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    updateStatus,
+    hooks,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, execution, estimate } = step
     const { status, update } = initStatus(updateStatus, execution)
     const fromChain = getChainById(action.fromChainId)
@@ -69,10 +82,7 @@ export class NXTPExecutionManager {
       if (!this.shouldContinue) return status
       // -> request key
       try {
-        const encryptionPublicKey = await (window as any).ethereum.request({
-          method: 'eth_getEncryptionPublicKey',
-          params: [await signer.getAddress()], // you must have access to the specified account
-        })
+        const encryptionPublicKey = await hooks.getPublicKeyHook()
         // store key
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
@@ -152,7 +162,10 @@ export class NXTPExecutionManager {
     // init sdk
     const crossableChains = [ChainId.ETH, action.fromChainId, action.toChainId]
     const chainProviders = getRpcUrls(crossableChains)
-    const nxtpSDK = await nxtp.setup(signer, chainProviders)
+    const { sdk: nxtpSDK, sdkBase: nxtpBaseSDK } = await nxtp.setup(
+      signer,
+      chainProviders
+    )
 
     const preparedTransactionPromise = nxtpSDK.waitFor(
       NxtpSdkEvents.ReceiverTransactionPrepared,
@@ -161,7 +174,7 @@ export class NXTPExecutionManager {
     )
 
     // find current status
-    const transactions = await nxtpSDK.getActiveTransactions()
+    const transactions = await nxtpBaseSDK.getActiveTransactions()
     const foundTransaction = transactions.find(
       (transfer) =>
         transfer.crosschainTx.invariant.transactionId === transactionId
@@ -169,7 +182,8 @@ export class NXTPExecutionManager {
 
     // check if already done?
     if (!foundTransaction) {
-      const historicalTransactions = await nxtpSDK.getHistoricalTransactions()
+      const historicalTransactions =
+        await nxtpBaseSDK.getHistoricalTransactions()
       const foundTransaction = historicalTransactions.find(
         (transfer) =>
           transfer.crosschainTx.invariant.transactionId === transactionId
@@ -201,22 +215,38 @@ export class NXTPExecutionManager {
       return status
     }
 
-    const fulfillPromise = nxtpSDK.fulfillTransfer(preparedTransaction)
-
     // STEP 7: Wait for signature //////////////////////////////////////////////////////////
-    await nxtpSDK.waitFor(
-      NxtpSdkEvents.ReceiverPrepareSigned,
-      20 * 60 * 1000, // = 20 minutes
-      (data) => data.transactionId === transactionId
+    const calculatedRelayerFee = await this.calculateRelayerFee(
+      nxtpSDK,
+      preparedTransaction
+    )
+
+    const signature = await signFulfillTransactionPayload(
+      preparedTransaction.txData.transactionId,
+      calculatedRelayerFee,
+      preparedTransaction.txData.receivingChainId,
+      preparedTransaction.txData.receivingChainTxManagerAddress,
+      signer
     )
 
     claimProcess.status = 'PENDING'
     claimProcess.message = 'Waiting for claim'
     update(status)
 
+    const callData = await this.decryptData(
+      hooks.decryptHook,
+      preparedTransaction
+    )
+
     try {
-      const data = await fulfillPromise
-      claimProcess.txHash = data.transactionHash
+      const response = await nxtpBaseSDK.fulfillTransfer(
+        preparedTransaction,
+        signature,
+        callData,
+        calculatedRelayerFee,
+        true
+      )
+      claimProcess.txHash = response.transactionResponse?.transactionHash
       claimProcess.txLink =
         toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
       claimProcess.message = 'Swapped:'
@@ -239,5 +269,47 @@ export class NXTPExecutionManager {
     // DONE
     nxtpSDK.removeAllListeners()
     return status
+  }
+
+  private calculateRelayerFee = async (
+    nxtpSDK: NxtpSdk,
+    preparedTransaction: ReceiverTransactionPreparedPayload
+  ): Promise<string> => {
+    let calculateRelayerFee = '0'
+
+    const chainIdsForPriceOracle = getDeployedChainIdsForGasFee()
+
+    if (
+      chainIdsForPriceOracle.includes(
+        preparedTransaction.txData.receivingChainId
+      )
+    ) {
+      const gasNeeded = await nxtpSDK.estimateMetaTxFeeInReceivingToken(
+        preparedTransaction.txData.sendingChainId,
+        preparedTransaction.txData.sendingAssetId,
+        preparedTransaction.txData.receivingChainId,
+        preparedTransaction.txData.receivingAssetId
+      )
+
+      calculateRelayerFee = gasNeeded.toString()
+    }
+
+    return calculateRelayerFee
+  }
+
+  private decryptData = async (
+    decryptHook: DecryptHook,
+    { txData, encryptedCallData }: ReceiverTransactionPreparedPayload
+  ): Promise<string> => {
+    let callData = '0x'
+    if (txData.callDataHash !== utils.keccak256(callData)) {
+      try {
+        callData = await decryptHook(encryptedCallData)
+      } catch (e) {
+        // TODO: update process failed
+      }
+    }
+
+    return callData
   }
 }

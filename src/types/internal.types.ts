@@ -41,6 +41,7 @@ export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
   updateStatus?: UpdateExecution
+  hooks: Hooks
 }
 
 export type UpdateStep = (step: Step, execution: Execution) => void
@@ -50,18 +51,31 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
+export type GetPublicKeyHook = () => Promise<string | undefined>
+export type DecryptHook = (data: string) => Promise<string>
+
+export type Hooks = {
+  switchChainHook: SwitchChainHook
+  getPublicKeyHook: GetPublicKeyHook
+  decryptHook: DecryptHook
+}
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
   settings: EnforcedObjectProperties<ExecutionSettings>
 }
 
-export const DefaultExecutionSettings = {
-  updateCallback: () => {},
-  switchChainHook: () => new Promise<undefined>(() => {}),
-}
+export const DefaultExecutionSettings: EnforcedObjectProperties<ExecutionSettings> =
+  {
+    getPublicKeyHook: () => Promise.resolve(undefined),
+    decryptHook: (data: string) => Promise.resolve(data),
+    updateCallback: () => {},
+    switchChainHook: () => Promise.resolve(undefined),
+  }
 
 export interface ExecutionSettings {
+  getPublicKeyHook?: GetPublicKeyHook
+  decryptHook?: DecryptHook
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
 }
