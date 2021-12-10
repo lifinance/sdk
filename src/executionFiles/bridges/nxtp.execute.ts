@@ -1,4 +1,4 @@
-import { NxtpSdk, NxtpSdkEvents } from '@connext/nxtp-sdk'
+import { NxtpSdkEvents } from '@connext/nxtp-sdk'
 import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants, utils } from 'ethers'
 
@@ -21,10 +21,7 @@ import { personalizeStep } from '../../utils'
 import { getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
-import {
-  getDeployedChainIdsForGasFee,
-  getDeployedTransactionManagerContract,
-} from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
+import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 
 export class NXTPExecutionManager {
@@ -90,7 +87,8 @@ export class NXTPExecutionManager {
         // store key
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
-      } catch (e) {
+      } catch (e: any) {
+        if (e.message) keyProcess.errorMessage = e.message
         setStatusFailed(update, status, keyProcess)
         throw e
       }
@@ -145,7 +143,14 @@ export class NXTPExecutionManager {
         throw e
       }
 
-      await tx.wait()
+      try {
+        await tx.wait()
+      } catch (e: any) {
+        if (e.message) crossProcess.errorMessage = e.message
+        if (e.code) crossProcess.errorCode = e.code
+        setStatusFailed(update, status, crossProcess)
+        throw e
+      }
 
       crossProcess.message = 'Transfer started: '
       setStatusDone(update, status, crossProcess)
@@ -178,7 +183,9 @@ export class NXTPExecutionManager {
     )
 
     // find current status
-    const transactions = await nxtpBaseSDK.getActiveTransactions()
+    const transactions = await nxtpBaseSDK
+      .getActiveTransactions()
+      .catch(() => [])
     const foundTransaction = transactions.find(
       (transfer) =>
         transfer.crosschainTx.invariant.transactionId === transactionId
@@ -186,8 +193,9 @@ export class NXTPExecutionManager {
 
     // check if already done?
     if (!foundTransaction) {
-      const historicalTransactions =
-        await nxtpBaseSDK.getHistoricalTransactions()
+      const historicalTransactions = await nxtpBaseSDK
+        .getHistoricalTransactions()
+        .catch(() => [])
       const foundTransaction = historicalTransactions.find(
         (transfer) =>
           transfer.crosschainTx.invariant.transactionId === transactionId
@@ -212,7 +220,7 @@ export class NXTPExecutionManager {
     let calculatedRelayerFee
     let signature
     try {
-      calculatedRelayerFee = await this.calculateRelayerFee(nxtpSDK, {
+      calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpSDK, {
         txData: {
           sendingChainId: action.fromChainId,
           sendingAssetId: action.fromToken.address,
@@ -247,7 +255,8 @@ export class NXTPExecutionManager {
         receivingChainTxManager.address,
         signer
       )
-    } catch (e) {
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
       setStatusFailed(update, status, claimProcess)
       nxtpSDK.removeAllListeners()
       throw e
@@ -258,7 +267,15 @@ export class NXTPExecutionManager {
     claimProcess.status = 'PENDING'
     update(status)
 
-    const preparedTransaction = await preparedTransactionPromise
+    let preparedTransaction
+    try {
+      preparedTransaction = await preparedTransactionPromise
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
+      setStatusFailed(update, status, claimProcess)
+      nxtpSDK.removeAllListeners()
+      throw e
+    }
 
     // STEP 8: Decrypt CallData //////////////////////////////////////////////////////////
     let callData = '0x'
@@ -275,12 +292,17 @@ export class NXTPExecutionManager {
         claimProcess.status = 'ACTION_REQUIRED'
         claimProcess.message = 'Decrypt transaction data'
         update(status)
+        if (!this.shouldContinue) {
+          nxtpSDK.removeAllListeners()
+          return status
+        }
 
         try {
           callData = await hooks.decryptHook(
             preparedTransaction.encryptedCallData
           )
-        } catch (e) {
+        } catch (e: any) {
+          if (e.message) claimProcess.errorMessage = e.message
           setStatusFailed(update, status, claimProcess)
           nxtpSDK.removeAllListeners()
           throw e
@@ -310,8 +332,8 @@ export class NXTPExecutionManager {
       claimProcess.txLink =
         toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
       claimProcess.message = 'Swapped:'
-    } catch (e) {
-      // handle errors
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()
       setStatusFailed(update, status, claimProcess)
       throw e
@@ -329,38 +351,5 @@ export class NXTPExecutionManager {
     // DONE
     nxtpSDK.removeAllListeners()
     return status
-  }
-
-  private calculateRelayerFee = async (
-    nxtpSDK: NxtpSdk,
-    preparedTransaction: {
-      txData: {
-        sendingChainId: number
-        sendingAssetId: string
-        receivingChainId: number
-        receivingAssetId: string
-      }
-    }
-  ): Promise<string> => {
-    let calculateRelayerFee = '0'
-
-    const chainIdsForPriceOracle = getDeployedChainIdsForGasFee()
-
-    if (
-      chainIdsForPriceOracle.includes(
-        preparedTransaction.txData.receivingChainId
-      )
-    ) {
-      const gasNeeded = await nxtpSDK.estimateMetaTxFeeInReceivingToken(
-        preparedTransaction.txData.sendingChainId,
-        preparedTransaction.txData.sendingAssetId,
-        preparedTransaction.txData.receivingChainId,
-        preparedTransaction.txData.receivingAssetId
-      )
-
-      calculateRelayerFee = gasNeeded.toString()
-    }
-
-    return calculateRelayerFee
   }
 }
