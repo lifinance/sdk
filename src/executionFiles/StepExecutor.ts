@@ -9,6 +9,8 @@ import {
   SwapStep,
   UpdateStep,
   SwitchChainHook,
+  EnforcedObjectProperties,
+  ExecutionSettings,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -44,20 +46,18 @@ export class StepExecutor {
   executeStep = async (
     signer: Signer,
     step: Step,
-    updateStatus: UpdateStep,
-    switchChainHook: SwitchChainHook
+    settings: EnforcedObjectProperties<ExecutionSettings>
   ): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
       // change status to CHAIN_SWITCH_REQUIRED and return step without execution
-      const { status, update } = initStatus(
-        (status: Execution) => updateStatus(step, status),
-        step.execution
-      )
+      const { status, updateStepWithStatus } = initStatus(step, settings)
       status.status = 'CHAIN_SWITCH_REQUIRED'
-      update(status)
+      updateStepWithStatus(status)
 
-      const updatedSigner = await switchChainHook(step.action.fromChainId)
+      const updatedSigner = await settings.switchChainHook(
+        step.action.fromChainId
+      )
       if (
         updatedSigner &&
         (await updatedSigner.getChainId()) === step.action.fromChainId
@@ -71,10 +71,10 @@ export class StepExecutor {
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step, updateStatus)
+        await this.executeCross(signer, step, settings)
         break
       case 'swap':
-        await this.executeSwap(signer, step, updateStatus)
+        await this.executeSwap(signer, step, settings)
         break
       default:
         throw new Error('Unsupported step type')
@@ -86,12 +86,12 @@ export class StepExecutor {
   private executeSwap = async (
     signer: Signer,
     step: SwapStep,
-    updateStatus: UpdateStep
+    settings: EnforcedObjectProperties<ExecutionSettings>
   ) => {
     const swapParams = {
-      signer: signer,
+      signer,
       step,
-      updateStatus: (status: Execution) => updateStatus(step, status),
+      settings,
     }
 
     switch (step.tool) {
@@ -116,12 +116,12 @@ export class StepExecutor {
   private executeCross = async (
     signer: Signer,
     step: CrossStep | LifiStep,
-    updateStatus: UpdateStep
+    settings: EnforcedObjectProperties<ExecutionSettings>
   ) => {
     const crossParams = {
-      signer: signer,
+      signer,
       step,
-      updateStatus: (status: Execution) => updateStatus(step, status),
+      settings,
     }
 
     switch (step.tool) {

@@ -1,25 +1,33 @@
 /* eslint-disable max-params */
 /* eslint-disable @typescript-eslint/ban-types */
 import {
+  CallbackFunction,
   emptyExecution,
+  EnforcedObjectProperties,
   Execution,
+  ExecutionSettings,
   Process,
   ProcessMessage,
+  Step,
   UpdateExecution,
 } from './types'
 import { deepClone } from './utils'
 
 export const initStatus = (
-  updateStatus?: (execution: Execution) => void,
-  initialStatus?: Execution
+  step: Step
+  // settings: EnforcedObjectProperties<ExecutionSettings>
 ) => {
-  const status = initialStatus || (deepClone(emptyExecution) as Execution)
+  const status = step.execution || (deepClone(emptyExecution) as Execution)
   // eslint-disable-next-line no-console
-  const update = updateStatus || console.log
-  if (!initialStatus) {
-    update(status)
+  // const update = updateStatus || console.log
+  const updateStepWithStatus = (status: Execution) => {
+    step.execution = status
+    // settings.updateCallback()
   }
-  return { status, update }
+  if (!step.execution) {
+    updateStepWithStatus(status)
+  }
+  return { status, updateStepWithStatus }
 }
 
 export const createAndPushProcess = (
@@ -28,7 +36,7 @@ export const createAndPushProcess = (
   status: Execution,
   message: ProcessMessage,
   params?: object
-): Process => {
+) => {
   const process = status.process.find((p) => p.id === id)
   if (process) {
     status.status = 'PENDING'
@@ -58,7 +66,7 @@ export const setStatusFailed = (
   status: Execution,
   currentProcess: Process,
   params?: object
-): void => {
+) => {
   status.status = 'FAILED'
   currentProcess.status = 'FAILED'
   currentProcess.failedAt = Date.now()
@@ -76,7 +84,7 @@ export const setStatusDone = (
   status: Execution,
   currentProcess: Process,
   params?: object
-): void => {
+) => {
   currentProcess.status = 'DONE'
   currentProcess.doneAt = Date.now()
   if (params) {

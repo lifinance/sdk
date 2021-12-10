@@ -27,13 +27,13 @@ export class HorizonExecutionManager {
   execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
     const { action, execution } = step
     // setup
-    const { status, update } = initStatus(updateStatus, execution)
+    const { status, updateStepWithStatus } = initStatus(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     const allowanceAndCrossProcess = createAndPushProcess(
       'allowanceAndCrossProcess',
-      update,
+      updateStepWithStatus,
       status,
       'Set Allowance and Cross',
       { status: 'ACTION_REQUIRED' }
@@ -129,7 +129,7 @@ export class HorizonExecutionManager {
         }
         if (operationId) {
           allowanceAndCrossProcess.operationId = operationId
-          update(status)
+          updateStepWithStatus(status)
           const operation = await bridgeSDK.api.getOperation(operationId)
           console.debug('operation', operation)
 
@@ -146,7 +146,7 @@ export class HorizonExecutionManager {
               'tx/' +
               allowanceAndCrossProcess.txHash
             allowanceAndCrossProcess.message = 'Send Transaction - Wait for'
-            update(status)
+            updateStepWithStatus(status)
           }
 
           // Wait > Done; Wait for confirmations
@@ -155,10 +155,14 @@ export class HorizonExecutionManager {
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
             allowanceAndCrossProcess.message = 'Transaction Sent:'
-            setStatusDone(update, status, allowanceAndCrossProcess)
+            setStatusDone(
+              updateStepWithStatus,
+              status,
+              allowanceAndCrossProcess
+            )
             waitForBlocksProcess = createAndPushProcess(
               'waitForBlocksProcess',
-              update,
+              updateStepWithStatus,
               status,
               'Wait for Block Confirmations',
               { status: 'PENDING' }
@@ -171,10 +175,10 @@ export class HorizonExecutionManager {
             waitForBlocksProcess.status === 'PENDING'
           ) {
             waitForBlocksProcess.message = 'Enough Block Confirmations'
-            setStatusDone(update, status, waitForBlocksProcess)
+            setStatusDone(updateStepWithStatus, status, waitForBlocksProcess)
             mintProcess = createAndPushProcess(
               'mintProcess',
-              update,
+              updateStepWithStatus,
               status,
               'Minting tokens',
               {
@@ -192,7 +196,7 @@ export class HorizonExecutionManager {
             mintProcess.txLink =
               toChain.metamask.blockExplorerUrls[0] + 'tx/' + mintProcess.txHash
             mintProcess.message = 'Minted in'
-            setStatusDone(update, status, mintProcess)
+            setStatusDone(updateStepWithStatus, status, mintProcess)
           }
 
           // Ended
@@ -202,19 +206,27 @@ export class HorizonExecutionManager {
               //TODO: find appropriate message for error
               // const lastStep: Process = status.process[status.process.length -1]
               // lastStep.errorMessage = operation.status
-              // update( status )
+              // updateStepWithStatus( status )
               if (
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                setStatusFailed(update, status, allowanceAndCrossProcess)
+                setStatusFailed(
+                  updateStepWithStatus,
+                  status,
+                  allowanceAndCrossProcess
+                )
               if (
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                setStatusFailed(update, status, waitForBlocksProcess)
+                setStatusFailed(
+                  updateStepWithStatus,
+                  status,
+                  waitForBlocksProcess
+                )
               if (mintProcess! && mintProcess.status !== 'DONE')
-                setStatusFailed(update, status, mintProcess)
+                setStatusFailed(updateStepWithStatus, status, mintProcess)
             }
           }
         }
@@ -227,31 +239,31 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusDone(update, status, allowanceAndCrossProcess)
+        setStatusDone(updateStepWithStatus, status, allowanceAndCrossProcess)
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusDone(update, status, waitForBlocksProcess)
+        setStatusDone(updateStepWithStatus, status, waitForBlocksProcess)
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusDone(update, status, mintProcess)
+        setStatusDone(updateStepWithStatus, status, mintProcess)
     } catch (e: any) {
       clearInterval(intervalId!)
       const lastStep: Process = status.process[status.process.length - 1]
       lastStep.errorMessage = (e as Error).message
-      update(status)
+      updateStepWithStatus(status)
       if (
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusFailed(update, status, allowanceAndCrossProcess)
+        setStatusFailed(updateStepWithStatus, status, allowanceAndCrossProcess)
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusFailed(update, status, waitForBlocksProcess)
+        setStatusFailed(updateStepWithStatus, status, waitForBlocksProcess)
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusFailed(update, status, mintProcess)
+        setStatusFailed(updateStepWithStatus, status, mintProcess)
       throw e
     }
 
     // DONE
     status.status = 'DONE'
-    update(status)
+    updateStepWithStatus(status)
     return status
   }
 }
