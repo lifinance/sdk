@@ -66,9 +66,15 @@ export const checkAllowance = async (
     }
   } catch (e: any) {
     // -> set status
-    if (e.message) allowanceProcess.errorMessage = e.message
-    if (e.code) allowanceProcess.errorCode = e.code
-    setStatusFailed(update, status, allowanceProcess)
-    throw e
+    if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+      allowanceProcess.txHash = e.replacement.hash
+      allowanceProcess.txLink =
+        chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
+    } else {
+      if (e.message) allowanceProcess.errorMessage = e.message
+      if (e.code) allowanceProcess.errorCode = e.code
+      setStatusFailed(update, status, allowanceProcess)
+      throw e
+    }
   }
 }

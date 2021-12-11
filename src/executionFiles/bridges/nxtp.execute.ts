@@ -18,7 +18,7 @@ import {
   isSwapStep,
 } from '../../types'
 import { personalizeStep } from '../../utils'
-import { getRpcUrls } from '../../connectors'
+import { getRpcProvider, getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
 import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
@@ -111,7 +111,8 @@ export class NXTPExecutionManager {
           crossProcess.status = 'PENDING'
           crossProcess.message = 'Wait for '
           update(status)
-          tx = await signer.provider!.getTransaction(crossProcess.txHash)
+          const fromProvider = getRpcProvider(step.action.fromChainId)
+          tx = await fromProvider.getTransaction(crossProcess.txHash)
         } else {
           const personalizedStep = await personalizeStep(signer, step)
           const { tx: transactionRequest } = await Lifi.getStepTransaction(
@@ -146,10 +147,18 @@ export class NXTPExecutionManager {
       try {
         await tx.wait()
       } catch (e: any) {
-        if (e.message) crossProcess.errorMessage = e.message
-        if (e.code) crossProcess.errorCode = e.code
-        setStatusFailed(update, status, crossProcess)
-        throw e
+        if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+          crossProcess.txHash = e.replacement.hash
+          crossProcess.txLink =
+            fromChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            crossProcess.txHash
+        } else {
+          if (e.message) crossProcess.errorMessage = e.message
+          if (e.code) crossProcess.errorCode = e.code
+          setStatusFailed(update, status, crossProcess)
+          throw e
+        }
       }
 
       crossProcess.message = 'Transfer started: '
