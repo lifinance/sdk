@@ -1,4 +1,5 @@
-import { NxtpSdk } from '@connext/nxtp-sdk'
+import { NxtpSdk, NxtpSdkBase } from '@connext/nxtp-sdk'
+import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { getChainData } from '@connext/nxtp-sdk/dist/utils'
 import { Logger } from '@connext/nxtp-utils'
 import { Signer } from 'ethers'
@@ -23,7 +24,7 @@ const chainConfigOverwrites: {
 const setup = async (
   signer: Signer,
   chainProviders: Record<number, string[]>
-) => {
+): Promise<{ sdk: NxtpSdk; sdkBase: NxtpSdkBase }> => {
   const chainConfig: Record<
     number,
     {
@@ -45,6 +46,19 @@ const setup = async (
   })
   const chainData = await getChainData()
 
+  const sdkBase = new NxtpSdkBase({
+    chainConfig,
+    signerAddress: signer.getAddress(),
+    // signer?: Signer
+    // messagingSigner?: Signer
+    logger: new Logger({ name: 'NxtpSdkBase', level: 'error' }),
+    // network?: "testnet" | "mainnet" | "local"
+    // natsUrl?: string
+    // authUrl?: string
+    // messaging?: UserNxtpNatsMessagingService
+    skipPolling: false,
+  })
+
   const sdk = new NxtpSdk({
     chainConfig,
     signer,
@@ -55,12 +69,45 @@ const setup = async (
     // authUrl?: string
     // messaging?: UserNxtpNatsMessagingService
     // skipPolling?: boolean
-    // sdkBase?: NxtpSdkBase
+    sdkBase,
     chainData,
   })
-  return sdk
+
+  return { sdk, sdkBase } // TODO try to remove "big" sdk
+}
+
+const calculateRelayerFee = async (
+  nxtpSDK: NxtpSdk,
+  preparedTransaction: {
+    txData: {
+      sendingChainId: number
+      sendingAssetId: string
+      receivingChainId: number
+      receivingAssetId: string
+    }
+  }
+): Promise<string> => {
+  let calculateRelayerFee = '0'
+
+  const chainIdsForPriceOracle = getDeployedChainIdsForGasFee()
+
+  if (
+    chainIdsForPriceOracle.includes(preparedTransaction.txData.receivingChainId)
+  ) {
+    const gasNeeded = await nxtpSDK.estimateMetaTxFeeInReceivingToken(
+      preparedTransaction.txData.sendingChainId,
+      preparedTransaction.txData.sendingAssetId,
+      preparedTransaction.txData.receivingChainId,
+      preparedTransaction.txData.receivingAssetId
+    )
+
+    calculateRelayerFee = gasNeeded.toString()
+  }
+
+  return calculateRelayerFee
 }
 
 export default {
   setup,
+  calculateRelayerFee,
 }

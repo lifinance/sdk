@@ -6,8 +6,6 @@ import balances from './balances'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
-  CallbackFunction,
-  SwitchChainHook,
   Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -158,7 +156,7 @@ class LIFI {
           signer,
           step,
           updateFunction,
-          this.activeRoutes[route.id].settings.switchChainHook
+          this.activeRoutes[route.id].settings
         )
       } catch (e) {
         this.stopExecution(route)

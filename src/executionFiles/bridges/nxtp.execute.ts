@@ -1,6 +1,6 @@
 import { NxtpSdkEvents } from '@connext/nxtp-sdk'
 import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { constants } from 'ethers'
+import { constants, utils } from 'ethers'
 
 import Lifi from '../../Lifi'
 import {
@@ -12,27 +12,36 @@ import {
 import {
   ChainId,
   ExecuteCrossParams,
+  Execution,
   getChainById,
   isLifiStep,
   isSwapStep,
 } from '../../types'
 import { personalizeStep } from '../../utils'
-import { getRpcUrls } from '../../connectors'
+import { getRpcProvider, getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
+import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
+import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 
 export class NXTPExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    updateStatus,
+    hooks,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, execution, estimate } = step
     const { status, update } = initStatus(updateStatus, execution)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
+    const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
     const transactionId = step.id
 
     // STEP 0: Check Allowance ////////////////////////////////////////////////
@@ -52,9 +61,12 @@ export class NXTPExecutionManager {
     }
 
     // STEP 1: Get Public Key ////////////////////////////////////////////////
+    // check that a public key hook is given and that step allows encryption
     if (
+      hooks.getPublicKeyHook &&
       isLifiStep(step) &&
-      isSwapStep(step.includedSteps[step.includedSteps.length - 1])
+      isSwapStep(step.includedSteps[step.includedSteps.length - 1]) &&
+      (!oldCrossProcess || !oldCrossProcess.txHash)
     ) {
       // -> set status
       const keyProcess = createAndPushProcess(
@@ -66,17 +78,17 @@ export class NXTPExecutionManager {
           status: 'ACTION_REQUIRED',
         }
       )
+
       if (!this.shouldContinue) return status
+
       // -> request key
       try {
-        const encryptionPublicKey = await (window as any).ethereum.request({
-          method: 'eth_getEncryptionPublicKey',
-          params: [await signer.getAddress()], // you must have access to the specified account
-        })
+        const encryptionPublicKey = await hooks.getPublicKeyHook()
         // store key
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
-      } catch (e) {
+      } catch (e: any) {
+        if (e.message) keyProcess.errorMessage = e.message
         setStatusFailed(update, status, keyProcess)
         throw e
       }
@@ -99,7 +111,8 @@ export class NXTPExecutionManager {
           crossProcess.status = 'PENDING'
           crossProcess.message = 'Wait for '
           update(status)
-          tx = await signer.provider!.getTransaction(crossProcess.txHash)
+          const fromProvider = getRpcProvider(step.action.fromChainId)
+          tx = await fromProvider.getTransaction(crossProcess.txHash)
         } else {
           const personalizedStep = await personalizeStep(signer, step)
           const { tx: transactionRequest } = await Lifi.getStepTransaction(
@@ -131,7 +144,22 @@ export class NXTPExecutionManager {
         throw e
       }
 
-      await tx.wait()
+      try {
+        await tx.wait()
+      } catch (e: any) {
+        if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+          crossProcess.txHash = e.replacement.hash
+          crossProcess.txLink =
+            fromChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            crossProcess.txHash
+        } else {
+          if (e.message) crossProcess.errorMessage = e.message
+          if (e.code) crossProcess.errorCode = e.code
+          setStatusFailed(update, status, crossProcess)
+          throw e
+        }
+      }
 
       crossProcess.message = 'Transfer started: '
       setStatusDone(update, status, crossProcess)
@@ -152,7 +180,10 @@ export class NXTPExecutionManager {
     // init sdk
     const crossableChains = [ChainId.ETH, action.fromChainId, action.toChainId]
     const chainProviders = getRpcUrls(crossableChains)
-    const nxtpSDK = await nxtp.setup(signer, chainProviders)
+    const { sdk: nxtpSDK, sdkBase: nxtpBaseSDK } = await nxtp.setup(
+      signer,
+      chainProviders
+    )
 
     const preparedTransactionPromise = nxtpSDK.waitFor(
       NxtpSdkEvents.ReceiverTransactionPrepared,
@@ -161,7 +192,9 @@ export class NXTPExecutionManager {
     )
 
     // find current status
-    const transactions = await nxtpSDK.getActiveTransactions()
+    const transactions = await nxtpBaseSDK
+      .getActiveTransactions()
+      .catch(() => [])
     const foundTransaction = transactions.find(
       (transfer) =>
         transfer.crosschainTx.invariant.transactionId === transactionId
@@ -169,7 +202,9 @@ export class NXTPExecutionManager {
 
     // check if already done?
     if (!foundTransaction) {
-      const historicalTransactions = await nxtpSDK.getHistoricalTransactions()
+      const historicalTransactions = await nxtpBaseSDK
+        .getHistoricalTransactions()
+        .catch(() => [])
       const foundTransaction = historicalTransactions.find(
         (transfer) =>
           transfer.crosschainTx.invariant.transactionId === transactionId
@@ -190,38 +225,124 @@ export class NXTPExecutionManager {
       }
     }
 
-    const preparedTransaction = await preparedTransactionPromise
+    // STEP 6: Wait for signature //////////////////////////////////////////////////////////
+    let calculatedRelayerFee
+    let signature
+    try {
+      calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpSDK, {
+        txData: {
+          sendingChainId: action.fromChainId,
+          sendingAssetId: action.fromToken.address,
+          receivingChainId: action.toChainId,
+          receivingAssetId: action.toToken.address,
+        },
+      })
 
-    // STEP 6: Claim //////////////////////////////////////////////////////////
-    claimProcess.status = 'ACTION_REQUIRED'
-    claimProcess.message = 'Claim transfer'
-    update(status)
-    if (!this.shouldContinue) {
+      const receivingChainTxManager = getDeployedTransactionManagerContract(
+        action.toChainId
+      )
+      if (!receivingChainTxManager) {
+        setStatusFailed(update, status, claimProcess)
+        nxtpSDK.removeAllListeners()
+        throw new Error(
+          'No TransactionManager definded for chain: ${action.toChainId}'
+        )
+      }
+
+      claimProcess.status = 'ACTION_REQUIRED'
+      claimProcess.message = 'Provide Signature'
+      update(status)
+      if (!this.shouldContinue) {
+        nxtpSDK.removeAllListeners()
+        return status
+      }
+
+      signature = await signFulfillTransactionPayload(
+        transactionId,
+        calculatedRelayerFee,
+        action.toChainId,
+        receivingChainTxManager.address,
+        signer
+      )
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
+      setStatusFailed(update, status, claimProcess)
       nxtpSDK.removeAllListeners()
-      return status
+      throw e
     }
 
-    const fulfillPromise = nxtpSDK.fulfillTransfer(preparedTransaction)
-
-    // STEP 7: Wait for signature //////////////////////////////////////////////////////////
-    await nxtpSDK.waitFor(
-      NxtpSdkEvents.ReceiverPrepareSigned,
-      20 * 60 * 1000, // = 20 minutes
-      (data) => data.transactionId === transactionId
-    )
-
+    // STEP 7: Wait for Bridge //////////////////////////////////////////////////////////
+    claimProcess.message = 'Wait for bridge (1-5 min)'
     claimProcess.status = 'PENDING'
-    claimProcess.message = 'Waiting for claim'
+    update(status)
+
+    let preparedTransaction
+    try {
+      preparedTransaction = await preparedTransactionPromise
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
+      setStatusFailed(update, status, claimProcess)
+      nxtpSDK.removeAllListeners()
+      throw e
+    }
+
+    // STEP 8: Decrypt CallData //////////////////////////////////////////////////////////
+    let callData = '0x'
+    // Does it cointain callData?
+    if (preparedTransaction.txData.callDataHash !== utils.keccak256(callData)) {
+      if (
+        preparedTransaction.txData.callDataHash ===
+        utils.keccak256(preparedTransaction.encryptedCallData)
+      ) {
+        // Call data was passed unencrypted
+        callData = preparedTransaction.encryptedCallData
+      } else if (hooks.decryptHook) {
+        // Tigger hock to decrypt data
+        claimProcess.status = 'ACTION_REQUIRED'
+        claimProcess.message = 'Decrypt transaction data'
+        update(status)
+        if (!this.shouldContinue) {
+          nxtpSDK.removeAllListeners()
+          return status
+        }
+
+        try {
+          callData = await hooks.decryptHook(
+            preparedTransaction.encryptedCallData
+          )
+        } catch (e: any) {
+          if (e.message) claimProcess.errorMessage = e.message
+          setStatusFailed(update, status, claimProcess)
+          nxtpSDK.removeAllListeners()
+          throw e
+        }
+      } else {
+        // Continue without call data
+        console.warn(
+          'CallData not forwared because no decryptHook is set to decypt it.'
+        )
+      }
+    }
+
+    // STEP 9: Wait for Claim //////////////////////////////////////////////////////////
+    claimProcess.status = 'PENDING'
+    claimProcess.message = 'Waiting for claim (1-5 min)'
     update(status)
 
     try {
-      const data = await fulfillPromise
-      claimProcess.txHash = data.transactionHash
+      const response = await nxtpBaseSDK.fulfillTransfer(
+        preparedTransaction,
+        signature,
+        callData,
+        calculatedRelayerFee,
+        true
+      )
+      claimProcess.txHash = response.transactionResponse?.transactionHash
       claimProcess.txLink =
         toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
       claimProcess.message = 'Swapped:'
-    } catch (e) {
-      // handle errors
+    } catch (e: any) {
+      if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()
       setStatusFailed(update, status, claimProcess)
       throw e

@@ -5,10 +5,10 @@ import {
   CrossStep,
   Execution,
   LifiStep,
+  Hooks,
   Step,
   SwapStep,
   UpdateStep,
-  SwitchChainHook,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -45,7 +45,7 @@ export class StepExecutor {
     signer: Signer,
     step: Step,
     updateStatus: UpdateStep,
-    switchChainHook: SwitchChainHook
+    hooks: Hooks
   ): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
@@ -57,7 +57,7 @@ export class StepExecutor {
       status.status = 'CHAIN_SWITCH_REQUIRED'
       update(status)
 
-      const updatedSigner = await switchChainHook(step.action.fromChainId)
+      const updatedSigner = await hooks.switchChainHook(step.action.fromChainId)
       if (
         updatedSigner &&
         (await updatedSigner.getChainId()) === step.action.fromChainId
@@ -71,7 +71,7 @@ export class StepExecutor {
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step, updateStatus)
+        await this.executeCross(signer, step, updateStatus, hooks)
         break
       case 'swap':
         await this.executeSwap(signer, step, updateStatus)
@@ -116,12 +116,14 @@ export class StepExecutor {
   private executeCross = async (
     signer: Signer,
     step: CrossStep | LifiStep,
-    updateStatus: UpdateStep
+    updateStatus: UpdateStep,
+    hooks: Hooks
   ) => {
     const crossParams = {
       signer: signer,
       step,
       updateStatus: (status: Execution) => updateStatus(step, status),
+      hooks,
     }
 
     switch (step.tool) {

@@ -88,10 +88,16 @@ export class CbridgeExecutionManager {
 
       await tx.wait()
     } catch (e: any) {
-      if (e.message) crossProcess.errorMessage = e.message
-      if (e.code) crossProcess.errorCode = e.code
-      setStatusFailed(update, status, crossProcess)
-      throw e
+      if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+        crossProcess.txHash = e.replacement.hash
+        crossProcess.txLink =
+          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
+      } else {
+        if (e.message) crossProcess.errorMessage = e.message
+        if (e.code) crossProcess.errorCode = e.code
+        setStatusFailed(update, status, crossProcess)
+        throw e
+      }
     }
 
     crossProcess.message = 'Transfer started: '
