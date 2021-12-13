@@ -17,6 +17,9 @@ const getBalances = async (
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
+  if (tokens.length === 0) {
+    return []
+  }
   const { chainId } = tokens[0]
   tokens.forEach((token) => {
     if (token.chainId !== chainId) {

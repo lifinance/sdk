@@ -79,19 +79,11 @@ const isEstimate = (estimate: Estimate): estimate is Estimate => {
 }
 
 export const isToken = (token: Token): token is Token => {
-  const { address, symbol, decimals, chainId, name } = token
+  const { address, decimals, chainId } = token
 
   return (
     typeof address === 'string' &&
-    typeof symbol === 'string' &&
     typeof decimals === 'number' &&
-    typeof chainId === 'number' &&
-    typeof name === 'string'
-    // isEnum(CoinKey)(key) // our enum does not contain all possible keys
+    typeof chainId === 'number'
   )
 }
-
-const isEnum =
-  <T>(enumType: T) =>
-  (enumValue: any): enumValue is T[keyof T] =>
-    Object.values(enumType).includes(enumValue as T[keyof T])

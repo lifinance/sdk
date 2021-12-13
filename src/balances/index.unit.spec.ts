@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultToken } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 
 import balances from '.'
 import utils from './utils'
@@ -23,6 +23,16 @@ describe('balances', () => {
   })
 
   describe('getTokenBalances', () => {
+    it('should handle emty list', async () => {
+      const tokens: Token[] = []
+      const result = await balances.getTokenBalances(
+        defaultWalletAddress,
+        tokens
+      )
+      expect(result).toEqual([])
+      expect(mockedUtils.getBalances).toHaveBeenCalledTimes(0)
+    })
+
     it('should load mutliple token in one request', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const tokens = [
@@ -46,6 +56,29 @@ describe('balances', () => {
   })
 
   describe('getTokenBalancesForChains', () => {
+    it('should handle empty list', () => {
+      mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
+      const tokensByChain = {
+        [ChainId.ETH]: [],
+        [ChainId.POL]: [],
+      }
+      balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
+      expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
+    })
+
+    it('should handle partly empty list', () => {
+      mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
+      const tokensByChain = {
+        [ChainId.ETH]: [],
+        [ChainId.POL]: [
+          findDefaultToken(CoinKey.USDC, ChainId.POL),
+          findDefaultToken(CoinKey.MATIC, ChainId.POL),
+        ],
+      }
+      balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
+      expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
+    })
+
     it('should load tokens in one request per chain', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const tokensByChain = {

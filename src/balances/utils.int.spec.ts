@@ -72,5 +72,11 @@ describe('balances utils', () => {
       ]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
+
+    it('should handle empty lists', async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens: Token[] = []
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    })
   })
 })

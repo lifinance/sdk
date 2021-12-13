@@ -218,10 +218,6 @@ class LIFI {
       throw new Error('SDK Validation: Missing walletAddress')
     }
 
-    if (!tokens.length) {
-      throw new Error('SDK Validation: Empty token list passed')
-    }
-
     if (tokens.filter((token) => !isToken(token)).length) {
       throw new Error('SDK Validation: Invalid token passed')
     }
@@ -238,10 +234,6 @@ class LIFI {
     }
 
     const tokenList = Object.values(tokensByChain).flat()
-    if (!tokenList.length) {
-      throw new Error('SDK Validation: Empty token list passed')
-    }
-
     if (tokenList.filter((token) => !isToken(token)).length) {
       throw new Error('SDK Validation: Invalid token passed')
     }
