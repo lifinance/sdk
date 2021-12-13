@@ -12,7 +12,12 @@ import {
   UpdateExecution,
 } from './types'
 import { deepClone } from './utils'
-
+/**
+ * Manages status updates of a route and provides various functions for tracking processes
+ * @param  {Route} route  The route this StatusManger belongs to.
+ * @param  {EnforcedObjectProperties<ExecutionSettings>} settings   The ExecutionSettings for this route
+ * @return {StatusManager}       An instance of StatusManager.
+ */
 export class StatusManager {
   route: Route
   settings: EnforcedObjectProperties<ExecutionSettings>
@@ -25,6 +30,11 @@ export class StatusManager {
     this.settings = settings
   }
 
+  /**
+   * Initializes the execution object of a Step.
+   * @param  {Step} step  The current step in execution
+   * @return {Execution, UpdateExecution}       The initialized execution object for this step and a function to update this step
+   */
   initExecutionObject = (step: Step) => {
     const currentExecution =
       step.execution || (deepClone(emptyExecution) as Execution)
@@ -38,17 +48,26 @@ export class StatusManager {
     return { currentExecution, updateExecution }
   }
 
+  /**
+   * Reduces a sequence of names to initials.
+   * @param  {String} id  Identifier for the process. Used to identify already existing processes.
+   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
+   * @param  {Execution} execution The Execution object that the Process is appended to.
+   * @param  {ProcessMessage} message  A ProcessMessage for this Process. Will be used on newly created or already existing process.
+   * @param  {object} [params]   Additional parameters to append to the process.
+   * @return {void}
+   */
   createAndPushProcess = (
     id: string,
-    updateStatus: (execution: Execution) => void,
-    status: Execution,
+    updateExecution: (execution: Execution) => void,
+    execution: Execution,
     message: ProcessMessage,
     params?: object
   ) => {
-    const process = status.process.find((p) => p.id === id)
+    const process = execution.process.find((p) => p.id === id)
     if (process) {
-      status.status = 'PENDING'
-      updateStatus(status)
+      execution.status = 'PENDING'
+      updateExecution(execution)
       return process
     }
     const newProcess: Process = {
@@ -63,19 +82,27 @@ export class StatusManager {
       }
     }
 
-    status.status = 'PENDING'
-    status.process.push(newProcess)
-    updateStatus(status)
+    execution.status = 'PENDING'
+    execution.process.push(newProcess)
+    updateExecution(execution)
     return newProcess
   }
 
+  /**
+   * Set a process to 'FAILED'.
+   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
+   * @param  {Execution} execution The Execution object to update.
+   * @param  {Process} currentProcess  The Process to set to 'FAILED'
+   * @param  {object} [params]   Additional parameters to append to the process.
+   * @return {void}
+   */
   setStatusFailed = (
-    updateStatus: UpdateExecution,
-    status: Execution,
+    updateExecution: UpdateExecution,
+    execution: Execution,
     currentProcess: Process,
     params?: object
   ) => {
-    status.status = 'FAILED'
+    execution.status = 'FAILED'
     currentProcess.status = 'FAILED'
     currentProcess.failedAt = Date.now()
     if (params) {
@@ -84,22 +111,30 @@ export class StatusManager {
       }
     }
 
-    updateStatus(status)
+    updateExecution(execution)
   }
 
+  /**
+   * Set a process to 'DONE'.
+   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
+   * @param  {Execution} execution The Execution object to update.
+   * @param  {Process} currentProcess  The Process to set to 'FAILED'
+   * @param  {object} [params]   Additional parameters to append to the process.
+   * @return {void}
+   */
   setStatusDone = (
-    updateStatus: UpdateExecution,
-    status: Execution,
+    updateExecution: UpdateExecution,
+    execution: Execution,
     currentProcess: Process,
     params?: object
   ) => {
-    currentProcess.status = 'DONE'
+    currentProcess.execution = 'DONE'
     currentProcess.doneAt = Date.now()
     if (params) {
       for (const [key, value] of Object.entries(params)) {
         currentProcess[key] = value
       }
     }
-    updateStatus(status)
+    updateExecution(execution)
   }
 }
