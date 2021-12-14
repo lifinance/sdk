@@ -352,6 +352,7 @@ export class NXTPExecutionManager {
     const claimTx = await provider.getTransaction(claimProcess.txHash) // TODO: can we omit this?
     const receipt = await provider.waitForTransaction(claimProcess.txHash)
     const parsedReceipt = nxtp.parseReceipt(
+      await signer.getAddress(),
       action.toToken.address,
       claimTx,
       receipt

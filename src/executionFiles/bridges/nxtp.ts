@@ -117,6 +117,7 @@ const calculateRelayerFee = async (
 }
 
 const parseReceipt = (
+  toAddress: string,
   toTokenAddress: string,
   tx: TransactionResponse,
   receipt: TransactionReceipt
@@ -139,13 +140,17 @@ const parseReceipt = (
   const transferLogs = receipt.logs.filter(
     (log) => log.address.toLowerCase() === toTokenAddress.toLowerCase()
   )
-  const parsedValues: BigNumber[] = transferLogs.map(
-    (log) => iface.parseLog(log!).args[2]
+
+  const parsedLogs = transferLogs.map((log) => iface.parseLog(log!))
+  const relevantLogs = parsedLogs.filter(
+    (log) => log.args[1].toLowerCase() === toAddress.toLowerCase()
   )
-  const valueSum = parsedValues.reduce(
-    (sum, current) => sum.add(current),
+
+  const valueSum = relevantLogs.reduce(
+    (sum, current) => sum.add(current.args[2]),
     ethers.BigNumber.from('0')
   )
+
   result.toAmount = valueSum.toString()
 
   return result
