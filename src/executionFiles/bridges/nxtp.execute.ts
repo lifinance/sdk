@@ -348,12 +348,18 @@ export class NXTPExecutionManager {
       throw e
     }
 
-    // TODO: parse receipt to check result
-    // const provider = getRpcProvider(step.action.toChainId)
-    // const receipt = await provider.waitForTransaction(claimProcess.txHash)
+    const provider = getRpcProvider(step.action.toChainId)
+    const claimTx = await provider.getTransaction(claimProcess.txHash) // TODO: can we omit this?
+    const receipt = await provider.waitForTransaction(claimProcess.txHash)
+    const parsedReceipt = nxtp.parseReceipt(
+      action.toToken.address,
+      claimTx,
+      receipt
+    )
 
     status.fromAmount = estimate.fromAmount
-    status.toAmount = estimate.toAmount
+    status.toAmount = parsedReceipt.toAmount
+    // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
     setStatusDone(update, status, claimProcess)
 
