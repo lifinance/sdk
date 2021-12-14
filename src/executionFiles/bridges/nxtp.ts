@@ -137,7 +137,7 @@ const parseReceipt = (
   //log
   const iface = new ethers.utils.Interface(transferAbi)
   const transferLogs = receipt.logs.filter(
-    (log) => log.address === toTokenAddress
+    (log) => log.address.toLowerCase() === toTokenAddress.toLowerCase()
   )
   const parsedValues: BigNumber[] = transferLogs.map(
     (log) => iface.parseLog(log!).args[2]
