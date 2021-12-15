@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
   LifiStep,
   Route,
+  RouteOptions,
   Step,
   SwapStep,
   Token,
@@ -53,12 +53,16 @@ export type Config = {
   apiUrl: string
   rpcs: Record<ChainId, string[]>
   multicallAddresses: Record<ChainId, string | undefined>
+  defaultExecutionSettings: Hooks
+  defaultRouteOptions: RouteOptions
 }
 
 export type ConfigUpdate = {
   apiUrl?: string
   rpcs?: Record<number, string[]>
   multicallAddresses?: Record<number, string | undefined>
+  defaultExecutionSettings?: ExecutionSettings
+  defaultRouteOptions?: RouteOptions
 }
 
 export type SwitchChainHook = (
@@ -71,11 +75,6 @@ export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
   settings: Hooks
-}
-
-export const DefaultExecutionSettings: Hooks = {
-  updateCallback: () => {},
-  switchChainHook: () => Promise.resolve(undefined),
 }
 
 export interface ExecutionSettings {

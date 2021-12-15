@@ -24,7 +24,6 @@ import {
   ExecutionData,
   ActiveRouteDictionary,
   ExecutionSettings,
-  DefaultExecutionSettings,
 } from './types'
 
 class LIFI {
@@ -44,6 +43,14 @@ class LIFI {
   getPossibilities = async (
     request?: PossibilitiesRequest
   ): Promise<PossibilitiesResponse> => {
+    if (!request) request = {}
+
+    // apply defaults
+    request.bridges = request.bridges || this.config.defaultRouteOptions.bridges
+    request.exchanges =
+      request.exchanges || this.config.defaultRouteOptions.exchanges
+
+    // send request
     const result = await axios.post<PossibilitiesResponse>(
       this.config.apiUrl + 'possibilities',
       request
@@ -57,6 +64,13 @@ class LIFI {
       throw new Error('SDK Validation: Invalid Routs Request')
     }
 
+    // apply defaults
+    routesRequest.options = {
+      ...this.config.defaultRouteOptions,
+      ...routesRequest.options,
+    }
+
+    // send request
     const result = await axios.post<RoutesResponse>(
       this.config.apiUrl + 'routes',
       routesRequest
@@ -131,7 +145,7 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
-      settings: { ...DefaultExecutionSettings, ...settings },
+      settings: { ...this.config.defaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
@@ -194,7 +208,7 @@ class LIFI {
     if (!this.activeRoutes[route.id])
       throw Error('Cannot set ExecutionSettings for unactive route!')
     this.activeRoutes[route.id].settings = {
-      ...DefaultExecutionSettings,
+      ...this.config.defaultExecutionSettings,
       ...settings,
     }
   }
