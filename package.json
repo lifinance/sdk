@@ -1,10 +1,11 @@
 {
   "name": "@lifinance/sdk",
-  "version": "0.0.2",
+  "version": "0.1.1",
   "description": "LiFi Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "install": "( [ ! -d ./dist ] && npm run build || true )",
     "watch": "tsc -w -p ./tsconfig.json",
     "build": "node tools/cleanup types && tsc -p ./tsconfig.json",
     "clean": "node tools/cleanup",
@@ -45,9 +46,9 @@
     "url": "https://github.com/lifinance/sdk/issues"
   },
   "dependencies": {
-    "@connext/nxtp-sdk": "^0.0.99",
-    "@hop-protocol/sdk": "^0.0.1-beta.272",
-    "@lifinance/types": "^0.6.8",
+    "@connext/nxtp-sdk": "^0.0.100",
+    "@hop-protocol/sdk": "^0.0.1-beta.275",
+    "@lifinance/types": "^0.7.0",
     "@makerdao/multicall": "^0.12.0",
     "axios": "^0.24.0",
     "bignumber.js": "^9.0.1",

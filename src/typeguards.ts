@@ -1,6 +1,5 @@
 import {
   Action,
-  ChainKey,
   Estimate,
   RouteOptions,
   RoutesRequest,
@@ -80,21 +79,11 @@ const isEstimate = (estimate: Estimate): estimate is Estimate => {
 }
 
 export const isToken = (token: Token): token is Token => {
-  const { id, symbol, decimals, chainId, name, chainKey, logoURI } = token
+  const { address, decimals, chainId } = token
 
   return (
-    typeof id === 'string' &&
-    typeof symbol === 'string' &&
+    typeof address === 'string' &&
     typeof decimals === 'number' &&
-    typeof chainId === 'number' &&
-    typeof name === 'string' &&
-    isEnum(ChainKey)(chainKey) &&
-    // isEnum(CoinKey)(key) // our enum does not contain all possible keys
-    typeof logoURI === 'string'
+    typeof chainId === 'number'
   )
 }
-
-const isEnum =
-  <T>(enumType: T) =>
-  (enumValue: any): enumValue is T[keyof T] =>
-    Object.values(enumType).includes(enumValue as T[keyof T])

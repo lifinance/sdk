@@ -1,10 +1,9 @@
 import {
   Action,
   ChainId,
-  ChainKey,
   CoinKey,
   Estimate,
-  findDefaultCoinOnChain,
+  findDefaultToken,
   RoutesRequest,
   Step,
   Token,
@@ -29,9 +28,9 @@ describe('LIFI SDK', () => {
     const getRoutesRequest = ({
       fromChainId = ChainId.BSC,
       fromAmount = '10000000000000',
-      fromTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.BSC).id,
+      fromTokenAddress = findDefaultToken(CoinKey.USDC, ChainId.BSC).address,
       toChainId = ChainId.DAI,
-      toTokenAddress = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI).id,
+      toTokenAddress = findDefaultToken(CoinKey.USDC, ChainId.DAI).address,
       options = { slippage: 0.03 },
     }: any): RoutesRequest => ({
       fromChainId,
@@ -106,7 +105,7 @@ describe('LIFI SDK', () => {
         // axios.post always returns an object and we expect that in our code
         mockedAxios.post.mockReturnValue(Promise.resolve({}))
 
-        Lifi.getRoutes(request)
+        await Lifi.getRoutes(request)
         expect(mockedAxios.post).toHaveBeenCalledTimes(1)
       })
     })
@@ -116,10 +115,10 @@ describe('LIFI SDK', () => {
     const getAction = ({
       fromChainId = ChainId.BSC,
       fromAmount = '10000000000000',
-      fromToken = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.BSC),
+      fromToken = findDefaultToken(CoinKey.USDC, ChainId.BSC),
       fromAddress = 'some from address', // we don't validate the format of addresses atm
       toChainId = ChainId.DAI,
-      toToken = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI),
+      toToken = findDefaultToken(CoinKey.USDC, ChainId.DAI),
       toAddress = 'some to address',
       slippage = 0.03,
     }): Action => ({
@@ -215,7 +214,7 @@ describe('LIFI SDK', () => {
           const step = getStep({})
           mockedAxios.post.mockReturnValue(Promise.resolve({}))
 
-          Lifi.getStepTransaction(step)
+          await Lifi.getStepTransaction(step)
           expect(mockedAxios.post).toHaveBeenCalledTimes(1)
         })
       })
@@ -223,7 +222,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalance', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {
@@ -269,7 +268,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalances', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {
@@ -292,12 +291,11 @@ describe('LIFI SDK', () => {
         expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
       })
 
-      it('should throw Error because of an empty token list', async () => {
-        await expect(
-          Lifi.getTokenBalances(SOME_WALLET_ADDRESS, [])
-        ).rejects.toThrow('SDK Validation: Empty token list passed')
-
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
+      it('should return empty token list as it is', async () => {
+        mockedBalances.getTokenBalances.mockReturnValue(Promise.resolve([]))
+        const result = await Lifi.getTokenBalances(SOME_WALLET_ADDRESS, [])
+        expect(result).toEqual([])
+        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -325,7 +323,7 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalancesForChains', () => {
-    const SOME_TOKEN = findDefaultCoinOnChain(CoinKey.USDC, ChainKey.DAI)
+    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
     const SOME_WALLET_ADDRESS = 'some wallet address'
 
     describe('user input is invalid', () => {
@@ -351,15 +349,21 @@ describe('LIFI SDK', () => {
         )
       })
 
-      it('should throw Error because of an empty token list', async () => {
-        await expect(
-          Lifi.getTokenBalancesForChains(SOME_WALLET_ADDRESS, {
-            [ChainId.DAI]: [],
-          })
-        ).rejects.toThrow('SDK Validation: Empty token list passed')
+      it('should return empty token list as it is', async () => {
+        mockedBalances.getTokenBalancesForChains.mockReturnValue(
+          Promise.resolve([])
+        )
 
+        const result = await Lifi.getTokenBalancesForChains(
+          SOME_WALLET_ADDRESS,
+          {
+            [ChainId.DAI]: [],
+          }
+        )
+
+        expect(result).toEqual([])
         expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          0
+          1
         )
       })
     })

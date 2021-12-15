@@ -30,7 +30,7 @@ export class AnySwapExecutionManager {
     // approval still needed?
     const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
-      if (action.fromToken.id !== constants.AddressZero) {
+      if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
         if (!this.shouldContinue) return status
         await checkAllowance(
@@ -85,10 +85,16 @@ export class AnySwapExecutionManager {
 
       await tx.wait()
     } catch (e: any) {
-      if (e.message) crossProcess.errorMessage = e.message
-      if (e.code) crossProcess.errorCode = e.code
-      setStatusFailed(update, status, crossProcess)
-      throw e
+      if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+        crossProcess.txHash = e.replacement.hash
+        crossProcess.txLink =
+          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
+      } else {
+        if (e.message) crossProcess.errorMessage = e.message
+        if (e.code) crossProcess.errorCode = e.code
+        setStatusFailed(update, status, crossProcess)
+        throw e
+      }
     }
 
     crossProcess.message = 'Transfer started: '
@@ -124,8 +130,8 @@ export class AnySwapExecutionManager {
     waitForTxProcess.txLink =
       toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
     waitForTxProcess.message = 'Funds Received:'
-    status.fromAmount = parsedReceipt.fromAmount
-    status.toAmount = parsedReceipt.toAmount
+    // status.fromAmount = parsedReceipt.fromAmount
+    // status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
     setStatusDone(update, status, waitForTxProcess)

@@ -33,7 +33,7 @@ export const checkAllowance = async (
     } else if (allowanceProcess.message === 'Already Approved') {
       setStatusDone(update, status, allowanceProcess)
     } else {
-      const approved = await getApproved(signer, token.id, spenderAddress)
+      const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
         const approvaLAmount = infiniteApproval
@@ -41,7 +41,7 @@ export const checkAllowance = async (
           : amount
         const approveTx = await setApproval(
           signer,
-          token.id,
+          token.address,
           spenderAddress,
           approvaLAmount
         )
@@ -66,9 +66,15 @@ export const checkAllowance = async (
     }
   } catch (e: any) {
     // -> set status
-    if (e.message) allowanceProcess.errorMessage = e.message
-    if (e.code) allowanceProcess.errorCode = e.code
-    setStatusFailed(update, status, allowanceProcess)
-    throw e
+    if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+      allowanceProcess.txHash = e.replacement.hash
+      allowanceProcess.txLink =
+        chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
+    } else {
+      if (e.message) allowanceProcess.errorMessage = e.message
+      if (e.code) allowanceProcess.errorCode = e.code
+      setStatusFailed(update, status, allowanceProcess)
+      throw e
+    }
   }
 }

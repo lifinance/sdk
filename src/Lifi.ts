@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { JsonRpcSigner } from '@ethersproject/providers'
+import axios from 'axios'
+import { Signer } from 'ethers'
+
+import balances from './balances'
+import { getDefaultConfig, mergeConfig } from './config'
+import { StepExecutor } from './executionFiles/StepExecutor'
+import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
   Execution,
   PossibilitiesRequest,
@@ -12,23 +18,15 @@ import {
   Token,
   TokenAmount,
 } from '@lifinance/types'
-import axios from 'axios'
-import { Signer } from 'ethers'
 
-import balances from './balances'
-import { getDefaultConfig, mergeConfig } from './config'
-import { StepExecutor } from './executionFiles/StepExecutor'
-import { isRoutesRequest, isStep, isToken } from './typeguards'
-import { CallbackFunction, Config, ConfigUpdate } from './types'
-
-interface ExecutionData {
-  route: Route
-  executors: StepExecutor[]
-  callbackFunction: CallbackFunction
-}
-interface ActiveRouteDictionary {
-  [k: string]: ExecutionData
-}
+import {
+  Config,
+  ConfigUpdate,
+  ExecutionData,
+  ActiveRouteDictionary,
+  ExecutionSettings,
+  DefaultExecutionSettings,
+} from './types'
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
@@ -102,63 +100,18 @@ class LIFI {
   executeRoute = async (
     signer: Signer,
     route: Route,
-    callback?: CallbackFunction
+    settings?: ExecutionSettings
   ): Promise<Route> => {
     // check if route is already running
-    if (this.activeRoutes[route.id]) return route
-    const execData: ExecutionData = {
-      route,
-      executors: [],
-      callbackFunction: callback ? callback : () => {},
-    }
-    this.activeRoutes[route.id] = execData
+    if (this.activeRoutes[route.id]) return route // TODO: maybe inform user why nothing happens?
 
-    const updateFunction = (step: Step, status: Execution) => {
-      step.execution = status
-      this.activeRoutes[route.id].callbackFunction(route)
-    }
-
-    // loop over steps and execute them
-    for (let index = 0; index < route.steps.length; index++) {
-      //check if execution has stopped in meantime
-      if (!this.activeRoutes[route.id]) break
-
-      const step = route.steps[index]
-      const previousStep = index !== 0 ? route.steps[index - 1] : undefined
-
-      // check if signer is for correct chain
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        break
-      }
-
-      // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
-      if (
-        previousStep &&
-        previousStep.execution &&
-        previousStep.execution.toAmount
-      ) {
-        step.action.fromAmount = previousStep.execution.toAmount
-      }
-      try {
-        const stepExecutor = new StepExecutor()
-        this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(signer, step, updateFunction)
-      } catch (e) {
-        this.stopExecution(route)
-        throw e
-      }
-    }
-
-    // executeRoute = (signer: Signer, route: Route): Promise<Route> => {
-
-    delete this.activeRoutes[route.id]
-    return route
+    return this.executeSteps(signer, route, settings)
   }
 
   resumeRoute = async (
-    signer: JsonRpcSigner,
+    signer: Signer,
     route: Route,
-    callback?: CallbackFunction
+    settings?: ExecutionSettings
   ): Promise<Route> => {
     const activeRoute = this.activeRoutes[route.id]
     if (activeRoute) {
@@ -168,16 +121,24 @@ class LIFI {
       if (!executionHalted) return route
     }
 
+    return this.executeSteps(signer, route, settings)
+  }
+
+  private executeSteps = async (
+    signer: Signer,
+    route: Route,
+    settings?: ExecutionSettings
+  ): Promise<Route> => {
     const execData: ExecutionData = {
       route,
       executors: [],
-      callbackFunction: callback ? callback : () => {},
+      settings: { ...DefaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
     const updateFunction = (step: Step, status: Execution) => {
       step.execution = status
-      this.activeRoutes[route.id].callbackFunction(route)
+      this.activeRoutes[route.id].settings.updateCallback(route)
     }
 
     // loop over steps and execute them
@@ -192,11 +153,6 @@ class LIFI {
         continue
       }
 
-      // check if signer is for correct chain
-      if ((await signer.getChainId()) !== step.action.fromChainId) {
-        break
-      }
-
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
       if (
         previousStep &&
@@ -206,13 +162,24 @@ class LIFI {
         step.action.fromAmount = previousStep.execution.toAmount
       }
 
+      let stepExecutor: StepExecutor
       try {
-        const stepExecutor = new StepExecutor()
+        stepExecutor = new StepExecutor()
         this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(signer, step, updateFunction)
+        await stepExecutor.executeStep(
+          signer,
+          step,
+          updateFunction,
+          this.activeRoutes[route.id].settings
+        )
       } catch (e) {
         this.stopExecution(route)
         throw e
+      }
+
+      // execution stopped during the current step, we don't want to continue to the next step so we return already
+      if (stepExecutor.executionStopped) {
+        return route
       }
     }
 
@@ -221,18 +188,16 @@ class LIFI {
     return route
   }
 
-  registerCallback = (
-    callback: (updatedRoute: Route) => void,
+  updateExecutionSettings = (
+    settings: ExecutionSettings,
     route: Route
   ): void => {
-    this.activeRoutes[route.id].callbackFunction = callback
-  }
-
-  deregisterCallback = (
-    callback: (updateRoute: Route) => void,
-    route: Route
-  ): void => {
-    this.activeRoutes[route.id].callbackFunction = () => {}
+    if (!this.activeRoutes[route.id])
+      throw Error('Cannot set ExecutionSettings for unactive route!')
+    this.activeRoutes[route.id].settings = {
+      ...DefaultExecutionSettings,
+      ...settings,
+    }
   }
 
   getActiveRoutes = (): Route[] => {
@@ -267,10 +232,6 @@ class LIFI {
       throw new Error('SDK Validation: Missing walletAddress')
     }
 
-    if (!tokens.length) {
-      throw new Error('SDK Validation: Empty token list passed')
-    }
-
     if (tokens.filter((token) => !isToken(token)).length) {
       throw new Error('SDK Validation: Invalid token passed')
     }
@@ -287,10 +248,6 @@ class LIFI {
     }
 
     const tokenList = Object.values(tokensByChain).flat()
-    if (!tokenList.length) {
-      throw new Error('SDK Validation: Empty token list passed')
-    }
-
     if (tokenList.filter((token) => !isToken(token)).length) {
       throw new Error('SDK Validation: Invalid token passed')
     }

@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 import {
   ChainId,
-  ChainKey,
   CoinKey,
-  findDefaultCoinOnChain,
+  findDefaultToken,
   RoutesRequest,
+  Route,
 } from '@lifinance/types'
 import { Wallet } from 'ethers'
 
@@ -20,9 +20,9 @@ describe.skip('LiFi SDK', () => {
     const routeRequest: RoutesRequest = {
       fromChainId: ChainId.POL,
       fromAmount: '1000000',
-      fromTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainKey.POL).id,
+      fromTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.POL).address,
       toChainId: ChainId.DAI,
-      toTokenAddress: findDefaultCoinOnChain(CoinKey.USDT, ChainKey.DAI).id,
+      toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.DAI).address,
       options: { slippage: 0.03 },
     }
     const routeResponse = await Lifi.getRoutes(routeRequest)
@@ -35,9 +35,10 @@ describe.skip('LiFi SDK', () => {
     const wallet = Wallet.fromMnemonic(process.env.SEED!).connect(provider)
 
     // execute Route
-    const finalRoute = await Lifi.executeRoute(wallet, route, (updatedRoute) =>
-      console.log(updatedRoute)
-    )
+    const settings = {
+      updateCallback: (updatedRoute: Route) => console.log(updatedRoute),
+    }
+    const finalRoute = await Lifi.executeRoute(wallet, route, settings)
     const lastStep = finalRoute.steps[finalRoute.steps.length - 1]
     expect(lastStep.execution?.status).toEqual('DONE')
   })

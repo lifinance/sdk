@@ -34,7 +34,7 @@ export class SwapExecutionManager {
     const { status, update } = initStatus(updateStatus, execution)
 
     // Approval
-    if (action.fromToken.id !== constants.AddressZero) {
+    if (action.fromToken.address !== constants.AddressZero) {
       if (!this.shouldContinue) return status
       await checkAllowance(
         signer,
@@ -102,10 +102,17 @@ export class SwapExecutionManager {
       receipt = await tx.wait()
     } catch (e: any) {
       // -> set status
-      if (e.message) swapProcess.errorMessage = e.message
-      if (e.code) swapProcess.errorCode = e.code
-      setStatusFailed(update, status, swapProcess)
-      throw e
+      if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+        swapProcess.txHash = e.replacement.hash
+        swapProcess.txLink =
+          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
+        receipt = e.replacement
+      } else {
+        if (e.message) swapProcess.errorMessage = e.message
+        if (e.code) swapProcess.errorCode = e.code
+        setStatusFailed(update, status, swapProcess)
+        throw e
+      }
     }
 
     // -> set status

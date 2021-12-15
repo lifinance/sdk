@@ -17,6 +17,9 @@ const getBalances = async (
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
+  if (tokens.length === 0) {
+    return []
+  }
   const { chainId } = tokens[0]
   tokens.forEach((token) => {
     if (token.chainId !== chainId) {
@@ -49,12 +52,12 @@ const getBalancesFromProviderUsingMulticall = async (
     // Collect calls we want to make
     const calls: any = []
     tokens.forEach(async (token) => {
-      if (token.id === constants.AddressZero) {
+      if (token.address === constants.AddressZero) {
         calls.push({
           call: ['getEthBalance(address)(uint256)', walletAddress],
           returns: [
             [
-              token.id,
+              token.address,
               (val: BN) =>
                 new BigNumber(val.toString())
                   .shiftedBy(-token.decimals)
@@ -64,11 +67,11 @@ const getBalancesFromProviderUsingMulticall = async (
         })
       } else {
         calls.push({
-          target: token.id,
+          target: token.address,
           call: ['balanceOf(address)(uint256)', walletAddress],
           returns: [
             [
-              token.id,
+              token.address,
               (val: BN) =>
                 new BigNumber(val.toString())
                   .shiftedBy(-token.decimals)
@@ -95,7 +98,7 @@ const getBalancesFromProviderUsingMulticall = async (
       const tokenAmounts = tokens.map((token) => {
         return {
           ...token,
-          amount: balances[token.id] || '0',
+          amount: balances[token.address] || '0',
         }
       })
 
@@ -133,7 +136,7 @@ const getBalancesFromProvider = async (
       try {
         const amountRaw = await getBalanceFromProvider(
           walletAddress,
-          token.id,
+          token.address,
           rpc
         )
         amount = amountRaw.shiftedBy(-token.decimals).toString()

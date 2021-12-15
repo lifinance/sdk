@@ -1,9 +1,11 @@
 import { Signer } from 'ethers'
+import { initStatus } from '../status'
 
 import {
   CrossStep,
   Execution,
   LifiStep,
+  Hooks,
   Step,
   SwapStep,
   UpdateStep,
@@ -28,7 +30,7 @@ export class StepExecutor {
 
   executionStopped = false
 
-  stopStepExecution = () => {
+  stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
     this.nxtpExecutionManager.setShouldContinue(false)
     this.hopExecutionManager.setShouldContinue(false)
@@ -42,12 +44,34 @@ export class StepExecutor {
   executeStep = async (
     signer: Signer,
     step: Step,
-    updateStatus: UpdateStep
+    updateStatus: UpdateStep,
+    hooks: Hooks
   ): Promise<Step> => {
+    // check if signer is for correct chain
+    if ((await signer.getChainId()) !== step.action.fromChainId) {
+      // change status to CHAIN_SWITCH_REQUIRED and return step without execution
+      const { status, update } = initStatus(
+        (status: Execution) => updateStatus(step, status),
+        step.execution
+      )
+      status.status = 'CHAIN_SWITCH_REQUIRED'
+      update(status)
+
+      const updatedSigner = await hooks.switchChainHook(step.action.fromChainId)
+      if (
+        updatedSigner &&
+        (await updatedSigner.getChainId()) === step.action.fromChainId
+      ) {
+        signer = updatedSigner
+      } else {
+        throw Error('CHAIN SWITCH REQUIRED')
+      }
+    }
+
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step, updateStatus)
+        await this.executeCross(signer, step, updateStatus, hooks)
         break
       case 'swap':
         await this.executeSwap(signer, step, updateStatus)
@@ -92,12 +116,14 @@ export class StepExecutor {
   private executeCross = async (
     signer: Signer,
     step: CrossStep | LifiStep,
-    updateStatus: UpdateStep
+    updateStatus: UpdateStep,
+    hooks: Hooks
   ) => {
     const crossParams = {
       signer: signer,
       step,
       updateStatus: (status: Execution) => updateStatus(step, status),
+      hooks,
     }
 
     switch (step.tool) {

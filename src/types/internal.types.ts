@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
@@ -10,6 +11,7 @@ import {
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
+import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -40,6 +42,7 @@ export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
   updateStatus?: UpdateExecution
+  hooks: Hooks
 }
 
 export type UpdateStep = (step: Step, execution: Execution) => void
@@ -56,4 +59,41 @@ export type ConfigUpdate = {
   apiUrl?: string
   rpcs?: Record<number, string[]>
   multicallAddresses?: Record<number, string | undefined>
+}
+
+export type SwitchChainHook = (
+  requiredChainId: number
+) => Promise<Signer | undefined>
+
+export type GetPublicKeyHook = () => Promise<string | undefined>
+export type DecryptHook = (data: string) => Promise<string>
+export interface ExecutionData {
+  route: Route
+  executors: StepExecutor[]
+  settings: Hooks
+}
+
+export const DefaultExecutionSettings: Hooks = {
+  updateCallback: () => {},
+  switchChainHook: () => Promise.resolve(undefined),
+}
+
+export interface ExecutionSettings {
+  getPublicKeyHook?: GetPublicKeyHook
+  decryptHook?: DecryptHook
+  updateCallback?: CallbackFunction
+  switchChainHook?: SwitchChainHook
+}
+
+export interface Hooks extends ExecutionSettings {
+  updateCallback: CallbackFunction
+  switchChainHook: SwitchChainHook
+}
+
+// Hard to read but this creates a new type that enforces all optional properties in a given interface
+export type EnforcedObjectProperties<T> = T & {
+  [P in keyof T]-?: T[P]
+}
+export interface ActiveRouteDictionary {
+  [k: string]: ExecutionData
 }
