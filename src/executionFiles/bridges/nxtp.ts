@@ -2,7 +2,16 @@ import { NxtpSdk, NxtpSdkBase } from '@connext/nxtp-sdk'
 import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { getChainData } from '@connext/nxtp-sdk/dist/utils'
 import { Logger } from '@connext/nxtp-utils'
-import { Signer } from 'ethers'
+import { BigNumber, ethers, Signer } from 'ethers'
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from '@ethersproject/providers'
+import { ParsedReceipt } from '../../types'
+
+const transferAbi = [
+  'event Transfer (address indexed from, address indexed to, uint256 value)',
+]
 
 // TODO: move in sdk setup, avoid accessing env variabels
 // Add overwrites to specific chains here. They will only be applied if the chain is used.
@@ -107,7 +116,48 @@ const calculateRelayerFee = async (
   return calculateRelayerFee
 }
 
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): ParsedReceipt => {
+  const result = {
+    fromAmount: '0',
+    toAmount: '0',
+    gasUsed: '0',
+    gasPrice: '0',
+    gasFee: '0',
+  }
+
+  // gas
+  result.gasUsed = receipt.gasUsed.toString()
+  result.gasPrice = tx.gasPrice?.toString() || '0'
+  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+
+  //log
+  const iface = new ethers.utils.Interface(transferAbi)
+  const transferLogs = receipt.logs.filter(
+    (log) => log.address.toLowerCase() === toTokenAddress.toLowerCase()
+  )
+
+  const parsedLogs = transferLogs.map((log) => iface.parseLog(log!))
+  const relevantLogs = parsedLogs.filter(
+    (log) => log.args[1].toLowerCase() === toAddress.toLowerCase()
+  )
+
+  const valueSum = relevantLogs.reduce(
+    (sum, current) => sum.add(current.args[2]),
+    ethers.BigNumber.from('0')
+  )
+
+  result.toAmount = valueSum.toString()
+
+  return result
+}
+
 export default {
   setup,
   calculateRelayerFee,
+  parseReceipt,
 }
