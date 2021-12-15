@@ -130,8 +130,8 @@ export class AnySwapExecutionManager {
     waitForTxProcess.txLink =
       toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
     waitForTxProcess.message = 'Funds Received:'
-    status.fromAmount = parsedReceipt.fromAmount
-    status.toAmount = parsedReceipt.toAmount
+    // status.fromAmount = parsedReceipt.fromAmount
+    // status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
     setStatusDone(update, status, waitForTxProcess)
