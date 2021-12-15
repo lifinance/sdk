@@ -349,7 +349,7 @@ export class NXTPExecutionManager {
     }
 
     const provider = getRpcProvider(step.action.toChainId)
-    const claimTx = await provider.getTransaction(claimProcess.txHash) // TODO: can we omit this?
+    const claimTx = await provider.getTransaction(claimProcess.txHash)
     const receipt = await provider.waitForTransaction(claimProcess.txHash)
     const parsedReceipt = nxtp.parseReceipt(
       await signer.getAddress(),
