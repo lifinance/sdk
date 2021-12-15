@@ -14,7 +14,6 @@ import {
   RoutesRequest,
   RoutesResponse,
   Step,
-  StepTransactionResponse,
   Token,
   TokenAmount,
 } from '@lifinance/types'
@@ -66,14 +65,14 @@ class LIFI {
     return result.data
   }
 
-  getStepTransaction = async (step: Step): Promise<StepTransactionResponse> => {
+  getStepTransaction = async (step: Step): Promise<Step> => {
     if (!isStep(step)) {
       // While the validation fails for some users we should not enforce it
       // eslint-disable-next-line no-console
       console.warn('SDK Validation: Invalid Step', step)
     }
 
-    const result = await axios.post<StepTransactionResponse>(
+    const result = await axios.post<Step>(
       this.config.apiUrl + 'steps/transaction',
       step
     )
