@@ -1,16 +1,25 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { FallbackProvider } from '@ethersproject/providers'
-import { Token, TokenAmount } from '@lifinance/types'
+import { ChainId, Token, TokenAmount } from '@lifinance/types'
 // @ts-ignore
 import { createWatcher } from '@makerdao/multicall'
 import BigNumber from 'bignumber.js'
 import { BigNumber as BN, constants, Contract } from 'ethers'
 
 import { getMulticallAddresse, getRpcProvider, getRpcUrl } from '../connectors'
+import { splitListIntoChunks } from '../utils'
+
+const MAX_MULTICALL_SIZE = 100
 
 type UpdateType = {
   type: string
   value: string
+}
+
+type MultiCallConfig = {
+  rpcUrl: string
+  multicallAddress: string
+  interval: number
 }
 
 const getBalances = async (
@@ -42,12 +51,31 @@ const getBalancesFromProviderUsingMulticall = async (
 ): Promise<TokenAmount[]> => {
   // Configuration
   const { chainId } = tokens[0]
-  const config = {
+  const config: MultiCallConfig = {
     rpcUrl: getRpcUrl(chainId),
     multicallAddress: getMulticallAddresse(chainId),
     interval: 1000000000, // calling stop on the watcher does not actually close the websocket
   }
 
+  if (tokens.length > MAX_MULTICALL_SIZE) {
+    const chunkedList = splitListIntoChunks<Token>(tokens, MAX_MULTICALL_SIZE)
+    const chunkedResults = await Promise.all(
+      chunkedList.map((tokenChunk) =>
+        executeMulticall(walletAddress, tokenChunk, config, chainId)
+      )
+    )
+    return chunkedResults.flat()
+  } else {
+    return executeMulticall(walletAddress, tokens, config, chainId)
+  }
+}
+
+const executeMulticall = (
+  walletAddress: string,
+  tokens: Token[],
+  multiCallConfig: MultiCallConfig,
+  chainId: ChainId
+) => {
   return new Promise<TokenAmount[]>((resolve) => {
     // Collect calls we want to make
     const calls: any = []
@@ -82,7 +110,7 @@ const getBalancesFromProviderUsingMulticall = async (
       }
     })
 
-    const watcher = createWatcher(calls, config)
+    const watcher = createWatcher(calls, multiCallConfig)
 
     // Success case
     watcher.batch().subscribe((updates: UpdateType[]) => {
@@ -111,7 +139,7 @@ const getBalancesFromProviderUsingMulticall = async (
       // eslint-disable-next-line no-console
       console.warn(
         `Multicall Error on chain ${chainId}, config:`,
-        config,
+        multiCallConfig,
         error
       )
       resolve([])

@@ -2,6 +2,7 @@ import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 
 import utils from './utils'
+import { LARGE_BINANCE_TOKEN_LIST } from './utils.int.spec.fixture'
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
@@ -76,6 +77,12 @@ describe('balances utils', () => {
     it('should handle empty lists', async () => {
       const walletAddress = defaultWalletAddress
       const tokens: Token[] = []
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    })
+
+    it('should handle large lists', async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens: Token[] = LARGE_BINANCE_TOKEN_LIST.slice(0, 150) // chunk limit is 100
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
   })
