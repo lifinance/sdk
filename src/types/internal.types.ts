@@ -1,15 +1,16 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
   LifiStep,
   Route,
+  RouteOptions,
   Step,
   SwapStep,
   Token,
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
@@ -47,6 +48,23 @@ export type ExecuteCrossParams = {
 export type UpdateStep = (step: Step, execution: Execution) => void
 export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
+
+export type Config = {
+  apiUrl: string
+  rpcs: Record<ChainId, string[]>
+  multicallAddresses: Record<ChainId, string | undefined>
+  defaultExecutionSettings: Hooks
+  defaultRouteOptions: RouteOptions
+}
+
+export type ConfigUpdate = {
+  apiUrl?: string
+  rpcs?: Record<number, string[]>
+  multicallAddresses?: Record<number, string | undefined>
+  defaultExecutionSettings?: ExecutionSettings
+  defaultRouteOptions?: RouteOptions
+}
+
 export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
@@ -57,11 +75,6 @@ export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
   settings: Hooks
-}
-
-export const DefaultExecutionSettings: Hooks = {
-  updateCallback: () => {},
-  switchChainHook: () => Promise.resolve(undefined),
 }
 
 export interface ExecutionSettings {

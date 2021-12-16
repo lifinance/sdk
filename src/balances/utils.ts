@@ -6,7 +6,7 @@ import { createWatcher } from '@makerdao/multicall'
 import BigNumber from 'bignumber.js'
 import { BigNumber as BN, constants, Contract } from 'ethers'
 
-import { getMulticallAddresse, getRpcProvider, getRpcUrl } from '../connectors'
+import { getMulticallAddress, getRpcProvider, getRpcUrl } from '../connectors'
 import { splitListIntoChunks } from '../utils'
 
 const MAX_MULTICALL_SIZE = 100
@@ -38,7 +38,7 @@ const getBalances = async (
     }
   })
 
-  if (getMulticallAddresse(chainId) && tokens.length > 1) {
+  if (getMulticallAddress(chainId) && tokens.length > 1) {
     return getBalancesFromProviderUsingMulticall(walletAddress, tokens)
   } else {
     return getBalancesFromProvider(walletAddress, tokens)
@@ -51,9 +51,14 @@ const getBalancesFromProviderUsingMulticall = async (
 ): Promise<TokenAmount[]> => {
   // Configuration
   const { chainId } = tokens[0]
+  const multicallAddress = getMulticallAddress(chainId)
+  if (!multicallAddress) {
+    throw new Error('No multicallAddress found for given chain')
+  }
+
   const config: MultiCallConfig = {
     rpcUrl: getRpcUrl(chainId),
-    multicallAddress: getMulticallAddresse(chainId),
+    multicallAddress,
     interval: 1000000000, // calling stop on the watcher does not actually close the websocket
   }
 

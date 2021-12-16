@@ -3,6 +3,7 @@ import axios from 'axios'
 import { Signer } from 'ethers'
 
 import balances from './balances'
+import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
@@ -13,24 +14,43 @@ import {
   RoutesRequest,
   RoutesResponse,
   Step,
-  StepTransactionResponse,
   Token,
   TokenAmount,
+} from '@lifinance/types'
+
+import {
+  Config,
+  ConfigUpdate,
   ExecutionData,
   ActiveRouteDictionary,
   ExecutionSettings,
-  DefaultExecutionSettings,
 } from './types'
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
-  private config = {
-    apiUrl: process.env.REACT_APP_API_URL || 'https://test.li.finance/api/',
+
+  private config: Config = getDefaultConfig()
+
+  getConfig = () => {
+    return this.config
+  }
+
+  setConfig = (configUpdate: ConfigUpdate) => {
+    this.config = mergeConfig(this.config, configUpdate)
+    return this.config
   }
 
   getPossibilities = async (
     request?: PossibilitiesRequest
   ): Promise<PossibilitiesResponse> => {
+    if (!request) request = {}
+
+    // apply defaults
+    request.bridges = request.bridges || this.config.defaultRouteOptions.bridges
+    request.exchanges =
+      request.exchanges || this.config.defaultRouteOptions.exchanges
+
+    // send request
     const result = await axios.post<PossibilitiesResponse>(
       this.config.apiUrl + 'possibilities',
       request
@@ -44,6 +64,13 @@ class LIFI {
       throw new Error('SDK Validation: Invalid Routs Request')
     }
 
+    // apply defaults
+    routesRequest.options = {
+      ...this.config.defaultRouteOptions,
+      ...routesRequest.options,
+    }
+
+    // send request
     const result = await axios.post<RoutesResponse>(
       this.config.apiUrl + 'routes',
       routesRequest
@@ -52,14 +79,14 @@ class LIFI {
     return result.data
   }
 
-  getStepTransaction = async (step: Step): Promise<StepTransactionResponse> => {
+  getStepTransaction = async (step: Step): Promise<Step> => {
     if (!isStep(step)) {
       // While the validation fails for some users we should not enforce it
       // eslint-disable-next-line no-console
       console.warn('SDK Validation: Invalid Step', step)
     }
 
-    const result = await axios.post<StepTransactionResponse>(
+    const result = await axios.post<Step>(
       this.config.apiUrl + 'steps/transaction',
       step
     )
@@ -118,7 +145,7 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
-      settings: { ...DefaultExecutionSettings, ...settings },
+      settings: { ...this.config.defaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
@@ -181,7 +208,7 @@ class LIFI {
     if (!this.activeRoutes[route.id])
       throw Error('Cannot set ExecutionSettings for unactive route!')
     this.activeRoutes[route.id].settings = {
-      ...DefaultExecutionSettings,
+      ...this.config.defaultExecutionSettings,
       ...settings,
     }
   }

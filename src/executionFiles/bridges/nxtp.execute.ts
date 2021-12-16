@@ -115,9 +115,14 @@ export class NXTPExecutionManager {
           tx = await fromProvider.getTransaction(crossProcess.txHash)
         } else {
           const personalizedStep = await personalizeStep(signer, step)
-          const { tx: transactionRequest } = await Lifi.getStepTransaction(
+          const { transactionRequest } = await Lifi.getStepTransaction(
             personalizedStep
           )
+          if (!transactionRequest) {
+            crossProcess.errorMessage = 'Unable to prepare Transaction'
+            setStatusFailed(update, status, crossProcess)
+            throw crossProcess.errorMessage
+          }
 
           // STEP 3: Send Transaction ///////////////////////////////////////////////
           crossProcess.status = 'ACTION_REQUIRED'

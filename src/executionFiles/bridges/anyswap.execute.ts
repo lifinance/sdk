@@ -62,9 +62,14 @@ export class AnySwapExecutionManager {
       } else {
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
-        const { tx: transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await Lifi.getStepTransaction(
           personalizedStep
         )
+        if (!transactionRequest) {
+          crossProcess.errorMessage = 'Unable to prepare Transaction'
+          setStatusFailed(update, status, crossProcess)
+          throw crossProcess.errorMessage
+        }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
         crossProcess.status = 'ACTION_REQUIRED'
@@ -130,8 +135,8 @@ export class AnySwapExecutionManager {
     waitForTxProcess.txLink =
       toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
     waitForTxProcess.message = 'Funds Received:'
-    status.fromAmount = parsedReceipt.fromAmount
-    status.toAmount = parsedReceipt.toAmount
+    // status.fromAmount = parsedReceipt.fromAmount
+    // status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
     setStatusDone(update, status, waitForTxProcess)

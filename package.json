@@ -48,7 +48,7 @@
   "dependencies": {
     "@connext/nxtp-sdk": "^0.0.100",
     "@hop-protocol/sdk": "^0.0.1-beta.275",
-    "@lifinance/types": "^0.7.0",
+    "@lifinance/types": "^0.8.0",
     "@makerdao/multicall": "^0.12.0",
     "axios": "^0.24.0",
     "bignumber.js": "^9.0.1",

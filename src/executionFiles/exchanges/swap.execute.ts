@@ -66,9 +66,14 @@ export class SwapExecutionManager {
       } else {
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
-        const { tx: transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await Lifi.getStepTransaction(
           personalizedStep
         )
+        if (!transactionRequest) {
+          swapProcess.errorMessage = 'Unable to prepare Transaction'
+          setStatusFailed(update, status, swapProcess)
+          throw swapProcess.errorMessage
+        }
 
         // -> set status
         swapProcess.status = 'ACTION_REQUIRED'
