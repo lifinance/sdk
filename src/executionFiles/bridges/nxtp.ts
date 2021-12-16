@@ -11,6 +11,7 @@ import { ParsedReceipt } from '../../types'
 
 const transferAbi = [
   'event Transfer (address indexed from, address indexed to, uint256 value)',
+  'event ContractFallbackCallFailed(address from, address to, uint256 value)',
 ]
 
 // TODO: move in sdk setup, avoid accessing env variabels
