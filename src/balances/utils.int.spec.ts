@@ -1,5 +1,6 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
+import Lifi from '..'
 
 import utils from './utils'
 
@@ -77,6 +78,14 @@ describe('balances utils', () => {
       const walletAddress = defaultWalletAddress
       const tokens: Token[] = []
       await loadAndCompareTokenAmounts(walletAddress, tokens)
+    })
+
+    it('should handle token lists with more than 100 tokens', async () => {
+      const walletAddress = defaultWalletAddress
+      const { tokens } = await Lifi.getPossibilities()
+      const ethTokens = tokens.filter((token) => token.chainId === ChainId.ETH) // > 1000 tokens on eth
+
+      await loadAndCompareTokenAmounts(walletAddress, ethTokens.slice(0, 150)) // chunk limit is 100
     })
   })
 })

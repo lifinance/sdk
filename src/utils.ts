@@ -103,3 +103,16 @@ export const isTransactionMined = async (
   }
   return false
 }
+
+export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>
+  list.reduce((resultList: T[][], item, index) => {
+    const chunkIndex = Math.floor(index / chunkSize)
+
+    if (!resultList[chunkIndex]) {
+      resultList[chunkIndex] = [] // start a new chunk
+    }
+
+    resultList[chunkIndex].push(item)
+
+    return resultList
+  }, [])
