@@ -1,4 +1,4 @@
-import { ChainId } from '.'
+import { ChainId } from '@lifinance/types'
 import { getDefaultConfig, mergeConfig } from './config'
 
 describe('config', () => {
