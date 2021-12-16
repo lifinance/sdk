@@ -2,7 +2,7 @@ import { NxtpSdk, NxtpSdkBase } from '@connext/nxtp-sdk'
 import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { getChainData } from '@connext/nxtp-sdk/dist/utils'
 import { Logger } from '@connext/nxtp-utils'
-import { BigNumber, ethers, Signer } from 'ethers'
+import { ethers, Signer } from 'ethers'
 import {
   TransactionReceipt,
   TransactionResponse,
