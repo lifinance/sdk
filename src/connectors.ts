@@ -10,7 +10,7 @@ export const getRpcUrl = (chainId: ChainId) => {
   return Lifi.getConfig().rpcs[chainId][0]
 }
 
-export const getMulticallAddresse = (chainId: ChainId): string | undefined => {
+export const getMulticallAddress = (chainId: ChainId): string | undefined => {
   return Lifi.getConfig().multicallAddresses[chainId]
 }
 
