@@ -2,7 +2,7 @@ import { NxtpSdk, NxtpSdkBase } from '@connext/nxtp-sdk'
 import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { getChainData } from '@connext/nxtp-sdk/dist/utils'
 import { Logger } from '@connext/nxtp-utils'
-import { BigNumber, ethers, Signer } from 'ethers'
+import { ethers, Signer } from 'ethers'
 import {
   TransactionReceipt,
   TransactionResponse,
@@ -11,6 +11,7 @@ import { ParsedReceipt } from '../../types'
 
 const transferAbi = [
   'event Transfer (address indexed from, address indexed to, uint256 value)',
+  'event ContractFallbackCallFailed(address from, address to, uint256 value)',
 ]
 
 // TODO: move in sdk setup, avoid accessing env variabels
