@@ -1,26 +1,75 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { FallbackProvider } from '@ethersproject/providers'
+import { Contract } from '@ethersproject/contracts'
 import { ChainId, Token, TokenAmount } from '@lifinance/types'
-// @ts-ignore
-import { createWatcher } from '@makerdao/multicall'
 import BigNumber from 'bignumber.js'
-import { BigNumber as BN, constants, Contract } from 'ethers'
+import { Bytes, constants, ethers } from 'ethers'
 
-import { getMulticallAddress, getRpcProvider, getRpcUrl } from '../connectors'
+import { getMulticallAddress, getRpcProvider } from '../connectors'
 import { splitListIntoChunks } from '../utils'
+import { Interface } from '@ethersproject/abi'
 
 const MAX_MULTICALL_SIZE = 100
 
-type UpdateType = {
-  type: string
-  value: string
+type Call = {
+  address: string
+  name: string
+  params?: any[]
 }
 
-type MultiCallConfig = {
-  rpcUrl: string
-  multicallAddress: string
-  interval: number
-}
+export const MulticallAbi = [
+  {
+    constant: true,
+    inputs: [
+      {
+        components: [
+          { name: 'target', type: 'address' },
+          { name: 'callData', type: 'bytes' },
+        ],
+        name: 'calls',
+        type: 'tuple[]',
+      },
+    ],
+    name: 'aggregate',
+    outputs: [
+      { name: 'blockNumber', type: 'uint256' },
+      { name: 'returnData', type: 'bytes[]' },
+    ],
+    payable: false,
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    constant: true,
+    inputs: [{ name: 'addr', type: 'address' }],
+    name: 'getEthBalance',
+    outputs: [{ name: 'balance', type: 'uint256' }],
+    payable: false,
+    stateMutability: 'view',
+    type: 'function',
+  },
+]
+
+export const balanceAbi = [
+  {
+    constant: true,
+    inputs: [{ name: 'who', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    payable: false,
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    constant: true,
+    inputs: [{ name: 'addr', type: 'address' }],
+    name: 'getEthBalance',
+    outputs: [{ name: 'balance', type: 'uint256' }],
+    payable: false,
+    stateMutability: 'view',
+    type: 'function',
+  },
+]
 
 const getBalances = async (
   walletAddress: string,
@@ -56,103 +105,88 @@ const getBalancesFromProviderUsingMulticall = async (
     throw new Error('No multicallAddress found for given chain')
   }
 
-  const config: MultiCallConfig = {
-    rpcUrl: getRpcUrl(chainId),
-    multicallAddress,
-    interval: 1000000000, // calling stop on the watcher does not actually close the websocket
-  }
-
   if (tokens.length > MAX_MULTICALL_SIZE) {
     const chunkedList = splitListIntoChunks<Token>(tokens, MAX_MULTICALL_SIZE)
     const chunkedResults = await Promise.all(
       chunkedList.map((tokenChunk) =>
-        executeMulticall(walletAddress, tokenChunk, config, chainId)
+        executeMulticall(walletAddress, tokenChunk, multicallAddress, chainId)
       )
     )
     return chunkedResults.flat()
   } else {
-    return executeMulticall(walletAddress, tokens, config, chainId)
+    return executeMulticall(walletAddress, tokens, multicallAddress, chainId)
   }
 }
 
-const executeMulticall = (
+const executeMulticall = async (
   walletAddress: string,
   tokens: Token[],
-  multiCallConfig: MultiCallConfig,
+  multicallAddress: string,
   chainId: ChainId
-) => {
-  return new Promise<TokenAmount[]>((resolve) => {
-    // Collect calls we want to make
-    const calls: any = []
-    tokens.forEach(async (token) => {
-      if (token.address === constants.AddressZero) {
-        calls.push({
-          call: ['getEthBalance(address)(uint256)', walletAddress],
-          returns: [
-            [
-              token.address,
-              (val: BN) =>
-                new BigNumber(val.toString())
-                  .shiftedBy(-token.decimals)
-                  .toFixed(),
-            ],
-          ],
-        })
-      } else {
-        calls.push({
-          target: token.address,
-          call: ['balanceOf(address)(uint256)', walletAddress],
-          returns: [
-            [
-              token.address,
-              (val: BN) =>
-                new BigNumber(val.toString())
-                  .shiftedBy(-token.decimals)
-                  .toFixed(),
-            ],
-          ],
-        })
-      }
-    })
-
-    const watcher = createWatcher(calls, multiCallConfig)
-
-    // Success case
-    watcher.batch().subscribe((updates: UpdateType[]) => {
-      watcher.stop()
-
-      // map with returned amounts
-      const balances: { [tokenId: string]: string } = {}
-      updates.forEach(({ type, value }) => {
-        balances[type] = value
+): Promise<Array<TokenAmount>> => {
+  // Collect calls we want to make
+  const calls: Array<Call> = []
+  tokens.map((token) => {
+    if (token.address === constants.AddressZero) {
+      calls.push({
+        address: multicallAddress,
+        name: 'getEthBalance',
+        params: [walletAddress],
       })
-
-      // parse to TokenAmounts
-      const tokenAmounts = tokens.map((token) => {
-        return {
-          ...token,
-          amount: balances[token.address] || '0',
-        }
+    } else {
+      calls.push({
+        address: token.address,
+        name: 'balanceOf',
+        params: [walletAddress],
       })
-
-      resolve(tokenAmounts)
-    })
-
-    // Error case
-    watcher.onError((error: Error) => {
-      watcher.stop()
-      // eslint-disable-next-line no-console
-      console.warn(
-        `Multicall Error on chain ${chainId}, config:`,
-        multiCallConfig,
-        error
-      )
-      resolve([])
-    })
-
-    // Submit calls
-    watcher.start()
+    }
   })
+
+  const res = await fetchDataUsingMulticall(
+    calls,
+    balanceAbi,
+    chainId,
+    multicallAddress
+  )
+  if (!res.length) return []
+  return tokens.map((token, i: number) => {
+    const amount = new BigNumber(res[i][0].toString() || '0')
+      .shiftedBy(-token.decimals)
+      .toFixed()
+    return {
+      ...token,
+      amount: amount || '0',
+    }
+  })
+}
+
+const fetchDataUsingMulticall = async (
+  calls: Array<Call>,
+  abi: any[],
+  chainId: number,
+  multicallAddress: string
+) => {
+  // 1. create contract using multicall contract address and abi...
+  const multicallContract = new Contract(
+    multicallAddress,
+    MulticallAbi,
+    getRpcProvider(chainId)
+  )
+  const abiInterface = new Interface(abi)
+  const callData = calls.map((call) => [
+    call.address.toLowerCase(),
+    abiInterface.encodeFunctionData(call.name, call.params),
+  ])
+  try {
+    // 3. get bytes array from multicall contract by process aggregate method...
+    const { returnData } = await multicallContract.aggregate(callData)
+    // 4. decode bytes array to useful data array...
+    return returnData.map((call: Bytes, i: number) =>
+      abiInterface.decodeFunctionResult(calls[i].name, call)
+    )
+  } catch (e) {
+    return []
+  }
 }
 
 const getBalancesFromProvider = async (
@@ -196,7 +230,7 @@ const getBalanceFromProvider = async (
   if (assetId === constants.AddressZero) {
     balance = await provider.getBalance(walletAddress)
   } else {
-    const contract = new Contract(
+    const contract = new ethers.Contract(
       assetId,
       ['function balanceOf(address owner) view returns (uint256)'],
       provider
