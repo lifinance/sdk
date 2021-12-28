@@ -234,7 +234,7 @@ export class NXTPExecutionManager {
     let calculatedRelayerFee
     let signature
     try {
-      calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpSDK, {
+      calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpBaseSDK, {
         txData: {
           sendingChainId: action.fromChainId,
           sendingAssetId: action.fromToken.address,
