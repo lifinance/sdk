@@ -6,8 +6,9 @@ import {
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 
-import { ParsedReceipt } from '../../types'
+import { ChainId, ParsedReceipt } from '../../types'
 
+// Swapped event for actually swapped token, but then a fee is deducted
 // event Swapped(
 //   bytes16 uuid,
 //   address initiator,
@@ -75,8 +76,12 @@ const parseReceipt = (
   result.gasPrice = tx.gasPrice?.toString() || '0'
   result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
 
+  // value
+  result.fromAmount = tx.value.toString()
+
   // log
   const decoder = new ethers.utils.AbiCoder()
+  // > swapped
   receipt.logs
     .filter((log) => log.address === receipt.to)
     .forEach((log) => {
@@ -86,11 +91,59 @@ const parseReceipt = (
           log.data
         ) as unknown as Swapped
         result.fromAmount = parsed.srcAmount.toString()
-        result.toAmount = parsed.receivedAmount.toString()
+        if (tx.chainId === ChainId.ETH) {
+          // no fees taken
+          result.toAmount = parsed.receivedAmount.toString()
+        } else {
+          // skip other chains, because swapped valued may be higher than the actual transferrerd value
+        }
       } catch (e) {
         // find right log by trying to parse them
       }
     })
+
+  // > transfer ERC20
+  const abiTransfer = [
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]
+  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['to'] === tx.from) {
+        result.toAmount = parsed.args['value'].toString()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
+  // > No gas transfer event on ETH or BSC rely on swap
+  // > transfer gas (POL)
+  const abi = [
+    `event LogTransfer(
+        address indexed token,
+        address indexed from,
+        address indexed to,
+        uint256 amount,
+        uint256 input1,
+        uint256 input2,
+        uint256 output1,
+        uint256 output2
+  )`,
+  ]
+  const interfaceGas = new ethers.utils.Interface(abi)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceGas.parseLog(log)
+      if (parsed.args['to'] === tx.from) {
+        console.log('gas??', parsed)
+        result.toAmount = parsed.args['amount'].toString()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
 
   return result
 }
