@@ -121,7 +121,7 @@ export class SwapExecutionManager {
     }
 
     // -> set status
-    const parsedReceipt = parseReceipt(tx, receipt)
+    const parsedReceipt = await parseReceipt(tx, receipt)
     swapProcess.message = 'Swapped:'
     status.fromAmount = parsedReceipt.fromAmount
     status.toAmount = parsedReceipt.toAmount

@@ -56,10 +56,10 @@ interface Swapped {
   srcToken: string
 }
 
-const parseReceipt = (
+const parseReceipt = async (
   tx: TransactionResponse,
   receipt: TransactionReceipt
-): ParsedReceipt => {
+): Promise<ParsedReceipt> => {
   const result = {
     fromAmount: '0',
     toAmount: '0',
@@ -75,12 +75,17 @@ const parseReceipt = (
   result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
 
   // log
-  const log = receipt.logs.find((log) => log.address === receipt.to)
-  if (log) {
-    const parsed = decoder.decode(swappedTypes, log.data) as unknown as Swapped
-    result.fromAmount = parsed.spentAmount.toString()
-    result.toAmount = parsed.returnAmount.toString()
-  }
+  try {
+    const log = receipt.logs.find((log) => log.address === receipt.to)
+    if (log) {
+      const parsed = decoder.decode(
+        swappedTypes,
+        log.data
+      ) as unknown as Swapped
+      result.fromAmount = parsed.spentAmount.toString()
+      result.toAmount = parsed.returnAmount.toString()
+    }
+  } catch (e) {}
 
   return result
 }

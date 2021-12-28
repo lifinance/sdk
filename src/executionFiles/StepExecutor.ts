@@ -16,6 +16,7 @@ import { HopExecutionManager } from './bridges/hop.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
 import { NXTPExecutionManager } from './bridges/nxtp.execute'
 import { oneinch } from './exchanges/oneinch'
+import { openocean } from './exchanges/openocean'
 import { paraswap } from './exchanges/paraswap'
 import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
@@ -104,6 +105,11 @@ export class StepExecutor {
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: oneinch.parseReceipt,
+        })
+      case 'openocean':
+        return await this.swapExecutionManager.execute({
+          ...swapParams,
+          parseReceipt: openocean.parseReceipt,
         })
       default:
         return await this.swapExecutionManager.execute({

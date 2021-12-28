@@ -1,18 +1,14 @@
 import { NxtpSdk, NxtpSdkBase } from '@connext/nxtp-sdk'
 import { getDeployedChainIdsForGasFee } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
+import TransactionManagerArtifact from '@connext/nxtp-contracts/artifacts/contracts/TransactionManager.sol/TransactionManager.json'
 import { getChainData } from '@connext/nxtp-sdk/dist/utils'
 import { Logger } from '@connext/nxtp-utils'
-import { ethers, Signer } from 'ethers'
+import { BigNumber, ethers, Signer } from 'ethers'
 import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
 import { ParsedReceipt } from '../../types'
-
-const transferAbi = [
-  'event Transfer (address indexed from, address indexed to, uint256 value)',
-  'event ContractFallbackCallFailed(address from, address to, uint256 value)',
-]
 
 // TODO: move in sdk setup, avoid accessing env variabels
 // Add overwrites to specific chains here. They will only be applied if the chain is used.
@@ -122,6 +118,7 @@ const parseReceipt = (
   const result = {
     fromAmount: '0',
     toAmount: '0',
+    toTokenAddress: toTokenAddress,
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
@@ -132,23 +129,43 @@ const parseReceipt = (
   result.gasPrice = tx.gasPrice?.toString() || '0'
   result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
 
-  //log
-  const iface = new ethers.utils.Interface(transferAbi)
-  const transferLogs = receipt.logs.filter(
-    (log) => log.address.toLowerCase() === toTokenAddress.toLowerCase()
+  // logs
+  // > TransactionFulfilled
+  const interfaceFulfilled = new ethers.utils.Interface(
+    TransactionManagerArtifact.abi
   )
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceFulfilled.parseLog(log)
+      const amount = parsed.args.args['txData']['amount'] as BigNumber
+      const relayerFee = parsed.args.args['relayerFee'] as BigNumber
+      const asset = parsed.args.args['txData']['receivingAssetId'] as string
+      const transferred = amount.sub(relayerFee)
 
-  const parsedLogs = transferLogs.map((log) => iface.parseLog(log!))
-  const relevantLogs = parsedLogs.filter(
-    (log) => log.args[1].toLowerCase() === toAddress.toLowerCase()
-  )
+      result.toAmount = transferred.toString()
+      result.toTokenAddress = asset.toLowerCase()
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
 
-  const valueSum = relevantLogs.reduce(
-    (sum, current) => sum.add(current.args[2]),
-    ethers.BigNumber.from('0')
-  )
-
-  result.toAmount = valueSum.toString()
+  // Fallback or Overwrite if swap happened
+  // > transfer ERC20
+  const abiTransfer = [
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]
+  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['to'] === toAddress) {
+        result.toAmount = parsed.args['value'].toString()
+        result.toTokenAddress = log.address.toLowerCase()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
 
   return result
 }
