@@ -23,6 +23,7 @@ import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
 import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
+import { balanceCheck } from '../balanceCheck.execute'
 
 export class NXTPExecutionManager {
   shouldContinue = true
@@ -114,6 +115,10 @@ export class NXTPExecutionManager {
           const fromProvider = getRpcProvider(step.action.fromChainId)
           tx = await fromProvider.getTransaction(crossProcess.txHash)
         } else {
+          // Check balance
+          await balanceCheck(signer, step)
+
+          // Prepare transaction
           const personalizedStep = await personalizeStep(signer, step)
           const { transactionRequest } = await Lifi.getStepTransaction(
             personalizedStep
