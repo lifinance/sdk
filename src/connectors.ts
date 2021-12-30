@@ -23,6 +23,19 @@ export const getRpcProvider = (chainId: number) => {
   return chainProviders[chainId]
 }
 
+export const getArchiveRpcProvider = (chainId: number) => {
+  if (chainId === ChainId.BSC) {
+    return new providers.FallbackProvider([
+      new providers.JsonRpcProvider(
+        'https://speedy-nodes-nyc.moralis.io/8e02d084e88390b964f42079/bsc/mainnet/archive',
+        chainId
+      ),
+    ])
+  } else {
+    return getRpcProvider(chainId)
+  }
+}
+
 export const getRpcProviders = (chainIds: Array<number>) => {
   const selectedProviders: Record<number, providers.FallbackProvider> = {}
   chainIds.forEach((chainId) => {

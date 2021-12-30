@@ -11,6 +11,7 @@ import {
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
+import { balanceCheck } from '../balanceCheck.execute'
 import hop from './hop'
 
 export class HopExecutionManager {
@@ -60,6 +61,9 @@ export class HopExecutionManager {
         // load exiting transaction
         tx = await signer.provider!.getTransaction(crossProcess.txHash)
       } else {
+        // check balance
+        await balanceCheck(signer, step)
+
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
         const { transactionRequest } = await Lifi.getStepTransaction(

@@ -14,6 +14,7 @@ import {
 import { ExecuteSwapParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
+import { balanceCheck } from '../balanceCheck.execute'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -64,6 +65,9 @@ export class SwapExecutionManager {
         // -> restore existing tx
         tx = await signer.provider!.getTransaction(swapProcess.txHash)
       } else {
+        // -> check balance
+        await balanceCheck(signer, step)
+
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
         const { transactionRequest } = await Lifi.getStepTransaction(
@@ -121,7 +125,7 @@ export class SwapExecutionManager {
     }
 
     // -> set status
-    const parsedReceipt = parseReceipt(tx, receipt)
+    const parsedReceipt = await parseReceipt(tx, receipt)
     swapProcess.message = 'Swapped:'
     status.fromAmount = parsedReceipt.fromAmount
     status.toAmount = parsedReceipt.toAmount

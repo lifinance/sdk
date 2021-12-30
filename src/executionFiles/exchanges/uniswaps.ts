@@ -53,10 +53,10 @@ interface Swapped {
   to: string
 }
 
-const parseReceipt = (
+const parseReceipt = async (
   tx: TransactionResponse,
   receipt: TransactionReceipt
-): ParsedReceipt => {
+): Promise<ParsedReceipt> => {
   const result = {
     fromAmount: '0',
     toAmount: '0',

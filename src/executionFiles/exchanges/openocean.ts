@@ -6,7 +6,7 @@ import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 import { getArchiveRpcProvider } from '../../connectors'
 
-import { ChainId, ParsedReceipt } from '../../types'
+import { ParsedReceipt } from '../../types'
 
 // Swapped event for actually swapped token, but then a fee is deducted
 // event Swapped(
@@ -91,12 +91,7 @@ const parseReceipt = async (
           log.data
         ) as unknown as Swapped
         result.fromAmount = parsed.srcAmount.toString()
-        if (tx.chainId === ChainId.ETH) {
-          // no fees taken
-          result.toAmount = parsed.receivedAmount.toString()
-        } else {
-          // skip other chains, because swapped valued may be higher than the actual transferrerd value
-        }
+        result.toAmount = parsed.receivedAmount.toString()
       } catch (e) {
         // find right log by trying to parse them
       }
@@ -107,6 +102,18 @@ const parseReceipt = async (
     'event Transfer(address indexed from, address indexed to, uint256 value)',
   ]
   const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  // > from user
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['from'] === tx.from) {
+        result.fromAmount = parsed.args['value'].toString()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+  // > to user
   receipt.logs.forEach((log) => {
     try {
       const parsed = interfaceTransfer.parseLog(log)
@@ -118,7 +125,7 @@ const parseReceipt = async (
     }
   })
 
-  // > transfer gas event only on POL
+  // > transfer gas (POL)
   const abi = [
     `event LogTransfer(
         address indexed token,
@@ -169,6 +176,6 @@ const parseReceipt = async (
   return result
 }
 
-export const paraswap = {
+export const openocean = {
   parseReceipt,
 }

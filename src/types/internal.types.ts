@@ -34,7 +34,7 @@ export type ParsedReceipt = {
 export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
-  parseReceipt: (...args: any[]) => ParsedReceipt
+  parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
   updateStatus?: UpdateExecution
 }
 
