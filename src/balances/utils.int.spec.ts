@@ -6,6 +6,8 @@ import utils from './utils'
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
+jest.setTimeout(10000)
+
 describe('balances utils', () => {
   describe('getBalances Integration Tests', () => {
     const loadAndCompareTokenAmounts = async (
