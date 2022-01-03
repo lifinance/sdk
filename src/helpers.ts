@@ -1,5 +1,3 @@
-/*eslint max-len: ["error", { "ignoreComments": true }]*/
-
 declare const ethereum: any
 
 const ethereumRequest = async (

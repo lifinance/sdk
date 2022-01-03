@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-/*eslint max-len: ["error", { "ignoreComments": true }]*/
 import axios from 'axios'
 import { Signer } from 'ethers'
 
