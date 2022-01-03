@@ -41,7 +41,7 @@ class LIFI {
 
   /**
    * Set a new confuration for the SDK
-   * @param {ConfigUpdate} configUpdate - The new configuration. Same as interface Config but with optional values.
+   * @param {ConfigUpdate} configUpdate - An object containing the configuration fields that should be updated.
    * @return {Config} The renewed config object
    */
   setConfig = (configUpdate: ConfigUpdate): Config => {
@@ -74,9 +74,9 @@ class LIFI {
   }
 
   /**
-   * Get a set of routes for a request that describes a transfer of coins.
+   * Get a set of routes for a request that describes a transfer of tokens.
    * @param {RoutesRequest} routesRequest - A description of the transfer.
-   * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of coins.
+   * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
    */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
@@ -146,7 +146,7 @@ class LIFI {
   /**
    * Execute a route.
    * @param {Signer} signer - The signer required to send the transactions.
-   * @param {Route} route - The route that is to be executed. Cannot be an active route.
+   * @param {Route} route - The route that should be executed. Cannot be an active route.
    * @param {ExecutionSettings} settings - An object containing settings and callbacks.
    * @return {Promise<Route>} The executed route.
    */
@@ -266,7 +266,7 @@ class LIFI {
   }
 
   /**
-   * Get a list of active routes.
+   * Get the list of active routes.
    * @return {Route[]} A list of routes.
    */
   getActiveRoutes = (): Route[] => {
@@ -274,17 +274,17 @@ class LIFI {
   }
 
   /**
-   * Get a single updated route. The route has to be active.
+   * Return the current route information for given route. The route has to be active.
    * @param {Route} route - A route object.
-   * @return {ReturnValueDataTypeHere} Brief description of the returning value here.
+   * @return {Route} The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
     return this.activeRoutes[route.id].route
   }
 
   /**
-   * Returns the balances of a specific token a wallet holds across all chains we have aggergated. .
-   * @param {string} walletAddress - A walletaddress.
+   * Returns the balances of a specific token a wallet holds across all aggregated chains.
+   * @param {string} walletAddress - A wallet address.
    * @param {Token} token - A Token object.
    * @return {Promise<TokenAmount | null>} An object containing the token and the amounts on different chains.
    */
@@ -304,7 +304,7 @@ class LIFI {
   }
 
   /**
-   * Returns the balances for a list tokens a wallet holds across all chains we have aggergated.
+   * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
    * @param {string} walletAddress - A walletaddress.
    * @param {Token[]} tokens - A list of Token objects.
    * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
@@ -325,7 +325,7 @@ class LIFI {
   }
 
   /**
-   * This method queries the balances of tokens for a specific list of chains for a given wallet. .
+   * This method queries the balances of tokens for a specific list of chains for a given wallet.
    * @param {string} walletAddress - A walletaddress.
    * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
    * @return {Promise<{ [chainId: number]: TokenAmount[] }} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
