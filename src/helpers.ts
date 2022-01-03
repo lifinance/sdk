@@ -1,4 +1,4 @@
-/* eslint-disable max-len */
+/*eslint max-len: ["error", { "ignoreComments": true }]*/
 
 declare const ethereum: any
 
