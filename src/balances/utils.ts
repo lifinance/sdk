@@ -149,6 +149,9 @@ const executeMulticall = async (
     multicallAddress
   )
   if (!res.length) return []
+
+  const blockNumber = await getCurrentBlockNumber(chainId)
+
   return tokens.map((token, i: number) => {
     const amount = new BigNumber(res[i][0].toString() || '0')
       .shiftedBy(-token.decimals)
@@ -156,6 +159,7 @@ const executeMulticall = async (
     return {
       ...token,
       amount: amount || '0',
+      blockNumber,
     }
   })
 }
@@ -212,9 +216,12 @@ const getBalancesFromProvider = async (
         console.warn(e)
       }
 
+      const blockNumber = await getCurrentBlockNumber(chainId)
+
       return {
         ...token,
         amount,
+        blockNumber,
       }
     }
   )
@@ -238,6 +245,11 @@ const getBalanceFromProvider = async (
     balance = await contract.balanceOf(walletAddress)
   }
   return new BigNumber(balance.toString())
+}
+
+const getCurrentBlockNumber = (chainId: ChainId): Promise<number> => {
+  const rpc = getRpcProvider(chainId)
+  return rpc.getBlockNumber()
 }
 
 export default {
