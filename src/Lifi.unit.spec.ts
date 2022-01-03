@@ -250,6 +250,7 @@ describe('LIFI SDK', () => {
         const balanceResponse = {
           ...SOME_TOKEN,
           amount: '123',
+          blockNumber: 1,
         }
 
         mockedBalances.getTokenBalance.mockReturnValue(
@@ -305,6 +306,7 @@ describe('LIFI SDK', () => {
           {
             ...SOME_TOKEN,
             amount: '123',
+            blockNumber: 1,
           },
         ]
 
@@ -375,6 +377,7 @@ describe('LIFI SDK', () => {
             {
               ...SOME_TOKEN,
               amount: '123',
+              blockNumber: 1,
             },
           ],
         }
