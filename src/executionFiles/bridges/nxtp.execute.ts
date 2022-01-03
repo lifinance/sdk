@@ -361,6 +361,21 @@ export class NXTPExecutionManager {
     const provider = getRpcProvider(step.action.toChainId)
     const claimTx = await provider.getTransaction(claimProcess.txHash)
     const receipt = await provider.waitForTransaction(claimProcess.txHash)
+
+    // wait until balance rpc contains block number >= the claim block number to make sure the funds are available on the users wallet
+    let balanceBlockNumber = 0
+    const walletAddress = await signer.getAddress()
+    do {
+      // get balance
+      const tokenAmount = await Lifi.getTokenBalance(
+        walletAddress,
+        step.action.toToken
+      )
+      if (tokenAmount && tokenAmount.blockNumber) {
+        balanceBlockNumber = tokenAmount.blockNumber
+      }
+    } while (balanceBlockNumber < receipt.blockNumber)
+
     const parsedReceipt = nxtp.parseReceipt(
       await signer.getAddress(),
       action.toToken.address,
