@@ -6,7 +6,7 @@ import { ChainId } from './types'
 // cached providers
 const chainProviders: Record<number, providers.FallbackProvider> = {}
 
-export const getRpcUrl = (chainId: ChainId) => {
+const getRpcUrl = (chainId: ChainId) => {
   return Lifi.getConfig().rpcs[chainId][0]
 }
 
@@ -34,14 +34,6 @@ export const getArchiveRpcProvider = (chainId: number) => {
   } else {
     return getRpcProvider(chainId)
   }
-}
-
-export const getRpcProviders = (chainIds: Array<number>) => {
-  const selectedProviders: Record<number, providers.FallbackProvider> = {}
-  chainIds.forEach((chainId) => {
-    selectedProviders[chainId] = getRpcProvider(chainId)
-  })
-  return selectedProviders
 }
 
 export const getRpcUrls = (chainIds: Array<ChainId>) => {
