@@ -17,6 +17,11 @@ type Call = {
   params?: any[]
 }
 
+type Balance = {
+  amount: BigNumber
+  blockNumber: number
+}
+
 export const MulticallAbi = [
   {
     constant: true,
@@ -150,16 +155,14 @@ const executeMulticall = async (
   )
   if (!res.length) return []
 
-  const blockNumber = await getCurrentBlockNumber(chainId)
-
   return tokens.map((token, i: number) => {
-    const amount = new BigNumber(res[i][0].toString() || '0')
+    const amount = new BigNumber(res[i].amount.toString() || '0')
       .shiftedBy(-token.decimals)
       .toFixed()
     return {
       ...token,
       amount: amount || '0',
-      blockNumber,
+      blockNumber: res[i].blockNumber,
     }
   })
 }
@@ -169,7 +172,7 @@ const fetchDataUsingMulticall = async (
   abi: any[],
   chainId: number,
   multicallAddress: string
-) => {
+): Promise<Balance[]> => {
   // 1. create contract using multicall contract address and abi...
   const multicallContract = new Contract(
     multicallAddress,
@@ -183,11 +186,20 @@ const fetchDataUsingMulticall = async (
   ])
   try {
     // 3. get bytes array from multicall contract by process aggregate method...
-    const { returnData } = await multicallContract.aggregate(callData)
-    // 4. decode bytes array to useful data array...
-    return returnData.map((call: Bytes, i: number) =>
-      abiInterface.decodeFunctionResult(calls[i].name, call)
+    const { returnData, blockNumber } = await multicallContract.aggregate(
+      callData
     )
+    // 4. decode bytes array to useful data array...
+    return returnData
+      .map((call: Bytes, i: number) =>
+        abiInterface.decodeFunctionResult(calls[i].name, call)
+      )
+      .map((amount: [BigNumber]) => {
+        return {
+          amount: amount[0],
+          blockNumber: blockNumber.toNumber(),
+        }
+      })
   } catch (e) {
     return []
   }
@@ -203,20 +215,23 @@ const getBalancesFromProvider = async (
   const tokenAmountPromises: Promise<TokenAmount>[] = tokens.map(
     async (token): Promise<TokenAmount> => {
       let amount = '0'
+      let blockNumber
 
       try {
-        const amountRaw = await getBalanceFromProvider(
+        const balance = await getBalanceFromProvider(
           walletAddress,
           token.address,
+          chainId,
           rpc
         )
-        amount = amountRaw.shiftedBy(-token.decimals).toString()
+        amount = new BigNumber(balance.amount.toString())
+          .shiftedBy(-token.decimals)
+          .toString()
+        blockNumber = balance.blockNumber
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn(e)
       }
-
-      const blockNumber = await getCurrentBlockNumber(chainId)
 
       return {
         ...token,
@@ -231,20 +246,26 @@ const getBalancesFromProvider = async (
 const getBalanceFromProvider = async (
   walletAddress: string,
   assetId: string,
+  chainId: ChainId,
   provider: FallbackProvider
-): Promise<BigNumber> => {
+): Promise<Balance> => {
+  const blockNumber = await getCurrentBlockNumber(chainId)
+
   let balance
   if (assetId === constants.AddressZero) {
-    balance = await provider.getBalance(walletAddress)
+    balance = await provider.getBalance(walletAddress, blockNumber)
   } else {
     const contract = new ethers.Contract(
       assetId,
       ['function balanceOf(address owner) view returns (uint256)'],
       provider
     )
-    balance = await contract.balanceOf(walletAddress)
+    balance = await contract.balanceOf(walletAddress, { blockTag: blockNumber })
   }
-  return new BigNumber(balance.toString())
+  return {
+    amount: balance,
+    blockNumber,
+  }
 }
 
 const getCurrentBlockNumber = (chainId: ChainId): Promise<number> => {
