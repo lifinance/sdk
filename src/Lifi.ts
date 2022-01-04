@@ -28,18 +28,31 @@ import {
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
-
   private config: Config = getDefaultConfig()
 
-  getConfig = () => {
+  /**
+   * Get the current configuration of the SDK
+   * @return {Config} - The config object
+   */
+  getConfig = (): Config => {
     return this.config
   }
 
-  setConfig = (configUpdate: ConfigUpdate) => {
+  /**
+   * Set a new confuration for the SDK
+   * @param {ConfigUpdate} configUpdate - An object containing the configuration fields that should be updated.
+   * @return {Config} The renewed config object
+   */
+  setConfig = (configUpdate: ConfigUpdate): Config => {
     this.config = mergeConfig(this.config, configUpdate)
     return this.config
   }
 
+  /**
+   * Get a set of current possibilities based on a request that specifies which chains, exchanges and bridges are preferred or unwanted.
+   * @param {PossibilitiesRequest} request - Object defining preferences regarding chain, exchanges and bridges
+   * @return {Promise<PossibilitiesResponse>} Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
+   */
   getPossibilities = async (
     request?: PossibilitiesRequest
   ): Promise<PossibilitiesResponse> => {
@@ -59,6 +72,11 @@ class LIFI {
     return result.data
   }
 
+  /**
+   * Get a set of routes for a request that describes a transfer of tokens.
+   * @param {RoutesRequest} routesRequest - A description of the transfer.
+   * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
+   */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
       throw new Error('SDK Validation: Invalid Routs Request')
@@ -79,6 +97,11 @@ class LIFI {
     return result.data
   }
 
+  /**
+   * Get the transaction data for a signle step of a route
+   * @param {Step} step - The step object.
+   * @return {Promise<Step>} The step populated with the transaction data
+   */
   getStepTransaction = async (step: Step): Promise<Step> => {
     if (!isStep(step)) {
       // While the validation fails for some users we should not enforce it
@@ -94,6 +117,11 @@ class LIFI {
     return result.data
   }
 
+  /**
+   * Stops the execution of an active route.
+   * @param {Route} route - A route that is currently in execution.
+   * @return {Route} The stopped route.
+   */
   stopExecution = (route: Route): Route => {
     if (!this.activeRoutes[route.id]) return route
     for (const executor of this.activeRoutes[route.id].executors) {
@@ -103,6 +131,10 @@ class LIFI {
     return route
   }
 
+  /**
+   * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
+   * @param {Route} route - A route that is currently in execution.
+   */
   moveExecutionToBackground = (route: Route): void => {
     if (!this.activeRoutes[route.id]) return
     for (const executor of this.activeRoutes[route.id].executors) {
@@ -110,6 +142,13 @@ class LIFI {
     }
   }
 
+  /**
+   * Execute a route.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Route} route - The route that should be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   */
   executeRoute = async (
     signer: Signer,
     route: Route,
@@ -121,6 +160,13 @@ class LIFI {
     return this.executeSteps(signer, route, settings)
   }
 
+  /**
+   * Resume the execution of a route that has been stopped or had an error while executing.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Route} route - The route that is to be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   */
   resumeRoute = async (
     signer: Signer,
     route: Route,
@@ -201,6 +247,11 @@ class LIFI {
     return route
   }
 
+  /**
+   * Update the ExecutionSettings for an active route.
+   * @param {ExecutionSettings} settings - An object with execution settings.
+   * @param {Route} route - The active route that gets the new execution settings.
+   */
   updateExecutionSettings = (
     settings: ExecutionSettings,
     route: Route
@@ -213,15 +264,29 @@ class LIFI {
     }
   }
 
+  /**
+   * Get the list of active routes.
+   * @return {Route[]} A list of routes.
+   */
   getActiveRoutes = (): Route[] => {
     return Object.values(this.activeRoutes).map((dict) => dict.route)
   }
 
+  /**
+   * Return the current route information for given route. The route has to be active.
+   * @param {Route} route - A route object.
+   * @return {Route} The updated route.
+   */
   getActiveRoute = (route: Route): Route | undefined => {
     return this.activeRoutes[route.id].route
   }
 
-  // Balances
+  /**
+   * Returns the balances of a specific token a wallet holds across all aggregated chains.
+   * @param {string} walletAddress - A wallet address.
+   * @param {Token} token - A Token object.
+   * @return {Promise<TokenAmount | null>} An object containing the token and the amounts on different chains.
+   */
   getTokenBalance = async (
     walletAddress: string,
     token: Token
@@ -237,6 +302,12 @@ class LIFI {
     return balances.getTokenBalance(walletAddress, token)
   }
 
+  /**
+   * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
+   * @param {string} walletAddress - A wallet address.
+   * @param {Token[]} tokens - A list of Token objects.
+   * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
+   */
   getTokenBalances = async (
     walletAddress: string,
     tokens: Token[]
@@ -252,6 +323,12 @@ class LIFI {
     return balances.getTokenBalances(walletAddress, tokens)
   }
 
+  /**
+   * This method queries the balances of tokens for a specific list of chains for a given wallet.
+   * @param {string} walletAddress - A walletaddress.
+   * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
+   * @return {Promise<{ [chainId: number]: TokenAmount[] }} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
+   */
   getTokenBalancesForChains = async (
     walletAddress: string,
     tokensByChain: { [chainId: number]: Token[] }
