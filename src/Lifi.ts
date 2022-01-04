@@ -304,7 +304,7 @@ class LIFI {
 
   /**
    * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
-   * @param {string} walletAddress - A walletaddress.
+   * @param {string} walletAddress - A wallet address.
    * @param {Token[]} tokens - A list of Token objects.
    * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
    */
