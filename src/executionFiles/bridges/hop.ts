@@ -10,30 +10,6 @@ import { ethers, Signer } from 'ethers'
 
 import { ChainId, ChainKey, CoinKey, getChainByKey } from '../../types'
 
-const receivedContractTypes: Array<ethers.utils.ParamType> = [
-  ethers.utils.ParamType.from({
-    indexed: false,
-    internalType: 'uint256',
-    name: 'value',
-    type: 'uint256',
-  }),
-]
-
-const bondedContractTypes: Array<ethers.utils.ParamType> = [
-  ethers.utils.ParamType.from({
-    indexed: false,
-    internalType: 'uint256',
-    name: 'amount',
-    type: 'uint256',
-  }),
-]
-interface BondedSwapped {
-  amount: BigNumber
-}
-interface ReceivedSwapped {
-  value: BigNumber
-}
-
 let hop: Hop | undefined = undefined
 
 let bridges: { [k: string]: HopBridge } = {}
@@ -133,15 +109,20 @@ const waitForDestinationChainReceipt = (
   })
 }
 
-const parseReceipt = (tx: TransactionResponse, receipt: TransactionReceipt) => {
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+) => {
   const result = {
     fromAmount: '0',
     toAmount: '0',
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
+    toTokenAddress: ethers.constants.AddressZero,
   }
-  const decoder = new ethers.utils.AbiCoder()
 
   // gas
   result.gasUsed = receipt.gasUsed.toString()
@@ -149,22 +130,42 @@ const parseReceipt = (tx: TransactionResponse, receipt: TransactionReceipt) => {
   result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
 
   // log
-  const boondedLog = receipt.logs.find((log) => log.address === receipt.to) // info about initial funds
-  const receivedLog = receipt.logs[2] // info about received funds
-  if (boondedLog) {
-    const parsed = decoder.decode(
-      bondedContractTypes,
-      boondedLog.data
-    ) as unknown as BondedSwapped
-    result.fromAmount = parsed.amount.toString()
-  }
-  if (receivedLog) {
-    const parsed = decoder.decode(
-      receivedContractTypes,
-      receivedLog.data
-    ) as unknown as ReceivedSwapped
-    result.toAmount = parsed.value.toString()
-  }
+  // > TokenSwap
+  const abiTokenSwap = [
+    'event TokenSwap(address indexed buyer, uint256 tokensSold, uint256 tokensBought, uint128 soldId, uint128 boughtId)',
+  ]
+  const interfaceTokenSwap = new ethers.utils.Interface(abiTokenSwap)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTokenSwap.parseLog(log)
+      // only amount of swapped hToken not of actual starting token
+      // const fromAmount = parsed.args.tokensSold as BigNumber
+      // result.fromAmount = fromAmount.toString()
+      const toAmount = parsed.args.tokensBought as BigNumber
+      result.toAmount = toAmount.toString()
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
+  // Fallback
+  // > transfer ERC20
+  const abiTransfer = [
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]
+  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['to'].toLowerCase() === toAddress) {
+        result.toAmount = parsed.args['value'].toString()
+        result.toTokenAddress = log.address.toLowerCase()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
   return result
 }
 

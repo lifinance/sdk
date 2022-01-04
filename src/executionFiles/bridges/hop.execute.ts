@@ -141,6 +141,8 @@ export class HopExecutionManager {
 
     // -> parse receipt & set status
     const parsedReceipt = hop.parseReceipt(
+      await signer.getAddress(),
+      step.action.toToken.address,
       crossProcess.txHash,
       destinationTxReceipt
     )
