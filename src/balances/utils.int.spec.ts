@@ -28,6 +28,10 @@ describe('balances utils', () => {
         // set amount
         expect(tokenBalance.amount).toBeDefined()
         expect(new BigNumber(tokenBalance.amount).gte(0)).toBeTruthy()
+
+        // contain block number
+        expect(tokenBalance.blockNumber).toBeDefined()
+        expect(tokenBalance.blockNumber).toBeGreaterThan(0)
       }
     }
 
