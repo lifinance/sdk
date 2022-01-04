@@ -6,6 +6,8 @@ import axios from 'axios'
 
 import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
+import { BigNumber, ethers } from 'ethers'
+import { ParsedReceipt } from '../../types'
 
 const apiUri = 'https://bridgeapi.anyswap.exchange'
 
@@ -155,35 +157,60 @@ const getTransferStatus = async (txHash: string) => {
 //   }
 // }
 
-const parseReceipt = (tx: TransactionResponse, receipt: TransactionReceipt) => {
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): ParsedReceipt => {
   const result = {
     fromAmount: '0',
     toAmount: '0',
+    toTokenAddress: toTokenAddress,
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
   }
-  // const decoder = new ethers.utils.AbiCoder()
 
   // gas
   result.gasUsed = receipt.gasUsed.toString()
   result.gasPrice = tx.gasPrice?.toString() || '0'
   result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
 
-  // log
-  // const boondedLog = receipt.logs.find((log) => log.address === receipt.to) // info about initial funds
-  // const receivedLog = receipt.logs[2] // info about received funds
-  // if (boondedLog) {
-  //   const parsed = decoder.decode(bondedContractTypes, boondedLog.data) as unknown as BondedSwapped
-  //   result.fromAmount = parsed.amount.toString()
-  // }
-  // if (receivedLog) {
-  //   const parsed = decoder.decode(
-  //     receivedContractTypes,
-  //     receivedLog.data,
-  //   ) as unknown as ReceivedSwapped
-  //   result.toAmount = parsed.value.toString()
-  // }
+  // logs
+  // > Relay
+  const abiSwap = [
+    'event LogAnySwapIn(bytes32 indexed txhash, address indexed token, address indexed to, uint amount, uint fromChainID, uint toChainID)',
+  ]
+  const interfaceSwap = new ethers.utils.Interface(abiSwap)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceSwap.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      result.toAmount = amount.toString()
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
+  // Fallback
+  // > transfer ERC20
+  const abiTransfer = [
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]
+  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['to'].toLowerCase() === toAddress) {
+        result.toAmount = parsed.args['value'].toString()
+        result.toTokenAddress = log.address.toLowerCase()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
   return result
 }
 
