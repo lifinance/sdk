@@ -25,13 +25,17 @@ export const balanceCheck = async (signer: ethers.Signer, step: Step) => {
         const current = currentBalance
           .shiftedBy(-tokenAmount.decimals)
           .toFixed()
-        const errorMessage =
+        let errorMessage =
           `Your ${tokenAmount.symbol} balance is too low, ` +
           `you try to transfer ${neeeded} ${tokenAmount.symbol}, ` +
           `but your wallet only holds ${current} ${tokenAmount.symbol}. ` +
-          `No funds have been sent.` +
-          `If the problem consists, please delete this transfer and ` +
-          `start a new one with a maximum of ${current} ${tokenAmount.symbol}.`
+          `No funds have been sent. `
+
+        if (!currentBalance.isZero()) {
+          errorMessage +=
+            `If the problem consists, please delete this transfer and ` +
+            `start a new one with a maximum of ${current} ${tokenAmount.symbol}.`
+        }
 
         throw Error(errorMessage)
       }

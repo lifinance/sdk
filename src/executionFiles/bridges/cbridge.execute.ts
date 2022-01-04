@@ -69,10 +69,11 @@ export class CbridgeExecutionManager {
 
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await Lifi.getStepTransaction(
-          personalizedStep
-        )
-        if (!transactionRequest) {
+        const updatedStep = await Lifi.getStepTransaction(personalizedStep)
+        // update step
+        Object.assign(step, updatedStep)
+
+        if (!step.transactionRequest) {
           crossProcess.errorMessage = 'Unable to prepare Transaction'
           setStatusFailed(update, status, crossProcess)
           throw crossProcess.errorMessage
@@ -84,7 +85,7 @@ export class CbridgeExecutionManager {
         update(status)
         if (!this.shouldContinue) return status
 
-        tx = await signer.sendTransaction(transactionRequest)
+        tx = await signer.sendTransaction(step.transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
         crossProcess.status = 'PENDING'
@@ -119,9 +120,12 @@ export class CbridgeExecutionManager {
       status,
       'Wait for Receiving Chain'
     )
+    let destinationTx: TransactionResponse
     let destinationTxReceipt: TransactionReceipt
     try {
-      destinationTxReceipt = await cbridge.waitForDestinationChainReceipt(step)
+      const claimed = await cbridge.waitForDestinationChainReceipt(step)
+      destinationTx = claimed.tx
+      destinationTxReceipt = claimed.receipt
     } catch (e: any) {
       waitForTxProcess.errorMessage = 'Failed waiting'
       if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
@@ -131,13 +135,18 @@ export class CbridgeExecutionManager {
     }
 
     // -> parse receipt & set status
-    // const parsedReceipt = cbridge.parseReceipt(crossProcess.txHash, destinationTxReceipt)
+    const parsedReceipt = cbridge.parseReceipt(
+      await signer.getAddress(),
+      action.toToken.address,
+      destinationTx,
+      destinationTxReceipt
+    )
     waitForTxProcess.txHash = destinationTxReceipt.transactionHash
     waitForTxProcess.txLink =
       toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
     waitForTxProcess.message = 'Funds Received:'
-    // status.fromAmount = parsedReceipt.fromAmount
-    // status.toAmount = parsedReceipt.toAmount
+    status.fromAmount = step.action.fromAmount
+    status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     status.status = 'DONE'
     setStatusDone(update, status, waitForTxProcess)

@@ -1,11 +1,20 @@
 import axios from 'axios'
-import { ethers } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from '@ethersproject/providers'
 
-import { CrossStep, LifiStep } from '../../types'
+import {
+  CrossStep,
+  findWrappedGasOnChain,
+  LifiStep,
+  ParsedReceipt,
+} from '../../types'
 import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
 
-const apiUrl = 'https://cbridge-v2-prod.celer.network/v1/'
+const apiUrl = 'https://cbridge-prod2.celer.network/v1/'
 
 enum TransferHistoryStatus {
   TRANSFER_UNKNOWN = 0,
@@ -91,12 +100,20 @@ const getTransferHistory = async (userAddress: string) => {
 const waitForCompletion = async (
   step: CrossStep | LifiStep
 ): Promise<cTransferHistory> => {
+  // check
+  if (!step.estimate.data.initiator) {
+    throw new Error('cBridges requires initiator to find transfer')
+  }
+  if (!step.estimate.data.transferId) {
+    throw new Error('cBridge requires transferId to find transfer')
+  }
+
   // loop
   while (true) {
     // get Details
-    const history = await getTransferHistory(step.action.fromAddress!).catch(
-      () => []
-    )
+    const history = await getTransferHistory(
+      step.estimate.data.initiator
+    ).catch(() => [])
     const details = history.find(
       (entry) => entry.transfer_id === step.estimate.data.transferId
     )
@@ -116,7 +133,10 @@ const waitForCompletion = async (
 
 const waitForDestinationChainReceipt = async (
   step: CrossStep | LifiStep
-): Promise<ethers.providers.TransactionReceipt> => {
+): Promise<{
+  tx: ethers.providers.TransactionResponse
+  receipt: ethers.providers.TransactionReceipt
+}> => {
   const history = await waitForCompletion(step)
 
   try {
@@ -125,15 +145,81 @@ const waitForDestinationChainReceipt = async (
     const rpc = getRpcProvider(step.action.toChainId)
     const tx = await rpc.getTransaction(txHash)
     const receipt = await tx.wait()
-    return receipt
+    return {
+      tx,
+      receipt,
+    }
   } catch (e) {
     // transaction may not be included in our RPC yet
     return waitForDestinationChainReceipt(step)
   }
 }
 
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): ParsedReceipt => {
+  const result = {
+    fromAmount: '0',
+    toAmount: '0',
+    toTokenAddress: toTokenAddress,
+    gasUsed: '0',
+    gasPrice: '0',
+    gasFee: '0',
+  }
+
+  // gas
+  result.gasUsed = receipt.gasUsed.toString()
+  result.gasPrice = tx.gasPrice?.toString() || '0'
+  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+
+  // logs
+  // > Relay
+  const abiRelay = [
+    'event Relay(bytes32 transferId, address sender, address receiver, ' +
+      'address token, uint256 amount, uint64 srcChainId, bytes32 srcTransferId )',
+  ]
+  const interfaceRelay = new ethers.utils.Interface(abiRelay)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceRelay.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      result.toAmount = amount.toString()
+      const token = (parsed.args.token as string).toLowerCase()
+      const wrapped = findWrappedGasOnChain(tx.chainId)
+      result.toTokenAddress =
+        wrapped.address === token ? ethers.constants.AddressZero : token
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
+  // Fallback
+  // > transfer ERC20
+  const abiTransfer = [
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]
+  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
+  receipt.logs.forEach((log) => {
+    try {
+      const parsed = interfaceTransfer.parseLog(log)
+      if (parsed.args['to'].toLowerCase() === toAddress) {
+        result.toAmount = parsed.args['value'].toString()
+        result.toTokenAddress = log.address.toLowerCase()
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  })
+
+  return result
+}
+
 const cbridge = {
   waitForDestinationChainReceipt,
+  parseReceipt,
 }
 
 export default cbridge
