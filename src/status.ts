@@ -31,13 +31,18 @@ export class StatusManager {
    * @param  {Step} step  The current step in execution
    * @return {Execution, UpdateExecution}       The initialized execution object for this step and a function to update this step
    */
-  initExecutionObject = (step: Step) => {
+  initExecutionObject = (
+    step: Step
+  ): { currentExecution: Execution; updateExecution: UpdateExecution } => {
     const currentExecution =
       step.execution || (deepClone(emptyExecution) as Execution)
+
     const updateExecution = (newExecution: Execution) => {
       step.execution = newExecution
+      this.sortProcesses(step.execution)
       this.settings.updateCallback(this.route)
     }
+
     if (!step.execution) {
       updateExecution(currentExecution)
     }
@@ -59,29 +64,29 @@ export class StatusManager {
     execution: Execution,
     message: ProcessMessage,
     params?: object
-  ) => {
-    const process = execution.process.find((p) => p.id === id)
+  ): Process => {
+    let process = execution.process.find((p) => p.id === id)
+
     if (process) {
       execution.status = 'PENDING'
-      updateExecution(execution)
-      return process
-    }
-    const newProcess: Process = {
-      id: id,
-      startedAt: Date.now(),
-      message: message,
-      status: 'PENDING',
-    }
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        newProcess[key] = value
+    } else {
+      process = {
+        id: id,
+        startedAt: Date.now(),
+        message: message,
+        status: 'PENDING',
       }
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          process[key] = value
+        }
+      }
+
+      execution.process.push(process)
     }
 
-    execution.status = 'PENDING'
-    execution.process.push(newProcess)
     updateExecution(execution)
-    return newProcess
+    return process
   }
 
   /**
@@ -97,7 +102,7 @@ export class StatusManager {
     execution: Execution,
     currentProcess: Process,
     params?: object
-  ) => {
+  ): void => {
     execution.status = 'FAILED'
     currentProcess.status = 'FAILED'
     currentProcess.failedAt = Date.now()
@@ -123,7 +128,7 @@ export class StatusManager {
     execution: Execution,
     currentProcess: Process,
     params?: object
-  ) => {
+  ): void => {
     currentProcess.status = 'DONE'
     currentProcess.doneAt = Date.now()
     if (params) {
@@ -131,6 +136,27 @@ export class StatusManager {
         currentProcess[key] = value
       }
     }
+
     updateExecution(execution)
+  }
+
+  // move ongoing processes to the end
+  private sortProcesses = (execution: Execution): void => {
+    execution.process.sort((processA, processB) => {
+      if (processA.status === processB.status) {
+        return 0
+      }
+
+      // if A is ongoing and B not, move B in front of A
+      if (this.isOngoing(processA) && !this.isOngoing(processB)) {
+        return 1
+      }
+
+      return -1
+    })
+  }
+
+  private isOngoing = (process: Process): boolean => {
+    return process.status === 'PENDING' || process.status === 'ACTION_REQUIRED'
   }
 }
