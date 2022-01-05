@@ -5,6 +5,7 @@ import {
 import { BigNumber, ethers } from 'ethers'
 
 import { ParsedReceipt } from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 const swappedTypes: Array<ethers.utils.ParamType> = [
   // ethers.utils.ParamType.from({
@@ -53,25 +54,15 @@ interface Swapped {
   to: string
 }
 
-const parseReceipt = async (
-  tx: TransactionResponse,
-  receipt: TransactionReceipt
-): Promise<ParsedReceipt> => {
+const parseSwappedEvent = (params: { receipt: TransactionReceipt }) => {
+  const { receipt } = params
+
   const result = {
     fromAmount: '0',
     toAmount: '0',
-    gasUsed: '0',
-    gasPrice: '0',
-    gasFee: '0',
   }
+
   const decoder = new ethers.utils.AbiCoder()
-
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
-
-  // log
   receipt.logs.forEach((log) => {
     try {
       const parsed = decoder.decode(
@@ -92,6 +83,30 @@ const parseReceipt = async (
   })
 
   return result
+}
+
+const parseReceipt = async (
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): Promise<ParsedReceipt> => {
+  let result = {
+    fromAmount: '0',
+    toAmount: '0',
+    gasUsed: '0',
+    gasPrice: '0',
+    gasFee: '0',
+  }
+
+  // value (if native token is sent)
+  result.fromAmount = tx.value.toString()
+
+  // swapped event
+  result = {
+    ...result,
+    ...parseSwappedEvent({ receipt }),
+  }
+
+  return defaultReceiptParsing({ result, tx, receipt, toAddress: tx.from })
 }
 
 export const uniswap = {

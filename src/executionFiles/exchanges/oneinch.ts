@@ -6,6 +6,7 @@ import {
 import { BigNumber, ethers } from 'ethers'
 
 import { ParsedReceipt } from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 // const SUPPORTED_CHAINS = [1, 56, 137]
 const baseURL = 'https://api.1inch.exchange/v3.0/'
@@ -56,38 +57,47 @@ interface Swapped {
   srcToken: string
 }
 
+const parseSwappedEvent = (params: { receipt: TransactionReceipt }) => {
+  const { receipt } = params
+
+  const log = receipt.logs.find((log) => log.address === receipt.to)
+  try {
+    if (log) {
+      const decoder = new ethers.utils.AbiCoder()
+      const parsed = decoder.decode(
+        swappedTypes,
+        log.data
+      ) as unknown as Swapped
+      return {
+        fromAmount: parsed.spentAmount.toString(),
+        toAmount: parsed.returnAmount.toString(),
+      }
+    }
+  } catch (e) {}
+}
+
 const parseReceipt = async (
   tx: TransactionResponse,
   receipt: TransactionReceipt
 ): Promise<ParsedReceipt> => {
-  const result = {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
   }
-  const decoder = new ethers.utils.AbiCoder()
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+  // value (if native token is sent)
+  result.fromAmount = tx.value.toString()
 
-  // log
-  try {
-    const log = receipt.logs.find((log) => log.address === receipt.to)
-    if (log) {
-      const parsed = decoder.decode(
-        swappedTypes,
-        log.data
-      ) as unknown as Swapped
-      result.fromAmount = parsed.spentAmount.toString()
-      result.toAmount = parsed.returnAmount.toString()
-    }
-  } catch (e) {}
+  // swapped event
+  result = {
+    ...result,
+    ...parseSwappedEvent({ receipt }),
+  }
 
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress: tx.from })
 }
 
 export const oneinch = {
