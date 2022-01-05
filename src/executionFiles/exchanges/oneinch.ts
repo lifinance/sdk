@@ -1,4 +1,3 @@
-/* eslint-disable max-params */
 import {
   TransactionReceipt,
   TransactionResponse,
