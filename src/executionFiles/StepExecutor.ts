@@ -10,6 +10,7 @@ import {
   EnforcedObjectProperties,
   ExecutionSettings,
   Route,
+  getChainById,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -57,23 +58,47 @@ export class StepExecutor {
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
-      // change status to CHAIN_SWITCH_REQUIRED and return step without currentExecution
+      // -> set status message
       const { currentExecution, updateExecution } =
         this.statusManager.initExecutionObject(step)
       currentExecution.status = 'CHAIN_SWITCH_REQUIRED'
       updateExecution(currentExecution)
-
-      const updatedSigner = await this.settings.switchChainHook(
-        step.action.fromChainId
+      const chain = getChainById(step.action.fromChainId)
+      const switchProcess = this.statusManager.createAndPushProcess(
+        'switchProcess',
+        updateExecution,
+        currentExecution,
+        `Change Chain to ${chain.name}`
       )
-      if (
-        updatedSigner &&
-        (await updatedSigner.getChainId()) === step.action.fromChainId
-      ) {
-        signer = updatedSigner
-      } else {
-        throw Error('CHAIN SWITCH REQUIRED')
+      let updatedSigner
+      try {
+        updatedSigner = await this.settings.switchChainHook(
+          step.action.fromChainId
+        )
+        if (
+          updatedSigner &&
+          (await updatedSigner.getChainId()) === step.action.fromChainId
+        ) {
+          signer = updatedSigner
+        } else {
+          throw Error('CHAIN SWITCH REQUIRED')
+        }
+      } catch (e: any) {
+        if (e.message) switchProcess.errorMessage = e.message
+        if (e.code) switchProcess.errorCode = e.code
+        this.statusManager.setStatusFailed(
+          updateExecution,
+          currentExecution,
+          switchProcess
+        )
+        throw e
       }
+
+      this.statusManager.setStatusDone(
+        updateExecution,
+        currentExecution,
+        switchProcess
+      )
     }
 
     switch (step.type) {
