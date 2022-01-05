@@ -30,7 +30,7 @@ export class HorizonExecutionManager {
       updateExecution,
       currentExecution,
       'Set Allowance and Cross',
-      { currentExecution: 'ACTION_REQUIRED' }
+      { status: 'ACTION_REQUIRED' }
     )
     let waitForBlocksProcess: Process
     let mintProcess: Process
@@ -159,7 +159,7 @@ export class HorizonExecutionManager {
               updateExecution,
               currentExecution,
               'Wait for Block Confirmations',
-              { currentExecution: 'PENDING' }
+              { status: 'PENDING' }
             )
           }
 
@@ -180,7 +180,7 @@ export class HorizonExecutionManager {
               currentExecution,
               'Minting tokens',
               {
-                currentExecution: 'PENDING',
+                status: 'PENDING',
               }
             )
           }
