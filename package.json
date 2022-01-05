@@ -50,7 +50,7 @@
     "@ethersproject/abi": "^5.5.0",
     "@ethersproject/contracts": "^5.4.0",
     "@hop-protocol/sdk": "^0.0.1-beta.282",
-    "@lifinance/types": "0.9.2",
+    "@lifinance/types": "0.9.3",
     "axios": "^0.24.0",
     "bignumber.js": "^9.0.1",
     "bridge-sdk": "^2.13.0",
