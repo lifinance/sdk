@@ -71,6 +71,22 @@ export const setStatusFailed = (
   updateStatus(status)
 }
 
+export const setStatusCancelled = (
+  updateStatus: UpdateExecution,
+  status: Execution,
+  currentProcess: Process,
+  params?: object
+): void => {
+  currentProcess.status = 'CANCELLED'
+  currentProcess.doneAt = Date.now()
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      currentProcess[key] = value
+    }
+  }
+  updateStatus(status)
+}
+
 export const setStatusDone = (
   updateStatus: UpdateExecution,
   status: Execution,
