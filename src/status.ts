@@ -124,7 +124,7 @@ export class StatusManager {
     currentProcess: Process,
     params?: object
   ) => {
-    currentProcess.execution = 'DONE'
+    currentProcess.status = 'DONE'
     currentProcess.doneAt = Date.now()
     if (params) {
       for (const [key, value] of Object.entries(params)) {

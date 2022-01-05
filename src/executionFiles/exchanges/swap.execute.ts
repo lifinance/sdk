@@ -82,7 +82,7 @@ export class SwapExecutionManager {
         }
 
         // -> set currentExecution
-        swapProcess.currentExecution = 'ACTION_REQUIRED'
+        swapProcess.status = 'ACTION_REQUIRED'
         swapProcess.message = `Sign Transaction`
         updateExecution(currentExecution)
         if (!this.shouldContinue) return currentExecution // stop before user interaction is needed
@@ -104,7 +104,7 @@ export class SwapExecutionManager {
 
     // Wait for Transaction
     // -> set currentExecution
-    swapProcess.currentExecution = 'PENDING'
+    swapProcess.status = 'PENDING'
     swapProcess.txHash = tx.hash
     swapProcess.txLink =
       fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
