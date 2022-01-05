@@ -49,7 +49,7 @@ export const checkAllowance = async (
         )
 
         // update currentExecution
-        allowanceProcess.currentExecution = 'PENDING'
+        allowanceProcess.status = 'PENDING'
         allowanceProcess.txHash = approveTx.hash
         allowanceProcess.txLink =
           chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
