@@ -120,7 +120,7 @@ export const getTransferredNativeTokenBalanceFromChain = async (params: {
       }
 
       return {
-        tokenAddress: ethers.constants.AddressZero,
+        toTokenAddress: ethers.constants.AddressZero,
         fromAddress: tx.from.toLowerCase(),
         toAddress: toAddress,
         toAmount: amount,
@@ -182,33 +182,45 @@ export const getTransferredTokenBalance = (params: {
   ]
   const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
 
-  for (const log of receipt.logs) {
+  const results = receipt.logs.map((log) => {
     try {
       const parsed = interfaceTransfer.parseLog(log)
       const result = {
-        tokenAddress: log.address.toLowerCase(),
+        toTokenAddress: log.address.toLowerCase(),
         fromAddress: parsed.args['from'].toLowerCase(),
         toAddress: parsed.args['to'].toLowerCase(),
         toAmount: parsed.args['value'].toString(),
       }
 
       if (fromAddress && result.fromAddress !== fromAddress.toLowerCase()) {
-        continue
+        return
       }
 
       if (toAddress && result.toAddress !== toAddress.toLowerCase()) {
-        continue
+        return
       }
 
-      if (tokenAddress && result.tokenAddress !== tokenAddress.toLowerCase()) {
-        continue
+      if (
+        tokenAddress &&
+        result.toTokenAddress !== tokenAddress.toLowerCase()
+      ) {
+        return
       }
 
       return result
     } catch (e) {
       // find right log by trying to parse them
     }
-  }
+  })
 
-  return undefined
+  const cleandedResults = results.filter((result) => result !== undefined)
+  if (cleandedResults.length) {
+    if (fromAddress) {
+      // return first token moved to user
+      return cleandedResults[0]
+    } else {
+      // return last token moved to user
+      return cleandedResults[cleandedResults.length - 1]
+    }
+  }
 }

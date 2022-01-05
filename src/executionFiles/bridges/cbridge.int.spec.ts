@@ -14,8 +14,21 @@ async function getAndTestTransaction(
   const provider = getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
-  const parsed = cbridge.parseReceipt(toAddress, toTokenAddress, tx, receipt)
-  expect(parsed).toEqual(expected)
+  const parsed = await cbridge.parseReceipt(
+    toAddress,
+    toTokenAddress,
+    tx,
+    receipt
+  )
+  const needed = {
+    toAmount: parsed.toAmount,
+    gasUsed: parsed.gasUsed,
+    gasPrice: parsed.gasPrice,
+    gasFee: parsed.gasFee,
+    toTokenAddress: parsed.toTokenAddress,
+  }
+
+  expect(needed).toEqual(expected)
 }
 
 describe('cBridge', () => {
@@ -28,7 +41,6 @@ describe('cBridge', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0x04068da6c83afcfa0e13ba15a6696662335d5b75'
         const expected = {
-          fromAmount: '0',
           toAmount: '20115227',
           toTokenAddress,
           gasUsed: '130331',
@@ -54,7 +66,6 @@ describe('cBridge', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174'
         const expected = {
-          fromAmount: '0',
           toAmount: '77709575',
           toTokenAddress,
           gasUsed: '142320',
@@ -80,7 +91,6 @@ describe('cBridge', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d'
         const expected = {
-          fromAmount: '0',
           toAmount: '18546871537774838494',
           toTokenAddress,
           gasUsed: '129129',
@@ -106,7 +116,6 @@ describe('cBridge', () => {
         const toAddress = '0x806156cf758bf7e9cd4f06deff4f6ed01b8856d1'
         const toTokenAddress = '0x4fabb145d64652a948d72533023f6e7a623c7c53'
         const expected = {
-          fromAmount: '0',
           toAmount: '1016303097328024710006',
           toTokenAddress,
           gasUsed: '161836',
@@ -130,7 +139,6 @@ describe('cBridge', () => {
         const toAddress = '0x917a7277903148cDA75C4e761ed7f483470eA28C'
         const toTokenAddress = '0x0000000000000000000000000000000000000000'
         const expected = {
-          fromAmount: '0',
           toAmount: '260971291155827241',
           toTokenAddress,
           gasUsed: '139512',

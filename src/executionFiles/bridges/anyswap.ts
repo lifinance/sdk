@@ -8,6 +8,7 @@ import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
 import { BigNumber, ethers } from 'ethers'
 import { ParsedReceipt } from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 const apiUri = 'https://bridgeapi.anyswap.exchange'
 
@@ -157,13 +158,33 @@ const getTransferStatus = async (txHash: string) => {
 //   }
 // }
 
+const parseLogAnySwapInEvent = (params: { receipt: TransactionReceipt }) => {
+  const { receipt } = params
+
+  const abiSwap = [
+    'event LogAnySwapIn(bytes32 indexed txhash, address indexed token, address indexed to, uint amount, uint fromChainID, uint toChainID)',
+  ]
+  const interfaceSwap = new ethers.utils.Interface(abiSwap)
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceSwap.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      return {
+        toAmount: amount.toString(),
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+}
+
 const parseReceipt = (
   toAddress: string,
   toTokenAddress: string,
   tx: TransactionResponse,
   receipt: TransactionReceipt
-): ParsedReceipt => {
-  const result = {
+): Promise<ParsedReceipt> => {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
     toTokenAddress: toTokenAddress,
@@ -172,46 +193,13 @@ const parseReceipt = (
     gasFee: '0',
   }
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
-
-  // logs
   // > Relay
-  const abiSwap = [
-    'event LogAnySwapIn(bytes32 indexed txhash, address indexed token, address indexed to, uint amount, uint fromChainID, uint toChainID)',
-  ]
-  const interfaceSwap = new ethers.utils.Interface(abiSwap)
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceSwap.parseLog(log)
-      const amount = parsed.args.amount as BigNumber
-      result.toAmount = amount.toString()
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
+  result = {
+    ...result,
+    ...parseLogAnySwapInEvent({ receipt }),
+  }
 
-  // Fallback
-  // > transfer ERC20
-  const abiTransfer = [
-    'event Transfer(address indexed from, address indexed to, uint256 value)',
-  ]
-  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceTransfer.parseLog(log)
-      if (parsed.args['to'].toLowerCase() === toAddress) {
-        result.toAmount = parsed.args['value'].toString()
-        result.toTokenAddress = log.address.toLowerCase()
-      }
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
-
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
 const anyswap = {

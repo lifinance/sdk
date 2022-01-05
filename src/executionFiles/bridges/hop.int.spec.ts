@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { getRpcProvider } from '../../connectors'
-import { ParsedReceipt, ChainId } from '../../types'
+import { ChainId, ParsedReceipt } from '../../types'
 import hop from './hop'
 
 jest.setTimeout(10_000)
@@ -15,8 +15,16 @@ async function getAndTestTransaction(
   const provider = getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
-  const parsed = hop.parseReceipt(toAddress, toTokenAddress, tx, receipt)
-  expect(parsed).toEqual(expected)
+  const parsed = await hop.parseReceipt(toAddress, toTokenAddress, tx, receipt)
+  const needed = {
+    toAmount: parsed.toAmount,
+    gasUsed: parsed.gasUsed,
+    gasPrice: parsed.gasPrice,
+    gasFee: parsed.gasFee,
+    toTokenAddress: parsed.toTokenAddress,
+  }
+
+  expect(needed).toEqual(expected)
 }
 
 describe('hop', () => {
@@ -30,7 +38,6 @@ describe('hop', () => {
         const toAddress = '0x353285385ed77d1e90d3788c74bdfa2534c11ebd'
         const toTokenAddress = ethers.constants.AddressZero
         const expected = {
-          fromAmount: '0',
           toAmount: '171136016263698111',
           toTokenAddress,
           gasUsed: '1287429',
@@ -55,7 +62,6 @@ describe('hop', () => {
         const toAddress = '0xba966690326f93bb2353afb327afba021605209a'
         const toTokenAddress = '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1'
         const expected = {
-          fromAmount: '0',
           toAmount: '4447904046911778062136',
           toTokenAddress,
           gasUsed: '1486679',
@@ -82,7 +88,6 @@ describe('hop', () => {
         const toAddress = '0x4f43c9f389ff44ebf7f3363c76250aa2ff43feb3'
         const toTokenAddress = ethers.constants.AddressZero
         const expected = {
-          fromAmount: '0',
           toAmount: '199502386217315303857',
           toTokenAddress,
           gasUsed: '288258',
@@ -107,7 +112,6 @@ describe('hop', () => {
         const toAddress = '0xbeeb1597f83ab314d7f74d11670aaaacc53d822c'
         const toTokenAddress = '0xddafbb505ad214d7b80b1f830fccc89b60fb7a83'
         const expected = {
-          fromAmount: '0',
           toAmount: '36261142',
           toTokenAddress,
           gasUsed: '305776',

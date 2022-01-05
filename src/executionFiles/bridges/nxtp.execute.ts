@@ -376,7 +376,7 @@ export class NXTPExecutionManager {
       }
     } while (balanceBlockNumber < receipt.blockNumber)
 
-    const parsedReceipt = nxtp.parseReceipt(
+    const parsedReceipt = await nxtp.parseReceipt(
       await signer.getAddress(),
       action.toToken.address,
       claimTx,

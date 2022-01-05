@@ -131,7 +131,7 @@ export class AnySwapExecutionManager {
     }
 
     // -> parse receipt & set status
-    const parsedReceipt = anyswap.parseReceipt(
+    const parsedReceipt = await anyswap.parseReceipt(
       await signer.getAddress(),
       step.action.toToken.address,
       crossProcess.txHash,

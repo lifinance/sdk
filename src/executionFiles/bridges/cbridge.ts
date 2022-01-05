@@ -13,6 +13,7 @@ import {
 } from '../../types'
 import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
+import { defaultReceiptParsing } from '../utils'
 
 const apiUrl = 'https://cbridge-prod2.celer.network/v1/'
 
@@ -155,13 +156,44 @@ const waitForDestinationChainReceipt = async (
   }
 }
 
+const parseRelayEvent = (params: {
+  tx: TransactionResponse
+  receipt: TransactionReceipt
+}) => {
+  const { tx, receipt } = params
+
+  const abiRelay = [
+    'event Relay(bytes32 transferId, address sender, address receiver, ' +
+      'address token, uint256 amount, uint64 srcChainId, bytes32 srcTransferId )',
+  ]
+  const interfaceRelay = new ethers.utils.Interface(abiRelay)
+  let result
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceRelay.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      const token = (parsed.args.token as string).toLowerCase()
+      const wrapped = findWrappedGasOnChain(tx.chainId)
+      result = {
+        toAmount: amount.toString(),
+        toTokenAddress:
+          wrapped.address === token ? ethers.constants.AddressZero : token,
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+
+  return result
+}
+
 const parseReceipt = (
   toAddress: string,
   toTokenAddress: string,
   tx: TransactionResponse,
   receipt: TransactionReceipt
-): ParsedReceipt => {
-  const result = {
+): Promise<ParsedReceipt> => {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
     toTokenAddress: toTokenAddress,
@@ -170,51 +202,13 @@ const parseReceipt = (
     gasFee: '0',
   }
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
-
-  // logs
   // > Relay
-  const abiRelay = [
-    'event Relay(bytes32 transferId, address sender, address receiver, ' +
-      'address token, uint256 amount, uint64 srcChainId, bytes32 srcTransferId )',
-  ]
-  const interfaceRelay = new ethers.utils.Interface(abiRelay)
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceRelay.parseLog(log)
-      const amount = parsed.args.amount as BigNumber
-      result.toAmount = amount.toString()
-      const token = (parsed.args.token as string).toLowerCase()
-      const wrapped = findWrappedGasOnChain(tx.chainId)
-      result.toTokenAddress =
-        wrapped.address === token ? ethers.constants.AddressZero : token
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
+  result = {
+    ...result,
+    ...parseRelayEvent({ tx, receipt }),
+  }
 
-  // Fallback
-  // > transfer ERC20
-  const abiTransfer = [
-    'event Transfer(address indexed from, address indexed to, uint256 value)',
-  ]
-  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceTransfer.parseLog(log)
-      if (parsed.args['to'].toLowerCase() === toAddress) {
-        result.toAmount = parsed.args['value'].toString()
-        result.toTokenAddress = log.address.toLowerCase()
-      }
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
-
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
 const cbridge = {

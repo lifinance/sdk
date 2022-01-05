@@ -135,7 +135,7 @@ export class CbridgeExecutionManager {
     }
 
     // -> parse receipt & set status
-    const parsedReceipt = cbridge.parseReceipt(
+    const parsedReceipt = await cbridge.parseReceipt(
       await signer.getAddress(),
       action.toToken.address,
       destinationTx,
