@@ -67,10 +67,16 @@ export const checkAllowance = async (
       statusManager.setStatusDone(update, currentExecution, allowanceProcess)
     }
   } catch (e: any) {
-    // -> set currentExecution
-    if (e.message) allowanceProcess.errorMessage = e.message
-    if (e.code) allowanceProcess.errorCode = e.code
-    statusManager.setStatusFailed(update, currentExecution, allowanceProcess)
-    throw e
+    // -> set status
+    if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+      allowanceProcess.txHash = e.replacement.hash
+      allowanceProcess.txLink =
+        chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
+    } else {
+      if (e.message) allowanceProcess.errorMessage = e.message
+      if (e.code) allowanceProcess.errorCode = e.code
+      statusManager.setStatusFailed(update, currentExecution, allowanceProcess)
+      throw e
+    }
   }
 }

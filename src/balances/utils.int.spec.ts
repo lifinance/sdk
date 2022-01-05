@@ -1,9 +1,12 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
+import Lifi from '..'
 
 import utils from './utils'
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
+
+jest.setTimeout(10000)
 
 describe('balances utils', () => {
   describe('getBalances Integration Tests', () => {
@@ -25,6 +28,10 @@ describe('balances utils', () => {
         // set amount
         expect(tokenBalance.amount).toBeDefined()
         expect(new BigNumber(tokenBalance.amount).gte(0)).toBeTruthy()
+
+        // contain block number
+        expect(tokenBalance.blockNumber).toBeDefined()
+        expect(tokenBalance.blockNumber).toBeGreaterThan(0)
       }
     }
 
@@ -71,6 +78,20 @@ describe('balances utils', () => {
         findDefaultToken(CoinKey.USDC, ChainId.OPT),
       ]
       await loadAndCompareTokenAmounts(walletAddress, tokens)
+    })
+
+    it('should handle empty lists', async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens: Token[] = []
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    })
+
+    it('should handle token lists with more than 100 tokens', async () => {
+      const walletAddress = defaultWalletAddress
+      const { tokens } = await Lifi.getPossibilities()
+      const ethTokens = tokens.filter((token) => token.chainId === ChainId.ETH) // > 1000 tokens on eth
+
+      await loadAndCompareTokenAmounts(walletAddress, ethTokens.slice(0, 150)) // chunk limit is 100
     })
   })
 })

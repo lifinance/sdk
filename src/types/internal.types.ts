@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import {
   CrossStep,
   Execution,
   LifiStep,
   Route,
+  RouteOptions,
   Step,
   SwapStep,
   Token,
@@ -11,6 +11,7 @@ import {
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { StatusManager } from '..'
+import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
@@ -34,39 +35,61 @@ export type ParsedReceipt = {
 export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
-  parseReceipt: (...args: any[]) => ParsedReceipt
-  settings: EnforcedObjectProperties<ExecutionSettings>
+  parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
+  // settings: EnforcedObjectProperties<ExecutionSettings>
   statusManager: StatusManager
 }
 
 export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
-  settings: EnforcedObjectProperties<ExecutionSettings>
+  // settings: EnforcedObjectProperties<ExecutionSettings>
   statusManager: StatusManager
+  hooks: Hooks
 }
 
 export type UpdateStep = (step: Step, execution: Execution) => void
 export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
+
+export type Config = {
+  apiUrl: string
+  rpcs: Record<ChainId, string[]>
+  multicallAddresses: Record<ChainId, string | undefined>
+  defaultExecutionSettings: Hooks
+  defaultRouteOptions: RouteOptions
+}
+
+export type ConfigUpdate = {
+  apiUrl?: string
+  rpcs?: Record<number, string[]>
+  multicallAddresses?: Record<number, string | undefined>
+  defaultExecutionSettings?: ExecutionSettings
+  defaultRouteOptions?: RouteOptions
+}
+
 export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
+export type GetPublicKeyHook = () => Promise<string | undefined>
+export type DecryptHook = (data: string) => Promise<string>
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
-  settings: EnforcedObjectProperties<ExecutionSettings>
-}
-
-export const DefaultExecutionSettings = {
-  updateCallback: () => {},
-  switchChainHook: () => new Promise<undefined>(() => {}),
+  settings: Hooks
 }
 
 export interface ExecutionSettings {
+  getPublicKeyHook?: GetPublicKeyHook
+  decryptHook?: DecryptHook
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
+}
+
+export interface Hooks extends ExecutionSettings {
+  updateCallback: CallbackFunction
+  switchChainHook: SwitchChainHook
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface

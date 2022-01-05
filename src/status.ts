@@ -2,9 +2,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import {
   emptyExecution,
-  EnforcedObjectProperties,
   Execution,
-  ExecutionSettings,
+  Hooks,
   Process,
   ProcessMessage,
   Route,
@@ -15,17 +14,14 @@ import { deepClone } from './utils'
 /**
  * Manages status updates of a route and provides various functions for tracking processes
  * @param  {Route} route  The route this StatusManger belongs to.
- * @param  {EnforcedObjectProperties<ExecutionSettings>} settings   The ExecutionSettings for this route
+ * @param  {Hooks} settings   The ExecutionSettings for this route
  * @return {StatusManager}       An instance of StatusManager.
  */
 export class StatusManager {
   route: Route
-  settings: EnforcedObjectProperties<ExecutionSettings>
+  settings: Hooks
 
-  constructor(
-    route: Route,
-    settings: EnforcedObjectProperties<ExecutionSettings>
-  ) {
+  constructor(route: Route, settings: Hooks) {
     this.route = route
     this.settings = settings
   }

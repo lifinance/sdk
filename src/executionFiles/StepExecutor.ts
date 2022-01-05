@@ -5,10 +5,9 @@ import { StatusManager } from '..'
 import {
   CrossStep,
   LifiStep,
+  Hooks,
   Step,
   SwapStep,
-  EnforcedObjectProperties,
-  ExecutionSettings,
   Route,
   getChainById,
 } from '../types'
@@ -18,13 +17,14 @@ import { HopExecutionManager } from './bridges/hop.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
 import { NXTPExecutionManager } from './bridges/nxtp.execute'
 import { oneinch } from './exchanges/oneinch'
+import { openocean } from './exchanges/openocean'
 import { paraswap } from './exchanges/paraswap'
 import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
 
 export class StepExecutor {
   route: Route
-  settings: EnforcedObjectProperties<ExecutionSettings>
+  settings: Hooks
   statusManager: StatusManager
   private swapExecutionManager = new SwapExecutionManager()
   private nxtpExecutionManager = new NXTPExecutionManager()
@@ -35,10 +35,7 @@ export class StepExecutor {
 
   executionStopped = false
 
-  constructor(
-    route: Route,
-    settings: EnforcedObjectProperties<ExecutionSettings>
-  ) {
+  constructor(route: Route, settings: Hooks) {
     this.route = route
     this.settings = settings
     this.statusManager = new StatusManager(route, settings)
@@ -55,7 +52,11 @@ export class StepExecutor {
     this.executionStopped = true
   }
 
-  executeStep = async (signer: Signer, step: Step): Promise<Step> => {
+  executeStep = async (
+    signer: Signer,
+    step: Step,
+    hooks: Hooks
+  ): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
       // -> set status message
@@ -104,7 +105,7 @@ export class StepExecutor {
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step)
+        await this.executeCross(signer, step, hooks)
         break
       case 'swap':
         await this.executeSwap(signer, step)
@@ -135,6 +136,11 @@ export class StepExecutor {
           ...swapParams,
           parseReceipt: oneinch.parseReceipt,
         })
+      case 'openocean':
+        return await this.swapExecutionManager.execute({
+          ...swapParams,
+          parseReceipt: openocean.parseReceipt,
+        })
       default:
         return await this.swapExecutionManager.execute({
           ...swapParams,
@@ -143,11 +149,15 @@ export class StepExecutor {
     }
   }
 
-  private executeCross = async (signer: Signer, step: CrossStep | LifiStep) => {
+  private executeCross = async (
+    signer: Signer,
+    step: CrossStep | LifiStep,
+    hooks: Hooks
+  ) => {
     const crossParams = {
       signer,
       step,
-      settings: this.settings,
+      hooks,
       statusManager: this.statusManager,
     }
 

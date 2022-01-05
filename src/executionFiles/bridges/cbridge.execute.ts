@@ -8,6 +8,7 @@ import Lifi from '../../Lifi'
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
+import { balanceCheck } from '../balanceCheck.execute'
 import cbridge from './cbridge'
 
 export class CbridgeExecutionManager {
@@ -62,14 +63,26 @@ export class CbridgeExecutionManager {
         // load exiting transaction
         tx = await signer.provider!.getTransaction(crossProcess.txHash)
       } else {
+        // check balance
+        await balanceCheck(signer, step)
+
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
-        const { tx: transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await Lifi.getStepTransaction(
           personalizedStep
         )
+        if (!transactionRequest) {
+          crossProcess.errorMessage = 'Unable to prepare Transaction'
+          statusManager.setStatusFailed(
+            updateExecution,
+            currentExecution,
+            crossProcess
+          )
+          throw crossProcess.errorMessage
+        }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
-        crossProcess.currentExecution = 'ACTION_REQUIRED'
+        crossProcess.status = 'ACTION_REQUIRED'
         crossProcess.message = 'Sign Transaction'
         updateExecution(currentExecution)
         if (!this.shouldContinue) return currentExecution
@@ -77,7 +90,7 @@ export class CbridgeExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        crossProcess.currentExecution = 'PENDING'
+        crossProcess.status = 'PENDING'
         crossProcess.txHash = tx.hash
         crossProcess.txLink =
           fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
@@ -87,14 +100,20 @@ export class CbridgeExecutionManager {
 
       await tx.wait()
     } catch (e: any) {
-      if (e.message) crossProcess.errorMessage = e.message
-      if (e.code) crossProcess.errorCode = e.code
-      statusManager.setStatusFailed(
-        updateExecution,
-        currentExecution,
-        crossProcess
-      )
-      throw e
+      if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+        crossProcess.txHash = e.replacement.hash
+        crossProcess.txLink =
+          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
+      } else {
+        if (e.message) crossProcess.errorMessage = e.message
+        if (e.code) crossProcess.errorCode = e.code
+        statusManager.setStatusFailed(
+          updateExecution,
+          currentExecution,
+          crossProcess
+        )
+        throw e
+      }
     }
 
     crossProcess.message = 'Transfer started: '

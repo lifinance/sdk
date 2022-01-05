@@ -9,6 +9,7 @@ import Lifi from '../../Lifi'
 import { ExecuteSwapParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
+import { balanceCheck } from '../balanceCheck.execute'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -62,11 +63,23 @@ export class SwapExecutionManager {
         // -> restore existing tx
         tx = await signer.provider!.getTransaction(swapProcess.txHash)
       } else {
+        // -> check balance
+        await balanceCheck(signer, step)
+
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
-        const { tx: transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await Lifi.getStepTransaction(
           personalizedStep
         )
+        if (!transactionRequest) {
+          swapProcess.errorMessage = 'Unable to prepare Transaction'
+          statusManager.setStatusFailed(
+            updateExecution,
+            currentExecution,
+            swapProcess
+          )
+          throw swapProcess.errorMessage
+        }
 
         // -> set currentExecution
         swapProcess.currentExecution = 'ACTION_REQUIRED'
@@ -103,19 +116,26 @@ export class SwapExecutionManager {
     try {
       receipt = await tx.wait()
     } catch (e: any) {
-      // -> set currentExecution
-      if (e.message) swapProcess.errorMessage = e.message
-      if (e.code) swapProcess.errorCode = e.code
-      statusManager.setStatusFailed(
-        updateExecution,
-        currentExecution,
-        swapProcess
-      )
-      throw e
+      // -> set status
+      if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+        swapProcess.txHash = e.replacement.hash
+        swapProcess.txLink =
+          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
+        receipt = e.replacement
+      } else {
+        if (e.message) swapProcess.errorMessage = e.message
+        if (e.code) swapProcess.errorCode = e.code
+        statusManager.setStatusFailed(
+          updateExecution,
+          currentExecution,
+          swapProcess
+        )
+        throw e
+      }
     }
 
-    // -> set currentExecution
-    const parsedReceipt = parseReceipt(tx, receipt)
+    // -> set status
+    const parsedReceipt = await parseReceipt(tx, receipt)
     swapProcess.message = 'Swapped:'
     currentExecution.fromAmount = parsedReceipt.fromAmount
     currentExecution.toAmount = parsedReceipt.toAmount

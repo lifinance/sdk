@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import axios from 'axios'
 import { Signer } from 'ethers'
-import { StatusManager } from '.'
 
 import balances from './balances'
+import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
@@ -14,24 +14,56 @@ import {
   RoutesRequest,
   RoutesResponse,
   Step,
-  StepTransactionResponse,
   Token,
   TokenAmount,
+} from '@lifinance/types'
+
+import {
+  Config,
+  ConfigUpdate,
   ExecutionData,
   ActiveRouteDictionary,
   ExecutionSettings,
-  DefaultExecutionSettings,
 } from './types'
 
 class LIFI {
   private activeRoutes: ActiveRouteDictionary = {}
-  private config = {
-    apiUrl: process.env.REACT_APP_API_URL || 'https://test.li.finance/api/',
+  private config: Config = getDefaultConfig()
+
+  /**
+   * Get the current configuration of the SDK
+   * @return {Config} - The config object
+   */
+  getConfig = (): Config => {
+    return this.config
   }
 
+  /**
+   * Set a new confuration for the SDK
+   * @param {ConfigUpdate} configUpdate - An object containing the configuration fields that should be updated.
+   * @return {Config} The renewed config object
+   */
+  setConfig = (configUpdate: ConfigUpdate): Config => {
+    this.config = mergeConfig(this.config, configUpdate)
+    return this.config
+  }
+
+  /**
+   * Get a set of current possibilities based on a request that specifies which chains, exchanges and bridges are preferred or unwanted.
+   * @param {PossibilitiesRequest} request - Object defining preferences regarding chain, exchanges and bridges
+   * @return {Promise<PossibilitiesResponse>} Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
+   */
   getPossibilities = async (
     request?: PossibilitiesRequest
   ): Promise<PossibilitiesResponse> => {
+    if (!request) request = {}
+
+    // apply defaults
+    request.bridges = request.bridges || this.config.defaultRouteOptions.bridges
+    request.exchanges =
+      request.exchanges || this.config.defaultRouteOptions.exchanges
+
+    // send request
     const result = await axios.post<PossibilitiesResponse>(
       this.config.apiUrl + 'possibilities',
       request
@@ -40,11 +72,23 @@ class LIFI {
     return result.data
   }
 
+  /**
+   * Get a set of routes for a request that describes a transfer of tokens.
+   * @param {RoutesRequest} routesRequest - A description of the transfer.
+   * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
+   */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
       throw new Error('SDK Validation: Invalid Routs Request')
     }
 
+    // apply defaults
+    routesRequest.options = {
+      ...this.config.defaultRouteOptions,
+      ...routesRequest.options,
+    }
+
+    // send request
     const result = await axios.post<RoutesResponse>(
       this.config.apiUrl + 'routes',
       routesRequest
@@ -53,14 +97,19 @@ class LIFI {
     return result.data
   }
 
-  getStepTransaction = async (step: Step): Promise<StepTransactionResponse> => {
+  /**
+   * Get the transaction data for a signle step of a route
+   * @param {Step} step - The step object.
+   * @return {Promise<Step>} The step populated with the transaction data
+   */
+  getStepTransaction = async (step: Step): Promise<Step> => {
     if (!isStep(step)) {
       // While the validation fails for some users we should not enforce it
       // eslint-disable-next-line no-console
       console.warn('SDK Validation: Invalid Step', step)
     }
 
-    const result = await axios.post<StepTransactionResponse>(
+    const result = await axios.post<Step>(
       this.config.apiUrl + 'steps/transaction',
       step
     )
@@ -68,6 +117,11 @@ class LIFI {
     return result.data
   }
 
+  /**
+   * Stops the execution of an active route.
+   * @param {Route} route - A route that is currently in execution.
+   * @return {Route} The stopped route.
+   */
   stopExecution = (route: Route): Route => {
     if (!this.activeRoutes[route.id]) return route
     for (const executor of this.activeRoutes[route.id].executors) {
@@ -77,6 +131,10 @@ class LIFI {
     return route
   }
 
+  /**
+   * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
+   * @param {Route} route - A route that is currently in execution.
+   */
   moveExecutionToBackground = (route: Route): void => {
     if (!this.activeRoutes[route.id]) return
     for (const executor of this.activeRoutes[route.id].executors) {
@@ -84,6 +142,13 @@ class LIFI {
     }
   }
 
+  /**
+   * Execute a route.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Route} route - The route that should be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   */
   executeRoute = async (
     signer: Signer,
     route: Route,
@@ -95,6 +160,13 @@ class LIFI {
     return this.executeSteps(signer, route, settings)
   }
 
+  /**
+   * Resume the execution of a route that has been stopped or had an error while executing.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Route} route - The route that is to be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   */
   resumeRoute = async (
     signer: Signer,
     route: Route,
@@ -119,9 +191,7 @@ class LIFI {
     const execData: ExecutionData = {
       route,
       executors: [],
-      // Populate settings with default dummy functions if a value is not provided.
-      // That way we don't have to check if a function or value exists everytime we wan't to use it.
-      settings: { ...DefaultExecutionSettings, ...settings },
+      settings: { ...this.config.defaultExecutionSettings, ...settings },
     }
     this.activeRoutes[route.id] = execData
 
@@ -153,7 +223,17 @@ class LIFI {
           this.activeRoutes[route.id].settings
         )
         this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(signer, step)
+        await stepExecutor.executeStep(
+          signer,
+          step,
+          this.activeRoutes[route.id].settings
+        )
+        this.activeRoutes[route.id].executors.push(stepExecutor)
+        await stepExecutor.executeStep(
+          signer,
+          step,
+          this.activeRoutes[route.id].settings
+        )
       } catch (e) {
         this.stopExecution(route)
         throw e
@@ -170,6 +250,11 @@ class LIFI {
     return route
   }
 
+  /**
+   * Update the ExecutionSettings for an active route.
+   * @param {ExecutionSettings} settings - An object with execution settings.
+   * @param {Route} route - The active route that gets the new execution settings.
+   */
   updateExecutionSettings = (
     settings: ExecutionSettings,
     route: Route
@@ -177,20 +262,34 @@ class LIFI {
     if (!this.activeRoutes[route.id])
       throw Error('Cannot set ExecutionSettings for unactive route!')
     this.activeRoutes[route.id].settings = {
-      ...DefaultExecutionSettings,
+      ...this.config.defaultExecutionSettings,
       ...settings,
     }
   }
 
+  /**
+   * Get the list of active routes.
+   * @return {Route[]} A list of routes.
+   */
   getActiveRoutes = (): Route[] => {
     return Object.values(this.activeRoutes).map((dict) => dict.route)
   }
 
+  /**
+   * Return the current route information for given route. The route has to be active.
+   * @param {Route} route - A route object.
+   * @return {Route} The updated route.
+   */
   getActiveRoute = (route: Route): Route | undefined => {
     return this.activeRoutes[route.id].route
   }
 
-  // Balances
+  /**
+   * Returns the balances of a specific token a wallet holds across all aggregated chains.
+   * @param {string} walletAddress - A wallet address.
+   * @param {Token} token - A Token object.
+   * @return {Promise<TokenAmount | null>} An object containing the token and the amounts on different chains.
+   */
   getTokenBalance = async (
     walletAddress: string,
     token: Token
@@ -206,16 +305,18 @@ class LIFI {
     return balances.getTokenBalance(walletAddress, token)
   }
 
+  /**
+   * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
+   * @param {string} walletAddress - A wallet address.
+   * @param {Token[]} tokens - A list of Token objects.
+   * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
+   */
   getTokenBalances = async (
     walletAddress: string,
     tokens: Token[]
   ): Promise<TokenAmount[]> => {
     if (!walletAddress) {
       throw new Error('SDK Validation: Missing walletAddress')
-    }
-
-    if (!tokens.length) {
-      throw new Error('SDK Validation: Empty token list passed')
     }
 
     if (tokens.filter((token) => !isToken(token)).length) {
@@ -225,6 +326,12 @@ class LIFI {
     return balances.getTokenBalances(walletAddress, tokens)
   }
 
+  /**
+   * This method queries the balances of tokens for a specific list of chains for a given wallet.
+   * @param {string} walletAddress - A walletaddress.
+   * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
+   * @return {Promise<{ [chainId: number]: TokenAmount[] }} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
+   */
   getTokenBalancesForChains = async (
     walletAddress: string,
     tokensByChain: { [chainId: number]: Token[] }
@@ -234,10 +341,6 @@ class LIFI {
     }
 
     const tokenList = Object.values(tokensByChain).flat()
-    if (!tokenList.length) {
-      throw new Error('SDK Validation: Empty token list passed')
-    }
-
     if (tokenList.filter((token) => !isToken(token)).length) {
       throw new Error('SDK Validation: Invalid token passed')
     }

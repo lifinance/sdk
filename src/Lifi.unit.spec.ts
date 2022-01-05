@@ -105,7 +105,7 @@ describe('LIFI SDK', () => {
         // axios.post always returns an object and we expect that in our code
         mockedAxios.post.mockReturnValue(Promise.resolve({}))
 
-        Lifi.getRoutes(request)
+        await Lifi.getRoutes(request)
         expect(mockedAxios.post).toHaveBeenCalledTimes(1)
       })
     })
@@ -214,7 +214,7 @@ describe('LIFI SDK', () => {
           const step = getStep({})
           mockedAxios.post.mockReturnValue(Promise.resolve({}))
 
-          Lifi.getStepTransaction(step)
+          await Lifi.getStepTransaction(step)
           expect(mockedAxios.post).toHaveBeenCalledTimes(1)
         })
       })
@@ -250,6 +250,7 @@ describe('LIFI SDK', () => {
         const balanceResponse = {
           ...SOME_TOKEN,
           amount: '123',
+          blockNumber: 1,
         }
 
         mockedBalances.getTokenBalance.mockReturnValue(
@@ -291,12 +292,11 @@ describe('LIFI SDK', () => {
         expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
       })
 
-      it('should throw Error because of an empty token list', async () => {
-        await expect(
-          Lifi.getTokenBalances(SOME_WALLET_ADDRESS, [])
-        ).rejects.toThrow('SDK Validation: Empty token list passed')
-
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
+      it('should return empty token list as it is', async () => {
+        mockedBalances.getTokenBalances.mockReturnValue(Promise.resolve([]))
+        const result = await Lifi.getTokenBalances(SOME_WALLET_ADDRESS, [])
+        expect(result).toEqual([])
+        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -306,6 +306,7 @@ describe('LIFI SDK', () => {
           {
             ...SOME_TOKEN,
             amount: '123',
+            blockNumber: 1,
           },
         ]
 
@@ -350,15 +351,21 @@ describe('LIFI SDK', () => {
         )
       })
 
-      it('should throw Error because of an empty token list', async () => {
-        await expect(
-          Lifi.getTokenBalancesForChains(SOME_WALLET_ADDRESS, {
-            [ChainId.DAI]: [],
-          })
-        ).rejects.toThrow('SDK Validation: Empty token list passed')
+      it('should return empty token list as it is', async () => {
+        mockedBalances.getTokenBalancesForChains.mockReturnValue(
+          Promise.resolve([])
+        )
 
+        const result = await Lifi.getTokenBalancesForChains(
+          SOME_WALLET_ADDRESS,
+          {
+            [ChainId.DAI]: [],
+          }
+        )
+
+        expect(result).toEqual([])
         expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          0
+          1
         )
       })
     })
@@ -370,6 +377,7 @@ describe('LIFI SDK', () => {
             {
               ...SOME_TOKEN,
               amount: '123',
+              blockNumber: 1,
             },
           ],
         }
@@ -390,6 +398,35 @@ describe('LIFI SDK', () => {
         )
         expect(result).toEqual(balanceResponse)
       })
+    })
+  })
+
+  describe('config', () => {
+    it('should load default config with rpcs', () => {
+      const config = Lifi.getConfig()
+      for (const chainId of Object.values(ChainId)) {
+        if (typeof chainId !== 'string') {
+          expect(config.rpcs[chainId].length).toBeGreaterThan(0)
+        }
+      }
+    })
+
+    it('should allow partial updates', () => {
+      const configBefore = Lifi.getConfig()
+      const rpcETHBefore = configBefore.rpcs[ChainId.ETH]
+
+      const newRpcs = ['https://some-url.domain']
+      Lifi.setConfig({
+        rpcs: {
+          [ChainId.POL]: newRpcs,
+        },
+      })
+
+      const configAfter = Lifi.getConfig()
+      const rpcETHAfter = configAfter.rpcs[ChainId.ETH]
+
+      expect(rpcETHBefore).toEqual(rpcETHAfter)
+      expect(configAfter.rpcs[ChainId.POL]).toEqual(newRpcs)
     })
   })
 })
