@@ -56,37 +56,36 @@ export default class StatusManager {
    * @param  {Execution} execution The Execution object that the Process is appended to.
    * @param  {ProcessMessage} message  A ProcessMessage for this Process. Will be used on newly created or already existing process.
    * @param  {object} [params]   Additional parameters to append to the process.
-   * @return {void}
+   * @return {Process}
    */
-  createAndPushProcess = (
+  findOrCreateProcess = (
     id: string,
     updateExecution: (execution: Execution) => void,
     execution: Execution,
     message: ProcessMessage,
     params?: object
   ): Process => {
-    let process = execution.process.find((p) => p.id === id)
+    const process = execution.process.find((p) => p.id === id)
 
     if (process) {
-      execution.status = 'PENDING'
-    } else {
-      process = {
-        id: id,
-        startedAt: Date.now(),
-        message: message,
-        status: 'PENDING',
-      }
-      if (params) {
-        for (const [key, value] of Object.entries(params)) {
-          process[key] = value
-        }
-      }
-
-      execution.process.push(process)
+      return process
     }
 
+    const newProcess: Process = {
+      id: id,
+      startedAt: Date.now(),
+      message: message,
+      status: 'PENDING',
+    }
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        newProcess[key] = value
+      }
+    }
+
+    execution.process.push(newProcess)
     updateExecution(execution)
-    return process
+    return newProcess
   }
 
   /**

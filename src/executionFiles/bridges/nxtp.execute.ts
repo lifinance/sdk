@@ -69,7 +69,7 @@ export class NXTPExecutionManager {
       (!oldCrossProcess || !oldCrossProcess.txHash)
     ) {
       // -> set currentExecution
-      const keyProcess = statusManager.createAndPushProcess(
+      const keyProcess = statusManager.findOrCreateProcess(
         'publicKey',
         updateExecution,
         currentExecution,
@@ -99,7 +99,7 @@ export class NXTPExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = statusManager.createAndPushProcess(
+    const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       updateExecution,
       currentExecution,
@@ -193,7 +193,7 @@ export class NXTPExecutionManager {
     }
 
     // STEP 5: Wait for ReceiverTransactionPrepared //////////////////////////////////////
-    const claimProcess = statusManager.createAndPushProcess(
+    const claimProcess = statusManager.findOrCreateProcess(
       'claimProcess',
       updateExecution,
       currentExecution,

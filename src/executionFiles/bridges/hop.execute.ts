@@ -47,7 +47,7 @@ export class HopExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = statusManager.createAndPushProcess(
+    const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       updateExecution,
       currentExecution,
@@ -123,7 +123,7 @@ export class HopExecutionManager {
       throw new Error("toToken doesn't contain coinKey")
     }
 
-    const waitForTxProcess = statusManager.createAndPushProcess(
+    const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       updateExecution,
       currentExecution,

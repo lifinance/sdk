@@ -25,7 +25,7 @@ export class HorizonExecutionManager {
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
-    const allowanceAndCrossProcess = statusManager.createAndPushProcess(
+    const allowanceAndCrossProcess = statusManager.findOrCreateProcess(
       'allowanceAndCrossProcess',
       updateExecution,
       currentExecution,
@@ -154,7 +154,7 @@ export class HorizonExecutionManager {
               currentExecution,
               allowanceAndCrossProcess
             )
-            waitForBlocksProcess = statusManager.createAndPushProcess(
+            waitForBlocksProcess = statusManager.findOrCreateProcess(
               'waitForBlocksProcess',
               updateExecution,
               currentExecution,
@@ -174,7 +174,7 @@ export class HorizonExecutionManager {
               currentExecution,
               waitForBlocksProcess
             )
-            mintProcess = statusManager.createAndPushProcess(
+            mintProcess = statusManager.findOrCreateProcess(
               'mintProcess',
               updateExecution,
               currentExecution,

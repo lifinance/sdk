@@ -20,7 +20,7 @@ export const checkAllowance = async (
 ) => {
   // Ask user to set allowance
   // -> set currentExecution
-  const allowanceProcess = statusManager.createAndPushProcess(
+  const allowanceProcess = statusManager.findOrCreateProcess(
     'allowanceProcess',
     update,
     currentExecution,

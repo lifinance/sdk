@@ -49,7 +49,7 @@ export class SwapExecutionManager {
 
     // Start Swap
     // -> set currentExecution
-    const swapProcess = statusManager.createAndPushProcess(
+    const swapProcess = statusManager.findOrCreateProcess(
       'swapProcess',
       updateExecution,
       currentExecution,

@@ -50,7 +50,7 @@ export class CbridgeExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = statusManager.createAndPushProcess(
+    const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       updateExecution,
       currentExecution,
@@ -120,7 +120,7 @@ export class CbridgeExecutionManager {
     statusManager.setStatusDone(updateExecution, currentExecution, crossProcess)
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const waitForTxProcess = statusManager.createAndPushProcess(
+    const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       updateExecution,
       currentExecution,
