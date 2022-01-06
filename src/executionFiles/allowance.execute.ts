@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
-import { StatusManager } from '..'
+import StatusManager from '../StatusManager'
 
 import { Chain, Execution, Step, Token } from '../types'
 import { getApproved, setApproval } from '../utils'

@@ -1,5 +1,5 @@
 import { Signer } from 'ethers'
-import { StatusManager } from '..'
+import StatusManager from '../StatusManager'
 // import { initExecutionObject } from '../status'
 
 import {

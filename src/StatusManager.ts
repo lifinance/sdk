@@ -17,7 +17,7 @@ import { deepClone } from './utils'
  * @param  {Hooks} settings   The ExecutionSettings for this route
  * @return {StatusManager}       An instance of StatusManager.
  */
-export class StatusManager {
+export default class StatusManager {
   route: Route
   settings: Hooks
 

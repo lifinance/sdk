@@ -10,7 +10,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
-import { StatusManager } from '..'
+import StatusManager from '../StatusManager'
 import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
 
