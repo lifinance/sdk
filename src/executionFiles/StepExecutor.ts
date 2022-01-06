@@ -66,16 +66,8 @@ export class StepExecutor {
       updateExecution(currentExecution)
       const chain = getChainById(step.action.fromChainId)
 
-      // multiple switchProcesses are possible, that's why we need to take care of them here
-      let swithProcessId = 'switchProcess'
-      const existingSwitchProcesses = currentExecution.process.filter(
-        (process) => process.status.includes(swithProcessId)
-      )
-      if (existingSwitchProcesses.length) {
-        swithProcessId += existingSwitchProcesses.length
-      }
       const switchProcess = this.statusManager.findOrCreateProcess(
-        swithProcessId,
+        'swithProcess',
         updateExecution,
         currentExecution,
         `Change Chain to ${chain.name}`
@@ -105,7 +97,7 @@ export class StepExecutor {
         throw e
       }
 
-      this.statusManager.setStatusDone(
+      this.statusManager.removeProcess(
         updateExecution,
         currentExecution,
         switchProcess

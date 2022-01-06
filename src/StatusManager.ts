@@ -114,6 +114,25 @@ export default class StatusManager {
   }
 
   /**
+   * Remove a process from the execution
+   * @param  {UpdateExecution} updateExecution updateExecution The function used to update the step.
+   * @param  {Execution} execution The Execution object to update.
+   * @param  {Process} currentProcess  The Process to remove
+   * @return {void}
+   */
+  removeProcess = (
+    updateExecution: UpdateExecution,
+    execution: Execution,
+    currentProcess: Process
+  ): void => {
+    const index = execution.process.findIndex(
+      (process) => process.id === currentProcess.id
+    )
+    execution.process.splice(index, 1)
+    updateExecution(execution)
+  }
+
+  /**
    * Set a process to 'DONE'.
    * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
    * @param  {Execution} execution The Execution object to update.
