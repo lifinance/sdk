@@ -3,7 +3,6 @@ import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants, utils } from 'ethers'
 
 import Lifi from '../../Lifi'
-
 import {
   ChainId,
   ExecuteCrossParams,
@@ -237,19 +236,43 @@ export class NXTPExecutionManager {
         (transfer) =>
           transfer.crosschainTx.invariant.transactionId === transactionId
       )
+
       if (foundTransaction) {
-        claimProcess.txHash = foundTransaction.fulfilledTxHash
-        claimProcess.txLink =
-          toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
-        claimProcess.message = 'Swapped:'
-        currentExecution.fromAmount = estimate.fromAmount
-        currentExecution.toAmount = estimate.toAmount
-        currentExecution.status = 'DONE'
-        statusManager.setStatusDone(
-          updateExecution,
-          currentExecution,
-          claimProcess
-        )
+        switch (foundTransaction.status) {
+          case 'CANCELLED':
+            claimProcess.message =
+              'CANCELLED - Funds have been refunded on source chain.'
+            currentExecution.status = 'CANCELLED'
+            statusManager.setStatusCancelled(
+              updateExecution,
+              currentExecution,
+              claimProcess
+            )
+            break
+
+          case 'FULFILLED':
+            claimProcess.txHash = foundTransaction.fulfilledTxHash
+            claimProcess.txLink =
+              toChain.metamask.blockExplorerUrls[0] +
+              'tx/' +
+              claimProcess.txHash
+            claimProcess.message = 'Funds Received:'
+            currentExecution.fromAmount = estimate.fromAmount
+            currentExecution.toAmount = estimate.toAmount
+            currentExecution.status = 'DONE'
+            statusManager.setStatusDone(
+              updateExecution,
+              currentExecution,
+              claimProcess
+            )
+            break
+
+          default:
+            nxtpSDK.removeAllListeners()
+            throw new Error(
+              `Transaction with unknow state ${foundTransaction.status}`
+            )
+        }
 
         // DONE
         nxtpSDK.removeAllListeners()
@@ -388,7 +411,7 @@ export class NXTPExecutionManager {
       claimProcess.txHash = response.transactionResponse?.transactionHash
       claimProcess.txLink =
         toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
-      claimProcess.message = 'Swapped:'
+      claimProcess.message = 'Funds Received:'
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()

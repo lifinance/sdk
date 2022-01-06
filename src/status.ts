@@ -140,6 +140,30 @@ export class StatusManager {
     updateExecution(execution)
   }
 
+  /**
+   * Set a process to 'CANCELLED'.
+   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
+   * @param  {Execution} execution The Execution object to update.
+   * @param  {Process} currentProcess  The Process to set to 'FAILED'
+   * @param  {object} [params]   Additional parameters to append to the process.
+   * @return {void}
+   */
+  setStatusCancelled = (
+    updateExecution: UpdateExecution,
+    execution: Execution,
+    currentProcess: Process,
+    params?: object
+  ): void => {
+    currentProcess.status = 'CANCELLED'
+    currentProcess.doneAt = Date.now()
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        currentProcess[key] = value
+      }
+    }
+    updateExecution(execution)
+  }
+
   // move ongoing processes to the end
   private sortProcesses = (execution: Execution): void => {
     execution.process.sort((processA, processB) => {
