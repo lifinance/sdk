@@ -39,7 +39,6 @@ export default class StatusManager {
 
     const updateExecution = (newExecution: Execution) => {
       step.execution = newExecution
-      this.sortProcesses(step.execution)
       this.settings.updateCallback(this.route)
     }
 
@@ -161,25 +160,5 @@ export default class StatusManager {
       }
     }
     updateExecution(execution)
-  }
-
-  // move ongoing processes to the end
-  private sortProcesses = (execution: Execution): void => {
-    execution.process.sort((processA, processB) => {
-      if (processA.status === processB.status) {
-        return 0
-      }
-
-      // if A is ongoing and B not, move B in front of A
-      if (this.isOngoing(processA) && !this.isOngoing(processB)) {
-        return 1
-      }
-
-      return -1
-    })
-  }
-
-  private isOngoing = (process: Process): boolean => {
-    return process.status === 'PENDING' || process.status === 'ACTION_REQUIRED'
   }
 }
