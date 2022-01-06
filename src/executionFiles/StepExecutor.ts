@@ -65,12 +65,22 @@ export class StepExecutor {
       currentExecution.status = 'CHAIN_SWITCH_REQUIRED'
       updateExecution(currentExecution)
       const chain = getChainById(step.action.fromChainId)
-      const switchProcess = this.statusManager.createAndPushProcess(
-        'switchProcess',
+
+      // multiple switchProcesses are possible, that's why we need to take care of them here
+      let swithProcessId = 'switchProcess'
+      const existingSwitchProcesses = currentExecution.process.filter(
+        (process) => process.status.includes(swithProcessId)
+      )
+      if (existingSwitchProcesses.length) {
+        swithProcessId += existingSwitchProcesses.length
+      }
+      const switchProcess = this.statusManager.findOrCreateProcess(
+        swithProcessId,
         updateExecution,
         currentExecution,
         `Change Chain to ${chain.name}`
       )
+
       let updatedSigner
       try {
         updatedSigner = await this.settings.switchChainHook(
