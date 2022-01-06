@@ -50,7 +50,7 @@ export default class StatusManager {
   }
 
   /**
-   * Reduces a sequence of names to initials.
+   * Create and push a new process into the execution. If a process for the given id already exists the existing process is set to PENDING instead.
    * @param  {String} id  Identifier for the process. Used to identify already existing processes.
    * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
    * @param  {Execution} execution The Execution object that the Process is appended to.
