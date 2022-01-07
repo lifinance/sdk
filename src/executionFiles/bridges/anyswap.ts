@@ -6,6 +6,9 @@ import axios from 'axios'
 
 import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
+import { BigNumber, ethers } from 'ethers'
+import { ParsedReceipt } from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 const apiUri = 'https://bridgeapi.anyswap.exchange'
 
@@ -155,36 +158,48 @@ const getTransferStatus = async (txHash: string) => {
 //   }
 // }
 
-const parseReceipt = (tx: TransactionResponse, receipt: TransactionReceipt) => {
-  const result = {
+const parseLogAnySwapInEvent = (params: { receipt: TransactionReceipt }) => {
+  const { receipt } = params
+
+  const abiSwap = [
+    'event LogAnySwapIn(bytes32 indexed txhash, address indexed token, address indexed to, uint amount, uint fromChainID, uint toChainID)',
+  ]
+  const interfaceSwap = new ethers.utils.Interface(abiSwap)
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceSwap.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      return {
+        toAmount: amount.toString(),
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+}
+
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): Promise<ParsedReceipt> => {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
+    toTokenAddress: toTokenAddress,
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
   }
-  // const decoder = new ethers.utils.AbiCoder()
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+  // > Relay
+  result = {
+    ...result,
+    ...parseLogAnySwapInEvent({ receipt }),
+  }
 
-  // log
-  // const boondedLog = receipt.logs.find((log) => log.address === receipt.to) // info about initial funds
-  // const receivedLog = receipt.logs[2] // info about received funds
-  // if (boondedLog) {
-  //   const parsed = decoder.decode(bondedContractTypes, boondedLog.data) as unknown as BondedSwapped
-  //   result.fromAmount = parsed.amount.toString()
-  // }
-  // if (receivedLog) {
-  //   const parsed = decoder.decode(
-  //     receivedContractTypes,
-  //     receivedLog.data,
-  //   ) as unknown as ReceivedSwapped
-  //   result.toAmount = parsed.value.toString()
-  // }
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
 const anyswap = {

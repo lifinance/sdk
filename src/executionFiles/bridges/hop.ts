@@ -8,31 +8,14 @@ import { Token } from '@hop-protocol/sdk/dist/src/models'
 import BigNumber from 'bignumber.js'
 import { ethers, Signer } from 'ethers'
 
-import { ChainId, ChainKey, CoinKey, getChainByKey } from '../../types'
-
-const receivedContractTypes: Array<ethers.utils.ParamType> = [
-  ethers.utils.ParamType.from({
-    indexed: false,
-    internalType: 'uint256',
-    name: 'value',
-    type: 'uint256',
-  }),
-]
-
-const bondedContractTypes: Array<ethers.utils.ParamType> = [
-  ethers.utils.ParamType.from({
-    indexed: false,
-    internalType: 'uint256',
-    name: 'amount',
-    type: 'uint256',
-  }),
-]
-interface BondedSwapped {
-  amount: BigNumber
-}
-interface ReceivedSwapped {
-  value: BigNumber
-}
+import {
+  ChainId,
+  ChainKey,
+  CoinKey,
+  getChainByKey,
+  ParsedReceipt,
+} from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 let hop: Hop | undefined = undefined
 
@@ -133,39 +116,54 @@ const waitForDestinationChainReceipt = (
   })
 }
 
-const parseReceipt = (tx: TransactionResponse, receipt: TransactionReceipt) => {
-  const result = {
+const parseTokenSwapEvent = (params: { receipt: TransactionReceipt }) => {
+  const { receipt } = params
+
+  const abiTokenSwap = [
+    'event TokenSwap(address indexed buyer, uint256 tokensSold, uint256 tokensBought, uint128 soldId, uint128 boughtId)',
+  ]
+  const interfaceTokenSwap = new ethers.utils.Interface(abiTokenSwap)
+  let result
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceTokenSwap.parseLog(log)
+      // only amount of swapped hToken not of actual starting token
+      // const fromAmount = parsed.args.tokensSold as BigNumber
+      // result.fromAmount = fromAmount.toString()
+      const toAmount = parsed.args.tokensBought as BigNumber
+      result = {
+        toAmount: toAmount.toString(),
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+
+  return result
+}
+
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): Promise<ParsedReceipt> => {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
+    toTokenAddress: toTokenAddress,
     gasUsed: '0',
     gasPrice: '0',
     gasFee: '0',
   }
-  const decoder = new ethers.utils.AbiCoder()
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+  // > TokenSwapEvent
+  result = {
+    ...result,
+    ...parseTokenSwapEvent({ receipt }),
+  }
 
-  // log
-  const boondedLog = receipt.logs.find((log) => log.address === receipt.to) // info about initial funds
-  const receivedLog = receipt.logs[2] // info about received funds
-  if (boondedLog) {
-    const parsed = decoder.decode(
-      bondedContractTypes,
-      boondedLog.data
-    ) as unknown as BondedSwapped
-    result.fromAmount = parsed.amount.toString()
-  }
-  if (receivedLog) {
-    const parsed = decoder.decode(
-      receivedContractTypes,
-      receivedLog.data
-    ) as unknown as ReceivedSwapped
-    result.toAmount = parsed.value.toString()
-  }
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
 const hopExport = {
