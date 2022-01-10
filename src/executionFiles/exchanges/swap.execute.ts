@@ -27,8 +27,7 @@ export class SwapExecutionManager {
     // setup
     const { action, estimate } = step
     const fromChain = getChainById(action.fromChainId)
-    const { currentExecution, updateExecution } =
-      statusManager.initExecutionObject(step)
+    const currentExecution = statusManager.initExecutionObject(step)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
@@ -51,7 +50,7 @@ export class SwapExecutionManager {
     // -> set currentExecution
     const swapProcess = statusManager.findOrCreateProcess(
       'swapProcess',
-      updateExecution,
+      step,
       currentExecution,
       'Preparing Swap'
     )
@@ -73,11 +72,7 @@ export class SwapExecutionManager {
         )
         if (!transactionRequest) {
           swapProcess.errorMessage = 'Unable to prepare Transaction'
-          statusManager.setStatusFailed(
-            updateExecution,
-            currentExecution,
-            swapProcess
-          )
+          statusManager.setProcessFailed(step, currentExecution, swapProcess)
           throw swapProcess.errorMessage
         }
 
@@ -94,11 +89,7 @@ export class SwapExecutionManager {
       // -> set currentExecution
       if (e.message) swapProcess.errorMessage = e.message
       if (e.code) swapProcess.errorCode = e.code
-      statusManager.setStatusFailed(
-        updateExecution,
-        currentExecution,
-        swapProcess
-      )
+      statusManager.setProcessFailed(step, currentExecution, swapProcess)
       throw e
     }
 
@@ -125,11 +116,7 @@ export class SwapExecutionManager {
       } else {
         if (e.message) swapProcess.errorMessage = e.message
         if (e.code) swapProcess.errorCode = e.code
-        statusManager.setStatusFailed(
-          updateExecution,
-          currentExecution,
-          swapProcess
-        )
+        statusManager.setProcessFailed(step, currentExecution, swapProcess)
         throw e
       }
     }
@@ -141,7 +128,7 @@ export class SwapExecutionManager {
     currentExecution.toAmount = parsedReceipt.toAmount
     // currentExecution.gasUsed = parsedReceipt.gasUsed
     currentExecution.status = 'DONE'
-    statusManager.setStatusDone(updateExecution, currentExecution, swapProcess)
+    statusManager.setProcessDone(step, currentExecution, swapProcess)
 
     // DONE
     return currentExecution

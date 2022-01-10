@@ -73,7 +73,7 @@ export class CbridgeExecutionManager {
         )
         if (!transactionRequest) {
           crossProcess.errorMessage = 'Unable to prepare Transaction'
-          statusManager.setStatusFailed(
+          statusManager.setProcessFailed(
             updateExecution,
             currentExecution,
             crossProcess
@@ -107,7 +107,7 @@ export class CbridgeExecutionManager {
       } else {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           crossProcess
@@ -117,7 +117,11 @@ export class CbridgeExecutionManager {
     }
 
     crossProcess.message = 'Transfer started: '
-    statusManager.setStatusDone(updateExecution, currentExecution, crossProcess)
+    statusManager.setProcessDone(
+      updateExecution,
+      currentExecution,
+      crossProcess
+    )
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
     const waitForTxProcess = statusManager.findOrCreateProcess(
@@ -133,7 +137,7 @@ export class CbridgeExecutionManager {
       waitForTxProcess.errorMessage = 'Failed waiting'
       if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
       if (e.code) waitForTxProcess.errorCode = e.code
-      statusManager.setStatusFailed(
+      statusManager.setProcessFailed(
         updateExecution,
         currentExecution,
         waitForTxProcess
@@ -151,7 +155,7 @@ export class CbridgeExecutionManager {
     // currentExecution.toAmount = parsedReceipt.toAmount
     // currentExecution.gasUsed = parsedReceipt.gasUsed
     currentExecution.status = 'DONE'
-    statusManager.setStatusDone(
+    statusManager.setProcessDone(
       updateExecution,
       currentExecution,
       waitForTxProcess

@@ -149,7 +149,7 @@ export class HorizonExecutionManager {
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
             allowanceAndCrossProcess.message = 'Transaction Sent:'
-            statusManager.setStatusDone(
+            statusManager.setProcessDone(
               updateExecution,
               currentExecution,
               allowanceAndCrossProcess
@@ -169,7 +169,7 @@ export class HorizonExecutionManager {
             waitForBlocksProcess.status === 'PENDING'
           ) {
             waitForBlocksProcess.message = 'Enough Block Confirmations'
-            statusManager.setStatusDone(
+            statusManager.setProcessDone(
               updateExecution,
               currentExecution,
               waitForBlocksProcess
@@ -194,7 +194,7 @@ export class HorizonExecutionManager {
             mintProcess.txLink =
               toChain.metamask.blockExplorerUrls[0] + 'tx/' + mintProcess.txHash
             mintProcess.message = 'Minted in'
-            statusManager.setStatusDone(
+            statusManager.setProcessDone(
               updateExecution,
               currentExecution,
               mintProcess
@@ -213,7 +213,7 @@ export class HorizonExecutionManager {
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                statusManager.setStatusFailed(
+                statusManager.setProcessFailed(
                   updateExecution,
                   currentExecution,
                   allowanceAndCrossProcess
@@ -222,13 +222,13 @@ export class HorizonExecutionManager {
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                statusManager.setStatusFailed(
+                statusManager.setProcessFailed(
                   updateExecution,
                   currentExecution,
                   waitForBlocksProcess
                 )
               if (mintProcess! && mintProcess.status !== 'DONE')
-                statusManager.setStatusFailed(
+                statusManager.setProcessFailed(
                   updateExecution,
                   currentExecution,
                   mintProcess
@@ -245,19 +245,19 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.setStatusDone(
+        statusManager.setProcessDone(
           updateExecution,
           currentExecution,
           allowanceAndCrossProcess
         )
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.setStatusDone(
+        statusManager.setProcessDone(
           updateExecution,
           currentExecution,
           waitForBlocksProcess
         )
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.setStatusDone(
+        statusManager.setProcessDone(
           updateExecution,
           currentExecution,
           mintProcess
@@ -272,19 +272,19 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           allowanceAndCrossProcess
         )
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           waitForBlocksProcess
         )
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           mintProcess

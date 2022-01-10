@@ -95,7 +95,7 @@ export default class StatusManager {
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {void}
    */
-  setStatusFailed = (
+  setProcessFailed = (
     updateExecution: UpdateExecution,
     execution: Execution,
     currentProcess: Process,
@@ -140,7 +140,7 @@ export default class StatusManager {
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {void}
    */
-  setStatusDone = (
+  setProcessDone = (
     updateExecution: UpdateExecution,
     execution: Execution,
     currentProcess: Process,
@@ -165,7 +165,7 @@ export default class StatusManager {
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {void}
    */
-  setStatusCancelled = (
+  setProcessCancelled = (
     updateExecution: UpdateExecution,
     execution: Execution,
     currentProcess: Process,

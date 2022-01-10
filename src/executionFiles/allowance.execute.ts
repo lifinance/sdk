@@ -31,9 +31,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await signer.provider!.waitForTransaction(allowanceProcess.txHash)
-      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
+      statusManager.setProcessDone(update, currentExecution, allowanceProcess)
     } else if (allowanceProcess.message === 'Already Approved') {
-      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
+      statusManager.setProcessDone(update, currentExecution, allowanceProcess)
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -64,7 +64,7 @@ export const checkAllowance = async (
       } else {
         allowanceProcess.message = 'Already Approved'
       }
-      statusManager.setStatusDone(update, currentExecution, allowanceProcess)
+      statusManager.setProcessDone(update, currentExecution, allowanceProcess)
     }
   } catch (e: any) {
     // -> set status
@@ -75,7 +75,7 @@ export const checkAllowance = async (
     } else {
       if (e.message) allowanceProcess.errorMessage = e.message
       if (e.code) allowanceProcess.errorCode = e.code
-      statusManager.setStatusFailed(update, currentExecution, allowanceProcess)
+      statusManager.setProcessFailed(update, currentExecution, allowanceProcess)
       throw e
     }
   }

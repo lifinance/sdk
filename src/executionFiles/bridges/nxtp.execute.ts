@@ -87,7 +87,7 @@ export class NXTPExecutionManager {
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
       } catch (e: any) {
         if (e.message) keyProcess.errorMessage = e.message
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           keyProcess
@@ -95,7 +95,11 @@ export class NXTPExecutionManager {
         throw e
       }
       // -> set currentExecution
-      statusManager.setStatusDone(updateExecution, currentExecution, keyProcess)
+      statusManager.setProcessDone(
+        updateExecution,
+        currentExecution,
+        keyProcess
+      )
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
@@ -126,7 +130,7 @@ export class NXTPExecutionManager {
           )
           if (!transactionRequest) {
             crossProcess.errorMessage = 'Unable to prepare Transaction'
-            statusManager.setStatusFailed(
+            statusManager.setProcessFailed(
               updateExecution,
               currentExecution,
               crossProcess
@@ -155,7 +159,7 @@ export class NXTPExecutionManager {
       } catch (e: any) {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           crossProcess
@@ -175,7 +179,7 @@ export class NXTPExecutionManager {
         } else {
           if (e.message) crossProcess.errorMessage = e.message
           if (e.code) crossProcess.errorCode = e.code
-          statusManager.setStatusFailed(
+          statusManager.setProcessFailed(
             updateExecution,
             currentExecution,
             crossProcess
@@ -185,7 +189,7 @@ export class NXTPExecutionManager {
       }
 
       crossProcess.message = 'Transfer started: '
-      statusManager.setStatusDone(
+      statusManager.setProcessDone(
         updateExecution,
         currentExecution,
         crossProcess
@@ -243,7 +247,7 @@ export class NXTPExecutionManager {
             claimProcess.message =
               'CANCELLED - Funds have been refunded on source chain.'
             currentExecution.status = 'CANCELLED'
-            statusManager.setStatusCancelled(
+            statusManager.setProcessCancelled(
               updateExecution,
               currentExecution,
               claimProcess
@@ -260,7 +264,7 @@ export class NXTPExecutionManager {
             currentExecution.fromAmount = estimate.fromAmount
             currentExecution.toAmount = estimate.toAmount
             currentExecution.status = 'DONE'
-            statusManager.setStatusDone(
+            statusManager.setProcessDone(
               updateExecution,
               currentExecution,
               claimProcess
@@ -297,7 +301,7 @@ export class NXTPExecutionManager {
         action.toChainId
       )
       if (!receivingChainTxManager) {
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           claimProcess
@@ -325,7 +329,7 @@ export class NXTPExecutionManager {
       )
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
-      statusManager.setStatusFailed(
+      statusManager.setProcessFailed(
         updateExecution,
         currentExecution,
         claimProcess
@@ -344,7 +348,7 @@ export class NXTPExecutionManager {
       preparedTransaction = await preparedTransactionPromise
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
-      statusManager.setStatusFailed(
+      statusManager.setProcessFailed(
         updateExecution,
         currentExecution,
         claimProcess
@@ -379,7 +383,7 @@ export class NXTPExecutionManager {
           )
         } catch (e: any) {
           if (e.message) claimProcess.errorMessage = e.message
-          statusManager.setStatusFailed(
+          statusManager.setProcessFailed(
             updateExecution,
             currentExecution,
             claimProcess
@@ -415,7 +419,7 @@ export class NXTPExecutionManager {
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()
-      statusManager.setStatusFailed(
+      statusManager.setProcessFailed(
         updateExecution,
         currentExecution,
         claimProcess
@@ -452,7 +456,11 @@ export class NXTPExecutionManager {
     currentExecution.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
     currentExecution.status = 'DONE'
-    statusManager.setStatusDone(updateExecution, currentExecution, claimProcess)
+    statusManager.setProcessDone(
+      updateExecution,
+      currentExecution,
+      claimProcess
+    )
 
     // DONE
     nxtpSDK.removeAllListeners()

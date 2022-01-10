@@ -70,7 +70,7 @@ export class HopExecutionManager {
         )
         if (!transactionRequest) {
           crossProcess.errorMessage = 'Unable to prepare Transaction'
-          statusManager.setStatusFailed(
+          statusManager.setProcessFailed(
             updateExecution,
             currentExecution,
             crossProcess
@@ -104,7 +104,7 @@ export class HopExecutionManager {
       } else {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        statusManager.setStatusFailed(
+        statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           crossProcess
@@ -114,7 +114,11 @@ export class HopExecutionManager {
     }
 
     crossProcess.message = 'Transfer started: '
-    statusManager.setStatusDone(updateExecution, currentExecution, crossProcess)
+    statusManager.setProcessDone(
+      updateExecution,
+      currentExecution,
+      crossProcess
+    )
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
     // coinKey should always be set since this data is coming from the Lifi Backend.
@@ -142,7 +146,7 @@ export class HopExecutionManager {
       waitForTxProcess.errorMessage = 'Failed waiting'
       if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
       if (e.code) waitForTxProcess.errorCode = e.code
-      statusManager.setStatusFailed(
+      statusManager.setProcessFailed(
         updateExecution,
         currentExecution,
         waitForTxProcess
@@ -163,7 +167,7 @@ export class HopExecutionManager {
     currentExecution.toAmount = parsedReceipt.toAmount
     // currentExecution.gasUsed = parsedReceipt.gasUsed
     currentExecution.status = 'DONE'
-    statusManager.setStatusDone(
+    statusManager.setProcessDone(
       updateExecution,
       currentExecution,
       waitForTxProcess

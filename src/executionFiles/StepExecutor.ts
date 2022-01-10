@@ -89,7 +89,7 @@ export class StepExecutor {
       } catch (e: any) {
         if (e.message) switchProcess.errorMessage = e.message
         if (e.code) switchProcess.errorCode = e.code
-        this.statusManager.setStatusFailed(
+        this.statusManager.setProcessFailed(
           updateExecution,
           currentExecution,
           switchProcess
@@ -102,6 +102,8 @@ export class StepExecutor {
         currentExecution,
         switchProcess
       )
+      currentExecution.status = 'PENDING'
+      updateExecution(currentExecution)
     }
 
     switch (step.type) {
