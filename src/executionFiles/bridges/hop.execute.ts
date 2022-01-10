@@ -17,8 +17,7 @@ export class HopExecutionManager {
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, estimate } = step
-    const { currentExecution, updateExecution } =
-      statusManager.initExecutionObject(step)
+    const currentExecution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
@@ -39,7 +38,6 @@ export class HopExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          updateExecution,
           currentExecution,
           true
         )
@@ -49,7 +47,7 @@ export class HopExecutionManager {
     // STEP 2: Get Transaction ////////////////////////////////////////////////
     const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
-      updateExecution,
+      step,
       currentExecution,
       'Prepare Transaction'
     )
@@ -69,56 +67,48 @@ export class HopExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          crossProcess.errorMessage = 'Unable to prepare Transaction'
-          statusManager.setProcessFailed(
-            updateExecution,
-            currentExecution,
-            crossProcess
-          )
+          statusManager.updateProcess(crossProcess, 'FAILED', {
+            errorMessage: 'Unable to prepare Transaction',
+          })
           throw crossProcess.errorMessage
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
-        crossProcess.status = 'ACTION_REQUIRED'
-        crossProcess.message = 'Sign Transaction'
-        updateExecution(currentExecution)
+        statusManager.updateProcess(crossProcess, 'ACTION_REQUIRED')
         if (!this.shouldContinue) return currentExecution
 
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        crossProcess.status = 'PENDING'
-        crossProcess.txHash = tx.hash
-        crossProcess.txLink =
-          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
-        crossProcess.message = 'Wait for'
-        updateExecution(currentExecution)
+        statusManager.updateProcess(crossProcess, 'PENDING', {
+          txHash: tx.hash,
+          txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+        })
       }
 
       await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        crossProcess.txHash = e.replacement.hash
-        crossProcess.txLink =
-          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
+        statusManager.updateProcess(crossProcess, 'PENDING', {
+          txHash: e.replacement.hash,
+          txLink:
+            fromChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            e.replacement.hash,
+        })
       } else {
-        if (e.message) crossProcess.errorMessage = e.message
-        if (e.code) crossProcess.errorCode = e.code
-        statusManager.setProcessFailed(
-          updateExecution,
-          currentExecution,
-          crossProcess
-        )
+        statusManager.updateProcess(crossProcess, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
+
         throw e
       }
     }
 
-    crossProcess.message = 'Transfer started: '
-    statusManager.setProcessDone(
-      updateExecution,
-      currentExecution,
-      crossProcess
-    )
+    statusManager.updateProcess(crossProcess, 'DONE', {
+      message: 'Transfer started: ',
+    })
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
     // coinKey should always be set since this data is coming from the Lifi Backend.
@@ -129,7 +119,7 @@ export class HopExecutionManager {
 
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
-      updateExecution,
+      step,
       currentExecution,
       'Wait for Receiving Chain'
     )
@@ -144,13 +134,13 @@ export class HopExecutionManager {
       )
     } catch (e: any) {
       waitForTxProcess.errorMessage = 'Failed waiting'
-      if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
-      if (e.code) waitForTxProcess.errorCode = e.code
-      statusManager.setProcessFailed(
-        updateExecution,
-        currentExecution,
-        waitForTxProcess
-      )
+      // if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
+      // if (e.code) waitForTxProcess.errorCode = e.code
+
+      statusManager.updateProcess(waitForTxProcess, 'FAILED', {
+        errorMessage: 'Failed waiting',
+        errorCode: e.code,
+      })
       throw e
     }
 
@@ -159,19 +149,20 @@ export class HopExecutionManager {
       crossProcess.txHash,
       destinationTxReceipt
     )
-    waitForTxProcess.txHash = destinationTxReceipt.transactionHash
-    waitForTxProcess.txLink =
-      toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
-    waitForTxProcess.message = 'Funds Received:'
-    currentExecution.fromAmount = parsedReceipt.fromAmount
-    currentExecution.toAmount = parsedReceipt.toAmount
+
     // currentExecution.gasUsed = parsedReceipt.gasUsed
-    currentExecution.status = 'DONE'
-    statusManager.setProcessDone(
-      updateExecution,
-      currentExecution,
-      waitForTxProcess
-    )
+    statusManager.updateProcess(waitForTxProcess, 'DONE', {
+      txHash: destinationTxReceipt.transactionHash,
+      txLink:
+        toChain.metamask.blockExplorerUrls[0] +
+        'tx/' +
+        destinationTxReceipt.transactionHash,
+      message: 'Funds Received:',
+    })
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: parsedReceipt.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+    })
 
     // DONE
     return currentExecution

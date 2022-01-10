@@ -60,15 +60,13 @@ export class StepExecutor {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
       // -> set status message
-      const { currentExecution, updateExecution } =
-        this.statusManager.initExecutionObject(step)
-      currentExecution.status = 'CHAIN_SWITCH_REQUIRED'
-      updateExecution(currentExecution)
+      const currentExecution = this.statusManager.initExecutionObject(step)
+      this.statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
       const chain = getChainById(step.action.fromChainId)
 
       const switchProcess = this.statusManager.findOrCreateProcess(
         'swithProcess',
-        updateExecution,
+        step,
         currentExecution,
         `Change Chain to ${chain.name}`
       )
@@ -87,23 +85,15 @@ export class StepExecutor {
           throw Error('CHAIN SWITCH REQUIRED')
         }
       } catch (e: any) {
-        if (e.message) switchProcess.errorMessage = e.message
-        if (e.code) switchProcess.errorCode = e.code
-        this.statusManager.setProcessFailed(
-          updateExecution,
-          currentExecution,
-          switchProcess
-        )
+        this.statusManager.updateProcess(switchProcess, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
         throw e
       }
 
-      this.statusManager.removeProcess(
-        updateExecution,
-        currentExecution,
-        switchProcess
-      )
-      currentExecution.status = 'PENDING'
-      updateExecution(currentExecution)
+      this.statusManager.removeProcess(step, currentExecution, switchProcess)
+      this.statusManager.updateExecution(step, 'PENDING')
     }
 
     switch (step.type) {

@@ -7,10 +7,15 @@ import {
   Process,
   ProcessMessage,
   Route,
+  Status,
   Step,
-  UpdateExecution,
 } from './types'
 import { deepClone } from './utils'
+
+interface Receipt {
+  fromAmount: string
+  toAmount: string
+}
 /**
  * Manages status updates of a route and provides various functions for tracking processes
  * @param  {Route} route  The route this StatusManger belongs to.
@@ -29,23 +34,35 @@ export default class StatusManager {
   /**
    * Initializes the execution object of a Step.
    * @param  {Step} step  The current step in execution
-   * @return {Execution, UpdateExecution}       The initialized execution object for this step and a function to update this step
+   * @return {Execution}       The initialized execution object for this step and a function to update this step
    */
-  initExecutionObject = (
-    step: Step
-  ): { currentExecution: Execution; updateExecution: UpdateExecution } => {
+  initExecutionObject = (step: Step): Execution => {
     const currentExecution =
       step.execution || (deepClone(emptyExecution) as Execution)
 
-    const updateExecution = (newExecution: Execution) => {
-      step.execution = newExecution
+    if (!step.execution) {
+      step.execution = currentExecution
       this.settings.updateCallback(this.route)
     }
+    return currentExecution
+  }
 
-    if (!step.execution) {
-      updateExecution(currentExecution)
+  /**
+   * Updates the execution object of a Step.
+   * @param  {Step} step  The current step in execution
+   * @param  {Status} status  The status for the execution
+   * @param  {Receipt} receipt Optional. Information about received tokens
+   * @return {Step}       The step with the updated execution object
+   */
+  updateExecution(step: Step, status: Status, receipt?: Receipt): Step {
+    if (!step.execution) throw Error('Can update empty execution')
+    step.execution.status = status
+    if (receipt) {
+      step.execution.fromAmount = receipt.fromAmount
+      step.execution.toAmount = receipt.toAmount
     }
-    return { currentExecution, updateExecution }
+    this.settings.updateCallback(this.route)
+    return step
   }
 
   /**
@@ -59,7 +76,7 @@ export default class StatusManager {
    */
   findOrCreateProcess = (
     id: string,
-    updateExecution: (execution: Execution) => void,
+    step: Step,
     execution: Execution,
     message: ProcessMessage,
     params?: object
@@ -83,34 +100,58 @@ export default class StatusManager {
     }
 
     execution.process.push(newProcess)
-    updateExecution(execution)
+    step.execution = execution
+    this.settings.updateCallback(this.route)
     return newProcess
   }
 
   /**
-   * Set a process to 'FAILED'.
-   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
-   * @param  {Execution} execution The Execution object to update.
-   * @param  {Process} currentProcess  The Process to set to 'FAILED'
+   * Update a process object.
+   * @param  {Process} currentProcess  The process object to update
+   * @param  {Status} status The status the process gets.
    * @param  {object} [params]   Additional parameters to append to the process.
-   * @return {void}
+   * @return {Process} The update process
    */
-  setProcessFailed = (
-    updateExecution: UpdateExecution,
-    execution: Execution,
+  updateProcess = (
     currentProcess: Process,
+    status: Status,
     params?: object
-  ): void => {
-    execution.status = 'FAILED'
-    currentProcess.status = 'FAILED'
-    currentProcess.failedAt = Date.now()
+  ): Process => {
+    switch (status) {
+      // terminating
+      case 'CANCELLED':
+        currentProcess.doneAt = Date.now()
+        currentProcess.message =
+          'CANCELLED - Funds have been refunded on source chain.'
+        break
+      case 'FAILED':
+        currentProcess.doneAt = Date.now()
+        break
+      case 'DONE':
+        currentProcess.doneAt = Date.now()
+        break
+      case 'ACTION_REQUIRED':
+        currentProcess.message = 'Sign Transaction'
+        break
+      case 'CHAIN_SWITCH_REQUIRED':
+        currentProcess.message = 'Switching Chain'
+        break
+      case 'PENDING':
+        currentProcess.message = 'Wait for'
+      default:
+        break
+    }
+
+    currentProcess.status = status
+    // set extra parameters or overwritte the standard params set in the switch statement
     if (params) {
       for (const [key, value] of Object.entries(params)) {
+        if (!value) continue // allow passing unchecked parameters to this function
         currentProcess[key] = value
       }
     }
-
-    updateExecution(execution)
+    this.settings.updateCallback(this.route)
+    return currentProcess
   }
 
   /**
@@ -121,7 +162,7 @@ export default class StatusManager {
    * @return {void}
    */
   removeProcess = (
-    updateExecution: UpdateExecution,
+    step: Step,
     execution: Execution,
     currentProcess: Process
   ): void => {
@@ -129,55 +170,7 @@ export default class StatusManager {
       (process) => process.id === currentProcess.id
     )
     execution.process.splice(index, 1)
-    updateExecution(execution)
-  }
-
-  /**
-   * Set a process to 'DONE'.
-   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
-   * @param  {Execution} execution The Execution object to update.
-   * @param  {Process} currentProcess  The Process to set to 'FAILED'
-   * @param  {object} [params]   Additional parameters to append to the process.
-   * @return {void}
-   */
-  setProcessDone = (
-    updateExecution: UpdateExecution,
-    execution: Execution,
-    currentProcess: Process,
-    params?: object
-  ): void => {
-    currentProcess.status = 'DONE'
-    currentProcess.doneAt = Date.now()
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        currentProcess[key] = value
-      }
-    }
-
-    updateExecution(execution)
-  }
-
-  /**
-   * Set a process to 'CANCELLED'.
-   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
-   * @param  {Execution} execution The Execution object to update.
-   * @param  {Process} currentProcess  The Process to set to 'FAILED'
-   * @param  {object} [params]   Additional parameters to append to the process.
-   * @return {void}
-   */
-  setProcessCancelled = (
-    updateExecution: UpdateExecution,
-    execution: Execution,
-    currentProcess: Process,
-    params?: object
-  ): void => {
-    currentProcess.status = 'CANCELLED'
-    currentProcess.doneAt = Date.now()
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        currentProcess[key] = value
-      }
-    }
-    updateExecution(execution)
+    step.execution = execution
+    this.settings.updateCallback(this.route)
   }
 }

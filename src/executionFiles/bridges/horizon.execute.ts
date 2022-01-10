@@ -20,14 +20,13 @@ export class HorizonExecutionManager {
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action } = step
     // setup
-    const { currentExecution, updateExecution } =
-      statusManager.initExecutionObject(step)
+    const currentExecution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     const allowanceAndCrossProcess = statusManager.findOrCreateProcess(
       'allowanceAndCrossProcess',
-      updateExecution,
+      step,
       currentExecution,
       'Set Allowance and Cross',
       { status: 'ACTION_REQUIRED' }
@@ -122,8 +121,9 @@ export class HorizonExecutionManager {
           return currentExecution
         }
         if (operationId) {
-          allowanceAndCrossProcess.operationId = operationId
-          updateExecution(currentExecution)
+          statusManager.updateProcess(allowanceAndCrossProcess, 'PENDING', {
+            operationId: operationId,
+          })
           const operation = await bridgeSDK.api.getOperation(operationId)
           console.debug('operation', operation)
 
@@ -132,15 +132,14 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'in_progress' &&
             allowanceAndCrossProcess.status === 'ACTION_REQUIRED'
           ) {
-            allowanceAndCrossProcess.status = 'PENDING'
-            allowanceAndCrossProcess.txHash =
-              operation.actions[0].transactionHash
-            allowanceAndCrossProcess.txLink =
-              fromChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              allowanceAndCrossProcess.txHash
-            allowanceAndCrossProcess.message = 'Send Transaction - Wait for'
-            updateExecution(currentExecution)
+            statusManager.updateProcess(allowanceAndCrossProcess, 'PENDING', {
+              txHash: operation.actions[0].transactionHash,
+              txLink:
+                fromChain.metamask.blockExplorerUrls[0] +
+                'tx/' +
+                operation.actions[0].transactionHash,
+              message: 'Send Transaction - Wait for',
+            })
           }
 
           // Wait > Done; Wait for confirmations
@@ -148,15 +147,13 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'success' &&
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
-            allowanceAndCrossProcess.message = 'Transaction Sent:'
-            statusManager.setProcessDone(
-              updateExecution,
-              currentExecution,
-              allowanceAndCrossProcess
-            )
+            statusManager.updateProcess(allowanceAndCrossProcess, 'DONE', {
+              message: 'Transaction Sent:',
+            })
+
             waitForBlocksProcess = statusManager.findOrCreateProcess(
               'waitForBlocksProcess',
-              updateExecution,
+              step,
               currentExecution,
               'Wait for Block Confirmations',
               { status: 'PENDING' }
@@ -168,15 +165,12 @@ export class HorizonExecutionManager {
             operation.actions[1].status === 'success' &&
             waitForBlocksProcess.status === 'PENDING'
           ) {
-            waitForBlocksProcess.message = 'Enough Block Confirmations'
-            statusManager.setProcessDone(
-              updateExecution,
-              currentExecution,
-              waitForBlocksProcess
-            )
+            statusManager.updateProcess(waitForBlocksProcess, 'DONE', {
+              message: 'Enough Block Confirmations',
+            })
             mintProcess = statusManager.findOrCreateProcess(
               'mintProcess',
-              updateExecution,
+              step,
               currentExecution,
               'Minting tokens',
               {
@@ -190,15 +184,14 @@ export class HorizonExecutionManager {
             operation.actions[2].status === 'success' &&
             mintProcess.status === 'PENDING'
           ) {
-            mintProcess.txHash = operation.actions[2].transactionHash
-            mintProcess.txLink =
-              toChain.metamask.blockExplorerUrls[0] + 'tx/' + mintProcess.txHash
-            mintProcess.message = 'Minted in'
-            statusManager.setProcessDone(
-              updateExecution,
-              currentExecution,
-              mintProcess
-            )
+            statusManager.updateProcess(mintProcess, 'DONE', {
+              message: 'Minted in',
+              txHash: operation.actions[2].transactionHash,
+              txLink:
+                toChain.metamask.blockExplorerUrls[0] +
+                'tx/' +
+                operation.actions[2].transactionHash,
+            })
           }
 
           // Ended
@@ -213,26 +206,14 @@ export class HorizonExecutionManager {
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                statusManager.setProcessFailed(
-                  updateExecution,
-                  currentExecution,
-                  allowanceAndCrossProcess
-                )
+                statusManager.updateProcess(allowanceAndCrossProcess, 'FAILED')
               if (
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                statusManager.setProcessFailed(
-                  updateExecution,
-                  currentExecution,
-                  waitForBlocksProcess
-                )
+                statusManager.updateProcess(waitForBlocksProcess, 'FAILED')
               if (mintProcess! && mintProcess.status !== 'DONE')
-                statusManager.setProcessFailed(
-                  updateExecution,
-                  currentExecution,
-                  mintProcess
-                )
+                statusManager.updateProcess(mintProcess, 'FAILED')
             }
           }
         }
@@ -245,56 +226,35 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.setProcessDone(
-          updateExecution,
-          currentExecution,
-          allowanceAndCrossProcess
-        )
+        statusManager.updateProcess(allowanceAndCrossProcess, 'DONE')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.setProcessDone(
-          updateExecution,
-          currentExecution,
-          waitForBlocksProcess
-        )
+        statusManager.updateProcess(waitForBlocksProcess, 'DONE')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.setProcessDone(
-          updateExecution,
-          currentExecution,
-          mintProcess
-        )
+        statusManager.updateProcess(mintProcess, 'DONE')
     } catch (e: any) {
       clearInterval(intervalId!)
       const lastStep: Process =
         currentExecution.process[currentExecution.process.length - 1]
-      lastStep.errorMessage = (e as Error).message
-      updateExecution(currentExecution)
+
+      statusManager.updateProcess(lastStep, 'FAILED', {
+        errorMessage: (e as Error).message,
+      })
+
       if (
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.setProcessFailed(
-          updateExecution,
-          currentExecution,
-          allowanceAndCrossProcess
-        )
+        statusManager.updateProcess(allowanceAndCrossProcess, 'FAILED')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.setProcessFailed(
-          updateExecution,
-          currentExecution,
-          waitForBlocksProcess
-        )
+        statusManager.updateProcess(waitForBlocksProcess, 'FAILED')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.setProcessFailed(
-          updateExecution,
-          currentExecution,
-          mintProcess
-        )
+        statusManager.updateProcess(mintProcess, 'FAILED')
+
       throw e
     }
 
     // DONE
-    currentExecution.status = 'DONE'
-    updateExecution(currentExecution)
+    statusManager.updateExecution(step, 'DONE')
     return currentExecution
   }
 }
