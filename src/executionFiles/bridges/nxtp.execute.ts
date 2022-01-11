@@ -285,7 +285,9 @@ export class NXTPExecutionManager {
         )
       }
 
-      statusManager.updateProcess(claimProcess, 'ACTION_REQUIRED')
+      statusManager.updateProcess(claimProcess, 'ACTION_REQUIRED', {
+        message: 'Provide Signature',
+      })
 
       if (!this.shouldContinue) {
         nxtpSDK.removeAllListeners()
@@ -380,7 +382,7 @@ export class NXTPExecutionManager {
         true
       )
 
-      statusManager.updateProcess(claimProcess, 'PENDING', {
+      statusManager.updateProcess(claimProcess, 'DONE', {
         txHash: response.transactionResponse?.transactionHash,
         txLink:
           toChain.metamask.blockExplorerUrls[0] +
@@ -424,7 +426,7 @@ export class NXTPExecutionManager {
     )
 
     // status.gasUsed = parsedReceipt.gasUsed
-    statusManager.updateProcess(claimProcess, 'DONE')
+    //statusManager.updateProcess(claimProcess, 'DONE')
 
     statusManager.updateExecution(step, 'DONE', {
       fromAmount: estimate.fromAmount,

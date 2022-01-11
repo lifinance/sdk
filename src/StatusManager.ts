@@ -150,7 +150,6 @@ export default class StatusManager {
       }
     }
     this.settings.updateCallback(this.route)
-
     return currentProcess
   }
 

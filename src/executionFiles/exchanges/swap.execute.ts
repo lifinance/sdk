@@ -102,14 +102,6 @@ export class SwapExecutionManager {
     }
 
     // Wait for Transaction
-    // -> set currentExecution
-    // swapProcess.status = 'PENDING'
-    // swapProcess.txHash = tx.hash
-    // swapProcess.txLink =
-    //   fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
-    // swapProcess.message = `Swapping - Wait for`
-    // updateExecution(currentExecution)
-
     statusManager.updateProcess(swapProcess, 'PENDING', {
       message: 'Swapping - Wait for',
       txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
