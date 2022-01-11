@@ -13,7 +13,7 @@ import {
 import { deepClone } from './utils'
 
 interface Receipt {
-  fromAmount: string
+  fromAmount?: string
   toAmount: string
 }
 /**
