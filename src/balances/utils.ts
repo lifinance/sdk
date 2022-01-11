@@ -22,7 +22,7 @@ type Balance = {
   blockNumber: number
 }
 
-export const MulticallAbi = [
+const multicallAbi = [
   {
     constant: true,
     inputs: [
@@ -55,7 +55,7 @@ export const MulticallAbi = [
   },
 ]
 
-export const balanceAbi = [
+const balanceAbi = [
   {
     constant: true,
     inputs: [{ name: 'who', type: 'address' }],
@@ -176,7 +176,7 @@ const fetchDataUsingMulticall = async (
   // 1. create contract using multicall contract address and abi...
   const multicallContract = new Contract(
     multicallAddress,
-    MulticallAbi,
+    multicallAbi,
     getRpcProvider(chainId)
   )
   const abiInterface = new Interface(abi)

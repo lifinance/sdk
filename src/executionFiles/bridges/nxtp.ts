@@ -9,6 +9,7 @@ import {
   TransactionResponse,
 } from '@ethersproject/providers'
 import { ParsedReceipt } from '../../types'
+import { defaultReceiptParsing } from '../utils'
 
 // TODO: move in sdk setup, avoid accessing env variabels
 // Add overwrites to specific chains here. They will only be applied if the chain is used.
@@ -84,23 +85,23 @@ const setup = async (
 
 const calculateRelayerFee = async (
   nxtpSDK: NxtpSdkBase,
-  preparedTransaction: {
-    txData: {
-      sendingChainId: number
-      sendingAssetId: string
-      receivingChainId: number
-      receivingAssetId: string
-    }
+  data: {
+    sendingChainId: number
+    sendingAssetId: string
+    receivingChainId: number
+    receivingAssetId: string
+    callData: string
+    callTo: string
   }
 ): Promise<string> => {
   let calculateRelayerFee = '0'
   const chainIdsForPriceOracle = getDeployedChainIdsForGasFee()
-  if (
-    chainIdsForPriceOracle.includes(preparedTransaction.txData.receivingChainId)
-  ) {
+  if (chainIdsForPriceOracle.includes(data.receivingChainId)) {
     const gasNeeded = await nxtpSDK.calculateGasFeeInReceivingTokenForFulfill(
-      preparedTransaction.txData.receivingChainId,
-      preparedTransaction.txData.receivingAssetId
+      data.receivingChainId,
+      data.receivingAssetId,
+      data.callData,
+      data.callTo
     )
 
     calculateRelayerFee = gasNeeded.toString()
@@ -109,13 +110,42 @@ const calculateRelayerFee = async (
   return calculateRelayerFee
 }
 
+const parseTransactionFulfilledEvent = (params: {
+  receipt: TransactionReceipt
+}) => {
+  const { receipt } = params
+
+  const interfaceFulfilled = new ethers.utils.Interface(
+    TransactionManagerArtifact.abi
+  )
+  let result
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceFulfilled.parseLog(log)
+      const amount = parsed.args.args['txData']['amount'] as BigNumber
+      const relayerFee = parsed.args.args['relayerFee'] as BigNumber
+      const asset = parsed.args.args['txData']['receivingAssetId'] as string
+      const transferred = amount.sub(relayerFee)
+
+      result = {
+        toAmount: transferred.toString(),
+        toTokenAddress: asset.toLowerCase(),
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+
+  return result
+}
+
 const parseReceipt = (
   toAddress: string,
   toTokenAddress: string,
   tx: TransactionResponse,
   receipt: TransactionReceipt
-): ParsedReceipt => {
-  const result = {
+): Promise<ParsedReceipt> => {
+  let result = {
     fromAmount: '0',
     toAmount: '0',
     toTokenAddress: toTokenAddress,
@@ -124,50 +154,13 @@ const parseReceipt = (
     gasFee: '0',
   }
 
-  // gas
-  result.gasUsed = receipt.gasUsed.toString()
-  result.gasPrice = tx.gasPrice?.toString() || '0'
-  result.gasFee = receipt.gasUsed.mul(result.gasPrice).toString()
+  // > Relay
+  result = {
+    ...result,
+    ...parseTransactionFulfilledEvent({ receipt }),
+  }
 
-  // logs
-  // > TransactionFulfilled
-  const interfaceFulfilled = new ethers.utils.Interface(
-    TransactionManagerArtifact.abi
-  )
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceFulfilled.parseLog(log)
-      const amount = parsed.args.args['txData']['amount'] as BigNumber
-      const relayerFee = parsed.args.args['relayerFee'] as BigNumber
-      const asset = parsed.args.args['txData']['receivingAssetId'] as string
-      const transferred = amount.sub(relayerFee)
-
-      result.toAmount = transferred.toString()
-      result.toTokenAddress = asset.toLowerCase()
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
-
-  // Fallback or Overwrite if swap happened
-  // > transfer ERC20
-  const abiTransfer = [
-    'event Transfer(address indexed from, address indexed to, uint256 value)',
-  ]
-  const interfaceTransfer = new ethers.utils.Interface(abiTransfer)
-  receipt.logs.forEach((log) => {
-    try {
-      const parsed = interfaceTransfer.parseLog(log)
-      if (parsed.args['to'] === toAddress) {
-        result.toAmount = parsed.args['value'].toString()
-        result.toTokenAddress = log.address.toLowerCase()
-      }
-    } catch (e) {
-      // find right log by trying to parse them
-    }
-  })
-
-  return result
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
 export default {

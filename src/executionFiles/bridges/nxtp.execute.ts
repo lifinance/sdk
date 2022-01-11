@@ -1,6 +1,6 @@
 import { NxtpSdkEvents } from '@connext/nxtp-sdk'
 import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { constants, utils } from 'ethers'
+import { constants, ethers, utils } from 'ethers'
 
 import Lifi from '../../Lifi'
 import {
@@ -8,6 +8,7 @@ import {
   initStatus,
   setStatusDone,
   setStatusFailed,
+  setStatusCancelled,
 } from '../../status'
 import {
   ChainId,
@@ -120,10 +121,11 @@ export class NXTPExecutionManager {
 
           // Prepare transaction
           const personalizedStep = await personalizeStep(signer, step)
-          const { transactionRequest } = await Lifi.getStepTransaction(
-            personalizedStep
-          )
-          if (!transactionRequest) {
+          const updatedStep = await Lifi.getStepTransaction(personalizedStep)
+          // update step
+          Object.assign(step, updatedStep)
+
+          if (!step.transactionRequest) {
             crossProcess.errorMessage = 'Unable to prepare Transaction'
             setStatusFailed(update, status, crossProcess)
             throw crossProcess.errorMessage
@@ -135,7 +137,7 @@ export class NXTPExecutionManager {
           update(status)
           if (!this.shouldContinue) return status
 
-          tx = await signer.sendTransaction(transactionRequest)
+          tx = await signer.sendTransaction(step.transactionRequest)
 
           // STEP 4: Wait for Transaction ///////////////////////////////////////////
           crossProcess.status = 'PENDING'
@@ -219,15 +221,35 @@ export class NXTPExecutionManager {
         (transfer) =>
           transfer.crosschainTx.invariant.transactionId === transactionId
       )
+
       if (foundTransaction) {
-        claimProcess.txHash = foundTransaction.fulfilledTxHash
-        claimProcess.txLink =
-          toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
-        claimProcess.message = 'Swapped:'
-        status.fromAmount = estimate.fromAmount
-        status.toAmount = estimate.toAmount
-        status.status = 'DONE'
-        setStatusDone(update, status, claimProcess)
+        switch (foundTransaction.status) {
+          case 'CANCELLED':
+            claimProcess.message =
+              'CANCELLED - Funds have been refunded on source chain.'
+            status.status = 'CANCELLED'
+            setStatusCancelled(update, status, claimProcess)
+            break
+
+          case 'FULFILLED':
+            claimProcess.txHash = foundTransaction.fulfilledTxHash
+            claimProcess.txLink =
+              toChain.metamask.blockExplorerUrls[0] +
+              'tx/' +
+              claimProcess.txHash
+            claimProcess.message = 'Funds Received:'
+            status.fromAmount = estimate.fromAmount
+            status.toAmount = estimate.toAmount
+            status.status = 'DONE'
+            setStatusDone(update, status, claimProcess)
+            break
+
+          default:
+            nxtpSDK.removeAllListeners()
+            throw new Error(
+              `Transaction with unknow state ${foundTransaction.status}`
+            )
+        }
 
         // DONE
         nxtpSDK.removeAllListeners()
@@ -239,14 +261,19 @@ export class NXTPExecutionManager {
     let calculatedRelayerFee
     let signature
     try {
-      calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpBaseSDK, {
-        txData: {
+      if (step.estimate.data?.relayFee) {
+        calculatedRelayerFee = step.estimate.data.relayFee
+      } else {
+        calculatedRelayerFee = await nxtp.calculateRelayerFee(nxtpBaseSDK, {
           sendingChainId: action.fromChainId,
           sendingAssetId: action.fromToken.address,
           receivingChainId: action.toChainId,
           receivingAssetId: action.toToken.address,
-        },
-      })
+          // ignore call data, because we are passing a custom relayFee in these cases
+          callData: '0x',
+          callTo: ethers.constants.AddressZero,
+        })
+      }
 
       const receivingChainTxManager = getDeployedTransactionManagerContract(
         action.toChainId
@@ -301,6 +328,13 @@ export class NXTPExecutionManager {
     // Does it cointain callData?
     if (preparedTransaction.txData.callDataHash !== utils.keccak256(callData)) {
       if (
+        step.estimate.data.callData &&
+        preparedTransaction.txData.callDataHash ===
+          utils.keccak256(step.estimate.data.callData)
+      ) {
+        // Use cached call data
+        callData = step.estimate.data.callData
+      } else if (
         preparedTransaction.txData.callDataHash ===
         utils.keccak256(preparedTransaction.encryptedCallData)
       ) {
@@ -350,7 +384,7 @@ export class NXTPExecutionManager {
       claimProcess.txHash = response.transactionResponse?.transactionHash
       claimProcess.txLink =
         toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
-      claimProcess.message = 'Swapped:'
+      claimProcess.message = 'Funds Received:'
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()
@@ -376,7 +410,7 @@ export class NXTPExecutionManager {
       }
     } while (balanceBlockNumber < receipt.blockNumber)
 
-    const parsedReceipt = nxtp.parseReceipt(
+    const parsedReceipt = await nxtp.parseReceipt(
       await signer.getAddress(),
       action.toToken.address,
       claimTx,

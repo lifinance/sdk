@@ -13,8 +13,16 @@ async function getAndTestTransaction(
   const provider = getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
-  const parsed = nxtp.parseReceipt(toAddress, toTokenAddress, tx, receipt)
-  expect(parsed).toEqual(expected)
+  const parsed = await nxtp.parseReceipt(toAddress, toTokenAddress, tx, receipt)
+  const needed = {
+    toAmount: parsed.toAmount,
+    gasUsed: parsed.gasUsed,
+    gasPrice: parsed.gasPrice,
+    gasFee: parsed.gasFee,
+    toTokenAddress: parsed.toTokenAddress,
+  }
+
+  expect(needed).toEqual(expected)
 }
 
 describe('nxtp', () => {
@@ -27,7 +35,6 @@ describe('nxtp', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0xc0b2983a17573660053beeed6fdb1053107cf387'
         const expected = {
-          fromAmount: '0',
           toAmount: '23354867418865622655',
           toTokenAddress,
           gasUsed: '327019',
@@ -53,7 +60,6 @@ describe('nxtp', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0xddafbb505ad214d7b80b1f830fccc89b60fb7a83'
         const expected = {
-          fromAmount: '0',
           toAmount: '477609',
           toTokenAddress,
           gasUsed: '88478',
@@ -77,7 +83,6 @@ describe('nxtp', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = ethers.constants.AddressZero
         const expected = {
-          fromAmount: '0',
           toAmount: '1108897500000000000',
           toTokenAddress,
           gasUsed: '79678',
@@ -103,7 +108,6 @@ describe('nxtp', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0x049d68029688eabf473097a2fc38ef61633a3c7a'
         const expected = {
-          fromAmount: '0',
           toAmount: '2109068',
           toTokenAddress,
           gasUsed: '432457',
@@ -129,7 +133,6 @@ describe('nxtp', () => {
         const toAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
         const toTokenAddress = '0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664'
         const expected = {
-          fromAmount: '0',
           toAmount: '2106182',
           toTokenAddress,
           gasUsed: '418248',

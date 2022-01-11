@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "install": "( [ ! -d ./dist ] && npm run build || true )",
+    "install": "node -e \"if (!require('fs').existsSync('./dist')){process.exit(1)}\" || npm run build",
     "watch": "tsc -w -p ./tsconfig.json",
     "build": "node tools/cleanup types && tsc -p ./tsconfig.json",
     "clean": "node tools/cleanup",
@@ -51,7 +51,7 @@
     "@ethersproject/abi": "^5.5.0",
     "@ethersproject/contracts": "^5.4.0",
     "@hop-protocol/sdk": "^0.0.1-beta.282",
-    "@lifinance/types": "0.9.2",
+    "@lifinance/types": "0.9.4",
     "axios": "^0.24.0",
     "bignumber.js": "^9.0.1",
     "bridge-sdk": "^2.13.0",
@@ -87,5 +87,8 @@
   },
   "directories": {
     "test": "test"
+  },
+  "resolutions": {
+    "@sinclair/typebox": "0.20.6"
   }
 }
