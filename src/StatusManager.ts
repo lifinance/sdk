@@ -42,7 +42,7 @@ export default class StatusManager {
 
     if (!step.execution) {
       step.execution = currentExecution
-      this.settings.updateCallback(this.route)
+      this.updateStepInRoute(step)
     }
     return currentExecution
   }
@@ -61,7 +61,7 @@ export default class StatusManager {
       step.execution.fromAmount = receipt.fromAmount
       step.execution.toAmount = receipt.toAmount
     }
-    this.settings.updateCallback(this.route)
+    this.updateStepInRoute(step)
     return step
   }
 
@@ -101,22 +101,32 @@ export default class StatusManager {
 
     execution.process.push(newProcess)
     step.execution = execution
-    this.settings.updateCallback(this.route)
+    this.updateStepInRoute(step)
     return newProcess
   }
 
   /**
    * Update a process object.
-   * @param  {Process} currentProcess  The process object to update
+   * @param  {Step} step The TODO
+   * @param  {string} processId  The process id to update
    * @param  {Status} status The status the process gets.
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {Process} The update process
    */
   updateProcess = (
-    currentProcess: Process,
+    step: Step,
+    processId: string,
     status: Status,
     params?: object
   ): Process => {
+    const currentProcess = step?.execution?.process.find(
+      (p) => p.id === processId
+    )
+
+    if (!currentProcess) {
+      throw new Error('TODO')
+    }
+
     switch (status) {
       // terminating
       case 'CANCELLED':
@@ -149,7 +159,7 @@ export default class StatusManager {
         currentProcess[key] = value
       }
     }
-    this.settings.updateCallback(this.route)
+    this.updateStepInRoute(step) // updates the step in the route
     return currentProcess
   }
 
@@ -170,6 +180,23 @@ export default class StatusManager {
     )
     execution.process.splice(index, 1)
     step.execution = execution
+    this.updateStepInRoute(step)
+  }
+
+  private updateStepInRoute = (step: Step): void => {
+    const stepIndex = this.route.steps.findIndex(
+      (routeStep) => routeStep.id === step.id
+    )
+
+    if (stepIndex === -1) {
+      throw new Error('TODO')
+    }
+
+    this.route.steps[stepIndex] = Object.assign(
+      this.route.steps[stepIndex],
+      step
+    )
+
     this.settings.updateCallback(this.route)
   }
 }

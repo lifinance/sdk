@@ -30,9 +30,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await signer.provider!.waitForTransaction(allowanceProcess.txHash)
-      statusManager.updateProcess(allowanceProcess, 'DONE')
+      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
     } else if (allowanceProcess.message === 'Already Approved') {
-      statusManager.updateProcess(allowanceProcess, 'DONE')
+      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -48,7 +48,7 @@ export const checkAllowance = async (
         )
 
         // update currentExecution
-        statusManager.updateProcess(allowanceProcess, 'PENDING', {
+        statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
           txHash: approveTx.hash,
           txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
           message: 'Approve - Wait for',
@@ -57,11 +57,11 @@ export const checkAllowance = async (
         // wait for transcation
         await approveTx.wait()
 
-        statusManager.updateProcess(allowanceProcess, 'DONE', {
+        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
           message: 'Approved: ',
         })
       } else {
-        statusManager.updateProcess(allowanceProcess, 'DONE', {
+        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
           message: 'Already Approved',
         })
       }
@@ -69,13 +69,13 @@ export const checkAllowance = async (
   } catch (e: any) {
     // -> set status
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-      statusManager.updateProcess(allowanceProcess, 'PENDING', {
+      statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
         txHash: e.replacement.hash,
         txLink:
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
-      statusManager.updateProcess(allowanceProcess, 'FAILED', {
+      statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
         errorMessage: e.message,
         errorCode: e.code,
       })

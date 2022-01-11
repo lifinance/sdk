@@ -70,7 +70,7 @@ export class SwapExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(swapProcess, 'FAILED', {
+          statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
           statusManager.updateExecution(step, 'FAILED')
@@ -80,7 +80,7 @@ export class SwapExecutionManager {
         // -> set currentExecution
         // swapProcess.status = 'ACTION_REQUIRED'
         // swapProcess.message = `Sign Transaction`
-        statusManager.updateProcess(swapProcess, 'ACTION_REQUIRED', {
+        statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
           message: 'Sign Transaction',
         })
         if (!this.shouldContinue) return currentExecution // stop before user interaction is needed
@@ -93,7 +93,7 @@ export class SwapExecutionManager {
       // if (e.message) swapProcess.errorMessage = e.message
       // if (e.code) swapProcess.errorCode = e.code
       // statusManager.setProcessFailed(step, currentExecution, swapProcess)
-      statusManager.updateProcess(swapProcess, 'FAILED', {
+      statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
         errorMessage: e.message,
         errorCode: e.code,
       })
@@ -102,7 +102,7 @@ export class SwapExecutionManager {
     }
 
     // Wait for Transaction
-    statusManager.updateProcess(swapProcess, 'PENDING', {
+    statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
       message: 'Swapping - Wait for',
       txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
       txHash: tx.hash,
@@ -116,7 +116,7 @@ export class SwapExecutionManager {
       // -> set status
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
         receipt = e.replacement
-        statusManager.updateProcess(swapProcess, 'PENDING', {
+        statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
           txHash: e.replacement.hash,
           txLink:
             fromChain.metamask.blockExplorerUrls[0] +
@@ -124,7 +124,7 @@ export class SwapExecutionManager {
             e.replacement.hash,
         })
       } else {
-        statusManager.updateProcess(swapProcess, 'FAILED', {
+        statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
           errorMessage: e.message,
           errorCode: e.code,
         })
@@ -137,7 +137,9 @@ export class SwapExecutionManager {
     const parsedReceipt = await parseReceipt(tx, receipt)
 
     // currentExecution.gasUsed = parsedReceipt.gasUsed
-    statusManager.updateProcess(swapProcess, 'DONE', { message: 'Swapped:' })
+    statusManager.updateProcess(step, swapProcess.id, 'DONE', {
+      message: 'Swapped:',
+    })
 
     statusManager.updateExecution(step, 'DONE', {
       fromAmount: parsedReceipt.fromAmount,

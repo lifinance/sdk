@@ -69,20 +69,20 @@ export class AnySwapExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(crossProcess, 'FAILED', {
+          statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
           throw crossProcess.errorMessage
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
-        statusManager.updateProcess(crossProcess, 'ACTION_REQUIRED')
+        statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
         if (!this.shouldContinue) return status // stop before user action is required
 
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        statusManager.updateProcess(crossProcess, 'PENDING', {
+        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
           txHash: tx.hash,
           txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
         })
@@ -91,7 +91,7 @@ export class AnySwapExecutionManager {
       await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        statusManager.updateProcess(crossProcess, 'PENDING', {
+        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
           txHash: e.replacement.hash,
           txLink:
             fromChain.metamask.blockExplorerUrls[0] +
@@ -99,7 +99,7 @@ export class AnySwapExecutionManager {
             e.replacement.hash,
         })
       } else {
-        statusManager.updateProcess(crossProcess, 'FAILED', {
+        statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
           errorMessage: e.message,
           errorCode: e.code,
         })
@@ -108,7 +108,7 @@ export class AnySwapExecutionManager {
       }
     }
 
-    statusManager.updateProcess(crossProcess, 'DONE', {
+    statusManager.updateProcess(step, crossProcess.id, 'DONE', {
       message: 'Transfer started: ',
     })
 
@@ -126,7 +126,7 @@ export class AnySwapExecutionManager {
         toChain.id
       )
     } catch (e: any) {
-      statusManager.updateProcess(waitForTxProcess, 'FAILED', {
+      statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
         errorMessage: 'Failed waiting',
         errorCode: e.code,
       })
@@ -142,7 +142,7 @@ export class AnySwapExecutionManager {
       destinationTxReceipt
     )
 
-    statusManager.updateProcess(waitForTxProcess, 'DONE', {
+    statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
       txHash: destinationTxReceipt.transactionHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +

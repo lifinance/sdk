@@ -121,9 +121,14 @@ export class HorizonExecutionManager {
           return currentExecution
         }
         if (operationId) {
-          statusManager.updateProcess(allowanceAndCrossProcess, 'PENDING', {
-            operationId: operationId,
-          })
+          statusManager.updateProcess(
+            step,
+            allowanceAndCrossProcess.id,
+            'PENDING',
+            {
+              operationId: operationId,
+            }
+          )
           const operation = await bridgeSDK.api.getOperation(operationId)
           console.debug('operation', operation)
 
@@ -132,14 +137,19 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'in_progress' &&
             allowanceAndCrossProcess.status === 'ACTION_REQUIRED'
           ) {
-            statusManager.updateProcess(allowanceAndCrossProcess, 'PENDING', {
-              txHash: operation.actions[0].transactionHash,
-              txLink:
-                fromChain.metamask.blockExplorerUrls[0] +
-                'tx/' +
-                operation.actions[0].transactionHash,
-              message: 'Send Transaction - Wait for',
-            })
+            statusManager.updateProcess(
+              step,
+              allowanceAndCrossProcess.id,
+              'PENDING',
+              {
+                txHash: operation.actions[0].transactionHash,
+                txLink:
+                  fromChain.metamask.blockExplorerUrls[0] +
+                  'tx/' +
+                  operation.actions[0].transactionHash,
+                message: 'Send Transaction - Wait for',
+              }
+            )
           }
 
           // Wait > Done; Wait for confirmations
@@ -147,9 +157,14 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'success' &&
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
-            statusManager.updateProcess(allowanceAndCrossProcess, 'DONE', {
-              message: 'Transaction Sent:',
-            })
+            statusManager.updateProcess(
+              step,
+              allowanceAndCrossProcess.id,
+              'DONE',
+              {
+                message: 'Transaction Sent:',
+              }
+            )
 
             waitForBlocksProcess = statusManager.findOrCreateProcess(
               'waitForBlocksProcess',
@@ -165,7 +180,7 @@ export class HorizonExecutionManager {
             operation.actions[1].status === 'success' &&
             waitForBlocksProcess.status === 'PENDING'
           ) {
-            statusManager.updateProcess(waitForBlocksProcess, 'DONE', {
+            statusManager.updateProcess(step, waitForBlocksProcess.id, 'DONE', {
               message: 'Enough Block Confirmations',
             })
             mintProcess = statusManager.findOrCreateProcess(
@@ -184,7 +199,7 @@ export class HorizonExecutionManager {
             operation.actions[2].status === 'success' &&
             mintProcess.status === 'PENDING'
           ) {
-            statusManager.updateProcess(mintProcess, 'DONE', {
+            statusManager.updateProcess(step, mintProcess.id, 'DONE', {
               message: 'Minted in',
               txHash: operation.actions[2].transactionHash,
               txLink:
@@ -206,14 +221,22 @@ export class HorizonExecutionManager {
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                statusManager.updateProcess(allowanceAndCrossProcess, 'FAILED')
+                statusManager.updateProcess(
+                  step,
+                  allowanceAndCrossProcess.id,
+                  'FAILED'
+                )
               if (
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                statusManager.updateProcess(waitForBlocksProcess, 'FAILED')
+                statusManager.updateProcess(
+                  step,
+                  waitForBlocksProcess.id,
+                  'FAILED'
+                )
               if (mintProcess! && mintProcess.status !== 'DONE')
-                statusManager.updateProcess(mintProcess, 'FAILED')
+                statusManager.updateProcess(step, mintProcess.id, 'FAILED')
 
               statusManager.updateExecution(step, 'FAILED')
             }
@@ -228,17 +251,17 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.updateProcess(allowanceAndCrossProcess, 'DONE')
+        statusManager.updateProcess(step, allowanceAndCrossProcess.id, 'DONE')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.updateProcess(waitForBlocksProcess, 'DONE')
+        statusManager.updateProcess(step, waitForBlocksProcess.id, 'DONE')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.updateProcess(mintProcess, 'DONE')
+        statusManager.updateProcess(step, mintProcess.id, 'DONE')
     } catch (e: any) {
       clearInterval(intervalId!)
       const lastStep: Process =
         currentExecution.process[currentExecution.process.length - 1]
 
-      statusManager.updateProcess(lastStep, 'FAILED', {
+      statusManager.updateProcess(step, lastStep.id, 'FAILED', {
         errorMessage: (e as Error).message,
       })
 
@@ -246,11 +269,11 @@ export class HorizonExecutionManager {
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        statusManager.updateProcess(allowanceAndCrossProcess, 'FAILED')
+        statusManager.updateProcess(step, allowanceAndCrossProcess.id, 'FAILED')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        statusManager.updateProcess(waitForBlocksProcess, 'FAILED')
+        statusManager.updateProcess(step, waitForBlocksProcess.id, 'FAILED')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        statusManager.updateProcess(mintProcess, 'FAILED')
+        statusManager.updateProcess(step, mintProcess.id, 'FAILED')
 
       throw e
     }

@@ -23,7 +23,6 @@ import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
 
 export class StepExecutor {
-  route: Route
   settings: Hooks
   statusManager: StatusManager
   private swapExecutionManager = new SwapExecutionManager()
@@ -36,7 +35,6 @@ export class StepExecutor {
   executionStopped = false
 
   constructor(route: Route, settings: Hooks) {
-    this.route = route
     this.settings = settings
     this.statusManager = new StatusManager(route, settings)
   }
@@ -85,7 +83,7 @@ export class StepExecutor {
           throw Error('CHAIN SWITCH REQUIRED')
         }
       } catch (e: any) {
-        this.statusManager.updateProcess(switchProcess, 'FAILED', {
+        this.statusManager.updateProcess(step, switchProcess.id, 'FAILED', {
           errorMessage: e.message,
           errorCode: e.code,
         })
