@@ -146,11 +146,11 @@ export default class StatusManager {
     // set extra parameters or overwritte the standard params set in the switch statement
     if (params) {
       for (const [key, value] of Object.entries(params)) {
-        if (!value) continue // allow passing unchecked parameters to this function
         currentProcess[key] = value
       }
     }
     this.settings.updateCallback(this.route)
+
     return currentProcess
   }
 

@@ -87,6 +87,7 @@ export class NXTPExecutionManager {
         statusManager.updateProcess(keyProcess, 'FAILED', {
           errorMessage: e.message,
         })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
       // -> set currentExecution
@@ -124,6 +125,7 @@ export class NXTPExecutionManager {
             statusManager.updateProcess(crossProcess, 'FAILED', {
               errorMessage: 'Unable to prepare Transaction',
             })
+            statusManager.updateExecution(step, 'FAILED')
             throw crossProcess.errorMessage
           }
 
@@ -144,6 +146,7 @@ export class NXTPExecutionManager {
           errorMessage: e.message,
           errorCode: e.code,
         })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
 
@@ -165,6 +168,7 @@ export class NXTPExecutionManager {
             errorMessage: e.message,
             errorCode: e.code,
           })
+          statusManager.updateExecution(step, 'FAILED')
           throw e
         }
       }
@@ -274,6 +278,7 @@ export class NXTPExecutionManager {
         statusManager.updateProcess(claimProcess, 'FAILED', {
           errorMessage: `No TransactionManager definded for chain: ${action.toChainId}`,
         })
+        statusManager.updateExecution(step, 'FAILED')
         nxtpSDK.removeAllListeners()
         throw new Error(
           `No TransactionManager definded for chain: ${action.toChainId}`
@@ -298,6 +303,7 @@ export class NXTPExecutionManager {
       statusManager.updateProcess(claimProcess, 'FAILED', {
         errorMessage: e.message,
       })
+      statusManager.updateExecution(step, 'FAILED')
       nxtpSDK.removeAllListeners()
       throw e
     }
@@ -315,6 +321,7 @@ export class NXTPExecutionManager {
       statusManager.updateProcess(claimProcess, 'FAILED', {
         errorMessage: e.message,
       })
+      statusManager.updateExecution(step, 'FAILED')
       nxtpSDK.removeAllListeners()
       throw e
     }
@@ -347,6 +354,7 @@ export class NXTPExecutionManager {
           statusManager.updateProcess(claimProcess, 'FAILED', {
             errorMessage: e.message,
           })
+          statusManager.updateExecution(step, 'FAILED')
           nxtpSDK.removeAllListeners()
           throw e
         }
@@ -386,6 +394,7 @@ export class NXTPExecutionManager {
       statusManager.updateProcess(claimProcess, 'FAILED', {
         errorMessage: e.message,
       })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 

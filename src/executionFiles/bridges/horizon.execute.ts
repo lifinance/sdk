@@ -214,6 +214,8 @@ export class HorizonExecutionManager {
                 statusManager.updateProcess(waitForBlocksProcess, 'FAILED')
               if (mintProcess! && mintProcess.status !== 'DONE')
                 statusManager.updateProcess(mintProcess, 'FAILED')
+
+              statusManager.updateExecution(step, 'FAILED')
             }
           }
         }

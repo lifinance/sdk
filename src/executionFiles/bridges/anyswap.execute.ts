@@ -103,6 +103,7 @@ export class AnySwapExecutionManager {
           errorMessage: e.message,
           errorCode: e.code,
         })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
     }
@@ -129,6 +130,7 @@ export class AnySwapExecutionManager {
         errorMessage: 'Failed waiting',
         errorCode: e.code,
       })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 

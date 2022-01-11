@@ -37,7 +37,7 @@ export const checkAllowance = async (
       const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
-        const approvaLAmount = infiniteApproval
+        const approvaLAmount = /*infiniteApproval*/ false
           ? constants.MaxUint256.toString()
           : amount
         const approveTx = await setApproval(
@@ -56,14 +56,15 @@ export const checkAllowance = async (
 
         // wait for transcation
         await approveTx.wait()
+
+        statusManager.updateProcess(allowanceProcess, 'DONE', {
+          message: 'Approved: ',
+        })
       } else {
         statusManager.updateProcess(allowanceProcess, 'DONE', {
           message: 'Already Approved',
         })
       }
-      statusManager.updateProcess(allowanceProcess, 'DONE', {
-        message: 'Approved:',
-      })
     }
   } catch (e: any) {
     // -> set status
@@ -78,6 +79,7 @@ export const checkAllowance = async (
         errorMessage: e.message,
         errorCode: e.code,
       })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
   }

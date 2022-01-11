@@ -73,6 +73,7 @@ export class SwapExecutionManager {
           statusManager.updateProcess(swapProcess, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
+          statusManager.updateExecution(step, 'FAILED')
           throw swapProcess.errorMessage
         }
 
@@ -96,6 +97,7 @@ export class SwapExecutionManager {
         errorMessage: e.message,
         errorCode: e.code,
       })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
@@ -134,6 +136,7 @@ export class SwapExecutionManager {
           errorMessage: e.message,
           errorCode: e.code,
         })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
     }

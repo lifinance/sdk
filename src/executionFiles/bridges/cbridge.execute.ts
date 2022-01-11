@@ -73,6 +73,7 @@ export class CbridgeExecutionManager {
           statusManager.updateProcess(crossProcess, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
+          statusManager.updateExecution(step, 'FAILED')
           throw crossProcess.errorMessage
         }
 
@@ -135,7 +136,7 @@ export class CbridgeExecutionManager {
         errorMessage: 'Failed waiting',
         errorCode: e.code,
       })
-
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 

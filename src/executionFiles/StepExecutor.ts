@@ -89,6 +89,7 @@ export class StepExecutor {
           errorMessage: e.message,
           errorCode: e.code,
         })
+        this.statusManager.updateExecution(step, 'FAILED')
         throw e
       }
 
