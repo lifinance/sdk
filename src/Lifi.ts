@@ -228,12 +228,6 @@ class LIFI {
           step,
           this.activeRouteDictionary[route.id].settings
         )
-        this.activeRouteDictionary[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(
-          signer,
-          step,
-          this.activeRouteDictionary[route.id].settings
-        )
       } catch (e) {
         this.stopExecution(route)
         throw e
