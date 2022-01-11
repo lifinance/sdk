@@ -85,23 +85,23 @@ const setup = async (
 
 const calculateRelayerFee = async (
   nxtpSDK: NxtpSdkBase,
-  preparedTransaction: {
-    txData: {
-      sendingChainId: number
-      sendingAssetId: string
-      receivingChainId: number
-      receivingAssetId: string
-    }
+  data: {
+    sendingChainId: number
+    sendingAssetId: string
+    receivingChainId: number
+    receivingAssetId: string
+    callData: string
+    callTo: string
   }
 ): Promise<string> => {
   let calculateRelayerFee = '0'
   const chainIdsForPriceOracle = getDeployedChainIdsForGasFee()
-  if (
-    chainIdsForPriceOracle.includes(preparedTransaction.txData.receivingChainId)
-  ) {
+  if (chainIdsForPriceOracle.includes(data.receivingChainId)) {
     const gasNeeded = await nxtpSDK.calculateGasFeeInReceivingTokenForFulfill(
-      preparedTransaction.txData.receivingChainId,
-      preparedTransaction.txData.receivingAssetId
+      data.receivingChainId,
+      data.receivingAssetId,
+      data.callData,
+      data.callTo
     )
 
     calculateRelayerFee = gasNeeded.toString()
