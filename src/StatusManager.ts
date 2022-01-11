@@ -22,7 +22,8 @@ type InternalUpdateRouteCallback = (route: Route) => void
 /**
  * Manages status updates of a route and provides various functions for tracking processes
  * @param  {Route} route  The route this StatusManger belongs to.
- * @param  {Hooks} settings   The ExecutionSettings for this route
+ * @param  {Hooks} settings   The ExecutionSettings for this route.
+ * @param  {InternalUpdateRouteCallback} internalUpdateRouteCallback  Internal callback to propage route changes.
  * @return {StatusManager}       An instance of StatusManager.
  */
 export default class StatusManager {
