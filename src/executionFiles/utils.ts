@@ -4,7 +4,7 @@ import {
 } from '@ethersproject/providers'
 import { ethers } from 'ethers'
 import { ChainId, ParsedReceipt } from '..'
-import { getArchiveRpcProvider } from '../connectors'
+import { getRpcProvider } from '../connectors'
 
 export const defaultReceiptParsing = async (params: {
   result: ParsedReceipt
@@ -92,7 +92,7 @@ export const getTransferredNativeTokenBalanceFromChain = async (params: {
 
   // try to load gas balance differences
   try {
-    const provider = getArchiveRpcProvider(tx.chainId)
+    const provider = getRpcProvider(tx.chainId, true)
     const providerBlockNumber = await provider.getBlockNumber()
     if (tx.blockNumber && providerBlockNumber) {
       const balanceBefore = await provider.getBalance(
