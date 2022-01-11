@@ -104,7 +104,7 @@ export class CbridgeExecutionManager {
       } else {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
           errorMessage: e.message,
           errorCode: e.code,
         })
