@@ -16,6 +16,9 @@ interface Receipt {
   fromAmount?: string
   toAmount: string
 }
+
+type InternalUpdateRouteCallback = (route: Route) => void
+
 /**
  * Manages status updates of a route and provides various functions for tracking processes
  * @param  {Route} route  The route this StatusManger belongs to.
@@ -23,12 +26,18 @@ interface Receipt {
  * @return {StatusManager}       An instance of StatusManager.
  */
 export default class StatusManager {
-  route: Route
-  settings: Hooks
+  private route: Route
+  private settings: Hooks
+  private internalUpdateRouteCallback: InternalUpdateRouteCallback
 
-  constructor(route: Route, settings: Hooks) {
+  constructor(
+    route: Route,
+    settings: Hooks,
+    internalUpdateRouteCallback: InternalUpdateRouteCallback
+  ) {
     this.route = route
     this.settings = settings
+    this.internalUpdateRouteCallback = internalUpdateRouteCallback
   }
 
   /**
@@ -68,8 +77,7 @@ export default class StatusManager {
   /**
    * Create and push a new process into the execution. If a process for the given id already exists the existing process is set to PENDING instead.
    * @param  {String} id  Identifier for the process. Used to identify already existing processes.
-   * @param  {UpdateExecution} updateExecution   updateExecution The function used to update the step.
-   * @param  {Execution} execution The Execution object that the Process is appended to.
+   * @param  {Step} step The step that should contain the new process.
    * @param  {ProcessMessage} message  A ProcessMessage for this Process. Will be used on newly created or already existing process.
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {Process}
@@ -77,11 +85,14 @@ export default class StatusManager {
   findOrCreateProcess = (
     id: string,
     step: Step,
-    execution: Execution,
     message: ProcessMessage,
     params?: object
   ): Process => {
-    const process = execution.process.find((p) => p.id === id)
+    if (!step.execution || !step.execution.process) {
+      throw new Error('Execution has not been initialized')
+    }
+
+    const process = step.execution.process.find((p) => p.id === id)
 
     if (process) {
       return process
@@ -99,15 +110,15 @@ export default class StatusManager {
       }
     }
 
-    execution.process.push(newProcess)
-    step.execution = execution
+    step.execution.process.push(newProcess)
+    // step.execution = execution
     this.updateStepInRoute(step)
     return newProcess
   }
 
   /**
    * Update a process object.
-   * @param  {Step} step The TODO
+   * @param  {Step} step The step where the process should be updated
    * @param  {string} processId  The process id to update
    * @param  {Status} status The status the process gets.
    * @param  {object} [params]   Additional parameters to append to the process.
@@ -124,7 +135,7 @@ export default class StatusManager {
     )
 
     if (!currentProcess) {
-      throw new Error('TODO')
+      throw new Error('Cannot find process for given id')
     }
 
     switch (status) {
@@ -165,21 +176,18 @@ export default class StatusManager {
 
   /**
    * Remove a process from the execution
-   * @param  {UpdateExecution} updateExecution updateExecution The function used to update the step.
-   * @param  {Execution} execution The Execution object to update.
-   * @param  {Process} currentProcess  The Process to remove
+   * @param  {Step} step The step where the process should be removed from
+   * @param  {string} processId  The Process id to remove
    * @return {void}
    */
-  removeProcess = (
-    step: Step,
-    execution: Execution,
-    currentProcess: Process
-  ): void => {
-    const index = execution.process.findIndex(
-      (process) => process.id === currentProcess.id
+  removeProcess = (step: Step, processId: string): void => {
+    if (!step.execution) {
+      throw new Error('Execution has not been initialized')
+    }
+    const index = step.execution.process.findIndex(
+      (process) => process.id === processId
     )
-    execution.process.splice(index, 1)
-    step.execution = execution
+    step.execution.process.splice(index, 1)
     this.updateStepInRoute(step)
   }
 
@@ -189,7 +197,7 @@ export default class StatusManager {
     )
 
     if (stepIndex === -1) {
-      throw new Error('TODO')
+      throw new Error('Could not find step to update')
     }
 
     this.route.steps[stepIndex] = Object.assign(
@@ -198,5 +206,6 @@ export default class StatusManager {
     )
 
     this.settings.updateCallback(this.route)
+    this.internalUpdateRouteCallback(this.route)
   }
 }

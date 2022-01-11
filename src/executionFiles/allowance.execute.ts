@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 
-import { Chain, Execution, Step, Token } from '../types'
+import { Chain, Step, Token } from '../types'
 import { getApproved, setApproval } from '../utils'
 
 export const checkAllowance = async (
@@ -13,7 +13,6 @@ export const checkAllowance = async (
   amount: string,
   spenderAddress: string,
   statusManager: StatusManager,
-  currentExecution: Execution,
   infiniteApproval = false
   // eslint-disable-next-line max-params
 ) => {
@@ -22,7 +21,6 @@ export const checkAllowance = async (
   const allowanceProcess = statusManager.findOrCreateProcess(
     'allowanceProcess',
     step,
-    currentExecution,
     `Set Allowance for ${token.symbol}`
   )
 

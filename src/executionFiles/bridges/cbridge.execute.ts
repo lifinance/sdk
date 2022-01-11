@@ -20,19 +20,19 @@ export class CbridgeExecutionManager {
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, estimate } = step
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
-    const oldCrossProcess = currentExecution.process.find(
+    const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        if (!this.shouldContinue) return currentExecution
+        if (!this.shouldContinue) return step.execution
         await checkAllowance(
           signer,
           step,
@@ -41,7 +41,6 @@ export class CbridgeExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          currentExecution,
           true
         )
       }
@@ -51,7 +50,6 @@ export class CbridgeExecutionManager {
     const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       step,
-      currentExecution,
       'Prepare Transaction'
     )
 
@@ -82,7 +80,7 @@ export class CbridgeExecutionManager {
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
 
-        if (!this.shouldContinue) return currentExecution
+        if (!this.shouldContinue) return step.execution
 
         tx = await signer.sendTransaction(step.transactionRequest)
 
@@ -122,7 +120,6 @@ export class CbridgeExecutionManager {
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       step,
-      currentExecution,
       'Wait for Receiving Chain'
     )
     let destinationTx: TransactionResponse
@@ -167,6 +164,6 @@ export class CbridgeExecutionManager {
     })
 
     // DONE
-    return currentExecution
+    return step.execution
   }
 }

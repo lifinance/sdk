@@ -2,7 +2,6 @@ import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import StatusManager from '../../StatusManager'
 
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
@@ -19,13 +18,13 @@ export class AnySwapExecutionManager {
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, estimate } = step
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
-    const oldCrossProcess = currentExecution.process.find(
+    const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
@@ -40,7 +39,6 @@ export class AnySwapExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          currentExecution,
           true
         )
       }
@@ -50,7 +48,6 @@ export class AnySwapExecutionManager {
     const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       step,
-      currentExecution,
       'Prepare Transaction'
     )
 
@@ -116,7 +113,6 @@ export class AnySwapExecutionManager {
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       step,
-      currentExecution,
       'Wait for Receiving Chain'
     )
     let destinationTxReceipt

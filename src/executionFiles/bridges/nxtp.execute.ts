@@ -33,10 +33,10 @@ export class NXTPExecutionManager {
     hooks,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
-    const oldCrossProcess = currentExecution.process.find(
+    const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
     const transactionId = step.id
@@ -44,7 +44,7 @@ export class NXTPExecutionManager {
     // STEP 0: Check Allowance ////////////////////////////////////////////////
     if (action.fromToken.address !== constants.AddressZero) {
       // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-      if (!this.shouldContinue) return currentExecution
+      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
         step,
@@ -53,7 +53,6 @@ export class NXTPExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        currentExecution,
         true
       )
     }
@@ -66,17 +65,16 @@ export class NXTPExecutionManager {
       isSwapStep(step.includedSteps[step.includedSteps.length - 1]) &&
       (!oldCrossProcess || !oldCrossProcess.txHash)
     ) {
-      // -> set currentExecution
+      // -> set step.execution
       const keyProcess = statusManager.findOrCreateProcess(
         'publicKey',
         step,
-        currentExecution,
         'Provide Public Key',
         {
           status: 'ACTION_REQUIRED',
         }
       )
-      if (!this.shouldContinue) return currentExecution
+      if (!this.shouldContinue) return step.execution
       // -> request key
       try {
         const encryptionPublicKey = await hooks.getPublicKeyHook()
@@ -90,7 +88,7 @@ export class NXTPExecutionManager {
         statusManager.updateExecution(step, 'FAILED')
         throw e
       }
-      // -> set currentExecution
+      // -> set step.execution
       statusManager.updateProcess(step, keyProcess.id, 'DONE')
     }
 
@@ -98,7 +96,6 @@ export class NXTPExecutionManager {
     const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       step,
-      currentExecution,
       'Prepare Transaction'
     )
     if (crossProcess.status !== 'DONE') {
@@ -108,7 +105,7 @@ export class NXTPExecutionManager {
           // -> restore existing tx
           // crossProcess.status = 'PENDING'
           // crossProcess.message = 'Wait for '
-          // updateExecution(currentExecution)
+          // updateExecution(step.execution)
           statusManager.updateProcess(step, crossProcess.id, 'PENDING')
           const fromProvider = getRpcProvider(step.action.fromChainId)
           tx = await fromProvider.getTransaction(crossProcess.txHash)
@@ -131,7 +128,7 @@ export class NXTPExecutionManager {
 
           // STEP 3: Send Transaction ///////////////////////////////////////////////
           statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-          if (!this.shouldContinue) return currentExecution
+          if (!this.shouldContinue) return step.execution
 
           tx = await signer.sendTransaction(step.transactionRequest)
 
@@ -182,7 +179,6 @@ export class NXTPExecutionManager {
     const claimProcess = statusManager.findOrCreateProcess(
       'claimProcess',
       step,
-      currentExecution,
       'Wait for bridge'
     )
     // reset previous process
@@ -254,7 +250,7 @@ export class NXTPExecutionManager {
 
         // DONE
         nxtpSDK.removeAllListeners()
-        return currentExecution
+        return step.execution
       }
     }
 
@@ -296,7 +292,7 @@ export class NXTPExecutionManager {
 
       if (!this.shouldContinue) {
         nxtpSDK.removeAllListeners()
-        return currentExecution
+        return step.execution
       }
 
       signature = await signFulfillTransactionPayload(
@@ -357,7 +353,7 @@ export class NXTPExecutionManager {
         })
         if (!this.shouldContinue) {
           nxtpSDK.removeAllListeners()
-          return currentExecution
+          return step.execution
         }
 
         try {
@@ -447,6 +443,6 @@ export class NXTPExecutionManager {
 
     // DONE
     nxtpSDK.removeAllListeners()
-    return currentExecution
+    return step.execution
   }
 }

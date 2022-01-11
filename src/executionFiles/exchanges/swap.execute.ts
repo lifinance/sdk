@@ -27,11 +27,11 @@ export class SwapExecutionManager {
     // setup
     const { action, estimate } = step
     const fromChain = getChainById(action.fromChainId)
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
-      if (!this.shouldContinue) return currentExecution
+      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
         step,
@@ -40,17 +40,15 @@ export class SwapExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        currentExecution,
         true
       )
     }
 
     // Start Swap
-    // -> set currentExecution
+    // -> set step.execution
     const swapProcess = statusManager.findOrCreateProcess(
       'swapProcess',
       step,
-      currentExecution,
       'Preparing Swap'
     )
 
@@ -77,22 +75,22 @@ export class SwapExecutionManager {
           throw swapProcess.errorMessage
         }
 
-        // -> set currentExecution
+        // -> set step.execution
         // swapProcess.status = 'ACTION_REQUIRED'
         // swapProcess.message = `Sign Transaction`
         statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
           message: 'Sign Transaction',
         })
-        if (!this.shouldContinue) return currentExecution // stop before user interaction is needed
+        if (!this.shouldContinue) return step.execution // stop before user interaction is needed
 
         // -> submit tx
         tx = await signer.sendTransaction(transactionRequest)
       }
     } catch (e: any) {
-      // -> set currentExecution
+      // -> set step.execution
       // if (e.message) swapProcess.errorMessage = e.message
       // if (e.code) swapProcess.errorCode = e.code
-      // statusManager.setProcessFailed(step, currentExecution, swapProcess)
+      // statusManager.setProcessFailed(step, step.execution, swapProcess)
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
         errorMessage: e.message,
         errorCode: e.code,
@@ -136,7 +134,7 @@ export class SwapExecutionManager {
     // -> set status
     const parsedReceipt = await parseReceipt(tx, receipt)
 
-    // currentExecution.gasUsed = parsedReceipt.gasUsed
+    // step.execution.gasUsed = parsedReceipt.gasUsed
     statusManager.updateProcess(step, swapProcess.id, 'DONE', {
       message: 'Swapped:',
     })
@@ -147,6 +145,6 @@ export class SwapExecutionManager {
     })
 
     // DONE
-    return currentExecution
+    return step.execution
   }
 }

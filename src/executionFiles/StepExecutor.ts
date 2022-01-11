@@ -8,7 +8,6 @@ import {
   Hooks,
   Step,
   SwapStep,
-  Route,
   getChainById,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
@@ -34,9 +33,9 @@ export class StepExecutor {
 
   executionStopped = false
 
-  constructor(route: Route, settings: Hooks) {
+  constructor(statusManager: StatusManager, settings: Hooks) {
+    this.statusManager = statusManager
     this.settings = settings
-    this.statusManager = new StatusManager(route, settings)
   }
 
   stopStepExecution = (): void => {
@@ -50,22 +49,17 @@ export class StepExecutor {
     this.executionStopped = true
   }
 
-  executeStep = async (
-    signer: Signer,
-    step: Step,
-    hooks: Hooks
-  ): Promise<Step> => {
+  executeStep = async (signer: Signer, step: Step): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
       // -> set status message
-      const currentExecution = this.statusManager.initExecutionObject(step)
+      step.execution = this.statusManager.initExecutionObject(step)
       this.statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
       const chain = getChainById(step.action.fromChainId)
 
       const switchProcess = this.statusManager.findOrCreateProcess(
         'swithProcess',
         step,
-        currentExecution,
         `Change Chain to ${chain.name}`
       )
 
@@ -91,14 +85,14 @@ export class StepExecutor {
         throw e
       }
 
-      this.statusManager.removeProcess(step, currentExecution, switchProcess)
+      this.statusManager.removeProcess(step, switchProcess.id)
       this.statusManager.updateExecution(step, 'PENDING')
     }
 
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step, hooks)
+        await this.executeCross(signer, step, this.settings)
         break
       case 'swap':
         await this.executeSwap(signer, step)

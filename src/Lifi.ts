@@ -7,7 +7,6 @@ import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
-  Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,
   Route,
@@ -25,6 +24,7 @@ import {
   ActiveRouteDictionary,
   ExecutionSettings,
 } from './types'
+import StatusManager from './StatusManager'
 
 class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -195,6 +195,12 @@ class LIFI {
     }
     this.activeRouteDictionary[route.id] = execData
 
+    const statusManager = new StatusManager(
+      route,
+      this.activeRouteDictionary[route.id].settings,
+      (route: Route) => (this.activeRouteDictionary[route.id].route = route)
+    )
+
     // loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
       //check if execution has stopped in meantime
@@ -219,15 +225,11 @@ class LIFI {
       let stepExecutor: StepExecutor
       try {
         stepExecutor = new StepExecutor(
-          route,
+          statusManager,
           this.activeRouteDictionary[route.id].settings
         )
         this.activeRouteDictionary[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(
-          signer,
-          step,
-          this.activeRouteDictionary[route.id].settings
-        )
+        await stepExecutor.executeStep(signer, step)
       } catch (e) {
         this.stopExecution(route)
         throw e

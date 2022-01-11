@@ -17,19 +17,19 @@ export class HopExecutionManager {
 
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action, estimate } = step
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
-    const oldCrossProcess = currentExecution.process.find(
+    const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        if (!this.shouldContinue) return currentExecution
+        if (!this.shouldContinue) return step.execution
         await checkAllowance(
           signer,
           step,
@@ -38,7 +38,6 @@ export class HopExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          currentExecution,
           true
         )
       }
@@ -48,7 +47,6 @@ export class HopExecutionManager {
     const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
       step,
-      currentExecution,
       'Prepare Transaction'
     )
 
@@ -76,7 +74,7 @@ export class HopExecutionManager {
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-        if (!this.shouldContinue) return currentExecution
+        if (!this.shouldContinue) return step.execution
 
         tx = await signer.sendTransaction(transactionRequest)
 
@@ -121,7 +119,6 @@ export class HopExecutionManager {
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       step,
-      currentExecution,
       'Wait for Receiving Chain'
     )
     let destinationTxReceipt
@@ -154,7 +151,7 @@ export class HopExecutionManager {
       destinationTxReceipt
     )
 
-    // currentExecution.gasUsed = parsedReceipt.gasUsed
+    // step.execution.gasUsed = parsedReceipt.gasUsed
     statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
       txHash: destinationTxReceipt.transactionHash,
       txLink:
@@ -169,6 +166,6 @@ export class HopExecutionManager {
     })
 
     // DONE
-    return currentExecution
+    return step.execution
   }
 }

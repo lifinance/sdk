@@ -20,21 +20,20 @@ export class HorizonExecutionManager {
   execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
     const { action } = step
     // setup
-    const currentExecution = statusManager.initExecutionObject(step)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     const allowanceAndCrossProcess = statusManager.findOrCreateProcess(
       'allowanceAndCrossProcess',
       step,
-      currentExecution,
       'Set Allowance and Cross',
       { status: 'ACTION_REQUIRED' }
     )
     let waitForBlocksProcess: Process
     let mintProcess: Process
     let intervalId: NodeJS.Timer
-    if (!this.shouldContinue) return currentExecution
+    if (!this.shouldContinue) return step.execution
 
     try {
       // mainnet / testnet ?
@@ -101,7 +100,7 @@ export class HorizonExecutionManager {
       }
       console.debug('params', params)
 
-      if (!this.shouldContinue) return currentExecution
+      if (!this.shouldContinue) return step.execution
       let operationId: string
       let bridgePromise
       if (
@@ -118,7 +117,7 @@ export class HorizonExecutionManager {
       intervalId = setInterval(async () => {
         if (!this.shouldContinue) {
           clearInterval(intervalId)
-          return currentExecution
+          return step.execution
         }
         if (operationId) {
           statusManager.updateProcess(
@@ -169,7 +168,6 @@ export class HorizonExecutionManager {
             waitForBlocksProcess = statusManager.findOrCreateProcess(
               'waitForBlocksProcess',
               step,
-              currentExecution,
               'Wait for Block Confirmations',
               { status: 'PENDING' }
             )
@@ -186,7 +184,6 @@ export class HorizonExecutionManager {
             mintProcess = statusManager.findOrCreateProcess(
               'mintProcess',
               step,
-              currentExecution,
               'Minting tokens',
               {
                 status: 'PENDING',
@@ -214,9 +211,9 @@ export class HorizonExecutionManager {
             clearInterval(intervalId)
             if (operation.status === STATUS.ERROR) {
               //TODO: find appropriate message for error
-              // const lastStep: Process = currentExecution.process[currentExecution.process.length -1]
+              // const lastStep: Process = step.execution.process[step.execution.process.length -1]
               // lastStep.errorMessage = operation.status
-              // updateExecution( currentExecution )
+              // updateExecution( step.execution )
               if (
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
@@ -245,7 +242,7 @@ export class HorizonExecutionManager {
       }, 4000)
 
       await bridgePromise
-      if (!this.shouldContinue) return currentExecution
+      if (!this.shouldContinue) return step.execution
       // Fallback
       if (
         allowanceAndCrossProcess &&
@@ -259,7 +256,7 @@ export class HorizonExecutionManager {
     } catch (e: any) {
       clearInterval(intervalId!)
       const lastStep: Process =
-        currentExecution.process[currentExecution.process.length - 1]
+        step.execution.process[step.execution.process.length - 1]
 
       statusManager.updateProcess(step, lastStep.id, 'FAILED', {
         errorMessage: (e as Error).message,
@@ -280,6 +277,6 @@ export class HorizonExecutionManager {
 
     // DONE
     statusManager.updateExecution(step, 'DONE')
-    return currentExecution
+    return step.execution
   }
 }
