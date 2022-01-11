@@ -44,14 +44,18 @@ yarn build
 
 ### Publish
 
-In order to update the package, commit all new changes first. Then follow this command to increas the version
+In order to update the package, commit all new changes first. Then run the following command:
 
 ```bash
-yarn version
+yarn release
 ```
+
+This will 
+* bump the version number according to the types of the last commits (i.e. if it is a major, minor or bug fix release)
+* create a new git tag
+* update the CHANGELOG.md
 
 Next you need to push both, the code and the new version tag:
 ```bash
-git push
-git push --tags
+git push && git push --tags
 ```
