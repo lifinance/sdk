@@ -25,11 +25,12 @@ export interface ProgressStep {
 }
 
 export type ParsedReceipt = {
-  fromAmount: string
+  fromAmount?: string
   toAmount: string
   gasUsed: string
   gasPrice: string
   gasFee: string
+  toTokenAddress?: string
 }
 
 export type ExecuteSwapParams = {

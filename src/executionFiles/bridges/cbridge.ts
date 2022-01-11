@@ -1,11 +1,21 @@
 import axios from 'axios'
-import { ethers } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from '@ethersproject/providers'
 
-import { CrossStep, LifiStep } from '../../types'
+import {
+  CrossStep,
+  findWrappedGasOnChain,
+  LifiStep,
+  ParsedReceipt,
+} from '../../types'
 import { sleep } from '../../utils'
 import { getRpcProvider } from '../../connectors'
+import { defaultReceiptParsing } from '../utils'
 
-const apiUrl = 'https://cbridge-v2-prod.celer.network/v1/'
+const apiUrl = 'https://cbridge-prod2.celer.network/v1/'
 
 enum TransferHistoryStatus {
   TRANSFER_UNKNOWN = 0,
@@ -91,12 +101,20 @@ const getTransferHistory = async (userAddress: string) => {
 const waitForCompletion = async (
   step: CrossStep | LifiStep
 ): Promise<cTransferHistory> => {
+  // check
+  if (!step.estimate.data.initiator) {
+    throw new Error('cBridges requires initiator to find transfer')
+  }
+  if (!step.estimate.data.transferId) {
+    throw new Error('cBridge requires transferId to find transfer')
+  }
+
   // loop
   while (true) {
     // get Details
-    const history = await getTransferHistory(step.action.fromAddress!).catch(
-      () => []
-    )
+    const history = await getTransferHistory(
+      step.estimate.data.initiator
+    ).catch(() => [])
     const details = history.find(
       (entry) => entry.transfer_id === step.estimate.data.transferId
     )
@@ -116,7 +134,10 @@ const waitForCompletion = async (
 
 const waitForDestinationChainReceipt = async (
   step: CrossStep | LifiStep
-): Promise<ethers.providers.TransactionReceipt> => {
+): Promise<{
+  tx: ethers.providers.TransactionResponse
+  receipt: ethers.providers.TransactionReceipt
+}> => {
   const history = await waitForCompletion(step)
 
   try {
@@ -125,15 +146,74 @@ const waitForDestinationChainReceipt = async (
     const rpc = getRpcProvider(step.action.toChainId)
     const tx = await rpc.getTransaction(txHash)
     const receipt = await tx.wait()
-    return receipt
+    return {
+      tx,
+      receipt,
+    }
   } catch (e) {
     // transaction may not be included in our RPC yet
     return waitForDestinationChainReceipt(step)
   }
 }
 
+const parseRelayEvent = (params: {
+  tx: TransactionResponse
+  receipt: TransactionReceipt
+}) => {
+  const { tx, receipt } = params
+
+  const abiRelay = [
+    'event Relay(bytes32 transferId, address sender, address receiver, ' +
+      'address token, uint256 amount, uint64 srcChainId, bytes32 srcTransferId )',
+  ]
+  const interfaceRelay = new ethers.utils.Interface(abiRelay)
+  let result
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceRelay.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      const token = (parsed.args.token as string).toLowerCase()
+      const wrapped = findWrappedGasOnChain(tx.chainId)
+      result = {
+        toAmount: amount.toString(),
+        toTokenAddress:
+          wrapped.address === token ? ethers.constants.AddressZero : token,
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+
+  return result
+}
+
+const parseReceipt = (
+  toAddress: string,
+  toTokenAddress: string,
+  tx: TransactionResponse,
+  receipt: TransactionReceipt
+): Promise<ParsedReceipt> => {
+  let result = {
+    fromAmount: '0',
+    toAmount: '0',
+    toTokenAddress: toTokenAddress,
+    gasUsed: '0',
+    gasPrice: '0',
+    gasFee: '0',
+  }
+
+  // > Relay
+  result = {
+    ...result,
+    ...parseRelayEvent({ tx, receipt }),
+  }
+
+  return defaultReceiptParsing({ result, tx, receipt, toAddress })
+}
+
 const cbridge = {
   waitForDestinationChainReceipt,
+  parseReceipt,
 }
 
 export default cbridge

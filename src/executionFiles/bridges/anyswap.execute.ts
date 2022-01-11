@@ -135,14 +135,12 @@ export class AnySwapExecutionManager {
     }
 
     // -> parse receipt & set status
-    const parsedReceipt = anyswap.parseReceipt(
+    const parsedReceipt = await anyswap.parseReceipt(
+      await signer.getAddress(),
+      step.action.toToken.address,
       crossProcess.txHash,
       destinationTxReceipt
     )
-
-    // currentExecution.fromAmount = parsedReceipt.fromAmount
-    // currentExecution.toAmount = parsedReceipt.toAmount
-    // status.gasUsed = parsedReceipt.gasUsed
 
     statusManager.updateProcess(waitForTxProcess, 'DONE', {
       txHash: destinationTxReceipt.transactionHash,
@@ -153,7 +151,11 @@ export class AnySwapExecutionManager {
       message: 'Funds Received:',
     })
 
-    statusManager.updateExecution(step, 'DONE')
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: parsedReceipt.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+      // gasUsed: parsedReceipt.gasUsed,
+    })
 
     // DONE
     return status

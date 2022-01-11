@@ -13,7 +13,15 @@ async function getAndTestTransaction(
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
   const parsed = await paraswap.parseReceipt(tx, receipt)
-  expect(parsed).toEqual(expected)
+  const needed = {
+    fromAmount: parsed.fromAmount,
+    toAmount: parsed.toAmount,
+    gasUsed: parsed.gasUsed,
+    gasPrice: parsed.gasPrice,
+    gasFee: parsed.gasFee,
+  }
+
+  expect(needed).toEqual(expected)
 }
 
 describe('paraswap', () => {

@@ -66,10 +66,11 @@ export class CbridgeExecutionManager {
 
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await Lifi.getStepTransaction(
-          personalizedStep
-        )
-        if (!transactionRequest) {
+        const updatedStep = await Lifi.getStepTransaction(personalizedStep)
+        // update step
+        Object.assign(step, updatedStep)
+
+        if (!step.transactionRequest) {
           statusManager.updateProcess(crossProcess, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
@@ -83,7 +84,7 @@ export class CbridgeExecutionManager {
 
         if (!this.shouldContinue) return currentExecution
 
-        tx = await signer.sendTransaction(transactionRequest)
+        tx = await signer.sendTransaction(step.transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
         statusManager.updateProcess(crossProcess, 'PENDING', {
@@ -124,9 +125,12 @@ export class CbridgeExecutionManager {
       currentExecution,
       'Wait for Receiving Chain'
     )
+    let destinationTx: TransactionResponse
     let destinationTxReceipt: TransactionReceipt
     try {
-      destinationTxReceipt = await cbridge.waitForDestinationChainReceipt(step)
+      const claimed = await cbridge.waitForDestinationChainReceipt(step)
+      destinationTx = claimed.tx
+      destinationTxReceipt = claimed.receipt
     } catch (e: any) {
       // waitForTxProcess.errorMessage = 'Failed waiting'
       // if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
@@ -140,12 +144,13 @@ export class CbridgeExecutionManager {
       throw e
     }
 
-    // -> parse receipt & set currentExecution
-    // const parsedReceipt = cbridge.parseReceipt(crossProcess.txHash, destinationTxReceipt)
-
-    // currentExecution.fromAmount = parsedReceipt.fromAmount
-    // currentExecution.toAmount = parsedReceipt.toAmount
-    // currentExecution.gasUsed = parsedReceipt.gasUsed
+    // -> parse receipt & set status
+    const parsedReceipt = await cbridge.parseReceipt(
+      await signer.getAddress(),
+      action.toToken.address,
+      destinationTx,
+      destinationTxReceipt
+    )
 
     statusManager.updateProcess(waitForTxProcess, 'DONE', {
       message: 'Funds Received:',
@@ -155,7 +160,11 @@ export class CbridgeExecutionManager {
         'tx/' +
         destinationTxReceipt.transactionHash,
     })
-    statusManager.updateExecution(step, 'DONE')
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: step.action.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+      // gasUsed: parsedReceipt.gasUsed
+    })
 
     // DONE
     return currentExecution
