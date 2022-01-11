@@ -103,9 +103,6 @@ export class NXTPExecutionManager {
       try {
         if (crossProcess.txHash) {
           // -> restore existing tx
-          // crossProcess.status = 'PENDING'
-          // crossProcess.message = 'Wait for '
-          // updateExecution(step.execution)
           statusManager.updateProcess(step, crossProcess.id, 'PENDING')
           const fromProvider = getRpcProvider(step.action.fromChainId)
           tx = await fromProvider.getTransaction(crossProcess.txHash)

@@ -88,11 +88,11 @@ export class SwapExecutionManager {
       }
     } catch (e: any) {
       // -> set step.execution
-      // if (e.message) swapProcess.errorMessage = e.message
-      // if (e.code) swapProcess.errorCode = e.code
-      // statusManager.setProcessFailed(step, step.execution, swapProcess)
+      let errorMessage = 'Swapping failed'
+      if (e.message) errorMessage += ':\n' + e.message
+
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
-        errorMessage: e.message,
+        errorMessage,
         errorCode: e.code,
       })
       statusManager.updateExecution(step, 'FAILED')

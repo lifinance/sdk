@@ -112,7 +112,6 @@ export default class StatusManager {
     }
 
     step.execution.process.push(newProcess)
-    // step.execution = execution
     this.updateStepInRoute(step)
     return newProcess
   }
@@ -140,7 +139,6 @@ export default class StatusManager {
     }
 
     switch (status) {
-      // terminating
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
         currentProcess.message =

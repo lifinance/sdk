@@ -37,14 +37,12 @@ export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
   parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
-  // settings: EnforcedObjectProperties<ExecutionSettings>
   statusManager: StatusManager
 }
 
 export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
-  // settings: EnforcedObjectProperties<ExecutionSettings>
   statusManager: StatusManager
   hooks: Hooks
 }

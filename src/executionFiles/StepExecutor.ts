@@ -1,6 +1,5 @@
 import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
-// import { initExecutionObject } from '../status'
 
 import {
   CrossStep,

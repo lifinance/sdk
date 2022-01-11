@@ -129,12 +129,11 @@ export class CbridgeExecutionManager {
       destinationTx = claimed.tx
       destinationTxReceipt = claimed.receipt
     } catch (e: any) {
-      // waitForTxProcess.errorMessage = 'Failed waiting'
-      // if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
-      // if (e.code) waitForTxProcess.errorCode = e.code
+      let errorMessage = 'Failed waiting'
+      if (e.message) errorMessage += ':\n' + e.message
 
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
-        errorMessage: 'Failed waiting',
+        errorMessage,
         errorCode: e.code,
       })
       statusManager.updateExecution(step, 'FAILED')
