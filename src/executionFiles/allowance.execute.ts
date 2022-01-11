@@ -37,7 +37,7 @@ export const checkAllowance = async (
       const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
-        const approvaLAmount = /*infiniteApproval*/ false
+        const approvaLAmount = infiniteApproval
           ? constants.MaxUint256.toString()
           : amount
         const approveTx = await setApproval(
