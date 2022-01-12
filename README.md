@@ -16,6 +16,8 @@ npm install --save @lifinance/sdk
 This package allow to access to LiFi API which finds the best cross-chain routs on different bridges. The routes can then executed via the SDK.
 Learn more about LiFi on (https://li.finance).
 
+Check out the [Changelog](./CHANGELOG.md) to see what changed in the last releases.
+
 
 ## Extend the SDK
 
