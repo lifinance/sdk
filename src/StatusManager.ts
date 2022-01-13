@@ -1,5 +1,3 @@
-/* eslint-disable max-params */
-/* eslint-disable @typescript-eslint/ban-types */
 import {
   emptyExecution,
   Execution,
@@ -18,6 +16,15 @@ interface Receipt {
 }
 
 type InternalUpdateRouteCallback = (route: Route) => void
+
+interface OptionalParameters {
+  message?: ProcessMessage
+  doneAt?: number
+  failedAt?: number
+  errorMessage?: any
+  errorCode?: any
+  [key: string]: any
+}
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
@@ -87,7 +94,7 @@ export default class StatusManager {
     id: string,
     step: Step,
     message: ProcessMessage,
-    params?: object
+    params?: OptionalParameters
   ): Process => {
     if (!step.execution || !step.execution.process) {
       throw new Error('Execution has not been initialized')
@@ -128,7 +135,7 @@ export default class StatusManager {
     step: Step,
     processId: string,
     status: Status,
-    params?: object
+    params?: OptionalParameters
   ): Process => {
     const currentProcess = step?.execution?.process.find(
       (p) => p.id === processId
