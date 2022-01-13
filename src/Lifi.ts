@@ -25,6 +25,8 @@ import {
   ExecutionSettings,
 } from './types'
 import StatusManager from './StatusManager'
+import { parseBackendError } from './utils/parseError'
+import { ValidationError } from './utils/errors'
 
 class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -52,6 +54,7 @@ class LIFI {
    * Get a set of current possibilities based on a request that specifies which chains, exchanges and bridges are preferred or unwanted.
    * @param {PossibilitiesRequest} request - Object defining preferences regarding chain, exchanges and bridges
    * @return {Promise<PossibilitiesResponse>} Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
+   * @throws {LifiError} Throws a LifiError if request fails.
    */
   getPossibilities = async (
     request?: PossibilitiesRequest
@@ -64,22 +67,26 @@ class LIFI {
       request.exchanges || this.config.defaultRouteOptions.exchanges
 
     // send request
-    const result = await axios.post<PossibilitiesResponse>(
-      this.config.apiUrl + 'possibilities',
-      request
-    )
-
-    return result.data
+    try {
+      const result = await axios.post<PossibilitiesResponse>(
+        this.config.apiUrl + 'possibilities',
+        request
+      )
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
   }
 
   /**
    * Get a set of routes for a request that describes a transfer of tokens.
    * @param {RoutesRequest} routesRequest - A description of the transfer.
    * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
+   * @throws {LifiError} Throws a LifiError if request fails.
    */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
-      throw new Error('SDK Validation: Invalid Routs Request')
+      throw new ValidationError('Invalid Routs Request')
     }
 
     // apply defaults
@@ -89,18 +96,22 @@ class LIFI {
     }
 
     // send request
-    const result = await axios.post<RoutesResponse>(
-      this.config.apiUrl + 'routes',
-      routesRequest
-    )
-
-    return result.data
+    try {
+      const result = await axios.post<RoutesResponse>(
+        this.config.apiUrl + 'routes',
+        routesRequest
+      )
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
   }
 
   /**
    * Get the transaction data for a signle step of a route
    * @param {Step} step - The step object.
-   * @return {Promise<Step>} The step populated with the transaction data
+   * @return {Promise<Step>} The step populated with the transaction data.
+   * @throws {LifiError} Throws a LifiError if request fails.
    */
   getStepTransaction = async (step: Step): Promise<Step> => {
     if (!isStep(step)) {
@@ -109,12 +120,15 @@ class LIFI {
       console.warn('SDK Validation: Invalid Step', step)
     }
 
-    const result = await axios.post<Step>(
-      this.config.apiUrl + 'steps/transaction',
-      step
-    )
-
-    return result.data
+    try {
+      const result = await axios.post<Step>(
+        this.config.apiUrl + 'steps/transaction',
+        step
+      )
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
   }
 
   /**
@@ -148,6 +162,7 @@ class LIFI {
    * @param {Route} route - The route that should be executed. Cannot be an active route.
    * @param {ExecutionSettings} settings - An object containing settings and callbacks.
    * @return {Promise<Route>} The executed route.
+   * @throws {LifiError} Throws a LifiError if the execution fails.
    */
   executeRoute = async (
     signer: Signer,
@@ -166,6 +181,7 @@ class LIFI {
    * @param {Route} route - The route that is to be executed. Cannot be an active route.
    * @param {ExecutionSettings} settings - An object containing settings and callbacks.
    * @return {Promise<Route>} The executed route.
+   * @throws {LifiError} Throws a LifiError if the execution fails.
    */
   resumeRoute = async (
     signer: Signer,
@@ -250,13 +266,16 @@ class LIFI {
    * Update the ExecutionSettings for an active route.
    * @param {ExecutionSettings} settings - An object with execution settings.
    * @param {Route} route - The active route that gets the new execution settings.
+   * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   updateExecutionSettings = (
     settings: ExecutionSettings,
     route: Route
   ): void => {
     if (!this.activeRouteDictionary[route.id])
-      throw Error('Cannot set ExecutionSettings for unactive route!')
+      throw new ValidationError(
+        'Cannot set ExecutionSettings for unactive route!'
+      )
     this.activeRouteDictionary[route.id].settings = {
       ...this.config.defaultExecutionSettings,
       ...settings,
@@ -285,17 +304,18 @@ class LIFI {
    * @param {string} walletAddress - A wallet address.
    * @param {Token} token - A Token object.
    * @return {Promise<TokenAmount | null>} An object containing the token and the amounts on different chains.
+   * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalance = async (
     walletAddress: string,
     token: Token
   ): Promise<TokenAmount | null> => {
     if (!walletAddress) {
-      throw new Error('SDK Validation: Missing walletAddress')
+      throw new ValidationError('Missing walletAddress')
     }
 
     if (!isToken(token)) {
-      throw new Error('SDK Validation: Invalid token passed')
+      throw new ValidationError('Invalid token passed')
     }
 
     return balances.getTokenBalance(walletAddress, token)
@@ -306,17 +326,18 @@ class LIFI {
    * @param {string} walletAddress - A wallet address.
    * @param {Token[]} tokens - A list of Token objects.
    * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
+   * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalances = async (
     walletAddress: string,
     tokens: Token[]
   ): Promise<TokenAmount[]> => {
     if (!walletAddress) {
-      throw new Error('SDK Validation: Missing walletAddress')
+      throw new ValidationError('Missing walletAddress')
     }
 
     if (tokens.filter((token) => !isToken(token)).length) {
-      throw new Error('SDK Validation: Invalid token passed')
+      throw new ValidationError('Invalid token passed')
     }
 
     return balances.getTokenBalances(walletAddress, tokens)
@@ -327,18 +348,19 @@ class LIFI {
    * @param {string} walletAddress - A walletaddress.
    * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
    * @return {Promise<{ [chainId: number]: TokenAmount[] }} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
+   * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalancesForChains = async (
     walletAddress: string,
     tokensByChain: { [chainId: number]: Token[] }
   ): Promise<{ [chainId: number]: TokenAmount[] }> => {
     if (!walletAddress) {
-      throw new Error('SDK Validation: Missing walletAddress')
+      throw new ValidationError('Missing walletAddress')
     }
 
     const tokenList = Object.values(tokensByChain).flat()
     if (tokenList.filter((token) => !isToken(token)).length) {
-      throw new Error('SDK Validation: Invalid token passed')
+      throw new ValidationError('Invalid token passed')
     }
 
     return balances.getTokenBalancesForChains(walletAddress, tokensByChain)

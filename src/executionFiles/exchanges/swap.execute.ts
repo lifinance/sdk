@@ -3,6 +3,7 @@ import {
   TransactionResponse,
 } from '@ethersproject/providers'
 import { constants } from 'ethers'
+import { parseWalletError } from '../../utils/parseError'
 
 import Lifi from '../../Lifi'
 
@@ -86,17 +87,14 @@ export class SwapExecutionManager {
         // -> submit tx
         tx = await signer.sendTransaction(transactionRequest)
       }
-    } catch (e: any) {
-      // -> set step.execution
-      let errorMessage = 'Swapping failed'
-      if (e.message) errorMessage += ':\n' + e.message
-
+    } catch (e) {
+      const error = parseWalletError(e)
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
-        errorMessage,
-        errorCode: e.code,
+        errorMessage: error.message,
+        errorCode: error.code,
       })
       statusManager.updateExecution(step, 'FAILED')
-      throw e
+      throw error
     }
 
     // Wait for Transaction
@@ -122,12 +120,13 @@ export class SwapExecutionManager {
             e.replacement.hash,
         })
       } else {
+        const error = parseWalletError(e)
         statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
-          errorMessage: e.message,
-          errorCode: e.code,
+          errorMessage: error.message,
+          errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
-        throw e
+        throw error
       }
     }
 

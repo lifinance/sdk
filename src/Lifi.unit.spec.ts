@@ -12,6 +12,7 @@ import axios from 'axios'
 
 import balances from './balances'
 import Lifi from './Lifi'
+import { ServerError } from './utils/errors'
 
 jest.mock('axios')
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -46,7 +47,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromChainId: 'xxx' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -55,7 +56,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromAmount: 10000000000000 })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -64,7 +65,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromTokenAddress: 1234 })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -73,7 +74,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ toChainId: 'xxx' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -82,7 +83,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ toTokenAddress: '' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -93,21 +94,65 @@ describe('LIFI SDK', () => {
         })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'SDK Validation: Invalid Routs Request'
+          'Invalid Routs Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
-      it('should call server once', async () => {
-        const request = getRoutesRequest({})
-        // axios.post always returns an object and we expect that in our code
-        mockedAxios.post.mockReturnValue(Promise.resolve({}))
+      describe('and the backend call fails', () => {
+        it('throw a the error', async () => {
+          const request = getRoutesRequest({})
+          mockedAxios.post.mockRejectedValue({
+            response: { status: 500, data: { message: 'Oops' } },
+          })
 
-        await Lifi.getRoutes(request)
-        expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          await expect(Lifi.getRoutes(request)).rejects.toThrowError(
+            new ServerError('Oops')
+          )
+          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+        })
       })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          const request = getRoutesRequest({})
+          // axios.post always returns an object and we expect that in our code
+          mockedAxios.post.mockReturnValue(Promise.resolve({}))
+
+          await Lifi.getRoutes(request)
+          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+        })
+      })
+    })
+  })
+
+  describe('getPossibilities', () => {
+    describe('user input is valid', () => {
+      describe('and the backend call fails', () => {
+        it('throw a the error', async () => {
+          mockedAxios.post.mockRejectedValue({
+            response: { status: 500, data: { message: 'Oops' } },
+          })
+
+          await expect(Lifi.getPossibilities()).rejects.toThrowError(
+            new ServerError('Oops')
+          )
+          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          mockedAxios.post.mockReturnValue(Promise.resolve({}))
+          await Lifi.getPossibilities()
+
+          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      // TODO write tests for the correct application of default values for bridges & exchanges
     })
   })
 
@@ -165,7 +210,7 @@ describe('LIFI SDK', () => {
           const step = getStep({ id: null })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
-            'SDK Validation: Invalid Step'
+            'Invalid Step'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -174,7 +219,7 @@ describe('LIFI SDK', () => {
           const step = getStep({ type: 42 })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
-            'SDK Validation: Invalid Step'
+            'Invalid Step'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -183,7 +228,7 @@ describe('LIFI SDK', () => {
           const step = getStep({ tool: null })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
-            'SDK Validation: Invalid Step'
+            'Invalid Step'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -193,7 +238,7 @@ describe('LIFI SDK', () => {
           const step = getStep({ action: 'xxx' })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
-            'SDK Validation: Invalid Step'
+            'Invalid Step'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -203,19 +248,35 @@ describe('LIFI SDK', () => {
           const step = getStep({ estimate: 'Is this really an estimate?' })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
-            'SDK Validation: Invalid Step'
+            'Invalid Step'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
       })
 
       describe('user input is valid', () => {
-        it('should call server once', async () => {
-          const step = getStep({})
-          mockedAxios.post.mockReturnValue(Promise.resolve({}))
+        describe('and the backend call fails', () => {
+          it('throw a the error', async () => {
+            const step = getStep({})
+            mockedAxios.post.mockRejectedValue({
+              response: { status: 500, data: { message: 'Oops' } },
+            })
 
-          await Lifi.getStepTransaction(step)
-          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+            await expect(Lifi.getStepTransaction(step)).rejects.toThrowError(
+              new ServerError('Oops')
+            )
+            expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          })
+        })
+
+        describe('and the backend call is successful', () => {
+          it('call the server once', async () => {
+            const step = getStep({})
+            mockedAxios.post.mockReturnValue(Promise.resolve({}))
+
+            await Lifi.getStepTransaction(step)
+            expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          })
         })
       })
     })
@@ -228,7 +289,7 @@ describe('LIFI SDK', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(Lifi.getTokenBalance('', SOME_TOKEN)).rejects.toThrow(
-          'SDK Validation: Missing walletAddress'
+          'Missing walletAddress'
         )
 
         expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(0)
@@ -239,7 +300,7 @@ describe('LIFI SDK', () => {
           Lifi.getTokenBalance(SOME_WALLET_ADDRESS, {
             not: 'a token',
           } as unknown as Token)
-        ).rejects.toThrow('SDK Validation: Invalid token passed')
+        ).rejects.toThrow('Invalid token passed')
 
         expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(0)
       })
@@ -275,7 +336,7 @@ describe('LIFI SDK', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(Lifi.getTokenBalances('', [SOME_TOKEN])).rejects.toThrow(
-          'SDK Validation: Missing walletAddress'
+          'Missing walletAddress'
         )
 
         expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
@@ -287,7 +348,7 @@ describe('LIFI SDK', () => {
             SOME_TOKEN,
             { not: 'a token' } as unknown as Token,
           ])
-        ).rejects.toThrow('SDK Validation: Invalid token passed')
+        ).rejects.toThrow('Invalid token passed')
 
         expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
       })
@@ -332,7 +393,7 @@ describe('LIFI SDK', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(
           Lifi.getTokenBalancesForChains('', { [ChainId.DAI]: [SOME_TOKEN] })
-        ).rejects.toThrow('SDK Validation: Missing walletAddress')
+        ).rejects.toThrow('Missing walletAddress')
 
         expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
           0
@@ -344,7 +405,7 @@ describe('LIFI SDK', () => {
           Lifi.getTokenBalancesForChains(SOME_WALLET_ADDRESS, {
             [ChainId.DAI]: [{ not: 'a token' } as unknown as Token],
           })
-        ).rejects.toThrow('SDK Validation: Invalid token passed')
+        ).rejects.toThrow('Invalid token passed')
 
         expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
           0

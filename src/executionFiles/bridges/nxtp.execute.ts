@@ -18,6 +18,7 @@ import nxtp from './nxtp'
 import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 import { balanceCheck } from '../balanceCheck.execute'
+import { parseWalletError } from '../../utils/parseError'
 
 export class NXTPExecutionManager {
   shouldContinue = true
@@ -134,13 +135,14 @@ export class NXTPExecutionManager {
             txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
           })
         }
-      } catch (e: any) {
+      } catch (e) {
+        const error = parseWalletError(e)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
-          errorMessage: e.message,
-          errorCode: e.code,
+          errorMessage: error.message,
+          errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
-        throw e
+        throw error
       }
 
       try {
@@ -155,14 +157,13 @@ export class NXTPExecutionManager {
               e.replacement.hash,
           })
         } else {
-          if (e.message) crossProcess.errorMessage = e.message
-          if (e.code) crossProcess.errorCode = e.code
+          const error = parseWalletError(e)
           statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
-            errorMessage: e.message,
-            errorCode: e.code,
+            errorMessage: error.message,
+            errorCode: error.code,
           })
           statusManager.updateExecution(step, 'FAILED')
-          throw e
+          throw error
         }
       }
 

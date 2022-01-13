@@ -5,6 +5,7 @@ import {
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
+import { parseWalletError } from '../../utils/parseError'
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
@@ -102,13 +103,12 @@ export class CbridgeExecutionManager {
             e.replacement.hash,
         })
       } else {
-        if (e.message) crossProcess.errorMessage = e.message
-        if (e.code) crossProcess.errorCode = e.code
+        const error = parseWalletError(e)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
-          errorMessage: e.message,
-          errorCode: e.code,
+          errorMessage: error.message,
+          errorCode: error.code,
         })
-        throw e
+        throw error
       }
     }
 
