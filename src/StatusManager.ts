@@ -72,7 +72,7 @@ export default class StatusManager {
    * @return {Step}       The step with the updated execution object
    */
   updateExecution(step: Step, status: Status, receipt?: Receipt): Step {
-    if (!step.execution) throw Error('Can update empty execution')
+    if (!step.execution) throw Error("Can't update empty execution")
     step.execution.status = status
     if (receipt) {
       step.execution.fromAmount = receipt.fromAmount
