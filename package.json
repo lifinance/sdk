@@ -7,7 +7,7 @@
   "scripts": {
     "install": "node -e \"if (!require('fs').existsSync('./dist')){process.exit(1)}\" || npm run build",
     "watch": "tsc -w -p ./tsconfig.json",
-    "build": "node tools/cleanup types && tsc -p ./tsconfig.json",
+    "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "node tools/cleanup",
     "package": "npm run build && npm pack",
     "test": "jest --no-cache --runInBand --forceExit",
