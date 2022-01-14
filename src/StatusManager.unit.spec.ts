@@ -17,9 +17,11 @@ describe('StatusManager', () => {
     expect(internalUpdateRouteCallbackMock).toHaveBeenCalledWith(route)
   }
 
-  const initializeStatusManager = (
+  const initializeStatusManager = ({
+    includingExecution,
+  }: {
     includingExecution: boolean
-  ): StatusManager => {
+  }): StatusManager => {
     step = buildStepObject({ includingExecution })
     route = buildRouteObject({ step })
 
@@ -41,7 +43,7 @@ describe('StatusManager', () => {
   describe('initExecutionObject', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(false)
+        statusManager = initializeStatusManager({ includingExecution: false })
         statusManager.initExecutionObject(step)
       })
 
@@ -63,7 +65,7 @@ describe('StatusManager', () => {
 
     describe('when an execution is already defined', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(true)
+        statusManager = initializeStatusManager({ includingExecution: true })
         statusManager.initExecutionObject(deepClone(step))
       })
 
@@ -77,7 +79,7 @@ describe('StatusManager', () => {
   describe('updateExecution', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(false)
+        statusManager = initializeStatusManager({ includingExecution: false })
       })
 
       it('should throw an error', () => {
@@ -90,7 +92,7 @@ describe('StatusManager', () => {
 
     describe('when an execution is defined', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(true)
+        statusManager = initializeStatusManager({ includingExecution: true })
         statusManager.updateExecution(deepClone(step), 'DONE', {
           fromAmount: '123',
           toAmount: '312',
@@ -120,7 +122,7 @@ describe('StatusManager', () => {
   describe('findOrCreateProcess', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(false)
+        statusManager = initializeStatusManager({ includingExecution: false })
       })
 
       it('should throw an error', () => {
@@ -136,7 +138,7 @@ describe('StatusManager', () => {
 
     describe('when an execution is defined', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(true)
+        statusManager = initializeStatusManager({ includingExecution: true })
       })
 
       describe('and the process already exists', () => {
@@ -190,7 +192,7 @@ describe('StatusManager', () => {
 
   describe('updateProcess', () => {
     beforeEach(() => {
-      statusManager = initializeStatusManager(true)
+      statusManager = initializeStatusManager({ includingExecution: true })
     })
 
     describe('when no process can be found', () => {
@@ -266,7 +268,7 @@ describe('StatusManager', () => {
   describe('removeProcess', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(false)
+        statusManager = initializeStatusManager({ includingExecution: false })
       })
 
       it('should throw an error', () => {
@@ -278,7 +280,7 @@ describe('StatusManager', () => {
 
     describe('when an execution is defined', () => {
       beforeEach(() => {
-        statusManager = initializeStatusManager(true)
+        statusManager = initializeStatusManager({ includingExecution: true })
         statusManager.removeProcess(deepClone(step), 'process1')
       })
 
