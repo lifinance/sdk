@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/lifinance/sdk/compare/v0.3.3...v0.4.0) (2022-01-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* interface of external status management methods changed
+
+### Bug Fixes
+
+* **nxtp:** handle cancelled transfers ([#18](https://github.com/lifinance/sdk/issues/18)) ([02cd6de](https://github.com/lifinance/sdk/commit/02cd6deb499e5b6b08ee111dcefe2ebda81da548))
+* **scripts:** make install script OS agnostic ([6792a8f](https://github.com/lifinance/sdk/commit/6792a8fceb4246ed77b18ef58481fa56a6bca92c))
+
+
+* refactor status handling ([#5](https://github.com/lifinance/sdk/issues/5)) ([aa924d8](https://github.com/lifinance/sdk/commit/aa924d80a3b151b8ca750a311436fb10aa4f8f7a))
+
 ### [0.3.4](https://github.com/lifinance/sdk/compare/v0.3.3...v0.3.4) (2022-01-12)
 
 
