@@ -5,12 +5,7 @@ import {
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
+
 import { ExecuteSwapParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
@@ -27,34 +22,33 @@ export class SwapExecutionManager {
     signer,
     step,
     parseReceipt,
-    updateStatus,
+    statusManager,
   }: ExecuteSwapParams) => {
     // setup
-    const { action, execution, estimate } = step
+    const { action, estimate } = step
     const fromChain = getChainById(action.fromChainId)
-    const { status, update } = initStatus(updateStatus, execution)
+    step.execution = statusManager.initExecutionObject(step)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
+        step,
         fromChain,
         action.fromToken,
         action.fromAmount,
         estimate.approvalAddress,
-        update,
-        status,
+        statusManager,
         true
       )
     }
 
     // Start Swap
-    // -> set status
-    const swapProcess = createAndPushProcess(
+    // -> set step.execution
+    const swapProcess = statusManager.findOrCreateProcess(
       'swapProcess',
-      update,
-      status,
+      step,
       'Preparing Swap'
     )
 
@@ -74,36 +68,43 @@ export class SwapExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          swapProcess.errorMessage = 'Unable to prepare Transaction'
-          setStatusFailed(update, status, swapProcess)
+          statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+            errorMessage: 'Unable to prepare Transaction',
+          })
+          statusManager.updateExecution(step, 'FAILED')
           throw swapProcess.errorMessage
         }
 
-        // -> set status
-        swapProcess.status = 'ACTION_REQUIRED'
-        swapProcess.message = `Sign Transaction`
-        update(status)
-        if (!this.shouldContinue) return status // stop before user interaction is needed
+        // -> set step.execution
+        // swapProcess.status = 'ACTION_REQUIRED'
+        // swapProcess.message = `Sign Transaction`
+        statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
+          message: 'Sign Transaction',
+        })
+        if (!this.shouldContinue) return step.execution // stop before user interaction is needed
 
         // -> submit tx
         tx = await signer.sendTransaction(transactionRequest)
       }
     } catch (e: any) {
-      // -> set status
-      if (e.message) swapProcess.errorMessage = e.message
-      if (e.code) swapProcess.errorCode = e.code
-      setStatusFailed(update, status, swapProcess)
+      // -> set step.execution
+      let errorMessage = 'Swapping failed'
+      if (e.message) errorMessage += ':\n' + e.message
+
+      statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+        errorMessage,
+        errorCode: e.code,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
     // Wait for Transaction
-    // -> set status
-    swapProcess.status = 'PENDING'
-    swapProcess.txHash = tx.hash
-    swapProcess.txLink =
-      fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
-    swapProcess.message = `Swapping - Wait for`
-    update(status)
+    statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
+      message: 'Swapping - Wait for',
+      txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+      txHash: tx.hash,
+    })
 
     // -> waiting
     let receipt: TransactionReceipt
@@ -112,28 +113,38 @@ export class SwapExecutionManager {
     } catch (e: any) {
       // -> set status
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        swapProcess.txHash = e.replacement.hash
-        swapProcess.txLink =
-          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + swapProcess.txHash
         receipt = e.replacement
+        statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
+          txHash: e.replacement.hash,
+          txLink:
+            fromChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            e.replacement.hash,
+        })
       } else {
-        if (e.message) swapProcess.errorMessage = e.message
-        if (e.code) swapProcess.errorCode = e.code
-        setStatusFailed(update, status, swapProcess)
+        statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
     }
 
     // -> set status
     const parsedReceipt = await parseReceipt(tx, receipt)
-    swapProcess.message = 'Swapped:'
-    status.fromAmount = parsedReceipt.fromAmount
-    status.toAmount = parsedReceipt.toAmount
-    // status.gasUsed = parsedReceipt.gasUsed
-    status.status = 'DONE'
-    setStatusDone(update, status, swapProcess)
+
+    // step.execution.gasUsed = parsedReceipt.gasUsed
+    statusManager.updateProcess(step, swapProcess.id, 'DONE', {
+      message: 'Swapped:',
+    })
+
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: parsedReceipt.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+    })
 
     // DONE
-    return status
+    return step.execution
   }
 }

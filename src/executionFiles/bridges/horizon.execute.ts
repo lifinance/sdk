@@ -1,13 +1,6 @@
 /* eslint-disable no-console */
 import BigNumber from 'bignumber.js'
 import { EXCHANGE_MODE, NETWORK_TYPE, STATUS, TOKEN } from 'bridge-sdk'
-
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
 import {
   ChainId,
   CoinKey,
@@ -24,24 +17,23 @@ export class HorizonExecutionManager {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
-    const { action, execution } = step
+  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+    const { action } = step
     // setup
-    const { status, update } = initStatus(updateStatus, execution)
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
-    const allowanceAndCrossProcess = createAndPushProcess(
+    const allowanceAndCrossProcess = statusManager.findOrCreateProcess(
       'allowanceAndCrossProcess',
-      update,
-      status,
+      step,
       'Set Allowance and Cross',
       { status: 'ACTION_REQUIRED' }
     )
     let waitForBlocksProcess: Process
     let mintProcess: Process
     let intervalId: NodeJS.Timer
-    if (!this.shouldContinue) return status
+    if (!this.shouldContinue) return step.execution
 
     try {
       // mainnet / testnet ?
@@ -108,7 +100,7 @@ export class HorizonExecutionManager {
       }
       console.debug('params', params)
 
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return step.execution
       let operationId: string
       let bridgePromise
       if (
@@ -125,11 +117,17 @@ export class HorizonExecutionManager {
       intervalId = setInterval(async () => {
         if (!this.shouldContinue) {
           clearInterval(intervalId)
-          return status
+          return step.execution
         }
         if (operationId) {
-          allowanceAndCrossProcess.operationId = operationId
-          update(status)
+          statusManager.updateProcess(
+            step,
+            allowanceAndCrossProcess.id,
+            'PENDING',
+            {
+              operationId: operationId,
+            }
+          )
           const operation = await bridgeSDK.api.getOperation(operationId)
           console.debug('operation', operation)
 
@@ -138,15 +136,19 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'in_progress' &&
             allowanceAndCrossProcess.status === 'ACTION_REQUIRED'
           ) {
-            allowanceAndCrossProcess.status = 'PENDING'
-            allowanceAndCrossProcess.txHash =
-              operation.actions[0].transactionHash
-            allowanceAndCrossProcess.txLink =
-              fromChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              allowanceAndCrossProcess.txHash
-            allowanceAndCrossProcess.message = 'Send Transaction - Wait for'
-            update(status)
+            statusManager.updateProcess(
+              step,
+              allowanceAndCrossProcess.id,
+              'PENDING',
+              {
+                txHash: operation.actions[0].transactionHash,
+                txLink:
+                  fromChain.metamask.blockExplorerUrls[0] +
+                  'tx/' +
+                  operation.actions[0].transactionHash,
+                message: 'Send Transaction - Wait for',
+              }
+            )
           }
 
           // Wait > Done; Wait for confirmations
@@ -154,12 +156,18 @@ export class HorizonExecutionManager {
             operation.actions[0].status === 'success' &&
             allowanceAndCrossProcess.status === 'PENDING'
           ) {
-            allowanceAndCrossProcess.message = 'Transaction Sent:'
-            setStatusDone(update, status, allowanceAndCrossProcess)
-            waitForBlocksProcess = createAndPushProcess(
+            statusManager.updateProcess(
+              step,
+              allowanceAndCrossProcess.id,
+              'DONE',
+              {
+                message: 'Transaction Sent:',
+              }
+            )
+
+            waitForBlocksProcess = statusManager.findOrCreateProcess(
               'waitForBlocksProcess',
-              update,
-              status,
+              step,
               'Wait for Block Confirmations',
               { status: 'PENDING' }
             )
@@ -170,12 +178,12 @@ export class HorizonExecutionManager {
             operation.actions[1].status === 'success' &&
             waitForBlocksProcess.status === 'PENDING'
           ) {
-            waitForBlocksProcess.message = 'Enough Block Confirmations'
-            setStatusDone(update, status, waitForBlocksProcess)
-            mintProcess = createAndPushProcess(
+            statusManager.updateProcess(step, waitForBlocksProcess.id, 'DONE', {
+              message: 'Enough Block Confirmations',
+            })
+            mintProcess = statusManager.findOrCreateProcess(
               'mintProcess',
-              update,
-              status,
+              step,
               'Minting tokens',
               {
                 status: 'PENDING',
@@ -188,11 +196,14 @@ export class HorizonExecutionManager {
             operation.actions[2].status === 'success' &&
             mintProcess.status === 'PENDING'
           ) {
-            mintProcess.txHash = operation.actions[2].transactionHash
-            mintProcess.txLink =
-              toChain.metamask.blockExplorerUrls[0] + 'tx/' + mintProcess.txHash
-            mintProcess.message = 'Minted in'
-            setStatusDone(update, status, mintProcess)
+            statusManager.updateProcess(step, mintProcess.id, 'DONE', {
+              message: 'Minted in',
+              txHash: operation.actions[2].transactionHash,
+              txLink:
+                toChain.metamask.blockExplorerUrls[0] +
+                'tx/' +
+                operation.actions[2].transactionHash,
+            })
           }
 
           // Ended
@@ -200,58 +211,72 @@ export class HorizonExecutionManager {
             clearInterval(intervalId)
             if (operation.status === STATUS.ERROR) {
               //TODO: find appropriate message for error
-              // const lastStep: Process = status.process[status.process.length -1]
+              // const lastStep: Process = step.execution.process[step.execution.process.length -1]
               // lastStep.errorMessage = operation.status
-              // update( status )
+              // updateExecution( step.execution )
               if (
                 allowanceAndCrossProcess &&
                 allowanceAndCrossProcess.status !== 'DONE'
               )
-                setStatusFailed(update, status, allowanceAndCrossProcess)
+                statusManager.updateProcess(
+                  step,
+                  allowanceAndCrossProcess.id,
+                  'FAILED'
+                )
               if (
                 waitForBlocksProcess! &&
                 waitForBlocksProcess.status !== 'DONE'
               )
-                setStatusFailed(update, status, waitForBlocksProcess)
+                statusManager.updateProcess(
+                  step,
+                  waitForBlocksProcess.id,
+                  'FAILED'
+                )
               if (mintProcess! && mintProcess.status !== 'DONE')
-                setStatusFailed(update, status, mintProcess)
+                statusManager.updateProcess(step, mintProcess.id, 'FAILED')
+
+              statusManager.updateExecution(step, 'FAILED')
             }
           }
         }
       }, 4000)
 
       await bridgePromise
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return step.execution
       // Fallback
       if (
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusDone(update, status, allowanceAndCrossProcess)
+        statusManager.updateProcess(step, allowanceAndCrossProcess.id, 'DONE')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusDone(update, status, waitForBlocksProcess)
+        statusManager.updateProcess(step, waitForBlocksProcess.id, 'DONE')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusDone(update, status, mintProcess)
+        statusManager.updateProcess(step, mintProcess.id, 'DONE')
     } catch (e: any) {
       clearInterval(intervalId!)
-      const lastStep: Process = status.process[status.process.length - 1]
-      lastStep.errorMessage = (e as Error).message
-      update(status)
+      const lastStep: Process =
+        step.execution.process[step.execution.process.length - 1]
+
+      statusManager.updateProcess(step, lastStep.id, 'FAILED', {
+        errorMessage: (e as Error).message,
+      })
+
       if (
         allowanceAndCrossProcess &&
         allowanceAndCrossProcess.status !== 'DONE'
       )
-        setStatusFailed(update, status, allowanceAndCrossProcess)
+        statusManager.updateProcess(step, allowanceAndCrossProcess.id, 'FAILED')
       if (waitForBlocksProcess! && waitForBlocksProcess.status !== 'DONE')
-        setStatusFailed(update, status, waitForBlocksProcess)
+        statusManager.updateProcess(step, waitForBlocksProcess.id, 'FAILED')
       if (mintProcess! && mintProcess.status !== 'DONE')
-        setStatusFailed(update, status, mintProcess)
+        statusManager.updateProcess(step, mintProcess.id, 'FAILED')
+
       throw e
     }
 
     // DONE
-    status.status = 'DONE'
-    update(status)
-    return status
+    statusManager.updateExecution(step, 'DONE')
+    return step.execution
   }
 }

@@ -1,14 +1,13 @@
 import { Signer } from 'ethers'
-import { initStatus } from '../status'
+import StatusManager from '../StatusManager'
 
 import {
   CrossStep,
-  Execution,
   LifiStep,
   Hooks,
   Step,
   SwapStep,
-  UpdateStep,
+  getChainById,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -22,6 +21,8 @@ import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
 
 export class StepExecutor {
+  settings: Hooks
+  statusManager: StatusManager
   private swapExecutionManager = new SwapExecutionManager()
   private nxtpExecutionManager = new NXTPExecutionManager()
   private hopExecutionManager = new HopExecutionManager()
@@ -30,6 +31,11 @@ export class StepExecutor {
   private anySwapExecutionManager = new AnySwapExecutionManager()
 
   executionStopped = false
+
+  constructor(statusManager: StatusManager, settings: Hooks) {
+    this.statusManager = statusManager
+    this.settings = settings
+  }
 
   stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
@@ -42,40 +48,53 @@ export class StepExecutor {
     this.executionStopped = true
   }
 
-  executeStep = async (
-    signer: Signer,
-    step: Step,
-    updateStatus: UpdateStep,
-    hooks: Hooks
-  ): Promise<Step> => {
+  executeStep = async (signer: Signer, step: Step): Promise<Step> => {
     // check if signer is for correct chain
     if ((await signer.getChainId()) !== step.action.fromChainId) {
-      // change status to CHAIN_SWITCH_REQUIRED and return step without execution
-      const { status, update } = initStatus(
-        (status: Execution) => updateStatus(step, status),
-        step.execution
-      )
-      status.status = 'CHAIN_SWITCH_REQUIRED'
-      update(status)
+      // -> set status message
+      step.execution = this.statusManager.initExecutionObject(step)
+      this.statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
+      const chain = getChainById(step.action.fromChainId)
 
-      const updatedSigner = await hooks.switchChainHook(step.action.fromChainId)
-      if (
-        updatedSigner &&
-        (await updatedSigner.getChainId()) === step.action.fromChainId
-      ) {
-        signer = updatedSigner
-      } else {
-        throw Error('CHAIN SWITCH REQUIRED')
+      const switchProcess = this.statusManager.findOrCreateProcess(
+        'swithProcess',
+        step,
+        `Change Chain to ${chain.name}`
+      )
+
+      let updatedSigner
+      try {
+        updatedSigner = await this.settings.switchChainHook(
+          step.action.fromChainId
+        )
+        if (
+          updatedSigner &&
+          (await updatedSigner.getChainId()) === step.action.fromChainId
+        ) {
+          signer = updatedSigner
+        } else {
+          throw Error('CHAIN SWITCH REQUIRED')
+        }
+      } catch (e: any) {
+        this.statusManager.updateProcess(step, switchProcess.id, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
+        this.statusManager.updateExecution(step, 'FAILED')
+        throw e
       }
+
+      this.statusManager.removeProcess(step, switchProcess.id)
+      this.statusManager.updateExecution(step, 'PENDING')
     }
 
     switch (step.type) {
       case 'lifi':
       case 'cross':
-        await this.executeCross(signer, step, updateStatus, hooks)
+        await this.executeCross(signer, step, this.settings)
         break
       case 'swap':
-        await this.executeSwap(signer, step, updateStatus)
+        await this.executeSwap(signer, step)
         break
       default:
         throw new Error('Unsupported step type')
@@ -84,15 +103,12 @@ export class StepExecutor {
     return step
   }
 
-  private executeSwap = async (
-    signer: Signer,
-    step: SwapStep,
-    updateStatus: UpdateStep
-  ) => {
+  private executeSwap = async (signer: Signer, step: SwapStep) => {
     const swapParams = {
-      signer: signer,
+      signer,
       step,
-      updateStatus: (status: Execution) => updateStatus(step, status),
+      settings: this.settings,
+      statusManager: this.statusManager,
     }
 
     switch (step.tool) {
@@ -122,14 +138,13 @@ export class StepExecutor {
   private executeCross = async (
     signer: Signer,
     step: CrossStep | LifiStep,
-    updateStatus: UpdateStep,
     hooks: Hooks
   ) => {
     const crossParams = {
-      signer: signer,
+      signer,
       step,
-      updateStatus: (status: Execution) => updateStatus(step, status),
       hooks,
+      statusManager: this.statusManager,
     }
 
     switch (step.tool) {

@@ -10,6 +10,7 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
+import StatusManager from '../StatusManager'
 import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
 
@@ -36,13 +37,13 @@ export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
   parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
-  updateStatus?: UpdateExecution
+  statusManager: StatusManager
 }
 
 export type ExecuteCrossParams = {
   signer: Signer
   step: CrossStep | LifiStep
-  updateStatus?: UpdateExecution
+  statusManager: StatusManager
   hooks: Hooks
 }
 

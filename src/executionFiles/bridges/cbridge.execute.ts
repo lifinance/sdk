@@ -5,12 +5,6 @@ import {
 import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
-import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-} from '../../status'
 import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils'
 import { checkAllowance } from '../allowance.execute'
@@ -24,37 +18,38 @@ export class CbridgeExecutionManager {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, updateStatus }: ExecuteCrossParams) => {
-    const { action, execution, estimate } = step
-    const { status, update } = initStatus(updateStatus, execution)
+  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+    const { action, estimate } = step
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
-    const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
+    const oldCrossProcess = step.execution.process.find(
+      (p) => p.id === 'crossProcess'
+    )
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        if (!this.shouldContinue) return status
+        if (!this.shouldContinue) return step.execution
         await checkAllowance(
           signer,
+          step,
           fromChain,
           action.fromToken,
           action.fromAmount,
           estimate.approvalAddress,
-          update,
-          status,
+          statusManager,
           true
         )
       }
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = createAndPushProcess(
+    const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
-      update,
-      status,
+      step,
       'Prepare Transaction'
     )
 
@@ -74,50 +69,57 @@ export class CbridgeExecutionManager {
         Object.assign(step, updatedStep)
 
         if (!step.transactionRequest) {
-          crossProcess.errorMessage = 'Unable to prepare Transaction'
-          setStatusFailed(update, status, crossProcess)
+          statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+            errorMessage: 'Unable to prepare Transaction',
+          })
+          statusManager.updateExecution(step, 'FAILED')
           throw crossProcess.errorMessage
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
-        crossProcess.status = 'ACTION_REQUIRED'
-        crossProcess.message = 'Sign Transaction'
-        update(status)
-        if (!this.shouldContinue) return status
+
+        statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
+
+        if (!this.shouldContinue) return step.execution
 
         tx = await signer.sendTransaction(step.transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        crossProcess.status = 'PENDING'
-        crossProcess.txHash = tx.hash
-        crossProcess.txLink =
-          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
-        crossProcess.message = 'Wait for'
-        update(status)
+        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+          txHash: tx.hash,
+          txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+        })
       }
 
       await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        crossProcess.txHash = e.replacement.hash
-        crossProcess.txLink =
-          fromChain.metamask.blockExplorerUrls[0] + 'tx/' + crossProcess.txHash
+        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+          txHash: e.replacement.hash,
+          txLink:
+            fromChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            e.replacement.hash,
+        })
       } else {
         if (e.message) crossProcess.errorMessage = e.message
         if (e.code) crossProcess.errorCode = e.code
-        setStatusFailed(update, status, crossProcess)
+        statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
         throw e
       }
     }
 
-    crossProcess.message = 'Transfer started: '
-    setStatusDone(update, status, crossProcess)
+    statusManager.updateProcess(step, crossProcess.id, 'DONE', {
+      message: 'Transfer started: ',
+    })
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const waitForTxProcess = createAndPushProcess(
+    const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
-      update,
-      status,
+      step,
       'Wait for Receiving Chain'
     )
     let destinationTx: TransactionResponse
@@ -127,10 +129,14 @@ export class CbridgeExecutionManager {
       destinationTx = claimed.tx
       destinationTxReceipt = claimed.receipt
     } catch (e: any) {
-      waitForTxProcess.errorMessage = 'Failed waiting'
-      if (e.message) waitForTxProcess.errorMessage += ':\n' + e.message
-      if (e.code) waitForTxProcess.errorCode = e.code
-      setStatusFailed(update, status, waitForTxProcess)
+      let errorMessage = 'Failed waiting'
+      if (e.message) errorMessage += ':\n' + e.message
+
+      statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
+        errorMessage,
+        errorCode: e.code,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
@@ -141,17 +147,22 @@ export class CbridgeExecutionManager {
       destinationTx,
       destinationTxReceipt
     )
-    waitForTxProcess.txHash = destinationTxReceipt.transactionHash
-    waitForTxProcess.txLink =
-      toChain.metamask.blockExplorerUrls[0] + 'tx/' + waitForTxProcess.txHash
-    waitForTxProcess.message = 'Funds Received:'
-    status.fromAmount = step.action.fromAmount
-    status.toAmount = parsedReceipt.toAmount
-    // status.gasUsed = parsedReceipt.gasUsed
-    status.status = 'DONE'
-    setStatusDone(update, status, waitForTxProcess)
+
+    statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
+      message: 'Funds Received:',
+      txHash: destinationTxReceipt.transactionHash,
+      txLink:
+        toChain.metamask.blockExplorerUrls[0] +
+        'tx/' +
+        destinationTxReceipt.transactionHash,
+    })
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: step.action.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+      // gasUsed: parsedReceipt.gasUsed
+    })
 
     // DONE
-    return status
+    return step.execution
   }
 }

@@ -1,6 +1,6 @@
 // expose types and helpers
 export * from './types'
-export * from './status'
+export * from './StatusManager'
 export * from './helpers'
 
 // expose sdk

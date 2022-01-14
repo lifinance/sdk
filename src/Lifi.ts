@@ -7,7 +7,6 @@ import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
-  Execution,
   PossibilitiesRequest,
   PossibilitiesResponse,
   Route,
@@ -25,9 +24,10 @@ import {
   ActiveRouteDictionary,
   ExecutionSettings,
 } from './types'
+import StatusManager from './StatusManager'
 
 class LIFI {
-  private activeRoutes: ActiveRouteDictionary = {}
+  private activeRouteDictionary: ActiveRouteDictionary = {}
   private config: Config = getDefaultConfig()
 
   /**
@@ -123,11 +123,11 @@ class LIFI {
    * @return {Route} The stopped route.
    */
   stopExecution = (route: Route): Route => {
-    if (!this.activeRoutes[route.id]) return route
-    for (const executor of this.activeRoutes[route.id].executors) {
+    if (!this.activeRouteDictionary[route.id]) return route
+    for (const executor of this.activeRouteDictionary[route.id].executors) {
       executor.stopStepExecution()
     }
-    delete this.activeRoutes[route.id]
+    delete this.activeRouteDictionary[route.id]
     return route
   }
 
@@ -136,8 +136,8 @@ class LIFI {
    * @param {Route} route - A route that is currently in execution.
    */
   moveExecutionToBackground = (route: Route): void => {
-    if (!this.activeRoutes[route.id]) return
-    for (const executor of this.activeRoutes[route.id].executors) {
+    if (!this.activeRouteDictionary[route.id]) return
+    for (const executor of this.activeRouteDictionary[route.id].executors) {
       executor.stopStepExecution()
     }
   }
@@ -155,7 +155,7 @@ class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     // check if route is already running
-    if (this.activeRoutes[route.id]) return route // TODO: maybe inform user why nothing happens?
+    if (this.activeRouteDictionary[route.id]) return route // TODO: maybe inform user why nothing happens?
 
     return this.executeSteps(signer, route, settings)
   }
@@ -172,7 +172,7 @@ class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
-    const activeRoute = this.activeRoutes[route.id]
+    const activeRoute = this.activeRouteDictionary[route.id]
     if (activeRoute) {
       const executionHalted = activeRoute.executors.some(
         (executor) => executor.executionStopped
@@ -193,17 +193,18 @@ class LIFI {
       executors: [],
       settings: { ...this.config.defaultExecutionSettings, ...settings },
     }
-    this.activeRoutes[route.id] = execData
+    this.activeRouteDictionary[route.id] = execData
 
-    const updateFunction = (step: Step, status: Execution) => {
-      step.execution = status
-      this.activeRoutes[route.id].settings.updateCallback(route)
-    }
+    const statusManager = new StatusManager(
+      route,
+      this.activeRouteDictionary[route.id].settings,
+      (route: Route) => (this.activeRouteDictionary[route.id].route = route)
+    )
 
     // loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
       //check if execution has stopped in meantime
-      if (!this.activeRoutes[route.id]) break
+      if (!this.activeRouteDictionary[route.id]) break
 
       const step = route.steps[index]
       const previousStep = index !== 0 ? route.steps[index - 1] : undefined
@@ -223,14 +224,12 @@ class LIFI {
 
       let stepExecutor: StepExecutor
       try {
-        stepExecutor = new StepExecutor()
-        this.activeRoutes[route.id].executors.push(stepExecutor)
-        await stepExecutor.executeStep(
-          signer,
-          step,
-          updateFunction,
-          this.activeRoutes[route.id].settings
+        stepExecutor = new StepExecutor(
+          statusManager,
+          this.activeRouteDictionary[route.id].settings
         )
+        this.activeRouteDictionary[route.id].executors.push(stepExecutor)
+        await stepExecutor.executeStep(signer, step)
       } catch (e) {
         this.stopExecution(route)
         throw e
@@ -243,7 +242,7 @@ class LIFI {
     }
 
     //clean up after execution
-    delete this.activeRoutes[route.id]
+    delete this.activeRouteDictionary[route.id]
     return route
   }
 
@@ -256,9 +255,9 @@ class LIFI {
     settings: ExecutionSettings,
     route: Route
   ): void => {
-    if (!this.activeRoutes[route.id])
+    if (!this.activeRouteDictionary[route.id])
       throw Error('Cannot set ExecutionSettings for unactive route!')
-    this.activeRoutes[route.id].settings = {
+    this.activeRouteDictionary[route.id].settings = {
       ...this.config.defaultExecutionSettings,
       ...settings,
     }
@@ -269,7 +268,7 @@ class LIFI {
    * @return {Route[]} A list of routes.
    */
   getActiveRoutes = (): Route[] => {
-    return Object.values(this.activeRoutes).map((dict) => dict.route)
+    return Object.values(this.activeRouteDictionary).map((dict) => dict.route)
   }
 
   /**
@@ -278,7 +277,7 @@ class LIFI {
    * @return {Route} The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
-    return this.activeRoutes[route.id].route
+    return this.activeRouteDictionary[route.id].route
   }
 
   /**

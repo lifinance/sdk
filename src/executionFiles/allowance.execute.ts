@@ -1,27 +1,26 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
+import StatusManager from '../StatusManager'
 
-import { createAndPushProcess, setStatusDone, setStatusFailed } from '../status'
-import { Chain, Execution, Token } from '../types'
+import { Chain, Step, Token } from '../types'
 import { getApproved, setApproval } from '../utils'
 
 export const checkAllowance = async (
   signer: Signer,
+  step: Step,
   chain: Chain,
   token: Token,
   amount: string,
   spenderAddress: string,
-  update: (execution: Execution) => void,
-  status: Execution,
+  statusManager: StatusManager,
   infiniteApproval = false
   // eslint-disable-next-line max-params
 ) => {
   // Ask user to set allowance
-  // -> set status
-  const allowanceProcess = createAndPushProcess(
+  // -> set currentExecution
+  const allowanceProcess = statusManager.findOrCreateProcess(
     'allowanceProcess',
-    update,
-    status,
+    step,
     `Set Allowance for ${token.symbol}`
   )
 
@@ -29,9 +28,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await signer.provider!.waitForTransaction(allowanceProcess.txHash)
-      setStatusDone(update, status, allowanceProcess)
+      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
     } else if (allowanceProcess.message === 'Already Approved') {
-      setStatusDone(update, status, allowanceProcess)
+      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -46,34 +45,39 @@ export const checkAllowance = async (
           approvaLAmount
         )
 
-        // update status
-        allowanceProcess.status = 'PENDING'
-        allowanceProcess.txHash = approveTx.hash
-        allowanceProcess.txLink =
-          chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
-        allowanceProcess.message = 'Approve - Wait for'
-        update(status)
+        // update currentExecution
+        statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+          txHash: approveTx.hash,
+          txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
+          message: 'Approve - Wait for',
+        })
 
         // wait for transcation
         await approveTx.wait()
 
-        // -> set status
-        allowanceProcess.message = 'Approved:'
+        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
+          message: 'Approved: ',
+        })
       } else {
-        allowanceProcess.message = 'Already Approved'
+        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
+          message: 'Already Approved',
+        })
       }
-      setStatusDone(update, status, allowanceProcess)
     }
   } catch (e: any) {
     // -> set status
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-      allowanceProcess.txHash = e.replacement.hash
-      allowanceProcess.txLink =
-        chain.metamask.blockExplorerUrls[0] + 'tx/' + allowanceProcess.txHash
+      statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+        txHash: e.replacement.hash,
+        txLink:
+          chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
+      })
     } else {
-      if (e.message) allowanceProcess.errorMessage = e.message
-      if (e.code) allowanceProcess.errorCode = e.code
-      setStatusFailed(update, status, allowanceProcess)
+      statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
+        errorMessage: e.message,
+        errorCode: e.code,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
   }

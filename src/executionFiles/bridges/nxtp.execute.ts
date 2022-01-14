@@ -4,13 +4,6 @@ import { constants, ethers, utils } from 'ethers'
 
 import Lifi from '../../Lifi'
 import {
-  createAndPushProcess,
-  initStatus,
-  setStatusDone,
-  setStatusFailed,
-  setStatusCancelled,
-} from '../../status'
-import {
   ChainId,
   ExecuteCrossParams,
   Execution,
@@ -36,28 +29,30 @@ export class NXTPExecutionManager {
   execute = async ({
     signer,
     step,
-    updateStatus,
+    statusManager,
     hooks,
   }: ExecuteCrossParams): Promise<Execution> => {
-    const { action, execution, estimate } = step
-    const { status, update } = initStatus(updateStatus, execution)
+    const { action, estimate } = step
+    step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
     const toChain = getChainById(action.toChainId)
-    const oldCrossProcess = status.process.find((p) => p.id === 'crossProcess')
+    const oldCrossProcess = step.execution.process.find(
+      (p) => p.id === 'crossProcess'
+    )
     const transactionId = step.id
 
     // STEP 0: Check Allowance ////////////////////////////////////////////////
     if (action.fromToken.address !== constants.AddressZero) {
       // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-      if (!this.shouldContinue) return status
+      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
+        step,
         fromChain,
         action.fromToken,
         action.fromAmount,
         estimate.approvalAddress,
-        update,
-        status,
+        statusManager,
         true
       )
     }
@@ -70,19 +65,16 @@ export class NXTPExecutionManager {
       isSwapStep(step.includedSteps[step.includedSteps.length - 1]) &&
       (!oldCrossProcess || !oldCrossProcess.txHash)
     ) {
-      // -> set status
-      const keyProcess = createAndPushProcess(
+      // -> set step.execution
+      const keyProcess = statusManager.findOrCreateProcess(
         'publicKey',
-        update,
-        status,
+        step,
         'Provide Public Key',
         {
           status: 'ACTION_REQUIRED',
         }
       )
-
-      if (!this.shouldContinue) return status
-
+      if (!this.shouldContinue) return step.execution
       // -> request key
       try {
         const encryptionPublicKey = await hooks.getPublicKeyHook()
@@ -90,19 +82,20 @@ export class NXTPExecutionManager {
         if (!step.estimate.data) step.estimate.data = {}
         step.estimate.data.encryptionPublicKey = encryptionPublicKey
       } catch (e: any) {
-        if (e.message) keyProcess.errorMessage = e.message
-        setStatusFailed(update, status, keyProcess)
+        statusManager.updateProcess(step, keyProcess.id, 'FAILED', {
+          errorMessage: e.message,
+        })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
-      // -> set status
-      setStatusDone(update, status, keyProcess)
+      // -> set step.execution
+      statusManager.updateProcess(step, keyProcess.id, 'DONE')
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = createAndPushProcess(
+    const crossProcess = statusManager.findOrCreateProcess(
       'crossProcess',
-      update,
-      status,
+      step,
       'Prepare Transaction'
     )
     if (crossProcess.status !== 'DONE') {
@@ -110,9 +103,7 @@ export class NXTPExecutionManager {
       try {
         if (crossProcess.txHash) {
           // -> restore existing tx
-          crossProcess.status = 'PENDING'
-          crossProcess.message = 'Wait for '
-          update(status)
+          statusManager.updateProcess(step, crossProcess.id, 'PENDING')
           const fromProvider = getRpcProvider(step.action.fromChainId)
           tx = await fromProvider.getTransaction(crossProcess.txHash)
         } else {
@@ -124,35 +115,32 @@ export class NXTPExecutionManager {
           const updatedStep = await Lifi.getStepTransaction(personalizedStep)
           // update step
           Object.assign(step, updatedStep)
-
           if (!step.transactionRequest) {
-            crossProcess.errorMessage = 'Unable to prepare Transaction'
-            setStatusFailed(update, status, crossProcess)
+            statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+              errorMessage: 'Unable to prepare Transaction',
+            })
+            statusManager.updateExecution(step, 'FAILED')
             throw crossProcess.errorMessage
           }
 
           // STEP 3: Send Transaction ///////////////////////////////////////////////
-          crossProcess.status = 'ACTION_REQUIRED'
-          crossProcess.message = 'Sign Transaction'
-          update(status)
-          if (!this.shouldContinue) return status
+          statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
+          if (!this.shouldContinue) return step.execution
 
           tx = await signer.sendTransaction(step.transactionRequest)
 
           // STEP 4: Wait for Transaction ///////////////////////////////////////////
-          crossProcess.status = 'PENDING'
-          crossProcess.txHash = tx.hash
-          crossProcess.txLink =
-            fromChain.metamask.blockExplorerUrls[0] +
-            'tx/' +
-            crossProcess.txHash
-          crossProcess.message = 'Wait for'
-          update(status)
+          statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+            txHash: tx.hash,
+            txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+          })
         }
       } catch (e: any) {
-        if (e.message) crossProcess.errorMessage = e.message
-        if (e.code) crossProcess.errorCode = e.code
-        setStatusFailed(update, status, crossProcess)
+        statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+          errorMessage: e.message,
+          errorCode: e.code,
+        })
+        statusManager.updateExecution(step, 'FAILED')
         throw e
       }
 
@@ -160,34 +148,40 @@ export class NXTPExecutionManager {
         await tx.wait()
       } catch (e: any) {
         if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-          crossProcess.txHash = e.replacement.hash
-          crossProcess.txLink =
-            fromChain.metamask.blockExplorerUrls[0] +
-            'tx/' +
-            crossProcess.txHash
+          statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+            txHash: e.replacement.hash,
+            txLink:
+              fromChain.metamask.blockExplorerUrls[0] +
+              'tx/' +
+              e.replacement.hash,
+          })
         } else {
           if (e.message) crossProcess.errorMessage = e.message
           if (e.code) crossProcess.errorCode = e.code
-          setStatusFailed(update, status, crossProcess)
+          statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+            errorMessage: e.message,
+            errorCode: e.code,
+          })
+          statusManager.updateExecution(step, 'FAILED')
           throw e
         }
       }
 
-      crossProcess.message = 'Transfer started: '
-      setStatusDone(update, status, crossProcess)
+      statusManager.updateProcess(step, crossProcess.id, 'DONE', {
+        message: 'Transfer started: ',
+      })
     }
 
     // STEP 5: Wait for ReceiverTransactionPrepared //////////////////////////////////////
-    const claimProcess = createAndPushProcess(
+    const claimProcess = statusManager.findOrCreateProcess(
       'claimProcess',
-      update,
-      status,
+      step,
       'Wait for bridge'
     )
     // reset previous process
-    claimProcess.message = 'Wait for bridge'
-    claimProcess.status = 'PENDING'
-    update(status)
+    statusManager.updateProcess(step, claimProcess.id, 'PENDING', {
+      message: 'Wait for bridge',
+    })
 
     // init sdk
     const crossableChains = [ChainId.ETH, action.fromChainId, action.toChainId]
@@ -225,23 +219,23 @@ export class NXTPExecutionManager {
       if (foundTransaction) {
         switch (foundTransaction.status) {
           case 'CANCELLED':
-            claimProcess.message =
-              'CANCELLED - Funds have been refunded on source chain.'
-            status.status = 'CANCELLED'
-            setStatusCancelled(update, status, claimProcess)
+            statusManager.updateProcess(step, claimProcess.id, 'CANCELLED')
             break
-
           case 'FULFILLED':
-            claimProcess.txHash = foundTransaction.fulfilledTxHash
-            claimProcess.txLink =
-              toChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              claimProcess.txHash
-            claimProcess.message = 'Funds Received:'
-            status.fromAmount = estimate.fromAmount
-            status.toAmount = estimate.toAmount
-            status.status = 'DONE'
-            setStatusDone(update, status, claimProcess)
+            statusManager.updateProcess(step, claimProcess.id, 'DONE', {
+              message: 'Funds received: ',
+              txHash: foundTransaction.fulfilledTxHash,
+              txLink:
+                toChain.metamask.blockExplorerUrls[0] +
+                'tx/' +
+                foundTransaction.fulfilledTxHash,
+            })
+
+            statusManager.updateExecution(step, 'DONE', {
+              fromAmount: estimate.fromAmount,
+              toAmount: estimate.toAmount,
+            })
+
             break
 
           default:
@@ -253,7 +247,7 @@ export class NXTPExecutionManager {
 
         // DONE
         nxtpSDK.removeAllListeners()
-        return status
+        return step.execution
       }
     }
 
@@ -279,19 +273,23 @@ export class NXTPExecutionManager {
         action.toChainId
       )
       if (!receivingChainTxManager) {
-        setStatusFailed(update, status, claimProcess)
+        statusManager.updateProcess(step, claimProcess.id, 'FAILED', {
+          errorMessage: `No TransactionManager definded for chain: ${action.toChainId}`,
+        })
+        statusManager.updateExecution(step, 'FAILED')
         nxtpSDK.removeAllListeners()
         throw new Error(
-          'No TransactionManager definded for chain: ${action.toChainId}'
+          `No TransactionManager definded for chain: ${action.toChainId}`
         )
       }
 
-      claimProcess.status = 'ACTION_REQUIRED'
-      claimProcess.message = 'Provide Signature'
-      update(status)
+      statusManager.updateProcess(step, claimProcess.id, 'ACTION_REQUIRED', {
+        message: 'Provide Signature',
+      })
+
       if (!this.shouldContinue) {
         nxtpSDK.removeAllListeners()
-        return status
+        return step.execution
       }
 
       signature = await signFulfillTransactionPayload(
@@ -302,23 +300,28 @@ export class NXTPExecutionManager {
         signer
       )
     } catch (e: any) {
-      if (e.message) claimProcess.errorMessage = e.message
-      setStatusFailed(update, status, claimProcess)
+      statusManager.updateProcess(step, claimProcess.id, 'FAILED', {
+        errorMessage: e.message,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       nxtpSDK.removeAllListeners()
       throw e
     }
 
     // STEP 7: Wait for Bridge //////////////////////////////////////////////////////////
-    claimProcess.message = 'Wait for bridge (1-5 min)'
-    claimProcess.status = 'PENDING'
-    update(status)
+
+    statusManager.updateProcess(step, claimProcess.id, 'PENDING', {
+      message: 'Wait for bridge (1-5 min)',
+    })
 
     let preparedTransaction
     try {
       preparedTransaction = await preparedTransactionPromise
     } catch (e: any) {
-      if (e.message) claimProcess.errorMessage = e.message
-      setStatusFailed(update, status, claimProcess)
+      statusManager.updateProcess(step, claimProcess.id, 'FAILED', {
+        errorMessage: e.message,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       nxtpSDK.removeAllListeners()
       throw e
     }
@@ -342,12 +345,12 @@ export class NXTPExecutionManager {
         callData = preparedTransaction.encryptedCallData
       } else if (hooks.decryptHook) {
         // Tigger hock to decrypt data
-        claimProcess.status = 'ACTION_REQUIRED'
-        claimProcess.message = 'Decrypt transaction data'
-        update(status)
+        statusManager.updateProcess(step, claimProcess.id, 'ACTION_REQUIRED', {
+          message: 'Decrypt transaction data',
+        })
         if (!this.shouldContinue) {
           nxtpSDK.removeAllListeners()
-          return status
+          return step.execution
         }
 
         try {
@@ -355,8 +358,10 @@ export class NXTPExecutionManager {
             preparedTransaction.encryptedCallData
           )
         } catch (e: any) {
-          if (e.message) claimProcess.errorMessage = e.message
-          setStatusFailed(update, status, claimProcess)
+          statusManager.updateProcess(step, claimProcess.id, 'FAILED', {
+            errorMessage: e.message,
+          })
+          statusManager.updateExecution(step, 'FAILED')
           nxtpSDK.removeAllListeners()
           throw e
         }
@@ -369,9 +374,9 @@ export class NXTPExecutionManager {
     }
 
     // STEP 9: Wait for Claim //////////////////////////////////////////////////////////
-    claimProcess.status = 'PENDING'
-    claimProcess.message = 'Waiting for claim (1-5 min)'
-    update(status)
+    statusManager.updateProcess(step, claimProcess.id, 'PENDING', {
+      message: 'Waiting for claim (1-5 min)',
+    })
 
     try {
       const response = await nxtpBaseSDK.fulfillTransfer(
@@ -381,14 +386,22 @@ export class NXTPExecutionManager {
         calculatedRelayerFee,
         true
       )
-      claimProcess.txHash = response.transactionResponse?.transactionHash
-      claimProcess.txLink =
-        toChain.metamask.blockExplorerUrls[0] + 'tx/' + claimProcess.txHash
-      claimProcess.message = 'Funds Received:'
+
+      statusManager.updateProcess(step, claimProcess.id, 'DONE', {
+        txHash: response.transactionResponse?.transactionHash,
+        txLink:
+          toChain.metamask.blockExplorerUrls[0] +
+          'tx/' +
+          response.transactionResponse?.transactionHash,
+        message: 'Funds Received:',
+      })
     } catch (e: any) {
       if (e.message) claimProcess.errorMessage = e.message
       nxtpSDK.removeAllListeners()
-      setStatusFailed(update, status, claimProcess)
+      statusManager.updateProcess(step, claimProcess.id, 'FAILED', {
+        errorMessage: e.message,
+      })
+      statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
@@ -417,14 +430,16 @@ export class NXTPExecutionManager {
       receipt
     )
 
-    status.fromAmount = estimate.fromAmount
-    status.toAmount = parsedReceipt.toAmount
     // status.gasUsed = parsedReceipt.gasUsed
-    status.status = 'DONE'
-    setStatusDone(update, status, claimProcess)
+    //statusManager.updateProcess(step, claimProcess, 'DONE')
+
+    statusManager.updateExecution(step, 'DONE', {
+      fromAmount: estimate.fromAmount,
+      toAmount: parsedReceipt.toAmount,
+    })
 
     // DONE
     nxtpSDK.removeAllListeners()
-    return status
+    return step.execution
   }
 }
