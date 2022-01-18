@@ -123,10 +123,8 @@ export class HopExecutionManager {
     )
     let destinationTxReceipt
     try {
-      hop.init(signer, action.fromChainId, action.toChainId)
       destinationTxReceipt = await hop.waitForDestinationChainReceipt(
         crossProcess.txHash,
-        action.toToken.coinKey,
         action.fromChainId,
         action.toChainId
       )

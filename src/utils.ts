@@ -2,8 +2,10 @@ import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20
 import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
 import { Contract, Signer } from 'ethers'
+import { TransactionReceipt } from '@ethersproject/providers'
 
-import { Step } from './types'
+import { ChainId, Step } from './types'
+import { getRpcProvider } from './connectors'
 
 export const deepClone = (src: any) => {
   return JSON.parse(JSON.stringify(src))
@@ -76,3 +78,38 @@ export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>
 
     return resultList
   }, [])
+
+/**
+ * Repeatedly calls a given asynchronous function until it resolves with a value
+ * @param toRepeat The function that should be repeated
+ * @param timeout The timeout in milliseconds between retries, defaults to 5000
+ * @returns The result of the toRepeat function
+ */
+export const repeatUntilDone = async <T>(
+  toRepeat: () => Promise<T>,
+  timeout = 5000
+): Promise<T> => {
+  let result: T | undefined
+
+  while (!result) {
+    result = await toRepeat()
+    if (!result) await sleep(timeout)
+  }
+
+  return result
+}
+
+/**
+ * Loads a transaction using the rpc for the given chain id
+ * @param chainId The chain id where the transaction should be loaded from
+ * @param txHash The hash of the transaction
+ * @returns TransactionReceipt
+ */
+export const loadTransaction = async (
+  chainId: ChainId,
+  txHash: string
+): Promise<TransactionReceipt> => {
+  const rpc = getRpcProvider(chainId)
+  const tx = await rpc.getTransaction(txHash)
+  return tx.wait()
+}
