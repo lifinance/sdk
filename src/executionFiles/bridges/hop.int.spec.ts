@@ -129,4 +129,32 @@ describe('hop', () => {
       })
     })
   })
+
+  describe('waitForDestinationChainReceipt', () => {
+    it('should find the transfer', async () => {
+      const txHash =
+        '0x81823de3b1716e9a09ab62703fa44b11b1461d65f1704d34162ba68fbd548770'
+      const fromChainId = ChainId.DAI
+      const toChainId = ChainId.ARB
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+
+    it('should find the old transfer', async () => {
+      const txHash =
+        '0x7e2ef997b0d07ad39b5f8aa0c5aac1259636a157697797a958b00f64badd0b58'
+      const fromChainId = ChainId.POL
+      const toChainId = ChainId.DAI
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+  })
 })
