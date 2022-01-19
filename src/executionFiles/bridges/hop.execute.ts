@@ -125,6 +125,7 @@ export class HopExecutionManager {
     try {
       destinationTxReceipt = await hop.waitForDestinationChainReceipt(
         crossProcess.txHash,
+        action.toToken.coinKey,
         action.fromChainId,
         action.toChainId
       )

@@ -6,26 +6,46 @@ import {
 import axios from 'axios'
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
+import { Token } from '@hop-protocol/sdk/dist/src/models'
+import { Chain, Hop, HopBridge } from '@hop-protocol/sdk'
 
-import { ChainId, ParsedReceipt } from '../../types'
+import { ChainId, CoinKey, ParsedReceipt } from '../../types'
 import { loadTransaction, repeatUntilDone } from '../../utils'
 import { defaultReceiptParsing } from '../utils'
 
-const hopChains: { [k: number]: string } = {
-  [ChainId.ETH]: 'ethereum',
+const hopChains: { [k: number]: Chain } = {
+  [ChainId.ETH]: Chain.Ethereum,
+  [ChainId.POL]: Chain.Polygon,
+  [ChainId.DAI]: Chain.Gnosis,
+  [ChainId.OPT]: Chain.Optimism,
+  [ChainId.ARB]: Chain.Arbitrum,
+
+  // Testnet; Hop SDK changes the underlying id of these chains according to the instance network
+  //network 'goerli'
+  [ChainId.GOR]: Chain.Ethereum,
+  [ChainId.MUM]: Chain.Polygon,
+}
+
+const hopChainsSlugs: { [k: number]: string } = {
+  [ChainId.ETH]: 'mainnet',
   [ChainId.POL]: 'polygon',
   [ChainId.DAI]: 'xdai',
   [ChainId.OPT]: 'optimism',
   [ChainId.ARB]: 'arbitrum',
-
-  // Testnet; Hop SDK changes the underlying id of these chains according to the instance network
-  //network 'goerli'
-  [ChainId.GOR]: 'ethereum',
+  [ChainId.GOR]: 'mainnet',
   [ChainId.MUM]: 'polygon',
 }
 
+const hopTokens: { [k: string]: string } = {
+  USDC: Token.USDC,
+  USDT: Token.USDT,
+  MATIC: Token.MATIC,
+  DAI: Token.DAI,
+  ETH: Token.ETH,
+}
+
 const getSubgraphUrl = (chainId: ChainId): string => {
-  const chain = hopChains[chainId]
+  const chain = hopChainsSlugs[chainId]
 
   if (!chain) {
     throw new Error(`Unsupported chainId passed: ${chainId}`)
@@ -82,22 +102,60 @@ const getTxHashOnReceivingChain = async (
   return result.data.data.withdraws[0]?.transaction.hash
 }
 
-const waitForDestinationChainReceipt = async (
+const getEthReceiptFromHopSDK = (
   tx: string,
+  token: CoinKey,
   fromChainId: ChainId,
   toChainId: ChainId
 ): Promise<TransactionReceipt> => {
-  const transferId = await repeatUntilDone<string>(() =>
-    getTransferIdOnSourceChain(fromChainId, tx)
-  )
+  let hop: Hop
+  if (fromChainId === ChainId.GOR) {
+    hop = new Hop('goerli')
+  } else {
+    hop = new Hop('mainnet')
+  }
 
-  const dstTxHash = await repeatUntilDone<string>(() =>
-    getTxHashOnReceivingChain(toChainId, transferId)
-  )
+  const hopToChain = hopChains[toChainId]
 
-  const receipt = await loadTransaction(toChainId, dstTxHash)
+  return new Promise((resolve, reject) => {
+    hop
+      ?.watch(tx, hopTokens[token], Chain.Ethereum, hopToChain)
+      .once('destinationTxReceipt', async (data: any) => {
+        const receipt: TransactionReceipt = data.receipt
 
-  return receipt
+        if (receipt.status !== 1) reject('Invalid receipt status')
+        if (receipt.status === 1) resolve(receipt)
+      })
+  })
+}
+
+const waitForDestinationChainReceipt = async (
+  tx: string,
+  token: CoinKey,
+  fromChainId: ChainId,
+  toChainId: ChainId
+): Promise<TransactionReceipt> => {
+  if (fromChainId === ChainId.ETH || fromChainId === ChainId.GOR) {
+    // case L1->L2:
+    // Let's document what we know: On ETH we have `transferId === transactionId`. That allows us to skip the `getTransferIdOnSourceChain` call.
+    // However, transfers from ETH do not appear in the L2 subgraphs (yet?).
+    // Neither with `withdrawalBondeds` (that's how it usually works), nor with `transferFromL1Completeds` (which sounds exaclty like what we need)
+    // For those reasons we will use the Hop SDK for this scenario.
+    return getEthReceiptFromHopSDK(tx, token, fromChainId, toChainId)
+  } else {
+    // case L2->L2 & L2->L1
+    const transferId = await repeatUntilDone<string>(() =>
+      getTransferIdOnSourceChain(fromChainId, tx)
+    )
+
+    const dstTxHash = await repeatUntilDone<string>(() =>
+      getTxHashOnReceivingChain(toChainId, transferId)
+    )
+
+    const receipt = await loadTransaction(toChainId, dstTxHash)
+
+    return receipt
+  }
 }
 
 const parseTokenSwapEvent = (params: { receipt: TransactionReceipt }) => {
