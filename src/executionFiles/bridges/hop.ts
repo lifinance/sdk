@@ -34,7 +34,7 @@ const getSubgraphUrl = (chainId: ChainId): string => {
   return `https://api.thegraph.com/subgraphs/name/hop-protocol/hop-${chain}`
 }
 
-const getTransferIdByTxHash = async (
+const getTransferIdOnSourceChain = async (
   chainId: ChainId,
   txHash: string
 ): Promise<string> => {
@@ -56,7 +56,7 @@ const getTransferIdByTxHash = async (
   return result.data.data.transfers[0]?.transferId
 }
 
-const getTxHashByTransferId = async (
+const getTxHashOnReceivingChain = async (
   chainId: ChainId,
   transferId: string
 ): Promise<string> => {
@@ -88,11 +88,11 @@ const waitForDestinationChainReceipt = async (
   toChainId: ChainId
 ): Promise<TransactionReceipt> => {
   const transferId = await repeatUntilDone<string>(() =>
-    getTransferIdByTxHash(fromChainId, tx)
+    getTransferIdOnSourceChain(fromChainId, tx)
   )
 
   const dstTxHash = await repeatUntilDone<string>(() =>
-    getTxHashByTransferId(toChainId, transferId)
+    getTxHashOnReceivingChain(toChainId, transferId)
   )
 
   const receipt = await loadTransaction(toChainId, dstTxHash)
