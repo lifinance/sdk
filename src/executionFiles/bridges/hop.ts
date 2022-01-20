@@ -3,39 +3,39 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
-import { Chain, Hop, HopBridge } from '@hop-protocol/sdk'
-import { Token } from '@hop-protocol/sdk/dist/src/models'
+import axios from 'axios'
 import BigNumber from 'bignumber.js'
-import { ethers, Signer } from 'ethers'
+import { ethers } from 'ethers'
+import { Token } from '@hop-protocol/sdk/dist/src/models'
+import { Chain, Hop, HopBridge } from '@hop-protocol/sdk'
 
-import {
-  ChainId,
-  ChainKey,
-  CoinKey,
-  getChainByKey,
-  ParsedReceipt,
-} from '../../types'
+import { ChainId, CoinKey, ParsedReceipt } from '../../types'
+import { loadTransaction, repeatUntilDone } from '../../utils'
 import { defaultReceiptParsing } from '../utils'
 
-let hop: Hop | undefined = undefined
-
-let bridges: { [k: string]: HopBridge } = {}
 const hopChains: { [k: number]: Chain } = {
-  [getChainByKey(ChainKey.ETH).id]: Chain.Ethereum,
-  [getChainByKey(ChainKey.POL).id]: Chain.Polygon,
-  [getChainByKey(ChainKey.DAI).id]: Chain.xDai,
-  [getChainByKey(ChainKey.OPT).id]: Chain.Optimism,
-  [getChainByKey(ChainKey.ARB).id]: Chain.Arbitrum,
+  [ChainId.ETH]: Chain.Ethereum,
+  [ChainId.POL]: Chain.Polygon,
+  [ChainId.DAI]: Chain.Gnosis,
+  [ChainId.OPT]: Chain.Optimism,
+  [ChainId.ARB]: Chain.Arbitrum,
 
   // Testnet; Hop SDK changes the underlying id of these chains according to the instance network
   //network 'goerli'
-  [getChainByKey(ChainKey.GOR).id]: Chain.Ethereum,
-  [getChainByKey(ChainKey.MUM).id]: Chain.Polygon,
+  [ChainId.GOR]: Chain.Ethereum,
+  [ChainId.MUM]: Chain.Polygon,
 }
 
-const supportedTestnetChains: number[] = [ChainId.GOR, ChainId.MUM]
+const hopChainsSlugs: { [k: number]: string } = {
+  [ChainId.ETH]: 'mainnet',
+  [ChainId.POL]: 'polygon',
+  [ChainId.DAI]: 'xdai',
+  [ChainId.OPT]: 'optimism',
+  [ChainId.ARB]: 'arbitrum',
+  [ChainId.GOR]: 'mainnet',
+  [ChainId.MUM]: 'polygon',
+}
 
-// get these from https://github.com/hop-protocol/hop/blob/develop/packages/sdk/src/models/Token.ts
 const hopTokens: { [k: string]: string } = {
   USDC: Token.USDC,
   USDT: Token.USDT,
@@ -43,77 +43,119 @@ const hopTokens: { [k: string]: string } = {
   DAI: Token.DAI,
   ETH: Token.ETH,
 }
-const isInitialized = () => {
-  if (hop === undefined)
-    throw TypeError('Hop instance is undefined! Please initialize Hop')
+
+const getSubgraphUrl = (chainId: ChainId): string => {
+  const chain = hopChainsSlugs[chainId]
+
+  if (!chain) {
+    throw new Error(`Unsupported chainId passed: ${chainId}`)
+  }
+
+  return `https://api.thegraph.com/subgraphs/name/hop-protocol/hop-${chain}`
 }
-const init = (signer: Signer, chainId: number, toChainId: number) => {
-  const isChainTest = supportedTestnetChains.includes(chainId) ? true : false
-  const isToChainTest = supportedTestnetChains.includes(toChainId)
-    ? true
-    : false
-  // goerli <-> mumbai
-  if (isChainTest && isToChainTest) {
+
+const getTransferIdOnSourceChain = async (
+  chainId: ChainId,
+  txHash: string
+): Promise<string> => {
+  const url = getSubgraphUrl(chainId)
+  const transfersQuery = `
+  query ($txHash: String) {
+    transfers: transferSents(where: { transactionHash: $txHash } subgraphError: allow) {
+      transferId
+    }
+  }`
+
+  const result = await axios.post<{
+    data: { transfers: { transferId: string }[] }
+  }>(url, {
+    query: transfersQuery,
+    variables: { txHash },
+  })
+
+  return result.data.data.transfers[0]?.transferId
+}
+
+const getTxHashOnReceivingChain = async (
+  chainId: ChainId,
+  transferId: string
+): Promise<string> => {
+  const url = getSubgraphUrl(chainId)
+  const withdrawsQuery = `
+  query ($transferId: ID) {
+    withdraws: withdrawalBondeds(where: {transferId: $transferId} subgraphError: allow) {
+      transaction {
+        hash
+      }
+    }
+  }`
+
+  const result = await axios.post<{
+    data: {
+      withdraws: { transaction: { hash: string } }[]
+    }
+  }>(url, {
+    query: withdrawsQuery,
+    variables: { transferId },
+  })
+
+  return result.data.data.withdraws[0]?.transaction.hash
+}
+
+const getEthReceiptFromHopSDK = (
+  tx: string,
+  token: CoinKey,
+  fromChainId: ChainId,
+  toChainId: ChainId
+): Promise<TransactionReceipt> => {
+  let hop: Hop
+  if (fromChainId === ChainId.GOR) {
     hop = new Hop('goerli')
   } else {
     hop = new Hop('mainnet')
   }
-  bridges = {
-    USDT: hop.connect(signer).bridge('USDT'),
-    USDC: hop.connect(signer).bridge('USDC'),
-    MATIC: hop.connect(signer).bridge('MATIC'),
-    DAI: hop.connect(signer).bridge('DAI'),
-    ETH: hop.connect(signer).bridge('ETH'),
-  }
-}
 
-const getHopBridge = (bridgeCoin: CoinKey) => {
-  isInitialized()
-  if (!Object.keys(bridges).length) {
-    throw Error(
-      'No HopBridge available! Initialize Hop implementation first via init(signer: JsonRpcSigner, chainId: number, toChainId: number)'
-    )
-  }
-  return bridges[bridgeCoin]
-}
-
-const setAllowanceAndCrossChains = async (
-  bridgeCoin: CoinKey,
-  amount: string,
-  fromChainId: number,
-  toChainId: number
-) => {
-  isInitialized()
-  const bridge = getHopBridge(bridgeCoin)
-  const hopFromChain = hopChains[fromChainId]
   const hopToChain = hopChains[toChainId]
-  const tx = await bridge.approveAndSend(amount, hopFromChain, hopToChain)
-  return tx
+
+  return new Promise((resolve, reject) => {
+    hop
+      ?.watch(tx, hopTokens[token], Chain.Ethereum, hopToChain)
+      .once('destinationTxReceipt', async (data: any) => {
+        const receipt: TransactionReceipt = data.receipt
+
+        if (receipt.status !== 1) reject('Invalid receipt status')
+        if (receipt.status === 1) resolve(receipt)
+      })
+  })
 }
 
-const waitForDestinationChainReceipt = (
+const waitForDestinationChainReceipt = async (
   tx: string,
-  coin: CoinKey,
-  fromChainId: number,
-  toChainId: number
+  token: CoinKey,
+  fromChainId: ChainId,
+  toChainId: ChainId
 ): Promise<TransactionReceipt> => {
-  return new Promise((resolve, reject) => {
-    isInitialized()
-    const hopFromChain = hopChains[fromChainId]
-    const hopToChain = hopChains[toChainId]
-    try {
-      hop
-        ?.watch(tx, hopTokens[coin], hopFromChain, hopToChain)
-        .once('destinationTxReceipt', async (data: any) => {
-          const receipt: TransactionReceipt = data.receipt
-          if (receipt.status !== 1) reject(receipt)
-          if (receipt.status === 1) resolve(receipt)
-        })
-    } catch (e) {
-      reject(e)
-      throw e
-    }
-  })
+  if (fromChainId === ChainId.ETH || fromChainId === ChainId.GOR) {
+    // case L1->L2:
+    // Let's document what we know: On ETH we have `transferId === transactionId`. That allows us to skip the `getTransferIdOnSourceChain` call.
+    // However, transfers from ETH do not appear in the L2 subgraphs (yet?).
+    // Neither with `withdrawalBondeds` (that's how it usually works), nor with `transferFromL1Completeds` (which sounds exaclty like what we need)
+    // For those reasons we will use the Hop SDK for this scenario.
+    return getEthReceiptFromHopSDK(tx, token, fromChainId, toChainId)
+  } else {
+    // case L2->L2 & L2->L1
+    const transferId = await repeatUntilDone<string>(() =>
+      getTransferIdOnSourceChain(fromChainId, tx)
+    )
+
+    const dstTxHash = await repeatUntilDone<string>(() =>
+      getTxHashOnReceivingChain(toChainId, transferId)
+    )
+
+    const receipt = await loadTransaction(toChainId, dstTxHash)
+
+    return receipt
+  }
 }
 
 const parseTokenSwapEvent = (params: { receipt: TransactionReceipt }) => {
@@ -167,8 +209,6 @@ const parseReceipt = (
 }
 
 const hopExport = {
-  init,
-  setAllowanceAndCrossChains,
   waitForDestinationChainReceipt,
   parseReceipt,
 }

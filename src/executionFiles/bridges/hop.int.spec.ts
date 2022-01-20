@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { getRpcProvider } from '../../connectors'
-import { ChainId, ParsedReceipt } from '../../types'
+import { ChainId, CoinKey, ParsedReceipt } from '../../types'
 import hop from './hop'
 
 jest.setTimeout(10_000)
@@ -127,6 +127,36 @@ describe('hop', () => {
           expected
         )
       })
+    })
+  })
+
+  describe('waitForDestinationChainReceipt', () => {
+    it('should handle L2->L1 transfers', async () => {
+      const txHash =
+        '0x4ade8123fe60ad125c70102389ef159c897be58b61d901cf557a28fe74559d1c'
+      const fromChainId = ChainId.DAI
+      const toChainId = ChainId.ETH
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        CoinKey.DAI,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+
+    it('should handle L2->L2 transfers', async () => {
+      const txHash =
+        '0x81823de3b1716e9a09ab62703fa44b11b1461d65f1704d34162ba68fbd548770'
+      const fromChainId = ChainId.DAI
+      const toChainId = ChainId.ARB
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        CoinKey.DAI,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
     })
   })
 })
