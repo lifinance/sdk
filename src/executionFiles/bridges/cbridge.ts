@@ -11,7 +11,7 @@ import {
   LifiStep,
   ParsedReceipt,
 } from '../../types'
-import { sleep } from '../../utils'
+import { sleep } from '../../utils/utils'
 import { getRpcProvider } from '../../connectors'
 import { defaultReceiptParsing } from '../utils'
 

@@ -8,7 +8,7 @@ import { parseWalletError } from '../../utils/parseError'
 import Lifi from '../../Lifi'
 
 import { ExecuteSwapParams, getChainById } from '../../types'
-import { personalizeStep } from '../../utils'
+import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 
@@ -88,9 +88,10 @@ export class SwapExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
       }
     } catch (e) {
-      const error = parseWalletError(e)
+      const error = parseWalletError(e, step, swapProcess)
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
         errorMessage: error.message,
+        htmlErrorMessage: error.htmlMessage,
         errorCode: error.code,
       })
       statusManager.updateExecution(step, 'FAILED')
@@ -123,6 +124,7 @@ export class SwapExecutionManager {
         const error = parseWalletError(e)
         statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
           errorMessage: error.message,
+          htmlErrorMessage: error.htmlMessage,
           errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')

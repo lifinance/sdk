@@ -3,14 +3,16 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 import {
-  LifiErrorCodes,
   LifiError,
+  LifiErrorCodes,
   ProviderError,
   RPCError,
+  ServerError,
   UnknownError,
   ValidationError,
-  ServerError,
 } from './errors'
+import { getChainById, Process, Step } from '@lifinance/types'
+import { formatTokenAmountOnly } from './utils'
 
 /**
  * Available MetaMask error codes:
@@ -44,13 +46,46 @@ import {
  * https://eips.ethereum.org/EIPS/eip-1193#provider-errors
  */
 
-export const parseWalletError = (e: any): LifiError => {
+const getTransactionNotSentMessage = (
+  step?: Step,
+  process?: Process
+): string => {
+  let transactionNotSend =
+    'Transaction was not sent, your funds are still in your wallet'
+
+  // add information about funds if available
+  transactionNotSend += step
+    ? ` (${formatTokenAmountOnly(
+        step.action.fromToken,
+        step.action.fromAmount
+      )} ${step.action.fromToken.symbol} on ${
+        getChainById(step.action.fromChainId).name
+      })`
+    : ''
+
+  transactionNotSend +=
+    ", please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
+
+  // add transaction explorer link if available
+  transactionNotSend +=
+    process && process.txLink
+      ? `<br>You can check the failed transaction&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">here</a>.`
+      : ''
+
+  return transactionNotSend
+}
+
+export const parseWalletError = (
+  e: any,
+  step?: Step,
+  process?: Process
+): LifiError => {
   if (e.code) {
     // MetaMask errors have a numeric error code
     if (typeof e.code === 'number') {
       if (Object.values(MetaMaskErrorCodes.rpc).includes(e.code)) {
         // rpc errors
-        // underpriced errors are sent as internal errors so we need to parse the message manually
+        // underpriced errors are sent as internal errors, so we need to parse the message manually
         if (
           e.code === MetaMaskErrorCodes.rpc.internal &&
           e.message &&
@@ -59,16 +94,27 @@ export const parseWalletError = (e: any): LifiError => {
           return new RPCError(
             LifiErrorCodes.transactionUnderpriced,
             'Transaction is underpriced.',
+            getTransactionNotSentMessage(step, process),
             e.stack
           )
         }
 
-        return new RPCError(e.code, getMessageFromCode(e.code), e.stack)
+        return new RPCError(
+          e.code,
+          getMessageFromCode(e.code),
+          getTransactionNotSentMessage(step, process),
+          e.stack
+        )
       }
 
       // provider errors
       if (Object.values(MetaMaskErrorCodes.provider).includes(e.code)) {
-        return new ProviderError(e.code, getMessageFromCode(e.code), e.stack)
+        return new ProviderError(
+          e.code,
+          getMessageFromCode(e.code),
+          getTransactionNotSentMessage(step, process),
+          e.stack
+        )
       }
     }
 
@@ -76,6 +122,7 @@ export const parseWalletError = (e: any): LifiError => {
       return new ProviderError(
         LifiErrorCodes.transactionFailed,
         e.reason,
+        getTransactionNotSentMessage(step, process),
         e.stack
       )
     }
@@ -83,7 +130,8 @@ export const parseWalletError = (e: any): LifiError => {
 
   return new UnknownError(
     LifiErrorCodes.internalError,
-    e.message || 'Unknown error occured',
+    e.message || 'Unknown error occurred',
+    undefined,
     e.stack
   )
 }
@@ -92,6 +140,7 @@ export const parseBackendError = (e: any): LifiError => {
   if (e.response?.status === 400) {
     return new ValidationError(
       e.response?.data?.message || e.response?.statusText,
+      undefined,
       e.stack
     )
   }
@@ -99,9 +148,10 @@ export const parseBackendError = (e: any): LifiError => {
   if (e.response?.status === 500) {
     return new ServerError(
       e.response?.data?.message || e.response?.statusText,
+      undefined,
       e.stack
     )
   }
 
-  return new ServerError('Something went wrong', e.stack)
+  return new ServerError('Something went wrong', undefined, e.stack)
 }

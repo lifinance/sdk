@@ -4,7 +4,7 @@ import {
 } from '@ethersproject/providers'
 import axios from 'axios'
 
-import { loadTransaction, sleep } from '../../utils'
+import { loadTransaction, sleep } from '../../utils/utils'
 import { BigNumber, ethers } from 'ethers'
 import { ParsedReceipt } from '../../types'
 import { defaultReceiptParsing } from '../utils'
@@ -76,6 +76,7 @@ const getTransferStatus = async (txHash: string) => {
       formatfee?: number
     }
   }
+
   try {
     const params = {
       params: txHash,

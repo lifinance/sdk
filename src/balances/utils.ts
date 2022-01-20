@@ -6,7 +6,7 @@ import BigNumber from 'bignumber.js'
 import { Bytes, constants, ethers } from 'ethers'
 
 import { getMulticallAddress, getRpcProvider } from '../connectors'
-import { splitListIntoChunks } from '../utils'
+import { splitListIntoChunks } from '../utils/utils'
 import { Interface } from '@ethersproject/abi'
 
 const MAX_MULTICALL_SIZE = 100

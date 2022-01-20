@@ -11,7 +11,7 @@ import {
   isLifiStep,
   isSwapStep,
 } from '../../types'
-import { personalizeStep } from '../../utils'
+import { personalizeStep } from '../../utils/utils'
 import { getRpcProvider, getRpcUrls } from '../../connectors'
 import { checkAllowance } from '../allowance.execute'
 import nxtp from './nxtp'
@@ -136,9 +136,10 @@ export class NXTPExecutionManager {
           })
         }
       } catch (e) {
-        const error = parseWalletError(e)
+        const error = parseWalletError(e, step, crossProcess)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
           errorMessage: error.message,
+          htmlErrorMessage: error.htmlMessage,
           errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
@@ -160,6 +161,7 @@ export class NXTPExecutionManager {
           const error = parseWalletError(e)
           statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
             errorMessage: error.message,
+            htmlErrorMessage: error.htmlMessage,
             errorCode: error.code,
           })
           statusManager.updateExecution(step, 'FAILED')

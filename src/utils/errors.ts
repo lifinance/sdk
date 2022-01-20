@@ -42,14 +42,23 @@ export type ErrorCodes =
 
 export class LifiError extends Error {
   code: ErrorCodes
+  htmlMessage?: string
 
-  constructor(type: ErrorType, code: number, message: string, stack?: string) {
+  constructor(
+    type: ErrorType,
+    code: number,
+    message: string,
+    htmlMessage?: string,
+    stack?: string
+  ) {
     super(message)
 
     this.code = code
 
     // the name property is used by toString(). It is a string and we can't use our custom ErrorTypes, that's why we have to cast
     this.name = type.toString()
+
+    this.htmlMessage = htmlMessage
 
     // passing a stack allows us to preserve the stack from errors that we caught and just want to transform in one of our custom errors
     if (stack) {
@@ -59,36 +68,58 @@ export class LifiError extends Error {
 }
 
 export class RPCError extends LifiError {
-  constructor(code: ErrorCodes, message: string, stack?: string) {
-    super(ErrorType.RPCError, code, message, stack)
+  constructor(
+    code: ErrorCodes,
+    message: string,
+    htmlMessage?: string,
+    stack?: string
+  ) {
+    super(ErrorType.RPCError, code, message, htmlMessage, stack)
   }
 }
 
 export class ProviderError extends LifiError {
-  constructor(code: ErrorCodes, message: string, stack?: string) {
-    super(ErrorType.ProviderError, code, message, stack)
+  constructor(
+    code: ErrorCodes,
+    message: string,
+    htmlMessage?: string,
+    stack?: string
+  ) {
+    super(ErrorType.ProviderError, code, message, htmlMessage, stack)
   }
 }
 
 export class ServerError extends LifiError {
-  constructor(message: string, stack?: string) {
-    super(ErrorType.ServerError, LifiErrorCodes.internalError, message, stack)
+  constructor(message: string, htmlMessage?: string, stack?: string) {
+    super(
+      ErrorType.ServerError,
+      LifiErrorCodes.internalError,
+      message,
+      htmlMessage,
+      stack
+    )
   }
 }
 
 export class ValidationError extends LifiError {
-  constructor(message: string, stack?: string) {
+  constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ValidationError,
       LifiErrorCodes.validationError,
       message,
+      htmlMessage,
       stack
     )
   }
 }
 
 export class UnknownError extends LifiError {
-  constructor(code: ErrorCodes, message: string, stack?: string) {
-    super(ErrorType.UnknownError, code, message, stack)
+  constructor(
+    code: ErrorCodes,
+    message: string,
+    htmlMessage?: string,
+    stack?: string
+  ) {
+    super(ErrorType.UnknownError, code, message, htmlMessage, stack)
   }
 }

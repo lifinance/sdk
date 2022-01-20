@@ -4,6 +4,7 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 import { parseBackendError, parseWalletError } from './parseError'
+import { buildStepObject } from '../../test/fixtures'
 
 describe('parseError', () => {
   describe('parseWalletError', () => {
@@ -11,7 +12,7 @@ describe('parseError', () => {
       it('should return an UnknownError with the default message if no message is set', async () => {
         const parsedError = parseWalletError('Oops')
 
-        expect(parsedError.message).toEqual('Unknown error occured')
+        expect(parsedError.message).toEqual('Unknown error occurred')
         expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
       })
 
@@ -71,6 +72,56 @@ describe('parseError', () => {
         )
         expect(parsedError.code).toEqual(
           MetaMaskErrorCodes.provider.unsupportedMethod
+        )
+      })
+    })
+
+    describe('when no step is passed to the parser', () => {
+      it('should return a default htmlMessage', async () => {
+        const parsedError = parseWalletError({
+          code: MetaMaskErrorCodes.rpc.methodNotFound,
+          message: 'Somethings fishy',
+        })
+
+        expect(parsedError.htmlMessage).toEqual(
+          // eslint-disable-next-line max-len
+          "Transaction was not sent, your funds are still in your wallet, please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
+        )
+      })
+    })
+
+    describe('when a step is passed to the parser', () => {
+      it('should include the token information in the htmlMessage', async () => {
+        const parsedError = parseWalletError(
+          {
+            code: MetaMaskErrorCodes.rpc.methodNotFound,
+            message: 'Somethings fishy',
+          },
+          buildStepObject({})
+        )
+
+        expect(parsedError.htmlMessage).toEqual(
+          // eslint-disable-next-line max-len
+          "Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
+        )
+      })
+    })
+
+    describe('when a process is passed to the parser', () => {
+      it('should include the explorer link in the htmlMessage', async () => {
+        const step = buildStepObject({ includingExecution: true })
+        const parsedError = parseWalletError(
+          {
+            code: MetaMaskErrorCodes.rpc.methodNotFound,
+            message: 'Somethings fishy',
+          },
+          step,
+          step.execution?.process[0]
+        )
+
+        expect(parsedError.htmlMessage).toEqual(
+          // eslint-disable-next-line max-len
+          'Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn\'t work, it is safe to delete this transfer and start a new one.<br>You can check the failed transaction&nbsp;<a href="https://example.com" target="_blank" rel="nofollow noreferrer">here</a>.'
         )
       })
     })

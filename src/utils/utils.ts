@@ -3,9 +3,10 @@ import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
 import { Contract, Signer } from 'ethers'
 import { TransactionReceipt, Block } from '@ethersproject/providers'
+import { Token } from '@lifinance/types'
 
-import { ChainId, Step } from './types'
-import { getRpcProvider } from './connectors'
+import { ChainId, Step } from '../types'
+import { getRpcProvider } from '../connectors'
 
 export const deepClone = (src: any) => {
   return JSON.parse(JSON.stringify(src))
@@ -78,6 +79,35 @@ export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>
 
     return resultList
   }, [])
+
+export const formatTokenAmountOnly = (
+  token: Token,
+  amount: string | BigNumber | undefined
+) => {
+  if (!amount) {
+    return '0.0'
+  }
+
+  let floated
+  if (typeof amount === 'string') {
+    if (amount === '0') {
+      return '0.0'
+    }
+
+    floated = new BigNumber(amount).shiftedBy(-token.decimals)
+  } else {
+    floated = amount
+
+    if (floated.isZero()) {
+      return '0.0'
+    }
+  }
+
+  // show at least 4 decimal places and at least two non-zero digests
+  let decimalPlaces = 3
+  while (floated.lt(1 / 10 ** decimalPlaces)) decimalPlaces++
+  return floated.toFixed(decimalPlaces + 1, 1)
+}
 
 /**
  * Repeatedly calls a given asynchronous function until it resolves with a value

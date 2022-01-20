@@ -1,7 +1,7 @@
 import { buildRouteObject, buildStepObject } from '../test/fixtures'
 import StatusManager from './StatusManager'
 import { Route, Status, Step } from './types'
-import { deepClone } from './utils'
+import { deepClone } from './utils/utils'
 
 // Note: using `deepClone` when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
