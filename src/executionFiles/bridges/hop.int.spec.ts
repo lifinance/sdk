@@ -3,7 +3,7 @@ import { getRpcProvider } from '../../connectors'
 import { ChainId, CoinKey, ParsedReceipt } from '../../types'
 import hop from './hop'
 
-jest.setTimeout(10_000)
+jest.setTimeout(15_000)
 
 async function getAndTestTransaction(
   hash: string,
@@ -153,6 +153,48 @@ describe('hop', () => {
       const receipt = await hop.waitForDestinationChainReceipt(
         txHash,
         CoinKey.DAI,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+
+    it('should handle L1->L2 (ARB) transfers', async () => {
+      const txHash =
+        '0x807e84fcea166e316742f811a47c464c02cc1f2cd176f514308244831cc67182'
+      const fromChainId = ChainId.ETH
+      const toChainId = ChainId.ARB
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        CoinKey.ETH,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+
+    it('should handle L1->L2 (POL(ETH)) transfers', async () => {
+      const txHash =
+        '0x5cc499bb5c4e96b60c500b766ee6ecb77da61ff62c5b797381d144545f6e795c'
+      const fromChainId = ChainId.ETH
+      const toChainId = ChainId.POL
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        CoinKey.ETH,
+        fromChainId,
+        toChainId
+      )
+      expect(receipt).toBeDefined()
+    })
+
+    it('should handle L1->L2 (POL(MATIC)) transfers', async () => {
+      const txHash =
+        '0xfb54ec6c3fd5506e4a03479cf457c7ba750e2f3a3288528e78d05e552731be7c'
+      const fromChainId = ChainId.ETH
+      const toChainId = ChainId.POL
+      const receipt = await hop.waitForDestinationChainReceipt(
+        txHash,
+        CoinKey.MATIC,
         fromChainId,
         toChainId
       )

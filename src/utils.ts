@@ -2,7 +2,7 @@ import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20
 import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
 import { Contract, Signer } from 'ethers'
-import { TransactionReceipt } from '@ethersproject/providers'
+import { TransactionReceipt, Block } from '@ethersproject/providers'
 
 import { ChainId, Step } from './types'
 import { getRpcProvider } from './connectors'
@@ -86,7 +86,7 @@ export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>
  * @returns The result of the toRepeat function
  */
 export const repeatUntilDone = async <T>(
-  toRepeat: () => Promise<T>,
+  toRepeat: () => Promise<T | undefined>,
   timeout = 5000
 ): Promise<T> => {
   let result: T | undefined
@@ -112,4 +112,12 @@ export const loadTransaction = async (
   const rpc = getRpcProvider(chainId)
   const tx = await rpc.getTransaction(txHash)
   return tx.wait()
+}
+
+export const loadBlock = async (
+  chainId: ChainId,
+  blockNumber: number
+): Promise<Block> => {
+  const rpc = getRpcProvider(chainId)
+  return rpc.getBlock(blockNumber)
 }
