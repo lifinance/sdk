@@ -43,7 +43,6 @@ export class NXTPExecutionManager {
     // STEP 0: Check Allowance ////////////////////////////////////////////////
     if (action.fromToken.address !== constants.AddressZero) {
       // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
         step,
@@ -52,7 +51,8 @@ export class NXTPExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        true
+        true,
+        this.shouldContinue
       )
     }
 
