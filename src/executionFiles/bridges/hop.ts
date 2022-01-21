@@ -26,7 +26,7 @@ const waitForDestinationChainReceipt = async (
     )
   } else {
     // case L2->L2 & L2->L1
-    return waitForDestinationChainReceiptL2(
+    return waitForDestinationChainReceiptL2toX(
       txHash,
       token,
       fromChainId,
@@ -51,7 +51,7 @@ const waitForDestinationChainReceiptL1toL2 = async (
 ) => {
   // get sending params
   const transferData = await repeatUntilDone<TransactionData>(() =>
-    getTransactionSentToL2Data(txHash, fromChainId)
+    getTransactionSentL1toL2Data(txHash, fromChainId)
   )
 
   // find receiving transfer
@@ -69,13 +69,13 @@ const waitForDestinationChainReceiptL1toL2 = async (
   return loadTransaction(toChainId, dstTxHash)
 }
 
-const getTransactionSentToL2Data = async (
+const getTransactionSentL1toL2Data = async (
   txHash: string,
   fromChainId: ChainId
 ): Promise<TransactionData | undefined> => {
   try {
     const receipt = await loadTransaction(fromChainId, txHash)
-    const parsed = parseTransferSentToL2Event(receipt)
+    const parsed = parseTransferSentL1toL2Event(receipt)
     const block = await loadBlock(fromChainId, receipt.blockNumber)
 
     return {
@@ -87,7 +87,7 @@ const getTransactionSentToL2Data = async (
   }
 }
 
-const parseTransferSentToL2Event = (receipt: TransactionReceipt) => {
+const parseTransferSentL1toL2Event = (receipt: TransactionReceipt) => {
   const abiTokenSent = [
     'event TransferSentToL2(uint256 indexed chainId, address indexed recipient, uint256 amount, ' +
       'uint256 amountOutMin, uint256 deadline, address indexed relayer, uint256 relayerFee)',
@@ -169,7 +169,7 @@ const getTxOnReceivingChainL1toL2 = async (
 
 //// L2 to X
 
-const waitForDestinationChainReceiptL2 = async (
+const waitForDestinationChainReceiptL2toX = async (
   txHash: string,
   token: CoinKey,
   fromChainId: ChainId,
