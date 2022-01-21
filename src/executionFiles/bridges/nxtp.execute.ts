@@ -39,7 +39,6 @@ export class NXTPExecutionManager {
     const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
-    const transactionId = step.id
 
     // STEP 0: Check Allowance ////////////////////////////////////////////////
     if (action.fromToken.address !== constants.AddressZero) {
@@ -190,6 +189,7 @@ export class NXTPExecutionManager {
       signer,
       chainProviders
     )
+    const transactionId = step.estimate.data.transactionId || step.id
 
     const preparedTransactionPromise = nxtpSDK.waitFor(
       NxtpSdkEvents.ReceiverTransactionPrepared,
