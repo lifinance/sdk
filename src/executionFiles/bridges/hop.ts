@@ -37,6 +37,12 @@ const waitForDestinationChainReceipt = async (
 
 //// L1 to L2
 
+type TransactionData = {
+  recipent: string
+  amount: string
+  timestamp: string
+  deadline: string
+}
 const waitForDestinationChainReceiptL1toL2 = async (
   txHash: string,
   token: CoinKey,
@@ -44,23 +50,41 @@ const waitForDestinationChainReceiptL1toL2 = async (
   toChainId: ChainId
 ) => {
   // get sending params
-  const receipt = await loadTransaction(fromChainId, txHash)
-  const parsed = parseTransferSentToL2Event(receipt)
-  const block = await loadBlock(fromChainId, receipt.blockNumber)
+  const transferData = await repeatUntilDone<TransactionData>(() =>
+    getTransactionSentToL2Data(txHash, fromChainId)
+  )
 
   // find receiving transfer
   const dstTxHash = await repeatUntilDone<string>(() =>
     getTxHashOnReceivingChainL1toL2(
       toChainId,
-      parsed.recipent,
-      parsed.amount,
+      transferData.recipent,
+      transferData.amount,
       token,
-      block.timestamp.toString(),
-      parsed.deadline
+      transferData.timestamp,
+      transferData.deadline
     )
   )
 
   return loadTransaction(toChainId, dstTxHash)
+}
+
+const getTransactionSentToL2Data = async (
+  txHash: string,
+  fromChainId: ChainId
+): Promise<TransactionData | undefined> => {
+  try {
+    const receipt = await loadTransaction(fromChainId, txHash)
+    const parsed = parseTransferSentToL2Event(receipt)
+    const block = await loadBlock(fromChainId, receipt.blockNumber)
+
+    return {
+      ...parsed,
+      timestamp: block.timestamp.toString(),
+    }
+  } catch (e) {
+    return undefined
+  }
 }
 
 const parseTransferSentToL2Event = (receipt: TransactionReceipt) => {
@@ -95,12 +119,14 @@ const getTxHashOnReceivingChainL1toL2 = async (
   deadline: string
 ) => {
   const events = await getTxOnReceivingChainL1toL2(toChainId, recipent)
+
+  // The user may have made multiple transfers using hop, find the first matching one
   const event = events.find((evt) => {
     return (
       evt.amount === amount &&
       evt.token === token &&
-      evt.timestamp > timestamp &&
-      evt.timestamp < deadline
+      evt.timestamp > timestamp && // has to happen after the transfer has started
+      evt.timestamp < deadline // has to happen before the configured deadline
     )
   })
   return event?.transactionHash
@@ -208,6 +234,8 @@ const getTxHashOnReceivingChain = async (
   return result.data.data.withdraws[0]?.transaction.hash
 }
 
+//// Other
+
 const getSubgraphUrl = (chainId: ChainId): string => {
   const hopChainsSlugs: { [k: number]: string } = {
     [ChainId.ETH]: 'mainnet',
@@ -279,9 +307,9 @@ const parseReceipt = (
   return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
-const hopExport = {
+const hop = {
   waitForDestinationChainReceipt,
   parseReceipt,
 }
 
-export default hopExport
+export default hop
