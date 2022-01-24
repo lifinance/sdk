@@ -18,10 +18,10 @@ import {
 } from '@lifinance/types'
 
 import {
+  ActiveRouteDictionary,
   Config,
   ConfigUpdate,
   ExecutionData,
-  ActiveRouteDictionary,
   ExecutionSettings,
 } from './types'
 import StatusManager from './StatusManager'
@@ -86,7 +86,7 @@ class LIFI {
    */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
-      throw new ValidationError('Invalid Routs Request')
+      throw new ValidationError('Invalid Routes Request')
     }
 
     // apply defaults

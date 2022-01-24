@@ -47,7 +47,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromChainId: 'xxx' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -56,7 +56,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromAmount: 10000000000000 })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -65,7 +65,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ fromTokenAddress: 1234 })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -74,7 +74,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ toChainId: 'xxx' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -83,7 +83,7 @@ describe('LIFI SDK', () => {
         const request = getRoutesRequest({ toTokenAddress: '' })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -94,7 +94,7 @@ describe('LIFI SDK', () => {
         })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
-          'Invalid Routs Request'
+          'Invalid Routes Request'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })

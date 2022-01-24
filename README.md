@@ -1,4 +1,5 @@
 # Li.Finance - SDK
+
 LiFi Any-to-Any Cross-Chain-Swap SDK
 
 ## Installation
@@ -6,18 +7,19 @@ LiFi Any-to-Any Cross-Chain-Swap SDK
 ```bash
 yarn add @lifinance/sdk
 ```
+
 or
+
 ```bash
 npm install --save @lifinance/sdk
 ```
 
 ## Summary
 
-This package allow to access to LiFi API which finds the best cross-chain routs on different bridges. The routes can then executed via the SDK.
-Learn more about LiFi on (https://li.finance).
+This package allows accessing to LiFi API which finds the best cross-chain routes on different bridges. The routes can
+then be executed via the SDK. Learn more about LiFi on (https://li.finance).
 
 Check out the [Changelog](./CHANGELOG.md) to see what changed in the last releases.
-
 
 ## Extend the SDK
 
@@ -43,7 +45,6 @@ Build production (distribution) files in your **dist** folder:
 yarn build
 ```
 
-
 ### Publish
 
 In order to update the package, commit all new changes first. Then run the following command:
@@ -52,12 +53,14 @@ In order to update the package, commit all new changes first. Then run the follo
 yarn release
 ```
 
-This will 
+This will
+
 * bump the version number according to the types of the last commits (i.e. if it is a major, minor or bug fix release)
 * create a new git tag
 * update the CHANGELOG.md
 
 Next you need to push both, the code and the new version tag:
+
 ```bash
 git push && git push --tags
 ```
