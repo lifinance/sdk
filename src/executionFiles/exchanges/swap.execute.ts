@@ -11,11 +11,12 @@ import { ExecuteSwapParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
+import { Execution } from '@lifinance/types'
 
 export class SwapExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
@@ -24,7 +25,7 @@ export class SwapExecutionManager {
     step,
     parseReceipt,
     statusManager,
-  }: ExecuteSwapParams) => {
+  }: ExecuteSwapParams): Promise<Execution> => {
     // setup
 
     const { action, estimate } = step

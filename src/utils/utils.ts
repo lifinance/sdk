@@ -1,18 +1,18 @@
 import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20Minimal.sol/IERC20Minimal.json'
 import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
-import { Contract, Signer } from 'ethers'
+import { Contract, ContractTransaction, Signer } from 'ethers'
 import { TransactionReceipt, Block } from '@ethersproject/providers'
 import { Token } from '@lifinance/types'
 
 import { ChainId, Step } from '../types'
 import { getRpcProvider } from '../connectors'
 
-export const deepClone = (src: any) => {
+export const deepClone = <T>(src: T): T => {
   return JSON.parse(JSON.stringify(src))
 }
 
-export const sleep = (mills: number) => {
+export const sleep = (mills: number): Promise<undefined> => {
   return new Promise((resolve) => {
     setTimeout(resolve, mills)
   })
@@ -42,7 +42,7 @@ export const getApproved = async (
   signer: Signer,
   tokenAddress: string,
   contractAddress: string
-) => {
+): Promise<BigNumber> => {
   const signerAddress = await signer.getAddress()
   const erc20 = new Contract(tokenAddress, ERC20.abi, signer) as IERC20Minimal
 
@@ -54,17 +54,15 @@ export const getApproved = async (
   }
 }
 
-export const setApproval = async (
+export const setApproval = (
   signer: Signer,
   tokenAddress: string,
   contractAddress: string,
   amount: string
-  // eslint-disable-next-line max-params
-) => {
+): Promise<ContractTransaction> => {
   const erc20 = new Contract(tokenAddress, ERC20.abi, signer) as IERC20Minimal
 
-  const tx = await erc20.approve(contractAddress, amount)
-  return tx
+  return erc20.approve(contractAddress, amount)
 }
 
 export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>

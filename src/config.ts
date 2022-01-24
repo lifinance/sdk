@@ -53,7 +53,10 @@ export const getDefaultConfig = (): Config => {
   return defaultConfig
 }
 
-export const mergeConfig = (config: Config, configUpdate: ConfigUpdate) => {
+export const mergeConfig = (
+  config: Config,
+  configUpdate: ConfigUpdate
+): Config => {
   // API
   config.apiUrl = configUpdate.apiUrl || config.apiUrl
 

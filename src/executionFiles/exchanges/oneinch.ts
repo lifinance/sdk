@@ -8,7 +8,6 @@ import { ParsedReceipt } from '../../types'
 import { defaultReceiptParsing } from '../utils'
 
 // const SUPPORTED_CHAINS = [1, 56, 137]
-const baseURL = 'https://api.1inch.exchange/v3.0/'
 
 const swappedTypes: Array<ethers.utils.ParamType> = [
   ethers.utils.ParamType.from({
@@ -47,6 +46,7 @@ const swappedTypes: Array<ethers.utils.ParamType> = [
     type: 'uint256',
   }),
 ]
+
 interface Swapped {
   dstReceiver: string
   dstToken: string

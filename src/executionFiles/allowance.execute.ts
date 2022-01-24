@@ -16,7 +16,7 @@ export const checkAllowance = async (
   infiniteApproval = false,
   allowUserInteraction = false
   // eslint-disable-next-line max-params
-) => {
+): Promise<void> => {
   // Ask user to set allowance
   // -> set currentExecution
   const allowanceProcess = statusManager.findOrCreateProcess(

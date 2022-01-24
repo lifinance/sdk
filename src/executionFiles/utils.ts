@@ -11,7 +11,7 @@ export const defaultReceiptParsing = async (params: {
   tx: TransactionResponse
   receipt: TransactionReceipt
   toAddress: string
-}) => {
+}): Promise<ParsedReceipt> => {
   let result = params.result
   const { tx, receipt, toAddress } = params
 
@@ -49,7 +49,11 @@ export const defaultReceiptParsing = async (params: {
 export const getUsedGas = (params: {
   tx: TransactionResponse
   receipt: TransactionReceipt
-}) => {
+}): {
+  gasFee: string
+  gasUsed: string
+  gasPrice: string
+} => {
   const { tx, receipt } = params
 
   const gasUsed = receipt.gasUsed.toString()
@@ -67,7 +71,7 @@ export const getTransferredNativeTokenBalance = async (params: {
   tx: TransactionResponse
   receipt: TransactionReceipt
   toAddress: string
-}) => {
+}): Promise<TransferredTokenBalance | undefined> => {
   const { tx, receipt, toAddress } = params
 
   if (tx.chainId === ChainId.POL && toAddress) {
@@ -83,11 +87,18 @@ export const getTransferredNativeTokenBalance = async (params: {
   return getTransferredNativeTokenBalanceFromChain({ tx, receipt, toAddress })
 }
 
+type TransferredTokenBalance = {
+  toTokenAddress: string
+  fromAddress: string
+  toAddress: string
+  toAmount: string
+}
+
 export const getTransferredNativeTokenBalanceFromChain = async (params: {
   tx: TransactionResponse
   receipt: TransactionReceipt
   toAddress: string
-}) => {
+}): Promise<TransferredTokenBalance | undefined> => {
   const { tx, receipt, toAddress } = params
 
   // try to load gas balance differences
@@ -132,7 +143,7 @@ export const getTransferredNativeTokenBalanceFromChain = async (params: {
 export const getTransferredNativeTokenBalanceFromLog = (params: {
   receipt: TransactionReceipt
   toAddress: string
-}) => {
+}): TransferredTokenBalance | undefined => {
   const { receipt, toAddress } = params
 
   const abi = [
@@ -152,7 +163,7 @@ export const getTransferredNativeTokenBalanceFromLog = (params: {
     try {
       const parsed = interfaceGas.parseLog(log)
       const result = {
-        tokenAddress: log.address.toLowerCase(),
+        toTokenAddress: log.address.toLowerCase(),
         fromAddress: parsed.args['from'].toLowerCase(),
         toAddress: parsed.args['to'].toLowerCase(),
         toAmount: parsed.args['value'].toString(),
@@ -167,6 +178,8 @@ export const getTransferredNativeTokenBalanceFromLog = (params: {
       // find right log by trying to parse them
     }
   }
+
+  return
 }
 
 export const getTransferredTokenBalance = (params: {
@@ -174,7 +187,7 @@ export const getTransferredTokenBalance = (params: {
   fromAddress?: string
   toAddress?: string
   tokenAddress?: string
-}) => {
+}): TransferredTokenBalance | undefined => {
   const { receipt, fromAddress, toAddress, tokenAddress } = params
 
   const abiTransfer = [

@@ -8,15 +8,20 @@ import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import hop from './hop'
+import { Execution } from '@lifinance/types'
 
 export class HopExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    statusManager,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)

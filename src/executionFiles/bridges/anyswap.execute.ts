@@ -8,15 +8,20 @@ import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import anyswap from './anyswap'
+import { Execution } from '@lifinance/types'
 
 export class AnySwapExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    statusManager,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
@@ -74,7 +79,7 @@ export class AnySwapExecutionManager {
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-        if (!this.shouldContinue) return status // stop before user action is required
+        if (!this.shouldContinue) return step.execution // stop before user action is required
 
         tx = await signer.sendTransaction(transactionRequest)
 
@@ -156,6 +161,6 @@ export class AnySwapExecutionManager {
     })
 
     // DONE
-    return status
+    return step.execution
   }
 }

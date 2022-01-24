@@ -21,10 +21,11 @@ interface OptionalParameters {
   message?: ProcessMessage
   doneAt?: number
   failedAt?: number
-  errorMessage?: any
-  htmlErrorMessage?: any
-  errorCode?: any
+  errorMessage?: string
+  htmlErrorMessage?: string
+  errorCode?: string | number
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any
 }
 
@@ -36,9 +37,9 @@ interface OptionalParameters {
  * @return {StatusManager}       An instance of StatusManager.
  */
 export default class StatusManager {
-  private route: Route
-  private settings: Hooks
-  private internalUpdateRouteCallback: InternalUpdateRouteCallback
+  private readonly route: Route
+  private readonly settings: Hooks
+  private readonly internalUpdateRouteCallback: InternalUpdateRouteCallback
 
   constructor(
     route: Route,
