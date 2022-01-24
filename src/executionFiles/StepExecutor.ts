@@ -62,6 +62,8 @@ export class StepExecutor {
         `Change Chain to ${chain.name}`
       )
 
+      if (this.executionStopped) return step
+
       let updatedSigner
       try {
         updatedSigner = await this.settings.switchChainHook(

@@ -13,7 +13,8 @@ export const checkAllowance = async (
   amount: string,
   spenderAddress: string,
   statusManager: StatusManager,
-  infiniteApproval = false
+  infiniteApproval = false,
+  allowUserInteraction = false
   // eslint-disable-next-line max-params
 ) => {
   // Ask user to set allowance
@@ -35,6 +36,7 @@ export const checkAllowance = async (
       const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
+        if (!allowUserInteraction) return
         const approvaLAmount = infiniteApproval
           ? constants.MaxUint256.toString()
           : amount

@@ -25,13 +25,13 @@ export class SwapExecutionManager {
     statusManager,
   }: ExecuteSwapParams) => {
     // setup
+
     const { action, estimate } = step
     const fromChain = getChainById(action.fromChainId)
     step.execution = statusManager.initExecutionObject(step)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
-      if (!this.shouldContinue) return step.execution
       await checkAllowance(
         signer,
         step,
@@ -40,7 +40,8 @@ export class SwapExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        true
+        true,
+        this.shouldContinue
       )
     }
 
@@ -76,8 +77,6 @@ export class SwapExecutionManager {
         }
 
         // -> set step.execution
-        // swapProcess.status = 'ACTION_REQUIRED'
-        // swapProcess.message = `Sign Transaction`
         statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
           message: 'Sign Transaction',
         })

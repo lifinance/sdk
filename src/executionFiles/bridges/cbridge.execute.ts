@@ -32,7 +32,6 @@ export class CbridgeExecutionManager {
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        if (!this.shouldContinue) return step.execution
         await checkAllowance(
           signer,
           step,
@@ -41,7 +40,8 @@ export class CbridgeExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          true
+          true,
+          this.shouldContinue
         )
       }
     }
