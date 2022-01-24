@@ -12,6 +12,7 @@ import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import cbridge from './cbridge'
 import { Execution } from '@lifinance/types'
+import { getProvider } from '../../utils/getProvider'
 
 export class CbridgeExecutionManager {
   shouldContinue = true
@@ -63,7 +64,7 @@ export class CbridgeExecutionManager {
       let tx: TransactionResponse
       if (crossProcess.txHash) {
         // load exiting transaction
-        tx = await signer.provider!.getTransaction(crossProcess.txHash)
+        tx = await getProvider(signer).getTransaction(crossProcess.txHash)
       } else {
         // check balance
         await balanceCheck(signer, step)

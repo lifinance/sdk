@@ -12,6 +12,7 @@ import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { Execution } from '@lifinance/types'
+import { getProvider } from '../../utils/getProvider'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -60,7 +61,7 @@ export class SwapExecutionManager {
     try {
       if (swapProcess.txHash) {
         // -> restore existing tx
-        tx = await signer.provider!.getTransaction(swapProcess.txHash)
+        tx = await getProvider(signer).getTransaction(swapProcess.txHash)
       } else {
         // -> check balance
         await balanceCheck(signer, step)

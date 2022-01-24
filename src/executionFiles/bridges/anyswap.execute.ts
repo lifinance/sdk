@@ -9,6 +9,7 @@ import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import anyswap from './anyswap'
 import { Execution } from '@lifinance/types'
+import { getProvider } from '../../utils/getProvider'
 
 export class AnySwapExecutionManager {
   shouldContinue = true
@@ -60,7 +61,7 @@ export class AnySwapExecutionManager {
       let tx: TransactionResponse
       if (crossProcess.txHash) {
         // load exiting transaction
-        tx = await signer.provider!.getTransaction(crossProcess.txHash)
+        tx = await getProvider(signer).getTransaction(crossProcess.txHash)
       } else {
         // check balance
         await balanceCheck(signer, step)

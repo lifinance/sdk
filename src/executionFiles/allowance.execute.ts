@@ -4,6 +4,7 @@ import StatusManager from '../StatusManager'
 import { parseWalletError } from '../utils/parseError'
 import { getApproved, setApproval } from '../utils/utils'
 import { Chain, Step, Token } from '../types'
+import { getProvider } from '../utils/getProvider'
 
 export const checkAllowance = async (
   signer: Signer,
@@ -28,7 +29,7 @@ export const checkAllowance = async (
   // -> check allowance
   try {
     if (allowanceProcess.txHash) {
-      await signer.provider!.waitForTransaction(allowanceProcess.txHash)
+      await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
       statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
     } else if (allowanceProcess.message === 'Already Approved') {
       statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
