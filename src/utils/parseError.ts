@@ -46,7 +46,7 @@ import { formatTokenAmountOnly } from './utils'
  * https://eips.ethereum.org/EIPS/eip-1193#provider-errors
  */
 
-const getTransactionNotSentMessage = (
+export const getTransactionNotSentMessage = (
   step?: Step,
   process?: Process
 ): string => {

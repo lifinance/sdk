@@ -3,11 +3,11 @@ import StatusManager from '../StatusManager'
 
 import {
   CrossStep,
-  LifiStep,
+  getChainById,
   Hooks,
+  LifiStep,
   Step,
   SwapStep,
-  getChainById,
 } from '../types'
 import { AnySwapExecutionManager } from './bridges/anyswap.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
@@ -57,7 +57,7 @@ export class StepExecutor {
       const chain = getChainById(step.action.fromChainId)
 
       const switchProcess = this.statusManager.findOrCreateProcess(
-        'swithProcess',
+        'switchProcess',
         step,
         `Change Chain to ${chain.name}`
       )
