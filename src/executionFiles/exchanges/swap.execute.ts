@@ -3,11 +3,12 @@ import {
   TransactionResponse,
 } from '@ethersproject/providers'
 import { constants } from 'ethers'
+import { parseWalletError } from '../../utils/parseError'
 
 import Lifi from '../../Lifi'
 
 import { ExecuteSwapParams, getChainById } from '../../types'
-import { personalizeStep } from '../../utils'
+import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 
@@ -85,17 +86,15 @@ export class SwapExecutionManager {
         // -> submit tx
         tx = await signer.sendTransaction(transactionRequest)
       }
-    } catch (e: any) {
-      // -> set step.execution
-      let errorMessage = 'Swapping failed'
-      if (e.message) errorMessage += ':\n' + e.message
-
+    } catch (e) {
+      const error = parseWalletError(e, step, swapProcess)
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
-        errorMessage,
-        errorCode: e.code,
+        errorMessage: error.message,
+        htmlErrorMessage: error.htmlMessage,
+        errorCode: error.code,
       })
       statusManager.updateExecution(step, 'FAILED')
-      throw e
+      throw error
     }
 
     // Wait for Transaction
@@ -121,12 +120,14 @@ export class SwapExecutionManager {
             e.replacement.hash,
         })
       } else {
+        const error = parseWalletError(e)
         statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
-          errorMessage: e.message,
-          errorCode: e.code,
+          errorMessage: error.message,
+          htmlErrorMessage: error.htmlMessage,
+          errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
-        throw e
+        throw error
       }
     }
 

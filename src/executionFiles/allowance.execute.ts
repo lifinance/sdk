@@ -1,9 +1,9 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import StatusManager from '../StatusManager'
-
+import { parseWalletError } from '../utils/parseError'
+import { getApproved, setApproval } from '../utils/utils'
 import { Chain, Step, Token } from '../types'
-import { getApproved, setApproval } from '../utils'
 
 export const checkAllowance = async (
   signer: Signer,
@@ -75,12 +75,14 @@ export const checkAllowance = async (
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
+      const error = parseWalletError(e, step, allowanceProcess)
       statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
-        errorMessage: e.message,
-        errorCode: e.code,
+        errorMessage: error.message,
+        htmlErrorMessage: error.htmlMessage,
+        errorCode: error.code,
       })
       statusManager.updateExecution(step, 'FAILED')
-      throw e
+      throw error
     }
   }
 }

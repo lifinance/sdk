@@ -54,6 +54,7 @@
     "axios": "^0.24.0",
     "bignumber.js": "^9.0.1",
     "bridge-sdk": "^2.13.0",
+    "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.5.2"
   },
   "devDependencies": {

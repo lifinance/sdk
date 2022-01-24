@@ -47,6 +47,8 @@ export const buildStepObject = ({
             message: 'Somethings done',
             status: 'DONE',
             doneAt: SOME_DATE + 10,
+            txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
+            txLink: 'https://example.com',
           },
           {
             id: 'process2',

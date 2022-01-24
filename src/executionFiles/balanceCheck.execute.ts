@@ -2,6 +2,7 @@ import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 import { Step } from '..'
 import balances from '../balances'
+import { ValidationError } from '../utils/errors'
 
 export const balanceCheck = async (signer: ethers.Signer, step: Step) => {
   const tokenAmount = await balances.getTokenBalance(
@@ -37,7 +38,7 @@ export const balanceCheck = async (signer: ethers.Signer, step: Step) => {
             `start a new one with a maximum of ${current} ${tokenAmount.symbol}.`
         }
 
-        throw Error(errorMessage)
+        throw new ValidationError('Balance too low', errorMessage)
       }
     }
   }

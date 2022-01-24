@@ -8,7 +8,7 @@ import {
   Status,
   Step,
 } from './types'
-import { deepClone } from './utils'
+import { deepClone } from './utils/utils'
 
 interface Receipt {
   fromAmount?: string
@@ -22,7 +22,9 @@ interface OptionalParameters {
   doneAt?: number
   failedAt?: number
   errorMessage?: any
+  htmlErrorMessage?: any
   errorCode?: any
+
   [key: string]: any
 }
 

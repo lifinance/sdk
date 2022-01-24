@@ -7,7 +7,7 @@ import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 
 import { ChainId, CoinKey, ParsedReceipt } from '../../types'
-import { loadBlock, loadTransaction, repeatUntilDone } from '../../utils'
+import { loadBlock, loadTransaction, repeatUntilDone } from '../../utils/utils'
 import { defaultReceiptParsing } from '../utils'
 
 const waitForDestinationChainReceipt = async (
