@@ -1,4 +1,4 @@
-import { repeatUntilDone } from './utils'
+import { repeatUntilDone } from './utils/utils'
 
 describe('utils', () => {
   describe('repeatUntilDone', () => {
