@@ -149,7 +149,7 @@ describe('StatusManager', () => {
             'some message'
           )
 
-          expect(process).toEqual(step.execution!.process[0])
+          expect(process).toEqual(step.execution?.process[0])
 
           expect(updateCallbackMock).not.toHaveBeenCalled()
           expect(internalUpdateRouteCallbackMock).not.toHaveBeenCalled()
@@ -173,6 +173,7 @@ describe('StatusManager', () => {
           expect(process.message).toEqual('some message')
 
           const updatedExecution = Object.assign({}, step.execution, {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             process: [...step.execution!.process, process],
           })
 
@@ -247,6 +248,7 @@ describe('StatusManager', () => {
               : expect(process.doneAt).toBeUndefined()
 
             const updatedExecution = Object.assign({}, step.execution, {
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               process: [step.execution!.process[0], process],
             })
 
@@ -286,6 +288,7 @@ describe('StatusManager', () => {
 
       it('should remove the process and call the callbacks', () => {
         const updatedExecution = Object.assign({}, step.execution, {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           process: [step.execution!.process[1]],
         })
 

@@ -15,6 +15,7 @@
     "addscope": "node tools/packagejson name @lifinance/sdk",
     "pre-commit": "lint-staged",
     "pre-push": "yarn build && yarn test",
+    "lint": "eslint --ext .tsx --ext .ts ./src",
     "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
     "prettier:fix": "prettier --write ./src/.",
     "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",

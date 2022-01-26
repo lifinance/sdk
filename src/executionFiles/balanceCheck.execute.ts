@@ -4,7 +4,10 @@ import { Step } from '..'
 import balances from '../balances'
 import { ValidationError } from '../utils/errors'
 
-export const balanceCheck = async (signer: ethers.Signer, step: Step) => {
+export const balanceCheck = async (
+  signer: ethers.Signer,
+  step: Step
+): Promise<void> => {
   const tokenAmount = await balances.getTokenBalance(
     await signer.getAddress(),
     step.action.fromToken

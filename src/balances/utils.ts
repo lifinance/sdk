@@ -7,13 +7,14 @@ import { Bytes, constants, ethers } from 'ethers'
 
 import { getMulticallAddress, getRpcProvider } from '../connectors'
 import { splitListIntoChunks } from '../utils/utils'
-import { Interface } from '@ethersproject/abi'
+import { Fragment, Interface, JsonFragment } from '@ethersproject/abi'
 
 const MAX_MULTICALL_SIZE = 100
 
 type Call = {
   address: string
   name: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: any[]
 }
 
@@ -169,7 +170,7 @@ const executeMulticall = async (
 
 const fetchDataUsingMulticall = async (
   calls: Array<Call>,
-  abi: any[],
+  abi: ReadonlyArray<Fragment | JsonFragment | string>,
   chainId: number,
   multicallAddress: string
 ): Promise<Balance[]> => {

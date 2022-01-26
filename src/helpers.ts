@@ -1,11 +1,16 @@
-declare const ethereum: any
+import { ExternalProvider } from '@ethersproject/providers'
 
-const ethereumRequest = async (
+declare const ethereum: ExternalProvider
+
+const ethereumRequest = async <T>(
   method: string,
   params: string[]
-): Promise<any> => {
+): Promise<T> => {
   // If ethereum.request() exists, the provider is probably EIP-1193 compliant.
-  return await ethereum.request({
+  if (!ethereum || !ethereum.request) {
+    throw new Error('Provider not available')
+  }
+  return ethereum.request({
     method,
     params,
   })
@@ -17,7 +22,7 @@ const ethereumRequest = async (
  * @return {(encryptedData: string) => Promise<any>} A function that decrypts data using EIP-1193 compliant wallet functions.
  */
 export const getEthereumDecyptionHook = (walletAddress: string) => {
-  return (encryptedData: string) => {
+  return (encryptedData: string): Promise<string> => {
     return ethereumRequest('eth_decrypt', [encryptedData, walletAddress])
   }
 }
@@ -28,7 +33,7 @@ export const getEthereumDecyptionHook = (walletAddress: string) => {
  * @return {(walletAddress: string) => () => Promise<any>} A function that return the public encryption key using EIP-1193 compliant wallet functions.
  */
 export const getEthereumPublicKeyHook = (walletAddress: string) => {
-  return () => {
+  return (): Promise<string> => {
     return ethereumRequest('eth_getEncryptionPublicKey', [walletAddress])
   }
 }

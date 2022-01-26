@@ -6,6 +6,8 @@ import {
   findDefaultToken,
   RoutesRequest,
   Step,
+  StepTool,
+  StepType,
   Token,
 } from '@lifinance/types'
 import axios from 'axios'
@@ -33,7 +35,14 @@ describe('LIFI SDK', () => {
       toChainId = ChainId.DAI,
       toTokenAddress = findDefaultToken(CoinKey.USDC, ChainId.DAI).address,
       options = { slippage: 0.03 },
-    }: any): RoutesRequest => ({
+    }: {
+      fromChainId?: ChainId
+      fromAmount?: string
+      fromTokenAddress?: string
+      toChainId?: ChainId
+      toTokenAddress?: string
+      options?: { slippage: number }
+    }): RoutesRequest => ({
       fromChainId,
       fromAmount,
       fromTokenAddress,
@@ -44,7 +53,9 @@ describe('LIFI SDK', () => {
 
     describe('user input is invalid', () => {
       it('should throw Error because of invalid fromChainId type', async () => {
-        const request = getRoutesRequest({ fromChainId: 'xxx' })
+        const request = getRoutesRequest({
+          fromChainId: 'xxx' as unknown as ChainId,
+        })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
           'Invalid Routes Request'
@@ -53,7 +64,9 @@ describe('LIFI SDK', () => {
       })
 
       it('should throw Error because of invalid fromAmount type', async () => {
-        const request = getRoutesRequest({ fromAmount: 10000000000000 })
+        const request = getRoutesRequest({
+          fromAmount: 10000000000000 as unknown as string,
+        })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
           'Invalid Routes Request'
@@ -62,7 +75,9 @@ describe('LIFI SDK', () => {
       })
 
       it('should throw Error because of invalid fromTokenAddress type', async () => {
-        const request = getRoutesRequest({ fromTokenAddress: 1234 })
+        const request = getRoutesRequest({
+          fromTokenAddress: 1234 as unknown as string,
+        })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
           'Invalid Routes Request'
@@ -71,7 +86,9 @@ describe('LIFI SDK', () => {
       })
 
       it('should throw Error because of invalid toChainId type', async () => {
-        const request = getRoutesRequest({ toChainId: 'xxx' })
+        const request = getRoutesRequest({
+          toChainId: 'xxx' as unknown as ChainId,
+        })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
           'Invalid Routes Request'
@@ -90,7 +107,7 @@ describe('LIFI SDK', () => {
 
       it('should throw Error because of invalid options type', async () => {
         const request = getRoutesRequest({
-          options: { slippage: 'not a number' },
+          options: { slippage: 'not a number' as unknown as number },
         })
 
         await expect(Lifi.getRoutes(request)).rejects.toThrow(
@@ -195,19 +212,26 @@ describe('LIFI SDK', () => {
       tool = 'some swap tool',
       action = getAction({}),
       estimate = getEstimate({}),
-    }: any): Step => ({
+    }: {
+      id?: string
+      type?: StepType
+      tool?: StepTool
+      action?: Action
+      estimate?: Estimate
+    }): Step => ({
       id,
       type,
       tool,
       action,
       estimate,
+      includedSteps: [],
     })
 
     describe('with a swap step', () => {
       // While the validation fails for some users we should not enforce it
       describe.skip('user input is invalid', () => {
         it('should throw Error because of invalid id', async () => {
-          const step = getStep({ id: null })
+          const step = getStep({ id: null as unknown as string })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
@@ -216,7 +240,7 @@ describe('LIFI SDK', () => {
         })
 
         it('should throw Error because of invalid type', async () => {
-          const step = getStep({ type: 42 })
+          const step = getStep({ type: 42 as unknown as StepType })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
@@ -225,7 +249,7 @@ describe('LIFI SDK', () => {
         })
 
         it('should throw Error because of invalid tool', async () => {
-          const step = getStep({ tool: null })
+          const step = getStep({ tool: null as unknown as StepTool })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
@@ -235,7 +259,7 @@ describe('LIFI SDK', () => {
 
         // more indepth checks for the action type should be done once we have real schema validation
         it('should throw Error because of invalid action', async () => {
-          const step = getStep({ action: 'xxx' })
+          const step = getStep({ action: 'xxx' as unknown as Action })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
@@ -245,7 +269,9 @@ describe('LIFI SDK', () => {
 
         // more indepth checks for the estimate type should be done once we have real schema validation
         it('should throw Error because of invalid estimate', async () => {
-          const step = getStep({ estimate: 'Is this really an estimate?' })
+          const step = getStep({
+            estimate: 'Is this really an estimate?' as unknown as Estimate,
+          })
 
           await expect(Lifi.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'

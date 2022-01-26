@@ -9,15 +9,20 @@ import {
   Process,
 } from '../../types'
 import horizon from './horizon'
+import { Execution } from '@lifinance/types'
 
 export class HorizonExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    statusManager,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action } = step
     // setup
     step.execution = statusManager.initExecutionObject(step)

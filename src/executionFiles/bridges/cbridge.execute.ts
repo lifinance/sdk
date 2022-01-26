@@ -11,15 +11,21 @@ import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import cbridge from './cbridge'
+import { Execution } from '@lifinance/types'
+import { getProvider } from '../../utils/getProvider'
 
 export class CbridgeExecutionManager {
   shouldContinue = true
 
-  setShouldContinue = (val: boolean) => {
+  setShouldContinue = (val: boolean): void => {
     this.shouldContinue = val
   }
 
-  execute = async ({ signer, step, statusManager }: ExecuteCrossParams) => {
+  execute = async ({
+    signer,
+    step,
+    statusManager,
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
@@ -58,7 +64,7 @@ export class CbridgeExecutionManager {
       let tx: TransactionResponse
       if (crossProcess.txHash) {
         // load exiting transaction
-        tx = await signer.provider!.getTransaction(crossProcess.txHash)
+        tx = await getProvider(signer).getTransaction(crossProcess.txHash)
       } else {
         // check balance
         await balanceCheck(signer, step)

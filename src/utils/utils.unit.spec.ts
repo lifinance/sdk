@@ -1,7 +1,7 @@
 import { ChainId, CoinKey, findDefaultToken } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 
-import { formatTokenAmountOnly } from './utils'
+import { formatTokenAmountOnly, repeatUntilDone } from './utils'
 
 const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
 
@@ -115,6 +115,33 @@ describe('utils', () => {
           formatTokenAmountOnly(SOME_TOKEN_WITH_0_DECIMALS, new BigNumber('11'))
         ).toEqual('11.0000')
       })
+    })
+  })
+
+  describe('repeatUntilDone', () => {
+    let mockedFunction: jest.Mock
+
+    beforeEach(() => {
+      mockedFunction = jest.fn()
+    })
+
+    it('should throw an error if repeat function fails', async () => {
+      mockedFunction.mockRejectedValue(new Error('some error'))
+
+      await expect(repeatUntilDone(mockedFunction)).rejects.toThrow(
+        'some error'
+      )
+    })
+
+    it('should try until repeat function succeeds', async () => {
+      mockedFunction
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce('success!')
+
+      const result = await repeatUntilDone(mockedFunction, 10)
+      expect(result).toEqual('success!')
     })
   })
 })
