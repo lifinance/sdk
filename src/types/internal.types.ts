@@ -36,6 +36,7 @@ export type ParsedReceipt = {
 export type ExecuteSwapParams = {
   signer: Signer
   step: SwapStep
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
   statusManager: StatusManager
 }
@@ -73,6 +74,7 @@ export type SwitchChainHook = (
 
 export type GetPublicKeyHook = () => Promise<string | undefined>
 export type DecryptHook = (data: string) => Promise<string>
+
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
@@ -95,6 +97,7 @@ export interface Hooks extends ExecutionSettings {
 export type EnforcedObjectProperties<T> = T & {
   [P in keyof T]-?: T[P]
 }
+
 export interface ActiveRouteDictionary {
   [k: string]: ExecutionData
 }

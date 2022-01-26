@@ -23,6 +23,7 @@ async function getAndTestTransaction(
   expect(needed).toEqual(expected)
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function reviveBigNumberFromJson(key: any, value: any) {
   let result = value
   if (

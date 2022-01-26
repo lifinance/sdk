@@ -12,6 +12,7 @@ export enum LifiErrorCodes {
   transactionUnderpriced = 1002,
   transactionFailed = 1003,
   timeout = 1004,
+  noProviderAvailable = 1005,
 }
 
 enum MetaMaskRPCErrorCodes {
