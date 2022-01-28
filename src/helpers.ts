@@ -21,7 +21,7 @@ const ethereumRequest = async <T>(
  * @param {string} walletAddress - The wallet address of the user that should decrypt the calldata.
  * @return {(encryptedData: string) => Promise<any>} A function that decrypts data using EIP-1193 compliant wallet functions.
  */
-export const getEthereumDecyptionHook = (walletAddress: string) => {
+export const getEthereumDecryptionHook = (walletAddress: string) => {
   return (encryptedData: string): Promise<string> => {
     return ethereumRequest('eth_decrypt', [encryptedData, walletAddress])
   }
