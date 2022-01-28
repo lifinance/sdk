@@ -14,7 +14,7 @@ import axios from 'axios'
 
 import balances from './balances'
 import Lifi from './Lifi'
-import { ServerError } from './utils/errors'
+import { ServerError, ValidationError } from './utils/errors'
 
 jest.mock('axios')
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -170,6 +170,262 @@ describe('LIFI SDK', () => {
       })
 
       // TODO write tests for the correct application of default values for bridges & exchanges
+    })
+  })
+
+  describe('getToken', () => {
+    describe('user input is invalid', () => {
+      it('throw an error', async () => {
+        await expect(
+          Lifi.getToken(undefined as unknown as ChainId, 'DAI')
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "chain" is missing')
+        )
+        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+
+        await expect(
+          Lifi.getToken(ChainId.ETH, undefined as unknown as string)
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "token" is missing')
+        )
+        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+      })
+    })
+
+    describe('user input is valid', () => {
+      describe('and the backend call fails', () => {
+        it('throw an error', async () => {
+          mockedAxios.get.mockRejectedValue({
+            response: { status: 500, data: { message: 'Oops' } },
+          })
+
+          await expect(Lifi.getToken(ChainId.DAI, 'DAI')).rejects.toThrowError(
+            new ServerError('Oops')
+          )
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          mockedAxios.get.mockReturnValue(Promise.resolve({}))
+          await Lifi.getToken(ChainId.DAI, 'DAI')
+
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
+    })
+  })
+
+  describe('getQuote', () => {
+    const fromChain = ChainId.DAI
+    const fromToken = 'DAI'
+    const fromAddress = 'Some wallet address'
+    const fromAmount = '1000'
+    const toChain = ChainId.POL
+    const toToken = 'MATIC'
+
+    describe('user input is invalid', () => {
+      it('throw an error', async () => {
+        await expect(
+          Lifi.getQuote(
+            undefined as unknown as ChainId,
+            fromToken,
+            fromAddress,
+            fromAmount,
+            toChain,
+            toToken
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "fromChain" is missing')
+        )
+
+        await expect(
+          Lifi.getQuote(
+            fromChain,
+            undefined as unknown as string,
+            fromAddress,
+            fromAmount,
+            toChain,
+            toToken
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "fromToken" is missing')
+        )
+
+        await expect(
+          Lifi.getQuote(
+            fromChain,
+            fromToken,
+            undefined as unknown as string,
+            fromAmount,
+            toChain,
+            toToken
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "fromAddress" is missing')
+        )
+
+        await expect(
+          Lifi.getQuote(
+            fromChain,
+            fromToken,
+            fromAddress,
+            undefined as unknown as string,
+            toChain,
+            toToken
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "fromAmount" is missing')
+        )
+
+        await expect(
+          Lifi.getQuote(
+            fromChain,
+            fromToken,
+            fromAddress,
+            fromAmount,
+            undefined as unknown as ChainId,
+            toToken
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "toChain" is missing')
+        )
+
+        await expect(
+          Lifi.getQuote(
+            fromChain,
+            fromToken,
+            fromAddress,
+            fromAmount,
+            toChain,
+            undefined as unknown as string
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "toToken" is missing')
+        )
+
+        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+      })
+    })
+
+    describe('user input is valid', () => {
+      describe('and the backend call fails', () => {
+        it('throw an error', async () => {
+          mockedAxios.get.mockRejectedValue({
+            response: { status: 500, data: { message: 'Oops' } },
+          })
+
+          await expect(
+            Lifi.getQuote(
+              fromChain,
+              fromToken,
+              fromAddress,
+              fromAmount,
+              toChain,
+              toToken
+            )
+          ).rejects.toThrowError(new ServerError('Oops'))
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          mockedAxios.get.mockReturnValue(Promise.resolve({}))
+          await Lifi.getQuote(
+            fromChain,
+            fromToken,
+            fromAddress,
+            fromAmount,
+            toChain,
+            toToken
+          )
+
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
+    })
+  })
+
+  describe('getStatus', () => {
+    const fromChain = ChainId.DAI
+    const toChain = ChainId.POL
+    const txHash = 'some tx hash'
+    const bridge = 'some bridge tool'
+
+    describe('user input is invalid', () => {
+      it('throw an error', async () => {
+        await expect(
+          Lifi.getStatus(
+            undefined as unknown as string,
+            fromChain,
+            toChain,
+            txHash
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "bridge" is missing')
+        )
+
+        await expect(
+          Lifi.getStatus(
+            bridge,
+            undefined as unknown as ChainId,
+            toChain,
+            txHash
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "fromChain" is missing')
+        )
+
+        await expect(
+          Lifi.getStatus(
+            bridge,
+            fromChain,
+            undefined as unknown as ChainId,
+            txHash
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "toChain" is missing')
+        )
+
+        await expect(
+          Lifi.getStatus(
+            bridge,
+            fromChain,
+            toChain,
+            undefined as unknown as string
+          )
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "txHash" is missing')
+        )
+
+        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+      })
+    })
+
+    describe('user input is valid', () => {
+      describe('and the backend call fails', () => {
+        it('throw an error', async () => {
+          mockedAxios.get.mockRejectedValue({
+            response: { status: 500, data: { message: 'Oops' } },
+          })
+
+          await expect(
+            Lifi.getStatus(bridge, fromChain, toChain, txHash)
+          ).rejects.toThrowError(new ServerError('Oops'))
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          mockedAxios.get.mockReturnValue(Promise.resolve({}))
+          await Lifi.getStatus(bridge, fromChain, toChain, txHash)
+
+          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        })
+      })
     })
   })
 
