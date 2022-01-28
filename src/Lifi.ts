@@ -69,7 +69,7 @@ class LIFI {
     // send request
     try {
       const result = await axios.post<PossibilitiesResponse>(
-        this.config.apiUrl + 'possibilities',
+        this.config.apiUrl + 'advanced/possibilities',
         request
       )
       return result.data
@@ -98,7 +98,7 @@ class LIFI {
     // send request
     try {
       const result = await axios.post<RoutesResponse>(
-        this.config.apiUrl + 'routes',
+        this.config.apiUrl + 'advanced/routes',
         routesRequest
       )
       return result.data
@@ -122,7 +122,7 @@ class LIFI {
 
     try {
       const result = await axios.post<Step>(
-        this.config.apiUrl + 'steps/transaction',
+        this.config.apiUrl + 'advanced/stepTransaction',
         step
       )
       return result.data
