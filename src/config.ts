@@ -28,7 +28,7 @@ const DefaultExecutionSettings: Hooks = {
 
 export const getDefaultConfig = (): Config => {
   const defaultConfig: Config = {
-    apiUrl: 'https://li.finance/api/',
+    apiUrl: 'https://li.quest/v1/',
     rpcs: chainIdToObject([]),
     multicallAddresses: chainIdToObject(undefined),
     defaultExecutionSettings: DefaultExecutionSettings,

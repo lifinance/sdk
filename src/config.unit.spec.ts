@@ -6,7 +6,7 @@ describe('config', () => {
     it('should return the default config', () => {
       const defaultConfig = getDefaultConfig()
 
-      expect(defaultConfig.apiUrl).toEqual('https://li.finance/api/')
+      expect(defaultConfig.apiUrl).toEqual('https://li.quest/v1/')
       expect(defaultConfig.defaultRouteOptions).toEqual({})
       expect(defaultConfig.rpcs).toBeDefined()
       expect(defaultConfig.multicallAddresses).toBeDefined()
