@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.2](https://github.com/lifinance/sdk/compare/v0.4.1...v0.4.2) (2022-01-28)
+
+
+### Features
+
+* add new API endpoints to SDK ([#30](https://github.com/lifinance/sdk/issues/30)) ([89ace22](https://github.com/lifinance/sdk/commit/89ace22ed6f7a76900ebdffb85b4393ba687770c))
+* improve handling of wallet & backend errors ([#22](https://github.com/lifinance/sdk/issues/22)) ([05e94d6](https://github.com/lifinance/sdk/commit/05e94d617ac22928bbc3265d3a75579e7e5a833d))
+* use v1 LiFi endpoints ([#29](https://github.com/lifinance/sdk/issues/29)) ([c271425](https://github.com/lifinance/sdk/commit/c2714252a9be2df0ea1e1a30b7f01be3839bb563))
+
+
+### Bug Fixes
+
+* **Hop:** check subgraphs for success confirmation instead of using hop sdk ([#24](https://github.com/lifinance/sdk/issues/24)) ([ce95623](https://github.com/lifinance/sdk/commit/ce956233f19c16ba017606207715f5ab61143032))
+* **nxtp:** improve nxtp timeout handling ([#23](https://github.com/lifinance/sdk/issues/23)) ([fa12dec](https://github.com/lifinance/sdk/commit/fa12dec9834d236ae8a621866b3813d19a56107e))
+* **nxtp:** use transactionId returned by the backend (LF-78) ([121c103](https://github.com/lifinance/sdk/commit/121c1032a989a137d8d473af233e362e0d80ff3b))
+* resolve eslint issues ([#27](https://github.com/lifinance/sdk/issues/27)) ([5b307ce](https://github.com/lifinance/sdk/commit/5b307ce749c6f9e87513155778421eb6323b148a))
+* type in hook ([#28](https://github.com/lifinance/sdk/issues/28)) ([9e72a39](https://github.com/lifinance/sdk/commit/9e72a3917a9fa6441b859dc6492b73dd9568df92))
+
 ### [0.4.1](https://github.com/lifinance/sdk/compare/v0.4.0...v0.4.1) (2022-01-14)
 
 ## [0.4.0](https://github.com/lifinance/sdk/compare/v0.3.3...v0.4.0) (2022-01-14)
