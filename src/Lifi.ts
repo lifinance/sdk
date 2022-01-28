@@ -7,11 +7,15 @@ import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
+  ChainId,
+  ChainKey,
+  Order,
   PossibilitiesRequest,
   PossibilitiesResponse,
   Route,
   RoutesRequest,
   RoutesResponse,
+  StatusResponse,
   Step,
   Token,
   TokenAmount,
@@ -71,6 +75,159 @@ class LIFI {
       const result = await axios.post<PossibilitiesResponse>(
         this.config.apiUrl + 'advanced/possibilities',
         request
+      )
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
+  }
+
+  /**
+   * Fetch information about a Token
+   * @param {ChainKey | ChainId} chain - Id or key of the chain that contains the token
+   * @param {string} token - Address or symbol of the token on the requested chain
+   * @throws {LifiError} - Throws a LifiError if request fails
+   */
+  getToken = async (
+    chain: ChainKey | ChainId,
+    token: string
+  ): Promise<Token> => {
+    if (!chain) {
+      throw new ValidationError('Required parameter "chain" is missing')
+    }
+
+    if (!token) {
+      throw new ValidationError('Required parameter "token" is missing')
+    }
+
+    try {
+      const result = await axios.get<Token>(this.config.apiUrl + 'token', {
+        params: {
+          chain,
+          token,
+        },
+      })
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
+  }
+
+  /**
+   * Get a quote for a token transfer
+   * @param {ChainKey | ChainId} fromChain - The sending chain
+   * @param {string} fromToken - The token that should be transferred. Can be the address of the symbol
+   * @param {string} fromAddress - The sending wallet address
+   * @param {string} fromAmount - The amount that should be sent
+   * @param {ChainKey | ChainId} toChain - The receiving chain
+   * @param {string} toToken - The token that should be transferred to. Can be the address or the symbol
+   * @param {Order} order - Which kind of transfer should be preferred
+   * @param {number} slippage - The maximum allowed slippage for the transfer
+   * @param {string} integrator - A string containing tracking information about the integrator of the API
+   * @param {string} referrer - A string containing tracking information about the referrer of the integrator
+   * @param {string[]} allowBridges - List of bridges that are allowed for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
+   * @param {string[]} denyBridges - List of bridges that are not allowed for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
+   * @param {string[]} preferBridges - List of bridges that should be preferred for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
+   * @param {string[]} allowExchanges - List of exchanges that are allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
+   * @param {string[]} denyExchanges - List of exchanges that are not allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
+   * @param {string[]} preferExchanges - List of exchanges that should be preferred for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
+   * @throws {LifiError} - Throws a LifiError if request fails
+   */
+  getQuote = async (
+    fromChain: ChainKey | ChainId,
+    fromToken: string,
+    fromAddress: string,
+    fromAmount: string,
+    toChain: ChainKey | ChainId,
+    toToken: string,
+    order?: Order,
+    slippage?: number,
+    integrator?: string,
+    referrer?: string,
+    allowBridges?: string[],
+    denyBridges?: string[],
+    preferBridges?: string[],
+    allowExchanges?: string[],
+    denyExchanges?: string[],
+    preferExchanges?: string[]
+  ): Promise<Step> => {
+    if (!fromChain)
+      throw new ValidationError('Required parameter "fromChain" is missing')
+    if (!fromToken)
+      throw new ValidationError('Required parameter "fromToken" is missing')
+    if (!fromAddress)
+      throw new ValidationError('Required parameter "fromAddress" is missing')
+    if (!fromAmount)
+      throw new ValidationError('Required parameter "fromAmount" is missing')
+    if (!toChain)
+      throw new ValidationError('Required parameter "toChain" is missing')
+    if (!toToken)
+      throw new ValidationError('Required parameter "toToken" is missing')
+
+    try {
+      const result = await axios.get<Step>(this.config.apiUrl + 'quote', {
+        params: {
+          fromChain,
+          toChain,
+          fromToken,
+          toToken,
+          fromAddress,
+          fromAmount,
+          order,
+          slippage,
+          integrator,
+          referrer,
+          allowBridges,
+          denyBridges,
+          preferBridges,
+          allowExchanges,
+          denyExchanges,
+          preferExchanges,
+        },
+      })
+      return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
+  }
+
+  /**
+   * Check the status of a cross chain transfer
+   * @param {string} bridge - The bridging tool used for the transfer
+   * @param {ChainId | ChainKey} fromChain - The sending chain
+   * @param {ChainId | ChainKey} toChain - The receiving chain
+   * @param {string} txHash - The transaction hash on the sending chain
+   * @throws {LifiError} - Throws a LifiError if request fails
+   */
+  getStatus = async (
+    bridge: string,
+    fromChain: ChainId | ChainKey,
+    toChain: ChainId | ChainKey,
+    txHash: string
+  ): Promise<StatusResponse> => {
+    if (!bridge)
+      throw new ValidationError('Required parameter "bridge" is missing')
+
+    if (!fromChain)
+      throw new ValidationError('Required parameter "fromChain" is missing')
+
+    if (!toChain)
+      throw new ValidationError('Required parameter "toChain" is missing')
+
+    if (!txHash)
+      throw new ValidationError('Required parameter "txHash" is missing')
+
+    try {
+      const result = await axios.get<StatusResponse>(
+        this.config.apiUrl + 'status',
+        {
+          params: {
+            bridge,
+            fromChain,
+            toChain,
+            txHash,
+          },
+        }
       )
       return result.data
     } catch (e) {
