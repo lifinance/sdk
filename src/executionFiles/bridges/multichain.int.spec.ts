@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import { getRpcProvider } from '../../connectors'
 import { ParsedReceipt, ChainId } from '../../types'
-import anyswap from './anyswap'
+import multichain from './multichain'
 
 jest.setTimeout(10_000)
 
@@ -15,7 +15,7 @@ async function getAndTestTransaction(
   const provider = getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
-  const parsed = await anyswap.parseReceipt(
+  const parsed = await multichain.parseReceipt(
     toAddress,
     toTokenAddress,
     tx,
@@ -32,7 +32,7 @@ async function getAndTestTransaction(
   expect(needed).toEqual(expected)
 }
 
-describe('anyswap', () => {
+describe('multichain', () => {
   describe('parse receipt', () => {
     describe('to POL', () => {
       it('to token', async () => {

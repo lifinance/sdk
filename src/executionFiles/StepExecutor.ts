@@ -2,14 +2,16 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 
 import {
+  BridgeTool,
   CrossStep,
+  ExchangeTool,
   getChainById,
   Hooks,
   LifiStep,
   Step,
   SwapStep,
 } from '../types'
-import { AnySwapExecutionManager } from './bridges/anyswap.execute'
+import { MultichainExecutionManager } from './bridges/multichain.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
 import { HopExecutionManager } from './bridges/hop.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
@@ -28,7 +30,7 @@ export class StepExecutor {
   private hopExecutionManager = new HopExecutionManager()
   private horizonExecutionManager = new HorizonExecutionManager()
   private cbridgeExecutionManager = new CbridgeExecutionManager()
-  private anySwapExecutionManager = new AnySwapExecutionManager()
+  private multichainExecutionManager = new MultichainExecutionManager()
 
   executionStopped = false
 
@@ -43,7 +45,7 @@ export class StepExecutor {
     this.hopExecutionManager.setShouldContinue(false)
     this.horizonExecutionManager.setShouldContinue(false)
     this.cbridgeExecutionManager.setShouldContinue(false)
-    this.anySwapExecutionManager.setShouldContinue(false)
+    this.multichainExecutionManager.setShouldContinue(false)
 
     this.executionStopped = true
   }
@@ -114,21 +116,23 @@ export class StepExecutor {
     }
 
     switch (step.tool) {
-      case 'paraswap':
+      case ExchangeTool.paraswap:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: paraswap.parseReceipt,
         })
-      case '1inch':
+      case ExchangeTool.oneinch:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: oneinch.parseReceipt,
         })
-      case 'openocean':
+      case ExchangeTool.openocean:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: openocean.parseReceipt,
         })
+      case ExchangeTool.zerox:
+      case ExchangeTool.dodo:
       default:
         return await this.swapExecutionManager.execute({
           ...swapParams,
@@ -150,18 +154,18 @@ export class StepExecutor {
     }
 
     switch (step.tool) {
-      case 'nxtp':
+      case BridgeTool.connext:
+      case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
-      case 'hop':
+      case BridgeTool.hop:
         return await this.hopExecutionManager.execute(crossParams)
-      case 'horizon':
+      case BridgeTool.horizon:
         return await this.horizonExecutionManager.execute(crossParams)
-      case 'cbridge':
+      case BridgeTool.cbridge:
         return await this.cbridgeExecutionManager.execute(crossParams)
-      case 'anyswapV3':
-      case 'anyswapV4':
-      case 'anyswap':
-        return await this.anySwapExecutionManager.execute(crossParams)
+      case BridgeTool.multichain:
+      case 'anyswap': // keep for some time while user still may have unfinished routes locally
+        return await this.multichainExecutionManager.execute(crossParams)
       default:
         throw new Error('Should never reach here, bridge not defined')
     }
