@@ -2,7 +2,9 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 
 import {
+  BridgeTool,
   CrossStep,
+  ExchangeTool,
   getChainById,
   Hooks,
   LifiStep,
@@ -114,21 +116,23 @@ export class StepExecutor {
     }
 
     switch (step.tool) {
-      case 'paraswap':
+      case ExchangeTool.paraswap:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: paraswap.parseReceipt,
         })
-      case '1inch':
+      case ExchangeTool.oneinch:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: oneinch.parseReceipt,
         })
-      case 'openocean':
+      case ExchangeTool.openocean:
         return await this.swapExecutionManager.execute({
           ...swapParams,
           parseReceipt: openocean.parseReceipt,
         })
+      case ExchangeTool.zerox:
+      case ExchangeTool.dodo:
       default:
         return await this.swapExecutionManager.execute({
           ...swapParams,
@@ -150,17 +154,17 @@ export class StepExecutor {
     }
 
     switch (step.tool) {
-      case 'nxtp':
+      case BridgeTool.connext:
+      case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
-      case 'hop':
+      case BridgeTool.hop:
         return await this.hopExecutionManager.execute(crossParams)
-      case 'horizon':
+      case BridgeTool.horizon:
         return await this.horizonExecutionManager.execute(crossParams)
-      case 'cbridge':
+      case BridgeTool.cbridge:
         return await this.cbridgeExecutionManager.execute(crossParams)
-      case 'anyswapV3':
-      case 'anyswapV4':
-      case 'anyswap':
+      case BridgeTool.multichain:
+      case 'anyswap': // keep for some time while user still may have unfinished routes locally
         return await this.anySwapExecutionManager.execute(crossParams)
       default:
         throw new Error('Should never reach here, bridge not defined')
