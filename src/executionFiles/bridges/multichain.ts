@@ -199,9 +199,9 @@ const parseReceipt = (
   return defaultReceiptParsing({ result, tx, receipt, toAddress })
 }
 
-const anyswap = {
+const multichain = {
   waitForDestinationChainReceipt,
   parseReceipt,
 }
 
-export default anyswap
+export default multichain

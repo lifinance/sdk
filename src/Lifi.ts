@@ -125,12 +125,12 @@ class LIFI {
    * @param {number} slippage - The maximum allowed slippage for the transfer
    * @param {string} integrator - A string containing tracking information about the integrator of the API
    * @param {string} referrer - A string containing tracking information about the referrer of the integrator
-   * @param {string[]} allowBridges - List of bridges that are allowed for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
-   * @param {string[]} denyBridges - List of bridges that are not allowed for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
-   * @param {string[]} preferBridges - List of bridges that should be preferred for this transaction. Currently, available bridges are `hop`, `anyswap` and `cbridge`
-   * @param {string[]} allowExchanges - List of exchanges that are allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
-   * @param {string[]} denyExchanges - List of exchanges that are not allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
-   * @param {string[]} preferExchanges - List of exchanges that should be preferred for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean` and `matcha` and a lot of dexes
+   * @param {string[]} allowBridges - List of bridges that are allowed for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
+   * @param {string[]} denyBridges - List of bridges that are not allowed for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
+   * @param {string[]} preferBridges - List of bridges that should be preferred for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
+   * @param {string[]} allowExchanges - List of exchanges that are allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
+   * @param {string[]} denyExchanges - List of exchanges that are not allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
+   * @param {string[]} preferExchanges - List of exchanges that should be preferred for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
    * @throws {LifiError} - Throws a LifiError if request fails
    */
   getQuote = async (

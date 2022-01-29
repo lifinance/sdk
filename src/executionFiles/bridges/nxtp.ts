@@ -100,8 +100,10 @@ const calculateRelayerFee = async (
     const gasNeeded = await nxtpSDK.calculateGasFeeInReceivingTokenForFulfill(
       data.receivingChainId,
       data.receivingAssetId,
-      data.callData,
-      data.callTo
+      {
+        callData: data.callData,
+        callTo: data.callTo,
+      }
     )
 
     calculateRelayerFee = gasNeeded.toString()

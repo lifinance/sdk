@@ -7,11 +7,11 @@ import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import anyswap from './anyswap'
+import multichain from './multichain'
 import { Execution } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 
-export class AnySwapExecutionManager {
+export class MultichainExecutionManager {
   shouldContinue = true
 
   setShouldContinue = (val: boolean): void => {
@@ -125,7 +125,7 @@ export class AnySwapExecutionManager {
     )
     let destinationTxReceipt
     try {
-      destinationTxReceipt = await anyswap.waitForDestinationChainReceipt(
+      destinationTxReceipt = await multichain.waitForDestinationChainReceipt(
         crossProcess.txHash,
         toChain.id
       )
@@ -139,7 +139,7 @@ export class AnySwapExecutionManager {
     }
 
     // -> parse receipt & set status
-    const parsedReceipt = await anyswap.parseReceipt(
+    const parsedReceipt = await multichain.parseReceipt(
       await signer.getAddress(),
       step.action.toToken.address,
       crossProcess.txHash,

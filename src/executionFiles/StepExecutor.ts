@@ -11,7 +11,7 @@ import {
   Step,
   SwapStep,
 } from '../types'
-import { AnySwapExecutionManager } from './bridges/anyswap.execute'
+import { MultichainExecutionManager } from './bridges/multichain.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
 import { HopExecutionManager } from './bridges/hop.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
@@ -30,7 +30,7 @@ export class StepExecutor {
   private hopExecutionManager = new HopExecutionManager()
   private horizonExecutionManager = new HorizonExecutionManager()
   private cbridgeExecutionManager = new CbridgeExecutionManager()
-  private anySwapExecutionManager = new AnySwapExecutionManager()
+  private multichainExecutionManager = new MultichainExecutionManager()
 
   executionStopped = false
 
@@ -45,7 +45,7 @@ export class StepExecutor {
     this.hopExecutionManager.setShouldContinue(false)
     this.horizonExecutionManager.setShouldContinue(false)
     this.cbridgeExecutionManager.setShouldContinue(false)
-    this.anySwapExecutionManager.setShouldContinue(false)
+    this.multichainExecutionManager.setShouldContinue(false)
 
     this.executionStopped = true
   }
@@ -165,7 +165,7 @@ export class StepExecutor {
         return await this.cbridgeExecutionManager.execute(crossParams)
       case BridgeTool.multichain:
       case 'anyswap': // keep for some time while user still may have unfinished routes locally
-        return await this.anySwapExecutionManager.execute(crossParams)
+        return await this.multichainExecutionManager.execute(crossParams)
       default:
         throw new Error('Should never reach here, bridge not defined')
     }
