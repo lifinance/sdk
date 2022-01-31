@@ -23,10 +23,7 @@ import nxtp from './nxtp'
 import { getDeployedTransactionManagerContract } from '@connext/nxtp-sdk/dist/transactionManager/transactionManager'
 import { signFulfillTransactionPayload } from '@connext/nxtp-sdk/dist/utils'
 import { balanceCheck } from '../balanceCheck.execute'
-import {
-  getTransactionNotSentMessage,
-  parseWalletError,
-} from '../../utils/parseError'
+import { parseWalletError } from '../../utils/parseError'
 import { LifiErrorCodes, RPCError } from '../../utils/errors'
 import { Action } from '@lifinance/types'
 
@@ -213,8 +210,8 @@ export class NXTPExecutionManager {
         if (e.message.includes('Evt timeout')) {
           error = new RPCError(
             LifiErrorCodes.timeout,
-            'Waiting for NXTP receiver transaction timed out',
-            getTransactionNotSentMessage(step, claimProcess),
+            'Waiting for Connext receiver transaction timed out',
+            'Your funds are processed by the bridge, please retry the transaction.',
             e.stack
           )
         } else {
