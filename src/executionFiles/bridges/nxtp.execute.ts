@@ -29,6 +29,7 @@ import {
 } from '../../utils/parseError'
 import { LifiErrorCodes, RPCError } from '../../utils/errors'
 import { Action } from '@lifinance/types'
+import { switchChain } from '../switchChain'
 
 export class NXTPExecutionManager {
   shouldContinue = true
@@ -134,6 +135,22 @@ export class NXTPExecutionManager {
           }
 
           // STEP 3: Send Transaction ///////////////////////////////////////////////
+          // make sure that chain is still correct
+          const updatedSigner = await switchChain(
+            signer,
+            statusManager,
+            step,
+            hooks.switchChainHook,
+            this.shouldContinue
+          )
+
+          if (!updatedSigner) {
+            // chain switch was not successful, stop execution here
+            return step.execution
+          }
+
+          signer = updatedSigner
+
           statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
           if (!this.shouldContinue) return step.execution
 

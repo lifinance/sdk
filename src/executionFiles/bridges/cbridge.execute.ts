@@ -13,6 +13,7 @@ import { balanceCheck } from '../balanceCheck.execute'
 import cbridge from './cbridge'
 import { Execution } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
+import { switchChain } from '../switchChain'
 
 export class CbridgeExecutionManager {
   shouldContinue = true
@@ -25,6 +26,7 @@ export class CbridgeExecutionManager {
     signer,
     step,
     statusManager,
+    hooks,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
@@ -84,6 +86,21 @@ export class CbridgeExecutionManager {
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
+        // make sure that chain is still correct
+        const updatedSigner = await switchChain(
+          signer,
+          statusManager,
+          step,
+          hooks.switchChainHook,
+          this.shouldContinue
+        )
+
+        if (!updatedSigner) {
+          // chain switch was not successful, stop execution here
+          return step.execution
+        }
+
+        signer = updatedSigner
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
 

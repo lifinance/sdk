@@ -39,6 +39,7 @@ export type ExecuteSwapParams = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
   statusManager: StatusManager
+  hooks: Hooks
 }
 
 export type ExecuteCrossParams = {

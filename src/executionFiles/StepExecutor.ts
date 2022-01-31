@@ -5,7 +5,6 @@ import {
   BridgeTool,
   CrossStep,
   ExchangeTool,
-  getChainById,
   Hooks,
   LifiStep,
   Step,
@@ -21,6 +20,7 @@ import { openocean } from './exchanges/openocean'
 import { paraswap } from './exchanges/paraswap'
 import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
+import { switchChain } from './switchChain'
 
 export class StepExecutor {
   settings: Hooks
@@ -52,45 +52,20 @@ export class StepExecutor {
 
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
     // check if signer is for correct chain
-    if ((await signer.getChainId()) !== step.action.fromChainId) {
-      // -> set status message
-      step.execution = this.statusManager.initExecutionObject(step)
-      this.statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
-      const chain = getChainById(step.action.fromChainId)
+    const updatedSigner = await switchChain(
+      signer,
+      this.statusManager,
+      step,
+      this.settings.switchChainHook,
+      !this.executionStopped
+    )
 
-      const switchProcess = this.statusManager.findOrCreateProcess(
-        'switchProcess',
-        step,
-        `Change Chain to ${chain.name}`
-      )
-
-      if (this.executionStopped) return step
-
-      let updatedSigner
-      try {
-        updatedSigner = await this.settings.switchChainHook(
-          step.action.fromChainId
-        )
-        if (
-          updatedSigner &&
-          (await updatedSigner.getChainId()) === step.action.fromChainId
-        ) {
-          signer = updatedSigner
-        } else {
-          throw Error('CHAIN SWITCH REQUIRED')
-        }
-      } catch (e: any) {
-        this.statusManager.updateProcess(step, switchProcess.id, 'FAILED', {
-          errorMessage: e.message,
-          errorCode: e.code,
-        })
-        this.statusManager.updateExecution(step, 'FAILED')
-        throw e
-      }
-
-      this.statusManager.removeProcess(step, switchProcess.id)
-      this.statusManager.updateExecution(step, 'PENDING')
+    if (!updatedSigner) {
+      // chain switch was not successful, stop execution here
+      return step
     }
+
+    signer = updatedSigner
 
     switch (step.type) {
       case 'lifi':
@@ -98,7 +73,7 @@ export class StepExecutor {
         await this.executeCross(signer, step, this.settings)
         break
       case 'swap':
-        await this.executeSwap(signer, step)
+        await this.executeSwap(signer, step, this.settings)
         break
       default:
         throw new Error('Unsupported step type')
@@ -107,12 +82,17 @@ export class StepExecutor {
     return step
   }
 
-  private executeSwap = async (signer: Signer, step: SwapStep) => {
+  private executeSwap = async (
+    signer: Signer,
+    step: SwapStep,
+    hooks: Hooks
+  ) => {
     const swapParams = {
       signer,
       step,
       settings: this.settings,
       statusManager: this.statusManager,
+      hooks,
     }
 
     switch (step.tool) {
