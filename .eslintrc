@@ -1,0 +1,61 @@
+{
+  "root": true,
+  "env": {
+    "es2021": true,
+    "browser": true,
+    "node": true
+  },
+  "extends": [
+    "plugin:@typescript-eslint/recommended",
+    "airbnb-base",
+    "plugin:prettier/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true,
+      "modules": true
+    },
+    "ecmaVersion": 2021,
+    "sourceType": "module"
+  },
+  "rules": {
+    "@typescript-eslint/no-unused-vars": "warn",
+    "comma-dangle": ["error", "always-multiline"],
+    "curly": 1,
+    "import/extensions": "off",
+    "import/no-default-export": "error",
+    "import/no-unresolved": "off",
+    "import/prefer-default-export": "off",
+    "max-len": "off",
+    "no-bitwise": "off",
+    "no-console": "off",
+    "no-continue": "off",
+    "no-implicit-any-catch": "off",
+    "no-nested-ternary": "off",
+    "no-param-reassign": "off",
+    "no-plusplus": "off",
+    "no-restricted-syntax": "off",
+    "no-shadow": "off",
+    "no-unused-expressions": "warn",
+    "no-unused-vars": "off",
+    "no-var": "warn",
+    "prettier/prettier": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "*.spec.ts",
+        "*.test.ts"
+      ],
+      "env": {
+        "jest": true
+      },
+      "extends": ["plugin:mocha/recommended"],
+      "rules": {
+        "mocha/no-mocha-arrows": "off",
+        "mocha/no-setup-in-describe": "off"
+      }
+    }
+  ]
+}
