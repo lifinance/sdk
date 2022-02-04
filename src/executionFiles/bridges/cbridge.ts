@@ -142,7 +142,7 @@ const waitForCompletion = async (
     throw new Error('cBridge requires initiator to find transfer')
   }
   if (!step.execution) {
-    throw new Error('Step execution has not been started')
+    throw new Error('cBridge step execution has not been started')
   }
   const crossStep = step.execution?.process.find(
     (process) => process.id === 'crossProcess'
