@@ -197,8 +197,10 @@ export class NXTPExecutionManager {
       signer,
       action
     )
-    const transactionId = step.estimate.data.transactionId || step.id
+    // wait for subgraph setup
+    await (nxtpBaseSDK as any).subgraph.startPolling()
 
+    const transactionId = step.estimate.data.transactionId || step.id
     const receiverTransactionPreparedPromise = nxtpSDK
       .waitFor(
         NxtpSdkEvents.ReceiverTransactionPrepared,
@@ -451,7 +453,7 @@ export class NXTPExecutionManager {
     return step.execution
   }
 
-  private initNxtpSdk = (signer: Signer, action: Action) => {
+  private initNxtpSdk = async (signer: Signer, action: Action) => {
     const crossableChains = [ChainId.ETH, action.fromChainId, action.toChainId]
     const chainProviders = getRpcUrls(crossableChains)
     return nxtp.setup(signer, chainProviders)
