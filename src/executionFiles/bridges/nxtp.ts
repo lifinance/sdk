@@ -63,7 +63,7 @@ const setup = async (
     // natsUrl?: string
     // authUrl?: string
     // messaging?: UserNxtpNatsMessagingService
-    skipPolling: false,
+    skipPolling: true,
   })
 
   const sdk = new NxtpSdk({
