@@ -1,6 +1,7 @@
 # Li.Finance - SDK
 
 LiFi Any-to-Any Cross-Chain-Swap SDK
+Please checkout the [SDK docs](https://docs.li.finance/official-documentation/sdk-docs/quick-start) and our [API reference](https://apidocs.li.finance/reference/how-to-transfer-tokens) for further information.
 
 ## Installation
 
