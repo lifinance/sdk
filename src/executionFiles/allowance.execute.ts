@@ -38,14 +38,14 @@ export const checkAllowance = async (
 
       if (new BigNumber(amount).gt(approved)) {
         if (!allowUserInteraction) return
-        const approvaLAmount = infiniteApproval
+        const approvalAmount = infiniteApproval
           ? constants.MaxUint256.toString()
           : amount
         const approveTx = await setApproval(
           signer,
           token.address,
           spenderAddress,
-          approvaLAmount
+          approvalAmount
         )
 
         // update currentExecution

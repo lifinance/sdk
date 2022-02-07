@@ -10,6 +10,7 @@ import { balanceCheck } from '../balanceCheck.execute'
 import hop from './hop'
 import { Execution } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
+import { switchChain } from '../switchChain'
 
 export class HopExecutionManager {
   shouldContinue = true
@@ -22,6 +23,7 @@ export class HopExecutionManager {
     signer,
     step,
     statusManager,
+    hooks,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
@@ -80,6 +82,22 @@ export class HopExecutionManager {
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
+        // make sure that chain is still correct
+        const updatedSigner = await switchChain(
+          signer,
+          statusManager,
+          step,
+          hooks.switchChainHook,
+          this.shouldContinue
+        )
+
+        if (!updatedSigner) {
+          // chain switch was not successful, stop execution here
+          return step.execution
+        }
+
+        signer = updatedSigner
+
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
         if (!this.shouldContinue) return step.execution
 

@@ -13,6 +13,7 @@ import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { Execution } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
+import { switchChain } from '../switchChain'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -26,6 +27,7 @@ export class SwapExecutionManager {
     step,
     parseReceipt,
     statusManager,
+    hooks,
   }: ExecuteSwapParams): Promise<Execution> => {
     // setup
 
@@ -78,6 +80,22 @@ export class SwapExecutionManager {
           statusManager.updateExecution(step, 'FAILED')
           throw swapProcess.errorMessage
         }
+
+        // make sure that chain is still correct
+        const updatedSigner = await switchChain(
+          signer,
+          statusManager,
+          step,
+          hooks.switchChainHook,
+          this.shouldContinue
+        )
+
+        if (!updatedSigner) {
+          // chain switch was not successful, stop execution here
+          return step.execution
+        }
+
+        signer = updatedSigner
 
         // -> set step.execution
         statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
