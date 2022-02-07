@@ -97,28 +97,78 @@ const getTransferHistory = async (userAddress: string) => {
 
   return data.history
 }
+const parseSendEvent = (params: {
+  tx: TransactionResponse
+  receipt: TransactionReceipt
+}) => {
+  const { tx, receipt } = params
+
+  const abiSend = [
+    'event Send(bytes32 transferId, address sender, address receiver, address token, uint256 amount, ' +
+      'uint64 dstChainId, uint64 nonce, uint32 maxSlippage)',
+  ]
+  const interfaceRelay = new ethers.utils.Interface(abiSend)
+  let result
+  for (const log of receipt.logs) {
+    try {
+      const parsed = interfaceRelay.parseLog(log)
+      const amount = parsed.args.amount as BigNumber
+      const token = (parsed.args.token as string).toLowerCase()
+      const wrapped = findWrappedGasOnChain(tx.chainId)
+      const transferId = parsed.args.transferId
+      const receiver = parsed.args.receiver
+      const nonce = parsed.args.nonce
+      result = {
+        nonce,
+        amount: amount.toString(),
+        transferId,
+        toTokenAddress:
+          wrapped.address === token ? ethers.constants.AddressZero : token,
+        receiver,
+      }
+    } catch (e) {
+      // find right log by trying to parse them
+    }
+  }
+
+  return result
+}
 
 const waitForCompletion = async (
   step: CrossStep | LifiStep
 ): Promise<cTransferHistory> => {
   // check
   if (!step.estimate.data.initiator) {
-    throw new Error('cBridges requires initiator to find transfer')
+    throw new Error('cBridge requires initiator to find transfer')
   }
-  if (!step.estimate.data.transferId) {
-    throw new Error('cBridge requires transferId to find transfer')
+  if (!step.execution) {
+    throw new Error('cBridge step execution has not been started')
   }
-
+  const crossStep = step.execution?.process.find(
+    (process) => process.id === 'crossProcess'
+  )
+  if (!crossStep || !crossStep.txHash) {
+    throw new Error('no cbridge source transaction hash found')
+  }
+  const rpc = getRpcProvider(step.action.fromChainId)
+  const sourceTx = await rpc.getTransaction(crossStep.txHash)
+  const sourceReceipt = await sourceTx.wait()
+  const sendEvent = parseSendEvent({ receipt: sourceReceipt, tx: sourceTx })
+  if (!sendEvent) {
+    throw new Error('Error decoding cbridge transaction send event')
+  }
   // loop
   while (true) {
     // get Details
+    // TODO: check of change to transferstatus is needed
     const history = await getTransferHistory(
       step.estimate.data.initiator
     ).catch(() => [])
     const details = history.find(
-      (entry) => entry.transfer_id === step.estimate.data.transferId
+      (entry) => entry.transfer_id === sendEvent.transferId
     )
 
+    // TODO: check return type
     // check Result
     if (
       details &&
