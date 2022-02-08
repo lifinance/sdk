@@ -455,11 +455,13 @@ describe('LIFI SDK', () => {
       toAmount = '10000000000000',
       toAmountMin = '999999999999',
       approvalAddress = 'some approval address', // we don't validate the format of addresses atm;
+      executionDuration = 300,
     }): Estimate => ({
       fromAmount,
       toAmount,
       toAmountMin,
       approvalAddress,
+      executionDuration,
     })
 
     const getStep = ({
