@@ -5,7 +5,6 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "install": "node -e \"if (!require('fs').existsSync('./dist')){process.exit(1)}\" || npm run build",
     "watch": "tsc -w -p ./tsconfig.json",
     "build": "yarn clean && tsc --project ./tsconfig.json",
     "clean": "node tools/cleanup",
