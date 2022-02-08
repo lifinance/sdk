@@ -11,6 +11,7 @@ on:
       - '*'
     branches:
       - main
+      - LF-384 # TODO: for testing
 
 jobs:
   release:
