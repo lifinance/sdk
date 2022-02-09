@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.5-beta.0](https://github.com/lifinance/sdk/compare/v0.4.4...v0.4.5-beta.0) (2022-02-09)
+
+
+### Bug Fixes
+
+* fix tags-ignore pattern ([1e61a7e](https://github.com/lifinance/sdk/commit/1e61a7ee2c9ac2497f178d9ec40b945462344012))
+
 ### [0.4.4](https://github.com/lifinance/sdk/compare/v0.4.2...v0.4.4) (2022-02-09)
 
 
