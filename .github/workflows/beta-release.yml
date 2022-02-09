@@ -2,11 +2,6 @@ name: Beta Release
 
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'LICENSE'
-      - '.editorconfig'
     tags-ignore:
       - '**'
     branches:
