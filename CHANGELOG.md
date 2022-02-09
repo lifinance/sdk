@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.4](https://github.com/lifinance/sdk/compare/v0.4.2...v0.4.4) (2022-02-09)
+
+
+### Bug Fixes
+
+* check chain before sending transactions ([#33](https://github.com/lifinance/sdk/issues/33)) ([6b92a77](https://github.com/lifinance/sdk/commit/6b92a7740d00427244c48df2a4c30f255e2a89ec))
+* fix type changes ([59b9981](https://github.com/lifinance/sdk/commit/59b9981d7b71704bcb137ecc2de4af09f3f819a8))
+* **nxtp:** wait for subgraph setup before calling waitFor ([62c7f73](https://github.com/lifinance/sdk/commit/62c7f73fe186c6ebd70fdbb38c84863abb71fc52))
+* show better connext error message ([#32](https://github.com/lifinance/sdk/issues/32)) ([e3f9998](https://github.com/lifinance/sdk/commit/e3f9998c12a16b99e2b3d3b638b47016d90a85fe))
+
 ### [0.4.3](https://github.com/lifinance/sdk/compare/v0.4.2...v0.4.3) (2022-01-29)
 
 ### [0.4.2](https://github.com/lifinance/sdk/compare/v0.4.1...v0.4.2) (2022-01-28)
