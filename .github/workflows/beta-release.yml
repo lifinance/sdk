@@ -8,9 +8,10 @@ on:
       - 'LICENSE'
       - '.editorconfig'
     tags-ignore:
-      - '*'
+      - '**'
     branches:
       - main
+      - beta-release-fix
 
 jobs:
   publish:
