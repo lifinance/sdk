@@ -1253,10 +1253,10 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     sourcemap-codec "1.4.8"
 
-"@lifinance/types@0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@lifinance/types/-/types-0.10.0.tgz#79317373a9f070bc363caa8b8bd44c9758b6463b"
-  integrity sha512-f2p78lcX62jHQzM9kEOmenUTX2yg9LDIr7ofNdmSyhxHN2u7g0zigfZJrs5II1FTWNL9lItgN0Tt/PF6PeYV7A==
+"@lifinance/types@0.10.1":
+  version "0.10.1"
+  resolved "https://registry.yarnpkg.com/@lifinance/types/-/types-0.10.1.tgz#14236b3d28095dae57d0c930d4d9bfb1aa4132e3"
+  integrity sha512-26aF0AK7ViuNBr8Uu53ToD43YcO2J+qLNpL+hcWjmDxFjt9Zv0bvgp9DQn4mbIzYS9mRdmrnkr1iLS0HMc8WMA==
   dependencies:
     ethers "^5.4.7"
 
