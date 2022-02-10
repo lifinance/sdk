@@ -1,6 +1,6 @@
 {
   "name": "@lifinance/sdk",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "LiFi Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
