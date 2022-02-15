@@ -13,6 +13,10 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from '@ethersproject/providers'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -33,16 +37,33 @@ export type ParsedReceipt = {
   toTokenAddress?: string
 }
 
-export type ExecuteSwapParams = {
+interface ExecutionParams {
   signer: Signer
-  step: SwapStep
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
+  step: Step
   statusManager: StatusManager
   hooks: Hooks
 }
 
-export type ExecuteCrossParams = {
+export interface ExecuteSwapParams extends ExecutionParams {
+  step: SwapStep
+  parseReceipt: (
+    tx: TransactionResponse,
+    receipt: TransactionReceipt
+  ) => Promise<ParsedReceipt>
+}
+
+export interface ExecuteCrossParams extends ExecutionParams {
+  step: CrossStep | LifiStep
+  parseReceipt: (
+    toAddress: string,
+    toTokenAddress: string,
+    tx: TransactionResponse,
+    receipt: TransactionReceipt
+  ) => Promise<ParsedReceipt>
+}
+
+// TODO: remove once all bridges use bridge.execute.ts
+export type ExecuteCrossParamsOld = {
   signer: Signer
   step: CrossStep | LifiStep
   statusManager: StatusManager

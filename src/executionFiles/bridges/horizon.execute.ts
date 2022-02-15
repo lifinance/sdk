@@ -4,7 +4,7 @@ import { EXCHANGE_MODE, NETWORK_TYPE, STATUS, TOKEN } from 'bridge-sdk'
 import {
   ChainId,
   CoinKey,
-  ExecuteCrossParams,
+  ExecuteCrossParamsOld,
   getChainById,
   Process,
 } from '../../types'
@@ -22,7 +22,7 @@ export class HorizonExecutionManager {
     signer,
     step,
     statusManager,
-  }: ExecuteCrossParams): Promise<Execution> => {
+  }: ExecuteCrossParamsOld): Promise<Execution> => {
     const { action } = step
     // setup
     step.execution = statusManager.initExecutionObject(step)

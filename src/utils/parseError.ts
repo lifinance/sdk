@@ -5,6 +5,7 @@ import {
 import {
   LifiError,
   LifiErrorCodes,
+  NotFoundError,
   ProviderError,
   RPCError,
   ServerError,
@@ -139,6 +140,14 @@ export const parseWalletError = (
 export const parseBackendError = (e: any): LifiError => {
   if (e.response?.status === 400) {
     return new ValidationError(
+      e.response?.data?.message || e.response?.statusText,
+      undefined,
+      e.stack
+    )
+  }
+
+  if (e.response?.status === 404) {
+    return new NotFoundError(
       e.response?.data?.message || e.response?.statusText,
       undefined,
       e.stack

@@ -4,15 +4,26 @@ import { constants } from 'ethers'
 import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
 import { ExecuteCrossParams, getChainById } from '../../types'
-import { personalizeStep } from '../../utils/utils'
+import {
+  loadTransaction,
+  loadTransactionReceipt,
+  personalizeStep,
+  repeatUntilDone,
+} from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import hop from './hop'
-import { Execution } from '@lifinance/types'
+import {
+  BridgeTool,
+  ChainId,
+  Execution,
+  StatusResponse,
+} from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
+import { ServerError } from '../../utils/errors'
+import { TransactionReceipt } from '@ethersproject/providers'
 
-export class HopExecutionManager {
+export class BridgeExecutionManager {
   shouldContinue = true
 
   setShouldContinue = (val: boolean): void => {
@@ -24,6 +35,7 @@ export class HopExecutionManager {
     step,
     statusManager,
     hooks,
+    parseReceipt,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
@@ -77,7 +89,6 @@ export class HopExecutionManager {
           statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
-          statusManager.updateExecution(step, 'FAILED')
           throw crossProcess.errorMessage
         }
 
@@ -99,7 +110,7 @@ export class HopExecutionManager {
         signer = updatedSigner
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-        if (!this.shouldContinue) return step.execution
+        if (!this.shouldContinue) return step.execution // stop before user action is required
 
         tx = await signer.sendTransaction(transactionRequest)
 
@@ -123,9 +134,9 @@ export class HopExecutionManager {
       } else {
         const error = parseWalletError(e, step, crossProcess)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
-          errorMessage: e.message,
+          errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,
-          errorCode: e.code,
+          errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
         throw error
@@ -137,31 +148,22 @@ export class HopExecutionManager {
     })
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    // coinKey should always be set since this data is coming from the Lifi Backend.
-    if (!action.toToken.coinKey) {
-      console.error("toToken doesn't contain coinKey, aborting")
-      throw new Error("toToken doesn't contain coinKey")
-    }
-
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       step,
       'Wait for Receiving Chain'
     )
-    let destinationTxReceipt
+    let destinationTxReceipt: TransactionReceipt
     try {
-      destinationTxReceipt = await hop.waitForDestinationChainReceipt(
-        crossProcess.txHash,
-        action.toToken.coinKey,
-        action.fromChainId,
-        action.toChainId
+      destinationTxReceipt = await this.waitForReceivingChainReceipt(
+        step.tool as BridgeTool,
+        fromChain.id,
+        toChain.id,
+        crossProcess.txHash
       )
     } catch (e: any) {
-      let errorMessage = 'Failed waiting'
-      if (e.message) errorMessage += ':\n' + e.message
-
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
-        errorMessage,
+        errorMessage: 'Failed waiting',
         errorCode: e.code,
       })
       statusManager.updateExecution(step, 'FAILED')
@@ -169,14 +171,13 @@ export class HopExecutionManager {
     }
 
     // -> parse receipt & set status
-    const parsedReceipt = await hop.parseReceipt(
+    const parsedReceipt = await parseReceipt(
       await signer.getAddress(),
       step.action.toToken.address,
-      crossProcess.txHash,
+      await loadTransaction(fromChain.id, crossProcess.txHash),
       destinationTxReceipt
     )
 
-    // step.execution.gasUsed = parsedReceipt.gasUsed
     statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
       txHash: destinationTxReceipt.transactionHash,
       txLink:
@@ -185,12 +186,54 @@ export class HopExecutionManager {
         destinationTxReceipt.transactionHash,
       message: 'Funds Received:',
     })
+
     statusManager.updateExecution(step, 'DONE', {
       fromAmount: parsedReceipt.fromAmount,
       toAmount: parsedReceipt.toAmount,
+      // gasUsed: parsedReceipt.gasUsed,
     })
 
     // DONE
     return step.execution
+  }
+
+  private async waitForReceivingChainReceipt(
+    tool: BridgeTool,
+    fromChainId: ChainId,
+    toChainId: ChainId,
+    txHash: string
+  ): Promise<TransactionReceipt> {
+    const getStatus = (): Promise<StatusResponse | undefined> =>
+      new Promise(async (resolve, reject) => {
+        let statusResponse: StatusResponse
+        try {
+          statusResponse = await Lifi.getStatus(
+            tool,
+            fromChainId,
+            toChainId,
+            txHash
+          )
+        } catch (e) {
+          return reject(e)
+        }
+
+        switch (statusResponse.status) {
+          case 'DONE':
+            return resolve(statusResponse)
+          case 'PENDING':
+            return resolve(undefined)
+          case 'FAILED':
+          default:
+            return reject()
+        }
+      })
+
+    const status = await repeatUntilDone(getStatus, 5_000)
+
+    if (!status.receiving?.txHash) {
+      throw new ServerError('Status does not contain receiving txHash')
+    }
+
+    return loadTransactionReceipt(toChainId, status.receiving.txHash)
   }
 }

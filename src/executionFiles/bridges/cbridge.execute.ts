@@ -6,7 +6,7 @@ import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
-import { ExecuteCrossParams, getChainById } from '../../types'
+import { ExecuteCrossParamsOld, getChainById } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
@@ -27,7 +27,7 @@ export class CbridgeExecutionManager {
     step,
     statusManager,
     hooks,
-  }: ExecuteCrossParams): Promise<Execution> => {
+  }: ExecuteCrossParamsOld): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)
