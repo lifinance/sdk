@@ -82,6 +82,7 @@ export class BridgeExecutionManager {
           statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
+          statusManager.updateExecution(step, 'FAILED')
           throw new ServerError(crossProcess.errorMessage)
         }
 
@@ -103,7 +104,7 @@ export class BridgeExecutionManager {
         signer = updatedSigner
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-        if (!this.shouldContinue) return step.execution // stop before user action is required
+        if (!this.shouldContinue) return step.execution
 
         tx = await signer.sendTransaction(transactionRequest)
 
@@ -164,7 +165,7 @@ export class BridgeExecutionManager {
     }
 
     statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
-      txHash: crossProcess.txHash,
+      txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +
         'tx/' +
