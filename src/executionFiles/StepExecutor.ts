@@ -10,7 +10,6 @@ import {
   Step,
   SwapStep,
 } from '../types'
-import { MultichainExecutionManager } from './bridges/multichain.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
 import { NXTPExecutionManager } from './bridges/nxtp.execute'
@@ -30,7 +29,6 @@ export class StepExecutor {
   private nxtpExecutionManager = new NXTPExecutionManager()
   private horizonExecutionManager = new HorizonExecutionManager()
   private cbridgeExecutionManager = new CbridgeExecutionManager()
-  private multichainExecutionManager = new MultichainExecutionManager()
 
   executionStopped = false
 
@@ -44,7 +42,6 @@ export class StepExecutor {
     this.nxtpExecutionManager.setShouldContinue(false)
     this.horizonExecutionManager.setShouldContinue(false)
     this.cbridgeExecutionManager.setShouldContinue(false)
-    this.multichainExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
 
     this.executionStopped = true
@@ -137,15 +134,14 @@ export class StepExecutor {
       case BridgeTool.connext:
       case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
-      case BridgeTool.hop:
-        return await this.bridgeExecutionManager.execute(crossParams)
       case BridgeTool.horizon:
         return await this.horizonExecutionManager.execute(crossParams)
       case BridgeTool.cbridge:
         return await this.cbridgeExecutionManager.execute(crossParams)
       case BridgeTool.multichain:
       case 'anyswap': // keep for some time while user still may have unfinished routes locally
-        return await this.multichainExecutionManager.execute(crossParams)
+      case BridgeTool.hop:
+        return await this.bridgeExecutionManager.execute(crossParams)
       default:
         throw new Error('Should never reach here, bridge not defined')
     }

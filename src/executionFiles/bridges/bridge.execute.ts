@@ -15,7 +15,7 @@ import {
 } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
-import { ServerError } from '../../utils/errors'
+import { LifiErrorCodes, ServerError } from '../../utils/errors'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -199,7 +199,12 @@ export class BridgeExecutionManager {
             toChainId,
             txHash
           )
-        } catch (e) {
+        } catch (e: any) {
+          // until the source transaction is mined the API will return a 404
+          if (e.code === LifiErrorCodes.notFound) {
+            return resolve(undefined)
+          }
+
           return reject(e)
         }
 
