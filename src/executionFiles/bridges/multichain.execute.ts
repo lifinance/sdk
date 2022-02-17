@@ -3,7 +3,7 @@ import { constants } from 'ethers'
 
 import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
-import { ExecuteCrossParamsOld, getChainById } from '../../types'
+import { ExecuteCrossParams, getChainById } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
@@ -24,7 +24,7 @@ export class MultichainExecutionManager {
     step,
     statusManager,
     hooks,
-  }: ExecuteCrossParamsOld): Promise<Execution> => {
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)

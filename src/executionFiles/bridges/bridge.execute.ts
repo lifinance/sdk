@@ -4,12 +4,7 @@ import { constants } from 'ethers'
 import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
 import { ExecuteCrossParams, getChainById } from '../../types'
-import {
-  loadTransaction,
-  loadTransactionReceipt,
-  personalizeStep,
-  repeatUntilDone,
-} from '../../utils/utils'
+import { personalizeStep, repeatUntilDone } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import {
@@ -21,7 +16,6 @@ import {
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
 import { ServerError } from '../../utils/errors'
-import { TransactionReceipt } from '@ethersproject/providers'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -35,7 +29,6 @@ export class BridgeExecutionManager {
     step,
     statusManager,
     hooks,
-    parseReceipt,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
@@ -89,7 +82,7 @@ export class BridgeExecutionManager {
           statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
-          throw crossProcess.errorMessage
+          throw new ServerError(crossProcess.errorMessage)
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
@@ -153,9 +146,9 @@ export class BridgeExecutionManager {
       step,
       'Wait for Receiving Chain'
     )
-    let destinationTxReceipt: TransactionReceipt
+    let statusResponse: StatusResponse
     try {
-      destinationTxReceipt = await this.waitForReceivingChainReceipt(
+      statusResponse = await this.waitForReceivingTransaction(
         step.tool as BridgeTool,
         fromChain.id,
         toChain.id,
@@ -170,39 +163,31 @@ export class BridgeExecutionManager {
       throw e
     }
 
-    // -> parse receipt & set status
-    const parsedReceipt = await parseReceipt(
-      await signer.getAddress(),
-      step.action.toToken.address,
-      await loadTransaction(fromChain.id, crossProcess.txHash),
-      destinationTxReceipt
-    )
-
     statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
-      txHash: destinationTxReceipt.transactionHash,
+      txHash: crossProcess.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +
         'tx/' +
-        destinationTxReceipt.transactionHash,
+        statusResponse.receiving?.txHash,
       message: 'Funds Received:',
     })
 
     statusManager.updateExecution(step, 'DONE', {
-      fromAmount: parsedReceipt.fromAmount,
-      toAmount: parsedReceipt.toAmount,
-      // gasUsed: parsedReceipt.gasUsed,
+      fromAmount: statusResponse.sending.amount,
+      toAmount: statusResponse.receiving?.amount,
+      // gasUsed: statusResponse.gasUsed,
     })
 
     // DONE
     return step.execution
   }
 
-  private async waitForReceivingChainReceipt(
+  private async waitForReceivingTransaction(
     tool: BridgeTool,
     fromChainId: ChainId,
     toChainId: ChainId,
     txHash: string
-  ): Promise<TransactionReceipt> {
+  ): Promise<StatusResponse> {
     const getStatus = (): Promise<StatusResponse | undefined> =>
       new Promise(async (resolve, reject) => {
         let statusResponse: StatusResponse
@@ -230,10 +215,10 @@ export class BridgeExecutionManager {
 
     const status = await repeatUntilDone(getStatus, 5_000)
 
-    if (!status.receiving?.txHash) {
-      throw new ServerError('Status does not contain receiving txHash')
+    if (!status.receiving) {
+      throw new ServerError('Status does not contain receiving information')
     }
 
-    return loadTransactionReceipt(toChainId, status.receiving.txHash)
+    return status
   }
 }

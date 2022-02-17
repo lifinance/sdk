@@ -9,7 +9,7 @@ import { constants, ethers, Signer, utils } from 'ethers'
 import Lifi from '../../Lifi'
 import {
   ChainId,
-  ExecuteCrossParamsOld,
+  ExecuteCrossParams,
   Execution,
   getChainById,
   isLifiStep,
@@ -40,7 +40,7 @@ export class NXTPExecutionManager {
     step,
     statusManager,
     hooks,
-  }: ExecuteCrossParamsOld): Promise<Execution> => {
+  }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
     const fromChain = getChainById(action.fromChainId)

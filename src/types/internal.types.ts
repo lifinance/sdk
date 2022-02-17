@@ -1,6 +1,5 @@
 import {
   CrossStep,
-  Execution,
   LifiStep,
   Route,
   RouteOptions,
@@ -21,11 +20,6 @@ import {
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
   amountRendered?: string
-}
-
-export interface ProgressStep {
-  title: string
-  description: string
 }
 
 export type ParsedReceipt = {
@@ -54,24 +48,8 @@ export interface ExecuteSwapParams extends ExecutionParams {
 
 export interface ExecuteCrossParams extends ExecutionParams {
   step: CrossStep | LifiStep
-  parseReceipt: (
-    toAddress: string,
-    toTokenAddress: string,
-    tx: TransactionResponse,
-    receipt: TransactionReceipt
-  ) => Promise<ParsedReceipt>
 }
 
-// TODO: remove once all bridges use bridge.execute.ts
-export type ExecuteCrossParamsOld = {
-  signer: Signer
-  step: CrossStep | LifiStep
-  statusManager: StatusManager
-  hooks: Hooks
-}
-
-export type UpdateStep = (step: Step, execution: Execution) => void
-export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
 
 export type Config = {

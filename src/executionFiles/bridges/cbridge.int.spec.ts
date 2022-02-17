@@ -1,5 +1,5 @@
 import { getRpcProvider } from '../../connectors'
-import { ParsedReceipt, ChainId } from '../../types'
+import { ChainId, ParsedReceipt } from '../../types'
 import cbridge from './cbridge'
 
 jest.setTimeout(10_000)

@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { getRpcProvider } from '../../connectors'
-import { ParsedReceipt, ChainId } from '../../types'
+import { ChainId, ParsedReceipt } from '../../types'
 import multichain from './multichain'
 
 jest.setTimeout(10_000)

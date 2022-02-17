@@ -2,11 +2,7 @@ import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20
 import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
 import { Contract, ContractTransaction, Signer } from 'ethers'
-import {
-  Block,
-  TransactionReceipt,
-  TransactionResponse,
-} from '@ethersproject/providers'
+import { Block, TransactionReceipt } from '@ethersproject/providers'
 import { Token } from '@lifinance/types'
 
 import { ChainId, Step } from '../types'
@@ -132,20 +128,6 @@ export const repeatUntilDone = async <T>(
 }
 
 /**
- * Loads a transaction using the rpc for the given chain id
- * @param chainId The chain id where the transaction should be loaded from
- * @param txHash The hash of the transaction
- * @returns TransactionResponse
- */
-export const loadTransaction = async (
-  chainId: ChainId,
-  txHash: string
-): Promise<TransactionResponse> => {
-  const rpc = getRpcProvider(chainId)
-  return rpc.getTransaction(txHash)
-}
-
-/**
  * Loads a transaction receipt using the rpc for the given chain id
  * @param chainId The chain id where the transaction should be loaded from
  * @param txHash The hash of the transaction
@@ -155,7 +137,8 @@ export const loadTransactionReceipt = async (
   chainId: ChainId,
   txHash: string
 ): Promise<TransactionReceipt> => {
-  const tx = await loadTransaction(chainId, txHash)
+  const rpc = getRpcProvider(chainId)
+  const tx = await rpc.getTransaction(txHash)
   return tx.wait()
 }
 

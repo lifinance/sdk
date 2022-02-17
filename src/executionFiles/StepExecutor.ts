@@ -21,7 +21,6 @@ import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
 import { switchChain } from './switchChain'
 import { BridgeExecutionManager } from './bridges/bridge.execute'
-import hop from './bridges/hop'
 
 export class StepExecutor {
   settings: Hooks
@@ -139,10 +138,7 @@ export class StepExecutor {
       case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
       case BridgeTool.hop:
-        return await this.bridgeExecutionManager.execute({
-          ...crossParams,
-          parseReceipt: hop.parseReceipt,
-        })
+        return await this.bridgeExecutionManager.execute(crossParams)
       case BridgeTool.horizon:
         return await this.horizonExecutionManager.execute(crossParams)
       case BridgeTool.cbridge:
