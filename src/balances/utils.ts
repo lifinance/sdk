@@ -133,7 +133,10 @@ const executeMulticall = async (
   // Collect calls we want to make
   const calls: Array<Call> = []
   tokens.map((token) => {
-    if (token.address === constants.AddressZero) {
+    if (
+      token.address === constants.AddressZero ||
+      token.address == '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    ) {
       calls.push({
         address: multicallAddress,
         name: 'getEthBalance',
