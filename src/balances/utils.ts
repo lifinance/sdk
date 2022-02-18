@@ -212,7 +212,6 @@ const getBalancesFromProvider = async (
 ): Promise<TokenAmount[]> => {
   const chainId = tokens[0].chainId
   const rpc = getRpcProvider(chainId)
-
   const tokenAmountPromises: Promise<TokenAmount>[] = tokens.map(
     async (token): Promise<TokenAmount> => {
       let amount = '0'
@@ -253,7 +252,10 @@ const getBalanceFromProvider = async (
   const blockNumber = await getCurrentBlockNumber(chainId)
 
   let balance
-  if (assetId === constants.AddressZero) {
+  if (
+    assetId === constants.AddressZero ||
+    assetId === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+  ) {
     balance = await provider.getBalance(walletAddress, blockNumber)
   } else {
     const contract = new ethers.Contract(
@@ -261,7 +263,9 @@ const getBalanceFromProvider = async (
       ['function balanceOf(address owner) view returns (uint256)'],
       provider
     )
-    balance = await contract.balanceOf(walletAddress, { blockTag: blockNumber })
+    balance = await contract.balanceOf(walletAddress, {
+      blockTag: blockNumber,
+    })
   }
   return {
     amount: balance,
