@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 import { FallbackProvider } from '@ethersproject/providers'
 import { Contract } from '@ethersproject/contracts'
 import { ChainId, Token, TokenAmount } from '@lifinance/types'

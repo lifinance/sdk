@@ -48,13 +48,11 @@
     "url": "https://github.com/lifinance/sdk/issues"
   },
   "dependencies": {
-    "@connext/nxtp-sdk": "^0.1.8",
     "@ethersproject/abi": "^5.5.0",
     "@ethersproject/contracts": "^5.4.0",
     "@lifinance/types": "0.10.1",
     "axios": "^0.25.0",
     "bignumber.js": "^9.0.1",
-    "bridge-sdk": "^2.13.0",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.5.2"
   },
