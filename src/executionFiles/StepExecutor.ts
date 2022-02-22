@@ -10,7 +10,6 @@ import {
   Step,
   SwapStep,
 } from '../types'
-import { HorizonExecutionManager } from './bridges/horizon.execute'
 import { NXTPExecutionManager } from './bridges/nxtp.execute'
 import { oneinch } from './exchanges/oneinch'
 import { openocean } from './exchanges/openocean'
@@ -26,7 +25,6 @@ export class StepExecutor {
   private swapExecutionManager = new SwapExecutionManager()
   private bridgeExecutionManager = new BridgeExecutionManager()
   private nxtpExecutionManager = new NXTPExecutionManager()
-  private horizonExecutionManager = new HorizonExecutionManager()
 
   executionStopped = false
 
@@ -38,7 +36,6 @@ export class StepExecutor {
   stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
     this.nxtpExecutionManager.setShouldContinue(false)
-    this.horizonExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
 
     this.executionStopped = true
@@ -131,8 +128,6 @@ export class StepExecutor {
       case BridgeTool.connext:
       case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
-      case BridgeTool.horizon:
-        return await this.horizonExecutionManager.execute(crossParams)
       case BridgeTool.cbridge:
       case BridgeTool.multichain:
       case 'anyswap': // keep for some time while user still may have unfinished routes locally
