@@ -4,15 +4,20 @@ import { constants } from 'ethers'
 import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
 import { ExecuteCrossParams, getChainById } from '../../types'
-import { personalizeStep } from '../../utils/utils'
+import { personalizeStep, repeatUntilDone } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import hop from './hop'
-import { Execution } from '@lifinance/types'
+import {
+  BridgeTool,
+  ChainId,
+  Execution,
+  StatusResponse,
+} from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
+import { ServerError } from '../../utils/errors'
 
-export class HopExecutionManager {
+export class BridgeExecutionManager {
   shouldContinue = true
 
   setShouldContinue = (val: boolean): void => {
@@ -78,7 +83,7 @@ export class HopExecutionManager {
             errorMessage: 'Unable to prepare Transaction',
           })
           statusManager.updateExecution(step, 'FAILED')
-          throw crossProcess.errorMessage
+          throw new ServerError(crossProcess.errorMessage)
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
@@ -123,9 +128,9 @@ export class HopExecutionManager {
       } else {
         const error = parseWalletError(e, step, crossProcess)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
-          errorMessage: e.message,
+          errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,
-          errorCode: e.code,
+          errorCode: error.code,
         })
         statusManager.updateExecution(step, 'FAILED')
         throw error
@@ -137,60 +142,84 @@ export class HopExecutionManager {
     })
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    // coinKey should always be set since this data is coming from the Lifi Backend.
-    if (!action.toToken.coinKey) {
-      console.error("toToken doesn't contain coinKey, aborting")
-      throw new Error("toToken doesn't contain coinKey")
-    }
-
     const waitForTxProcess = statusManager.findOrCreateProcess(
       'waitForTxProcess',
       step,
       'Wait for Receiving Chain'
     )
-    let destinationTxReceipt
+    let statusResponse: StatusResponse
     try {
-      destinationTxReceipt = await hop.waitForDestinationChainReceipt(
-        crossProcess.txHash,
-        action.toToken.coinKey,
-        action.fromChainId,
-        action.toChainId
+      statusResponse = await this.waitForReceivingTransaction(
+        step.tool as BridgeTool,
+        fromChain.id,
+        toChain.id,
+        crossProcess.txHash
       )
     } catch (e: any) {
-      let errorMessage = 'Failed waiting'
-      if (e.message) errorMessage += ':\n' + e.message
-
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
-        errorMessage,
+        errorMessage: 'Failed waiting',
         errorCode: e.code,
       })
       statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
-    // -> parse receipt & set status
-    const parsedReceipt = await hop.parseReceipt(
-      await signer.getAddress(),
-      step.action.toToken.address,
-      crossProcess.txHash,
-      destinationTxReceipt
-    )
-
-    // step.execution.gasUsed = parsedReceipt.gasUsed
     statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
-      txHash: destinationTxReceipt.transactionHash,
+      txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +
         'tx/' +
-        destinationTxReceipt.transactionHash,
+        statusResponse.receiving?.txHash,
       message: 'Funds Received:',
     })
+
     statusManager.updateExecution(step, 'DONE', {
-      fromAmount: parsedReceipt.fromAmount,
-      toAmount: parsedReceipt.toAmount,
+      fromAmount: statusResponse.sending.amount,
+      toAmount: statusResponse.receiving?.amount,
+      // gasUsed: statusResponse.gasUsed,
     })
 
     // DONE
     return step.execution
+  }
+
+  private async waitForReceivingTransaction(
+    tool: BridgeTool,
+    fromChainId: ChainId,
+    toChainId: ChainId,
+    txHash: string
+  ): Promise<StatusResponse> {
+    const getStatus = (): Promise<StatusResponse | undefined> =>
+      new Promise(async (resolve, reject) => {
+        let statusResponse: StatusResponse
+        try {
+          statusResponse = await Lifi.getStatus(
+            tool,
+            fromChainId,
+            toChainId,
+            txHash
+          )
+        } catch (e) {
+          return reject(e)
+        }
+
+        switch (statusResponse.status) {
+          case 'DONE':
+            return resolve(statusResponse)
+          case 'PENDING':
+            return resolve(undefined)
+          case 'FAILED':
+          default:
+            return reject()
+        }
+      })
+
+    const status = await repeatUntilDone(getStatus, 5_000)
+
+    if (!status.receiving) {
+      throw new ServerError('Status does not contain receiving information')
+    }
+
+    return status
   }
 }

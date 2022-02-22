@@ -1,6 +1,5 @@
 import {
   CrossStep,
-  Execution,
   LifiStep,
   Route,
   RouteOptions,
@@ -13,15 +12,14 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
+import {
+  TransactionReceipt,
+  TransactionResponse,
+} from '@ethersproject/providers'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
   amountRendered?: string
-}
-
-export interface ProgressStep {
-  title: string
-  description: string
 }
 
 export type ParsedReceipt = {
@@ -33,24 +31,25 @@ export type ParsedReceipt = {
   toTokenAddress?: string
 }
 
-export type ExecuteSwapParams = {
+interface ExecutionParams {
   signer: Signer
+  step: Step
+  statusManager: StatusManager
+  hooks: Hooks
+}
+
+export interface ExecuteSwapParams extends ExecutionParams {
   step: SwapStep
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parseReceipt: (...args: any[]) => Promise<ParsedReceipt>
-  statusManager: StatusManager
-  hooks: Hooks
+  parseReceipt: (
+    tx: TransactionResponse,
+    receipt: TransactionReceipt
+  ) => Promise<ParsedReceipt>
 }
 
-export type ExecuteCrossParams = {
-  signer: Signer
+export interface ExecuteCrossParams extends ExecutionParams {
   step: CrossStep | LifiStep
-  statusManager: StatusManager
-  hooks: Hooks
 }
 
-export type UpdateStep = (step: Step, execution: Execution) => void
-export type UpdateExecution = (execution: Execution) => void
 export type CallbackFunction = (updatedRoute: Route) => void
 
 export type Config = {

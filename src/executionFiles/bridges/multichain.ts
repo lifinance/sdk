@@ -4,7 +4,7 @@ import {
 } from '@ethersproject/providers'
 import axios from 'axios'
 
-import { loadTransaction, sleep } from '../../utils/utils'
+import { loadTransactionReceipt, sleep } from '../../utils/utils'
 import { BigNumber, ethers } from 'ethers'
 import { ParsedReceipt } from '../../types'
 import { defaultReceiptParsing } from '../utils'
@@ -24,7 +24,7 @@ const waitForDestinationChainReceipt = async (
     if (details && details.info.swaptx) {
       try {
         const txHash = details.info.swaptx
-        return await loadTransaction(toChainId, txHash)
+        return await loadTransactionReceipt(toChainId, txHash)
       } catch (e) {
         //
       }

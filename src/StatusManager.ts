@@ -12,7 +12,7 @@ import { deepClone } from './utils/utils'
 
 interface Receipt {
   fromAmount?: string
-  toAmount: string
+  toAmount?: string
 }
 
 type InternalUpdateRouteCallback = (route: Route) => void

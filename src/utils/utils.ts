@@ -128,12 +128,12 @@ export const repeatUntilDone = async <T>(
 }
 
 /**
- * Loads a transaction using the rpc for the given chain id
+ * Loads a transaction receipt using the rpc for the given chain id
  * @param chainId The chain id where the transaction should be loaded from
  * @param txHash The hash of the transaction
  * @returns TransactionReceipt
  */
-export const loadTransaction = async (
+export const loadTransactionReceipt = async (
   chainId: ChainId,
   txHash: string
 ): Promise<TransactionReceipt> => {

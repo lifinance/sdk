@@ -12,7 +12,6 @@ import {
 } from '../types'
 import { MultichainExecutionManager } from './bridges/multichain.execute'
 import { CbridgeExecutionManager } from './bridges/cbridge.execute'
-import { HopExecutionManager } from './bridges/hop.execute'
 import { HorizonExecutionManager } from './bridges/horizon.execute'
 import { NXTPExecutionManager } from './bridges/nxtp.execute'
 import { oneinch } from './exchanges/oneinch'
@@ -21,13 +20,14 @@ import { paraswap } from './exchanges/paraswap'
 import { SwapExecutionManager } from './exchanges/swap.execute'
 import { uniswap } from './exchanges/uniswaps'
 import { switchChain } from './switchChain'
+import { BridgeExecutionManager } from './bridges/bridge.execute'
 
 export class StepExecutor {
   settings: Hooks
   statusManager: StatusManager
   private swapExecutionManager = new SwapExecutionManager()
+  private bridgeExecutionManager = new BridgeExecutionManager()
   private nxtpExecutionManager = new NXTPExecutionManager()
-  private hopExecutionManager = new HopExecutionManager()
   private horizonExecutionManager = new HorizonExecutionManager()
   private cbridgeExecutionManager = new CbridgeExecutionManager()
   private multichainExecutionManager = new MultichainExecutionManager()
@@ -42,10 +42,10 @@ export class StepExecutor {
   stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
     this.nxtpExecutionManager.setShouldContinue(false)
-    this.hopExecutionManager.setShouldContinue(false)
     this.horizonExecutionManager.setShouldContinue(false)
     this.cbridgeExecutionManager.setShouldContinue(false)
     this.multichainExecutionManager.setShouldContinue(false)
+    this.bridgeExecutionManager.setShouldContinue(false)
 
     this.executionStopped = true
   }
@@ -138,7 +138,7 @@ export class StepExecutor {
       case 'nxtp': // keep for some time while user still may have unfinished routes locally
         return await this.nxtpExecutionManager.execute(crossParams)
       case BridgeTool.hop:
-        return await this.hopExecutionManager.execute(crossParams)
+        return await this.bridgeExecutionManager.execute(crossParams)
       case BridgeTool.horizon:
         return await this.horizonExecutionManager.execute(crossParams)
       case BridgeTool.cbridge:

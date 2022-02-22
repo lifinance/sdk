@@ -4,6 +4,7 @@ enum ErrorType {
   UnknownError = 'UnknownError',
   ServerError = 'ServerError',
   ValidationError = 'ValidationError',
+  NotFoundError = 'NotFoundError',
 }
 
 export enum LifiErrorCodes {
@@ -13,6 +14,7 @@ export enum LifiErrorCodes {
   transactionFailed = 1003,
   timeout = 1004,
   noProviderAvailable = 1005,
+  notFound = 1006,
 }
 
 enum MetaMaskRPCErrorCodes {
@@ -108,6 +110,18 @@ export class ValidationError extends LifiError {
     super(
       ErrorType.ValidationError,
       LifiErrorCodes.validationError,
+      message,
+      htmlMessage,
+      stack
+    )
+  }
+}
+
+export class NotFoundError extends LifiError {
+  constructor(message: string, htmlMessage?: string, stack?: string) {
+    super(
+      ErrorType.NotFoundError,
+      LifiErrorCodes.notFound,
       message,
       htmlMessage,
       stack
