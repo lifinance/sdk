@@ -1,8 +1,8 @@
 import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20Minimal.sol/IERC20Minimal.json'
 import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
-import { Contract, ContractTransaction, Signer } from 'ethers'
-import { Block, TransactionReceipt } from '@ethersproject/providers'
+import { constants, Contract, ContractTransaction, Signer } from 'ethers'
+import { TransactionReceipt, Block } from '@ethersproject/providers'
 import { Token } from '@lifinance/types'
 
 import { ChainId, Step } from '../types'
@@ -148,4 +148,14 @@ export const loadBlock = async (
 ): Promise<Block> => {
   const rpc = getRpcProvider(chainId)
   return rpc.getBlock(blockNumber)
+}
+
+export const isZeroAddress = (address: string): boolean => {
+  if (
+    address === constants.AddressZero ||
+    address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+  ) {
+    return true
+  }
+  return false
 }

@@ -3,10 +3,10 @@ import { FallbackProvider } from '@ethersproject/providers'
 import { Contract } from '@ethersproject/contracts'
 import { ChainId, Token, TokenAmount } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
-import { Bytes, constants, ethers } from 'ethers'
+import { Bytes, ethers } from 'ethers'
 
 import { getMulticallAddress, getRpcProvider } from '../connectors'
-import { splitListIntoChunks } from '../utils/utils'
+import { isZeroAddress, splitListIntoChunks } from '../utils/utils'
 import { Fragment, Interface, JsonFragment } from '@ethersproject/abi'
 
 const MAX_MULTICALL_SIZE = 100
@@ -133,7 +133,7 @@ const executeMulticall = async (
   // Collect calls we want to make
   const calls: Array<Call> = []
   tokens.map((token) => {
-    if (token.address === constants.AddressZero) {
+    if (isZeroAddress(token.address)) {
       calls.push({
         address: multicallAddress,
         name: 'getEthBalance',
@@ -212,7 +212,6 @@ const getBalancesFromProvider = async (
 ): Promise<TokenAmount[]> => {
   const chainId = tokens[0].chainId
   const rpc = getRpcProvider(chainId)
-
   const tokenAmountPromises: Promise<TokenAmount>[] = tokens.map(
     async (token): Promise<TokenAmount> => {
       let amount = '0'
@@ -253,7 +252,7 @@ const getBalanceFromProvider = async (
   const blockNumber = await getCurrentBlockNumber(chainId)
 
   let balance
-  if (assetId === constants.AddressZero) {
+  if (isZeroAddress(assetId)) {
     balance = await provider.getBalance(walletAddress, blockNumber)
   } else {
     const contract = new ethers.Contract(
@@ -261,7 +260,9 @@ const getBalanceFromProvider = async (
       ['function balanceOf(address owner) view returns (uint256)'],
       provider
     )
-    balance = await contract.balanceOf(walletAddress, { blockTag: blockNumber })
+    balance = await contract.balanceOf(walletAddress, {
+      blockTag: blockNumber,
+    })
   }
   return {
     amount: balance,
