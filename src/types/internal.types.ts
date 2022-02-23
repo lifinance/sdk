@@ -72,9 +72,6 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
-export type GetPublicKeyHook = () => Promise<string | undefined>
-export type DecryptHook = (data: string) => Promise<string>
-
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
@@ -82,8 +79,6 @@ export interface ExecutionData {
 }
 
 export interface ExecutionSettings {
-  getPublicKeyHook?: GetPublicKeyHook
-  decryptHook?: DecryptHook
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
 }

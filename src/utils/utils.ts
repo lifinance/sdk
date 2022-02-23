@@ -1,11 +1,9 @@
-import ERC20 from '@connext/nxtp-contracts/artifacts/contracts/interfaces/IERC20Minimal.sol/IERC20Minimal.json'
-import { IERC20Minimal } from '@connext/nxtp-contracts/typechain'
 import BigNumber from 'bignumber.js'
 import { constants, Contract, ContractTransaction, Signer } from 'ethers'
-import { TransactionReceipt, Block } from '@ethersproject/providers'
+import { TransactionReceipt } from '@ethersproject/providers'
 import { Token } from '@lifinance/types'
 
-import { ChainId, Step } from '../types'
+import { ChainId, ERC20_ABI, ERC20Contract, Step } from '../types'
 import { getRpcProvider } from '../connectors'
 
 export const deepClone = <T>(src: T): T => {
@@ -44,7 +42,7 @@ export const getApproved = async (
   contractAddress: string
 ): Promise<BigNumber> => {
   const signerAddress = await signer.getAddress()
-  const erc20 = new Contract(tokenAddress, ERC20.abi, signer) as IERC20Minimal
+  const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
 
   try {
     const approved = await erc20.allowance(signerAddress, contractAddress)
@@ -60,7 +58,7 @@ export const setApproval = (
   contractAddress: string,
   amount: string
 ): Promise<ContractTransaction> => {
-  const erc20 = new Contract(tokenAddress, ERC20.abi, signer) as IERC20Minimal
+  const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
 
   return erc20.approve(contractAddress, amount)
 }
@@ -140,14 +138,6 @@ export const loadTransactionReceipt = async (
   const rpc = getRpcProvider(chainId)
   const tx = await rpc.getTransaction(txHash)
   return tx.wait()
-}
-
-export const loadBlock = async (
-  chainId: ChainId,
-  blockNumber: number
-): Promise<Block> => {
-  const rpc = getRpcProvider(chainId)
-  return rpc.getBlock(blockNumber)
 }
 
 export const isZeroAddress = (address: string): boolean => {
