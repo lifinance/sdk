@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.6-beta.0](https://github.com/lifinance/sdk/compare/v0.4.5...v0.4.6-beta.0) (2022-02-23)
+
+
+### Features
+
+* **Hop:** use common bridge executor for hop transfers ([#40](https://github.com/lifinance/sdk/issues/40)) ([b655190](https://github.com/lifinance/sdk/commit/b655190a481a29b1b09b09e97c1c9edd1d25fd92))
+* use common bridge executor for bridge calls ([#42](https://github.com/lifinance/sdk/issues/42)) ([2c88651](https://github.com/lifinance/sdk/commit/2c88651532af66a31108489dd455a2fece54436b))
+
+
+### Bug Fixes
+
+* handle tokens with 0xeee... zero addresses ([#41](https://github.com/lifinance/sdk/issues/41)) ([130df5a](https://github.com/lifinance/sdk/commit/130df5a3c60e4e5848e7893035c19bec6a9e8365))
+
 ### [0.4.5](https://github.com/lifinance/sdk/compare/v0.4.4...v0.4.5) (2022-02-10)
 
 ### [0.4.4](https://github.com/lifinance/sdk/compare/v0.4.2...v0.4.4) (2022-02-09)
