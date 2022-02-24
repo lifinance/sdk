@@ -50,7 +50,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.5.0",
     "@ethersproject/contracts": "^5.4.0",
-    "@lifinance/types": "0.10.7",
+    "@lifinance/types": "0.10.8",
     "axios": "^0.25.0",
     "bignumber.js": "^9.0.1",
     "eth-rpc-errors": "^4.0.3",
