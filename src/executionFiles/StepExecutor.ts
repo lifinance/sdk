@@ -2,7 +2,6 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 
 import {
-  BridgeTool,
   CrossStep,
   ExchangeTool,
   Hooks,
@@ -121,14 +120,6 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    let stepTool = step.tool
-    if (step.tool === 'nxtp') stepTool = BridgeTool.connext // keep for some time while user still may have unfinished routes locally
-    if (step.tool === 'anyswap') stepTool = BridgeTool.multichain // keep for some time while user still may have unfinished routes locally
-
-    if (Object.values<string>(BridgeTool).includes(stepTool)) {
-      return await this.bridgeExecutionManager.execute(crossParams)
-    } else {
-      throw new Error('Should never reach here, bridge not defined')
-    }
+    return await this.bridgeExecutionManager.execute(crossParams)
   }
 }
