@@ -1,7 +1,13 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.4.7](https://github.com/lifinance/sdk/compare/v0.4.6...v0.4.7) (2022-02-24)
+
+
+### Features
+
+* use common bridge executor for all known BridgeTools ([#43](https://github.com/lifinance/sdk/issues/43)) ([77626b3](https://github.com/lifinance/sdk/commit/77626b35c617a594f7f1924fc6860c35b9fafa8c))
 
 ### [0.4.6](https://github.com/lifinance/sdk/compare/v0.4.5-beta.2...v0.4.6) (2022-02-24)
 
