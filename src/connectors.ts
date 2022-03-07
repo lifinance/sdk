@@ -1,11 +1,11 @@
 import { providers } from 'ethers'
-import Lifi from '.'
+import Lifi, { getRandomNumber } from '.'
 
 import { ChainId } from './types'
 import { FallbackProvider } from '@ethersproject/providers'
 
 // cached providers
-const chainProviders: Record<number, providers.FallbackProvider> = {}
+const chainProviders: Record<number, providers.FallbackProvider[]> = {}
 
 // Archive RPC Provider
 const archiveRpcs: Record<number, string> = {
@@ -21,21 +21,22 @@ const archiveRpcs: Record<number, string> = {
 
 // RPC Urls
 export const getRpcUrl = (chainId: ChainId, archive = false): string => {
-  if (archive && archiveRpcs[chainId]) {
-    return archiveRpcs[chainId]
-  }
-
-  return Lifi.getConfig().rpcs[chainId][0]
+  return getRpcUrls(chainId, archive)[0]
 }
 
-export const getRpcUrls = (
-  chainIds: Array<ChainId>
-): Record<number, string[]> => {
-  const selectedProviders: Record<number, string[]> = {}
-  chainIds.forEach((chainId) => {
-    selectedProviders[chainId] = Lifi.getConfig().rpcs[chainId]
-  })
-  return selectedProviders
+export const getRpcUrls = (chainId: ChainId, archive = false): string[] => {
+  if (archive && archiveRpcs[chainId]) {
+    return [archiveRpcs[chainId]]
+  }
+
+  return Lifi.getConfig().rpcs[chainId]
+}
+
+const getRandomProvider = (
+  providerList: providers.FallbackProvider[]
+): providers.FallbackProvider => {
+  const index = getRandomNumber(0, providerList.length - 1)
+  return providerList[index]
 }
 
 // Provider
@@ -46,16 +47,24 @@ export const getRpcProvider = (
   if (archive && archiveRpcs[chainId]) {
     // return archive PRC, but don't cache it
     return new providers.FallbackProvider([
-      new providers.JsonRpcProvider(getRpcUrl(chainId, archive), chainId),
+      new providers.StaticJsonRpcProvider(getRpcUrl(chainId, archive), chainId),
     ])
   }
 
   if (!chainProviders[chainId]) {
-    chainProviders[chainId] = new providers.FallbackProvider([
-      new providers.JsonRpcProvider(getRpcUrl(chainId, archive), chainId),
-    ])
+    chainProviders[chainId] = []
+
+    const urls = getRpcUrls(chainId, archive)
+    urls.forEach((url) => {
+      chainProviders[chainId].push(
+        new providers.FallbackProvider([
+          new providers.StaticJsonRpcProvider(url, chainId),
+        ])
+      )
+    })
   }
-  return chainProviders[chainId]
+
+  return getRandomProvider(chainProviders[chainId])
 }
 
 // Multicall
