@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.8](https://github.com/lifinance/sdk/compare/v0.4.7...v0.4.8) (2022-03-07)
+
+
+### Features
+
+* randomly select RPCs to prevent quota issues ([#44](https://github.com/lifinance/sdk/issues/44)) ([4346282](https://github.com/lifinance/sdk/commit/4346282ccd82072cba0e8ba1101f1b55b5bbd8f4))
+
 ### [0.4.7](https://github.com/lifinance/sdk/compare/v0.4.6...v0.4.7) (2022-02-24)
 
 
