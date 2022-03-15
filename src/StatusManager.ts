@@ -7,12 +7,14 @@ import {
   Route,
   Status,
   Step,
+  Token,
 } from './types'
 import { deepClone } from './utils/utils'
 
 interface Receipt {
   fromAmount?: string
   toAmount?: string
+  toToken?: Token
 }
 
 type InternalUpdateRouteCallback = (route: Route) => void
@@ -80,6 +82,7 @@ export default class StatusManager {
     if (receipt) {
       step.execution.fromAmount = receipt.fromAmount
       step.execution.toAmount = receipt.toAmount
+      step.execution.toToken = receipt.toToken
     }
     this.updateStepInRoute(step)
     return step

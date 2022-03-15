@@ -176,6 +176,7 @@ export class BridgeExecutionManager {
     statusManager.updateExecution(step, 'DONE', {
       fromAmount: statusResponse.sending.amount,
       toAmount: statusResponse.receiving?.amount,
+      toToken: statusResponse.receiving?.token,
       // gasUsed: statusResponse.gasUsed,
     })
 
