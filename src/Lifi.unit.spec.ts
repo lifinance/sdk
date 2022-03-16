@@ -429,6 +429,34 @@ describe('LIFI SDK', () => {
     })
   })
 
+  describe('getChains', () => {
+    describe('and the backend call fails', () => {
+      it('throw an error', async () => {
+        mockedAxios.get.mockRejectedValue({
+          response: { status: 500, data: { message: 'Oops' } },
+        })
+
+        await expect(Lifi.getChains()).rejects.toThrowError(
+          new ServerError('Oops')
+        )
+        expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('and the backend call is successful', () => {
+      it('call the server once', async () => {
+        const chain = { id: 1 }
+        mockedAxios.get.mockReturnValue(
+          Promise.resolve({ data: { chains: [chain] } })
+        )
+        const chains = await Lifi.getChains()
+
+        expect(chains).toEqual([chain])
+        expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
+
   describe('getStepTransaction', () => {
     const getAction = ({
       fromChainId = ChainId.BSC,

@@ -7,8 +7,10 @@ import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
 import { isRoutesRequest, isStep, isToken } from './typeguards'
 import {
+  Chain,
   ChainId,
   ChainKey,
+  ChainsResponse,
   Order,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -230,6 +232,23 @@ class LIFI {
         }
       )
       return result.data
+    } catch (e) {
+      throw parseBackendError(e)
+    }
+  }
+
+  /**
+   * Get all available chains
+   * @return {Promise<Chain[]>} A list of all available chains
+   * @throws {LifiError} Throws a LifiError if request fails.
+   */
+  getChains = async (): Promise<Chain[]> => {
+    try {
+      const result = await axios.get<ChainsResponse>(
+        this.config.apiUrl + 'chains'
+      )
+
+      return result.data.chains
     } catch (e) {
       throw parseBackendError(e)
     }
