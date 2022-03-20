@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.10](https://github.com/lifinance/sdk/compare/v0.4.9...v0.4.10) (2022-03-20)
+
+
+### Features
+
+* add chains endpoint to SDK ([#46](https://github.com/lifinance/sdk/issues/46)) ([4b500d7](https://github.com/lifinance/sdk/commit/4b500d738303e1c67f54c929447157a1fab26f8a))
+
 ### [0.4.9](https://github.com/lifinance/sdk/compare/v0.4.8...v0.4.9) (2022-03-15)
 
 
