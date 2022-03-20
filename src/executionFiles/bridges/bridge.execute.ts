@@ -51,7 +51,7 @@ export class BridgeExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          true,
+          false,
           this.shouldContinue
         )
       }

@@ -45,7 +45,7 @@ export class SwapExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        true,
+        false,
         this.shouldContinue
       )
     }
