@@ -138,7 +138,7 @@ describe('paraswap', () => {
         await getAndTestTransaction(hash, ChainId.BSC, expected)
       })
 
-      it('token to gas', async () => {
+      it.skip('token to gas', async () => {
         // https://bscscan.com/tx/0x39ac7cae8a2904c4ce7884a8ee1e423d285bf398038651df2f02b13072878fff
         const hash =
           '0x39ac7cae8a2904c4ce7884a8ee1e423d285bf398038651df2f02b13072878fff'

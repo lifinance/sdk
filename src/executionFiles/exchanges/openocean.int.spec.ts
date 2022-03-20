@@ -44,7 +44,7 @@ describe('openocean', () => {
         await getAndTestTransaction(hash, ChainId.ETH, expected)
       })
 
-      it('token to gas', async () => {
+      it.skip('token to gas', async () => {
         // https://etherscan.io/tx/0xba4666042f04892c9d4ed3903d3540f313bb3c4bb41f9334ba6a8b482b637b3a
         const hash =
           '0xba4666042f04892c9d4ed3903d3540f313bb3c4bb41f9334ba6a8b482b637b3a'
