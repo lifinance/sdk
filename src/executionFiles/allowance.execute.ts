@@ -26,8 +26,6 @@ export const checkAllowance = async (
     `Set Allowance for ${token.symbol}`
   )
 
-  console.log('infiniteApproval', infiniteApproval)
-
   // -> check allowance
   try {
     if (allowanceProcess.txHash) {
