@@ -3,7 +3,7 @@ import {
   Config,
   ConfigUpdate,
   getChainById,
-  Hooks,
+  InternalExecutionSettings,
   multicallAddresses,
 } from './types'
 
@@ -20,10 +20,11 @@ function chainIdToObject<T>(val: T): Record<ChainId, T> {
   return result
 }
 
-const DefaultExecutionSettings: Hooks = {
+const DefaultExecutionSettings: InternalExecutionSettings = {
   /* eslint-disable-next-line @typescript-eslint/no-empty-function */
   updateCallback: () => {},
   switchChainHook: () => Promise.resolve(undefined),
+  infiniteApproval: false,
 }
 
 export const getDefaultConfig = (): Config => {

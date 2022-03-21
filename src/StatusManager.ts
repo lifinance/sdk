@@ -1,7 +1,7 @@
 import {
   emptyExecution,
   Execution,
-  Hooks,
+  InternalExecutionSettings,
   Process,
   ProcessMessage,
   Route,
@@ -34,18 +34,18 @@ interface OptionalParameters {
 /**
  * Manages status updates of a route and provides various functions for tracking processes
  * @param  {Route} route  The route this StatusManger belongs to.
- * @param  {Hooks} settings   The ExecutionSettings for this route.
+ * @param  {InternalExecutionSettings} settings   The ExecutionSettings for this route.
  * @param  {InternalUpdateRouteCallback} internalUpdateRouteCallback  Internal callback to propage route changes.
  * @return {StatusManager}       An instance of StatusManager.
  */
 export default class StatusManager {
   private readonly route: Route
-  private readonly settings: Hooks
+  private readonly settings: InternalExecutionSettings
   private readonly internalUpdateRouteCallback: InternalUpdateRouteCallback
 
   constructor(
     route: Route,
-    settings: Hooks,
+    settings: InternalExecutionSettings,
     internalUpdateRouteCallback: InternalUpdateRouteCallback
   ) {
     this.route = route
