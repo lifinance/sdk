@@ -96,3 +96,8 @@ export type EnforcedObjectProperties<T> = T & {
 export interface ActiveRouteDictionary {
   [k: string]: ExecutionData
 }
+
+export type RevokeTokenData = {
+  token: Token
+  approvalAddress: string
+}
