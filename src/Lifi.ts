@@ -33,6 +33,7 @@ import {
 import StatusManager from './StatusManager'
 import { parseBackendError } from './utils/parseError'
 import { ValidationError } from './utils/errors'
+import { approveToken, revokeTokenApproval } from './allowance'
 
 class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -540,6 +541,44 @@ class LIFI {
     }
 
     return balances.getTokenBalancesForChains(walletAddress, tokensByChain)
+  }
+
+  /**
+   * Set approval for a certain token and amount.
+   * @param signer - The signer required to send the transactions
+   * @param token - The token that should be approved
+   * @param approvalAddress - The address that should be approved
+   * @param amount - The approval amount
+   * @param infiniteApproval - Whether infinite approval should be set
+   */
+  approveToken = (
+    signer: Signer,
+    token: Token,
+    approvalAddress: string,
+    amount: string,
+    infiniteApproval?: boolean
+  ): Promise<void> => {
+    return approveToken(
+      signer,
+      token,
+      approvalAddress,
+      amount,
+      infiniteApproval
+    )
+  }
+
+  /**
+   * Revoke approval for a certain token.
+   * @param signer - The signer required to send the transactions
+   * @param token - The token that should be approved
+   * @param approvalAddress - The address that should be approved
+   */
+  revokeTokenApproval = (
+    signer: Signer,
+    token: Token,
+    approvalAddress: string
+  ): Promise<void> => {
+    return revokeTokenApproval(signer, token, approvalAddress)
   }
 }
 
