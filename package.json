@@ -12,6 +12,7 @@
     "test": "jest --no-cache --runInBand --forceExit",
     "test:unit": "yarn test .unit.spec.ts",
     "test:cov": "jest --coverage --no-cache --runInBand --forceExit",
+    "test:e2e": "jest -c jest.e2e.config.js",
     "addscope": "node tools/packagejson name @lifinance/sdk",
     "pre-commit": "lint-staged",
     "pre-push": "yarn build && yarn test:unit",

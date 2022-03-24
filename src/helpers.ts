@@ -1,4 +1,5 @@
 import { ExternalProvider } from '@ethersproject/providers'
+import { Token } from '@lifinance/types'
 
 declare const ethereum: ExternalProvider
 
@@ -44,3 +45,7 @@ export const getEthereumPublicKeyHook = (walletAddress: string) => {
 export const getRandomNumber = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
+
+export const isSameToken = (tokenA: Token, tokenB: Token): boolean =>
+  tokenA.chainId === tokenB.chainId &&
+  tokenA.address.toLowerCase() === tokenB.address.toLowerCase()

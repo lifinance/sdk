@@ -29,10 +29,17 @@ import {
   ConfigUpdate,
   ExecutionData,
   ExecutionSettings,
+  RevokeTokenData,
 } from './types'
 import StatusManager from './StatusManager'
 import { parseBackendError } from './utils/parseError'
 import { ValidationError } from './utils/errors'
+import {
+  approveToken,
+  bulkGetTokenApproval,
+  getTokenApproval,
+  revokeTokenApproval,
+} from './allowance'
 
 class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -540,6 +547,70 @@ class LIFI {
     }
 
     return balances.getTokenBalancesForChains(walletAddress, tokensByChain)
+  }
+
+  /**
+   * Get the current approval for a certain token.
+   * @param signer - The signer owning the token
+   * @param token - The token that should be checked
+   * @param approvalAddress - The address that has be approved
+   */
+  getTokenApproval = async (
+    signer: Signer,
+    token: Token,
+    approvalAddress: string
+  ): Promise<string | undefined> => {
+    return getTokenApproval(signer, token, approvalAddress)
+  }
+
+  /**
+   * Get the current approval for a list of token / approval address pairs.
+   * @param signer - The signer owning the tokens
+   * @param tokenData - A list of token and approval address pairs
+   */
+  bulkGetTokenApproval = async (
+    signer: Signer,
+    tokenData: RevokeTokenData[]
+  ): Promise<{ token: Token; approval: string | undefined }[]> => {
+    return bulkGetTokenApproval(signer, tokenData)
+  }
+
+  /**
+   * Set approval for a certain token and amount.
+   * @param signer - The signer required to send the transactions
+   * @param token - The token that should be approved
+   * @param approvalAddress - The address that should be approved
+   * @param amount - The approval amount
+   * @param infiniteApproval - Whether infinite approval should be set
+   */
+  approveToken = (
+    signer: Signer,
+    token: Token,
+    approvalAddress: string,
+    amount: string,
+    infiniteApproval?: boolean
+  ): Promise<void> => {
+    return approveToken(
+      signer,
+      token,
+      approvalAddress,
+      amount,
+      infiniteApproval
+    )
+  }
+
+  /**
+   * Revoke approval for a certain token.
+   * @param signer - The signer required to send the transactions
+   * @param token - The token that should be approved
+   * @param approvalAddress - The address that should be approved
+   */
+  revokeTokenApproval = (
+    signer: Signer,
+    token: Token,
+    approvalAddress: string
+  ): Promise<void> => {
+    return revokeTokenApproval(signer, token, approvalAddress)
   }
 }
 

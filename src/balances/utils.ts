@@ -1,59 +1,17 @@
 import { FallbackProvider } from '@ethersproject/providers'
-import { Contract } from '@ethersproject/contracts'
 import { ChainId, Token, TokenAmount } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
-import { Bytes, ethers } from 'ethers'
+import { ethers } from 'ethers'
 
 import { getMulticallAddress, getRpcProvider } from '../connectors'
-import { isZeroAddress, splitListIntoChunks } from '../utils/utils'
-import { Fragment, Interface, JsonFragment } from '@ethersproject/abi'
-
-const MAX_MULTICALL_SIZE = 100
-
-type Call = {
-  address: string
-  name: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params?: any[]
-}
+import { isZeroAddress } from '../utils/utils'
+import { Fragment, JsonFragment } from '@ethersproject/abi'
+import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
 
 type Balance = {
   amount: BigNumber
   blockNumber: number
 }
-
-const multicallAbi = [
-  {
-    constant: true,
-    inputs: [
-      {
-        components: [
-          { name: 'target', type: 'address' },
-          { name: 'callData', type: 'bytes' },
-        ],
-        name: 'calls',
-        type: 'tuple[]',
-      },
-    ],
-    name: 'aggregate',
-    outputs: [
-      { name: 'blockNumber', type: 'uint256' },
-      { name: 'returnData', type: 'bytes[]' },
-    ],
-    payable: false,
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    constant: true,
-    inputs: [{ name: 'addr', type: 'address' }],
-    name: 'getEthBalance',
-    outputs: [{ name: 'balance', type: 'uint256' }],
-    payable: false,
-    stateMutability: 'view',
-    type: 'function',
-  },
-]
 
 const balanceAbi = [
   {
@@ -110,17 +68,7 @@ const getBalancesFromProviderUsingMulticall = async (
     throw new Error('No multicallAddress found for given chain')
   }
 
-  if (tokens.length > MAX_MULTICALL_SIZE) {
-    const chunkedList = splitListIntoChunks<Token>(tokens, MAX_MULTICALL_SIZE)
-    const chunkedResults = await Promise.all(
-      chunkedList.map((tokenChunk) =>
-        executeMulticall(walletAddress, tokenChunk, multicallAddress, chainId)
-      )
-    )
-    return chunkedResults.flat()
-  } else {
-    return executeMulticall(walletAddress, tokens, multicallAddress, chainId)
-  }
+  return executeMulticall(walletAddress, tokens, multicallAddress, chainId)
 }
 
 const executeMulticall = async (
@@ -130,7 +78,7 @@ const executeMulticall = async (
   chainId: ChainId
 ): Promise<Array<TokenAmount>> => {
   // Collect calls we want to make
-  const calls: Array<Call> = []
+  const calls: Array<MultiCallData> = []
   tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       calls.push({
@@ -147,7 +95,7 @@ const executeMulticall = async (
     }
   })
 
-  const res = await fetchDataUsingMulticall(
+  const res = await fetchViaMulticall(
     calls,
     balanceAbi,
     chainId,
@@ -167,42 +115,25 @@ const executeMulticall = async (
   })
 }
 
-const fetchDataUsingMulticall = async (
-  calls: Array<Call>,
+const fetchViaMulticall = async (
+  calls: Array<MultiCallData>,
   abi: ReadonlyArray<Fragment | JsonFragment | string>,
   chainId: number,
   multicallAddress: string
 ): Promise<Balance[]> => {
-  // 1. create contract using multicall contract address and abi...
-  const multicallContract = new Contract(
-    multicallAddress,
-    multicallAbi,
-    getRpcProvider(chainId)
+  const result = await fetchDataUsingMulticall(
+    calls,
+    abi,
+    chainId,
+    multicallAddress
   )
-  const abiInterface = new Interface(abi)
-  const callData = calls.map((call) => [
-    call.address.toLowerCase(),
-    abiInterface.encodeFunctionData(call.name, call.params),
-  ])
-  try {
-    // 3. get bytes array from multicall contract by process aggregate method...
-    const { returnData, blockNumber } = await multicallContract.aggregate(
-      callData
-    )
-    // 4. decode bytes array to useful data array...
-    return returnData
-      .map((call: Bytes, i: number) =>
-        abiInterface.decodeFunctionResult(calls[i].name, call)
-      )
-      .map((amount: [BigNumber]) => {
-        return {
-          amount: amount[0],
-          blockNumber: blockNumber.toNumber(),
-        }
-      })
-  } catch (e) {
-    return []
-  }
+
+  return result.map(({ data, blockNumber }) => {
+    return {
+      amount: data as BigNumber,
+      blockNumber,
+    }
+  })
 }
 
 const getBalancesFromProvider = async (

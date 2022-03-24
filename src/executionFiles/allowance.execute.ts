@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 import { parseWalletError } from '../utils/parseError'
-import { getApproved, setApproval } from '../utils/utils'
+import { getApproved, setApproval } from '../allowance/utils'
 import { Chain, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
 
