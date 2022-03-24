@@ -201,12 +201,12 @@ export class BridgeExecutionManager {
             txHash
           )
         } catch (e: any) {
-          // until the source transaction is mined the API will return a 404
-          if (e.code === LifiErrorCodes.notFound) {
-            return resolve(undefined)
+          // until the source transaction is mined the API will return a 404, which is not really an error
+          if (e.code !== LifiErrorCodes.notFound) {
+            console.debug('Fetching status from backend failed', e)
           }
 
-          return reject(e)
+          return resolve(undefined)
         }
 
         switch (statusResponse.status) {
