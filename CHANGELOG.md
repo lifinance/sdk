@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.11](https://github.com/lifinance/sdk/compare/v0.4.10...v0.4.11) (2022-03-24)
+
+
+### Features
+
+* add infinite approval to execution settings ([#47](https://github.com/lifinance/sdk/issues/47)) ([e2b3995](https://github.com/lifinance/sdk/commit/e2b39950a8e3d06998ce492ffd6bfcc2b36c35de))
+* add token approval methods ([#48](https://github.com/lifinance/sdk/issues/48)) ([1f3b64d](https://github.com/lifinance/sdk/commit/1f3b64d8e545a0eb4ca33e94065b6b99dd02b0e3))
+
 ### [0.4.10](https://github.com/lifinance/sdk/compare/v0.4.9...v0.4.10) (2022-03-20)
 
 
