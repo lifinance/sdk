@@ -28,7 +28,7 @@ export class BridgeExecutionManager {
     signer,
     step,
     statusManager,
-    hooks,
+    settings,
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
@@ -51,7 +51,7 @@ export class BridgeExecutionManager {
           action.fromAmount,
           estimate.approvalAddress,
           statusManager,
-          false,
+          settings.infiniteApproval,
           this.shouldContinue
         )
       }
@@ -92,7 +92,7 @@ export class BridgeExecutionManager {
           signer,
           statusManager,
           step,
-          hooks.switchChainHook,
+          settings.switchChainHook,
           this.shouldContinue
         )
 

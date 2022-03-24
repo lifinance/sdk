@@ -35,7 +35,7 @@ interface ExecutionParams {
   signer: Signer
   step: Step
   statusManager: StatusManager
-  hooks: Hooks
+  settings: InternalExecutionSettings
 }
 
 export interface ExecuteSwapParams extends ExecutionParams {
@@ -56,7 +56,7 @@ export type Config = {
   apiUrl: string
   rpcs: Record<ChainId, string[]>
   multicallAddresses: Record<ChainId, string | undefined>
-  defaultExecutionSettings: Hooks
+  defaultExecutionSettings: InternalExecutionSettings
   defaultRouteOptions: RouteOptions
 }
 
@@ -75,17 +75,19 @@ export type SwitchChainHook = (
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
-  settings: Hooks
+  settings: InternalExecutionSettings
 }
 
 export interface ExecutionSettings {
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
+  infiniteApproval?: boolean
 }
 
-export interface Hooks extends ExecutionSettings {
+export interface InternalExecutionSettings extends ExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
+  infiniteApproval: boolean
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface

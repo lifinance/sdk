@@ -27,7 +27,7 @@ export class SwapExecutionManager {
     step,
     parseReceipt,
     statusManager,
-    hooks,
+    settings,
   }: ExecuteSwapParams): Promise<Execution> => {
     // setup
 
@@ -45,7 +45,7 @@ export class SwapExecutionManager {
         action.fromAmount,
         estimate.approvalAddress,
         statusManager,
-        false,
+        settings.infiniteApproval,
         this.shouldContinue
       )
     }
@@ -86,7 +86,7 @@ export class SwapExecutionManager {
           signer,
           statusManager,
           step,
-          hooks.switchChainHook,
+          settings.switchChainHook,
           this.shouldContinue
         )
 

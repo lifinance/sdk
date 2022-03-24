@@ -3,12 +3,12 @@ import { Step } from '@lifinance/types'
 import { Signer } from 'ethers'
 import { switchChain } from './switchChain'
 import StatusManager from '../StatusManager'
-import { Hooks } from '../types'
+import { InternalExecutionSettings } from '../types'
 
 let signer: Signer,
   step: Step,
   statusManager: StatusManager,
-  hooks: Hooks,
+  hooks: InternalExecutionSettings,
   getChainIdMock: jest.Mock,
   switchChainHookMock: jest.Mock,
   findOrCreateProcessMock: jest.Mock,
@@ -25,7 +25,7 @@ describe('switchChain', () => {
     switchChainHookMock = jest.fn()
     hooks = {
       switchChainHook: switchChainHookMock,
-    } as unknown as Hooks
+    } as unknown as InternalExecutionSettings
 
     step = buildStepObject({ includingExecution: false })
 
