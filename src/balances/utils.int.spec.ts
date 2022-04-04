@@ -89,7 +89,7 @@ describe('balances utils', () => {
     it('should handle token lists with more than 100 tokens', async () => {
       const walletAddress = defaultWalletAddress
       const { tokens } = await Lifi.getPossibilities()
-      const ethTokens = tokens.filter((token) => token.chainId === ChainId.ETH) // > 1000 tokens on eth
+      const ethTokens = tokens!.filter((token) => token.chainId === ChainId.ETH) // > 1000 tokens on eth
 
       await loadAndCompareTokenAmounts(walletAddress, ethTokens.slice(0, 150)) // chunk limit is 100
     })
