@@ -15,7 +15,7 @@ import {
 } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
-import { LifiErrorCodes, ServerError } from '../../utils/errors'
+import { ServerError } from '../../utils/errors'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -158,7 +158,7 @@ export class BridgeExecutionManager {
     } catch (e: any) {
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
         errorMessage: 'Failed waiting',
-        errorCode: e.code,
+        errorCode: e?.code,
       })
       statusManager.updateExecution(step, 'FAILED')
       throw e
@@ -201,11 +201,7 @@ export class BridgeExecutionManager {
             txHash
           )
         } catch (e: any) {
-          // until the source transaction is mined the API will return a 404, which is not really an error
-          if (e.code !== LifiErrorCodes.notFound) {
-            console.debug('Fetching status from backend failed', e)
-          }
-
+          console.debug('Fetching status from backend failed', e)
           return resolve(undefined)
         }
 
@@ -213,6 +209,7 @@ export class BridgeExecutionManager {
           case 'DONE':
             return resolve(statusResponse)
           case 'PENDING':
+          case 'NOT_FOUND':
             return resolve(undefined)
           case 'FAILED':
           default:
