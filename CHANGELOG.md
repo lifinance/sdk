@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.5.2](https://github.com/lifinance/sdk/compare/v0.5.1...v0.5.2) (2022-04-04)
+
+
+### Features
+
+* adjust status handling to new behaviour ([#50](https://github.com/lifinance/sdk/issues/50)) ([3d3c540](https://github.com/lifinance/sdk/commit/3d3c5403da8392d3e9e62271c0b84c71042b73c4))
+
+
+### Bug Fixes
+
+* continue status calls after failure ([#49](https://github.com/lifinance/sdk/issues/49)) ([3db0a62](https://github.com/lifinance/sdk/commit/3db0a626cc6eb8449c11ed5b3091a748f9c38094))
+
 ### [0.5.1](https://github.com/lifinance/sdk/compare/v0.5.0...v0.5.1) (2022-03-24)
 
 ## [0.5.0](https://github.com/lifinance/sdk/compare/v0.4.11...v0.5.0) (2022-03-24)
