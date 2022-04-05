@@ -36,7 +36,7 @@ export class StepExecutor {
   stopStepExecution = (): void => {
     this.swapExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
-
+    this.statusManager.setShouldUpdate(false)
     this.executionStopped = true
   }
 
