@@ -42,6 +42,7 @@ export default class StatusManager {
   private readonly route: Route
   private readonly settings: InternalExecutionSettings
   private readonly internalUpdateRouteCallback: InternalUpdateRouteCallback
+  private shouldUpdate = true
 
   constructor(
     route: Route,
@@ -204,6 +205,8 @@ export default class StatusManager {
   }
 
   private updateStepInRoute = (step: Step): void => {
+    if (!this.shouldUpdate) return
+
     const stepIndex = this.route.steps.findIndex(
       (routeStep) => routeStep.id === step.id
     )
@@ -219,5 +222,9 @@ export default class StatusManager {
 
     this.settings.updateCallback(this.route)
     this.internalUpdateRouteCallback(this.route)
+  }
+
+  setShouldUpdate(value: boolean) {
+    this.shouldUpdate = value
   }
 }
