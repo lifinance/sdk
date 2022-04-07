@@ -1,6 +1,6 @@
-import { Chain, ChainId } from '../../../types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
+import { Chain, ChainId } from '@lifinance/types'
 
 export default class ChainsService {
   private static instance: ChainsService
