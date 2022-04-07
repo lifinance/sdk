@@ -12,8 +12,9 @@ import {
   UnknownError,
   ValidationError,
 } from './errors'
-import { getChainById, Process, Step } from '@lifinance/types'
+import { Process, Step } from '@lifinance/types'
 import { formatTokenAmountOnly } from './utils'
+import ChainsService from '../services/ChainsService'
 
 /**
  * Available MetaMask error codes:
@@ -47,22 +48,23 @@ import { formatTokenAmountOnly } from './utils'
  * https://eips.ethereum.org/EIPS/eip-1193#provider-errors
  */
 
-export const getTransactionNotSentMessage = (
+export const getTransactionNotSentMessage = async (
   step?: Step,
   process?: Process
-): string => {
+): Promise<string> => {
   let transactionNotSend =
     'Transaction was not sent, your funds are still in your wallet'
 
   // add information about funds if available
-  transactionNotSend += step
-    ? ` (${formatTokenAmountOnly(
-        step.action.fromToken,
-        step.action.fromAmount
-      )} ${step.action.fromToken.symbol} on ${
-        getChainById(step.action.fromChainId).name
-      })`
-    : ''
+  if (step) {
+    const chainService = ChainsService.getInstance()
+    const chain = await chainService.getChainById(step.action.fromChainId)
+
+    transactionNotSend += ` (${formatTokenAmountOnly(
+      step.action.fromToken,
+      step.action.fromAmount
+    )} ${step.action.fromToken.symbol} on ${chain.name})`
+  }
 
   transactionNotSend +=
     ", please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
@@ -76,11 +78,11 @@ export const getTransactionNotSentMessage = (
   return transactionNotSend
 }
 
-export const parseWalletError = (
+export const parseWalletError = async (
   e: any,
   step?: Step,
   process?: Process
-): LifiError => {
+): Promise<LifiError> => {
   if (e.code) {
     // MetaMask errors have a numeric error code
     if (typeof e.code === 'number') {
@@ -95,7 +97,7 @@ export const parseWalletError = (
           return new RPCError(
             LifiErrorCodes.transactionUnderpriced,
             'Transaction is underpriced.',
-            getTransactionNotSentMessage(step, process),
+            await getTransactionNotSentMessage(step, process),
             e.stack
           )
         }
@@ -103,7 +105,7 @@ export const parseWalletError = (
         return new RPCError(
           e.code,
           getMessageFromCode(e.code),
-          getTransactionNotSentMessage(step, process),
+          await getTransactionNotSentMessage(step, process),
           e.stack
         )
       }
@@ -113,7 +115,7 @@ export const parseWalletError = (
         return new ProviderError(
           e.code,
           getMessageFromCode(e.code),
-          getTransactionNotSentMessage(step, process),
+          await getTransactionNotSentMessage(step, process),
           e.stack
         )
       }
@@ -123,7 +125,7 @@ export const parseWalletError = (
       return new ProviderError(
         LifiErrorCodes.transactionFailed,
         e.reason,
-        getTransactionNotSentMessage(step, process),
+        await getTransactionNotSentMessage(step, process),
         e.stack
       )
     }

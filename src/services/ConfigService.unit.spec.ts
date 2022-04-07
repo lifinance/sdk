@@ -1,10 +1,16 @@
-import { ChainId } from '@lifinance/types'
-import { getDefaultConfig, mergeConfig } from './config'
+import { ChainId, supportedChains } from '../types'
+import ConfigService from './ConfigService'
 
-describe('config', () => {
-  describe('getDefaultConfig', () => {
+let configService: ConfigService
+
+describe('ConfigService', () => {
+  beforeEach(() => {
+    configService = ConfigService.getInstance()
+  })
+
+  describe('getConfig', () => {
     it('should return the default config', () => {
-      const defaultConfig = getDefaultConfig()
+      const defaultConfig = configService.getConfig()
 
       expect(defaultConfig.apiUrl).toEqual('https://li.quest/v1/')
       expect(defaultConfig.defaultRouteOptions).toEqual({})
@@ -19,27 +25,26 @@ describe('config', () => {
     })
   })
 
-  describe('mergeConfig', () => {
+  describe('updateConfig', () => {
     it('should return a if b is empty', () => {
-      const configA = getDefaultConfig()
+      const configA = configService.getConfig()
       const configB = {}
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig).toEqual(configA)
     })
 
     it('should overwrite the api url if set', () => {
-      const configA = getDefaultConfig()
       const configB = {
         apiUrl: 'some other api url',
       }
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig.apiUrl).toEqual(configB.apiUrl)
     })
 
     it('should merge the default route options', () => {
-      const configA = getDefaultConfig()
+      const configA = configService.getConfig()
       configA.defaultRouteOptions = {
         infiniteApproval: true,
         slippage: 0.3,
@@ -49,7 +54,7 @@ describe('config', () => {
           slippage: 0,
         },
       }
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig.defaultRouteOptions.infiniteApproval).toEqual(
         configA.defaultRouteOptions.infiniteApproval
@@ -60,13 +65,13 @@ describe('config', () => {
     })
 
     it('should merge the default execution settings', () => {
-      const configA = getDefaultConfig()
+      const configA = configService.getConfig()
       const configB = {
         defaultExecutionSettings: {
           updateCallback: () => 'something else',
         },
       }
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig.defaultExecutionSettings.switchChainHook).toEqual(
         configA.defaultExecutionSettings.switchChainHook
@@ -77,26 +82,26 @@ describe('config', () => {
     })
 
     it('should overwrite rpcs for the passed chains and leave the others untouched', () => {
-      const configA = getDefaultConfig()
+      const configA = configService.getConfig()
       const configB = {
         rpcs: {
           [ChainId.ETH]: ['some other rpc'],
         },
       }
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig.rpcs[ChainId.BSC]).toEqual(configA.rpcs[ChainId.BSC])
       expect(mergedConfig.rpcs[ChainId.ETH]).toEqual(configB.rpcs[ChainId.ETH])
     })
 
     it('should overwrite multicallAddresses for the passed chains and leave the others untouched', () => {
-      const configA = getDefaultConfig()
+      const configA = configService.getConfig()
       const configB = {
         multicallAddresses: {
           [ChainId.ETH]: 'some other multicallAddress',
         },
       }
-      const mergedConfig = mergeConfig(configA, configB)
+      const mergedConfig = configService.updateConfig(configB)
 
       expect(mergedConfig.multicallAddresses[ChainId.BSC]).toEqual(
         configA.multicallAddresses[ChainId.BSC]
@@ -104,6 +109,24 @@ describe('config', () => {
       expect(mergedConfig.multicallAddresses[ChainId.ETH]).toEqual(
         configB.multicallAddresses[ChainId.ETH]
       )
+    })
+  })
+
+  describe('updateChains', () => {
+    it('should set rpcs/multicall address', () => {
+      const config = configService.updateChains(supportedChains)
+      for (const chainId of Object.values(ChainId)) {
+        if (typeof chainId !== 'string') {
+          expect(config.rpcs[chainId].length).toBeGreaterThan(0)
+        }
+      }
+    })
+
+    it('should return the async config after updateChains was called', async () => {
+      configService.updateChains(supportedChains)
+      const config = await configService.getConfigAsync()
+
+      expect(config).toBeDefined()
     })
   })
 })

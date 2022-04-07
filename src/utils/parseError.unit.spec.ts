@@ -10,14 +10,16 @@ describe('parseError', () => {
   describe('parseWalletError', () => {
     describe('when the error does not contain a code', () => {
       it('should return an UnknownError with the default message if no message is set', async () => {
-        const parsedError = parseWalletError('Oops')
+        const parsedError = await parseWalletError('Oops')
 
         expect(parsedError.message).toEqual('Unknown error occurred')
         expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
       })
 
       it('should return an UnknownError with the given message', async () => {
-        const parsedError = parseWalletError({ message: 'Somethings fishy' })
+        const parsedError = await await parseWalletError({
+          message: 'Somethings fishy',
+        })
 
         expect(parsedError.message).toEqual('Somethings fishy')
         expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
@@ -26,7 +28,7 @@ describe('parseError', () => {
 
     describe('when the error contains an unknown error code', () => {
       it('should return an UnknownError', async () => {
-        const parsedError = parseWalletError({
+        const parsedError = await parseWalletError({
           code: 1337,
           message: 'Somethings fishy',
         })
@@ -38,7 +40,7 @@ describe('parseError', () => {
 
     describe('when the error contains a rpc error code', () => {
       it('should return a RPCError with the metamask error message', async () => {
-        const parsedError = parseWalletError({
+        const parsedError = await parseWalletError({
           code: MetaMaskErrorCodes.rpc.methodNotFound,
           message: 'Somethings fishy',
         })
@@ -50,7 +52,7 @@ describe('parseError', () => {
       })
 
       it('should return a RPCError with a custom message if underpriced', async () => {
-        const parsedError = parseWalletError({
+        const parsedError = await parseWalletError({
           code: MetaMaskErrorCodes.rpc.internal,
           message: 'RPC called failed: transaction underpriced',
         })
@@ -62,7 +64,7 @@ describe('parseError', () => {
 
     describe('when the error contains a provider error code', () => {
       it('should return a ProviderError with the metamask error message', async () => {
-        const parsedError = parseWalletError({
+        const parsedError = await parseWalletError({
           code: MetaMaskErrorCodes.provider.unsupportedMethod,
           message: 'Somethings fishy',
         })
@@ -78,7 +80,7 @@ describe('parseError', () => {
 
     describe('when no step is passed to the parser', () => {
       it('should return a default htmlMessage', async () => {
-        const parsedError = parseWalletError({
+        const parsedError = await parseWalletError({
           code: MetaMaskErrorCodes.rpc.methodNotFound,
           message: 'Somethings fishy',
         })
@@ -92,7 +94,7 @@ describe('parseError', () => {
 
     describe('when a step is passed to the parser', () => {
       it('should include the token information in the htmlMessage', async () => {
-        const parsedError = parseWalletError(
+        const parsedError = await parseWalletError(
           {
             code: MetaMaskErrorCodes.rpc.methodNotFound,
             message: 'Somethings fishy',
@@ -110,7 +112,7 @@ describe('parseError', () => {
     describe('when a process is passed to the parser', () => {
       it('should include the explorer link in the htmlMessage', async () => {
         const step = buildStepObject({ includingExecution: true })
-        const parsedError = parseWalletError(
+        const parsedError = await parseWalletError(
           {
             code: MetaMaskErrorCodes.rpc.methodNotFound,
             message: 'Somethings fishy',

@@ -103,7 +103,7 @@ export const getTransferredNativeTokenBalanceFromChain = async (params: {
 
   // try to load gas balance differences
   try {
-    const provider = getRpcProvider(tx.chainId, true)
+    const provider = await getRpcProvider(tx.chainId, true)
     const providerBlockNumber = await provider.getBlockNumber()
     if (tx.blockNumber && providerBlockNumber) {
       const balanceBefore = await provider.getBalance(

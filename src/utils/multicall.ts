@@ -56,7 +56,7 @@ export const fetchDataUsingMulticall = async (
   const multicallContract = new Contract(
     multicallAddress,
     MULTICALL_ABI,
-    getRpcProvider(chainId)
+    await getRpcProvider(chainId)
   )
   const abiInterface = new Interface(abi)
 

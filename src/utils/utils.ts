@@ -108,7 +108,7 @@ export const loadTransactionReceipt = async (
   chainId: ChainId,
   txHash: string
 ): Promise<TransactionReceipt> => {
-  const rpc = getRpcProvider(chainId)
+  const rpc = await getRpcProvider(chainId)
   const tx = await rpc.getTransaction(txHash)
   return tx.wait()
 }

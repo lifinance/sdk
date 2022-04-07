@@ -1,6 +1,7 @@
 import { getRpcProvider } from '../../connectors'
 import { ChainId, ParsedReceipt } from '../../types'
 import { paraswap } from './paraswap'
+import { setupTestEnvironment } from '../../../test/setup'
 
 jest.setTimeout(20000)
 
@@ -9,7 +10,7 @@ async function getAndTestTransaction(
   chainId: ChainId,
   expected: ParsedReceipt
 ) {
-  const provider = getRpcProvider(chainId)
+  const provider = await getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
   const parsed = await paraswap.parseReceipt(tx, receipt)
@@ -23,6 +24,10 @@ async function getAndTestTransaction(
 
   expect(needed).toEqual(expected)
 }
+
+beforeAll(() => {
+  setupTestEnvironment()
+})
 
 describe('paraswap', () => {
   describe('parse receipt', () => {

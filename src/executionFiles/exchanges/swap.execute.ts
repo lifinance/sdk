@@ -5,15 +5,15 @@ import {
 import { constants } from 'ethers'
 import { parseWalletError } from '../../utils/parseError'
 
-import Lifi from '../../Lifi'
-
-import { ExecuteSwapParams, getChainById } from '../../types'
+import { ExecuteSwapParams } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { Execution } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
+import ChainsService from '../../services/ChainsService'
+import ApiService from '../../services/ApiService'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -32,8 +32,10 @@ export class SwapExecutionManager {
     // setup
 
     const { action, estimate } = step
-    const fromChain = getChainById(action.fromChainId)
     step.execution = statusManager.initExecutionObject(step)
+
+    const chainsService = ChainsService.getInstance()
+    const fromChain = await chainsService.getChainById(action.fromChainId)
 
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
@@ -70,7 +72,7 @@ export class SwapExecutionManager {
 
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await ApiService.getStepTransaction(
           personalizedStep
         )
         if (!transactionRequest) {
@@ -107,7 +109,7 @@ export class SwapExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
       }
     } catch (e) {
-      const error = parseWalletError(e, step, swapProcess)
+      const error = await parseWalletError(e, step, swapProcess)
       statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
         errorMessage: error.message,
         htmlErrorMessage: error.htmlMessage,
@@ -140,7 +142,7 @@ export class SwapExecutionManager {
             e.replacement.hash,
         })
       } else {
-        const error = parseWalletError(e)
+        const error = await parseWalletError(e)
         statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
           errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,

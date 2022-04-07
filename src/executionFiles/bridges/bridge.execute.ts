@@ -1,9 +1,8 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants } from 'ethers'
 
-import Lifi from '../../Lifi'
 import { parseWalletError } from '../../utils/parseError'
-import { ExecuteCrossParams, getChainById } from '../../types'
+import { ExecuteCrossParams } from '../../types'
 import { personalizeStep, repeatUntilDone } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
@@ -16,6 +15,8 @@ import {
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
 import { ServerError } from '../../utils/errors'
+import ChainsService from '../../services/ChainsService'
+import ApiService from '../../services/ApiService'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -32,8 +33,10 @@ export class BridgeExecutionManager {
   }: ExecuteCrossParams): Promise<Execution> => {
     const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
-    const fromChain = getChainById(action.fromChainId)
-    const toChain = getChainById(action.toChainId)
+
+    const chainsService = ChainsService.getInstance()
+    const fromChain = await chainsService.getChainById(action.fromChainId)
+    const toChain = await chainsService.getChainById(action.toChainId)
 
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
@@ -75,7 +78,7 @@ export class BridgeExecutionManager {
 
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await Lifi.getStepTransaction(
+        const { transactionRequest } = await ApiService.getStepTransaction(
           personalizedStep
         )
         if (!transactionRequest) {
@@ -126,7 +129,7 @@ export class BridgeExecutionManager {
             e.replacement.hash,
         })
       } else {
-        const error = parseWalletError(e, step, crossProcess)
+        const error = await parseWalletError(e, step, crossProcess)
         statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
           errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,
@@ -194,7 +197,7 @@ export class BridgeExecutionManager {
       new Promise(async (resolve, reject) => {
         let statusResponse: StatusResponse
         try {
-          statusResponse = await Lifi.getStatus(
+          statusResponse = await ApiService.getStatus(
             tool,
             fromChainId,
             toChainId,

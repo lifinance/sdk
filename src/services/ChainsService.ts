@@ -1,0 +1,46 @@
+import { Chain, ChainId } from '../../../types'
+import { ValidationError } from '../utils/errors'
+import ApiService from './ApiService'
+
+export default class ChainsService {
+  private static instance: ChainsService
+  private readonly loadingPromise: Promise<void>
+  private chains: Chain[] = []
+
+  constructor() {
+    this.loadingPromise = this.loadAvailableChains()
+  }
+
+  private async loadAvailableChains(): Promise<void> {
+    this.chains = await ApiService.getChains()
+  }
+
+  public static getInstance(): ChainsService {
+    if (!this.instance) {
+      this.instance = new ChainsService()
+    }
+
+    return this.instance
+  }
+
+  public async getChainById(chainId: ChainId): Promise<Chain> {
+    if (this.loadingPromise) {
+      await this.loadingPromise
+    }
+
+    const chain = this.chains.find((chain) => chain.id === chainId)
+    if (!chain) {
+      throw new ValidationError(`Unknown chainId passed: ${chainId}`)
+    }
+
+    return chain
+  }
+
+  public async getChains(): Promise<Chain[]> {
+    if (this.loadingPromise) {
+      await this.loadingPromise
+    }
+
+    return this.chains
+  }
+}

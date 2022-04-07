@@ -3,14 +3,12 @@ import axios from 'axios'
 import { Signer } from 'ethers'
 
 import balances from './balances'
-import { getDefaultConfig, mergeConfig } from './config'
 import { StepExecutor } from './executionFiles/StepExecutor'
-import { isRoutesRequest, isStep, isToken } from './typeguards'
+import { isRoutesRequest, isToken } from './typeguards'
 import {
   Chain,
   ChainId,
   ChainKey,
-  ChainsResponse,
   Order,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -40,17 +38,43 @@ import {
   getTokenApproval,
   revokeTokenApproval,
 } from './allowance'
+import ConfigService from './services/ConfigService'
+import ChainsService from './services/ChainsService'
+import ApiService from './services/ApiService'
 
-class LIFI {
+export default class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
-  private config: Config = getDefaultConfig()
+  private configService: ConfigService
+  private chainsService: ChainsService
+
+  constructor(configUpdate?: ConfigUpdate) {
+    this.configService = ConfigService.getInstance()
+
+    if (configUpdate) {
+      this.configService.updateConfig(configUpdate) // update API urls before we request chains
+    }
+
+    this.chainsService = ChainsService.getInstance()
+
+    this.chainsService.getChains().then((chains) => {
+      this.configService.updateChains(chains)
+    })
+  }
 
   /**
    * Get the current configuration of the SDK
    * @return {Config} - The config object
    */
   getConfig = (): Config => {
-    return this.config
+    return this.configService.getConfig()
+  }
+
+  /**
+   * Get the SDK configuration after all setup calls are finished
+   * @return {Promise<Config>} - The config object
+   */
+  getConfigAsync = (): Promise<Config> => {
+    return this.configService.getConfigAsync()
   }
 
   /**
@@ -59,8 +83,7 @@ class LIFI {
    * @return {Config} The renewed config object
    */
   setConfig = (configUpdate: ConfigUpdate): Config => {
-    this.config = mergeConfig(this.config, configUpdate)
-    return this.config
+    return this.configService.updateConfig(configUpdate)
   }
 
   /**
@@ -72,23 +95,7 @@ class LIFI {
   getPossibilities = async (
     request?: PossibilitiesRequest
   ): Promise<PossibilitiesResponse> => {
-    if (!request) request = {}
-
-    // apply defaults
-    request.bridges = request.bridges || this.config.defaultRouteOptions.bridges
-    request.exchanges =
-      request.exchanges || this.config.defaultRouteOptions.exchanges
-
-    // send request
-    try {
-      const result = await axios.post<PossibilitiesResponse>(
-        this.config.apiUrl + 'advanced/possibilities',
-        request
-      )
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return ApiService.getPossibilities(request)
   }
 
   /**
@@ -101,25 +108,7 @@ class LIFI {
     chain: ChainKey | ChainId,
     token: string
   ): Promise<Token> => {
-    if (!chain) {
-      throw new ValidationError('Required parameter "chain" is missing')
-    }
-
-    if (!token) {
-      throw new ValidationError('Required parameter "token" is missing')
-    }
-
-    try {
-      const result = await axios.get<Token>(this.config.apiUrl + 'token', {
-        params: {
-          chain,
-          token,
-        },
-      })
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return ApiService.getToken(chain, token)
   }
 
   /**
@@ -160,44 +149,24 @@ class LIFI {
     denyExchanges?: string[],
     preferExchanges?: string[]
   ): Promise<Step> => {
-    if (!fromChain)
-      throw new ValidationError('Required parameter "fromChain" is missing')
-    if (!fromToken)
-      throw new ValidationError('Required parameter "fromToken" is missing')
-    if (!fromAddress)
-      throw new ValidationError('Required parameter "fromAddress" is missing')
-    if (!fromAmount)
-      throw new ValidationError('Required parameter "fromAmount" is missing')
-    if (!toChain)
-      throw new ValidationError('Required parameter "toChain" is missing')
-    if (!toToken)
-      throw new ValidationError('Required parameter "toToken" is missing')
-
-    try {
-      const result = await axios.get<Step>(this.config.apiUrl + 'quote', {
-        params: {
-          fromChain,
-          toChain,
-          fromToken,
-          toToken,
-          fromAddress,
-          fromAmount,
-          order,
-          slippage,
-          integrator,
-          referrer,
-          allowBridges,
-          denyBridges,
-          preferBridges,
-          allowExchanges,
-          denyExchanges,
-          preferExchanges,
-        },
-      })
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return ApiService.getQuote(
+      fromChain,
+      fromToken,
+      fromAddress,
+      fromAmount,
+      toChain,
+      toToken,
+      order,
+      slippage,
+      integrator,
+      referrer,
+      allowBridges,
+      denyBridges,
+      preferBridges,
+      allowExchanges,
+      denyExchanges,
+      preferExchanges
+    )
   }
 
   /**
@@ -214,34 +183,7 @@ class LIFI {
     toChain: ChainId | ChainKey,
     txHash: string
   ): Promise<StatusResponse> => {
-    if (!bridge)
-      throw new ValidationError('Required parameter "bridge" is missing')
-
-    if (!fromChain)
-      throw new ValidationError('Required parameter "fromChain" is missing')
-
-    if (!toChain)
-      throw new ValidationError('Required parameter "toChain" is missing')
-
-    if (!txHash)
-      throw new ValidationError('Required parameter "txHash" is missing')
-
-    try {
-      const result = await axios.get<StatusResponse>(
-        this.config.apiUrl + 'status',
-        {
-          params: {
-            bridge,
-            fromChain,
-            toChain,
-            txHash,
-          },
-        }
-      )
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return ApiService.getStatus(bridge, fromChain, toChain, txHash)
   }
 
   /**
@@ -250,15 +192,7 @@ class LIFI {
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getChains = async (): Promise<Chain[]> => {
-    try {
-      const result = await axios.get<ChainsResponse>(
-        this.config.apiUrl + 'chains'
-      )
-
-      return result.data.chains
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return this.chainsService.getChains()
   }
 
   /**
@@ -272,16 +206,18 @@ class LIFI {
       throw new ValidationError('Invalid Routes Request')
     }
 
+    const config = this.configService.getConfig()
+
     // apply defaults
     routesRequest.options = {
-      ...this.config.defaultRouteOptions,
+      ...config.defaultRouteOptions,
       ...routesRequest.options,
     }
 
     // send request
     try {
       const result = await axios.post<RoutesResponse>(
-        this.config.apiUrl + 'advanced/routes',
+        config.apiUrl + 'advanced/routes',
         routesRequest
       )
       return result.data
@@ -297,21 +233,7 @@ class LIFI {
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getStepTransaction = async (step: Step): Promise<Step> => {
-    if (!isStep(step)) {
-      // While the validation fails for some users we should not enforce it
-      // eslint-disable-next-line no-console
-      console.warn('SDK Validation: Invalid Step', step)
-    }
-
-    try {
-      const result = await axios.post<Step>(
-        this.config.apiUrl + 'advanced/stepTransaction',
-        step
-      )
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+    return ApiService.getStepTransaction(step)
   }
 
   /**
@@ -387,10 +309,11 @@ class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
+    const config = this.configService.getConfig()
     const execData: ExecutionData = {
       route,
       executors: [],
-      settings: { ...this.config.defaultExecutionSettings, ...settings },
+      settings: { ...config.defaultExecutionSettings, ...settings },
     }
     this.activeRouteDictionary[route.id] = execData
 
@@ -455,12 +378,15 @@ class LIFI {
     settings: ExecutionSettings,
     route: Route
   ): void => {
-    if (!this.activeRouteDictionary[route.id])
+    if (!this.activeRouteDictionary[route.id]) {
       throw new ValidationError(
         'Cannot set ExecutionSettings for unactive route!'
       )
+    }
+
+    const config = this.configService.getConfig()
     this.activeRouteDictionary[route.id].settings = {
-      ...this.config.defaultExecutionSettings,
+      ...config.defaultExecutionSettings,
       ...settings,
     }
   }
@@ -613,5 +539,3 @@ class LIFI {
     return revokeTokenApproval(signer, token, approvalAddress)
   }
 }
-
-export default new LIFI()
