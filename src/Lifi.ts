@@ -244,7 +244,7 @@ export default class LIFI {
   stopExecution = (route: Route): Route => {
     if (!this.activeRouteDictionary[route.id]) return route
     for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution()
+      executor.stopStepExecution({ allowUpdates: true })
     }
     delete this.activeRouteDictionary[route.id]
     return route

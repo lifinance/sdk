@@ -103,3 +103,7 @@ export type RevokeTokenData = {
   token: Token
   approvalAddress: string
 }
+
+export interface HaltingSettings {
+  allowUpdates?: boolean
+}

@@ -8,6 +8,7 @@ import {
   LifiStep,
   Step,
   SwapStep,
+  HaltingSettings,
 } from '../types'
 import { oneinch } from './exchanges/oneinch'
 import { openocean } from './exchanges/openocean'
@@ -17,6 +18,9 @@ import { uniswap } from './exchanges/uniswaps'
 import { switchChain } from './switchChain'
 import { BridgeExecutionManager } from './bridges/bridge.execute'
 
+const defaultExecutionHaltSettings = {
+  allowUpdates: true,
+}
 export class StepExecutor {
   settings: InternalExecutionSettings
   statusManager: StatusManager
@@ -33,10 +37,15 @@ export class StepExecutor {
     this.settings = settings
   }
 
-  stopStepExecution = (): void => {
+  stopStepExecution = (settings?: HaltingSettings): void => {
+    const defaultHaltingSettings = {
+      ...defaultExecutionHaltSettings,
+      ...settings,
+    }
+
     this.swapExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
-
+    this.statusManager.setShouldUpdate(defaultHaltingSettings.allowUpdates)
     this.executionStopped = true
   }
 
