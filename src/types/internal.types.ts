@@ -12,10 +12,6 @@ import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
 import { ChainId } from '.'
 import { StepExecutor } from '../executionFiles/StepExecutor'
-import {
-  TransactionReceipt,
-  TransactionResponse,
-} from '@ethersproject/providers'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
@@ -40,10 +36,6 @@ interface ExecutionParams {
 
 export interface ExecuteSwapParams extends ExecutionParams {
   step: SwapStep
-  parseReceipt: (
-    tx: TransactionResponse,
-    receipt: TransactionReceipt
-  ) => Promise<ParsedReceipt>
 }
 
 export interface ExecuteCrossParams extends ExecutionParams {
