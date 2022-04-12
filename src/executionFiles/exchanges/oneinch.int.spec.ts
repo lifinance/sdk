@@ -1,13 +1,14 @@
 import { getRpcProvider } from '../../connectors'
-import { ParsedReceipt, ChainId } from '../../types'
+import { ChainId, ParsedReceipt } from '../../types'
 import { oneinch } from './oneinch'
+import { setupTestEnvironment } from '../../../test/setup'
 
 async function getAndTestTransaction(
   hash: string,
   chainId: ChainId,
   expected: ParsedReceipt
 ) {
-  const provider = getRpcProvider(chainId)
+  const provider = await getRpcProvider(chainId)
   const tx = await provider.getTransaction(hash)
   const receipt = await tx.wait()
   const parsed = await oneinch.parseReceipt(tx, receipt)
@@ -21,6 +22,10 @@ async function getAndTestTransaction(
 
   expect(needed).toEqual(expected)
 }
+
+beforeAll(() => {
+  setupTestEnvironment()
+})
 
 describe('oneinch', () => {
   describe('parse receipt', () => {

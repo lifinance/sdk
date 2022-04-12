@@ -76,7 +76,7 @@ export const checkAllowance = async (
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
-      const error = parseWalletError(e, step, allowanceProcess)
+      const error = await parseWalletError(e, step, allowanceProcess)
       statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
         errorMessage: error.message,
         htmlErrorMessage: error.htmlMessage,

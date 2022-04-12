@@ -1,8 +1,9 @@
 import { providers } from 'ethers'
-import Lifi, { getRandomNumber } from '.'
+import { getRandomNumber } from '.'
 
 import { ChainId } from './types'
 import { FallbackProvider } from '@ethersproject/providers'
+import ConfigService from './services/ConfigService'
 
 // cached providers
 const chainProviders: Record<number, providers.FallbackProvider[]> = {}
@@ -20,16 +21,25 @@ const archiveRpcs: Record<number, string> = {
 }
 
 // RPC Urls
-export const getRpcUrl = (chainId: ChainId, archive = false): string => {
-  return getRpcUrls(chainId, archive)[0]
+export const getRpcUrl = async (
+  chainId: ChainId,
+  archive = false
+): Promise<string> => {
+  const rpcUrls = await getRpcUrls(chainId, archive)
+  return rpcUrls[0]
 }
 
-export const getRpcUrls = (chainId: ChainId, archive = false): string[] => {
+export const getRpcUrls = async (
+  chainId: ChainId,
+  archive = false
+): Promise<string[]> => {
   if (archive && archiveRpcs[chainId]) {
     return [archiveRpcs[chainId]]
   }
 
-  return Lifi.getConfig().rpcs[chainId]
+  const configService = ConfigService.getInstance()
+  const config = await configService.getConfigAsync()
+  return config.rpcs[chainId]
 }
 
 const getRandomProvider = (
@@ -40,21 +50,24 @@ const getRandomProvider = (
 }
 
 // Provider
-export const getRpcProvider = (
+export const getRpcProvider = async (
   chainId: number,
   archive = false
-): FallbackProvider => {
+): Promise<FallbackProvider> => {
   if (archive && archiveRpcs[chainId]) {
     // return archive PRC, but don't cache it
     return new providers.FallbackProvider([
-      new providers.StaticJsonRpcProvider(getRpcUrl(chainId, archive), chainId),
+      new providers.StaticJsonRpcProvider(
+        await getRpcUrl(chainId, archive),
+        chainId
+      ),
     ])
   }
 
   if (!chainProviders[chainId]) {
     chainProviders[chainId] = []
 
-    const urls = getRpcUrls(chainId, archive)
+    const urls = await getRpcUrls(chainId, archive)
     urls.forEach((url) => {
       chainProviders[chainId].push(
         new providers.FallbackProvider([
@@ -68,6 +81,10 @@ export const getRpcProvider = (
 }
 
 // Multicall
-export const getMulticallAddress = (chainId: ChainId): string | undefined => {
-  return Lifi.getConfig().multicallAddresses[chainId]
+export const getMulticallAddress = async (
+  chainId: ChainId
+): Promise<string | undefined> => {
+  const configService = ConfigService.getInstance()
+  const config = await configService.getConfigAsync()
+  return config.multicallAddresses[chainId]
 }

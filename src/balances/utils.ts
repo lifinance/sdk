@@ -50,7 +50,7 @@ const getBalances = async (
     }
   })
 
-  if (getMulticallAddress(chainId) && tokens.length > 1) {
+  if ((await getMulticallAddress(chainId)) && tokens.length > 1) {
     return getBalancesFromProviderUsingMulticall(walletAddress, tokens)
   } else {
     return getBalancesFromProvider(walletAddress, tokens)
@@ -63,7 +63,7 @@ const getBalancesFromProviderUsingMulticall = async (
 ): Promise<TokenAmount[]> => {
   // Configuration
   const { chainId } = tokens[0]
-  const multicallAddress = getMulticallAddress(chainId)
+  const multicallAddress = await getMulticallAddress(chainId)
   if (!multicallAddress) {
     throw new Error('No multicallAddress found for given chain')
   }
@@ -141,7 +141,7 @@ const getBalancesFromProvider = async (
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
   const chainId = tokens[0].chainId
-  const rpc = getRpcProvider(chainId)
+  const rpc = await getRpcProvider(chainId)
   const tokenAmountPromises: Promise<TokenAmount>[] = tokens.map(
     async (token): Promise<TokenAmount> => {
       let amount = '0'
@@ -200,8 +200,8 @@ const getBalanceFromProvider = async (
   }
 }
 
-const getCurrentBlockNumber = (chainId: ChainId): Promise<number> => {
-  const rpc = getRpcProvider(chainId)
+const getCurrentBlockNumber = async (chainId: ChainId): Promise<number> => {
+  const rpc = await getRpcProvider(chainId)
   return rpc.getBlockNumber()
 }
 
