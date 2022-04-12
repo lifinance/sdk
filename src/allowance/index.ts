@@ -11,6 +11,20 @@ import {
 } from './utils'
 import { isSameToken } from '../helpers'
 
+export interface ApproveTokenRequest {
+  signer: Signer
+  token: Token
+  approvalAddress: string
+  amount: string
+  infiniteApproval?: boolean
+}
+
+export interface RevokeApprovalRequest {
+  signer: Signer
+  token: Token
+  approvalAddress: string
+}
+
 export const getTokenApproval = async (
   signer: Signer,
   token: Token,
@@ -66,13 +80,13 @@ export const bulkGetTokenApproval = async (
   })
 }
 
-export const approveToken = async (
-  signer: Signer,
-  token: Token,
-  approvalAddress: string,
-  amount: string,
-  infiniteApproval = false
-): Promise<void> => {
+export const approveToken = async ({
+  signer,
+  token,
+  approvalAddress,
+  amount,
+  infiniteApproval = false,
+}: ApproveTokenRequest): Promise<void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
@@ -100,11 +114,11 @@ export const approveToken = async (
   }
 }
 
-export const revokeTokenApproval = async (
-  signer: Signer,
-  token: Token,
-  approvalAddress: string
-): Promise<void> => {
+export const revokeTokenApproval = async ({
+  signer,
+  token,
+  approvalAddress,
+}: RevokeApprovalRequest): Promise<void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
