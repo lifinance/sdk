@@ -1,10 +1,5 @@
 import ChainsService from './ChainsService'
-import {
-  AddEthereumChainParameter,
-  Chain,
-  ChainKey,
-  CoinKey,
-} from '../../../types'
+import { AddEthereumChainParameter, Chain, ChainKey, CoinKey } from '../types'
 import ApiService from './ApiService'
 import { ValidationError } from '../utils/errors'
 

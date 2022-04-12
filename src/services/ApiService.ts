@@ -11,7 +11,7 @@ import {
   StatusResponse,
   Step,
   Token,
-} from '../../../types'
+} from '../types'
 import axios from 'axios'
 import { parseBackendError } from '../utils/parseError'
 import { ValidationError } from '../utils/errors'
