@@ -9,11 +9,12 @@ import { ExecuteSwapParams } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import { Execution } from '@lifinance/types'
+import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
 import ChainsService from '../../services/ChainsService'
 import ApiService from '../../services/ApiService'
+import { waitForReceivingTransaction } from '../utils'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -25,7 +26,6 @@ export class SwapExecutionManager {
   execute = async ({
     signer,
     step,
-    parseReceipt,
     statusManager,
     settings,
   }: ExecuteSwapParams): Promise<Execution> => {
@@ -153,17 +153,37 @@ export class SwapExecutionManager {
       }
     }
 
-    // -> set status
-    const parsedReceipt = await parseReceipt(tx, receipt)
+    let statusResponse: StatusResponse
+    try {
+      statusResponse = await waitForReceivingTransaction(
+        step.tool as ExchangeTools,
+        fromChain.id,
+        fromChain.id,
+        swapProcess.txHash
+      )
+    } catch (e: any) {
+      statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+        errorMessage: 'Failed waiting',
+        errorCode: e?.code,
+      })
+      statusManager.updateExecution(step, 'FAILED')
+      throw e
+    }
 
-    // step.execution.gasUsed = parsedReceipt.gasUsed
     statusManager.updateProcess(step, swapProcess.id, 'DONE', {
+      txHash: statusResponse.receiving?.txHash,
+      txLink:
+        fromChain.metamask.blockExplorerUrls[0] +
+        'tx/' +
+        statusResponse.receiving?.txHash,
       message: 'Swapped:',
     })
 
     statusManager.updateExecution(step, 'DONE', {
-      fromAmount: parsedReceipt.fromAmount,
-      toAmount: parsedReceipt.toAmount,
+      fromAmount: statusResponse.sending.amount,
+      toAmount: statusResponse.receiving?.amount,
+      toToken: statusResponse.receiving?.token,
+      // gasUsed: statusResponse.gasUsed,
     })
 
     // DONE
