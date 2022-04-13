@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.0](https://github.com/lifinance/sdk/compare/v0.5.3...v1.0.0-beta.0) (2022-04-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* use object pattern for public methods with many params (#56)
+* load available chains from the backend (#53)
+
+### Features
+
+* load available chains from the backend ([#53](https://github.com/lifinance/sdk/issues/53)) ([67cff83](https://github.com/lifinance/sdk/commit/67cff834aa7643234ec43626489059869e018787))
+* use /status for swap execution handling ([#55](https://github.com/lifinance/sdk/issues/55)) ([0e4821c](https://github.com/lifinance/sdk/commit/0e4821c3784d87e0e4ac725eea14b3f14fe8b03c))
+* use object pattern for public methods with many params ([#56](https://github.com/lifinance/sdk/issues/56)) ([b167240](https://github.com/lifinance/sdk/commit/b167240602b13d3733e5e4de5271411b5fdbd4b2))
+
+
+### Bug Fixes
+
+* handle status result 'FAILED' correctly ([#54](https://github.com/lifinance/sdk/issues/54)) ([a2113a4](https://github.com/lifinance/sdk/commit/a2113a42dc05c3cc9666a6f73bc64fe0b083372b))
+* route undefined bug ([#52](https://github.com/lifinance/sdk/issues/52)) ([f0bd05e](https://github.com/lifinance/sdk/commit/f0bd05e8e8454ee570ed908b9584d24dcfadc10e))
+
 ### [0.5.4](https://github.com/lifinance/sdk/compare/v0.5.3...v0.5.4) (2022-04-04)
 
 ### [0.5.3](https://github.com/lifinance/sdk/compare/v0.5.2...v0.5.3) (2022-04-04)
