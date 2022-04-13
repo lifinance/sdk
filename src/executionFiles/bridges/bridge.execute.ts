@@ -1,7 +1,10 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { constants } from 'ethers'
 
-import { parseWalletError } from '../../utils/parseError'
+import {
+  getTransactionFailedMessage,
+  parseWalletError,
+} from '../../utils/parseError'
 import { ExecuteCrossParams } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
@@ -156,7 +159,8 @@ export class BridgeExecutionManager {
       )
     } catch (e: any) {
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
-        errorMessage: 'Failed waiting',
+        errorMessage: 'Transaction failed',
+        htmlErrorMessage: getTransactionFailedMessage(crossProcess),
         errorCode: e?.code,
       })
       statusManager.updateExecution(step, 'FAILED')
