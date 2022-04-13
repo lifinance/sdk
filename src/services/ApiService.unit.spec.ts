@@ -223,79 +223,79 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getQuote(
-            undefined as unknown as ChainId,
+          ApiService.getQuote({
+            fromChain: undefined as unknown as ChainId,
             fromToken,
             fromAddress,
             fromAmount,
             toChain,
-            toToken
-          )
+            toToken,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "fromChain" is missing')
         )
 
         await expect(
-          ApiService.getQuote(
+          ApiService.getQuote({
             fromChain,
-            undefined as unknown as string,
+            fromToken: undefined as unknown as string,
             fromAddress,
             fromAmount,
             toChain,
-            toToken
-          )
+            toToken,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "fromToken" is missing')
         )
 
         await expect(
-          ApiService.getQuote(
+          ApiService.getQuote({
             fromChain,
             fromToken,
-            undefined as unknown as string,
+            fromAddress: undefined as unknown as string,
             fromAmount,
             toChain,
-            toToken
-          )
+            toToken,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "fromAddress" is missing')
         )
 
         await expect(
-          ApiService.getQuote(
+          ApiService.getQuote({
             fromChain,
             fromToken,
             fromAddress,
-            undefined as unknown as string,
+            fromAmount: undefined as unknown as string,
             toChain,
-            toToken
-          )
+            toToken,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "fromAmount" is missing')
         )
 
         await expect(
-          ApiService.getQuote(
+          ApiService.getQuote({
             fromChain,
             fromToken,
             fromAddress,
             fromAmount,
-            undefined as unknown as ChainId,
-            toToken
-          )
+            toChain: undefined as unknown as ChainId,
+            toToken,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "toChain" is missing')
         )
 
         await expect(
-          ApiService.getQuote(
+          ApiService.getQuote({
             fromChain,
             fromToken,
             fromAddress,
             fromAmount,
             toChain,
-            undefined as unknown as string
-          )
+            toToken: undefined as unknown as string,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "toToken" is missing')
         )
@@ -312,14 +312,14 @@ describe('ApiService', () => {
           })
 
           await expect(
-            ApiService.getQuote(
+            ApiService.getQuote({
               fromChain,
               fromToken,
               fromAddress,
               fromAmount,
               toChain,
-              toToken
-            )
+              toToken,
+            })
           ).rejects.toThrowError(new ServerError('Oops'))
           expect(mockedAxios.get).toHaveBeenCalledTimes(1)
         })
@@ -328,14 +328,14 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           mockedAxios.get.mockReturnValue(Promise.resolve({}))
-          await ApiService.getQuote(
+          await ApiService.getQuote({
             fromChain,
             fromToken,
             fromAddress,
             fromAmount,
             toChain,
-            toToken
-          )
+            toToken,
+          })
 
           expect(mockedAxios.get).toHaveBeenCalledTimes(1)
         })
@@ -352,45 +352,47 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getStatus(
-            undefined as unknown as string,
+          ApiService.getStatus({
+            bridge: undefined as unknown as string,
             fromChain,
             toChain,
-            txHash
-          )
+            txHash,
+          })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "bridge" is missing')
+          new ValidationError(
+            'Parameter "bridge" is required for cross chain transfers'
+          )
         )
 
         await expect(
-          ApiService.getStatus(
+          ApiService.getStatus({
             bridge,
-            undefined as unknown as ChainId,
+            fromChain: undefined as unknown as ChainId,
             toChain,
-            txHash
-          )
+            txHash,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "fromChain" is missing')
         )
 
         await expect(
-          ApiService.getStatus(
+          ApiService.getStatus({
             bridge,
             fromChain,
-            undefined as unknown as ChainId,
-            txHash
-          )
+            toChain: undefined as unknown as ChainId,
+            txHash,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "toChain" is missing')
         )
 
         await expect(
-          ApiService.getStatus(
+          ApiService.getStatus({
             bridge,
             fromChain,
             toChain,
-            undefined as unknown as string
-          )
+            txHash: undefined as unknown as string,
+          })
         ).rejects.toThrowError(
           new ValidationError('Required parameter "txHash" is missing')
         )
@@ -407,7 +409,7 @@ describe('ApiService', () => {
           })
 
           await expect(
-            ApiService.getStatus(bridge, fromChain, toChain, txHash)
+            ApiService.getStatus({ bridge, fromChain, toChain, txHash })
           ).rejects.toThrowError(new ServerError('Oops'))
           expect(mockedAxios.get).toHaveBeenCalledTimes(1)
         })
@@ -416,7 +418,7 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           mockedAxios.get.mockReturnValue(Promise.resolve({}))
-          await ApiService.getStatus(bridge, fromChain, toChain, txHash)
+          await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
 
           expect(mockedAxios.get).toHaveBeenCalledTimes(1)
         })

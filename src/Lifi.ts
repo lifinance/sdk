@@ -9,9 +9,9 @@ import {
   Chain,
   ChainId,
   ChainKey,
-  Order,
   PossibilitiesRequest,
   PossibilitiesResponse,
+  QuoteRequest,
   Route,
   RoutesRequest,
   RoutesResponse,
@@ -34,13 +34,16 @@ import { parseBackendError } from './utils/parseError'
 import { ValidationError } from './utils/errors'
 import {
   approveToken,
+  ApproveTokenRequest,
   bulkGetTokenApproval,
   getTokenApproval,
+  RevokeApprovalRequest,
   revokeTokenApproval,
 } from './allowance'
 import ConfigService from './services/ConfigService'
 import ChainsService from './services/ChainsService'
 import ApiService from './services/ApiService'
+import { GetStatusRequest } from '@lifinance/types/dist/api'
 
 export default class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -113,77 +116,20 @@ export default class LIFI {
 
   /**
    * Get a quote for a token transfer
-   * @param {ChainKey | ChainId} fromChain - The sending chain
-   * @param {string} fromToken - The token that should be transferred. Can be the address of the symbol
-   * @param {string} fromAddress - The sending wallet address
-   * @param {string} fromAmount - The amount that should be sent
-   * @param {ChainKey | ChainId} toChain - The receiving chain
-   * @param {string} toToken - The token that should be transferred to. Can be the address or the symbol
-   * @param {Order} order - Which kind of transfer should be preferred
-   * @param {number} slippage - The maximum allowed slippage for the transfer
-   * @param {string} integrator - A string containing tracking information about the integrator of the API
-   * @param {string} referrer - A string containing tracking information about the referrer of the integrator
-   * @param {string[]} allowBridges - List of bridges that are allowed for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
-   * @param {string[]} denyBridges - List of bridges that are not allowed for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
-   * @param {string[]} preferBridges - List of bridges that should be preferred for this transaction. Currently, available bridges are `hop`, `multichain`, `cbridge` and more
-   * @param {string[]} allowExchanges - List of exchanges that are allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
-   * @param {string[]} denyExchanges - List of exchanges that are not allowed for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
-   * @param {string[]} preferExchanges - List of exchanges that should be preferred for this transaction. Currently, available exchanges are aggregators such as `1inch`, `paraswap`, `openocean`, `0x` and a lot of dexes
+   * @param {QuoteRequest} request - The configuration of the requested quote
    * @throws {LifiError} - Throws a LifiError if request fails
    */
-  getQuote = async (
-    fromChain: ChainKey | ChainId,
-    fromToken: string,
-    fromAddress: string,
-    fromAmount: string,
-    toChain: ChainKey | ChainId,
-    toToken: string,
-    order?: Order,
-    slippage?: number,
-    integrator?: string,
-    referrer?: string,
-    allowBridges?: string[],
-    denyBridges?: string[],
-    preferBridges?: string[],
-    allowExchanges?: string[],
-    denyExchanges?: string[],
-    preferExchanges?: string[]
-  ): Promise<Step> => {
-    return ApiService.getQuote(
-      fromChain,
-      fromToken,
-      fromAddress,
-      fromAmount,
-      toChain,
-      toToken,
-      order,
-      slippage,
-      integrator,
-      referrer,
-      allowBridges,
-      denyBridges,
-      preferBridges,
-      allowExchanges,
-      denyExchanges,
-      preferExchanges
-    )
+  getQuote = async (request: QuoteRequest): Promise<Step> => {
+    return ApiService.getQuote(request)
   }
 
   /**
-   * Check the status of a cross chain transfer
-   * @param {string} bridge - The bridging tool used for the transfer
-   * @param {ChainId | ChainKey} fromChain - The sending chain
-   * @param {ChainId | ChainKey} toChain - The receiving chain
-   * @param {string} txHash - The transaction hash on the sending chain
+   * Check the status of a transfer. For cross chain transfers, the "bridge" parameter is required.
+   * @param {GetStatusRequest} request - Configuration of the requested status
    * @throws {LifiError} - Throws a LifiError if request fails
    */
-  getStatus = async (
-    bridge: string,
-    fromChain: ChainId | ChainKey,
-    toChain: ChainId | ChainKey,
-    txHash: string
-  ): Promise<StatusResponse> => {
-    return ApiService.getStatus(bridge, fromChain, toChain, txHash)
+  getStatus = async (request: GetStatusRequest): Promise<StatusResponse> => {
+    return ApiService.getStatus(request)
   }
 
   /**
@@ -503,39 +449,17 @@ export default class LIFI {
 
   /**
    * Set approval for a certain token and amount.
-   * @param signer - The signer required to send the transactions
-   * @param token - The token that should be approved
-   * @param approvalAddress - The address that should be approved
-   * @param amount - The approval amount
-   * @param infiniteApproval - Whether infinite approval should be set
+   * @param { ApproveTokenRequest } request - The approval request
    */
-  approveToken = (
-    signer: Signer,
-    token: Token,
-    approvalAddress: string,
-    amount: string,
-    infiniteApproval?: boolean
-  ): Promise<void> => {
-    return approveToken(
-      signer,
-      token,
-      approvalAddress,
-      amount,
-      infiniteApproval
-    )
+  approveToken = (request: ApproveTokenRequest): Promise<void> => {
+    return approveToken(request)
   }
 
   /**
    * Revoke approval for a certain token.
-   * @param signer - The signer required to send the transactions
-   * @param token - The token that should be approved
-   * @param approvalAddress - The address that should be approved
+   * @param { RevokeApprovalRequest } request - The revoke request
    */
-  revokeTokenApproval = (
-    signer: Signer,
-    token: Token,
-    approvalAddress: string
-  ): Promise<void> => {
-    return revokeTokenApproval(signer, token, approvalAddress)
+  revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
+    return revokeTokenApproval(request)
   }
 }

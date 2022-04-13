@@ -14,12 +14,12 @@ export async function waitForReceivingTransaction(
     new Promise(async (resolve, reject) => {
       let statusResponse: StatusResponse
       try {
-        statusResponse = await ApiService.getStatus(
-          tool,
-          fromChainId,
-          toChainId,
-          txHash
-        )
+        statusResponse = await ApiService.getStatus({
+          bridge: tool,
+          fromChain: fromChainId,
+          toChain: toChainId,
+          txHash,
+        })
       } catch (e: any) {
         console.debug('Fetching status from backend failed', e)
         return resolve(undefined)

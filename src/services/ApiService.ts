@@ -3,7 +3,6 @@ import {
   ChainId,
   ChainKey,
   ChainsResponse,
-  Order,
   PossibilitiesRequest,
   PossibilitiesResponse,
   RoutesRequest,
@@ -17,6 +16,8 @@ import { parseBackendError } from '../utils/parseError'
 import { ValidationError } from '../utils/errors'
 import { isRoutesRequest, isStep } from '../typeguards'
 import ConfigService from './ConfigService'
+import { QuoteRequest } from '@lifinance/types'
+import { GetStatusRequest } from '@lifinance/types/dist/api'
 
 const getPossibilities = async (
   request?: PossibilitiesRequest
@@ -69,24 +70,24 @@ const getToken = async (
   }
 }
 
-const getQuote = async (
-  fromChain: ChainKey | ChainId,
-  fromToken: string,
-  fromAddress: string,
-  fromAmount: string,
-  toChain: ChainKey | ChainId,
-  toToken: string,
-  order?: Order,
-  slippage?: number,
-  integrator?: string,
-  referrer?: string,
-  allowBridges?: string[],
-  denyBridges?: string[],
-  preferBridges?: string[],
-  allowExchanges?: string[],
-  denyExchanges?: string[],
-  preferExchanges?: string[]
-): Promise<Step> => {
+const getQuote = async ({
+  fromChain,
+  fromToken,
+  fromAddress,
+  fromAmount,
+  toChain,
+  toToken,
+  order,
+  slippage,
+  integrator,
+  referrer,
+  allowBridges,
+  denyBridges,
+  preferBridges,
+  allowExchanges,
+  denyExchanges,
+  preferExchanges,
+}: QuoteRequest): Promise<Step> => {
   if (!fromChain)
     throw new ValidationError('Required parameter "fromChain" is missing')
   if (!fromToken)
@@ -129,14 +130,16 @@ const getQuote = async (
   }
 }
 
-const getStatus = async (
-  bridge: string,
-  fromChain: ChainId | ChainKey,
-  toChain: ChainId | ChainKey,
-  txHash: string
-): Promise<StatusResponse> => {
-  if (!bridge)
-    throw new ValidationError('Required parameter "bridge" is missing')
+const getStatus = async ({
+  bridge,
+  fromChain,
+  toChain,
+  txHash,
+}: GetStatusRequest): Promise<StatusResponse> => {
+  if (fromChain !== toChain && !bridge)
+    throw new ValidationError(
+      'Parameter "bridge" is required for cross chain transfers'
+    )
 
   if (!fromChain)
     throw new ValidationError('Required parameter "fromChain" is missing')
