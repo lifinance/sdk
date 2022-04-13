@@ -3,20 +3,16 @@ import { constants } from 'ethers'
 
 import { parseWalletError } from '../../utils/parseError'
 import { ExecuteCrossParams } from '../../types'
-import { personalizeStep, repeatUntilDone } from '../../utils/utils'
+import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import {
-  BridgeTool,
-  ChainId,
-  Execution,
-  StatusResponse,
-} from '@lifinance/types'
+import { BridgeTool, Execution, StatusResponse } from '@lifinance/types'
 import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
 import { ServerError } from '../../utils/errors'
 import ChainsService from '../../services/ChainsService'
 import ApiService from '../../services/ApiService'
+import { waitForReceivingTransaction } from '../utils'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -152,7 +148,7 @@ export class BridgeExecutionManager {
     )
     let statusResponse: StatusResponse
     try {
-      statusResponse = await this.waitForReceivingTransaction(
+      statusResponse = await waitForReceivingTransaction(
         step.tool as BridgeTool,
         fromChain.id,
         toChain.id,
@@ -185,47 +181,5 @@ export class BridgeExecutionManager {
 
     // DONE
     return step.execution
-  }
-
-  private async waitForReceivingTransaction(
-    tool: BridgeTool,
-    fromChainId: ChainId,
-    toChainId: ChainId,
-    txHash: string
-  ): Promise<StatusResponse> {
-    const getStatus = (): Promise<StatusResponse | undefined> =>
-      new Promise(async (resolve, reject) => {
-        let statusResponse: StatusResponse
-        try {
-          statusResponse = await ApiService.getStatus({
-            bridge: tool,
-            fromChain: fromChainId,
-            toChain: toChainId,
-            txHash,
-          })
-        } catch (e: any) {
-          console.debug('Fetching status from backend failed', e)
-          return resolve(undefined)
-        }
-
-        switch (statusResponse.status) {
-          case 'DONE':
-            return resolve(statusResponse)
-          case 'PENDING':
-          case 'NOT_FOUND':
-            return resolve(undefined)
-          case 'FAILED':
-          default:
-            return reject()
-        }
-      })
-
-    const status = await repeatUntilDone(getStatus, 5_000)
-
-    if (!status.receiving) {
-      throw new ServerError('Status does not contain receiving information')
-    }
-
-    return status
   }
 }

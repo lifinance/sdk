@@ -3,24 +3,20 @@ import StatusManager from '../StatusManager'
 
 import {
   CrossStep,
-  ExchangeTool,
+  HaltingSettings,
   InternalExecutionSettings,
   LifiStep,
   Step,
   SwapStep,
-  HaltingSettings,
 } from '../types'
-import { oneinch } from './exchanges/oneinch'
-import { openocean } from './exchanges/openocean'
-import { paraswap } from './exchanges/paraswap'
 import { SwapExecutionManager } from './exchanges/swap.execute'
-import { uniswap } from './exchanges/uniswaps'
 import { switchChain } from './switchChain'
 import { BridgeExecutionManager } from './bridges/bridge.execute'
 
 const defaultExecutionHaltSettings = {
   allowUpdates: true,
 }
+
 export class StepExecutor {
   settings: InternalExecutionSettings
   statusManager: StatusManager
@@ -89,30 +85,7 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    switch (step.tool) {
-      case ExchangeTool.paraswap:
-        return await this.swapExecutionManager.execute({
-          ...swapParams,
-          parseReceipt: paraswap.parseReceipt,
-        })
-      case ExchangeTool.oneinch:
-        return await this.swapExecutionManager.execute({
-          ...swapParams,
-          parseReceipt: oneinch.parseReceipt,
-        })
-      case ExchangeTool.openocean:
-        return await this.swapExecutionManager.execute({
-          ...swapParams,
-          parseReceipt: openocean.parseReceipt,
-        })
-      case ExchangeTool.zerox:
-      case ExchangeTool.dodo:
-      default:
-        return await this.swapExecutionManager.execute({
-          ...swapParams,
-          parseReceipt: uniswap.parseReceipt,
-        })
-    }
+    return await this.swapExecutionManager.execute(swapParams)
   }
 
   private executeCross = async (signer: Signer, step: CrossStep | LifiStep) => {
