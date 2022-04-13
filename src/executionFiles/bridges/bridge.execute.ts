@@ -164,7 +164,7 @@ export class BridgeExecutionManager {
     } catch (e: any) {
       statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
         errorMessage: 'Transaction failed',
-        htmlErrorMessage: await getTransactionFailedMessage(crossProcess),
+        htmlErrorMessage: getTransactionFailedMessage(crossProcess),
         errorCode: e?.code,
       })
       statusManager.updateExecution(step, 'FAILED')

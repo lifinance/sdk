@@ -78,9 +78,7 @@ export const getTransactionNotSentMessage = async (
   return transactionNotSend
 }
 
-export const getTransactionFailedMessage = async (
-  process: Process
-): Promise<string> => {
+export const getTransactionFailedMessage = (process: Process): string => {
   return process.txLink
     ? `Please check the&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
     : ''
