@@ -76,14 +76,16 @@ describe('balances utils', () => {
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
 
-    it('should fallback to multiple calls if multicall in not available', async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.ETH, ChainId.OPT),
-        findDefaultToken(CoinKey.USDC, ChainId.OPT),
-      ]
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    })
+    // we currently don't have a chain where we don't have a multicall address.
+    // leaving this test here for the future if we add a chain w/o a multicall address again.
+    // it('should fallback to multiple calls if multicall in not available', async () => {
+    //   const walletAddress = defaultWalletAddress
+    //   const tokens = [
+    //     findDefaultToken(CoinKey.ETH, ChainId.OPT),
+    //     findDefaultToken(CoinKey.USDC, ChainId.OPT),
+    //   ]
+    //   await loadAndCompareTokenAmounts(walletAddress, tokens)
+    // })
 
     it('should handle empty lists', async () => {
       const walletAddress = defaultWalletAddress
