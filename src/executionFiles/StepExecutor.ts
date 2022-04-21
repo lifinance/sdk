@@ -34,14 +34,14 @@ export class StepExecutor {
   }
 
   stopStepExecution = (settings?: HaltingSettings): void => {
-    const defaultHaltingSettings = {
+    const haltingSettings = {
       ...defaultExecutionHaltSettings,
       ...settings,
     }
 
     this.swapExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
-    this.statusManager.setShouldUpdate(defaultHaltingSettings.allowUpdates)
+    this.statusManager.setShouldUpdate(haltingSettings.allowUpdates)
     this.executionStopped = true
   }
 

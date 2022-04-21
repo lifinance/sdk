@@ -224,7 +224,7 @@ export default class StatusManager {
     this.internalUpdateRouteCallback(this.route)
   }
 
-  setShouldUpdate(value: boolean) {
+  setShouldUpdate(value: boolean): void {
     this.shouldUpdate = value
   }
 }
