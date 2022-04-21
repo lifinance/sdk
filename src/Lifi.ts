@@ -190,7 +190,7 @@ export default class LIFI {
   stopExecution = (route: Route): Route => {
     if (!this.activeRouteDictionary[route.id]) return route
     for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution({ allowUpdates: true })
+      executor.stopStepExecution({ allowUpdates: false })
     }
     delete this.activeRouteDictionary[route.id]
     return route
@@ -203,7 +203,7 @@ export default class LIFI {
   moveExecutionToBackground = (route: Route): void => {
     if (!this.activeRouteDictionary[route.id]) return
     for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution()
+      executor.stopStepExecution({ allowUpdates: true })
     }
   }
 
