@@ -37,8 +37,26 @@ export class SwapExecutionManager {
     const chainsService = ChainsService.getInstance()
     const fromChain = await chainsService.getChainById(action.fromChainId)
 
+    const chainSwitchClosure = async () => {
+      const updatedSigner = await switchChain(
+        signer,
+        statusManager,
+        step,
+        settings.switchChainHook,
+        this.shouldContinue
+      )
+
+      if (!updatedSigner) {
+        // chain switch was not successful, stop execution here
+        return step.execution
+      }
+
+      signer = updatedSigner
+    }
+
     // Approval
     if (action.fromToken.address !== constants.AddressZero) {
+      await chainSwitchClosure()
       await checkAllowance(
         signer,
         step,
@@ -84,20 +102,7 @@ export class SwapExecutionManager {
         }
 
         // make sure that chain is still correct
-        const updatedSigner = await switchChain(
-          signer,
-          statusManager,
-          step,
-          settings.switchChainHook,
-          this.shouldContinue
-        )
-
-        if (!updatedSigner) {
-          // chain switch was not successful, stop execution here
-          return step.execution
-        }
-
-        signer = updatedSigner
+        await chainSwitchClosure()
 
         // -> set step.execution
         statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {

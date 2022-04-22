@@ -46,22 +46,6 @@ export class StepExecutor {
   }
 
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
-    // check if signer is for correct chain
-    const updatedSigner = await switchChain(
-      signer,
-      this.statusManager,
-      step,
-      this.settings.switchChainHook,
-      !this.executionStopped
-    )
-
-    if (!updatedSigner) {
-      // chain switch was not successful, stop execution here
-      return step
-    }
-
-    signer = updatedSigner
-
     switch (step.type) {
       case 'lifi':
       case 'cross':

@@ -37,6 +37,24 @@ export class BridgeExecutionManager {
     const fromChain = await chainsService.getChainById(action.fromChainId)
     const toChain = await chainsService.getChainById(action.toChainId)
 
+    const chainSwitchClosure = async () => {
+      // make sure that chain is still correct
+      const updatedSigner = await switchChain(
+        signer,
+        statusManager,
+        step,
+        settings.switchChainHook,
+        this.shouldContinue
+      )
+
+      if (!updatedSigner) {
+        // chain switch was not successful, stop execution here
+        return step.execution
+      }
+
+      signer = updatedSigner
+    }
+
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
     const oldCrossProcess = step.execution.process.find(
@@ -45,6 +63,7 @@ export class BridgeExecutionManager {
     if (!oldCrossProcess || !oldCrossProcess.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
+        await chainSwitchClosure()
         await checkAllowance(
           signer,
           step,
@@ -90,20 +109,7 @@ export class BridgeExecutionManager {
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
         // make sure that chain is still correct
-        const updatedSigner = await switchChain(
-          signer,
-          statusManager,
-          step,
-          settings.switchChainHook,
-          this.shouldContinue
-        )
-
-        if (!updatedSigner) {
-          // chain switch was not successful, stop execution here
-          return step.execution
-        }
-
-        signer = updatedSigner
+        await chainSwitchClosure()
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
         if (!this.shouldContinue) return step.execution
@@ -116,8 +122,6 @@ export class BridgeExecutionManager {
           txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
         })
       }
-
-      await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
         statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
