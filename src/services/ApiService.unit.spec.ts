@@ -454,6 +454,19 @@ describe('ApiService', () => {
     })
   })
 
+  describe.only('getTools', () => {
+    describe('and the backend succeeds', () => {
+      it('returns the tools', async () => {
+        const tools = await ApiService.getTools({
+          chains: [ChainId.ETH, ChainId.POL],
+        })
+        expect(tools).toBeDefined()
+        expect(tools.bridges).toBeDefined()
+        expect(tools.exchanges).toBeDefined()
+      })
+    })
+  })
+
   describe('getStepTransaction', () => {
     const getAction = ({
       fromChainId = ChainId.BSC,
