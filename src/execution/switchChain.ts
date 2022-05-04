@@ -35,7 +35,7 @@ export const switchChain = async (
   const chain = await chainService.getChainById(step.action.fromChainId)
 
   const switchProcess = statusManager.findOrCreateProcess(
-    'switchProcess',
+    'SWITCH_CHAIN',
     step,
     `Change Chain to ${chain.name}`
   )
@@ -53,11 +53,11 @@ export const switchChain = async (
       throw new Error('Chain switch required.')
     }
 
-    statusManager.removeProcess(step, switchProcess.id)
+    statusManager.removeProcess(step, switchProcess.type)
     statusManager.updateExecution(step, 'PENDING')
     return updatedSigner
   } catch (e: any) {
-    statusManager.updateProcess(step, switchProcess.id, 'FAILED', {
+    statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
       errorMessage: e.message,
       errorCode: e.code,
     })

@@ -64,7 +64,7 @@ describe('switchChain', () => {
   describe('when the chain is not correct', () => {
     beforeEach(() => {
       getChainIdMock.mockResolvedValueOnce(1)
-      findOrCreateProcessMock.mockReturnValue({ id: 'switchProcess' })
+      findOrCreateProcessMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
     })
 
     describe('when allowUserInteraction is false', () => {
@@ -160,7 +160,7 @@ describe('switchChain', () => {
           expect(updatedSigner).toEqual(newSigner)
           expect(statusManager.removeProcess).toHaveBeenCalledWith(
             step,
-            'switchProcess'
+            'SWITCH_CHAIN'
           )
           expect(statusManager.updateExecution).toHaveBeenCalledWith(
             step,

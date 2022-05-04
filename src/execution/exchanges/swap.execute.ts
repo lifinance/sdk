@@ -54,7 +54,7 @@ export class SwapExecutionManager {
     // Start Swap
     // -> set step.execution
     const swapProcess = statusManager.findOrCreateProcess(
-      'swapProcess',
+      'SWAP',
       step,
       'Preparing Swap'
     )
@@ -75,7 +75,7 @@ export class SwapExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+          statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
           statusManager.updateExecution(step, 'FAILED')
@@ -99,7 +99,7 @@ export class SwapExecutionManager {
         signer = updatedSigner
 
         // -> set step.execution
-        statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
+        statusManager.updateProcess(step, swapProcess.type, 'ACTION_REQUIRED', {
           message: 'Sign Transaction',
         })
         if (!this.shouldContinue) {
@@ -111,7 +111,7 @@ export class SwapExecutionManager {
       }
     } catch (e) {
       const error = await parseWalletError(e, step, swapProcess)
-      statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+      statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
         errorMessage: error.message,
         htmlErrorMessage: error.htmlMessage,
         errorCode: error.code,
@@ -121,7 +121,7 @@ export class SwapExecutionManager {
     }
 
     // Wait for Transaction
-    statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
+    statusManager.updateProcess(step, swapProcess.type, 'PENDING', {
       message: 'Swapping - Wait for',
       txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
       txHash: tx.hash,
@@ -135,7 +135,7 @@ export class SwapExecutionManager {
       // -> set status
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
         receipt = e.replacement
-        statusManager.updateProcess(step, swapProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, swapProcess.type, 'PENDING', {
           txHash: e.replacement.hash,
           txLink:
             fromChain.metamask.blockExplorerUrls[0] +
@@ -144,7 +144,7 @@ export class SwapExecutionManager {
         })
       } else {
         const error = await parseWalletError(e)
-        statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+        statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
           errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,
           errorCode: error.code,
@@ -156,6 +156,9 @@ export class SwapExecutionManager {
 
     let statusResponse: StatusResponse
     try {
+      if (!swapProcess.txHash) {
+        throw new Error('Transaction has is undefined.')
+      }
       statusResponse = await waitForReceivingTransaction(
         step.tool as ExchangeTools,
         fromChain.id,
@@ -163,7 +166,7 @@ export class SwapExecutionManager {
         swapProcess.txHash
       )
     } catch (e: any) {
-      statusManager.updateProcess(step, swapProcess.id, 'FAILED', {
+      statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
         errorMessage: 'Failed waiting',
         errorCode: e?.code,
       })
@@ -171,7 +174,7 @@ export class SwapExecutionManager {
       throw e
     }
 
-    statusManager.updateProcess(step, swapProcess.id, 'DONE', {
+    statusManager.updateProcess(step, swapProcess.type, 'DONE', {
       txHash: statusResponse.receiving?.txHash,
       txLink:
         fromChain.metamask.blockExplorerUrls[0] +

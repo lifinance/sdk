@@ -129,7 +129,7 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         expect(() =>
           statusManager.findOrCreateProcess(
-            'newProcessId',
+            'SWAP',
             deepClone(step),
             'New Process Message'
           )
@@ -145,7 +145,7 @@ describe('StatusManager', () => {
       describe('and the process already exists', () => {
         it('should return the process and not call the callbacks', () => {
           const process = statusManager.findOrCreateProcess(
-            'process1',
+            'TOKEN_ALLOWANCE',
             deepClone(step),
             'some message'
           )
@@ -160,7 +160,7 @@ describe('StatusManager', () => {
       describe("and the process doesn't exist", () => {
         it('should create a process and call the callbacks with the updated route', () => {
           const process = statusManager.findOrCreateProcess(
-            'process3',
+            'CROSS_CHAIN',
             deepClone(step),
             'some message',
             {
@@ -169,7 +169,7 @@ describe('StatusManager', () => {
             }
           )
 
-          expect(process.id).toEqual('process3')
+          expect(process.type).toEqual('CROSS_CHAIN')
           expect(process.status).toEqual('PENDING')
           expect(process.message).toEqual('some message')
 
@@ -202,10 +202,10 @@ describe('StatusManager', () => {
         expect(() =>
           statusManager.updateProcess(
             deepClone(step),
-            'unknownProcessId',
+            'CROSS_CHAIN',
             'CANCELLED'
           )
-        ).toThrow("Can't find a process for the given id.")
+        ).toThrow("Can't find a process for the given type.")
       })
     })
 
@@ -236,12 +236,12 @@ describe('StatusManager', () => {
           it('should update the process and call the callbacks', () => {
             const process = statusManager.updateProcess(
               deepClone(step),
-              'process2',
+              'SWAP',
               status as Status,
               { anotherMessage: 'Should be updated in the process' }
             )
 
-            expect(process.id).toEqual('process2')
+            expect(process.type).toEqual('SWAP')
             expect(process.status).toEqual(status)
             message && expect(process.message).toEqual(message)
             doneAt
@@ -276,7 +276,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.removeProcess(deepClone(step), 'unkownProcessId')
+          statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -284,7 +284,7 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeProcess(deepClone(step), 'process1')
+        statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
       })
 
       it('should remove the process and call the callbacks', () => {

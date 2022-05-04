@@ -39,7 +39,7 @@ export class BridgeExecutionManager {
     // STEP 1: Check Allowance ////////////////////////////////////////////////
     // approval still needed?
     const oldCrossProcess = step.execution.process.find(
-      (p) => p.id === 'crossProcess'
+      (p) => p.type === 'CROSS_CHAIN'
     )
     if (!oldCrossProcess?.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
@@ -59,17 +59,17 @@ export class BridgeExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossProcess = statusManager.findOrCreateProcess(
-      'crossProcess',
+    const crossChainProcess = statusManager.findOrCreateProcess(
+      'CROSS_CHAIN',
       step,
       'Prepare Transaction'
     )
 
     try {
       let tx: TransactionResponse
-      if (crossProcess.txHash) {
+      if (crossChainProcess.txHash) {
         // load exiting transaction
-        tx = await getProvider(signer).getTransaction(crossProcess.txHash)
+        tx = await getProvider(signer).getTransaction(crossChainProcess.txHash)
       } else {
         // check balance
         await balanceCheck(signer, step)
@@ -80,11 +80,11 @@ export class BridgeExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+          statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
             errorMessage: 'Unable to prepare Transaction',
           })
           statusManager.updateExecution(step, 'FAILED')
-          throw new ServerError(crossProcess.errorMessage)
+          throw new ServerError(crossChainProcess.errorMessage)
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
@@ -104,7 +104,11 @@ export class BridgeExecutionManager {
 
         signer = updatedSigner
 
-        statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
+        statusManager.updateProcess(
+          step,
+          crossChainProcess.type,
+          'ACTION_REQUIRED'
+        )
         if (!this.shouldContinue) {
           return step.execution
         }
@@ -112,7 +116,7 @@ export class BridgeExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, crossChainProcess.type, 'PENDING', {
           txHash: tx.hash,
           txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
         })
@@ -121,7 +125,7 @@ export class BridgeExecutionManager {
       await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        statusManager.updateProcess(step, crossProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, crossChainProcess.type, 'PENDING', {
           txHash: e.replacement.hash,
           txLink:
             fromChain.metamask.blockExplorerUrls[0] +
@@ -129,8 +133,8 @@ export class BridgeExecutionManager {
             e.replacement.hash,
         })
       } else {
-        const error = await parseWalletError(e, step, crossProcess)
-        statusManager.updateProcess(step, crossProcess.id, 'FAILED', {
+        const error = await parseWalletError(e, step, crossChainProcess)
+        statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
           errorMessage: error.message,
           htmlErrorMessage: error.htmlMessage,
           errorCode: error.code,
@@ -140,35 +144,43 @@ export class BridgeExecutionManager {
       }
     }
 
-    statusManager.updateProcess(step, crossProcess.id, 'DONE', {
+    statusManager.updateProcess(step, crossChainProcess.type, 'DONE', {
       message: 'Transfer started: ',
     })
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const waitForTxProcess = statusManager.findOrCreateProcess(
-      'waitForTxProcess',
+    const awaitTransactionProcess = statusManager.findOrCreateProcess(
+      'AWAIT_TRANSACTION',
       step,
       'Wait for Receiving Chain'
     )
     let statusResponse: StatusResponse
     try {
+      if (!crossChainProcess.txHash) {
+        throw new Error('Transaction hash is undefined.')
+      }
       statusResponse = await waitForReceivingTransaction(
         step.tool as BridgeTool,
         fromChain.id,
         toChain.id,
-        crossProcess.txHash
+        crossChainProcess.txHash
       )
     } catch (e: any) {
-      statusManager.updateProcess(step, waitForTxProcess.id, 'FAILED', {
-        errorMessage: 'Transaction failed',
-        htmlErrorMessage: getTransactionFailedMessage(crossProcess),
-        errorCode: e?.code,
-      })
+      statusManager.updateProcess(
+        step,
+        awaitTransactionProcess.type,
+        'FAILED',
+        {
+          errorMessage: 'Transaction failed',
+          htmlErrorMessage: getTransactionFailedMessage(crossChainProcess),
+          errorCode: e?.code,
+        }
+      )
       statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
-    statusManager.updateProcess(step, waitForTxProcess.id, 'DONE', {
+    statusManager.updateProcess(step, awaitTransactionProcess.type, 'DONE', {
       txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +

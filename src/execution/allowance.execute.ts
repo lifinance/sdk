@@ -21,7 +21,7 @@ export const checkAllowance = async (
   // Ask user to set allowance
   // -> set currentExecution
   const allowanceProcess = statusManager.findOrCreateProcess(
-    'allowanceProcess',
+    'TOKEN_ALLOWANCE',
     step,
     `Set Allowance for ${token.symbol}`
   )
@@ -30,9 +30,9 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash) {
       await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
-      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
+      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
     } else if (allowanceProcess.message === 'Already Approved') {
-      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
+      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -51,7 +51,7 @@ export const checkAllowance = async (
         )
 
         // update currentExecution
-        statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
           txHash: approveTx.hash,
           txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
           message: 'Approve - Wait for',
@@ -60,11 +60,11 @@ export const checkAllowance = async (
         // wait for transcation
         await approveTx.wait()
 
-        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
           message: 'Approved: ',
         })
       } else {
-        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
           message: 'Already Approved',
         })
       }
@@ -72,14 +72,14 @@ export const checkAllowance = async (
   } catch (e: any) {
     // -> set status
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-      statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
         txHash: e.replacement.hash,
         txLink:
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
       const error = await parseWalletError(e, step, allowanceProcess)
-      statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
+      statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
         errorMessage: error.message,
         htmlErrorMessage: error.htmlMessage,
         errorCode: error.code,
