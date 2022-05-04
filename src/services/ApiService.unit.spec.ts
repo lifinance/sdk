@@ -454,7 +454,7 @@ describe('ApiService', () => {
     })
   })
 
-  describe.only('getTools', () => {
+  describe('getTools', () => {
     describe('and the backend succeeds', () => {
       it('returns the tools', async () => {
         mockedAxios.get.mockReturnValue(
