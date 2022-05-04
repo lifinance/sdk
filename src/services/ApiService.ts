@@ -233,7 +233,6 @@ const getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
   const r = await axios.get(config.apiUrl + 'tools', { params: request })
-  console.log(config.apiUrl + 'tools', request)
   return r.data!
 }
 
