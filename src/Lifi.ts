@@ -44,6 +44,7 @@ import ConfigService from './services/ConfigService'
 import ChainsService from './services/ChainsService'
 import ApiService from './services/ApiService'
 import { GetStatusRequest } from '@lifinance/types/dist/api'
+import { deepClone } from './utils/utils'
 
 export default class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -220,10 +221,12 @@ export default class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
-    // check if route is already running
-    if (this.activeRouteDictionary[route.id]) return route // TODO: maybe inform user why nothing happens?
+    const clonedRoute = deepClone<Route>(route) // deep clone to prevent side effects
 
-    return this.executeSteps(signer, route, settings)
+    // check if route is already running
+    if (this.activeRouteDictionary[clonedRoute.id]) return clonedRoute // TODO: maybe inform user why nothing happens?
+
+    return this.executeSteps(signer, clonedRoute, settings)
   }
 
   /**
@@ -239,15 +242,17 @@ export default class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
-    const activeRoute = this.activeRouteDictionary[route.id]
+    const clonedRoute = deepClone<Route>(route) // deep clone to prevent side effects
+
+    const activeRoute = this.activeRouteDictionary[clonedRoute.id]
     if (activeRoute) {
       const executionHalted = activeRoute.executors.some(
         (executor) => executor.executionStopped
       )
-      if (!executionHalted) return route
+      if (!executionHalted) return clonedRoute
     }
 
-    return this.executeSteps(signer, route, settings)
+    return this.executeSteps(signer, clonedRoute, settings)
   }
 
   private executeSteps = async (
