@@ -1,8 +1,8 @@
-import { ChainId } from '..'
 import { BridgeTool, ExchangeTools, StatusResponse } from '@lifinance/types'
+import { ChainId } from '..'
 import ApiService from '../services/ApiService'
-import { repeatUntilDone } from '../utils/utils'
 import { ServerError } from '../utils/errors'
+import { repeatUntilDone } from '../utils/utils'
 
 export async function waitForReceivingTransaction(
   tool: BridgeTool | ExchangeTools,
@@ -40,7 +40,7 @@ export async function waitForReceivingTransaction(
   const status = await repeatUntilDone(getStatus, 5_000)
 
   if (!status.receiving) {
-    throw new ServerError('Status does not contain receiving information')
+    throw new ServerError("Status doesn't contain receiving information.")
   }
 
   return status

@@ -1,7 +1,8 @@
-import { constants, Signer } from 'ethers'
 import { Token } from '@lifinance/types'
-import { RevokeTokenData } from '../types'
 import BigNumber from 'bignumber.js'
+import { constants, Signer } from 'ethers'
+import { isSameToken } from '../helpers'
+import { RevokeTokenData } from '../types'
 import { isZeroAddress } from '../utils/utils'
 import {
   getAllowanceViaMulticall,
@@ -9,7 +10,6 @@ import {
   groupByChain,
   setApproval,
 } from './utils'
-import { isSameToken } from '../helpers'
 
 export interface ApproveTokenRequest {
   signer: Signer
@@ -76,7 +76,7 @@ export const bulkGetTokenApproval = async (
       isSameToken(approval.token, token)
     )
 
-    return { token, approval: approved?.approvedAmount.toString() ?? undefined }
+    return { token, approval: approved?.approvedAmount.toString() }
   })
 }
 

@@ -1,20 +1,19 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
+import { BridgeTool, Execution, StatusResponse } from '@lifinance/types'
 import { constants } from 'ethers'
-
+import ApiService from '../../services/ApiService'
+import ChainsService from '../../services/ChainsService'
+import { ExecuteCrossParams } from '../../types'
+import { ServerError } from '../../utils/errors'
+import { getProvider } from '../../utils/getProvider'
 import {
   getTransactionFailedMessage,
   parseWalletError,
 } from '../../utils/parseError'
-import { ExecuteCrossParams } from '../../types'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import { BridgeTool, Execution, StatusResponse } from '@lifinance/types'
-import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
-import { ServerError } from '../../utils/errors'
-import ChainsService from '../../services/ChainsService'
-import ApiService from '../../services/ApiService'
 import { waitForReceivingTransaction } from '../utils'
 
 export class BridgeExecutionManager {
@@ -42,7 +41,7 @@ export class BridgeExecutionManager {
     const oldCrossProcess = step.execution.process.find(
       (p) => p.id === 'crossProcess'
     )
-    if (!oldCrossProcess || !oldCrossProcess.txHash) {
+    if (!oldCrossProcess?.txHash) {
       if (action.fromToken.address !== constants.AddressZero) {
         // Check Token Approval only if fromToken is not the native token => no approval needed in that case
         await checkAllowance(
@@ -106,7 +105,9 @@ export class BridgeExecutionManager {
         signer = updatedSigner
 
         statusManager.updateProcess(step, crossProcess.id, 'ACTION_REQUIRED')
-        if (!this.shouldContinue) return step.execution
+        if (!this.shouldContinue) {
+          return step.execution
+        }
 
         tx = await signer.sendTransaction(transactionRequest)
 

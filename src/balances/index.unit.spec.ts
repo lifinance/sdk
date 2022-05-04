@@ -1,5 +1,4 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
-
 import balances from '.'
 import utils from './utils'
 

@@ -1,7 +1,7 @@
-import ChainsService from './ChainsService'
 import { AddEthereumChainParameter, Chain, ChainKey, CoinKey } from '../types'
-import ApiService from './ApiService'
 import { ValidationError } from '../utils/errors'
+import ApiService from './ApiService'
+import ChainsService from './ChainsService'
 
 jest.mock('./ApiService')
 const mockedApiService = ApiService as jest.Mocked<typeof ApiService>
@@ -42,7 +42,7 @@ describe('ChainsService', () => {
   describe('getChainById', () => {
     it('should throw an error if the chain is unknown', async () => {
       await expect(chainsService.getChainById(1337)).rejects.toThrowError(
-        new ValidationError(`Unknown chainId passed: ${1337}`)
+        new ValidationError(`Unknown chainId passed: ${1337}.`)
       )
     })
 

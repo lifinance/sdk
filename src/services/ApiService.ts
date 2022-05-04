@@ -1,3 +1,7 @@
+import { QuoteRequest } from '@lifinance/types'
+import { GetStatusRequest } from '@lifinance/types/dist/api'
+import axios from 'axios'
+import { isRoutesRequest, isStep } from '../typeguards'
 import {
   Chain,
   ChainId,
@@ -11,18 +15,16 @@ import {
   Step,
   Token,
 } from '../types'
-import axios from 'axios'
-import { parseBackendError } from '../utils/parseError'
 import { ValidationError } from '../utils/errors'
-import { isRoutesRequest, isStep } from '../typeguards'
+import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
-import { QuoteRequest } from '@lifinance/types'
-import { GetStatusRequest } from '@lifinance/types/dist/api'
 
 const getPossibilities = async (
   request?: PossibilitiesRequest
 ): Promise<PossibilitiesResponse> => {
-  if (!request) request = {}
+  if (!request) {
+    request = {}
+  }
 
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
@@ -48,11 +50,11 @@ const getToken = async (
   token: string
 ): Promise<Token> => {
   if (!chain) {
-    throw new ValidationError('Required parameter "chain" is missing')
+    throw new ValidationError('Required parameter "chain" is missing.')
   }
 
   if (!token) {
-    throw new ValidationError('Required parameter "token" is missing')
+    throw new ValidationError('Required parameter "token" is missing.')
   }
 
   const configService = ConfigService.getInstance()
@@ -88,18 +90,24 @@ const getQuote = async ({
   denyExchanges,
   preferExchanges,
 }: QuoteRequest): Promise<Step> => {
-  if (!fromChain)
-    throw new ValidationError('Required parameter "fromChain" is missing')
-  if (!fromToken)
-    throw new ValidationError('Required parameter "fromToken" is missing')
-  if (!fromAddress)
-    throw new ValidationError('Required parameter "fromAddress" is missing')
-  if (!fromAmount)
-    throw new ValidationError('Required parameter "fromAmount" is missing')
-  if (!toChain)
-    throw new ValidationError('Required parameter "toChain" is missing')
-  if (!toToken)
-    throw new ValidationError('Required parameter "toToken" is missing')
+  if (!fromChain) {
+    throw new ValidationError('Required parameter "fromChain" is missing.')
+  }
+  if (!fromToken) {
+    throw new ValidationError('Required parameter "fromToken" is missing.')
+  }
+  if (!fromAddress) {
+    throw new ValidationError('Required parameter "fromAddress" is missing.')
+  }
+  if (!fromAmount) {
+    throw new ValidationError('Required parameter "fromAmount" is missing.')
+  }
+  if (!toChain) {
+    throw new ValidationError('Required parameter "toChain" is missing.')
+  }
+  if (!toToken) {
+    throw new ValidationError('Required parameter "toToken" is missing.')
+  }
 
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
@@ -136,19 +144,23 @@ const getStatus = async ({
   toChain,
   txHash,
 }: GetStatusRequest): Promise<StatusResponse> => {
-  if (fromChain !== toChain && !bridge)
+  if (fromChain !== toChain && !bridge) {
     throw new ValidationError(
-      'Parameter "bridge" is required for cross chain transfers'
+      'Parameter "bridge" is required for cross chain transfers.'
     )
+  }
 
-  if (!fromChain)
-    throw new ValidationError('Required parameter "fromChain" is missing')
+  if (!fromChain) {
+    throw new ValidationError('Required parameter "fromChain" is missing.')
+  }
 
-  if (!toChain)
-    throw new ValidationError('Required parameter "toChain" is missing')
+  if (!toChain) {
+    throw new ValidationError('Required parameter "toChain" is missing.')
+  }
 
-  if (!txHash)
-    throw new ValidationError('Required parameter "txHash" is missing')
+  if (!txHash) {
+    throw new ValidationError('Required parameter "txHash" is missing.')
+  }
 
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
@@ -183,7 +195,7 @@ const getRoutes = async (
   routesRequest: RoutesRequest
 ): Promise<RoutesResponse> => {
   if (!isRoutesRequest(routesRequest)) {
-    throw new ValidationError('Invalid Routes Request')
+    throw new ValidationError('Invalid routes request.')
   }
 
   const configService = ConfigService.getInstance()

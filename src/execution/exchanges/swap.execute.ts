@@ -2,18 +2,17 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
+import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
 import { constants } from 'ethers'
-import { parseWalletError } from '../../utils/parseError'
-
+import ApiService from '../../services/ApiService'
+import ChainsService from '../../services/ChainsService'
 import { ExecuteSwapParams } from '../../types'
+import { getProvider } from '../../utils/getProvider'
+import { parseWalletError } from '../../utils/parseError'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
-import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
-import { getProvider } from '../../utils/getProvider'
 import { switchChain } from '../switchChain'
-import ChainsService from '../../services/ChainsService'
-import ApiService from '../../services/ApiService'
 import { waitForReceivingTransaction } from '../utils'
 
 export class SwapExecutionManager {
@@ -103,7 +102,9 @@ export class SwapExecutionManager {
         statusManager.updateProcess(step, swapProcess.id, 'ACTION_REQUIRED', {
           message: 'Sign Transaction',
         })
-        if (!this.shouldContinue) return step.execution // stop before user interaction is needed
+        if (!this.shouldContinue) {
+          return step.execution // stop before user interaction is needed
+        }
 
         // -> submit tx
         tx = await signer.sendTransaction(transactionRequest)

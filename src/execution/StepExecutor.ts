@@ -1,6 +1,5 @@
 import { Signer } from 'ethers'
 import StatusManager from '../StatusManager'
-
 import {
   CrossStep,
   HaltingSettings,
@@ -9,9 +8,9 @@ import {
   Step,
   SwapStep,
 } from '../types'
+import { BridgeExecutionManager } from './bridges/bridge.execute'
 import { SwapExecutionManager } from './exchanges/swap.execute'
 import { switchChain } from './switchChain'
-import { BridgeExecutionManager } from './bridges/bridge.execute'
 
 const defaultExecutionHaltSettings = {
   allowUpdates: true,
@@ -71,7 +70,7 @@ export class StepExecutor {
         await this.executeSwap(signer, step)
         break
       default:
-        throw new Error('Unsupported step type')
+        throw new Error('Unsupported step type.')
     }
 
     return step

@@ -1,8 +1,8 @@
-import { SwitchChainHook } from '../types'
-import { Signer } from 'ethers'
-import StatusManager from '../StatusManager'
 import { Step } from '@lifinance/types'
+import { Signer } from 'ethers'
 import ChainsService from '../services/ChainsService'
+import StatusManager from '../StatusManager'
+import { SwitchChainHook } from '../types'
 
 /**
  * This method checks whether the signer is configured for the correct chain.
@@ -40,7 +40,9 @@ export const switchChain = async (
     `Change Chain to ${chain.name}`
   )
 
-  if (!allowUserInteraction) return
+  if (!allowUserInteraction) {
+    return
+  }
 
   try {
     const updatedSigner = await switchChainHook(step.action.fromChainId)
@@ -48,7 +50,7 @@ export const switchChain = async (
       !updatedSigner ||
       (await updatedSigner.getChainId()) !== step.action.fromChainId
     ) {
-      throw new Error('CHAIN SWITCH REQUIRED')
+      throw new Error('Chain switch required.')
     }
 
     statusManager.removeProcess(step, switchProcess.id)

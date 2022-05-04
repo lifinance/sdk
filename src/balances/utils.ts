@@ -1,12 +1,11 @@
+import { Fragment, JsonFragment } from '@ethersproject/abi'
 import { FallbackProvider } from '@ethersproject/providers'
 import { ChainId, Token, TokenAmount } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
-
 import { getMulticallAddress, getRpcProvider } from '../connectors'
-import { isZeroAddress } from '../utils/utils'
-import { Fragment, JsonFragment } from '@ethersproject/abi'
 import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
+import { isZeroAddress } from '../utils/utils'
 
 type Balance = {
   amount: BigNumber
@@ -65,7 +64,7 @@ const getBalancesFromProviderUsingMulticall = async (
   const { chainId } = tokens[0]
   const multicallAddress = await getMulticallAddress(chainId)
   if (!multicallAddress) {
-    throw new Error('No multicallAddress found for given chain')
+    throw new Error('No multicallAddress found for the given chain.')
   }
 
   return executeMulticall(walletAddress, tokens, multicallAddress, chainId)
@@ -101,7 +100,9 @@ const executeMulticall = async (
     chainId,
     multicallAddress
   )
-  if (!res.length) return []
+  if (!res.length) {
+    return []
+  }
 
   return tokens.map((token, i: number) => {
     const amount = new BigNumber(res[i].amount.toString() || '0')

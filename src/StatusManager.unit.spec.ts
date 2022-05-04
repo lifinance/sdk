@@ -87,7 +87,7 @@ describe('StatusManager', () => {
         // function has to be wrapped into a function https://jestjs.io/docs/expect#tothrowerror
         expect(() =>
           statusManager.updateExecution(deepClone(step), 'DONE')
-        ).toThrow("Can't update empty execution")
+        ).toThrow("Can't update empty execution.")
       })
     })
 
@@ -133,7 +133,7 @@ describe('StatusManager', () => {
             deepClone(step),
             'New Process Message'
           )
-        ).toThrow('Execution has not been initialized')
+        ).toThrow("Execution hasn't been initialized.")
       })
     })
 
@@ -205,7 +205,7 @@ describe('StatusManager', () => {
             'unknownProcessId',
             'CANCELLED'
           )
-        ).toThrow('Cannot find process for given id')
+        ).toThrow("Can't find a process for the given id.")
       })
     })
 
@@ -277,7 +277,7 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         expect(() =>
           statusManager.removeProcess(deepClone(step), 'unkownProcessId')
-        ).toThrow('Execution has not been initialized')
+        ).toThrow("Execution hasn't been initialized.")
       })
     })
 

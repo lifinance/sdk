@@ -78,7 +78,9 @@ export default class StatusManager {
    * @return {Step}       The step with the updated execution object
    */
   updateExecution(step: Step, status: Status, receipt?: Receipt): Step {
-    if (!step.execution) throw Error("Can't update empty execution")
+    if (!step.execution) {
+      throw Error("Can't update empty execution.")
+    }
     step.execution.status = status
     if (receipt) {
       step.execution.fromAmount = receipt.fromAmount
@@ -104,7 +106,7 @@ export default class StatusManager {
     params?: OptionalParameters
   ): Process => {
     if (!step.execution || !step.execution.process) {
-      throw new Error('Execution has not been initialized')
+      throw new Error("Execution hasn't been initialized.")
     }
 
     const process = step.execution.process.find((p) => p.id === id)
@@ -149,7 +151,7 @@ export default class StatusManager {
     )
 
     if (!currentProcess) {
-      throw new Error('Cannot find process for given id')
+      throw new Error("Can't find a process for the given id.")
     }
 
     switch (status) {
@@ -195,7 +197,7 @@ export default class StatusManager {
    */
   removeProcess = (step: Step, processId: string): void => {
     if (!step.execution) {
-      throw new Error('Execution has not been initialized')
+      throw new Error("Execution hasn't been initialized.")
     }
     const index = step.execution.process.findIndex(
       (process) => process.id === processId
@@ -205,14 +207,16 @@ export default class StatusManager {
   }
 
   private updateStepInRoute = (step: Step): void => {
-    if (!this.shouldUpdate) return
+    if (!this.shouldUpdate) {
+      return
+    }
 
     const stepIndex = this.route.steps.findIndex(
       (routeStep) => routeStep.id === step.id
     )
 
     if (stepIndex === -1) {
-      throw new Error('Could not find step to update')
+      throw new Error("Couldn't find a step to update.")
     }
 
     this.route.steps[stepIndex] = Object.assign(

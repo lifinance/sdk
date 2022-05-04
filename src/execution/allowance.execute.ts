@@ -1,10 +1,10 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
-import StatusManager from '../StatusManager'
-import { parseWalletError } from '../utils/parseError'
 import { getApproved, setApproval } from '../allowance/utils'
+import StatusManager from '../StatusManager'
 import { Chain, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
+import { parseWalletError } from '../utils/parseError'
 
 export const checkAllowance = async (
   signer: Signer,
@@ -37,7 +37,9 @@ export const checkAllowance = async (
       const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
-        if (!allowUserInteraction) return
+        if (!allowUserInteraction) {
+          return
+        }
         const approvalAmount = infiniteApproval
           ? constants.MaxUint256.toString()
           : amount

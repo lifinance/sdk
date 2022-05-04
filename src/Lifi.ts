@@ -1,10 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import axios from 'axios'
-import { Signer } from 'ethers'
-
-import balances from './balances'
-import { StepExecutor } from './executionFiles/StepExecutor'
-import { isRoutesRequest, isToken } from './typeguards'
 import {
   Chain,
   ChainId,
@@ -20,18 +14,9 @@ import {
   Token,
   TokenAmount,
 } from '@lifinance/types'
-
-import {
-  ActiveRouteDictionary,
-  Config,
-  ConfigUpdate,
-  ExecutionData,
-  ExecutionSettings,
-  RevokeTokenData,
-} from './types'
-import StatusManager from './StatusManager'
-import { parseBackendError } from './utils/parseError'
-import { ValidationError } from './utils/errors'
+import { GetStatusRequest } from '@lifinance/types/dist/api'
+import axios from 'axios'
+import { Signer } from 'ethers'
 import {
   approveToken,
   ApproveTokenRequest,
@@ -40,10 +25,23 @@ import {
   RevokeApprovalRequest,
   revokeTokenApproval,
 } from './allowance'
-import ConfigService from './services/ConfigService'
-import ChainsService from './services/ChainsService'
+import balances from './balances'
+import { StepExecutor } from './execution/StepExecutor'
 import ApiService from './services/ApiService'
-import { GetStatusRequest } from '@lifinance/types/dist/api'
+import ChainsService from './services/ChainsService'
+import ConfigService from './services/ConfigService'
+import StatusManager from './StatusManager'
+import { isRoutesRequest, isToken } from './typeguards'
+import {
+  ActiveRouteDictionary,
+  Config,
+  ConfigUpdate,
+  ExecutionData,
+  ExecutionSettings,
+  RevokeTokenData,
+} from './types'
+import { ValidationError } from './utils/errors'
+import { parseBackendError } from './utils/parseError'
 
 export default class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -149,7 +147,7 @@ export default class LIFI {
    */
   getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
     if (!isRoutesRequest(routesRequest)) {
-      throw new ValidationError('Invalid Routes Request')
+      throw new ValidationError('Invalid routes request.')
     }
 
     const config = this.configService.getConfig()
@@ -188,7 +186,9 @@ export default class LIFI {
    * @return {Route} The stopped route.
    */
   stopExecution = (route: Route): Route => {
-    if (!this.activeRouteDictionary[route.id]) return route
+    if (!this.activeRouteDictionary[route.id]) {
+      return route
+    }
     for (const executor of this.activeRouteDictionary[route.id].executors) {
       executor.stopStepExecution({ allowUpdates: false })
     }
@@ -201,7 +201,9 @@ export default class LIFI {
    * @param {Route} route - A route that is currently in execution.
    */
   moveExecutionToBackground = (route: Route): void => {
-    if (!this.activeRouteDictionary[route.id]) return
+    if (!this.activeRouteDictionary[route.id]) {
+      return
+    }
     for (const executor of this.activeRouteDictionary[route.id].executors) {
       executor.stopStepExecution({ allowUpdates: true })
     }
@@ -221,7 +223,9 @@ export default class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     // check if route is already running
-    if (this.activeRouteDictionary[route.id]) return route // TODO: maybe inform user why nothing happens?
+    if (this.activeRouteDictionary[route.id]) {
+      return route
+    } // TODO: maybe inform user why nothing happens?
 
     return this.executeSteps(signer, route, settings)
   }
@@ -244,7 +248,9 @@ export default class LIFI {
       const executionHalted = activeRoute.executors.some(
         (executor) => executor.executionStopped
       )
-      if (!executionHalted) return route
+      if (!executionHalted) {
+        return route
+      }
     }
 
     return this.executeSteps(signer, route, settings)
@@ -272,7 +278,9 @@ export default class LIFI {
     // loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
       //check if execution has stopped in meantime
-      if (!this.activeRouteDictionary[route.id]) break
+      if (!this.activeRouteDictionary[route.id]) {
+        break
+      }
 
       const step = route.steps[index]
       const previousStep = index !== 0 ? route.steps[index - 1] : undefined
@@ -326,7 +334,7 @@ export default class LIFI {
   ): void => {
     if (!this.activeRouteDictionary[route.id]) {
       throw new ValidationError(
-        'Cannot set ExecutionSettings for unactive route!'
+        "Can't set ExecutionSettings for the inactive route."
       )
     }
 
@@ -366,11 +374,11 @@ export default class LIFI {
     token: Token
   ): Promise<TokenAmount | null> => {
     if (!walletAddress) {
-      throw new ValidationError('Missing walletAddress')
+      throw new ValidationError('Missing walletAddress.')
     }
 
     if (!isToken(token)) {
-      throw new ValidationError('Invalid token passed')
+      throw new ValidationError('Invalid token passed.')
     }
 
     return balances.getTokenBalance(walletAddress, token)
@@ -388,11 +396,11 @@ export default class LIFI {
     tokens: Token[]
   ): Promise<TokenAmount[]> => {
     if (!walletAddress) {
-      throw new ValidationError('Missing walletAddress')
+      throw new ValidationError('Missing walletAddress.')
     }
 
     if (tokens.filter((token) => !isToken(token)).length) {
-      throw new ValidationError('Invalid token passed')
+      throw new ValidationError('Invalid token passed.')
     }
 
     return balances.getTokenBalances(walletAddress, tokens)
@@ -410,12 +418,12 @@ export default class LIFI {
     tokensByChain: { [chainId: number]: Token[] }
   ): Promise<{ [chainId: number]: TokenAmount[] }> => {
     if (!walletAddress) {
-      throw new ValidationError('Missing walletAddress')
+      throw new ValidationError('Missing walletAddress.')
     }
 
     const tokenList = Object.values(tokensByChain).flat()
     if (tokenList.filter((token) => !isToken(token)).length) {
-      throw new ValidationError('Invalid token passed')
+      throw new ValidationError('Invalid token passed.')
     }
 
     return balances.getTokenBalancesForChains(walletAddress, tokensByChain)

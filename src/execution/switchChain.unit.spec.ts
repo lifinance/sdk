@@ -1,9 +1,9 @@
-import { buildStepObject } from '../../test/fixtures'
 import { Step } from '@lifinance/types'
 import { Signer } from 'ethers'
-import { switchChain } from './switchChain'
+import { buildStepObject } from '../../test/fixtures'
 import StatusManager from '../StatusManager'
 import { InternalExecutionSettings } from '../types'
+import { switchChain } from './switchChain'
 
 let signer: Signer,
   step: Step,
@@ -125,7 +125,7 @@ describe('switchChain', () => {
               hooks.switchChainHook,
               true
             )
-          ).rejects.toThrowError(new Error('CHAIN SWITCH REQUIRED'))
+          ).rejects.toThrowError(new Error('Chain switch required.'))
 
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
