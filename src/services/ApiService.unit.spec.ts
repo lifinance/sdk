@@ -457,6 +457,9 @@ describe('ApiService', () => {
   describe.only('getTools', () => {
     describe('and the backend succeeds', () => {
       it('returns the tools', async () => {
+        mockedAxios.get.mockReturnValue(
+          Promise.resolve({ data: { bridges: [], exchanges: [] } })
+        )
         const tools = await ApiService.getTools({
           chains: [ChainId.ETH, ChainId.POL],
         })
