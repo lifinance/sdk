@@ -53,11 +53,7 @@ export class SwapExecutionManager {
 
     // Start Swap
     // -> set step.execution
-    const swapProcess = statusManager.findOrCreateProcess(
-      'SWAP',
-      step,
-      'Preparing Swap'
-    )
+    const swapProcess = statusManager.findOrCreateProcess('SWAP', step)
 
     // -> swapping
     let tx: TransactionResponse
@@ -76,7 +72,7 @@ export class SwapExecutionManager {
         )
         if (!transactionRequest) {
           statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-            errorMessage: 'Unable to prepare Transaction',
+            errorMessage: 'Unable to prepare transaction.',
           })
           statusManager.updateExecution(step, 'FAILED')
           throw swapProcess.errorMessage
@@ -99,9 +95,7 @@ export class SwapExecutionManager {
         signer = updatedSigner
 
         // -> set step.execution
-        statusManager.updateProcess(step, swapProcess.type, 'ACTION_REQUIRED', {
-          message: 'Sign Transaction',
-        })
+        statusManager.updateProcess(step, swapProcess.type, 'ACTION_REQUIRED')
         if (!this.shouldContinue) {
           return step.execution // stop before user interaction is needed
         }
@@ -122,7 +116,6 @@ export class SwapExecutionManager {
 
     // Wait for Transaction
     statusManager.updateProcess(step, swapProcess.type, 'PENDING', {
-      message: 'Swapping - Wait for',
       txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
       txHash: tx.hash,
     })
@@ -167,7 +160,7 @@ export class SwapExecutionManager {
       )
     } catch (e: any) {
       statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-        errorMessage: 'Failed waiting',
+        errorMessage: 'Failed while waiting for receiving chain.',
         errorCode: e?.code,
       })
       statusManager.updateExecution(step, 'FAILED')
@@ -180,7 +173,6 @@ export class SwapExecutionManager {
         fromChain.metamask.blockExplorerUrls[0] +
         'tx/' +
         statusResponse.receiving?.txHash,
-      message: 'Swapped:',
     })
 
     statusManager.updateExecution(step, 'DONE', {

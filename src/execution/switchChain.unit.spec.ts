@@ -1,8 +1,8 @@
 import { Step } from '@lifinance/types'
 import { Signer } from 'ethers'
 import { buildStepObject } from '../../test/fixtures'
-import StatusManager from '../StatusManager'
 import { InternalExecutionSettings } from '../types'
+import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
 let signer: Signer,
@@ -158,9 +158,10 @@ describe('switchChain', () => {
             step.action.fromChainId
           )
           expect(updatedSigner).toEqual(newSigner)
-          expect(statusManager.removeProcess).toHaveBeenCalledWith(
+          expect(statusManager.updateProcess).toHaveBeenCalledWith(
             step,
-            'SWITCH_CHAIN'
+            'SWITCH_CHAIN',
+            'DONE'
           )
           expect(statusManager.updateExecution).toHaveBeenCalledWith(
             step,

@@ -1,10 +1,10 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
-import StatusManager from '../StatusManager'
 import { Chain, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
 import { parseWalletError } from '../utils/parseError'
+import { StatusManager } from './StatusManager'
 
 export const checkAllowance = async (
   signer: Signer,
@@ -22,8 +22,7 @@ export const checkAllowance = async (
   // -> set currentExecution
   const allowanceProcess = statusManager.findOrCreateProcess(
     'TOKEN_ALLOWANCE',
-    step,
-    `Set Allowance for ${token.symbol}`
+    step
   )
 
   // -> check allowance
@@ -31,7 +30,8 @@ export const checkAllowance = async (
     if (allowanceProcess.txHash) {
       await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-    } else if (allowanceProcess.message === 'Already Approved') {
+      // TODO: Do we need this check?
+    } else if (allowanceProcess.status === 'DONE') {
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
@@ -54,19 +54,14 @@ export const checkAllowance = async (
         statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
           txHash: approveTx.hash,
           txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
-          message: 'Approve - Wait for',
         })
 
         // wait for transcation
         await approveTx.wait()
 
-        statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
-          message: 'Approved: ',
-        })
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       } else {
-        statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
-          message: 'Already Approved',
-        })
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       }
     }
   } catch (e: any) {

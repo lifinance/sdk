@@ -1,5 +1,4 @@
 import { Signer } from 'ethers'
-import StatusManager from '../StatusManager'
 import {
   CrossStep,
   HaltingSettings,
@@ -10,6 +9,7 @@ import {
 } from '../types'
 import { BridgeExecutionManager } from './bridges/bridge.execute'
 import { SwapExecutionManager } from './exchanges/swap.execute'
+import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
 const defaultExecutionHaltSettings = {

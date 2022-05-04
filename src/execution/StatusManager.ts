@@ -3,14 +3,14 @@ import {
   Execution,
   InternalExecutionSettings,
   Process,
-  ProcessMessage,
   ProcessType,
   Route,
   Status,
   Step,
   Token,
-} from './types'
-import { deepClone } from './utils/utils'
+} from '../types'
+import { deepClone } from '../utils/utils'
+import { getProcessMessage } from './utils'
 
 interface Receipt {
   fromAmount?: string
@@ -21,7 +21,7 @@ interface Receipt {
 type InternalUpdateRouteCallback = (route: Route) => void
 
 interface OptionalParameters {
-  message?: ProcessMessage
+  // message?: ProcessMessage
   txHash?: string
   txLink?: string
   doneAt?: number
@@ -31,7 +31,7 @@ interface OptionalParameters {
   errorCode?: string | number
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any
+  // [key: string]: any
 }
 
 /**
@@ -41,7 +41,7 @@ interface OptionalParameters {
  * @param  {InternalUpdateRouteCallback} internalUpdateRouteCallback  Internal callback to propage route changes.
  * @return {StatusManager}       An instance of StatusManager.
  */
-export default class StatusManager {
+export class StatusManager {
   private readonly route: Route
   private readonly settings: InternalExecutionSettings
   private readonly internalUpdateRouteCallback: InternalUpdateRouteCallback
@@ -95,18 +95,16 @@ export default class StatusManager {
   }
 
   /**
-   * Create and push a new process into the execution. If a process for the given type already exists the existing process is set to PENDING instead.
+   * Create and push a new process into the execution.
    * @param  {ProcessType} type Type of the process. Used to identify already existing processes.
    * @param  {Step} step The step that should contain the new process.
-   * @param  {ProcessMessage} message A ProcessMessage for this Process. Will be used on newly created or already existing process.
-   * @param  {object} [params] Additional parameters to append to the process.
+   * @param  {Status} status By default created procces is set to the STARTED status. We can override new process with the needed status.
    * @return {Process}
    */
   findOrCreateProcess = (
     type: ProcessType,
     step: Step,
-    message: ProcessMessage,
-    params?: OptionalParameters
+    status?: Status
   ): Process => {
     if (!step.execution || !step.execution.process) {
       throw new Error("Execution hasn't been initialized.")
@@ -121,13 +119,8 @@ export default class StatusManager {
     const newProcess: Process = {
       type: type,
       startedAt: Date.now(),
-      message: message,
-      status: 'PENDING',
-    }
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        newProcess[key] = value
-      }
+      message: getProcessMessage(type, status ?? 'STARTED'),
+      status: status ?? 'STARTED',
     }
 
     step.execution.process.push(newProcess)
@@ -158,8 +151,6 @@ export default class StatusManager {
     switch (status) {
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
-        currentProcess.message =
-          'CANCELLED - Funds have been refunded on source chain.'
         break
       case 'FAILED':
         currentProcess.doneAt = Date.now()
@@ -167,19 +158,12 @@ export default class StatusManager {
       case 'DONE':
         currentProcess.doneAt = Date.now()
         break
-      case 'ACTION_REQUIRED':
-        currentProcess.message = 'Sign Transaction'
-        break
-      case 'CHAIN_SWITCH_REQUIRED':
-        currentProcess.message = 'Switching Chain'
-        break
-      case 'PENDING':
-        currentProcess.message = 'Wait for'
       default:
         break
     }
 
     currentProcess.status = status
+    currentProcess.message = getProcessMessage(type, status)
     // set extra parameters or overwritte the standard params set in the switch statement
     if (params) {
       for (const [key, value] of Object.entries(params)) {

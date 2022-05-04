@@ -61,8 +61,7 @@ export class BridgeExecutionManager {
     // STEP 2: Get Transaction ////////////////////////////////////////////////
     const crossChainProcess = statusManager.findOrCreateProcess(
       'CROSS_CHAIN',
-      step,
-      'Prepare Transaction'
+      step
     )
 
     try {
@@ -81,7 +80,7 @@ export class BridgeExecutionManager {
         )
         if (!transactionRequest) {
           statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
-            errorMessage: 'Unable to prepare Transaction',
+            errorMessage: 'Unable to prepare transaction.',
           })
           statusManager.updateExecution(step, 'FAILED')
           throw new ServerError(crossChainProcess.errorMessage)
@@ -144,15 +143,13 @@ export class BridgeExecutionManager {
       }
     }
 
-    statusManager.updateProcess(step, crossChainProcess.type, 'DONE', {
-      message: 'Transfer started: ',
-    })
+    statusManager.updateProcess(step, crossChainProcess.type, 'DONE')
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const awaitTransactionProcess = statusManager.findOrCreateProcess(
-      'AWAIT_TRANSACTION',
+    const receivingChainProcess = statusManager.findOrCreateProcess(
+      'RECEIVING_CHAIN',
       step,
-      'Wait for Receiving Chain'
+      'PENDING'
     )
     let statusResponse: StatusResponse
     try {
@@ -166,27 +163,21 @@ export class BridgeExecutionManager {
         crossChainProcess.txHash
       )
     } catch (e: any) {
-      statusManager.updateProcess(
-        step,
-        awaitTransactionProcess.type,
-        'FAILED',
-        {
-          errorMessage: 'Transaction failed',
-          htmlErrorMessage: getTransactionFailedMessage(crossChainProcess),
-          errorCode: e?.code,
-        }
-      )
+      statusManager.updateProcess(step, receivingChainProcess.type, 'FAILED', {
+        errorMessage: 'Transaction failed.',
+        htmlErrorMessage: getTransactionFailedMessage(crossChainProcess),
+        errorCode: e?.code,
+      })
       statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
-    statusManager.updateProcess(step, awaitTransactionProcess.type, 'DONE', {
+    statusManager.updateProcess(step, receivingChainProcess.type, 'DONE', {
       txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +
         'tx/' +
         statusResponse.receiving?.txHash,
-      message: 'Funds Received:',
     })
 
     statusManager.updateExecution(step, 'DONE', {

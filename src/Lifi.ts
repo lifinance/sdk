@@ -26,11 +26,11 @@ import {
   revokeTokenApproval,
 } from './allowance'
 import balances from './balances'
+import { StatusManager } from './execution/StatusManager'
 import { StepExecutor } from './execution/StepExecutor'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import ConfigService from './services/ConfigService'
-import StatusManager from './StatusManager'
 import { isRoutesRequest, isToken } from './typeguards'
 import {
   ActiveRouteDictionary,

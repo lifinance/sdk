@@ -1,7 +1,7 @@
-import { buildRouteObject, buildStepObject } from '../test/fixtures'
-import StatusManager from './StatusManager'
-import { Route, Status, Step } from './types'
-import { deepClone } from './utils/utils'
+import { buildRouteObject, buildStepObject } from '../../test/fixtures'
+import { Route, Status, Step } from '../types'
+import { deepClone } from '../utils/utils'
+import { StatusManager } from './StatusManager'
 
 // Note: using `deepClone` when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
@@ -128,11 +128,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess(
-            'SWAP',
-            deepClone(step),
-            'New Process Message'
-          )
+          statusManager.findOrCreateProcess('SWAP', deepClone(step))
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -146,8 +142,7 @@ describe('StatusManager', () => {
         it('should return the process and not call the callbacks', () => {
           const process = statusManager.findOrCreateProcess(
             'TOKEN_ALLOWANCE',
-            deepClone(step),
-            'some message'
+            deepClone(step)
           )
 
           expect(process).toEqual(step.execution?.process[0])
@@ -161,17 +156,12 @@ describe('StatusManager', () => {
         it('should create a process and call the callbacks with the updated route', () => {
           const process = statusManager.findOrCreateProcess(
             'CROSS_CHAIN',
-            deepClone(step),
-            'some message',
-            {
-              errorMessage: 'Some error',
-              someParameter: 'Some value',
-            }
+            deepClone(step)
           )
 
           expect(process.type).toEqual('CROSS_CHAIN')
-          expect(process.status).toEqual('PENDING')
-          expect(process.message).toEqual('some message')
+          expect(process.status).toEqual('STARTED')
+          expect(process.message).toEqual('Preparing transaction.')
 
           const updatedExecution = Object.assign({}, step.execution, {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -211,39 +201,27 @@ describe('StatusManager', () => {
 
     describe('when a process is found', () => {
       ;[
-        {
-          status: 'ACTION_REQUIRED',
-          message: 'Sign Transaction',
-        },
-        {
-          status: 'CHAIN_SWITCH_REQUIRED',
-          message: 'Switching Chain',
-        },
-        { status: 'PENDING', message: 'Wait for' },
-        {
-          status: 'FAILED',
-          doneAt: true,
-        },
+        { status: 'ACTION_REQUIRED' },
+        { status: 'CHAIN_SWITCH_REQUIRED' },
+        { status: 'PENDING' },
+        { status: 'FAILED', doneAt: true },
         { status: 'DONE', doneAt: true },
         { status: 'RESUME' },
-        {
-          status: 'CANCELLED',
-          message: 'CANCELLED - Funds have been refunded on source chain.',
-          doneAt: true,
-        },
-      ].forEach(({ status, message, doneAt }) => {
+        { status: 'CANCELLED', doneAt: true },
+      ].forEach(({ status, doneAt }) => {
         describe(`and the status is ${status}`, () => {
           it('should update the process and call the callbacks', () => {
             const process = statusManager.updateProcess(
               deepClone(step),
               'SWAP',
-              status as Status,
-              { anotherMessage: 'Should be updated in the process' }
+              status as Status
             )
 
             expect(process.type).toEqual('SWAP')
             expect(process.status).toEqual(status)
-            message && expect(process.message).toEqual(message)
+            // expect(process.message).toEqual(
+            //   getProcessMessage('SWAP', status as Status)
+            // )
             doneAt
               ? expect(process.doneAt).toBeDefined()
               : expect(process.doneAt).toBeUndefined()

@@ -1,4 +1,10 @@
-import { BridgeTool, ExchangeTools, StatusResponse } from '@lifinance/types'
+import {
+  BridgeTool,
+  ExchangeTools,
+  ProcessType,
+  Status,
+  StatusResponse,
+} from '@lifinance/types'
 import { ChainId } from '..'
 import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'
@@ -44,4 +50,56 @@ export async function waitForReceivingTransaction(
   }
 
   return status
+}
+
+const formatProcessMessage = (initialMessage: string, args?: string[]) => {
+  if (!args) {
+    throw new Error('Message arguments are undefined.')
+  }
+  return args?.reduce((message, arg, index) => {
+    return message.replace(`{${index}}`, arg)
+  }, initialMessage)
+}
+
+const processMessages: Record<
+  ProcessType,
+  Partial<Record<Status, string | ((args?: string[]) => string)>>
+> = {
+  TOKEN_ALLOWANCE: {
+    STARTED: 'Setting token allowance.',
+    PENDING: 'Waiting for token allowance approval.',
+    DONE: 'Token allowance approved.',
+  },
+  SWITCH_CHAIN: {
+    PENDING: 'Chain switch required.',
+    DONE: 'Chain switched successfully.',
+  },
+  SWAP: {
+    STARTED: 'Preparing swap.',
+    ACTION_REQUIRED: 'Please sign the transaction.',
+    PENDING: 'Swapping.',
+    DONE: 'Swap completed.',
+  },
+  CROSS_CHAIN: {
+    STARTED: 'Preparing transaction.',
+    ACTION_REQUIRED: 'Please sign the transaction.',
+    PENDING: 'Waiting for transaction.',
+    DONE: 'Transaction approved.',
+  },
+  RECEIVING_CHAIN: {
+    PENDING: 'Waiting for receiving chain.',
+    DONE: 'Funds received.',
+  },
+}
+
+export function getProcessMessage(
+  type: ProcessType,
+  status: Status,
+  args?: string[]
+): string | undefined {
+  let processMessage = processMessages[type][status]
+  if (typeof processMessage === 'function') {
+    processMessage = processMessage(args)
+  }
+  return processMessage
 }

@@ -10,8 +10,8 @@ import {
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
+import { StatusManager } from '../execution/StatusManager'
 import { StepExecutor } from '../execution/StepExecutor'
-import StatusManager from '../StatusManager'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber
