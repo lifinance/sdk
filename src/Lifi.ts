@@ -19,6 +19,8 @@ import {
   Step,
   Token,
   TokenAmount,
+  ToolsRequest,
+  ToolsResponse,
 } from '@lifinance/types'
 
 import {
@@ -130,6 +132,15 @@ export default class LIFI {
    */
   getStatus = async (request: GetStatusRequest): Promise<StatusResponse> => {
     return ApiService.getStatus(request)
+  }
+
+  /**
+   * Get the available tools to bridge and swap tokens.
+   * @param {ToolsRequest?} - The configuration of the requested tools
+   * @returns The tools that are available on the requested chains
+   */
+  getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
+    return ApiService.getTools(request || {})
   }
 
   /**
