@@ -20,7 +20,9 @@ export const personalizeStep = async (
   signer: Signer,
   step: Step
 ): Promise<Step> => {
-  if (step.action.toAddress && step.action.fromAddress) return step
+  if (step.action.toAddress && step.action.fromAddress) {
+    return step
+  }
 
   const address = await signer.getAddress()
   const fromAddress = step.action.fromAddress || address
@@ -74,7 +76,9 @@ export const formatTokenAmountOnly = (
 
   // show at least 4 decimal places and at least two non-zero digests
   let decimalPlaces = 3
-  while (floated.lt(1 / 10 ** decimalPlaces)) decimalPlaces++
+  while (floated.lt(1 / 10 ** decimalPlaces)) {
+    decimalPlaces++
+  }
   return floated.toFixed(decimalPlaces + 1, 1)
 }
 
@@ -92,7 +96,9 @@ export const repeatUntilDone = async <T>(
 
   while (!result) {
     result = await toRepeat()
-    if (!result) await sleep(timeout)
+    if (!result) {
+      await sleep(timeout)
+    }
   }
 
   return result
