@@ -14,6 +14,8 @@ import {
   StatusResponse,
   Step,
   Token,
+  ToolsRequest,
+  ToolsResponse,
 } from '../types'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
@@ -239,6 +241,15 @@ const getStepTransaction = async (step: Step): Promise<Step> => {
   }
 }
 
+const getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
+  const configService = ConfigService.getInstance()
+  const config = configService.getConfig()
+  const r = await axios.get<ToolsResponse>(config.apiUrl + 'tools', {
+    params: request,
+  })
+  return r.data
+}
+
 export default {
   getPossibilities,
   getToken,
@@ -247,4 +258,5 @@ export default {
   getChains,
   getRoutes,
   getStepTransaction,
+  getTools,
 }
