@@ -28,6 +28,7 @@ export const checkAllowance = async (
   // -> check allowance
   try {
     if (allowanceProcess.txHash) {
+      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING')
       await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       // TODO: Do we need this check?
