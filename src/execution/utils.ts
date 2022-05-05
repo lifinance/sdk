@@ -52,19 +52,7 @@ export async function waitForReceivingTransaction(
   return status
 }
 
-const formatProcessMessage = (initialMessage: string, args?: string[]) => {
-  if (!args) {
-    throw new Error('Message arguments are undefined.')
-  }
-  return args?.reduce((message, arg, index) => {
-    return message.replace(`{${index}}`, arg)
-  }, initialMessage)
-}
-
-const processMessages: Record<
-  ProcessType,
-  Partial<Record<Status, string | ((args?: string[]) => string)>>
-> = {
+const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
   TOKEN_ALLOWANCE: {
     STARTED: 'Setting token allowance.',
     PENDING: 'Waiting for token allowance approval.',
@@ -90,16 +78,13 @@ const processMessages: Record<
     PENDING: 'Waiting for receiving chain.',
     DONE: 'Funds received.',
   },
+  TRANSACTION: {},
 }
 
 export function getProcessMessage(
   type: ProcessType,
-  status: Status,
-  args?: string[]
+  status: Status
 ): string | undefined {
-  let processMessage = processMessages[type][status]
-  if (typeof processMessage === 'function') {
-    processMessage = processMessage(args)
-  }
+  const processMessage = processMessages[type][status]
   return processMessage
 }
