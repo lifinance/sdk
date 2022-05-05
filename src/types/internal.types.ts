@@ -9,9 +9,9 @@ import {
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
-import StatusManager from '../StatusManager'
 import { ChainId } from '.'
-import { StepExecutor } from '../executionFiles/StepExecutor'
+import { StatusManager } from '../execution/StatusManager'
+import { StepExecutor } from '../execution/StepExecutor'
 
 export interface TokenWithAmounts extends Token {
   amount?: BigNumber

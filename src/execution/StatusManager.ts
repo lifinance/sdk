@@ -3,13 +3,14 @@ import {
   Execution,
   InternalExecutionSettings,
   Process,
-  ProcessMessage,
+  ProcessType,
   Route,
   Status,
   Step,
   Token,
-} from './types'
-import { deepClone } from './utils/utils'
+} from '../types'
+import { deepClone } from '../utils/utils'
+import { getProcessMessage } from './utils'
 
 interface Receipt {
   fromAmount?: string
@@ -20,15 +21,13 @@ interface Receipt {
 type InternalUpdateRouteCallback = (route: Route) => void
 
 interface OptionalParameters {
-  message?: ProcessMessage
+  txHash?: string
+  txLink?: string
   doneAt?: number
   failedAt?: number
   errorMessage?: string
   htmlErrorMessage?: string
   errorCode?: string | number
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any
 }
 
 /**
@@ -38,7 +37,7 @@ interface OptionalParameters {
  * @param  {InternalUpdateRouteCallback} internalUpdateRouteCallback  Internal callback to propage route changes.
  * @return {StatusManager}       An instance of StatusManager.
  */
-export default class StatusManager {
+export class StatusManager {
   private readonly route: Route
   private readonly settings: InternalExecutionSettings
   private readonly internalUpdateRouteCallback: InternalUpdateRouteCallback
@@ -78,7 +77,9 @@ export default class StatusManager {
    * @return {Step}       The step with the updated execution object
    */
   updateExecution(step: Step, status: Status, receipt?: Receipt): Step {
-    if (!step.execution) throw Error("Can't update empty execution")
+    if (!step.execution) {
+      throw Error("Can't update empty execution.")
+    }
     step.execution.status = status
     if (receipt) {
       step.execution.fromAmount = receipt.fromAmount
@@ -90,39 +91,32 @@ export default class StatusManager {
   }
 
   /**
-   * Create and push a new process into the execution. If a process for the given id already exists the existing process is set to PENDING instead.
-   * @param  {String} id  Identifier for the process. Used to identify already existing processes.
+   * Create and push a new process into the execution.
+   * @param  {ProcessType} type Type of the process. Used to identify already existing processes.
    * @param  {Step} step The step that should contain the new process.
-   * @param  {ProcessMessage} message  A ProcessMessage for this Process. Will be used on newly created or already existing process.
-   * @param  {object} [params]   Additional parameters to append to the process.
+   * @param  {Status} status By default created procces is set to the STARTED status. We can override new process with the needed status.
    * @return {Process}
    */
   findOrCreateProcess = (
-    id: string,
+    type: ProcessType,
     step: Step,
-    message: ProcessMessage,
-    params?: OptionalParameters
+    status?: Status
   ): Process => {
     if (!step.execution || !step.execution.process) {
-      throw new Error('Execution has not been initialized')
+      throw new Error("Execution hasn't been initialized.")
     }
 
-    const process = step.execution.process.find((p) => p.id === id)
+    const process = step.execution.process.find((p) => p.type === type)
 
     if (process) {
       return process
     }
 
     const newProcess: Process = {
-      id: id,
+      type: type,
       startedAt: Date.now(),
-      message: message,
-      status: 'PENDING',
-    }
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        newProcess[key] = value
-      }
+      message: getProcessMessage(type, status ?? 'STARTED'),
+      status: status ?? 'STARTED',
     }
 
     step.execution.process.push(newProcess)
@@ -133,30 +127,26 @@ export default class StatusManager {
   /**
    * Update a process object.
    * @param  {Step} step The step where the process should be updated
-   * @param  {string} processId  The process id to update
+   * @param  {ProcessType} type  The process type to update
    * @param  {Status} status The status the process gets.
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {Process} The update process
    */
   updateProcess = (
     step: Step,
-    processId: string,
+    type: ProcessType,
     status: Status,
     params?: OptionalParameters
   ): Process => {
-    const currentProcess = step?.execution?.process.find(
-      (p) => p.id === processId
-    )
+    const currentProcess = step?.execution?.process.find((p) => p.type === type)
 
     if (!currentProcess) {
-      throw new Error('Cannot find process for given id')
+      throw new Error("Can't find a process for the given type.")
     }
 
     switch (status) {
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
-        currentProcess.message =
-          'CANCELLED - Funds have been refunded on source chain.'
         break
       case 'FAILED':
         currentProcess.doneAt = Date.now()
@@ -164,19 +154,12 @@ export default class StatusManager {
       case 'DONE':
         currentProcess.doneAt = Date.now()
         break
-      case 'ACTION_REQUIRED':
-        currentProcess.message = 'Sign Transaction'
-        break
-      case 'CHAIN_SWITCH_REQUIRED':
-        currentProcess.message = 'Switching Chain'
-        break
-      case 'PENDING':
-        currentProcess.message = 'Wait for'
       default:
         break
     }
 
     currentProcess.status = status
+    currentProcess.message = getProcessMessage(type, status)
     // set extra parameters or overwritte the standard params set in the switch statement
     if (params) {
       for (const [key, value] of Object.entries(params)) {
@@ -190,29 +173,29 @@ export default class StatusManager {
   /**
    * Remove a process from the execution
    * @param  {Step} step The step where the process should be removed from
-   * @param  {string} processId  The Process id to remove
+   * @param  {ProcessType} type  The process type to remove
    * @return {void}
    */
-  removeProcess = (step: Step, processId: string): void => {
+  removeProcess = (step: Step, type: ProcessType): void => {
     if (!step.execution) {
-      throw new Error('Execution has not been initialized')
+      throw new Error("Execution hasn't been initialized.")
     }
-    const index = step.execution.process.findIndex(
-      (process) => process.id === processId
-    )
+    const index = step.execution.process.findIndex((p) => p.type === type)
     step.execution.process.splice(index, 1)
     this.updateStepInRoute(step)
   }
 
   private updateStepInRoute = (step: Step): void => {
-    if (!this.shouldUpdate) return
+    if (!this.shouldUpdate) {
+      return
+    }
 
     const stepIndex = this.route.steps.findIndex(
       (routeStep) => routeStep.id === step.id
     )
 
     if (stepIndex === -1) {
-      throw new Error('Could not find step to update')
+      throw new Error("Couldn't find a step to update.")
     }
 
     this.route.steps[stepIndex] = Object.assign(

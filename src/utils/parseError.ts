@@ -1,7 +1,9 @@
+import { Process, Step } from '@lifinance/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
+import ChainsService from '../services/ChainsService'
 import {
   LifiError,
   LifiErrorCodes,
@@ -12,9 +14,7 @@ import {
   UnknownError,
   ValidationError,
 } from './errors'
-import { Process, Step } from '@lifinance/types'
 import { formatTokenAmountOnly } from './utils'
-import ChainsService from '../services/ChainsService'
 
 /**
  * Available MetaMask error codes:

@@ -1,10 +1,10 @@
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
-import StatusManager from '../StatusManager'
-import { parseWalletError } from '../utils/parseError'
 import { getApproved, setApproval } from '../allowance/utils'
 import { Chain, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
+import { parseWalletError } from '../utils/parseError'
+import { StatusManager } from './StatusManager'
 
 export const checkAllowance = async (
   signer: Signer,
@@ -21,23 +21,26 @@ export const checkAllowance = async (
   // Ask user to set allowance
   // -> set currentExecution
   const allowanceProcess = statusManager.findOrCreateProcess(
-    'allowanceProcess',
-    step,
-    `Set Allowance for ${token.symbol}`
+    'TOKEN_ALLOWANCE',
+    step
   )
 
   // -> check allowance
   try {
     if (allowanceProcess.txHash) {
+      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING')
       await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
-      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
-    } else if (allowanceProcess.message === 'Already Approved') {
-      statusManager.updateProcess(step, allowanceProcess.id, 'DONE')
+      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      // TODO: Do we need this check?
+    } else if (allowanceProcess.status === 'DONE') {
+      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
       if (new BigNumber(amount).gt(approved)) {
-        if (!allowUserInteraction) return
+        if (!allowUserInteraction) {
+          return
+        }
         const approvalAmount = infiniteApproval
           ? constants.MaxUint256.toString()
           : amount
@@ -49,35 +52,30 @@ export const checkAllowance = async (
         )
 
         // update currentExecution
-        statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+        statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
           txHash: approveTx.hash,
           txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
-          message: 'Approve - Wait for',
         })
 
         // wait for transcation
         await approveTx.wait()
 
-        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
-          message: 'Approved: ',
-        })
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       } else {
-        statusManager.updateProcess(step, allowanceProcess.id, 'DONE', {
-          message: 'Already Approved',
-        })
+        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       }
     }
   } catch (e: any) {
     // -> set status
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-      statusManager.updateProcess(step, allowanceProcess.id, 'PENDING', {
+      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
         txHash: e.replacement.hash,
         txLink:
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
       const error = await parseWalletError(e, step, allowanceProcess)
-      statusManager.updateProcess(step, allowanceProcess.id, 'FAILED', {
+      statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
         errorMessage: error.message,
         htmlErrorMessage: error.htmlMessage,
         errorCode: error.code,

@@ -1,9 +1,9 @@
-import { buildStepObject } from '../../test/fixtures'
 import { Step } from '@lifinance/types'
 import { Signer } from 'ethers'
-import { switchChain } from './switchChain'
-import StatusManager from '../StatusManager'
+import { buildStepObject } from '../../test/fixtures'
 import { InternalExecutionSettings } from '../types'
+import { StatusManager } from './StatusManager'
+import { switchChain } from './switchChain'
 
 let signer: Signer,
   step: Step,
@@ -64,7 +64,7 @@ describe('switchChain', () => {
   describe('when the chain is not correct', () => {
     beforeEach(() => {
       getChainIdMock.mockResolvedValueOnce(1)
-      findOrCreateProcessMock.mockReturnValue({ id: 'switchProcess' })
+      findOrCreateProcessMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
     })
 
     describe('when allowUserInteraction is false', () => {
@@ -125,7 +125,7 @@ describe('switchChain', () => {
               hooks.switchChainHook,
               true
             )
-          ).rejects.toThrowError(new Error('CHAIN SWITCH REQUIRED'))
+          ).rejects.toThrowError(new Error('Chain switch required.'))
 
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
@@ -158,9 +158,10 @@ describe('switchChain', () => {
             step.action.fromChainId
           )
           expect(updatedSigner).toEqual(newSigner)
-          expect(statusManager.removeProcess).toHaveBeenCalledWith(
+          expect(statusManager.updateProcess).toHaveBeenCalledWith(
             step,
-            'switchProcess'
+            'SWITCH_CHAIN',
+            'DONE'
           )
           expect(statusManager.updateExecution).toHaveBeenCalledWith(
             step,

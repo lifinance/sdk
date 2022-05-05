@@ -1,7 +1,7 @@
-import { buildRouteObject, buildStepObject } from '../test/fixtures'
-import StatusManager from './StatusManager'
-import { Route, Status, Step } from './types'
-import { deepClone } from './utils/utils'
+import { buildRouteObject, buildStepObject } from '../../test/fixtures'
+import { Route, Status, Step } from '../types'
+import { deepClone } from '../utils/utils'
+import { StatusManager } from './StatusManager'
 
 // Note: using `deepClone` when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
@@ -87,7 +87,7 @@ describe('StatusManager', () => {
         // function has to be wrapped into a function https://jestjs.io/docs/expect#tothrowerror
         expect(() =>
           statusManager.updateExecution(deepClone(step), 'DONE')
-        ).toThrow("Can't update empty execution")
+        ).toThrow("Can't update empty execution.")
       })
     })
 
@@ -128,12 +128,8 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess(
-            'newProcessId',
-            deepClone(step),
-            'New Process Message'
-          )
-        ).toThrow('Execution has not been initialized')
+          statusManager.findOrCreateProcess('SWAP', deepClone(step))
+        ).toThrow("Execution hasn't been initialized.")
       })
     })
 
@@ -145,9 +141,8 @@ describe('StatusManager', () => {
       describe('and the process already exists', () => {
         it('should return the process and not call the callbacks', () => {
           const process = statusManager.findOrCreateProcess(
-            'process1',
-            deepClone(step),
-            'some message'
+            'TOKEN_ALLOWANCE',
+            deepClone(step)
           )
 
           expect(process).toEqual(step.execution?.process[0])
@@ -160,18 +155,13 @@ describe('StatusManager', () => {
       describe("and the process doesn't exist", () => {
         it('should create a process and call the callbacks with the updated route', () => {
           const process = statusManager.findOrCreateProcess(
-            'process3',
-            deepClone(step),
-            'some message',
-            {
-              errorMessage: 'Some error',
-              someParameter: 'Some value',
-            }
+            'CROSS_CHAIN',
+            deepClone(step)
           )
 
-          expect(process.id).toEqual('process3')
-          expect(process.status).toEqual('PENDING')
-          expect(process.message).toEqual('some message')
+          expect(process.type).toEqual('CROSS_CHAIN')
+          expect(process.status).toEqual('STARTED')
+          expect(process.message).toEqual('Preparing transaction.')
 
           const updatedExecution = Object.assign({}, step.execution, {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -202,48 +192,36 @@ describe('StatusManager', () => {
         expect(() =>
           statusManager.updateProcess(
             deepClone(step),
-            'unknownProcessId',
+            'CROSS_CHAIN',
             'CANCELLED'
           )
-        ).toThrow('Cannot find process for given id')
+        ).toThrow("Can't find a process for the given type.")
       })
     })
 
     describe('when a process is found', () => {
       ;[
-        {
-          status: 'ACTION_REQUIRED',
-          message: 'Sign Transaction',
-        },
-        {
-          status: 'CHAIN_SWITCH_REQUIRED',
-          message: 'Switching Chain',
-        },
-        { status: 'PENDING', message: 'Wait for' },
-        {
-          status: 'FAILED',
-          doneAt: true,
-        },
+        { status: 'ACTION_REQUIRED' },
+        { status: 'CHAIN_SWITCH_REQUIRED' },
+        { status: 'PENDING' },
+        { status: 'FAILED', doneAt: true },
         { status: 'DONE', doneAt: true },
         { status: 'RESUME' },
-        {
-          status: 'CANCELLED',
-          message: 'CANCELLED - Funds have been refunded on source chain.',
-          doneAt: true,
-        },
-      ].forEach(({ status, message, doneAt }) => {
+        { status: 'CANCELLED', doneAt: true },
+      ].forEach(({ status, doneAt }) => {
         describe(`and the status is ${status}`, () => {
           it('should update the process and call the callbacks', () => {
             const process = statusManager.updateProcess(
               deepClone(step),
-              'process2',
-              status as Status,
-              { anotherMessage: 'Should be updated in the process' }
+              'SWAP',
+              status as Status
             )
 
-            expect(process.id).toEqual('process2')
+            expect(process.type).toEqual('SWAP')
             expect(process.status).toEqual(status)
-            message && expect(process.message).toEqual(message)
+            // expect(process.message).toEqual(
+            //   getProcessMessage('SWAP', status as Status)
+            // )
             doneAt
               ? expect(process.doneAt).toBeDefined()
               : expect(process.doneAt).toBeUndefined()
@@ -276,15 +254,15 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.removeProcess(deepClone(step), 'unkownProcessId')
-        ).toThrow('Execution has not been initialized')
+          statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
+        ).toThrow("Execution hasn't been initialized.")
       })
     })
 
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeProcess(deepClone(step), 'process1')
+        statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
       })
 
       it('should remove the process and call the callbacks', () => {
