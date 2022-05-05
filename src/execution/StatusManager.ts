@@ -21,7 +21,6 @@ interface Receipt {
 type InternalUpdateRouteCallback = (route: Route) => void
 
 interface OptionalParameters {
-  // message?: ProcessMessage
   txHash?: string
   txLink?: string
   doneAt?: number
@@ -29,9 +28,6 @@ interface OptionalParameters {
   errorMessage?: string
   htmlErrorMessage?: string
   errorCode?: string | number
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // [key: string]: any
 }
 
 /**
