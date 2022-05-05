@@ -1,6 +1,6 @@
+import { Chain, ChainId } from '@lifinance/types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
-import { Chain, ChainId } from '@lifinance/types'
 
 export default class ChainsService {
   private static instance: ChainsService
@@ -30,7 +30,7 @@ export default class ChainsService {
 
     const chain = this.chains.find((chain) => chain.id === chainId)
     if (!chain) {
-      throw new ValidationError(`Unknown chainId passed: ${chainId}`)
+      throw new ValidationError(`Unknown chainId passed: ${chainId}.`)
     }
 
     return chain

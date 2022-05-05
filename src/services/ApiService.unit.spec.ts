@@ -10,7 +10,6 @@ import {
   StepType,
 } from '@lifinance/types'
 import axios from 'axios'
-
 import { ServerError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 
@@ -53,7 +52,7 @@ describe('ApiService', () => {
         })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -64,7 +63,7 @@ describe('ApiService', () => {
         })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -75,7 +74,7 @@ describe('ApiService', () => {
         })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -86,7 +85,7 @@ describe('ApiService', () => {
         })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -95,7 +94,7 @@ describe('ApiService', () => {
         const request = getRoutesRequest({ toTokenAddress: '' })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -106,7 +105,7 @@ describe('ApiService', () => {
         })
 
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
-          'Invalid Routes Request'
+          'Invalid routes request.'
         )
         expect(mockedAxios.post).toHaveBeenCalledTimes(0)
       })
@@ -174,14 +173,14 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "chain" is missing')
+          new ValidationError('Required parameter "chain" is missing.')
         )
         expect(mockedAxios.get).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "token" is missing')
+          new ValidationError('Required parameter "token" is missing.')
         )
         expect(mockedAxios.get).toHaveBeenCalledTimes(0)
       })
@@ -232,7 +231,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing')
+          new ValidationError('Required parameter "fromChain" is missing.')
         )
 
         await expect(
@@ -245,7 +244,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromToken" is missing')
+          new ValidationError('Required parameter "fromToken" is missing.')
         )
 
         await expect(
@@ -258,7 +257,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAddress" is missing')
+          new ValidationError('Required parameter "fromAddress" is missing.')
         )
 
         await expect(
@@ -271,7 +270,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAmount" is missing')
+          new ValidationError('Required parameter "fromAmount" is missing.')
         )
 
         await expect(
@@ -284,7 +283,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing')
+          new ValidationError('Required parameter "toChain" is missing.')
         )
 
         await expect(
@@ -297,7 +296,7 @@ describe('ApiService', () => {
             toToken: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toToken" is missing')
+          new ValidationError('Required parameter "toToken" is missing.')
         )
 
         expect(mockedAxios.get).toHaveBeenCalledTimes(0)
@@ -360,7 +359,7 @@ describe('ApiService', () => {
           })
         ).rejects.toThrowError(
           new ValidationError(
-            'Parameter "bridge" is required for cross chain transfers'
+            'Parameter "bridge" is required for cross chain transfers.'
           )
         )
 
@@ -372,7 +371,7 @@ describe('ApiService', () => {
             txHash,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing')
+          new ValidationError('Required parameter "fromChain" is missing.')
         )
 
         await expect(
@@ -383,7 +382,7 @@ describe('ApiService', () => {
             txHash,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing')
+          new ValidationError('Required parameter "toChain" is missing.')
         )
 
         await expect(
@@ -394,7 +393,7 @@ describe('ApiService', () => {
             txHash: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "txHash" is missing')
+          new ValidationError('Required parameter "txHash" is missing.')
         )
 
         expect(mockedAxios.get).toHaveBeenCalledTimes(0)
@@ -533,7 +532,7 @@ describe('ApiService', () => {
           const step = getStep({ id: null as unknown as string })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid Step'
+            'Invalid step.'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -551,7 +550,7 @@ describe('ApiService', () => {
           const step = getStep({ tool: null as unknown as StepTool })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid Step'
+            'Invalid step.'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -561,7 +560,7 @@ describe('ApiService', () => {
           const step = getStep({ action: 'xxx' as unknown as Action })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid Step'
+            'Invalid step.'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })
@@ -573,7 +572,7 @@ describe('ApiService', () => {
           })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid Step'
+            'Invalid step.'
           )
           expect(mockedAxios.post).toHaveBeenCalledTimes(0)
         })

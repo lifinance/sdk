@@ -1,8 +1,7 @@
-import { SwitchChainHook } from '../types'
-import { Signer } from 'ethers'
-import StatusManager from '../StatusManager'
 import { Step } from '@lifinance/types'
-import ChainsService from '../services/ChainsService'
+import { Signer } from 'ethers'
+import { SwitchChainHook } from '../types'
+import { StatusManager } from './StatusManager'
 
 /**
  * This method checks whether the signer is configured for the correct chain.
@@ -31,16 +30,15 @@ export const switchChain = async (
   step.execution = statusManager.initExecutionObject(step)
   statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
 
-  const chainService = ChainsService.getInstance()
-  const chain = await chainService.getChainById(step.action.fromChainId)
-
   const switchProcess = statusManager.findOrCreateProcess(
-    'switchProcess',
+    'SWITCH_CHAIN',
     step,
-    `Change Chain to ${chain.name}`
+    'PENDING'
   )
 
-  if (!allowUserInteraction) return
+  if (!allowUserInteraction) {
+    return
+  }
 
   try {
     const updatedSigner = await switchChainHook(step.action.fromChainId)
@@ -48,14 +46,14 @@ export const switchChain = async (
       !updatedSigner ||
       (await updatedSigner.getChainId()) !== step.action.fromChainId
     ) {
-      throw new Error('CHAIN SWITCH REQUIRED')
+      throw new Error('Chain switch required.')
     }
 
-    statusManager.removeProcess(step, switchProcess.id)
+    statusManager.updateProcess(step, switchProcess.type, 'DONE')
     statusManager.updateExecution(step, 'PENDING')
     return updatedSigner
   } catch (e: any) {
-    statusManager.updateProcess(step, switchProcess.id, 'FAILED', {
+    statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
       errorMessage: e.message,
       errorCode: e.code,
     })

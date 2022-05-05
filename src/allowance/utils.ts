@@ -1,10 +1,10 @@
-import { Contract, ContractTransaction, Signer } from 'ethers'
-import BigNumber from 'bignumber.js'
-import { ERC20_ABI, ERC20Contract, RevokeTokenData } from '../types'
 import { ChainId, Token } from '@lifinance/types'
-import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
-import { ServerError } from '../utils/errors'
+import BigNumber from 'bignumber.js'
+import { Contract, ContractTransaction, Signer } from 'ethers'
 import ChainsService from '../services/ChainsService'
+import { ERC20Contract, ERC20_ABI, RevokeTokenData } from '../types'
+import { ServerError } from '../utils/errors'
+import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
 
 export const getApproved = async (
   signer: Signer,
@@ -44,7 +44,7 @@ export const getAllowanceViaMulticall = async (
   const chain = await chainsService.getChainById(chainId)
   if (!chain.multicallAddress) {
     throw new ServerError(
-      'No multicall address configured for chainId ' + chainId
+      `No multicall address configured for chainId ${chainId}.`
     )
   }
 
@@ -67,7 +67,7 @@ export const getAllowanceViaMulticall = async (
 
   if (!result.length) {
     throw new ServerError(
-      `Could not load allowance from chainId ${chainId} using multicall`
+      `Couldn't load allowance from chainId ${chainId} using multicall.`
     )
   }
 

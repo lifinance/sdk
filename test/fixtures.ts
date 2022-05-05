@@ -43,7 +43,7 @@ export const buildStepObject = ({
         status: 'PENDING',
         process: [
           {
-            id: 'process1',
+            type: 'TOKEN_ALLOWANCE',
             startedAt: SOME_DATE,
             message: 'Somethings done',
             status: 'DONE',
@@ -52,7 +52,7 @@ export const buildStepObject = ({
             txLink: 'https://example.com',
           },
           {
-            id: 'process2',
+            type: 'SWAP',
             startedAt: SOME_DATE + 20,
             message: 'Somethings pending',
             status: 'PENDING',

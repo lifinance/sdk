@@ -1,10 +1,9 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
-
-import utils from './utils'
-import ApiService from '../services/ApiService'
-import { setupTestEnvironment } from '../../test/setup'
 import { retryTimes } from '../../jest.int.config'
+import { setupTestEnvironment } from '../../test/setup'
+import ApiService from '../services/ApiService'
+import utils from './utils'
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
