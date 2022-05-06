@@ -4,12 +4,9 @@ import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
 import { ExecuteCrossParams } from '../../types'
-import { ServerError } from '../../utils/errors'
+import { LifiErrorCode, TransactionError } from '../../utils/errors'
 import { getProvider } from '../../utils/getProvider'
-import {
-  getTransactionFailedMessage,
-  parseWalletError,
-} from '../../utils/parseError'
+import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
@@ -79,11 +76,10 @@ export class BridgeExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
-            errorMessage: 'Unable to prepare transaction.',
-          })
-          statusManager.updateExecution(step, 'FAILED')
-          throw new ServerError(crossChainProcess.errorMessage)
+          throw new TransactionError(
+            LifiErrorCode.TransactionUnprepared,
+            'Unable to prepare transaction.'
+          )
         }
 
         // STEP 3: Send Transaction ///////////////////////////////////////////////
@@ -132,11 +128,13 @@ export class BridgeExecutionManager {
             e.replacement.hash,
         })
       } else {
-        const error = await parseWalletError(e, step, crossChainProcess)
+        const error = await parseError(e, step, crossChainProcess)
         statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
-          errorMessage: error.message,
-          htmlErrorMessage: error.htmlMessage,
-          errorCode: error.code,
+          error: {
+            message: error.message,
+            htmlMessage: error.htmlMessage,
+            code: error.code,
+          },
         })
         statusManager.updateExecution(step, 'FAILED')
         throw error
@@ -164,9 +162,11 @@ export class BridgeExecutionManager {
       )
     } catch (e: any) {
       statusManager.updateProcess(step, receivingChainProcess.type, 'FAILED', {
-        errorMessage: 'Transaction failed.',
-        htmlErrorMessage: getTransactionFailedMessage(crossChainProcess),
-        errorCode: e?.code,
+        error: {
+          code: LifiErrorCode.TransactionFailed,
+          message: 'Failed while waiting for receiving chain.',
+          htmlMessage: getTransactionFailedMessage(crossChainProcess),
+        },
       })
       statusManager.updateExecution(step, 'FAILED')
       throw e

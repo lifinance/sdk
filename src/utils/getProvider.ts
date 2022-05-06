@@ -1,11 +1,11 @@
 import { Provider } from '@ethersproject/abstract-provider'
 import { Signer } from 'ethers'
-import { LifiErrorCodes, ProviderError } from './errors'
+import { LifiErrorCode, ProviderError } from './errors'
 
 export const getProvider = (signer: Signer): Provider => {
   if (!signer.provider) {
     throw new ProviderError(
-      LifiErrorCodes.noProviderAvailable,
+      LifiErrorCode.ProviderUnavailable,
       'No provider available in signer.'
     )
   }

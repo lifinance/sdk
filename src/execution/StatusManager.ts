@@ -20,15 +20,9 @@ interface Receipt {
 
 type InternalUpdateRouteCallback = (route: Route) => void
 
-interface OptionalParameters {
-  txHash?: string
-  txLink?: string
-  doneAt?: number
-  failedAt?: number
-  errorMessage?: string
-  htmlErrorMessage?: string
-  errorCode?: string | number
-}
+type OptionalParameters = Partial<
+  Pick<Process, 'doneAt' | 'failedAt' | 'txHash' | 'txLink' | 'error'>
+>
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes

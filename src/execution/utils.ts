@@ -27,7 +27,7 @@ export async function waitForReceivingTransaction(
           txHash,
         })
       } catch (e: any) {
-        console.debug('Fetching status from backend failed', e)
+        console.debug('Fetching status from backend failed.', e)
         return resolve(undefined)
       }
 

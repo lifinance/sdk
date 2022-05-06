@@ -1,46 +1,46 @@
-import { LifiErrorCodes } from './errors'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
-import { parseBackendError, parseWalletError } from './parseError'
 import { buildStepObject } from '../../test/fixtures'
+import { LifiErrorCode } from './errors'
+import { parseBackendError, parseError } from './parseError'
 
 describe('parseError', () => {
   describe('parseWalletError', () => {
     describe('when the error does not contain a code', () => {
       it('should return an UnknownError with the default message if no message is set', async () => {
-        const parsedError = await parseWalletError('Oops')
+        const parsedError = await parseError('Oops')
 
-        expect(parsedError.message).toEqual('Unknown error occurred')
-        expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+        expect(parsedError.message).toEqual('Unknown error occurred.')
+        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
       })
 
       it('should return an UnknownError with the given message', async () => {
-        const parsedError = await await parseWalletError({
+        const parsedError = await await parseError({
           message: 'Somethings fishy',
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
       })
     })
 
     describe('when the error contains an unknown error code', () => {
       it('should return an UnknownError', async () => {
-        const parsedError = await parseWalletError({
+        const parsedError = await parseError({
           code: 1337,
           message: 'Somethings fishy',
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
       })
     })
 
     describe('when the error contains a rpc error code', () => {
       it('should return a RPCError with the metamask error message', async () => {
-        const parsedError = await parseWalletError({
+        const parsedError = await parseError({
           code: MetaMaskErrorCodes.rpc.methodNotFound,
           message: 'Somethings fishy',
         })
@@ -52,19 +52,19 @@ describe('parseError', () => {
       })
 
       it('should return a RPCError with a custom message if underpriced', async () => {
-        const parsedError = await parseWalletError({
+        const parsedError = await parseError({
           code: MetaMaskErrorCodes.rpc.internal,
           message: 'RPC called failed: transaction underpriced',
         })
 
         expect(parsedError.message).toEqual('Transaction is underpriced.')
-        expect(parsedError.code).toEqual(LifiErrorCodes.transactionUnderpriced)
+        expect(parsedError.code).toEqual(LifiErrorCode.TransactionUnderpriced)
       })
     })
 
     describe('when the error contains a provider error code', () => {
       it('should return a ProviderError with the metamask error message', async () => {
-        const parsedError = await parseWalletError({
+        const parsedError = await parseError({
           code: MetaMaskErrorCodes.provider.unsupportedMethod,
           message: 'Somethings fishy',
         })
@@ -80,7 +80,7 @@ describe('parseError', () => {
 
     describe('when no step is passed to the parser', () => {
       it('should return a default htmlMessage', async () => {
-        const parsedError = await parseWalletError({
+        const parsedError = await parseError({
           code: MetaMaskErrorCodes.rpc.methodNotFound,
           message: 'Somethings fishy',
         })
@@ -94,7 +94,7 @@ describe('parseError', () => {
 
     describe('when a step is passed to the parser', () => {
       it('should include the token information in the htmlMessage', async () => {
-        const parsedError = await parseWalletError(
+        const parsedError = await parseError(
           {
             code: MetaMaskErrorCodes.rpc.methodNotFound,
             message: 'Somethings fishy',
@@ -112,7 +112,7 @@ describe('parseError', () => {
     describe('when a process is passed to the parser', () => {
       it('should include the explorer link in the htmlMessage', async () => {
         const step = buildStepObject({ includingExecution: true })
-        const parsedError = await parseWalletError(
+        const parsedError = await parseError(
           {
             code: MetaMaskErrorCodes.rpc.methodNotFound,
             message: 'Somethings fishy',
@@ -134,8 +134,8 @@ describe('parseError', () => {
       it('should return a ServerError with a default messsage', async () => {
         const parsedError = parseBackendError('Oops')
 
-        expect(parsedError.message).toEqual('Something went wrong')
-        expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+        expect(parsedError.message).toEqual('Something went wrong.')
+        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
       })
     })
 
@@ -147,7 +147,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCodes.validationError)
+          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
         })
 
         it('should return the axios statusText if message not set', async () => {
@@ -161,7 +161,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 400'
           )
-          expect(parsedError.code).toEqual(LifiErrorCodes.validationError)
+          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
         })
       })
 
@@ -172,7 +172,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
         })
 
         it('should return the axios statusText if message not set', async () => {
@@ -186,7 +186,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 500'
           )
-          expect(parsedError.code).toEqual(LifiErrorCodes.internalError)
+          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
         })
       })
     })

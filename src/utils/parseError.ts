@@ -6,11 +6,12 @@ import {
 import ChainsService from '../services/ChainsService'
 import {
   LifiError,
-  LifiErrorCodes,
+  LifiErrorCode,
   NotFoundError,
   ProviderError,
   RPCError,
   ServerError,
+  TransactionError,
   UnknownError,
   ValidationError,
 } from './errors'
@@ -84,7 +85,7 @@ export const getTransactionFailedMessage = (process: Process): string => {
     : ''
 }
 
-export const parseWalletError = async (
+export const parseError = async (
   e: any,
   step?: Step,
   process?: Process
@@ -101,7 +102,7 @@ export const parseWalletError = async (
           e.message.includes('underpriced')
         ) {
           return new RPCError(
-            LifiErrorCodes.transactionUnderpriced,
+            LifiErrorCode.TransactionUnderpriced,
             'Transaction is underpriced.',
             await getTransactionNotSentMessage(step, process),
             e.stack
@@ -129,8 +130,17 @@ export const parseWalletError = async (
 
     if (e.code === 'CALL_EXCEPTION') {
       return new ProviderError(
-        LifiErrorCodes.transactionFailed,
+        LifiErrorCode.TransactionFailed,
         e.reason,
+        await getTransactionNotSentMessage(step, process),
+        e.stack
+      )
+    }
+
+    if (e.Code === LifiErrorCode.TransactionUnprepared) {
+      return new TransactionError(
+        LifiErrorCode.TransactionUnprepared,
+        e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
       )
@@ -138,8 +148,8 @@ export const parseWalletError = async (
   }
 
   return new UnknownError(
-    LifiErrorCodes.internalError,
-    e.message || 'Unknown error occurred',
+    LifiErrorCode.InternalError,
+    e.message || 'Unknown error occurred.',
     undefined,
     e.stack
   )
@@ -170,5 +180,5 @@ export const parseBackendError = (e: any): LifiError => {
     )
   }
 
-  return new ServerError('Something went wrong', undefined, e.stack)
+  return new ServerError('Something went wrong.', undefined, e.stack)
 }
