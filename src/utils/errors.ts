@@ -1,20 +1,23 @@
 enum ErrorType {
   RPCError = 'RPCError',
   ProviderError = 'ProviderError',
-  UnknownError = 'UnknownError',
   ServerError = 'ServerError',
+  TransactionError = 'TransactionError',
   ValidationError = 'ValidationError',
   NotFoundError = 'NotFoundError',
+  UnknownError = 'UnknownError',
 }
 
-export enum LifiErrorCodes {
-  internalError = 1000, // we can discuss which number field we want to use for our custom error codes.
-  validationError = 1001,
-  transactionUnderpriced = 1002,
-  transactionFailed = 1003,
-  timeout = 1004,
-  noProviderAvailable = 1005,
-  notFound = 1006,
+export enum LifiErrorCode {
+  InternalError = 1000, // we can discuss which number field we want to use for our custom error codes.
+  ValidationError = 1001,
+  TransactionUnderpriced = 1002,
+  TransactionFailed = 1003,
+  TransactionUnprepared = 1008,
+  Timeout = 1004,
+  ProviderUnavailable = 1005,
+  NotFound = 1006,
+  ChainSwitchError = 1007,
 }
 
 enum MetaMaskRPCErrorCodes {
@@ -39,13 +42,13 @@ enum MetaMaskProviderErrorCodes {
   chainDisconnected = 4901,
 }
 
-export type ErrorCodes =
-  | LifiErrorCodes
+export type ErrorCode =
+  | LifiErrorCode
   | MetaMaskRPCErrorCodes
   | MetaMaskProviderErrorCodes
 
 export class LifiError extends Error {
-  code: ErrorCodes
+  code: ErrorCode
   htmlMessage?: string
 
   constructor(
@@ -73,7 +76,7 @@ export class LifiError extends Error {
 
 export class RPCError extends LifiError {
   constructor(
-    code: ErrorCodes,
+    code: ErrorCode,
     message: string,
     htmlMessage?: string,
     stack?: string
@@ -84,7 +87,7 @@ export class RPCError extends LifiError {
 
 export class ProviderError extends LifiError {
   constructor(
-    code: ErrorCodes,
+    code: ErrorCode,
     message: string,
     htmlMessage?: string,
     stack?: string
@@ -97,7 +100,7 @@ export class ServerError extends LifiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ServerError,
-      LifiErrorCodes.internalError,
+      LifiErrorCode.InternalError,
       message,
       htmlMessage,
       stack
@@ -109,7 +112,7 @@ export class ValidationError extends LifiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ValidationError,
-      LifiErrorCodes.validationError,
+      LifiErrorCode.ValidationError,
       message,
       htmlMessage,
       stack
@@ -117,11 +120,22 @@ export class ValidationError extends LifiError {
   }
 }
 
+export class TransactionError extends LifiError {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    htmlMessage?: string,
+    stack?: string
+  ) {
+    super(ErrorType.TransactionError, code, message, htmlMessage, stack)
+  }
+}
+
 export class NotFoundError extends LifiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.NotFoundError,
-      LifiErrorCodes.notFound,
+      LifiErrorCode.NotFound,
       message,
       htmlMessage,
       stack
@@ -131,7 +145,7 @@ export class NotFoundError extends LifiError {
 
 export class UnknownError extends LifiError {
   constructor(
-    code: ErrorCodes,
+    code: ErrorCode,
     message: string,
     htmlMessage?: string,
     stack?: string

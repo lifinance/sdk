@@ -7,8 +7,9 @@ import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
 import { ExecuteSwapParams } from '../../types'
+import { LifiErrorCode, TransactionError } from '../../utils/errors'
 import { getProvider } from '../../utils/getProvider'
-import { parseWalletError } from '../../utils/parseError'
+import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
@@ -71,11 +72,10 @@ export class SwapExecutionManager {
           personalizedStep
         )
         if (!transactionRequest) {
-          statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-            errorMessage: 'Unable to prepare transaction.',
-          })
-          statusManager.updateExecution(step, 'FAILED')
-          throw swapProcess.errorMessage
+          throw new TransactionError(
+            LifiErrorCode.TransactionUnprepared,
+            'Unable to prepare transaction.'
+          )
         }
 
         // make sure that chain is still correct
@@ -104,11 +104,13 @@ export class SwapExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
       }
     } catch (e) {
-      const error = await parseWalletError(e, step, swapProcess)
+      const error = await parseError(e, step, swapProcess)
       statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-        errorMessage: error.message,
-        htmlErrorMessage: error.htmlMessage,
-        errorCode: error.code,
+        error: {
+          message: error.message,
+          htmlMessage: error.htmlMessage,
+          code: error.code,
+        },
       })
       statusManager.updateExecution(step, 'FAILED')
       throw error
@@ -136,11 +138,13 @@ export class SwapExecutionManager {
             e.replacement.hash,
         })
       } else {
-        const error = await parseWalletError(e)
+        const error = await parseError(e)
         statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-          errorMessage: error.message,
-          htmlErrorMessage: error.htmlMessage,
-          errorCode: error.code,
+          error: {
+            message: error.message,
+            htmlMessage: error.htmlMessage,
+            code: error.code,
+          },
         })
         statusManager.updateExecution(step, 'FAILED')
         throw error
@@ -150,7 +154,7 @@ export class SwapExecutionManager {
     let statusResponse: StatusResponse
     try {
       if (!swapProcess.txHash) {
-        throw new Error('Transaction has is undefined.')
+        throw new Error('Transaction hash is undefined.')
       }
       statusResponse = await waitForReceivingTransaction(
         step.tool as ExchangeTools,
@@ -160,8 +164,11 @@ export class SwapExecutionManager {
       )
     } catch (e: any) {
       statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-        errorMessage: 'Failed while waiting for receiving chain.',
-        errorCode: e?.code,
+        error: {
+          code: LifiErrorCode.TransactionFailed,
+          message: 'Failed while waiting for receiving chain.',
+          htmlMessage: getTransactionFailedMessage(swapProcess),
+        },
       })
       statusManager.updateExecution(step, 'FAILED')
       throw e

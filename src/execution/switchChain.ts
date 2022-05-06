@@ -1,6 +1,7 @@
 import { Step } from '@lifinance/types'
 import { Signer } from 'ethers'
 import { SwitchChainHook } from '../types'
+import { LifiErrorCode, ProviderError } from '../utils/errors'
 import { StatusManager } from './StatusManager'
 
 /**
@@ -46,18 +47,23 @@ export const switchChain = async (
       !updatedSigner ||
       (await updatedSigner.getChainId()) !== step.action.fromChainId
     ) {
-      throw new Error('Chain switch required.')
+      throw new ProviderError(
+        LifiErrorCode.ChainSwitchError,
+        'Chain switch required.'
+      )
     }
 
     statusManager.updateProcess(step, switchProcess.type, 'DONE')
     statusManager.updateExecution(step, 'PENDING')
     return updatedSigner
-  } catch (e: any) {
+  } catch (error: any) {
     statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
-      errorMessage: e.message,
-      errorCode: e.code,
+      error: {
+        message: error.message,
+        code: error.code,
+      },
     })
     statusManager.updateExecution(step, 'FAILED')
-    throw e
+    throw error
   }
 }

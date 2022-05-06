@@ -51,7 +51,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.6.1",
     "@ethersproject/contracts": "^5.4.0",
-    "@lifinance/types": "0.12.1",
+    "@lifinance/types": "0.13.0",
     "axios": "^0.27.2",
     "bignumber.js": "^9.0.1",
     "eth-rpc-errors": "^4.0.3",
@@ -72,7 +72,7 @@
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "husky": "^7.0.2",
-    "jest": "^28.0.3",
+    "jest": "^28.1.0",
     "lint-staged": ">=12.4.1",
     "npm-run-all": "^4.1.5",
     "pino": "^7.11.0",

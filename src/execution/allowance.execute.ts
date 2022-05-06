@@ -3,7 +3,7 @@ import { constants, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
 import { Chain, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
-import { parseWalletError } from '../utils/parseError'
+import { parseError } from '../utils/parseError'
 import { StatusManager } from './StatusManager'
 
 export const checkAllowance = async (
@@ -74,11 +74,13 @@ export const checkAllowance = async (
           chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
       })
     } else {
-      const error = await parseWalletError(e, step, allowanceProcess)
+      const error = await parseError(e, step, allowanceProcess)
       statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
-        errorMessage: error.message,
-        htmlErrorMessage: error.htmlMessage,
-        errorCode: error.code,
+        error: {
+          message: error.message,
+          htmlMessage: error.htmlMessage,
+          code: error.code,
+        },
       })
       statusManager.updateExecution(step, 'FAILED')
       throw error
