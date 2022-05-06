@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.2](https://github.com/lifinance/sdk/compare/v1.0.0-beta.1...v1.0.0-beta.2) (2022-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* refine error messages and codes (#64)
+
+### Features
+
+* refine error messages and codes ([#64](https://github.com/lifinance/sdk/issues/64)) ([543bd28](https://github.com/lifinance/sdk/commit/543bd28b7d41c8daee3a82ca95cde1fce56f8db9))
+
 ## [1.0.0-beta.1](https://github.com/lifinance/sdk/compare/v1.0.0-beta.0...v1.0.0-beta.1) (2022-05-06)
 
 
