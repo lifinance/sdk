@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.1](https://github.com/lifinance/sdk/compare/v1.0.0-beta.0...v1.0.0-beta.1) (2022-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* deep clone incoming routes to prevent side effects (#62)
+* improve status management (#63)
+
+### Features
+
+* add retry logic to jest ([#59](https://github.com/lifinance/sdk/issues/59)) ([c62ac37](https://github.com/lifinance/sdk/commit/c62ac370504e6bf652c24c75888d1fc44d394683))
+* added getTools ([#61](https://github.com/lifinance/sdk/issues/61)) ([82e8ddd](https://github.com/lifinance/sdk/commit/82e8ddd6becbbbb197bc8f68376f12cfc6426ec1))
+* improve status management ([#63](https://github.com/lifinance/sdk/issues/63)) ([e22ab60](https://github.com/lifinance/sdk/commit/e22ab6077f2b4e4fd88ca6519154d6c74e7480e7))
+
+
+### Bug Fixes
+
+* deep clone incoming routes to prevent side effects ([#62](https://github.com/lifinance/sdk/issues/62)) ([6040757](https://github.com/lifinance/sdk/commit/6040757f96a77ef8d370abc92ea0128c555a6696)), closes [#61](https://github.com/lifinance/sdk/issues/61) [#63](https://github.com/lifinance/sdk/issues/63)
+* fix optimism balance loading ([#57](https://github.com/lifinance/sdk/issues/57)) ([219c3a9](https://github.com/lifinance/sdk/commit/219c3a903e7568f4df9d058d9b83f6d99744766b))
+* fix undefined route error ([#58](https://github.com/lifinance/sdk/issues/58)) ([8cb120e](https://github.com/lifinance/sdk/commit/8cb120eb509ae12afdc9cea933081b2f4c1cdc5f))
+
 ## [1.0.0-beta.0](https://github.com/lifinance/sdk/compare/v0.5.3...v1.0.0-beta.0) (2022-04-13)
 
 
