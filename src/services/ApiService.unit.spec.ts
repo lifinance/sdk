@@ -469,6 +469,25 @@ describe('ApiService', () => {
     })
   })
 
+  describe('getTokens', () => {
+    it('return the tokens', async () => {
+      mockedAxios.get.mockReturnValue(
+        Promise.resolve({
+          data: {
+            tokens: {
+              [ChainId.ETH]: [findDefaultToken(CoinKey.ETH, ChainId.ETH)],
+            },
+          },
+        })
+      )
+      const result = await ApiService.getTokens({
+        chains: [ChainId.ETH, ChainId.POL],
+      })
+      expect(result).toBeDefined()
+      expect(result.tokens[ChainId.ETH]).toBeDefined()
+    })
+  })
+
   describe('getStepTransaction', () => {
     const getAction = ({
       fromChainId = ChainId.BSC,

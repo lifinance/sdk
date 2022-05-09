@@ -1,4 +1,4 @@
-import { QuoteRequest } from '@lifinance/types'
+import { QuoteRequest, TokensRequest, TokensResponse } from '@lifinance/types'
 import { GetStatusRequest } from '@lifinance/types/dist/api'
 import axios from 'axios'
 import { isRoutesRequest, isStep } from '../typeguards'
@@ -250,6 +250,15 @@ const getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
   return r.data
 }
 
+const getTokens = async (request?: TokensRequest): Promise<TokensResponse> => {
+  const configService = ConfigService.getInstance()
+  const config = configService.getConfig()
+  const r = await axios.get<TokensResponse>(config.apiUrl + 'tokens', {
+    params: request,
+  })
+  return r.data
+}
+
 export default {
   getPossibilities,
   getToken,
@@ -259,4 +268,5 @@ export default {
   getRoutes,
   getStepTransaction,
   getTools,
+  getTokens,
 }

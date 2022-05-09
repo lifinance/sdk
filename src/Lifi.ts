@@ -13,6 +13,8 @@ import {
   Step,
   Token,
   TokenAmount,
+  TokensRequest,
+  TokensResponse,
   ToolsRequest,
   ToolsResponse,
 } from '@lifinance/types'
@@ -135,11 +137,20 @@ export default class LIFI {
 
   /**
    * Get the available tools to bridge and swap tokens.
-   * @param {ToolsRequest?} - The configuration of the requested tools
+   * @param {ToolsRequest?} request - The configuration of the requested tools
    * @returns The tools that are available on the requested chains
    */
   getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
     return ApiService.getTools(request || {})
+  }
+
+  /**
+   * Get all known tokens.
+   * @param {TokensRequest?} request - The configuration of the requested tokens
+   * @returns The tokens that are available on the requested chains
+   */
+  getTokens = async (request?: TokensRequest): Promise<TokensResponse> => {
+    return ApiService.getTokens(request || {})
   }
 
   /**
