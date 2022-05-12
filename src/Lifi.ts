@@ -17,7 +17,6 @@ import {
   ToolsResponse,
 } from '@lifinance/types'
 import { GetStatusRequest } from '@lifinance/types/dist/api'
-import axios from 'axios'
 import { Signer } from 'ethers'
 import {
   approveToken,
@@ -33,7 +32,7 @@ import { StepExecutor } from './execution/StepExecutor'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import ConfigService from './services/ConfigService'
-import { isRoutesRequest, isToken } from './typeguards'
+import { isToken } from './typeguards'
 import {
   ActiveRouteDictionary,
   Config,
@@ -43,7 +42,6 @@ import {
   RevokeTokenData,
 } from './types'
 import { ValidationError } from './utils/errors'
-import { parseBackendError } from './utils/parseError'
 import { deepClone } from './utils/utils'
 
 export default class LIFI {
@@ -157,29 +155,8 @@ export default class LIFI {
    * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
-  getRoutes = async (routesRequest: RoutesRequest): Promise<RoutesResponse> => {
-    if (!isRoutesRequest(routesRequest)) {
-      throw new ValidationError('Invalid routes request.')
-    }
-
-    const config = this.configService.getConfig()
-
-    // apply defaults
-    routesRequest.options = {
-      ...config.defaultRouteOptions,
-      ...routesRequest.options,
-    }
-
-    // send request
-    try {
-      const result = await axios.post<RoutesResponse>(
-        config.apiUrl + 'advanced/routes',
-        routesRequest
-      )
-      return result.data
-    } catch (e) {
-      throw parseBackendError(e)
-    }
+  getRoutes = async (request: RoutesRequest): Promise<RoutesResponse> => {
+    return ApiService.getRoutes(request)
   }
 
   /**
