@@ -1068,12 +1068,12 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@lifinance/types@^0.13.1":
-  version "0.13.1"
-  resolved "https://registry.yarnpkg.com/@lifinance/types/-/types-0.13.1.tgz#31aede31c4fad530c42a7891e33dc4357319ab19"
-  integrity sha512-cC8GzTHPnQwjAuv5wHPESRz+F8qt67HKifSSNACfemPbCEezErlYhEkyArKYTtZzr3zgsOWx7crGCis/h/w1bQ==
+"@lifinance/types@^0.14.0":
+  version "0.14.0"
+  resolved "https://registry.yarnpkg.com/@lifinance/types/-/types-0.14.0.tgz#0f900712574ea5218218a1948893010009636428"
+  integrity sha512-bsd/V/O+is0wHVw8N0dTlnJawXPRU5nUOpJQXQnQvuoYzOl1sXTL++HZZvP69TjeM6D+AelXbYBJ84aJclPyCw==
   dependencies:
-    ethers "^5.4.7"
+    ethers "^5.6.5"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -2690,7 +2690,7 @@ eth-rpc-errors@^4.0.3:
   dependencies:
     fast-safe-stringify "^2.0.6"
 
-ethers@^5.4.7, ethers@^5.6.5:
+ethers@^5.6.5:
   version "5.6.5"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.6.5.tgz#3185ac7815dc640993408adf6f133ffabfbcbb63"
   integrity sha512-9CTmplO9bv0s/aPw3HB3txGzKz3tUSI2EfO4dJo0W2WvaEq1ArgsEX6obV+bj5X3yY+Zgb1kAux8TDtJKe1FaA==
