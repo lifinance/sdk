@@ -1,5 +1,10 @@
-import { QuoteRequest, TokensRequest, TokensResponse } from '@lifinance/types'
-import { GetStatusRequest } from '@lifinance/types/dist/api'
+import {
+  GetStatusRequest,
+  QuoteRequest,
+  RequestOptions,
+  TokensRequest,
+  TokensResponse,
+} from '@lifinance/types'
 import axios from 'axios'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
@@ -22,7 +27,8 @@ import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
 const getPossibilities = async (
-  request?: PossibilitiesRequest
+  request?: PossibilitiesRequest,
+  options?: RequestOptions
 ): Promise<PossibilitiesResponse> => {
   if (!request) {
     request = {}
@@ -39,7 +45,10 @@ const getPossibilities = async (
   try {
     const result = await axios.post<PossibilitiesResponse>(
       config.apiUrl + 'advanced/possibilities',
-      request
+      request,
+      {
+        signal: options?.signal,
+      }
     )
     return result.data
   } catch (e) {
@@ -49,7 +58,8 @@ const getPossibilities = async (
 
 const getToken = async (
   chain: ChainKey | ChainId,
-  token: string
+  token: string,
+  options?: RequestOptions
 ): Promise<Token> => {
   if (!chain) {
     throw new ValidationError('Required parameter "chain" is missing.')
@@ -67,6 +77,7 @@ const getToken = async (
         chain,
         token,
       },
+      signal: options?.signal,
     })
     return result.data
   } catch (e) {
@@ -74,24 +85,27 @@ const getToken = async (
   }
 }
 
-const getQuote = async ({
-  fromChain,
-  fromToken,
-  fromAddress,
-  fromAmount,
-  toChain,
-  toToken,
-  order,
-  slippage,
-  integrator,
-  referrer,
-  allowBridges,
-  denyBridges,
-  preferBridges,
-  allowExchanges,
-  denyExchanges,
-  preferExchanges,
-}: QuoteRequest): Promise<Step> => {
+const getQuote = async (
+  {
+    fromChain,
+    fromToken,
+    fromAddress,
+    fromAmount,
+    toChain,
+    toToken,
+    order,
+    slippage,
+    integrator,
+    referrer,
+    allowBridges,
+    denyBridges,
+    preferBridges,
+    allowExchanges,
+    denyExchanges,
+    preferExchanges,
+  }: QuoteRequest,
+  options?: RequestOptions
+): Promise<Step> => {
   if (!fromChain) {
     throw new ValidationError('Required parameter "fromChain" is missing.')
   }
@@ -133,6 +147,7 @@ const getQuote = async ({
         denyExchanges,
         preferExchanges,
       },
+      signal: options?.signal,
     })
     return result.data
   } catch (e) {
@@ -140,12 +155,10 @@ const getQuote = async ({
   }
 }
 
-const getStatus = async ({
-  bridge,
-  fromChain,
-  toChain,
-  txHash,
-}: GetStatusRequest): Promise<StatusResponse> => {
+const getStatus = async (
+  { bridge, fromChain, toChain, txHash }: GetStatusRequest,
+  options?: RequestOptions
+): Promise<StatusResponse> => {
   if (fromChain !== toChain && !bridge) {
     throw new ValidationError(
       'Parameter "bridge" is required for cross chain transfers.'
@@ -174,6 +187,7 @@ const getStatus = async ({
         toChain,
         txHash,
       },
+      signal: options?.signal,
     })
     return result.data
   } catch (e) {
@@ -181,12 +195,14 @@ const getStatus = async ({
   }
 }
 
-const getChains = async (): Promise<Chain[]> => {
+const getChains = async (options?: RequestOptions): Promise<Chain[]> => {
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
 
   try {
-    const result = await axios.get<ChainsResponse>(config.apiUrl + 'chains')
+    const result = await axios.get<ChainsResponse>(config.apiUrl + 'chains', {
+      signal: options?.signal,
+    })
     return result.data.chains
   } catch (e) {
     throw parseBackendError(e)
@@ -194,9 +210,10 @@ const getChains = async (): Promise<Chain[]> => {
 }
 
 const getRoutes = async (
-  routesRequest: RoutesRequest
+  request: RoutesRequest,
+  options?: RequestOptions
 ): Promise<RoutesResponse> => {
-  if (!isRoutesRequest(routesRequest)) {
+  if (!isRoutesRequest(request)) {
     throw new ValidationError('Invalid routes request.')
   }
 
@@ -204,16 +221,19 @@ const getRoutes = async (
   const config = configService.getConfig()
 
   // apply defaults
-  routesRequest.options = {
+  request.options = {
     ...config.defaultRouteOptions,
-    ...routesRequest.options,
+    ...request.options,
   }
 
   // send request
   try {
     const result = await axios.post<RoutesResponse>(
       config.apiUrl + 'advanced/routes',
-      routesRequest
+      request,
+      {
+        signal: options?.signal,
+      }
     )
     return result.data
   } catch (e) {
@@ -221,7 +241,10 @@ const getRoutes = async (
   }
 }
 
-const getStepTransaction = async (step: Step): Promise<Step> => {
+const getStepTransaction = async (
+  step: Step,
+  options?: RequestOptions
+): Promise<Step> => {
   if (!isStep(step)) {
     // While the validation fails for some users we should not enforce it
     // eslint-disable-next-line no-console
@@ -233,7 +256,10 @@ const getStepTransaction = async (step: Step): Promise<Step> => {
   try {
     const result = await axios.post<Step>(
       config.apiUrl + 'advanced/stepTransaction',
-      step
+      step,
+      {
+        signal: options?.signal,
+      }
     )
     return result.data
   } catch (e) {
@@ -241,20 +267,28 @@ const getStepTransaction = async (step: Step): Promise<Step> => {
   }
 }
 
-const getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
+const getTools = async (
+  request?: ToolsRequest,
+  options?: RequestOptions
+): Promise<ToolsResponse> => {
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
   const r = await axios.get<ToolsResponse>(config.apiUrl + 'tools', {
     params: request,
+    signal: options?.signal,
   })
   return r.data
 }
 
-const getTokens = async (request?: TokensRequest): Promise<TokensResponse> => {
+const getTokens = async (
+  request?: TokensRequest,
+  options?: RequestOptions
+): Promise<TokensResponse> => {
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
   const r = await axios.get<TokensResponse>(config.apiUrl + 'tokens', {
     params: request,
+    signal: options?.signal,
   })
   return r.data
 }
