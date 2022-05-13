@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.3](https://github.com/lifinance/sdk/compare/v1.0.0-beta.2...v1.0.0-beta.3) (2022-05-13)
+
+
+### Features
+
+* add getTokens endpoint ([#65](https://github.com/lifinance/sdk/issues/65)) ([5d9319c](https://github.com/lifinance/sdk/commit/5d9319c3ee749a6b5a81847440a3e803ffe40ee8))
+* add requests cancellation ([#67](https://github.com/lifinance/sdk/issues/67)) ([32d0595](https://github.com/lifinance/sdk/commit/32d059590e0c03844245138f9f2aa9e76d7b6166))
+
+
+### Bug Fixes
+
+* remove duplicated getRoutes logic ([#66](https://github.com/lifinance/sdk/issues/66)) ([52bb994](https://github.com/lifinance/sdk/commit/52bb994ea1f6d5be90755f4dea4e1f5198557a95))
+
 ## [1.0.0-beta.2](https://github.com/lifinance/sdk/compare/v1.0.0-beta.1...v1.0.0-beta.2) (2022-05-06)
 
 
