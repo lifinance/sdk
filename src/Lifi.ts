@@ -3,9 +3,11 @@ import {
   Chain,
   ChainId,
   ChainKey,
+  GetStatusRequest,
   PossibilitiesRequest,
   PossibilitiesResponse,
   QuoteRequest,
+  RequestOptions,
   Route,
   RoutesRequest,
   RoutesResponse,
@@ -18,7 +20,6 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '@lifinance/types'
-import { GetStatusRequest } from '@lifinance/types/dist/api'
 import { Signer } from 'ethers'
 import {
   approveToken,
@@ -97,9 +98,10 @@ export default class LIFI {
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getPossibilities = async (
-    request?: PossibilitiesRequest
+    request?: PossibilitiesRequest,
+    options?: RequestOptions
   ): Promise<PossibilitiesResponse> => {
-    return ApiService.getPossibilities(request)
+    return ApiService.getPossibilities(request, options)
   }
 
   /**
@@ -110,9 +112,10 @@ export default class LIFI {
    */
   getToken = async (
     chain: ChainKey | ChainId,
-    token: string
+    token: string,
+    options?: RequestOptions
   ): Promise<Token> => {
-    return ApiService.getToken(chain, token)
+    return ApiService.getToken(chain, token, options)
   }
 
   /**
@@ -120,8 +123,11 @@ export default class LIFI {
    * @param {QuoteRequest} request - The configuration of the requested quote
    * @throws {LifiError} - Throws a LifiError if request fails
    */
-  getQuote = async (request: QuoteRequest): Promise<Step> => {
-    return ApiService.getQuote(request)
+  getQuote = async (
+    request: QuoteRequest,
+    options?: RequestOptions
+  ): Promise<Step> => {
+    return ApiService.getQuote(request, options)
   }
 
   /**
@@ -129,8 +135,11 @@ export default class LIFI {
    * @param {GetStatusRequest} request - Configuration of the requested status
    * @throws {LifiError} - Throws a LifiError if request fails
    */
-  getStatus = async (request: GetStatusRequest): Promise<StatusResponse> => {
-    return ApiService.getStatus(request)
+  getStatus = async (
+    request: GetStatusRequest,
+    options?: RequestOptions
+  ): Promise<StatusResponse> => {
+    return ApiService.getStatus(request, options)
   }
 
   /**
@@ -138,8 +147,11 @@ export default class LIFI {
    * @param {ToolsRequest?} request - The configuration of the requested tools
    * @returns The tools that are available on the requested chains
    */
-  getTools = async (request?: ToolsRequest): Promise<ToolsResponse> => {
-    return ApiService.getTools(request || {})
+  getTools = async (
+    request?: ToolsRequest,
+    options?: RequestOptions
+  ): Promise<ToolsResponse> => {
+    return ApiService.getTools(request || {}, options)
   }
 
   /**
@@ -147,8 +159,11 @@ export default class LIFI {
    * @param {TokensRequest?} request - The configuration of the requested tokens
    * @returns The tokens that are available on the requested chains
    */
-  getTokens = async (request?: TokensRequest): Promise<TokensResponse> => {
-    return ApiService.getTokens(request || {})
+  getTokens = async (
+    request?: TokensRequest,
+    options?: RequestOptions
+  ): Promise<TokensResponse> => {
+    return ApiService.getTokens(request || {}, options)
   }
 
   /**
@@ -166,8 +181,11 @@ export default class LIFI {
    * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
-  getRoutes = async (request: RoutesRequest): Promise<RoutesResponse> => {
-    return ApiService.getRoutes(request)
+  getRoutes = async (
+    request: RoutesRequest,
+    options?: RequestOptions
+  ): Promise<RoutesResponse> => {
+    return ApiService.getRoutes(request, options)
   }
 
   /**
@@ -176,8 +194,11 @@ export default class LIFI {
    * @return {Promise<Step>} The step populated with the transaction data.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
-  getStepTransaction = async (step: Step): Promise<Step> => {
-    return ApiService.getStepTransaction(step)
+  getStepTransaction = async (
+    step: Step,
+    options?: RequestOptions
+  ): Promise<Step> => {
+    return ApiService.getStepTransaction(step, options)
   }
 
   /**
