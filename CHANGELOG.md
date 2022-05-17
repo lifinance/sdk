@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.5](https://github.com/lifinance/sdk/compare/v1.0.0-beta.4...v1.0.0-beta.5) (2022-05-17)
+
+
+### Bug Fixes
+
+* add missing toAddress param ([#68](https://github.com/lifinance/sdk/issues/68)) ([c9318ed](https://github.com/lifinance/sdk/commit/c9318edef9b5ec2b2c86b7e2f8f1645ae597437e))
+
 ## [1.0.0-beta.4](https://github.com/lifinance/sdk/compare/v1.0.0-beta.3...v1.0.0-beta.4) (2022-05-13)
 
 
