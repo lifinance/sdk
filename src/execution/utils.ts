@@ -46,18 +46,12 @@ export async function waitForReceivingTransaction(
     })
 
   let status
-  console.log(TRANSACTION_HASH_OBSERVERS)
 
   if (txHash in TRANSACTION_HASH_OBSERVERS) {
-    console.log('existing', TRANSACTION_HASH_OBSERVERS[txHash])
     status = await TRANSACTION_HASH_OBSERVERS[txHash]
-    console.log('existing', status)
   } else {
-    console.log('non existing', TRANSACTION_HASH_OBSERVERS[txHash])
-
     TRANSACTION_HASH_OBSERVERS[txHash] = repeatUntilDone(getStatus, 5_000)
     status = await TRANSACTION_HASH_OBSERVERS[txHash]
-    console.log('non existing', status)
   }
 
   if (!status.receiving) {
