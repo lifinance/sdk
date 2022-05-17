@@ -10,6 +10,8 @@ import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
 
+const TRANSACTION_HASH_OBSERVERS: { [txHash: string]: Promise<any> } = {}
+
 export async function waitForReceivingTransaction(
   tool: BridgeTool | ExchangeTools,
   fromChainId: ChainId,
@@ -43,7 +45,20 @@ export async function waitForReceivingTransaction(
       }
     })
 
-  const status = await repeatUntilDone(getStatus, 5_000)
+  let status
+  console.log(TRANSACTION_HASH_OBSERVERS)
+
+  if (txHash in TRANSACTION_HASH_OBSERVERS) {
+    console.log('existing', TRANSACTION_HASH_OBSERVERS[txHash])
+    status = await TRANSACTION_HASH_OBSERVERS[txHash]
+    console.log('existing', status)
+  } else {
+    console.log('non existing', TRANSACTION_HASH_OBSERVERS[txHash])
+
+    TRANSACTION_HASH_OBSERVERS[txHash] = repeatUntilDone(getStatus, 5_000)
+    status = await TRANSACTION_HASH_OBSERVERS[txHash]
+    console.log('non existing', status)
+  }
 
   if (!status.receiving) {
     throw new ServerError("Status doesn't contain receiving information.")
