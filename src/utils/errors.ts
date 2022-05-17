@@ -20,7 +20,7 @@ export enum LifiErrorCode {
   ChainSwitchError = 1007,
 }
 
-enum MetaMaskRPCErrorCodes {
+export enum MetaMaskRPCErrorCode {
   invalidInput = -32000,
   resourceNotFound = -32001,
   resourceUnavailable = -32002,
@@ -34,7 +34,7 @@ enum MetaMaskRPCErrorCodes {
   internal = -32603,
 }
 
-enum MetaMaskProviderErrorCodes {
+export enum MetaMaskProviderErrorCode {
   userRejectedRequest = 4001,
   unauthorized = 4100,
   unsupportedMethod = 4200,
@@ -44,8 +44,8 @@ enum MetaMaskProviderErrorCodes {
 
 export type ErrorCode =
   | LifiErrorCode
-  | MetaMaskRPCErrorCodes
-  | MetaMaskProviderErrorCodes
+  | MetaMaskRPCErrorCode
+  | MetaMaskProviderErrorCode
 
 export class LifiError extends Error {
   code: ErrorCode
