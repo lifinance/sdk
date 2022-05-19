@@ -539,6 +539,11 @@ describe('ApiService', () => {
       id,
       type,
       tool,
+      toolDetails: {
+        key: tool,
+        name: tool,
+        logoURI: '',
+      },
       action,
       estimate,
       includedSteps: [],

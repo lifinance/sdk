@@ -1,4 +1,4 @@
-import { ChainId, supportedChains } from '../types'
+import { ChainId, ChainType, getChainById, supportedChains } from '../types'
 import ConfigService from './ConfigService'
 
 let configService: ConfigService
@@ -116,6 +116,15 @@ describe('ConfigService', () => {
     it('should set rpcs/multicall address', () => {
       const config = configService.updateChains(supportedChains)
       for (const chainId of Object.values(ChainId)) {
+        // This is a workaround until we complete the transition to
+        // supporting non EVM chains.
+        try {
+          // This will fail with SOL, SOLT, TER, TERT, OAS, OAST
+          // as getChainById(ChainId) returns EVMChain
+          getChainById(Number(chainId))
+        } catch {
+          continue
+        }
         if (typeof chainId !== 'string') {
           expect(config.rpcs[chainId].length).toBeGreaterThan(0)
         }
