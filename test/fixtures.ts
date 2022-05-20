@@ -21,6 +21,12 @@ export const buildStepObject = ({
   id: '8d3a0474-4ee3-4a7a-90c7-2a2264b7f3a9',
   type: 'swap',
   tool: '1inch',
+  toolDetails: {
+    key: '1inch',
+    name: '1inch',
+    logoURI:
+      'https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/exchanges/oneinch.png',
+  },
   action: {
     fromChainId: 137,
     toChainId: 137,
