@@ -1,5 +1,11 @@
 import { StatusManager } from '.'
-import { AcceptStepUpdateHook, Step } from '../types'
+import {
+  AcceptStepUpdateHook,
+  CrossStep,
+  LifiStep,
+  Step,
+  SwapStep,
+} from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { getSlippageNotMetMessage } from '../utils/parseError'
 import { updatedStepMeetsSlippageConditions } from './utils'
@@ -21,9 +27,9 @@ export const stepComparison = async (
   newStep: Step,
   acceptStepUpdateHook: AcceptStepUpdateHook,
   allowUserInteraction: boolean
-): Promise<boolean | undefined> => {
+): Promise<Step> => {
   if (updatedStepMeetsSlippageConditions(oldStep, newStep)) {
-    return true
+    return statusManager.updateStepInRoute(newStep)
   }
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
@@ -37,4 +43,6 @@ export const stepComparison = async (
       getSlippageNotMetMessage(oldStep)
     )
   }
+
+  return statusManager.updateStepInRoute(newStep)
 }

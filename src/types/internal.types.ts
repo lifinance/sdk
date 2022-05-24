@@ -35,11 +35,12 @@ interface ExecutionParams {
 }
 
 export interface ExecuteSwapParams extends ExecutionParams {
-  step: SwapStep
+  step: Step
 }
 
 export interface ExecuteCrossParams extends ExecutionParams {
-  step: CrossStep | LifiStep
+  // step: CrossStep | LifiStep
+  step: Step
 }
 
 export type CallbackFunction = (updatedRoute: Route) => void

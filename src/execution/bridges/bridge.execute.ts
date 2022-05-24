@@ -1,5 +1,11 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { BridgeTool, Execution, StatusResponse } from '@lifinance/types'
+import {
+  BridgeTool,
+  CrossStep,
+  Execution,
+  LifiStep,
+  StatusResponse,
+} from '@lifinance/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
@@ -76,15 +82,18 @@ export class BridgeExecutionManager {
         const updatedStep = await ApiService.getStepTransaction(
           personalizedStep
         )
-        await stepComparison(
-          statusManager,
-          personalizedStep,
-          updatedStep,
-          settings.acceptStepUpdateHook,
-          this.shouldContinue
-        )
+        step = {
+          ...(await stepComparison(
+            statusManager,
+            personalizedStep,
+            updatedStep,
+            settings.acceptStepUpdateHook,
+            this.shouldContinue
+          )),
+          execution: step.execution,
+        }
 
-        const { transactionRequest } = updatedStep
+        const { transactionRequest } = step
 
         if (!transactionRequest) {
           throw new TransactionError(
@@ -105,7 +114,7 @@ export class BridgeExecutionManager {
 
         if (!updatedSigner) {
           // chain switch was not successful, stop execution here
-          return step.execution
+          return step.execution!
         }
 
         signer = updatedSigner
@@ -116,7 +125,7 @@ export class BridgeExecutionManager {
           'ACTION_REQUIRED'
         )
         if (!this.shouldContinue) {
-          return step.execution
+          return step.execution!
         }
 
         tx = await signer.sendTransaction(transactionRequest)
@@ -199,6 +208,6 @@ export class BridgeExecutionManager {
     })
 
     // DONE
-    return step.execution
+    return step.execution!
   }
 }
