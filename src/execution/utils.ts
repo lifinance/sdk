@@ -4,10 +4,13 @@ import {
   ProcessType,
   Status,
   StatusResponse,
+  Step,
 } from '@lifinance/types'
+import BigNumber from 'bignumber.js'
 import { ChainId } from '..'
 import ApiService from '../services/ApiService'
-import { ServerError } from '../utils/errors'
+import { LifiErrorCode, ServerError, TransactionError } from '../utils/errors'
+import { getSlippageNotMetMessage } from '../utils/parseError'
 import { repeatUntilDone } from '../utils/utils'
 
 const TRANSACTION_HASH_OBSERVERS: { [txHash: string]: Promise<any> } = {}
@@ -96,4 +99,24 @@ export function getProcessMessage(
 ): string | undefined {
   const processMessage = processMessages[type][status]
   return processMessage
+}
+
+export function updatedStepMeetsSlippageConditions(
+  oldStep: Step,
+  newStep: Step
+): boolean {
+  const setSlippage = new BigNumber(oldStep.action.slippage)
+  const oldEstimatedToAmount = new BigNumber(oldStep.estimate.toAmountMin)
+  const newEstimatedToAmount = new BigNumber(newStep.estimate.toAmountMin)
+  const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
+  const actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
+  if (
+    //TODO: revisit this logic
+    newEstimatedToAmount.lt(oldEstimatedToAmount) &&
+    actualSlippage.lt(setSlippage)
+  ) {
+    return true
+  } else {
+    return false
+  }
 }

@@ -79,6 +79,14 @@ export const getTransactionNotSentMessage = async (
   return transactionNotSend
 }
 
+export const getSlippageNotMetMessage = (step: Step) => {
+  const { slippage } = step.action
+  return `Transaction was not sent, your funds are still in your wallet.
+  The updated quote for the current transaction does not meet your set slippage of ${
+    slippage * 100
+  }%.`
+}
+
 export const getTransactionFailedMessage = (process: Process): string => {
   return process.txLink
     ? `Please check the&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`

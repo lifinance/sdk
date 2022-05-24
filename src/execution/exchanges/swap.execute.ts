@@ -13,8 +13,12 @@ import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
+import { stepComparison } from '../stepComparison'
 import { switchChain } from '../switchChain'
-import { waitForReceivingTransaction } from '../utils'
+import {
+  updatedStepMeetsSlippageConditions,
+  waitForReceivingTransaction,
+} from '../utils'
 
 export class SwapExecutionManager {
   shouldContinue = true
@@ -68,9 +72,17 @@ export class SwapExecutionManager {
 
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await ApiService.getStepTransaction(
+        const updatedStep = await ApiService.getStepTransaction(
           personalizedStep
         )
+        await stepComparison(
+          statusManager,
+          personalizedStep,
+          updatedStep,
+          settings.acceptStepUpdateHook,
+          this.shouldContinue
+        )
+        const { transactionRequest } = updatedStep
         if (!transactionRequest) {
           throw new TransactionError(
             LifiErrorCode.TransactionUnprepared,

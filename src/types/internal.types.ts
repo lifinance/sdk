@@ -64,6 +64,8 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
+export type AcceptStepUpdateHook = () => Promise<boolean | undefined>
+
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
@@ -73,12 +75,14 @@ export interface ExecutionData {
 export interface ExecutionSettings {
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
+  acceptStepUpdateHook?: AcceptStepUpdateHook
   infiniteApproval?: boolean
 }
 
 export interface InternalExecutionSettings extends ExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
+  acceptStepUpdateHook: AcceptStepUpdateHook
   infiniteApproval: boolean
 }
 
