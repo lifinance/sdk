@@ -404,7 +404,11 @@ export default class LIFI {
     }
 
     if (!isToken(token)) {
-      throw new ValidationError('Invalid token passed.')
+      throw new ValidationError(
+        `Invalid token passed: address "${
+          (token as Token).address
+        }" on chainId "${(token as Token).chainId}"`
+      )
     }
 
     return balances.getTokenBalance(walletAddress, token)
@@ -425,8 +429,11 @@ export default class LIFI {
       throw new ValidationError('Missing walletAddress.')
     }
 
-    if (tokens.filter((token) => !isToken(token)).length) {
-      throw new ValidationError('Invalid token passed.')
+    const invalidTokens = tokens.filter((token) => !isToken(token))
+    if (invalidTokens.length) {
+      throw new ValidationError(
+        `Invalid token passed: address "${invalidTokens[0].address}" on chainId "${invalidTokens[0].chainId}"`
+      )
     }
 
     return balances.getTokenBalances(walletAddress, tokens)
@@ -448,8 +455,11 @@ export default class LIFI {
     }
 
     const tokenList = Object.values(tokensByChain).flat()
-    if (tokenList.filter((token) => !isToken(token)).length) {
-      throw new ValidationError('Invalid token passed.')
+    const invalidTokens = tokenList.filter((token) => !isToken(token))
+    if (invalidTokens.length) {
+      throw new ValidationError(
+        `Invalid token passed: address "${invalidTokens[0].address}" on chainId "${invalidTokens[0].chainId}"`
+      )
     }
 
     return balances.getTokenBalancesForChains(walletAddress, tokensByChain)
