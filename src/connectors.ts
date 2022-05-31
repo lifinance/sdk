@@ -1,5 +1,5 @@
 import { providers } from 'ethers'
-import { getRandomNumber } from '.'
+import { getRandomNumber, ServerError } from '.'
 
 import { ChainId } from './types'
 import { FallbackProvider } from '@ethersproject/providers'
@@ -75,6 +75,10 @@ export const getRpcProvider = async (
         ])
       )
     })
+  }
+
+  if (!chainProviders[chainId].length) {
+    throw new ServerError(`Unable to configure provider for chain ${chainId}`)
   }
 
   return getRandomProvider(chainProviders[chainId])
