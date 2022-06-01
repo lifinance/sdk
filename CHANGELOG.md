@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.7](https://github.com/lifinance/sdk/compare/v1.0.0-beta.6...v1.0.0-beta.7) (2022-06-01)
+
+
+### Features
+
+* improve balance error messages ([#74](https://github.com/lifinance/sdk/issues/74)) ([b249732](https://github.com/lifinance/sdk/commit/b249732cfef182158106de52fec24948e2a5dbe3))
+
+
+### Bug Fixes
+
+* added toolDetails + workaround for non EVM chains testing ([#70](https://github.com/lifinance/sdk/issues/70)) ([f972477](https://github.com/lifinance/sdk/commit/f972477573d5f969c7294b3054b96c1357e42893))
+* fix yarn.lock ([abdef57](https://github.com/lifinance/sdk/commit/abdef57b6ee1d444602cdcd6e34b61c3e66d86ab))
+* log error if provider can not be configured ([#75](https://github.com/lifinance/sdk/issues/75)) ([85e22e9](https://github.com/lifinance/sdk/commit/85e22e96427b08381eefe263a079a5b1057988df))
+* **utils:** only allow one status poll loop per tx ([#69](https://github.com/lifinance/sdk/issues/69)) ([0cc7e2b](https://github.com/lifinance/sdk/commit/0cc7e2b73222614262e7fd263112407791d62a4b))
+
 ## [1.0.0-beta.6](https://github.com/lifinance/sdk/compare/v1.0.0-beta.5...v1.0.0-beta.6) (2022-05-17)
 
 
