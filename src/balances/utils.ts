@@ -129,12 +129,10 @@ const fetchViaMulticall = async (
     multicallAddress
   )
 
-  return result.map(({ data, blockNumber }) => {
-    return {
-      amount: data as BigNumber,
-      blockNumber,
-    }
-  })
+  return result.map(({ data, blockNumber }) => ({
+    amount: data ? (data as BigNumber) : new BigNumber(0),
+    blockNumber,
+  }))
 }
 
 const getBalancesFromProvider = async (

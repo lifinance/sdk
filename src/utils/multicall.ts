@@ -1,43 +1,11 @@
 import { Fragment, Interface, JsonFragment } from '@ethersproject/abi'
 import { Contract } from '@ethersproject/contracts'
 import { getRpcProvider } from '../connectors'
-import { Bytes } from 'ethers'
+import { BigNumber, Bytes } from 'ethers'
 import { splitListIntoChunks } from './utils'
+import MULTICALL_ABI from './multicallAbi.json'
 
 const MAX_MULTICALL_SIZE = 100
-
-export const MULTICALL_ABI = [
-  {
-    constant: true,
-    inputs: [
-      {
-        components: [
-          { name: 'target', type: 'address' },
-          { name: 'callData', type: 'bytes' },
-        ],
-        name: 'calls',
-        type: 'tuple[]',
-      },
-    ],
-    name: 'aggregate',
-    outputs: [
-      { name: 'blockNumber', type: 'uint256' },
-      { name: 'returnData', type: 'bytes[]' },
-    ],
-    payable: false,
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    constant: true,
-    inputs: [{ name: 'addr', type: 'address' }],
-    name: 'getEthBalance',
-    outputs: [{ name: 'balance', type: 'uint256' }],
-    payable: false,
-    stateMutability: 'view',
-    type: 'function',
-  },
-]
 
 export type MultiCallData = {
   address: string
@@ -46,17 +14,24 @@ export type MultiCallData = {
   params?: any[]
 }
 
+type MultiCallAggregateResult = {
+  blockNumber: BigNumber
+  returnData: { success: boolean; returnData: Bytes }[]
+}
+
 export const fetchDataUsingMulticall = async (
   calls: Array<MultiCallData>,
   abi: ReadonlyArray<Fragment | JsonFragment | string>,
   chainId: number,
-  multicallAddress: string
+  multicallAddress: string,
+  requireSuccess = false
 ): Promise<{ data: unknown; blockNumber: number }[]> => {
   // 1. create contract using multicall contract address and abi...
+  const provider = await getRpcProvider(chainId)
   const multicallContract = new Contract(
     multicallAddress,
     MULTICALL_ABI,
-    await getRpcProvider(chainId)
+    provider
   )
   const abiInterface = new Interface(abi)
 
@@ -75,15 +50,21 @@ export const fetchDataUsingMulticall = async (
 
       try {
         // 3. get bytes array from multicall contract by process aggregate method...
-        const { returnData, blockNumber } = await multicallContract.aggregate(
-          callData
-        )
+        const { blockNumber, returnData }: MultiCallAggregateResult =
+          await multicallContract.tryBlockAndAggregate(requireSuccess, callData)
         // 4. decode bytes array to useful data array...
         return returnData
-          .map((call: Bytes, i: number) =>
-            abiInterface.decodeFunctionResult(calls[i].name, call)
-          )
-          .map((data: [unknown]) => {
+          .map(({ success, returnData }, i: number) => {
+            if (success) {
+              return abiInterface.decodeFunctionResult(
+                chunkedCalls[i].name,
+                returnData
+              )
+            } else {
+              return []
+            }
+          })
+          .map((data) => {
             return {
               data: data[0],
               blockNumber: blockNumber.toNumber(),
