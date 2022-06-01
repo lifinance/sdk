@@ -61,6 +61,9 @@ export const fetchDataUsingMulticall = async (
                 returnData
               )
             } else {
+              console.error(
+                `Multicall failed for address "${chunkedCalls[i].address}" and function "${chunkedCalls[i].name}" on chainId "${chainId}"`
+              )
               return []
             }
           })
