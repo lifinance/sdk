@@ -9,6 +9,6 @@
     "declaration": true /* Generates corresponding '.d.ts' file. */,
     "outDir": "./dist" /* Redirect output structure to the directory. */
   },
-  "include": ["./src/**/*", "./e2e/**/*"],
+  "include": ["./src/**/*"],
   "exclude": ["./test", "./src/**/*.spec.ts"]
 }
