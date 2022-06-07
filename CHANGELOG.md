@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.9](https://github.com/lifinance/sdk/compare/v1.0.0-beta.8...v1.0.0-beta.9) (2022-06-07)
+
+
+### Bug Fixes
+
+* updated e2e + added tsc compilation on push ([#77](https://github.com/lifinance/sdk/issues/77)) ([7d99cd1](https://github.com/lifinance/sdk/commit/7d99cd11a705cf30d48903dea2c158aa16ae7a7e))
+
 ## [1.0.0-beta.8](https://github.com/lifinance/sdk/compare/v1.0.0-beta.7...v1.0.0-beta.8) (2022-06-02)
 
 
