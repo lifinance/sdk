@@ -15,9 +15,10 @@
     "test:e2e": "jest -c jest.e2e.config.js",
     "addscope": "node tools/packagejson name @lifinance/sdk",
     "pre-commit": "lint-staged",
-    "pre-push": "yarn build && yarn test:unit",
+    "pre-push": "yarn types:check && yarn build && yarn test:unit",
     "lint": "eslint --ext .tsx --ext .ts ./src",
     "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
+    "types:check": "tsc --noEmit",
     "prettier:fix": "prettier --write ./src/.",
     "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",
     "use:gitReadme": "mv 'README.md' 'npm.README.md' && mv 'git.README.md' 'README.md'",
@@ -55,7 +56,10 @@
     "axios": "^0.27.2",
     "bignumber.js": "^9.0.1",
     "eth-rpc-errors": "^4.0.3",
-    "ethers": "^5.6.6"
+    "ethers": "^5.6.6",
+    "i": "^0.3.7",
+    "npm": "^8.12.1",
+    "qs": "^6.10.5"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.0.0",
@@ -65,6 +69,7 @@
     "@types/hdkey": "^2.0.0",
     "@types/jest": "^27.5.1",
     "@types/pino": "^7.0.5",
+    "@types/qs": "^6.9.7",
     "@types/websocket": "^1.0.4",
     "@typescript-eslint/eslint-plugin": "^5.24.0",
     "@typescript-eslint/parser": "^5.24.0",

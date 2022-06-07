@@ -66,13 +66,13 @@ describe('allowance e2e tests', () => {
 
       console.log('setting new approval')
 
-      await approveToken(
+      await approveToken({
         signer,
-        USDC_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
+        token: USDC_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
         amount,
-        false
-      )
+        infiniteApproval: false
+    })
 
       await checkSetApproval(USDC_ON_DAI.address, amount)
     })
@@ -82,13 +82,13 @@ describe('allowance e2e tests', () => {
 
       console.log('setting new approval')
 
-      await approveToken(
+      await approveToken({
         signer,
-        USDC_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
+        token: USDC_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
         amount,
-        true
-      )
+        infiniteApproval: true
+    })
 
       await checkSetApproval(
         USDC_ON_DAI.address,
@@ -103,13 +103,13 @@ describe('allowance e2e tests', () => {
 
       console.log('setting new approval')
 
-      await approveToken(
+      await approveToken({
         signer,
-        USDC_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
+        token: USDC_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
         amount,
-        false
-      )
+        infiniteApproval: false
+    })
 
       await sleep(2000)
 
@@ -117,11 +117,11 @@ describe('allowance e2e tests', () => {
 
       console.log('revoking approval')
 
-      await revokeTokenApproval(
+      await revokeTokenApproval({
         signer,
-        USDC_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI
-      )
+        token: USDC_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI
+      })
 
       await sleep(2000)
 
@@ -135,13 +135,13 @@ describe('allowance e2e tests', () => {
 
       console.log('setting new approval')
 
-      await approveToken(
+      await approveToken({
         signer,
-        USDC_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
+        token: USDC_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
         amount,
-        false
-      )
+        infiniteApproval: false
+      })
 
       await sleep(2000)
 
@@ -168,13 +168,13 @@ describe('allowance e2e tests', () => {
 
       console.log('setting new approval')
 
-      await approveToken(
+      await approveToken({
         signer,
-        USDT_ON_DAI,
-        SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
+        token: USDT_ON_DAI,
+        approvalAddress: SUSHISWAP_APPROVAL_ADDRESS_ON_DAI,
         amount,
-        false
-      )
+        infiniteApproval: false
+      })
 
       await sleep(2000)
 
