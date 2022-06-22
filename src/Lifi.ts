@@ -278,6 +278,15 @@ export default class LIFI {
         return clonedRoute
       }
     }
+    // remove last (failed) process
+    for (let index = 0; index < clonedRoute.steps.length; index++) {
+      const stepHasFailed =
+        clonedRoute.steps[index].execution?.status === 'FAILED'
+
+      if (stepHasFailed) {
+        clonedRoute.steps[index].execution?.process.pop()
+      }
+    }
 
     return this.executeSteps(signer, clonedRoute, settings)
   }
