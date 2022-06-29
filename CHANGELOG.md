@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.12](https://github.com/lifinance/sdk/compare/v1.0.0-beta.11...v1.0.0-beta.12) (2022-06-29)
+
+
+### Features
+
+* better resume of failed transactions ([#78](https://github.com/lifinance/sdk/issues/78)) ([1558c47](https://github.com/lifinance/sdk/commit/1558c4768c39b8d9e42c2b6e92d78236c7d29669))
+* handle slippage errors ([#79](https://github.com/lifinance/sdk/issues/79)) ([b672ed9](https://github.com/lifinance/sdk/commit/b672ed905db146a87cce62fa8045d8a476da0cfb))
+
 ## [1.0.0-beta.11](https://github.com/lifinance/sdk/compare/v1.0.0-beta.10...v1.0.0-beta.11) (2022-06-08)
 
 ## [1.0.0-beta.10](https://github.com/lifinance/sdk/compare/v1.0.0-beta.9...v1.0.0-beta.10) (2022-06-07)
