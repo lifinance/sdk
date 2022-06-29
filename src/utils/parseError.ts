@@ -11,6 +11,7 @@ import {
   ProviderError,
   RPCError,
   ServerError,
+  SlippageError,
   TransactionError,
   UnknownError,
   ValidationError,
@@ -90,6 +91,10 @@ export const parseError = async (
   step?: Step,
   process?: Process
 ): Promise<LifiError> => {
+  if (e instanceof LifiError) {
+    return e
+  }
+
   if (e.code) {
     // MetaMask errors have a numeric error code
     if (typeof e.code === 'number') {
@@ -168,6 +173,14 @@ export const parseBackendError = (e: any): LifiError => {
     return new NotFoundError(
       e.response?.data?.message || e.response?.statusText,
       undefined,
+      e.stack
+    )
+  }
+
+  if (e.response?.status === 409) {
+    return new SlippageError(
+      e.response?.data?.message || e.response?.statusText,
+      'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
       e.stack
     )
   }
