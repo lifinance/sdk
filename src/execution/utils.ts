@@ -1,11 +1,12 @@
 import {
-  BridgeTool,
-  ExchangeTools,
   ProcessType,
   Status,
+  StatusMessage,
   StatusResponse,
+  Step,
+  Substatus,
 } from '@lifinance/types'
-import { ChainId } from '..'
+import { StatusManager } from '..'
 import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
@@ -13,19 +14,19 @@ import { repeatUntilDone } from '../utils/utils'
 const TRANSACTION_HASH_OBSERVERS: { [txHash: string]: Promise<any> } = {}
 
 export async function waitForReceivingTransaction(
-  tool: BridgeTool | ExchangeTools,
-  fromChainId: ChainId,
-  toChainId: ChainId,
-  txHash: string
+  txHash: string,
+  statusManager: StatusManager,
+  processType: ProcessType,
+  step: Step
 ): Promise<StatusResponse> {
   const getStatus = (): Promise<StatusResponse | undefined> =>
     new Promise(async (resolve, reject) => {
       let statusResponse: StatusResponse
       try {
         statusResponse = await ApiService.getStatus({
-          bridge: tool,
-          fromChain: fromChainId,
-          toChain: toChainId,
+          bridge: step.tool,
+          fromChain: step.action.fromChainId,
+          toChain: step.action.toChainId,
           txHash,
         })
       } catch (e: any) {
@@ -37,6 +38,16 @@ export async function waitForReceivingTransaction(
         case 'DONE':
           return resolve(statusResponse)
         case 'PENDING':
+          statusManager?.updateProcess(step, processType, 'PENDING', {
+            substatus: statusResponse.substatus,
+            substatusMessage:
+              statusResponse.substatusMessage ||
+              getSubstatusMessage(
+                statusResponse.status,
+                statusResponse.substatus
+              ),
+          })
+          return resolve(undefined)
         case 'NOT_FOUND':
           return resolve(undefined)
         case 'FAILED':
@@ -89,6 +100,32 @@ const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
   },
   TRANSACTION: {},
 }
+const substatusMessages: Record<
+  StatusMessage,
+  Partial<Record<Substatus, string>>
+> = {
+  PENDING: {
+    BRIDGE_NOT_AVAILABLE: 'Bridge communication is temporarily unavailable',
+    CHAIN_NOT_AVAILABLE: 'RPC communication is temporarily not available',
+    NOT_PROCESSABLE_REFUND_NEEDED:
+      'The transfer cannot be completed successfully. A refund operation is required.',
+    UNKNOWN_ERROR:
+      'An unexpected error occurred. Please seek assistance in the LI.FI discord server.',
+    WAIT_SOURCE_CONFIRMATIONS:
+      'The bridge deposit has been received. The bridge is waiting for more confirmations to start the off-chain logic.',
+    WAIT_DESTINATION_TRANSACTION:
+      'The bridge off-chain logic is being executed. Wait for the transaction to appear on the destination chain.',
+  },
+  DONE: {
+    PARTIAL:
+      'Some of the received tokens are not the requested destination tokens.',
+    REFUNDED: 'The tokens were refunded to the sender address.',
+    COMPLETED: 'The transfer is complete.',
+  },
+  FAILED: {},
+  INVALID: {},
+  NOT_FOUND: {},
+}
 
 export function getProcessMessage(
   type: ProcessType,
@@ -96,4 +133,15 @@ export function getProcessMessage(
 ): string | undefined {
   const processMessage = processMessages[type][status]
   return processMessage
+}
+
+export function getSubstatusMessage(
+  status: StatusMessage,
+  substatus?: Substatus
+): string | undefined {
+  if (!substatus) {
+    return ''
+  }
+  const message = substatusMessages[status][substatus]
+  return message
 }

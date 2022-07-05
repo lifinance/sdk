@@ -21,7 +21,16 @@ interface Receipt {
 type InternalUpdateRouteCallback = (route: Route) => void
 
 type OptionalParameters = Partial<
-  Pick<Process, 'doneAt' | 'failedAt' | 'txHash' | 'txLink' | 'error'>
+  Pick<
+    Process,
+    | 'doneAt'
+    | 'failedAt'
+    | 'txHash'
+    | 'txLink'
+    | 'error'
+    | 'substatus'
+    | 'substatusMessage'
+  >
 >
 
 /**

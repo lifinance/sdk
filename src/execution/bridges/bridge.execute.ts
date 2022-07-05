@@ -1,5 +1,5 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
-import { BridgeTool, Execution, StatusResponse } from '@lifinance/types'
+import { Execution, StatusResponse } from '@lifinance/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
@@ -11,7 +11,7 @@ import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { switchChain } from '../switchChain'
-import { waitForReceivingTransaction } from '../utils'
+import { getSubstatusMessage, waitForReceivingTransaction } from '../utils'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -155,10 +155,10 @@ export class BridgeExecutionManager {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = await waitForReceivingTransaction(
-        step.tool as BridgeTool,
-        fromChain.id,
-        toChain.id,
-        crossChainProcess.txHash
+        crossChainProcess.txHash,
+        statusManager,
+        receivingChainProcess.type,
+        step
       )
     } catch (e: any) {
       statusManager.updateProcess(step, receivingChainProcess.type, 'FAILED', {
@@ -173,6 +173,10 @@ export class BridgeExecutionManager {
     }
 
     statusManager.updateProcess(step, receivingChainProcess.type, 'DONE', {
+      substatus: statusResponse.substatus,
+      substatusMessage:
+        statusResponse.substatusMessage ||
+        getSubstatusMessage(statusResponse.status, statusResponse.substatus),
       txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +
