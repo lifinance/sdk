@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js'
-import { constants, Signer } from 'ethers'
+import { constants, ContractTransaction, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
-import { Chain, Step, Token } from '../types'
+import { Chain, Process, Step, Token } from '../types'
 import { getProvider } from '../utils/getProvider'
 import { parseError } from '../utils/parseError'
 import { StatusManager } from './StatusManager'
@@ -68,11 +68,13 @@ export const checkAllowance = async (
   } catch (e: any) {
     // -> set status
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
-        txHash: e.replacement.hash,
-        txLink:
-          chain.metamask.blockExplorerUrls[0] + 'tx/' + e.replacement.hash,
-      })
+      await transactionReplaced(
+        e.replacement,
+        allowanceProcess,
+        step,
+        chain,
+        statusManager
+      )
     } else {
       const error = await parseError(e, step, allowanceProcess)
       statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
@@ -85,5 +87,33 @@ export const checkAllowance = async (
       statusManager.updateExecution(step, 'FAILED')
       throw error
     }
+  }
+}
+
+const transactionReplaced = async (
+  replacementTx: ContractTransaction,
+  allowanceProcess: Process,
+  step: Step,
+  chain: Chain,
+  statusManager: StatusManager
+) => {
+  try {
+    statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
+      txHash: replacementTx.hash,
+      txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + replacementTx.hash,
+    })
+    await replacementTx.wait()
+    statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+  } catch (e: any) {
+    if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
+      await transactionReplaced(
+        e.replacement,
+        allowanceProcess,
+        step,
+        chain,
+        statusManager
+      )
+    }
+    throw e
   }
 }
