@@ -140,7 +140,7 @@ export function getSubstatusMessage(
   substatus?: Substatus
 ): string | undefined {
   if (!substatus) {
-    return ''
+    return
   }
   const message = substatusMessages[status][substatus]
   return message
