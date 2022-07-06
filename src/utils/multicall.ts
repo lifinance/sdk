@@ -62,7 +62,7 @@ export const fetchDataUsingMulticall = async (
               )
             } else {
               console.error(
-                `Multicall failed for address "${chunkedCalls[i].address}" and function "${chunkedCalls[i].name}" on chainId "${chainId}"`
+                `Multicall unsuccessful for address "${chunkedCalls[i].address}", function "${chunkedCalls[i].name}", chainId "${chainId}"`
               )
               return []
             }
@@ -74,6 +74,11 @@ export const fetchDataUsingMulticall = async (
             }
           })
       } catch (e) {
+        console.error(
+          `Multicall failed on chainId "${chainId}"`,
+          chunkedList,
+          e
+        )
         return []
       }
     })
