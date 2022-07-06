@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0-beta.14](https://github.com/lifinance/sdk/compare/v1.0.0-beta.13...v1.0.0-beta.14) (2022-07-06)
+
+
+### Features
+
+* add more error logging ([#82](https://github.com/lifinance/sdk/issues/82)) ([edb4f85](https://github.com/lifinance/sdk/commit/edb4f851111bf905a266d831aae591f8a86518d0))
+* use new substates from api ([#81](https://github.com/lifinance/sdk/issues/81)) ([4ad51a2](https://github.com/lifinance/sdk/commit/4ad51a2a8c946a99e5a4b6c5663f856f2f7fd497))
+
 ## [1.0.0-beta.13](https://github.com/lifinance/sdk/compare/v1.0.0-beta.12...v1.0.0-beta.13) (2022-07-05)
 
 
