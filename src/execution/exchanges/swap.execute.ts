@@ -157,10 +157,10 @@ export class SwapExecutionManager {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = await waitForReceivingTransaction(
-        step.tool as ExchangeTools,
-        fromChain.id,
-        fromChain.id,
-        swapProcess.txHash
+        swapProcess.txHash,
+        statusManager,
+        swapProcess.type,
+        step
       )
     } catch (e: any) {
       statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
