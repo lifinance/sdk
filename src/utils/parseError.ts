@@ -1,4 +1,4 @@
-import { Process, Step } from '@lifinance/types'
+import { getChainById, Process, Step } from '@lifinance/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
@@ -80,10 +80,21 @@ export const getTransactionNotSentMessage = async (
   return transactionNotSend
 }
 
-export const getTransactionFailedMessage = (process: Process): string => {
-  return process.txLink
-    ? `Please check the&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
-    : ''
+export const getTransactionFailedMessage = (
+  step: Step,
+  txLink?: string
+): string => {
+  return txLink
+    ? `It appears that your transaction may not have been successful. 
+    However, to confirm this, please check your ${
+      getChainById(step.action.toChainId).name
+    } wallet for ${
+        step.action.toToken.symbol
+      }. You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
+    : `It appears that your transaction may not have been successful. 
+    However, to confirm this, please check your ${
+      getChainById(step.action.toChainId).name
+    } wallet for ${step.action.toToken.symbol}.`
 }
 
 export const parseError = async (

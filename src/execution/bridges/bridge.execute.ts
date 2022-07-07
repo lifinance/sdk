@@ -68,7 +68,27 @@ export class BridgeExecutionManager {
         tx = await getProvider(signer).getTransaction(crossChainProcess.txHash)
       } else {
         // check balance
-        await balanceCheck(signer, step)
+        try {
+          await balanceCheck(signer, step)
+        } catch (e: any) {
+          if (e.message && e.htmlMessage) {
+            statusManager.updateProcess(
+              step,
+              crossChainProcess.type,
+              'FAILED',
+              {
+                error: {
+                  code: LifiErrorCode.TransactionFailed,
+                  message: e.message,
+                  htmlMessage: e.htmlMessage,
+                },
+              }
+            )
+            statusManager.updateExecution(step, 'FAILED')
+          }
+
+          throw e
+        }
 
         // create new transaction
         const personalizedStep = await personalizeStep(signer, step)
@@ -165,7 +185,10 @@ export class BridgeExecutionManager {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(crossChainProcess),
+          htmlMessage: getTransactionFailedMessage(
+            step,
+            crossChainProcess.txHash
+          ),
         },
       })
       statusManager.updateExecution(step, 'FAILED')

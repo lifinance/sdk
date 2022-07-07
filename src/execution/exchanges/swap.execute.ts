@@ -2,7 +2,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
-import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
+import { Execution, StatusResponse } from '@lifinance/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
@@ -64,7 +64,22 @@ export class SwapExecutionManager {
         tx = await getProvider(signer).getTransaction(swapProcess.txHash)
       } else {
         // -> check balance
-        await balanceCheck(signer, step)
+        try {
+          await balanceCheck(signer, step)
+        } catch (e: any) {
+          if (e.message && e.htmlMessage) {
+            statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
+              error: {
+                code: LifiErrorCode.TransactionFailed,
+                message: e.message,
+                htmlMessage: e.htmlMessage,
+              },
+            })
+            statusManager.updateExecution(step, 'FAILED')
+          }
+
+          throw e
+        }
 
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
@@ -167,7 +182,7 @@ export class SwapExecutionManager {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(swapProcess),
+          htmlMessage: getTransactionFailedMessage(step, swapProcess.txHash),
         },
       })
       statusManager.updateExecution(step, 'FAILED')
