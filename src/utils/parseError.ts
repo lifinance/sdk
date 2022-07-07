@@ -84,17 +84,14 @@ export const getTransactionFailedMessage = (
   step: Step,
   txLink?: string
 ): string => {
+  const baseString = `It appears that your transaction may not have been successful. 
+  However, to confirm this, please check your ${
+    getChainById(step.action.toChainId).name
+  } wallet for ${step.action.toToken.symbol}.`
   return txLink
-    ? `It appears that your transaction may not have been successful. 
-    However, to confirm this, please check your ${
-      getChainById(step.action.toChainId).name
-    } wallet for ${
-        step.action.toToken.symbol
-      }. You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
-    : `It appears that your transaction may not have been successful. 
-    However, to confirm this, please check your ${
-      getChainById(step.action.toChainId).name
-    } wallet for ${step.action.toToken.symbol}.`
+    ? `${baseString} 
+    You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
+    : baseString
 }
 
 export const parseError = async (
