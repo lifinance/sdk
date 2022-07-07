@@ -64,22 +64,7 @@ export class SwapExecutionManager {
         tx = await getProvider(signer).getTransaction(swapProcess.txHash)
       } else {
         // -> check balance
-        try {
-          await balanceCheck(signer, step)
-        } catch (e: any) {
-          if (e.message && e.htmlMessage) {
-            statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-              error: {
-                code: LifiErrorCode.TransactionFailed,
-                message: e.message,
-                htmlMessage: e.htmlMessage,
-              },
-            })
-            statusManager.updateExecution(step, 'FAILED')
-          }
-
-          throw e
-        }
+        await balanceCheck(signer, step)
 
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)

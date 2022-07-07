@@ -161,6 +161,14 @@ export const parseError = async (
         e.stack
       )
     }
+
+    if (e.Code === LifiErrorCode.ValidationError) {
+      return new TransactionError(
+        LifiErrorCode.ValidationError,
+        e.message,
+        e.htmlMessage
+      )
+    }
   }
 
   return new UnknownError(
