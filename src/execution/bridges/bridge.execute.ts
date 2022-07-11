@@ -167,7 +167,7 @@ export class BridgeExecutionManager {
           message: 'Failed while waiting for receiving chain.',
           htmlMessage: getTransactionFailedMessage(
             step,
-            crossChainProcess.txHash
+            crossChainProcess.txLink
           ),
         },
       })
