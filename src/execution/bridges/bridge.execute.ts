@@ -165,7 +165,10 @@ export class BridgeExecutionManager {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(crossChainProcess),
+          htmlMessage: getTransactionFailedMessage(
+            step,
+            crossChainProcess.txLink
+          ),
         },
       })
       statusManager.updateExecution(step, 'FAILED')

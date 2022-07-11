@@ -2,7 +2,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
-import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
+import { Execution, StatusResponse } from '@lifinance/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
@@ -167,7 +167,7 @@ export class SwapExecutionManager {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(swapProcess),
+          htmlMessage: getTransactionFailedMessage(step, swapProcess.txLink),
         },
       })
       statusManager.updateExecution(step, 'FAILED')
