@@ -167,7 +167,7 @@ export class SwapExecutionManager {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(step, swapProcess.txHash),
+          htmlMessage: getTransactionFailedMessage(step, swapProcess.txLink),
         },
       })
       statusManager.updateExecution(step, 'FAILED')

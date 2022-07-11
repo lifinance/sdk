@@ -150,7 +150,7 @@ export const parseError = async (
       )
     }
 
-    if (e.Code === LifiErrorCode.TransactionUnprepared) {
+    if (e.code === LifiErrorCode.TransactionUnprepared) {
       return new TransactionError(
         LifiErrorCode.TransactionUnprepared,
         e.message,
@@ -159,7 +159,7 @@ export const parseError = async (
       )
     }
 
-    if (e.Code === LifiErrorCode.ValidationError) {
+    if (e.code === LifiErrorCode.ValidationError) {
       return new TransactionError(
         LifiErrorCode.ValidationError,
         e.message,
