@@ -2,11 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-## [1.0.0](https://github.com/lifinance/sdk/compare/v1.0.0-beta.14...v1.0.0) (2022-07-11)
+## [1.0.0](https://github.com/lifinance/sdk/compare/v1.0.0-beta.14...v1.0.0) (2022-07-12)
 
+
+### ⚠ BREAKING CHANGES
+
+* move to a new @lifi scope (#85)
 
 ### Features
 
+* add func to check for correct native token ([#84](https://github.com/lifinance/sdk/issues/84)) ([865bc14](https://github.com/lifinance/sdk/commit/865bc14594902c7b94c30f5a910b7897b1133bd5))
+* move to a new [@lifi](https://github.com/lifi) scope ([#85](https://github.com/lifinance/sdk/issues/85)) ([b58c5a1](https://github.com/lifinance/sdk/commit/b58c5a10e2c47fff3e1c43ae15516514b90b9197))
 * new error messages ([#83](https://github.com/lifinance/sdk/issues/83)) ([ccebe17](https://github.com/lifinance/sdk/commit/ccebe170d32001377eb7b632afd76729252a8994))
 
 ## [1.0.0-beta.14](https://github.com/lifinance/sdk/compare/v1.0.0-beta.13...v1.0.0-beta.14) (2022-07-06)
