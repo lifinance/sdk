@@ -128,3 +128,15 @@ export const isZeroAddress = (address: string): boolean => {
   }
   return false
 }
+
+export const isNativeTokenAddress = (address: string): boolean => {
+  if (
+    address === constants.AddressZero ||
+    address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+    // CELO native token
+    address === '0x471ece3750da237f93b8e339c536989b8978a438'
+  ) {
+    return true
+  }
+  return false
+}

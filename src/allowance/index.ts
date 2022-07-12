@@ -3,7 +3,7 @@ import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import { isSameToken } from '../helpers'
 import { RevokeTokenData } from '../types'
-import { isZeroAddress } from '../utils/utils'
+import { isNativeTokenAddress } from '../utils/utils'
 import {
   getAllowanceViaMulticall,
   getApproved,
@@ -31,7 +31,7 @@ export const getTokenApproval = async (
   approvalAddress: string
 ): Promise<string | undefined> => {
   // native token don't need approval
-  if (isZeroAddress(token.address)) {
+  if (isNativeTokenAddress(token.address)) {
     return
   }
 
@@ -45,7 +45,7 @@ export const bulkGetTokenApproval = async (
 ): Promise<{ token: Token; approval: string | undefined }[]> => {
   // filter out native tokens
   const filteredTokenData = tokenData.filter(
-    ({ token }) => !isZeroAddress(token.address)
+    ({ token }) => !isNativeTokenAddress(token.address)
   )
 
   // group by chain
@@ -68,7 +68,7 @@ export const bulkGetTokenApproval = async (
   const approvals = approvalsByChain.flat()
   return tokenData.map(({ token }) => {
     // native token don't need approval
-    if (isZeroAddress(token.address)) {
+    if (isNativeTokenAddress(token.address)) {
       return { token, approval: undefined }
     }
 
@@ -88,7 +88,7 @@ export const approveToken = async ({
   infiniteApproval = false,
 }: ApproveTokenRequest): Promise<void> => {
   // native token don't need approval
-  if (isZeroAddress(token.address)) {
+  if (isNativeTokenAddress(token.address)) {
     return
   }
 
@@ -120,7 +120,7 @@ export const revokeTokenApproval = async ({
   approvalAddress,
 }: RevokeApprovalRequest): Promise<void> => {
   // native token don't need approval
-  if (isZeroAddress(token.address)) {
+  if (isNativeTokenAddress(token.address)) {
     return
   }
 
