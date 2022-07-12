@@ -40,7 +40,7 @@
     "access": "public"
   },
   "author": "Max Klenk <max@li.finance>",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/lifinance/sdk",
   "repository": {
     "type": "git",
