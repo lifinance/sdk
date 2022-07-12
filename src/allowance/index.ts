@@ -1,4 +1,4 @@
-import { Token } from '@lifinance/types'
+import { Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 import { isSameToken } from '../helpers'

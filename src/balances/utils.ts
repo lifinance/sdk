@@ -1,6 +1,6 @@
 import { Fragment, JsonFragment } from '@ethersproject/abi'
 import { FallbackProvider } from '@ethersproject/providers'
-import { ChainId, Token, TokenAmount } from '@lifinance/types'
+import { ChainId, Token, TokenAmount } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 import { getMulticallAddress, getRpcProvider } from '../connectors'

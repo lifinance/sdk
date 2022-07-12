@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultToken } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 
 import { formatTokenAmountOnly, repeatUntilDone } from './utils'

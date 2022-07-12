@@ -1,7 +1,7 @@
 {
-  "name": "@lifinance/sdk",
+  "name": "@lifi/sdk",
   "version": "1.0.0",
-  "description": "LiFi Any-to-Any Cross-Chain-Swap SDK",
+  "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -13,7 +13,7 @@
     "test:unit": "yarn test .unit.spec.ts",
     "test:cov": "jest --coverage --no-cache --runInBand --forceExit",
     "test:e2e": "jest -c jest.e2e.config.js",
-    "addscope": "node tools/packagejson name @lifinance/sdk",
+    "addscope": "node tools/packagejson name @lifi/sdk",
     "pre-commit": "lint-staged",
     "pre-push": "yarn types:check && yarn build && yarn test:unit",
     "lint": "eslint --ext .tsx --ext .ts ./src",
@@ -52,7 +52,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.6.4",
     "@ethersproject/contracts": "^5.6.2",
-    "@lifinance/types": "^0.14.16",
+    "@lifi/types": "^1.0.0",
     "axios": "^0.27.2",
     "bignumber.js": "^9.0.1",
     "eth-rpc-errors": "^4.0.3",
@@ -66,8 +66,8 @@
     "@types/hdkey": "^2.0.0",
     "@types/jest": "^28.1.4",
     "@types/websocket": "^1.0.4",
-    "@typescript-eslint/eslint-plugin": "^5.30.5",
-    "@typescript-eslint/parser": "^5.30.5",
+    "@typescript-eslint/eslint-plugin": "^5.30.6",
+    "@typescript-eslint/parser": "^5.30.6",
     "eslint": "^8.19.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.2.1",

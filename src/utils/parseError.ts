@@ -1,4 +1,4 @@
-import { getChainById, Process, Step } from '@lifinance/types'
+import { getChainById, Process, Step } from '@lifi/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
@@ -84,12 +84,12 @@ export const getTransactionFailedMessage = (
   step: Step,
   txLink?: string
 ): string => {
-  const baseString = `It appears that your transaction may not have been successful. 
+  const baseString = `It appears that your transaction may not have been successful.
   However, to confirm this, please check your ${
     getChainById(step.action.toChainId).name
   } wallet for ${step.action.toToken.symbol}.`
   return txLink
-    ? `${baseString} 
+    ? `${baseString}
     You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
     : baseString
 }

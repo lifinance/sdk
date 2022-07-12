@@ -1,4 +1,4 @@
-import { supportedChains } from '@lifinance/types'
+import { supportedChains } from '@lifi/types'
 import ConfigService from '../src/services/ConfigService'
 
 export const setupTestEnvironment = () => {

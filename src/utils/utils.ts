@@ -1,5 +1,5 @@
 import { TransactionReceipt } from '@ethersproject/providers'
-import { Token } from '@lifinance/types'
+import { Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
 
