@@ -8,7 +8,7 @@ import {
   Step,
   StepTool,
   StepType,
-} from '@lifinance/types'
+} from '@lifi/types'
 import axios from 'axios'
 import { ServerError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'

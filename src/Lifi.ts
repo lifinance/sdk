@@ -19,7 +19,7 @@ import {
   TokensResponse,
   ToolsRequest,
   ToolsResponse,
-} from '@lifinance/types'
+} from '@lifi/types'
 import { Signer } from 'ethers'
 import {
   approveToken,

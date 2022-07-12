@@ -1,4 +1,4 @@
-import { Step } from '@lifinance/types'
+import { Step } from '@lifi/types'
 import { Signer } from 'ethers'
 import { SwitchChainHook } from '../types'
 import { LifiErrorCode, ProviderError } from '../utils/errors'

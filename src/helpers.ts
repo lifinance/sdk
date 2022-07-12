@@ -1,5 +1,5 @@
 import { ExternalProvider } from '@ethersproject/providers'
-import { Token } from '@lifinance/types'
+import { Token } from '@lifi/types'
 
 declare const ethereum: ExternalProvider
 

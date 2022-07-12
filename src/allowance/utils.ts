@@ -1,4 +1,4 @@
-import { ChainId, Token } from '@lifinance/types'
+import { ChainId, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Contract, ContractTransaction, Signer } from 'ethers'
 import ChainsService from '../services/ChainsService'

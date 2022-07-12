@@ -5,7 +5,7 @@ import {
   StatusResponse,
   Step,
   Substatus,
-} from '@lifinance/types'
+} from '@lifi/types'
 import { StatusManager } from '..'
 import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'

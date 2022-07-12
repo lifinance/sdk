@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { retryTimes } from '../../jest.int.config'
 import { setupTestEnvironment } from '../../test/setup'

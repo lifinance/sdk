@@ -1,24 +1,24 @@
-# Li.Finance - SDK
+# LI.FI - SDK
 
-LiFi Any-to-Any Cross-Chain-Swap SDK  
-Please checkout the [SDK docs](https://docs.li.finance/official-documentation/sdk-docs/quick-start) and our [API reference](https://apidocs.li.finance/reference/how-to-transfer-tokens) for further information.
+LI.FI Any-to-Any Cross-Chain-Swap SDK  
+Please checkout the [SDK docs](https://docs.li.fi/official-documentation/sdk-docs/quick-start) and our [API reference](https://apidocs.li.fi) for further information.
 
 ## Installation
 
 ```bash
-yarn add @lifinance/sdk
+yarn add @lifi/sdk
 ```
 
 or
 
 ```bash
-npm install --save @lifinance/sdk
+npm install --save @lifi/sdk
 ```
 
 ## Summary
 
-This package allows accessing to LiFi API which finds the best cross-chain routes on different bridges. The routes can
-then be executed via the SDK. Learn more about LiFi on (https://li.finance).
+This package allows accessing to LI.FI API which finds the best cross-chain routes on different bridges. The routes can
+then be executed via the SDK. Learn more about LI.FI on (https://li.fi).
 
 Check out the [Changelog](./CHANGELOG.md) to see what changed in the last releases.
 

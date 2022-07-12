@@ -1,10 +1,10 @@
+import { TransactionReceipt } from '@ethersproject/providers'
+import { Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
-import { TransactionReceipt } from '@ethersproject/providers'
-import { Token } from '@lifinance/types'
 
-import { ChainId, Step } from '../types'
 import { getRpcProvider } from '../connectors'
+import { ChainId, Step } from '../types'
 
 export const deepClone = <T>(src: T): T => {
   return JSON.parse(JSON.stringify(src))

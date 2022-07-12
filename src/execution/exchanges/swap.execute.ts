@@ -2,7 +2,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
-import { Execution, StatusResponse } from '@lifinance/types'
+import { Execution, StatusResponse } from '@lifi/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'

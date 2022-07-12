@@ -1,4 +1,4 @@
-import { Chain, ChainId } from '@lifinance/types'
+import { Chain, ChainId } from '@lifi/types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 

@@ -1,12 +1,6 @@
 // This file holds generator functions to create objects for testing purposes
 
-import {
-  ChainId,
-  CoinKey,
-  findDefaultToken,
-  Route,
-  Step,
-} from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Route, Step } from '@lifi/types'
 
 const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
 const SOME_OTHER_TOKEN = findDefaultToken(CoinKey.USDT, ChainId.DAI)
