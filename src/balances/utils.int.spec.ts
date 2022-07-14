@@ -61,14 +61,21 @@ describe('balances utils', () => {
       await loadAndCompareTokenAmounts(walletAddress, tokens)
     })
 
-    it('should return empty array for invalid data on POL', async () => {
+    it('should return even with invalid data on POL', async () => {
       const walletAddress = defaultWalletAddress
       const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
 
       const tokenBalances = await utils.getBalances(walletAddress, tokens)
-      expect(tokenBalances.length).toBe(0)
+      expect(tokenBalances.length).toBe(2)
+
+      // invalid tokens should be returned with balance 0
+      const invalidBalance = tokenBalances.find(
+        (token) => token.address === invalidToken.address
+      )
+      expect(invalidBalance).toBeDefined()
+      expect(invalidBalance!.amount).toBe('0')
     })
 
     it('should fallback to a direct call if only one token is requested', async () => {
