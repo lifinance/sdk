@@ -75,8 +75,8 @@ export async function waitForReceivingTransaction(
 const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
   TOKEN_ALLOWANCE: {
     STARTED: 'Setting token allowance.',
-    PENDING: 'Waiting for token allowance approval.',
-    DONE: 'Token allowance approved.',
+    PENDING: 'Waiting for token allowance.',
+    DONE: 'Token allowance set.',
   },
   SWITCH_CHAIN: {
     PENDING: 'Chain switch required.',
