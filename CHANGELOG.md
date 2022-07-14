@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.1](https://github.com/lifinance/sdk/compare/v1.0.0...v1.0.1) (2022-07-14)
+
+
+### Bug Fixes
+
+* adjust approval messages ([f445021](https://github.com/lifinance/sdk/commit/f445021761bda2e4fd1d7eab90f0a04be4827280))
+* handle more multicall failure cases ([#86](https://github.com/lifinance/sdk/issues/86)) ([f7acaca](https://github.com/lifinance/sdk/commit/f7acaca2ab48f58844ec331cb207fa6592488fb1))
+* publishing script ([8c2f12a](https://github.com/lifinance/sdk/commit/8c2f12a7ee091547980f7622ba34fde8d548f606))
+
 ## [1.0.0](https://github.com/lifinance/sdk/compare/v1.0.0-beta.14...v1.0.0) (2022-07-12)
 
 
