@@ -55,14 +55,34 @@ export const fetchDataUsingMulticall = async (
         // 4. decode bytes array to useful data array...
         return returnData
           .map(({ success, returnData }, i: number) => {
-            if (success) {
+            if (!success) {
+              // requested function failed
+              console.error(
+                `Multicall unsuccessful for address "${chunkedCalls[i].address}", ` +
+                  `function "${chunkedCalls[i].name}", chainId "${chainId}"`
+              )
+              return []
+            }
+
+            if (returnData.toString() === '0x') {
+              // requested function does probably not exist
+              console.error(
+                `Multicall no response for address "${chunkedCalls[i].address}", ` +
+                  `function "${chunkedCalls[i].name}", chainId "${chainId}"`
+              )
+              return []
+            }
+
+            try {
               return abiInterface.decodeFunctionResult(
                 chunkedCalls[i].name,
                 returnData
               )
-            } else {
+            } catch (e) {
+              // requested function returns other data than expected
               console.error(
-                `Multicall unsuccessful for address "${chunkedCalls[i].address}", function "${chunkedCalls[i].name}", chainId "${chainId}"`
+                `Multicall parsing unsuccessful for address "${chunkedCalls[i].address}", ` +
+                  `function "${chunkedCalls[i].name}", chainId "${chainId}"`
               )
               return []
             }
@@ -74,6 +94,7 @@ export const fetchDataUsingMulticall = async (
             }
           })
       } catch (e) {
+        // whole rpc call failed, probably an rpc issue
         console.error(
           `Multicall failed on chainId "${chainId}"`,
           chunkedList,
