@@ -52,7 +52,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.6.4",
     "@ethersproject/contracts": "^5.6.2",
-    "@lifi/types": "^1.0.0",
+    "@lifi/types": "^1.1.0",
     "axios": "^0.27.2",
     "bignumber.js": "^9.0.1",
     "eth-rpc-errors": "^4.0.3",
