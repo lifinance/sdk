@@ -1,11 +1,5 @@
 import { StatusManager } from '.'
-import {
-  AcceptStepUpdateHook,
-  CrossStep,
-  LifiStep,
-  Step,
-  SwapStep,
-} from '../types'
+import { AcceptStepUpdateHook, Step } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { getSlippageNotMetMessage } from '../utils/parseError'
 import { updatedStepMeetsSlippageConditions } from './utils'
@@ -33,7 +27,13 @@ export const stepComparison = async (
   }
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
-    allowStepUpdate = await acceptStepUpdateHook()
+    allowStepUpdate = await acceptStepUpdateHook(
+      oldStep.estimate.toAmount,
+      newStep.estimate.toAmount,
+      newStep.action.toToken,
+      oldStep.action.slippage,
+      newStep.action.slippage
+    )
   }
 
   if (!allowStepUpdate) {

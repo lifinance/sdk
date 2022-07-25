@@ -5,7 +5,7 @@ import {
   StatusResponse,
   Step,
   Substatus,
-} from '@lifinance/types'
+} from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { StatusManager } from '..'
 
@@ -157,13 +157,8 @@ export function updatedStepMeetsSlippageConditions(
   const newEstimatedToAmount = new BigNumber(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
   const actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
-  if (
-    //TODO: revisit this logic
-    newEstimatedToAmount.lt(oldEstimatedToAmount) &&
-    actualSlippage.lt(setSlippage)
-  ) {
-    return true
-  } else {
-    return false
-  }
+  return (
+    newEstimatedToAmount.gte(oldEstimatedToAmount) &&
+    actualSlippage.lte(setSlippage)
+  )
 }
