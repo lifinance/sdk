@@ -1,4 +1,4 @@
-import { Token, TokenAmount } from '@lifinance/types'
+import { Token, TokenAmount } from '@lifi/types'
 import utils from './utils'
 
 const getTokenBalance = async (

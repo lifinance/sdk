@@ -2,7 +2,7 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from '@ethersproject/providers'
-import { ExchangeTools, Execution, StatusResponse } from '@lifinance/types'
+import { Execution, StatusResponse } from '@lifi/types'
 import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
@@ -170,17 +170,17 @@ export class SwapExecutionManager {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = await waitForReceivingTransaction(
-        step.tool as ExchangeTools,
-        fromChain.id,
-        fromChain.id,
-        swapProcess.txHash
+        swapProcess.txHash,
+        statusManager,
+        swapProcess.type,
+        step
       )
     } catch (e: any) {
       statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(swapProcess),
+          htmlMessage: getTransactionFailedMessage(step, swapProcess.txLink),
         },
       })
       statusManager.updateExecution(step, 'FAILED')

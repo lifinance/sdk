@@ -21,7 +21,16 @@ interface Receipt {
 type InternalUpdateRouteCallback = (route: Route) => void
 
 type OptionalParameters = Partial<
-  Pick<Process, 'doneAt' | 'failedAt' | 'txHash' | 'txLink' | 'error'>
+  Pick<
+    Process,
+    | 'doneAt'
+    | 'failedAt'
+    | 'txHash'
+    | 'txLink'
+    | 'error'
+    | 'substatus'
+    | 'substatusMessage'
+  >
 >
 
 /**
@@ -58,6 +67,13 @@ export class StatusManager {
 
     if (!step.execution) {
       step.execution = currentExecution
+    }
+    if (
+      step.execution.status !== 'DONE' &&
+      step.execution.status !== 'ACTION_REQUIRED' &&
+      step.execution.status !== 'CHAIN_SWITCH_REQUIRED'
+    ) {
+      step.execution.status = 'PENDING'
       this.updateStepInRoute(step)
     }
     return currentExecution
@@ -132,6 +148,9 @@ export class StatusManager {
     status: Status,
     params?: OptionalParameters
   ): Process => {
+    if (!step.execution) {
+      throw new Error("Can't update an empty step execution.")
+    }
     const currentProcess = step?.execution?.process.find((p) => p.type === type)
 
     if (!currentProcess) {
@@ -147,6 +166,15 @@ export class StatusManager {
         break
       case 'DONE':
         currentProcess.doneAt = Date.now()
+        break
+      case 'PENDING':
+        step.execution.status = 'PENDING'
+        break
+      case 'ACTION_REQUIRED':
+        step.execution.status = 'ACTION_REQUIRED'
+        break
+      case 'CHAIN_SWITCH_REQUIRED':
+        step.execution.status = 'CHAIN_SWITCH_REQUIRED'
         break
       default:
         break

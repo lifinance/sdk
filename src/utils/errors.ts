@@ -6,6 +6,7 @@ enum ErrorType {
   ValidationError = 'ValidationError',
   NotFoundError = 'NotFoundError',
   UnknownError = 'UnknownError',
+  SlippageError = 'SlippageError',
 }
 
 export enum LifiErrorCode {
@@ -19,6 +20,7 @@ export enum LifiErrorCode {
   NotFound = 1006,
   ChainSwitchError = 1007,
   SlippageNotMet = 1008,
+  SlippageError = 1008,
 }
 
 export enum MetaMaskRPCErrorCode {
@@ -60,6 +62,9 @@ export class LifiError extends Error {
     stack?: string
   ) {
     super(message)
+
+    // Set the prototype explicitly: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
+    Object.setPrototypeOf(this, LifiError.prototype)
 
     this.code = code
 
@@ -129,6 +134,18 @@ export class TransactionError extends LifiError {
     stack?: string
   ) {
     super(ErrorType.TransactionError, code, message, htmlMessage, stack)
+  }
+}
+
+export class SlippageError extends LifiError {
+  constructor(message: string, htmlMessage?: string, stack?: string) {
+    super(
+      ErrorType.SlippageError,
+      LifiErrorCode.SlippageError,
+      message,
+      htmlMessage,
+      stack
+    )
   }
 }
 

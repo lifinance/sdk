@@ -1,4 +1,4 @@
-import { Step } from '@lifinance/types'
+import { Step } from '@lifi/types'
 import { Signer } from 'ethers'
 import { buildStepObject } from '../../test/fixtures'
 import { InternalExecutionSettings } from '../types'

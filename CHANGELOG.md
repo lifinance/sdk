@@ -2,6 +2,91 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.2](https://github.com/lifinance/sdk/compare/v1.0.1...v1.0.2) (2022-07-15)
+
+### [1.0.1](https://github.com/lifinance/sdk/compare/v1.0.0...v1.0.1) (2022-07-14)
+
+
+### Bug Fixes
+
+* adjust approval messages ([f445021](https://github.com/lifinance/sdk/commit/f445021761bda2e4fd1d7eab90f0a04be4827280))
+* handle more multicall failure cases ([#86](https://github.com/lifinance/sdk/issues/86)) ([f7acaca](https://github.com/lifinance/sdk/commit/f7acaca2ab48f58844ec331cb207fa6592488fb1))
+* publishing script ([8c2f12a](https://github.com/lifinance/sdk/commit/8c2f12a7ee091547980f7622ba34fde8d548f606))
+
+## [1.0.0](https://github.com/lifinance/sdk/compare/v1.0.0-beta.14...v1.0.0) (2022-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* move to a new @lifi scope (#85)
+
+### Features
+
+* add func to check for correct native token ([#84](https://github.com/lifinance/sdk/issues/84)) ([865bc14](https://github.com/lifinance/sdk/commit/865bc14594902c7b94c30f5a910b7897b1133bd5))
+* move to a new [@lifi](https://github.com/lifi) scope ([#85](https://github.com/lifinance/sdk/issues/85)) ([b58c5a1](https://github.com/lifinance/sdk/commit/b58c5a10e2c47fff3e1c43ae15516514b90b9197))
+* new error messages ([#83](https://github.com/lifinance/sdk/issues/83)) ([ccebe17](https://github.com/lifinance/sdk/commit/ccebe170d32001377eb7b632afd76729252a8994))
+
+## [1.0.0-beta.14](https://github.com/lifinance/sdk/compare/v1.0.0-beta.13...v1.0.0-beta.14) (2022-07-06)
+
+
+### Features
+
+* add more error logging ([#82](https://github.com/lifinance/sdk/issues/82)) ([edb4f85](https://github.com/lifinance/sdk/commit/edb4f851111bf905a266d831aae591f8a86518d0))
+* use new substates from api ([#81](https://github.com/lifinance/sdk/issues/81)) ([4ad51a2](https://github.com/lifinance/sdk/commit/4ad51a2a8c946a99e5a4b6c5663f856f2f7fd497))
+
+## [1.0.0-beta.13](https://github.com/lifinance/sdk/compare/v1.0.0-beta.12...v1.0.0-beta.13) (2022-07-05)
+
+
+### Bug Fixes
+
+* wait for replaced transaction ([#80](https://github.com/lifinance/sdk/issues/80)) ([6d29b2e](https://github.com/lifinance/sdk/commit/6d29b2e587f76355fb1d8c07e6334160d7aaccb6))
+
+## [1.0.0-beta.12](https://github.com/lifinance/sdk/compare/v1.0.0-beta.11...v1.0.0-beta.12) (2022-06-29)
+
+
+### Features
+
+* better resume of failed transactions ([#78](https://github.com/lifinance/sdk/issues/78)) ([1558c47](https://github.com/lifinance/sdk/commit/1558c4768c39b8d9e42c2b6e92d78236c7d29669))
+* handle slippage errors ([#79](https://github.com/lifinance/sdk/issues/79)) ([b672ed9](https://github.com/lifinance/sdk/commit/b672ed905db146a87cce62fa8045d8a476da0cfb))
+
+## [1.0.0-beta.11](https://github.com/lifinance/sdk/compare/v1.0.0-beta.10...v1.0.0-beta.11) (2022-06-08)
+
+## [1.0.0-beta.10](https://github.com/lifinance/sdk/compare/v1.0.0-beta.9...v1.0.0-beta.10) (2022-06-07)
+
+
+### Bug Fixes
+
+* fix dist folder ([868bcc9](https://github.com/lifinance/sdk/commit/868bcc9628c8ae02809cb65fd0ffc1d2ec254666))
+
+## [1.0.0-beta.9](https://github.com/lifinance/sdk/compare/v1.0.0-beta.8...v1.0.0-beta.9) (2022-06-07)
+
+
+### Bug Fixes
+
+* updated e2e + added tsc compilation on push ([#77](https://github.com/lifinance/sdk/issues/77)) ([7d99cd1](https://github.com/lifinance/sdk/commit/7d99cd11a705cf30d48903dea2c158aa16ae7a7e))
+
+## [1.0.0-beta.8](https://github.com/lifinance/sdk/compare/v1.0.0-beta.7...v1.0.0-beta.8) (2022-06-02)
+
+
+### Features
+
+* use tryBlockAndAggregate to fetch balances ([#76](https://github.com/lifinance/sdk/issues/76)) ([5f01961](https://github.com/lifinance/sdk/commit/5f019619c11269c197a777c323eb18de11a403dd))
+
+## [1.0.0-beta.7](https://github.com/lifinance/sdk/compare/v1.0.0-beta.6...v1.0.0-beta.7) (2022-06-01)
+
+
+### Features
+
+* improve balance error messages ([#74](https://github.com/lifinance/sdk/issues/74)) ([b249732](https://github.com/lifinance/sdk/commit/b249732cfef182158106de52fec24948e2a5dbe3))
+
+
+### Bug Fixes
+
+* added toolDetails + workaround for non EVM chains testing ([#70](https://github.com/lifinance/sdk/issues/70)) ([f972477](https://github.com/lifinance/sdk/commit/f972477573d5f969c7294b3054b96c1357e42893))
+* fix yarn.lock ([abdef57](https://github.com/lifinance/sdk/commit/abdef57b6ee1d444602cdcd6e34b61c3e66d86ab))
+* log error if provider can not be configured ([#75](https://github.com/lifinance/sdk/issues/75)) ([85e22e9](https://github.com/lifinance/sdk/commit/85e22e96427b08381eefe263a079a5b1057988df))
+* **utils:** only allow one status poll loop per tx ([#69](https://github.com/lifinance/sdk/issues/69)) ([0cc7e2b](https://github.com/lifinance/sdk/commit/0cc7e2b73222614262e7fd263112407791d62a4b))
+
 ## [1.0.0-beta.6](https://github.com/lifinance/sdk/compare/v1.0.0-beta.5...v1.0.0-beta.6) (2022-05-17)
 
 

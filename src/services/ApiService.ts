@@ -4,7 +4,7 @@ import {
   RequestOptions,
   TokensRequest,
   TokensResponse,
-} from '@lifinance/types'
+} from '@lifi/types'
 import axios from 'axios'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {

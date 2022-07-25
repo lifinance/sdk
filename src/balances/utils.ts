@@ -1,6 +1,6 @@
 import { Fragment, JsonFragment } from '@ethersproject/abi'
 import { FallbackProvider } from '@ethersproject/providers'
-import { ChainId, Token, TokenAmount } from '@lifinance/types'
+import { ChainId, Token, TokenAmount } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
 import { getMulticallAddress, getRpcProvider } from '../connectors'
@@ -129,12 +129,10 @@ const fetchViaMulticall = async (
     multicallAddress
   )
 
-  return result.map(({ data, blockNumber }) => {
-    return {
-      amount: data as BigNumber,
-      blockNumber,
-    }
-  })
+  return result.map(({ data, blockNumber }) => ({
+    amount: data ? (data as BigNumber) : new BigNumber(0),
+    blockNumber,
+  }))
 }
 
 const getBalancesFromProvider = async (

@@ -1,4 +1,4 @@
-import { Process, Step } from '@lifinance/types'
+import { getChainById, Process, Step } from '@lifi/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
@@ -11,6 +11,7 @@ import {
   ProviderError,
   RPCError,
   ServerError,
+  SlippageError,
   TransactionError,
   UnknownError,
   ValidationError,
@@ -79,18 +80,18 @@ export const getTransactionNotSentMessage = async (
   return transactionNotSend
 }
 
-export const getSlippageNotMetMessage = (step: Step) => {
-  const { slippage } = step.action
-  return `Transaction was not sent, your funds are still in your wallet.
-  The updated quote for the current transaction does not meet your set slippage of ${
-    slippage * 100
-  }%.`
-}
-
-export const getTransactionFailedMessage = (process: Process): string => {
-  return process.txLink
-    ? `Please check the&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
-    : ''
+export const getTransactionFailedMessage = (
+  step: Step,
+  txLink?: string
+): string => {
+  const baseString = `It appears that your transaction may not have been successful.
+  However, to confirm this, please check your ${
+    getChainById(step.action.toChainId).name
+  } wallet for ${step.action.toToken.symbol}.`
+  return txLink
+    ? `${baseString}
+    You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
+    : baseString
 }
 
 export const parseError = async (
@@ -98,6 +99,10 @@ export const parseError = async (
   step?: Step,
   process?: Process
 ): Promise<LifiError> => {
+  if (e instanceof LifiError) {
+    return e
+  }
+
   if (e.code) {
     // MetaMask errors have a numeric error code
     if (typeof e.code === 'number') {
@@ -145,12 +150,20 @@ export const parseError = async (
       )
     }
 
-    if (e.Code === LifiErrorCode.TransactionUnprepared) {
+    if (e.code === LifiErrorCode.TransactionUnprepared) {
       return new TransactionError(
         LifiErrorCode.TransactionUnprepared,
         e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
+      )
+    }
+
+    if (e.code === LifiErrorCode.ValidationError) {
+      return new TransactionError(
+        LifiErrorCode.ValidationError,
+        e.message,
+        e.htmlMessage
       )
     }
   }
@@ -176,6 +189,14 @@ export const parseBackendError = (e: any): LifiError => {
     return new NotFoundError(
       e.response?.data?.message || e.response?.statusText,
       undefined,
+      e.stack
+    )
+  }
+
+  if (e.response?.status === 409) {
+    return new SlippageError(
+      e.response?.data?.message || e.response?.statusText,
+      'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
       e.stack
     )
   }

@@ -18,7 +18,7 @@ import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { stepComparison } from '../stepComparison'
 import { switchChain } from '../switchChain'
-import { waitForReceivingTransaction } from '../utils'
+import { getSubstatusMessage, waitForReceivingTransaction } from '../utils'
 
 export class BridgeExecutionManager {
   shouldContinue = true
@@ -175,17 +175,20 @@ export class BridgeExecutionManager {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = await waitForReceivingTransaction(
-        step.tool as BridgeTool,
-        fromChain.id,
-        toChain.id,
-        crossChainProcess.txHash
+        crossChainProcess.txHash,
+        statusManager,
+        receivingChainProcess.type,
+        step
       )
     } catch (e: any) {
       statusManager.updateProcess(step, receivingChainProcess.type, 'FAILED', {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(crossChainProcess),
+          htmlMessage: getTransactionFailedMessage(
+            step,
+            crossChainProcess.txLink
+          ),
         },
       })
       statusManager.updateExecution(step, 'FAILED')
@@ -193,6 +196,10 @@ export class BridgeExecutionManager {
     }
 
     statusManager.updateProcess(step, receivingChainProcess.type, 'DONE', {
+      substatus: statusResponse.substatus,
+      substatusMessage:
+        statusResponse.substatusMessage ||
+        getSubstatusMessage(statusResponse.status, statusResponse.substatus),
       txHash: statusResponse.receiving?.txHash,
       txLink:
         toChain.metamask.blockExplorerUrls[0] +

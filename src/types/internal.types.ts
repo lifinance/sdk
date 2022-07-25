@@ -6,7 +6,7 @@ import {
   Step,
   SwapStep,
   Token,
-} from '@lifinance/types'
+} from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'

@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import balances from './balances'
 import Lifi from './Lifi'
 
@@ -29,9 +29,12 @@ describe('LIFI SDK', () => {
       it('should throw Error because of invalid token', async () => {
         await expect(
           lifi.getTokenBalance(SOME_WALLET_ADDRESS, {
-            not: 'a token',
+            address: 'some wrong stuff',
+            chainId: 'not a chain Id',
           } as unknown as Token)
-        ).rejects.toThrow('Invalid token passed.')
+        ).rejects.toThrow(
+          'Invalid token passed: address "some wrong stuff" on chainId "not a chain Id"'
+        )
 
         expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(0)
       })
@@ -79,7 +82,9 @@ describe('LIFI SDK', () => {
             SOME_TOKEN,
             { not: 'a token' } as unknown as Token,
           ])
-        ).rejects.toThrow('Invalid token passed.')
+        ).rejects.toThrow(
+          'Invalid token passed: address "undefined" on chainId "undefined"'
+        )
 
         expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
       })
@@ -136,7 +141,9 @@ describe('LIFI SDK', () => {
           lifi.getTokenBalancesForChains(SOME_WALLET_ADDRESS, {
             [ChainId.DAI]: [{ not: 'a token' } as unknown as Token],
           })
-        ).rejects.toThrow('Invalid token passed.')
+        ).rejects.toThrow(
+          'Invalid token passed: address "undefined" on chainId "undefined"'
+        )
 
         expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
           0

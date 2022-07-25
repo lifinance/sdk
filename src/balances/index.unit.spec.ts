@@ -1,4 +1,4 @@
-import { ChainId, CoinKey, findDefaultToken, Token } from '@lifinance/types'
+import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import balances from '.'
 import utils from './utils'
 

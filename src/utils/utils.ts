@@ -1,10 +1,10 @@
+import { TransactionReceipt } from '@ethersproject/providers'
+import { Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { constants, Signer } from 'ethers'
-import { TransactionReceipt } from '@ethersproject/providers'
-import { Token } from '@lifinance/types'
 
-import { ChainId, Step } from '../types'
 import { getRpcProvider } from '../connectors'
+import { ChainId, Step } from '../types'
 
 export const deepClone = <T>(src: T): T => {
   return JSON.parse(JSON.stringify(src))
@@ -123,6 +123,18 @@ export const isZeroAddress = (address: string): boolean => {
   if (
     address === constants.AddressZero ||
     address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+  ) {
+    return true
+  }
+  return false
+}
+
+export const isNativeTokenAddress = (address: string): boolean => {
+  if (
+    address === constants.AddressZero ||
+    address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+    // CELO native token
+    address === '0x471ece3750da237f93b8e339c536989b8978a438'
   ) {
     return true
   }
