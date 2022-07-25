@@ -7,7 +7,6 @@ import {
   Substatus,
 } from '@lifinance/types'
 import BigNumber from 'bignumber.js'
-import { ChainId } from '..'
 import { StatusManager } from '..'
 
 import ApiService from '../services/ApiService'
@@ -138,6 +137,17 @@ export function getProcessMessage(
   return processMessage
 }
 
+export function getSubstatusMessage(
+  status: StatusMessage,
+  substatus?: Substatus
+): string | undefined {
+  if (!substatus) {
+    return
+  }
+  const message = substatusMessages[status][substatus]
+  return message
+}
+
 export function updatedStepMeetsSlippageConditions(
   oldStep: Step,
   newStep: Step
@@ -156,14 +166,4 @@ export function updatedStepMeetsSlippageConditions(
   } else {
     return false
   }
-}
-export function getSubstatusMessage(
-  status: StatusMessage,
-  substatus?: Substatus
-): string | undefined {
-  if (!substatus) {
-    return
-  }
-  const message = substatusMessages[status][substatus]
-  return message
 }
