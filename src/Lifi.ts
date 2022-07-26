@@ -21,6 +21,7 @@ import {
   ToolsResponse,
 } from '@lifi/types'
 import { Signer } from 'ethers'
+import { FallbackProvider } from '@ethersproject/providers'
 import {
   approveToken,
   ApproveTokenRequest,
@@ -30,6 +31,7 @@ import {
   revokeTokenApproval,
 } from './allowance'
 import balances from './balances'
+import { getRpcProvider } from './connectors'
 import { StatusManager } from './execution/StatusManager'
 import { StepExecutor } from './execution/StepExecutor'
 import ApiService from './services/ApiService'
@@ -80,6 +82,19 @@ export default class LIFI {
    */
   getConfigAsync = (): Promise<Config> => {
     return this.configService.getConfigAsync()
+  }
+
+  /**
+   * Get an instance of a provider for a specific cahin
+   * @param {number} chainId - Id of the chain the provider is for
+   * @param {boolean} archive - Whether to use an archive provider that is based on a default rpc or not. defaults to false
+   * @return {FallbackProvider} The provider for the given chain
+   */
+  getRpcProvider = (
+    chainId: number,
+    archive = false
+  ): Promise<FallbackProvider> => {
+    return getRpcProvider(chainId, archive)
   }
 
   /**
