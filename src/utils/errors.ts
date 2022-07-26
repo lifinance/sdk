@@ -20,6 +20,7 @@ export enum LifiErrorCode {
   NotFound = 1006,
   ChainSwitchError = 1007,
   SlippageError = 1008,
+  GasLimitError = 1009,
 }
 
 export enum MetaMaskRPCErrorCode {

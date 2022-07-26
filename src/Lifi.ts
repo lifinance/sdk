@@ -45,6 +45,7 @@ import {
   RevokeTokenData,
 } from './types'
 import { ValidationError } from './utils/errors'
+import { handlePreRestart } from './utils/preRestart'
 import { deepClone } from './utils/utils'
 
 export default class LIFI {
@@ -278,16 +279,7 @@ export default class LIFI {
         return clonedRoute
       }
     }
-    // remove last (failed) process
-    for (let index = 0; index < clonedRoute.steps.length; index++) {
-      const stepHasFailed =
-        clonedRoute.steps[index].execution?.status === 'FAILED'
-
-      if (stepHasFailed) {
-        clonedRoute.steps[index].execution?.process.pop()
-      }
-    }
-
+    handlePreRestart(clonedRoute)
     return this.executeSteps(signer, clonedRoute, settings)
   }
 

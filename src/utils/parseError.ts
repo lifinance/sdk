@@ -122,6 +122,18 @@ export const parseError = async (
           )
         }
 
+        if (
+          e.message?.includes('intrinsic gas too low') ||
+          e.message?.includes('out of gas')
+        ) {
+          return new TransactionError(
+            LifiErrorCode.GasLimitError,
+            'Gas limit is too low.',
+            await getTransactionNotSentMessage(step, process),
+            e.stack
+          )
+        }
+
         return new RPCError(
           e.code,
           getMessageFromCode(e.code),
