@@ -65,12 +65,16 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
-export type AcceptStepUpdateHook = (
-  oldReturnAmount: string,
-  newReturnAmount: string,
-  returnCurrency: Token,
-  oldSlippage: number,
+interface AcceptStepUpdateHookParams {
+  returnToken: Token
+  oldReturnAmount: string
+  newReturnAmount: string
+  oldSlippage: number
   newSlippage: number
+}
+
+export type AcceptStepUpdateHook = (
+  params: AcceptStepUpdateHookParams
 ) => Promise<boolean | undefined>
 
 export interface ExecutionData {

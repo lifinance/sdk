@@ -27,13 +27,13 @@ export const stepComparison = async (
   }
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
-    allowStepUpdate = await acceptStepUpdateHook(
-      oldStep.estimate.toAmount,
-      newStep.estimate.toAmount,
-      newStep.action.toToken,
-      oldStep.action.slippage,
-      newStep.action.slippage
-    )
+    allowStepUpdate = await acceptStepUpdateHook({
+      oldReturnAmount: oldStep.estimate.toAmount,
+      newReturnAmount: newStep.estimate.toAmount,
+      returnToken: newStep.action.toToken,
+      oldSlippage: oldStep.action.slippage,
+      newSlippage: newStep.action.slippage,
+    })
   }
 
   if (!allowStepUpdate) {
