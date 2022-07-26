@@ -81,7 +81,7 @@ export class BridgeExecutionManager {
             statusManager,
             personalizedStep,
             updatedStep,
-            settings.acceptStepUpdateHook,
+            settings.acceptSlippageUpdateHook,
             this.shouldContinue
           )),
           execution: step.execution,

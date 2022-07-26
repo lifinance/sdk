@@ -65,16 +65,16 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
-export interface AcceptStepUpdateHookParams {
-  returnToken: Token
-  oldReturnAmount: string
-  newReturnAmount: string
+export interface AcceptSlippageUpdateHookParams {
+  toToken: Token
+  oldToAmount: string
+  newToAmount: string
   oldSlippage: number
   newSlippage: number
 }
 
-export type AcceptStepUpdateHook = (
-  params: AcceptStepUpdateHookParams
+export type AcceptSlippageUpdateHook = (
+  params: AcceptSlippageUpdateHookParams
 ) => Promise<boolean | undefined>
 
 export interface ExecutionData {
@@ -86,14 +86,14 @@ export interface ExecutionData {
 export interface ExecutionSettings {
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
-  acceptStepUpdateHook?: AcceptStepUpdateHook
+  acceptSlippageUpdateHook?: AcceptSlippageUpdateHook
   infiniteApproval?: boolean
 }
 
 export interface InternalExecutionSettings extends ExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
-  acceptStepUpdateHook: AcceptStepUpdateHook
+  acceptSlippageUpdateHook: AcceptSlippageUpdateHook
   infiniteApproval: boolean
 }
 

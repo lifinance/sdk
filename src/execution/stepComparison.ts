@@ -1,5 +1,5 @@
 import { StatusManager } from '.'
-import { AcceptStepUpdateHook, Step } from '../types'
+import { AcceptSlippageUpdateHook, Step } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { getSlippageNotMetMessage } from '../utils/parseError'
 import { updatedStepMeetsSlippageConditions } from './utils'
@@ -7,19 +7,19 @@ import { updatedStepMeetsSlippageConditions } from './utils'
 /**
  * This method checks whether the new and updated Step meets the required slippage conditions.
  * If yes it returns the updated Step.
- * If no and if user interaction is allowed it triggers the acceptStepUpdateHook. If no user interaction is allowed it aborts.
+ * If no and if user interaction is allowed it triggers the acceptSlippageUpdateHook. If no user interaction is allowed it aborts.
  *
  * @param statusManager
  * @param oldStep
  * @param newStep
- * @param acceptStepUpdateHook
+ * @param acceptSlippageUpdateHook
  * @param allowUserInteraction
  */
 export const stepComparison = async (
   statusManager: StatusManager,
   oldStep: Step,
   newStep: Step,
-  acceptStepUpdateHook: AcceptStepUpdateHook,
+  acceptSlippageUpdateHook: AcceptSlippageUpdateHook,
   allowUserInteraction: boolean
 ): Promise<Step> => {
   if (updatedStepMeetsSlippageConditions(oldStep, newStep)) {
@@ -27,10 +27,10 @@ export const stepComparison = async (
   }
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
-    allowStepUpdate = await acceptStepUpdateHook({
-      oldReturnAmount: oldStep.estimate.toAmount,
-      newReturnAmount: newStep.estimate.toAmount,
-      returnToken: newStep.action.toToken,
+    allowStepUpdate = await acceptSlippageUpdateHook({
+      oldToAmount: oldStep.estimate.toAmount,
+      newToAmount: newStep.estimate.toAmount,
+      toToken: newStep.action.toToken,
       oldSlippage: oldStep.action.slippage,
       newSlippage: newStep.action.slippage,
     })
