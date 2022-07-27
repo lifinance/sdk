@@ -191,7 +191,8 @@ export class BridgeExecutionManager {
       fromAmount: statusResponse.sending.amount,
       toAmount: statusResponse.receiving?.amount,
       toToken: statusResponse.receiving?.token,
-      // gasUsed: statusResponse.gasUsed,
+      gasUsed: statusResponse.sending.gasUsed,
+      gasPrice: statusResponse.sending.gasPrice,
     })
 
     // DONE
