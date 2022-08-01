@@ -3,6 +3,7 @@ import {
   Chain,
   ChainId,
   ChainKey,
+  ContractCallQuoteRequest,
   GetStatusRequest,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -143,6 +144,18 @@ export default class LIFI {
     options?: RequestOptions
   ): Promise<Step> => {
     return ApiService.getQuote(request, options)
+  }
+
+  /**
+   * Get a quote for a destination contract call
+   * @param {ContractCallQuoteRequest} request - The configuration of the requested destination call
+   * @throws {LifiError} - Throws a LifiError if request fails
+   */
+  getContractCallQuote = async (
+    request: ContractCallQuoteRequest,
+    options?: RequestOptions
+  ): Promise<Step> => {
+    return ApiService.getContractCallQuote(request, options)
   }
 
   /**
