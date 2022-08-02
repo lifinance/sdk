@@ -1,4 +1,5 @@
 import {
+  ContractCallQuoteRequest,
   GetStatusRequest,
   QuoteRequest,
   RequestOptions,
@@ -86,71 +87,118 @@ const getToken = async (
 }
 
 const getQuote = async (
-  {
-    fromChain,
-    fromToken,
-    fromAddress,
-    fromAmount,
-    toChain,
-    toToken,
-    toAddress,
-    order,
-    slippage,
-    integrator,
-    referrer,
-    allowBridges,
-    denyBridges,
-    preferBridges,
-    allowExchanges,
-    denyExchanges,
-    preferExchanges,
-  }: QuoteRequest,
+  request: QuoteRequest,
   options?: RequestOptions
 ): Promise<Step> => {
-  if (!fromChain) {
-    throw new ValidationError('Required parameter "fromChain" is missing.')
-  }
-  if (!fromToken) {
-    throw new ValidationError('Required parameter "fromToken" is missing.')
-  }
-  if (!fromAddress) {
-    throw new ValidationError('Required parameter "fromAddress" is missing.')
-  }
-  if (!fromAmount) {
-    throw new ValidationError('Required parameter "fromAmount" is missing.')
-  }
-  if (!toChain) {
-    throw new ValidationError('Required parameter "toChain" is missing.')
-  }
-  if (!toToken) {
-    throw new ValidationError('Required parameter "toToken" is missing.')
-  }
-
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
+
+  // validation
+  const requiredParameters: Array<keyof QuoteRequest> = [
+    'fromChain',
+    'fromToken',
+    'fromAddress',
+    'fromAmount',
+    'toChain',
+    'toToken',
+  ]
+  requiredParameters.forEach((requiredParameter) => {
+    if (!request[requiredParameter]) {
+      throw new ValidationError(
+        `Required parameter "${requiredParameter}" is missing.`
+      )
+    }
+  })
+
+  // apply defaults
+  request.order = request.order || config.defaultRouteOptions.order
+  request.slippage = request.slippage || config.defaultRouteOptions.slippage
+  request.integrator =
+    request.integrator || config.defaultRouteOptions.integrator
+  request.referrer = request.referrer || config.defaultRouteOptions.referrer
+  request.fee = request.fee || config.defaultRouteOptions.fee
+
+  request.allowBridges =
+    request.allowBridges || config.defaultRouteOptions.bridges?.allow
+  request.denyBridges =
+    request.denyBridges || config.defaultRouteOptions.bridges?.deny
+  request.preferBridges =
+    request.preferBridges || config.defaultRouteOptions.bridges?.prefer
+  request.allowExchanges =
+    request.allowExchanges || config.defaultRouteOptions.bridges?.allow
+  request.denyExchanges =
+    request.denyExchanges || config.defaultRouteOptions.bridges?.deny
+  request.preferExchanges =
+    request.preferExchanges || config.defaultRouteOptions.bridges?.prefer
+
   try {
     const result = await axios.get<Step>(config.apiUrl + 'quote', {
-      params: {
-        fromChain,
-        toChain,
-        fromToken,
-        toToken,
-        fromAddress,
-        toAddress,
-        fromAmount,
-        order,
-        slippage,
-        integrator,
-        referrer,
-        allowBridges,
-        denyBridges,
-        preferBridges,
-        allowExchanges,
-        denyExchanges,
-        preferExchanges,
-      },
+      params: request,
       signal: options?.signal,
     })
+    return result.data
+  } catch (e) {
+    throw parseBackendError(e)
+  }
+}
+
+const getContractCallQuote = async (
+  request: ContractCallQuoteRequest,
+  options?: RequestOptions
+): Promise<Step> => {
+  const configService = ConfigService.getInstance()
+  const config = configService.getConfig()
+
+  // validation
+  const requiredParameters: Array<keyof ContractCallQuoteRequest> = [
+    'fromChain',
+    'fromToken',
+    'fromAddress',
+    'toChain',
+    'toToken',
+    'toAmount',
+    'toContractAddress',
+    'toContractCallData',
+    'toContractGasLimit',
+  ]
+  requiredParameters.forEach((requiredParameter) => {
+    if (!request[requiredParameter]) {
+      throw new ValidationError(
+        `Required parameter "${requiredParameter}" is missing.`
+      )
+    }
+  })
+
+  // apply defaults
+  // option.order is not used in this endpoint
+  request.slippage = request.slippage || config.defaultRouteOptions.slippage
+  request.integrator =
+    request.integrator || config.defaultRouteOptions.integrator
+  request.referrer = request.referrer || config.defaultRouteOptions.referrer
+  request.fee = request.fee || config.defaultRouteOptions.fee
+
+  request.allowBridges =
+    request.allowBridges || config.defaultRouteOptions.bridges?.allow
+  request.denyBridges =
+    request.denyBridges || config.defaultRouteOptions.bridges?.deny
+  request.preferBridges =
+    request.preferBridges || config.defaultRouteOptions.bridges?.prefer
+  request.allowExchanges =
+    request.allowExchanges || config.defaultRouteOptions.bridges?.allow
+  request.denyExchanges =
+    request.denyExchanges || config.defaultRouteOptions.bridges?.deny
+  request.preferExchanges =
+    request.preferExchanges || config.defaultRouteOptions.bridges?.prefer
+
+  // send request
+  try {
+    const result = await axios.post<Step>(
+      config.apiUrl + 'quoteContractCall',
+      request,
+      {
+        signal: options?.signal,
+      }
+    )
     return result.data
   } catch (e) {
     throw parseBackendError(e)
@@ -299,6 +347,7 @@ export default {
   getPossibilities,
   getToken,
   getQuote,
+  getContractCallQuote,
   getStatus,
   getChains,
   getRoutes,
