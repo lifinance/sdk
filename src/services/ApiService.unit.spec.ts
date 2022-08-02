@@ -535,19 +535,20 @@ describe('ApiService', () => {
       tool?: StepTool
       action?: Action
       estimate?: Estimate
-    }): Step => ({
-      id,
-      type,
-      tool,
-      toolDetails: {
-        key: tool,
-        name: tool,
-        logoURI: '',
-      },
-      action,
-      estimate,
-      includedSteps: [],
-    })
+    }): Step =>
+      ({
+        id,
+        type,
+        tool,
+        toolDetails: {
+          key: tool,
+          name: tool,
+          logoURI: '',
+        },
+        action,
+        estimate,
+        includedSteps: [],
+      } as Step)
 
     describe('with a swap step', () => {
       // While the validation fails for some users we should not enforce it
