@@ -19,6 +19,7 @@ export enum LifiErrorCode {
   ProviderUnavailable = 1005,
   NotFound = 1006,
   ChainSwitchError = 1007,
+  SlippageNotMet = 1008,
   SlippageError = 1008,
   GasLimitError = 1009,
 }

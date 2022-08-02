@@ -35,11 +35,12 @@ interface ExecutionParams {
 }
 
 export interface ExecuteSwapParams extends ExecutionParams {
-  step: SwapStep
+  step: Step
 }
 
 export interface ExecuteCrossParams extends ExecutionParams {
-  step: CrossStep | LifiStep
+  // step: CrossStep | LifiStep
+  step: Step
 }
 
 export type CallbackFunction = (updatedRoute: Route) => void
@@ -64,6 +65,18 @@ export type SwitchChainHook = (
   requiredChainId: number
 ) => Promise<Signer | undefined>
 
+export interface AcceptSlippageUpdateHookParams {
+  toToken: Token
+  oldToAmount: string
+  newToAmount: string
+  oldSlippage: number
+  newSlippage: number
+}
+
+export type AcceptSlippageUpdateHook = (
+  params: AcceptSlippageUpdateHookParams
+) => Promise<boolean | undefined>
+
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
@@ -73,12 +86,14 @@ export interface ExecutionData {
 export interface ExecutionSettings {
   updateCallback?: CallbackFunction
   switchChainHook?: SwitchChainHook
+  acceptSlippageUpdateHook?: AcceptSlippageUpdateHook
   infiniteApproval?: boolean
 }
 
 export interface InternalExecutionSettings extends ExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
+  acceptSlippageUpdateHook: AcceptSlippageUpdateHook
   infiniteApproval: boolean
 }
 

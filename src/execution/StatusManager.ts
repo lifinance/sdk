@@ -205,9 +205,9 @@ export class StatusManager {
     this.updateStepInRoute(step)
   }
 
-  private updateStepInRoute = (step: Step): void => {
+  updateStepInRoute = (step: Step): Step => {
     if (!this.shouldUpdate) {
-      return
+      return step
     }
 
     const stepIndex = this.route.steps.findIndex(
@@ -225,6 +225,7 @@ export class StatusManager {
 
     this.settings.updateCallback(this.route)
     this.internalUpdateRouteCallback(this.route)
+    return this.route.steps[stepIndex]
   }
 
   setShouldUpdate(value: boolean): void {

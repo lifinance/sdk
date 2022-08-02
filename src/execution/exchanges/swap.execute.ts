@@ -13,6 +13,7 @@ import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
 import { personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
+import { stepComparison } from '../stepComparison'
 import { switchChain } from '../switchChain'
 import { waitForReceivingTransaction } from '../utils'
 
@@ -68,9 +69,21 @@ export class SwapExecutionManager {
 
         // -> get tx from backend
         const personalizedStep = await personalizeStep(signer, step)
-        const { transactionRequest } = await ApiService.getStepTransaction(
+        const updatedStep = await ApiService.getStepTransaction(
           personalizedStep
         )
+        step = {
+          ...(await stepComparison(
+            statusManager,
+            personalizedStep,
+            updatedStep,
+            settings.acceptSlippageUpdateHook,
+            this.shouldContinue
+          )),
+          execution: step.execution,
+        }
+
+        const { transactionRequest } = step
         if (!transactionRequest) {
           throw new TransactionError(
             LifiErrorCode.TransactionUnprepared,
@@ -89,7 +102,7 @@ export class SwapExecutionManager {
 
         if (!updatedSigner) {
           // chain switch was not successful, stop execution here
-          return step.execution
+          return step.execution!
         }
 
         signer = updatedSigner
@@ -97,7 +110,7 @@ export class SwapExecutionManager {
         // -> set step.execution
         statusManager.updateProcess(step, swapProcess.type, 'ACTION_REQUIRED')
         if (!this.shouldContinue) {
-          return step.execution // stop before user interaction is needed
+          return step.execution! // stop before user interaction is needed
         }
 
         // -> submit tx
@@ -191,6 +204,6 @@ export class SwapExecutionManager {
     })
 
     // DONE
-    return step.execution
+    return step.execution!
   }
 }

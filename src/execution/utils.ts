@@ -6,7 +6,9 @@ import {
   Step,
   Substatus,
 } from '@lifi/types'
+import BigNumber from 'bignumber.js'
 import { StatusManager } from '..'
+
 import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
@@ -144,4 +146,19 @@ export function getSubstatusMessage(
   }
   const message = substatusMessages[status][substatus]
   return message
+}
+
+export function updatedStepMeetsSlippageConditions(
+  oldStep: Step,
+  newStep: Step
+): boolean {
+  const setSlippage = new BigNumber(oldStep.action.slippage)
+  const oldEstimatedToAmount = new BigNumber(oldStep.estimate.toAmountMin)
+  const newEstimatedToAmount = new BigNumber(newStep.estimate.toAmountMin)
+  const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
+  const actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
+  return (
+    newEstimatedToAmount.gte(oldEstimatedToAmount) &&
+    actualSlippage.lte(setSlippage)
+  )
 }
