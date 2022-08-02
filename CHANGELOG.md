@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/lifinance/sdk/compare/v1.0.2...v1.1.0) (2022-08-02)
+
+
+### Features
+
+* add fee parameter and getContractCallQuote endpoint ([#92](https://github.com/lifinance/sdk/issues/92)) ([56695d6](https://github.com/lifinance/sdk/commit/56695d6026e99951a4518e45d1a4965f7546d204))
+* add gasinformation to execution object ([#91](https://github.com/lifinance/sdk/issues/91)) ([f3a13b4](https://github.com/lifinance/sdk/commit/f3a13b4458db4c5dea245ae56f205a58b6cd00ed))
+* expose get getRpcProvider ([#89](https://github.com/lifinance/sdk/issues/89)) ([750b675](https://github.com/lifinance/sdk/commit/750b675a6dbca0ae18361ee150f292a9ec820dfd))
+* increase gasLimit or gasPrice on restart if necessary ([#90](https://github.com/lifinance/sdk/issues/90)) ([6f947d3](https://github.com/lifinance/sdk/commit/6f947d3b0b326f821fcee448636b65a10ee4f38a))
+
+
+### Bug Fixes
+
+* build error ([#94](https://github.com/lifinance/sdk/issues/94)) ([810028e](https://github.com/lifinance/sdk/commit/810028e0d2fb7d09dd5b9d5829faab983df5ae5a))
+* failing tests ([#93](https://github.com/lifinance/sdk/issues/93)) ([318ec7b](https://github.com/lifinance/sdk/commit/318ec7ba3bbe21dbcad38baba09ef9fcc38469bd))
+* update execution state ([#88](https://github.com/lifinance/sdk/issues/88)) ([d974263](https://github.com/lifinance/sdk/commit/d9742636f5aeb77a3b4c1db5eecc6c6625812430))
+
 ### [1.0.2](https://github.com/lifinance/sdk/compare/v1.0.1...v1.0.2) (2022-07-15)
 
 ### [1.0.1](https://github.com/lifinance/sdk/compare/v1.0.0...v1.0.1) (2022-07-14)
