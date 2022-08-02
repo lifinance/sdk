@@ -52,7 +52,7 @@ describe('StatusManager', () => {
       it('should create an empty execution & call the callbacks with the updated route', () => {
         const updatedStep = Object.assign({}, step, {
           execution: {
-            status: 'NOT_STARTED',
+            status: 'PENDING',
             process: [],
           },
         })
@@ -207,7 +207,6 @@ describe('StatusManager', () => {
         { status: 'PENDING' },
         { status: 'FAILED', doneAt: true },
         { status: 'DONE', doneAt: true },
-        { status: 'RESUME' },
         { status: 'CANCELLED', doneAt: true },
       ].forEach(({ status, doneAt }) => {
         describe(`and the status is ${status}`, () => {
@@ -227,14 +226,17 @@ describe('StatusManager', () => {
               ? expect(process.doneAt).toBeDefined()
               : expect(process.doneAt).toBeUndefined()
 
+            const notUpdateableStatus =
+              status === 'DONE' || status === 'CANCELLED'
             const updatedExecution = Object.assign({}, step.execution, {
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               process: [step.execution!.process[0], process],
+              status: notUpdateableStatus
+                ? step.execution!.status
+                : (status as Status),
             })
 
-            const updatedStep = Object.assign({}, step, {
-              execution: updatedExecution,
-            })
+            const updatedStep = { ...step, execution: updatedExecution }
 
             const updatedRoute = Object.assign({}, route, {
               steps: [updatedStep],

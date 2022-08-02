@@ -67,15 +67,10 @@ export class StatusManager {
 
     if (!step.execution) {
       step.execution = currentExecution
-    }
-    if (
-      step.execution.status !== 'DONE' &&
-      step.execution.status !== 'ACTION_REQUIRED' &&
-      step.execution.status !== 'CHAIN_SWITCH_REQUIRED'
-    ) {
       step.execution.status = 'PENDING'
       this.updateStepInRoute(step)
     }
+
     return currentExecution
   }
 
@@ -163,6 +158,7 @@ export class StatusManager {
         break
       case 'FAILED':
         currentProcess.doneAt = Date.now()
+        step.execution.status = 'FAILED'
         break
       case 'DONE':
         currentProcess.doneAt = Date.now()
