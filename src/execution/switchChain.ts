@@ -31,7 +31,7 @@ export const switchChain = async (
   step.execution = statusManager.initExecutionObject(step)
   statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
 
-  const switchProcess = statusManager.findOrCreateProcess(
+  let switchProcess = statusManager.findOrCreateProcess(
     'SWITCH_CHAIN',
     step,
     'PENDING'
@@ -53,16 +53,25 @@ export const switchChain = async (
       )
     }
 
-    statusManager.updateProcess(step, switchProcess.type, 'DONE')
+    switchProcess = statusManager.updateProcess(
+      step,
+      switchProcess.type,
+      'DONE'
+    )
     statusManager.updateExecution(step, 'PENDING')
     return updatedSigner
   } catch (error: any) {
-    statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
-      error: {
-        message: error.message,
-        code: error.code,
-      },
-    })
+    switchProcess = statusManager.updateProcess(
+      step,
+      switchProcess.type,
+      'FAILED',
+      {
+        error: {
+          message: error.message,
+          code: error.code,
+        },
+      }
+    )
     statusManager.updateExecution(step, 'FAILED')
     throw error
   }

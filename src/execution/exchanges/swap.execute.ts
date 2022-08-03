@@ -55,7 +55,7 @@ export class SwapExecutionManager {
 
     // Start Swap
     // -> set step.execution
-    const swapProcess = statusManager.findOrCreateProcess('SWAP', step)
+    let swapProcess = statusManager.findOrCreateProcess('SWAP', step)
 
     // -> swapping
     let tx: TransactionResponse
@@ -108,7 +108,11 @@ export class SwapExecutionManager {
         signer = updatedSigner
 
         // -> set step.execution
-        statusManager.updateProcess(step, swapProcess.type, 'ACTION_REQUIRED')
+        swapProcess = swapProcess = statusManager.updateProcess(
+          step,
+          swapProcess.type,
+          'ACTION_REQUIRED'
+        )
         if (!this.shouldContinue) {
           return step.execution! // stop before user interaction is needed
         }
@@ -118,22 +122,32 @@ export class SwapExecutionManager {
       }
     } catch (e) {
       const error = await parseError(e, step, swapProcess)
-      statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-        error: {
-          message: error.message,
-          htmlMessage: error.htmlMessage,
-          code: error.code,
-        },
-      })
+      swapProcess = statusManager.updateProcess(
+        step,
+        swapProcess.type,
+        'FAILED',
+        {
+          error: {
+            message: error.message,
+            htmlMessage: error.htmlMessage,
+            code: error.code,
+          },
+        }
+      )
       statusManager.updateExecution(step, 'FAILED')
       throw error
     }
 
     // Wait for Transaction
-    statusManager.updateProcess(step, swapProcess.type, 'PENDING', {
-      txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
-      txHash: tx.hash,
-    })
+    swapProcess = statusManager.updateProcess(
+      step,
+      swapProcess.type,
+      'PENDING',
+      {
+        txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+        txHash: tx.hash,
+      }
+    )
 
     // -> waiting
     let receipt: TransactionReceipt
@@ -143,22 +157,32 @@ export class SwapExecutionManager {
       // -> set status
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
         receipt = e.replacement
-        statusManager.updateProcess(step, swapProcess.type, 'PENDING', {
-          txHash: e.replacement.hash,
-          txLink:
-            fromChain.metamask.blockExplorerUrls[0] +
-            'tx/' +
-            e.replacement.hash,
-        })
+        swapProcess = statusManager.updateProcess(
+          step,
+          swapProcess.type,
+          'PENDING',
+          {
+            txHash: e.replacement.hash,
+            txLink:
+              fromChain.metamask.blockExplorerUrls[0] +
+              'tx/' +
+              e.replacement.hash,
+          }
+        )
       } else {
         const error = await parseError(e)
-        statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-          error: {
-            message: error.message,
-            htmlMessage: error.htmlMessage,
-            code: error.code,
-          },
-        })
+        swapProcess = statusManager.updateProcess(
+          step,
+          swapProcess.type,
+          'FAILED',
+          {
+            error: {
+              message: error.message,
+              htmlMessage: error.htmlMessage,
+              code: error.code,
+            },
+          }
+        )
         statusManager.updateExecution(step, 'FAILED')
         throw error
       }
@@ -176,18 +200,23 @@ export class SwapExecutionManager {
         step
       )
     } catch (e: any) {
-      statusManager.updateProcess(step, swapProcess.type, 'FAILED', {
-        error: {
-          code: LifiErrorCode.TransactionFailed,
-          message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(step, swapProcess.txLink),
-        },
-      })
+      swapProcess = statusManager.updateProcess(
+        step,
+        swapProcess.type,
+        'FAILED',
+        {
+          error: {
+            code: LifiErrorCode.TransactionFailed,
+            message: 'Failed while waiting for receiving chain.',
+            htmlMessage: getTransactionFailedMessage(step, swapProcess.txLink),
+          },
+        }
+      )
       statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
-    statusManager.updateProcess(step, swapProcess.type, 'DONE', {
+    swapProcess = statusManager.updateProcess(step, swapProcess.type, 'DONE', {
       txHash: statusResponse.receiving?.txHash,
       txLink:
         fromChain.metamask.blockExplorerUrls[0] +

@@ -57,7 +57,7 @@ export class BridgeExecutionManager {
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
-    const crossChainProcess = statusManager.findOrCreateProcess(
+    let crossChainProcess = statusManager.findOrCreateProcess(
       'CROSS_CHAIN',
       step
     )
@@ -113,7 +113,7 @@ export class BridgeExecutionManager {
 
         signer = updatedSigner
 
-        statusManager.updateProcess(
+        crossChainProcess = statusManager.updateProcess(
           step,
           crossChainProcess.type,
           'ACTION_REQUIRED'
@@ -125,40 +125,59 @@ export class BridgeExecutionManager {
         tx = await signer.sendTransaction(transactionRequest)
 
         // STEP 4: Wait for Transaction ///////////////////////////////////////////
-        statusManager.updateProcess(step, crossChainProcess.type, 'PENDING', {
-          txHash: tx.hash,
-          txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
-        })
+        crossChainProcess = statusManager.updateProcess(
+          step,
+          crossChainProcess.type,
+          'PENDING',
+          {
+            txHash: tx.hash,
+            txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
+          }
+        )
       }
 
       await tx.wait()
     } catch (e: any) {
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        statusManager.updateProcess(step, crossChainProcess.type, 'PENDING', {
-          txHash: e.replacement.hash,
-          txLink:
-            fromChain.metamask.blockExplorerUrls[0] +
-            'tx/' +
-            e.replacement.hash,
-        })
+        crossChainProcess = statusManager.updateProcess(
+          step,
+          crossChainProcess.type,
+          'PENDING',
+          {
+            txHash: e.replacement.hash,
+            txLink:
+              fromChain.metamask.blockExplorerUrls[0] +
+              'tx/' +
+              e.replacement.hash,
+          }
+        )
       } else {
         const error = await parseError(e, step, crossChainProcess)
-        statusManager.updateProcess(step, crossChainProcess.type, 'FAILED', {
-          error: {
-            message: error.message,
-            htmlMessage: error.htmlMessage,
-            code: error.code,
-          },
-        })
+        crossChainProcess = statusManager.updateProcess(
+          step,
+          crossChainProcess.type,
+          'FAILED',
+          {
+            error: {
+              message: error.message,
+              htmlMessage: error.htmlMessage,
+              code: error.code,
+            },
+          }
+        )
         statusManager.updateExecution(step, 'FAILED')
         throw error
       }
     }
 
-    statusManager.updateProcess(step, crossChainProcess.type, 'DONE')
+    crossChainProcess = statusManager.updateProcess(
+      step,
+      crossChainProcess.type,
+      'DONE'
+    )
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
-    const receivingChainProcess = statusManager.findOrCreateProcess(
+    let receivingChainProcess = statusManager.findOrCreateProcess(
       'RECEIVING_CHAIN',
       step,
       'PENDING'
@@ -175,31 +194,41 @@ export class BridgeExecutionManager {
         step
       )
     } catch (e: any) {
-      statusManager.updateProcess(step, receivingChainProcess.type, 'FAILED', {
-        error: {
-          code: LifiErrorCode.TransactionFailed,
-          message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(
-            step,
-            crossChainProcess.txLink
-          ),
-        },
-      })
+      receivingChainProcess = statusManager.updateProcess(
+        step,
+        receivingChainProcess.type,
+        'FAILED',
+        {
+          error: {
+            code: LifiErrorCode.TransactionFailed,
+            message: 'Failed while waiting for receiving chain.',
+            htmlMessage: getTransactionFailedMessage(
+              step,
+              crossChainProcess.txLink
+            ),
+          },
+        }
+      )
       statusManager.updateExecution(step, 'FAILED')
       throw e
     }
 
-    statusManager.updateProcess(step, receivingChainProcess.type, 'DONE', {
-      substatus: statusResponse.substatus,
-      substatusMessage:
-        statusResponse.substatusMessage ||
-        getSubstatusMessage(statusResponse.status, statusResponse.substatus),
-      txHash: statusResponse.receiving?.txHash,
-      txLink:
-        toChain.metamask.blockExplorerUrls[0] +
-        'tx/' +
-        statusResponse.receiving?.txHash,
-    })
+    receivingChainProcess = statusManager.updateProcess(
+      step,
+      receivingChainProcess.type,
+      'DONE',
+      {
+        substatus: statusResponse.substatus,
+        substatusMessage:
+          statusResponse.substatusMessage ||
+          getSubstatusMessage(statusResponse.status, statusResponse.substatus),
+        txHash: statusResponse.receiving?.txHash,
+        txLink:
+          toChain.metamask.blockExplorerUrls[0] +
+          'tx/' +
+          statusResponse.receiving?.txHash,
+      }
+    )
 
     statusManager.updateExecution(step, 'DONE', {
       fromAmount: statusResponse.sending.amount,
