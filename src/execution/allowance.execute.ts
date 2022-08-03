@@ -20,7 +20,7 @@ export const checkAllowance = async (
 ): Promise<void> => {
   // Ask user to set allowance
   // -> set currentExecution
-  const allowanceProcess = statusManager.findOrCreateProcess(
+  let allowanceProcess: Process = statusManager.findOrCreateProcess(
     'TOKEN_ALLOWANCE',
     step
   )
@@ -28,12 +28,24 @@ export const checkAllowance = async (
   // -> check allowance
   try {
     if (allowanceProcess.txHash) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'PENDING')
-      await getProvider(signer).waitForTransaction(allowanceProcess.txHash)
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'PENDING'
+      )
+      await getProvider(signer).waitForTransaction(allowanceProcess!.txHash!)
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'DONE'
+      )
       // TODO: Do we need this check?
     } else if (allowanceProcess.status === 'DONE') {
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'DONE'
+      )
     } else {
       const approved = await getApproved(signer, token.address, spenderAddress)
 
@@ -52,17 +64,31 @@ export const checkAllowance = async (
         )
 
         // update currentExecution
-        statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
-          txHash: approveTx.hash,
-          txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
-        })
+        allowanceProcess = statusManager.updateProcess(
+          step,
+          allowanceProcess.type,
+          'PENDING',
+          {
+            txHash: approveTx.hash,
+            txLink:
+              chain.metamask.blockExplorerUrls[0] + 'tx/' + approveTx.hash,
+          }
+        )
 
         // wait for transcation
         await approveTx.wait()
 
-        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+        allowanceProcess = statusManager.updateProcess(
+          step,
+          allowanceProcess.type,
+          'DONE'
+        )
       } else {
-        statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+        allowanceProcess = statusManager.updateProcess(
+          step,
+          allowanceProcess.type,
+          'DONE'
+        )
       }
     }
   } catch (e: any) {
@@ -77,13 +103,18 @@ export const checkAllowance = async (
       )
     } else {
       const error = await parseError(e, step, allowanceProcess)
-      statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
-        error: {
-          message: error.message,
-          htmlMessage: error.htmlMessage,
-          code: error.code,
-        },
-      })
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'FAILED',
+        {
+          error: {
+            message: error.message,
+            htmlMessage: error.htmlMessage,
+            code: error.code,
+          },
+        }
+      )
       statusManager.updateExecution(step, 'FAILED')
       throw error
     }
@@ -98,12 +129,22 @@ const transactionReplaced = async (
   statusManager: StatusManager
 ) => {
   try {
-    statusManager.updateProcess(step, allowanceProcess.type, 'PENDING', {
-      txHash: replacementTx.hash,
-      txLink: chain.metamask.blockExplorerUrls[0] + 'tx/' + replacementTx.hash,
-    })
+    allowanceProcess = statusManager.updateProcess(
+      step,
+      allowanceProcess.type,
+      'PENDING',
+      {
+        txHash: replacementTx.hash,
+        txLink:
+          chain.metamask.blockExplorerUrls[0] + 'tx/' + replacementTx.hash,
+      }
+    )
     await replacementTx.wait()
-    statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+    allowanceProcess = statusManager.updateProcess(
+      step,
+      allowanceProcess.type,
+      'DONE'
+    )
   } catch (e: any) {
     if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
       await transactionReplaced(
