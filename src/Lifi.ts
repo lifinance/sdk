@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+import { FallbackProvider } from '@ethersproject/providers'
 import {
   Chain,
   ChainId,
@@ -22,7 +23,6 @@ import {
   ToolsResponse,
 } from '@lifi/types'
 import { Signer } from 'ethers'
-import { FallbackProvider } from '@ethersproject/providers'
 import {
   approveToken,
   ApproveTokenRequest,

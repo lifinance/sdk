@@ -73,6 +73,12 @@ export class StatusManager {
       this.updateStepInRoute(step)
     }
 
+    // Change status to PENDING after resuming from FAILED
+    if (currentExecution.status === 'FAILED') {
+      currentExecution.status = 'PENDING'
+      this.updateStepInRoute(step)
+    }
+
     return currentExecution
   }
 
