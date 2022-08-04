@@ -193,7 +193,7 @@ const getContractCallQuote = async (
   // send request
   try {
     const result = await axios.post<Step>(
-      config.apiUrl + 'quoteContractCall',
+      config.apiUrl + 'quote/contractCall',
       request,
       {
         signal: options?.signal,
