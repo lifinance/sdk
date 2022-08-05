@@ -414,7 +414,7 @@ export default class LIFI {
    * @return {Route} The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
-    return this.activeRouteDictionary[route.id].route
+    return this.activeRouteDictionary[route.id]?.route
   }
 
   /**

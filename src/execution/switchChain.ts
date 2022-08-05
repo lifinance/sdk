@@ -43,10 +43,8 @@ export const switchChain = async (
 
   try {
     const updatedSigner = await switchChainHook(step.action.fromChainId)
-    if (
-      !updatedSigner ||
-      (await updatedSigner.getChainId()) !== step.action.fromChainId
-    ) {
+    const updatedChainId = await updatedSigner?.getChainId()
+    if (updatedChainId !== step.action.fromChainId) {
       throw new ProviderError(
         LifiErrorCode.ChainSwitchError,
         'Chain switch required.'
