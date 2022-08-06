@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Route } from '../types'
 import { LifiErrorCode } from './errors'
 
@@ -7,7 +8,7 @@ export const handlePreRestart = (route: Route) => {
 
     if (stepHasFailed) {
       handleErrorType(route, index)
-      popLastProcess(route, index)
+      deleteFailedProcesses(route, index)
     }
   }
 }
@@ -35,6 +36,10 @@ const handleErrorType = (route: Route, index: number) => {
   }
 }
 
-const popLastProcess = (route: Route, index: number) => {
-  route.steps[index].execution?.process.pop()
+const deleteFailedProcesses = (route: Route, index: number) => {
+  if (route.steps[index].execution) {
+    route.steps[index].execution!.process = route.steps[
+      index
+    ].execution!.process.filter((process) => process.status !== 'FAILED')
+  }
 }

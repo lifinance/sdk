@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES6",
     "strict": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
