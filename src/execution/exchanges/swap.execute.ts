@@ -68,19 +68,21 @@ export class SwapExecutionManager {
         await balanceCheck(signer, step)
 
         // -> get tx from backend
-        const personalizedStep = await personalizeStep(signer, step)
-        const updatedStep = await ApiService.getStepTransaction(
-          personalizedStep
-        )
-        step = {
-          ...(await stepComparison(
-            statusManager,
-            personalizedStep,
-            updatedStep,
-            settings.acceptSlippageUpdateHook,
-            this.shouldContinue
-          )),
-          execution: step.execution,
+        if (!step.transactionRequest) {
+          const personalizedStep = await personalizeStep(signer, step)
+          const updatedStep = await ApiService.getStepTransaction(
+            personalizedStep
+          )
+          step = {
+            ...(await stepComparison(
+              statusManager,
+              personalizedStep,
+              updatedStep,
+              settings.acceptSlippageUpdateHook,
+              this.shouldContinue
+            )),
+            execution: step.execution,
+          }
         }
 
         const { transactionRequest } = step
