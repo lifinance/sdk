@@ -1,12 +1,4 @@
-import {
-  CrossStep,
-  LifiStep,
-  Route,
-  RouteOptions,
-  Step,
-  SwapStep,
-  Token,
-} from '@lifi/types'
+import { Route, RouteOptions, Step, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
