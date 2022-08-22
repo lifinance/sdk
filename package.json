@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "1.1.6",
+  "version": "1.2.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
