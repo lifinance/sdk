@@ -84,7 +84,7 @@ export const checkPackageUpdates = async (
     if (semverCompare(latestVersion, currentVersion)) {
       console.warn(
         // eslint-disable-next-line max-len
-        `${pkgName}: new package version is available. Please update as soon as possible to enjoy the newest features. Latest version: ${latestVersion}`
+        `${pkgName}: new package version is available. Please update as soon as possible to enjoy the newest features. Current version: ${currentVersion}. Latest version: ${latestVersion}.`
       )
     }
   } catch (error) {
