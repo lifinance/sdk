@@ -30,7 +30,12 @@
     "prepublishOnly": "run-s build use:npmReadme && pinst --enable",
     "postpublish": "npm run use:gitReadme && pinst --enable",
     "prepare": "husky install",
-    "release": "standard-version"
+    "release": "standard-version -a"
+  },
+  "standard-version": {
+    "scripts": {
+      "postbump": "node scripts/version.js && git add ."
+    }
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
