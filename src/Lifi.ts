@@ -35,6 +35,7 @@ import balances from './balances'
 import { getRpcProvider } from './connectors'
 import { StatusManager } from './execution/StatusManager'
 import { StepExecutor } from './execution/StepExecutor'
+import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import ConfigService from './services/ConfigService'
@@ -50,6 +51,7 @@ import {
 import { ValidationError } from './utils/errors'
 import { handlePreRestart } from './utils/preRestart'
 import { deepClone } from './utils/utils'
+import { name, version } from './version'
 
 export default class LIFI {
   private activeRouteDictionary: ActiveRouteDictionary = {}
@@ -68,6 +70,8 @@ export default class LIFI {
     this.chainsService.getChains().then((chains) => {
       this.configService.updateChains(chains)
     })
+
+    checkPackageUpdates(name, version, configUpdate?.disableVersionCheck)
   }
 
   /**

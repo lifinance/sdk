@@ -43,6 +43,7 @@ export type Config = {
   multicallAddresses: Record<ChainId, string | undefined>
   defaultExecutionSettings: InternalExecutionSettings
   defaultRouteOptions: RouteOptions
+  disableVersionCheck?: boolean
 }
 
 export type ConfigUpdate = {
@@ -51,6 +52,7 @@ export type ConfigUpdate = {
   multicallAddresses?: Record<number, string | undefined>
   defaultExecutionSettings?: ExecutionSettings
   defaultRouteOptions?: RouteOptions
+  disableVersionCheck?: boolean
 }
 
 export type SwitchChainHook = (
