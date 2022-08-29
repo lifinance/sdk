@@ -1,7 +1,7 @@
 # LI.FI - SDK
 
 LI.FI Any-to-Any Cross-Chain-Swap SDK  
-Please checkout the [SDK docs](https://docs.li.fi/official-documentation/sdk-docs/quick-start) and our [API reference](https://apidocs.li.fi) for further information.
+Please checkout the [SDK docs](https://docs.li.fi/products/integrate-li.fi-js-sdk/install-li.fi-sdk) and our [API reference](https://apidocs.li.fi) for further information.
 
 ## Installation
 
