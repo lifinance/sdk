@@ -15,6 +15,7 @@ export enum LifiErrorCode {
   TransactionUnderpriced = 1002,
   TransactionFailed = 1003,
   TransactionUnprepared = 1008,
+  TransactionRejected = 1011,
   Timeout = 1004,
   ProviderUnavailable = 1005,
   NotFound = 1006,

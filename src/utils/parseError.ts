@@ -7,6 +7,7 @@ import ChainsService from '../services/ChainsService'
 import {
   LifiError,
   LifiErrorCode,
+  MetaMaskProviderErrorCode,
   NotFoundError,
   ProviderError,
   RPCError,
@@ -152,40 +153,45 @@ export const parseError = async (
         )
       }
     }
+  }
 
-    if (e.code === 'CALL_EXCEPTION') {
+  switch (e.code) {
+    case 'CALL_EXCEPTION':
       return new ProviderError(
         LifiErrorCode.TransactionFailed,
         e.reason,
         await getTransactionNotSentMessage(step, process),
         e.stack
       )
-    }
-
-    if (e.code === LifiErrorCode.TransactionUnprepared) {
+    case 'ACTION_REJECTED':
+    case MetaMaskProviderErrorCode.userRejectedRequest:
+      return new TransactionError(
+        LifiErrorCode.TransactionRejected,
+        e.message,
+        await getTransactionNotSentMessage(step, process),
+        e.stack
+      )
+    case LifiErrorCode.TransactionUnprepared:
       return new TransactionError(
         LifiErrorCode.TransactionUnprepared,
         e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
       )
-    }
-
-    if (e.code === LifiErrorCode.ValidationError) {
+    case LifiErrorCode.ValidationError:
       return new TransactionError(
         LifiErrorCode.ValidationError,
         e.message,
         e.htmlMessage
       )
-    }
+    default:
+      return new UnknownError(
+        LifiErrorCode.InternalError,
+        e.message || 'Unknown error occurred.',
+        undefined,
+        e.stack
+      )
   }
-
-  return new UnknownError(
-    LifiErrorCode.InternalError,
-    e.message || 'Unknown error occurred.',
-    undefined,
-    e.stack
-  )
 }
 
 export const parseBackendError = (e: any): LifiError => {
