@@ -32,6 +32,7 @@ describe('StatusManager', () => {
         switchChainHook: () => Promise.resolve(undefined),
         acceptSlippageUpdateHook: () => Promise.resolve(undefined),
         infiniteApproval: false,
+        executeInBackground: false,
       },
       internalUpdateRouteCallbackMock
     )

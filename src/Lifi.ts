@@ -364,6 +364,9 @@ export default class LIFI {
           this.activeRouteDictionary[route.id].settings
         )
         this.activeRouteDictionary[route.id].executors.push(stepExecutor)
+        if (settings?.executeInBackground) {
+          this.moveExecutionToBackground(route)
+        }
         await stepExecutor.executeStep(signer, step)
       } catch (e) {
         this.stopExecution(route)

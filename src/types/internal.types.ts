@@ -82,6 +82,7 @@ export interface ExecutionSettings {
   switchChainHook?: SwitchChainHook
   acceptSlippageUpdateHook?: AcceptSlippageUpdateHook
   infiniteApproval?: boolean
+  executeInBackground?: boolean
 }
 
 export interface InternalExecutionSettings extends ExecutionSettings {
@@ -89,6 +90,7 @@ export interface InternalExecutionSettings extends ExecutionSettings {
   switchChainHook: SwitchChainHook
   acceptSlippageUpdateHook: AcceptSlippageUpdateHook
   infiniteApproval: boolean
+  executeInBackground: boolean
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface
