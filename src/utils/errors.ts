@@ -22,6 +22,7 @@ export enum LifiErrorCode {
   GasLimitError = 1009,
   SlippageNotMet = 1010,
   SlippageError = 1011,
+  TransactionRejected = 1012,
 }
 
 export enum MetaMaskRPCErrorCode {
