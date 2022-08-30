@@ -1,4 +1,4 @@
-import { ChainId, ChainType, getChainById, supportedChains } from '../types'
+import { ChainId, getChainById, supportedChains } from '../types'
 import ConfigService from './ConfigService'
 
 let configService: ConfigService
@@ -13,7 +13,9 @@ describe('ConfigService', () => {
       const defaultConfig = configService.getConfig()
 
       expect(defaultConfig.apiUrl).toEqual('https://li.quest/v1/')
-      expect(defaultConfig.defaultRouteOptions).toEqual({})
+      expect(defaultConfig.defaultRouteOptions).toEqual({
+        integrator: 'lifi-sdk',
+      })
       expect(defaultConfig.rpcs).toBeDefined()
       expect(defaultConfig.multicallAddresses).toBeDefined()
       expect(
@@ -52,6 +54,7 @@ describe('ConfigService', () => {
       const configB = {
         defaultRouteOptions: {
           slippage: 0,
+          integrator: 'new-integrator',
         },
       }
       const mergedConfig = configService.updateConfig(configB)
@@ -61,6 +64,9 @@ describe('ConfigService', () => {
       )
       expect(mergedConfig.defaultRouteOptions.slippage).toEqual(
         configB.defaultRouteOptions.slippage
+      )
+      expect(mergedConfig.defaultRouteOptions.integrator).toEqual(
+        configB.defaultRouteOptions.integrator
       )
     })
 

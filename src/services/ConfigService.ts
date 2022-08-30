@@ -49,7 +49,9 @@ export default class ConfigService {
       rpcs: ConfigService.chainIdToObject([]),
       multicallAddresses: ConfigService.chainIdToObject(undefined),
       defaultExecutionSettings: DefaultExecutionSettings,
-      defaultRouteOptions: {},
+      defaultRouteOptions: {
+        integrator: 'lifi-sdk',
+      },
     }
   }
 
