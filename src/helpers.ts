@@ -9,7 +9,7 @@ const ethereumRequest = async <T>(
   params: string[]
 ): Promise<T> => {
   // If ethereum.request() exists, the provider is probably EIP-1193 compliant.
-  if (!ethereum || !ethereum.request) {
+  if (!ethereum?.request) {
     throw new Error('Provider not available.')
   }
   return ethereum.request({

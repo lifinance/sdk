@@ -112,8 +112,7 @@ export const parseError = async (
         // underpriced errors are sent as internal errors, so we need to parse the message manually
         if (
           e.code === MetaMaskErrorCodes.rpc.internal &&
-          e.message &&
-          e.message.includes('underpriced')
+          e.message?.includes('underpriced')
         ) {
           return new RPCError(
             LifiErrorCode.TransactionUnderpriced,

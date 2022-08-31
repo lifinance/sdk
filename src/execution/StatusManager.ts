@@ -111,11 +111,11 @@ export class StatusManager {
    * @return {Process}
    */
   findOrCreateProcess = (
-    type: ProcessType,
     step: Step,
+    type: ProcessType,
     status?: Status
   ): Process => {
-    if (!step.execution || !step.execution.process) {
+    if (!step.execution?.process) {
       throw new Error("Execution hasn't been initialized.")
     }
 
@@ -176,9 +176,6 @@ export class StatusManager {
         break
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
-        break
-      case 'CHAIN_SWITCH_REQUIRED':
-        step.execution.status = 'CHAIN_SWITCH_REQUIRED'
         break
       default:
         break

@@ -3,14 +3,13 @@ import {
   TransactionResponse,
 } from '@ethersproject/providers'
 import { Execution, StatusResponse } from '@lifi/types'
-import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
 import { ExecuteSwapParams } from '../../types'
 import { LifiErrorCode, TransactionError } from '../../utils/errors'
 import { getProvider } from '../../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
-import { personalizeStep } from '../../utils/utils'
+import { isZeroAddress, personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { stepComparison } from '../stepComparison'
@@ -39,7 +38,7 @@ export class SwapExecutionManager {
     const fromChain = await chainsService.getChainById(action.fromChainId)
 
     // Approval
-    if (action.fromToken.address !== constants.AddressZero) {
+    if (!isZeroAddress(action.fromToken.address)) {
       await checkAllowance(
         signer,
         step,
@@ -55,7 +54,7 @@ export class SwapExecutionManager {
 
     // Start Swap
     // -> set step.execution
-    let swapProcess = statusManager.findOrCreateProcess('SWAP', step)
+    let swapProcess = statusManager.findOrCreateProcess(step, 'SWAP')
 
     // -> swapping
     let tx: TransactionResponse

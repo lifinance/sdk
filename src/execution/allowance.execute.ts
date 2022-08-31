@@ -21,8 +21,8 @@ export const checkAllowance = async (
   // Ask user to set allowance
   // -> set currentExecution
   let allowanceProcess: Process = statusManager.findOrCreateProcess(
-    'TOKEN_ALLOWANCE',
-    step
+    step,
+    'TOKEN_ALLOWANCE'
   )
 
   // -> check allowance
@@ -33,7 +33,7 @@ export const checkAllowance = async (
         allowanceProcess.type,
         'PENDING'
       )
-      await getProvider(signer).waitForTransaction(allowanceProcess!.txHash!)
+      await getProvider(signer).waitForTransaction(allowanceProcess.txHash!)
       allowanceProcess = statusManager.updateProcess(
         step,
         allowanceProcess.type,
