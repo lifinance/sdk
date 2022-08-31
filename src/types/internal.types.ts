@@ -109,4 +109,5 @@ export type RevokeTokenData = {
 
 export interface HaltingSettings {
   allowUpdates?: boolean
+  stopExecution?: boolean
 }

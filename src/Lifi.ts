@@ -259,7 +259,11 @@ export default class LIFI {
       return
     }
     for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution({ allowUpdates: true })
+      executor.stopStepExecution({ allowUpdates: true, stopExecution: false })
+    }
+    this.activeRouteDictionary[route.id].settings = {
+      ...this.activeRouteDictionary[route.id].settings,
+      executeInBackground: true,
     }
   }
 
@@ -321,17 +325,22 @@ export default class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     const config = this.configService.getConfig()
-    const execData: ExecutionData = {
+
+    const executionData: ExecutionData = {
       route,
       executors: [],
       settings: { ...config.defaultExecutionSettings, ...settings },
     }
-    this.activeRouteDictionary[route.id] = execData
+    this.activeRouteDictionary[route.id] = executionData
 
     const statusManager = new StatusManager(
       route,
       this.activeRouteDictionary[route.id].settings,
-      (route: Route) => (this.activeRouteDictionary[route.id].route = route)
+      (route: Route) => {
+        if (this.activeRouteDictionary[route.id]) {
+          this.activeRouteDictionary[route.id].route = route
+        }
+      }
     )
 
     // loop over steps and execute them
@@ -344,16 +353,12 @@ export default class LIFI {
       const step = route.steps[index]
       const previousStep = index !== 0 ? route.steps[index - 1] : undefined
       // check if step already done
-      if (step.execution && step.execution.status === 'DONE') {
+      if (step.execution?.status === 'DONE') {
         continue
       }
 
       // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
-      if (
-        previousStep &&
-        previousStep.execution &&
-        previousStep.execution.toAmount
-      ) {
+      if (previousStep?.execution?.toAmount) {
         step.action.fromAmount = previousStep.execution.toAmount
       }
 
@@ -379,7 +384,7 @@ export default class LIFI {
       }
     }
 
-    //clean up after execution
+    // clean up after execution
     delete this.activeRouteDictionary[route.id]
     return route
   }

@@ -1,13 +1,12 @@
 import { TransactionResponse } from '@ethersproject/abstract-provider'
 import { Execution, StatusResponse } from '@lifi/types'
-import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
 import { ExecuteCrossParams } from '../../types'
 import { LifiErrorCode, TransactionError } from '../../utils/errors'
 import { getProvider } from '../../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
-import { personalizeStep } from '../../utils/utils'
+import { isZeroAddress, personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { stepComparison } from '../stepComparison'
@@ -39,27 +38,25 @@ export class BridgeExecutionManager {
     const oldCrossProcess = step.execution.process.find(
       (p) => p.type === 'CROSS_CHAIN'
     )
-    if (!oldCrossProcess?.txHash) {
-      if (action.fromToken.address !== constants.AddressZero) {
-        // Check Token Approval only if fromToken is not the native token => no approval needed in that case
-        await checkAllowance(
-          signer,
-          step,
-          fromChain,
-          action.fromToken,
-          action.fromAmount,
-          estimate.approvalAddress,
-          statusManager,
-          settings.infiniteApproval,
-          this.shouldContinue
-        )
-      }
+    // Check Token Approval only if fromToken is not the native token => no approval needed in that case
+    if (!oldCrossProcess?.txHash && !isZeroAddress(action.fromToken.address)) {
+      await checkAllowance(
+        signer,
+        step,
+        fromChain,
+        action.fromToken,
+        action.fromAmount,
+        estimate.approvalAddress,
+        statusManager,
+        settings.infiniteApproval,
+        this.shouldContinue
+      )
     }
 
     // STEP 2: Get Transaction ////////////////////////////////////////////////
     let crossChainProcess = statusManager.findOrCreateProcess(
-      'CROSS_CHAIN',
-      step
+      step,
+      'CROSS_CHAIN'
     )
 
     try {
@@ -178,8 +175,8 @@ export class BridgeExecutionManager {
 
     // STEP 5: Wait for Receiver //////////////////////////////////////
     let receivingChainProcess = statusManager.findOrCreateProcess(
-      'RECEIVING_CHAIN',
       step,
+      'RECEIVING_CHAIN',
       'PENDING'
     )
     let statusResponse: StatusResponse
@@ -193,6 +190,33 @@ export class BridgeExecutionManager {
         receivingChainProcess.type,
         step
       )
+      receivingChainProcess = statusManager.updateProcess(
+        step,
+        receivingChainProcess.type,
+        'DONE',
+        {
+          substatus: statusResponse.substatus,
+          substatusMessage:
+            statusResponse.substatusMessage ||
+            getSubstatusMessage(
+              statusResponse.status,
+              statusResponse.substatus
+            ),
+          txHash: statusResponse.receiving?.txHash,
+          txLink:
+            toChain.metamask.blockExplorerUrls[0] +
+            'tx/' +
+            statusResponse.receiving?.txHash,
+        }
+      )
+
+      statusManager.updateExecution(step, 'DONE', {
+        fromAmount: statusResponse.sending.amount,
+        toAmount: statusResponse.receiving?.amount,
+        toToken: statusResponse.receiving?.token,
+        gasUsed: statusResponse.sending.gasUsed,
+        gasPrice: statusResponse.sending.gasPrice,
+      })
     } catch (e: any) {
       receivingChainProcess = statusManager.updateProcess(
         step,
@@ -210,33 +234,9 @@ export class BridgeExecutionManager {
         }
       )
       statusManager.updateExecution(step, 'FAILED')
+      console.warn(e)
       throw e
     }
-
-    receivingChainProcess = statusManager.updateProcess(
-      step,
-      receivingChainProcess.type,
-      'DONE',
-      {
-        substatus: statusResponse.substatus,
-        substatusMessage:
-          statusResponse.substatusMessage ||
-          getSubstatusMessage(statusResponse.status, statusResponse.substatus),
-        txHash: statusResponse.receiving?.txHash,
-        txLink:
-          toChain.metamask.blockExplorerUrls[0] +
-          'tx/' +
-          statusResponse.receiving?.txHash,
-      }
-    )
-
-    statusManager.updateExecution(step, 'DONE', {
-      fromAmount: statusResponse.sending.amount,
-      toAmount: statusResponse.receiving?.amount,
-      toToken: statusResponse.receiving?.token,
-      gasUsed: statusResponse.sending.gasUsed,
-      gasPrice: statusResponse.sending.gasPrice,
-    })
 
     // DONE
     return step.execution!

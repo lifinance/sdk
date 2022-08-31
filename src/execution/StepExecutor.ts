@@ -12,8 +12,9 @@ import { SwapExecutionManager } from './exchanges/swap.execute'
 import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
-const defaultExecutionHaltSettings = {
+const defaultHaltSettings = {
   allowUpdates: true,
+  stopExecution: true,
 }
 
 export class StepExecutor {
@@ -34,14 +35,14 @@ export class StepExecutor {
 
   stopStepExecution = (settings?: HaltingSettings): void => {
     const haltingSettings = {
-      ...defaultExecutionHaltSettings,
+      ...defaultHaltSettings,
       ...settings,
     }
 
     this.swapExecutionManager.setShouldContinue(false)
     this.bridgeExecutionManager.setShouldContinue(false)
     this.statusManager.setShouldUpdate(haltingSettings.allowUpdates)
-    this.executionStopped = true
+    this.executionStopped = haltingSettings.stopExecution
   }
 
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
@@ -51,7 +52,7 @@ export class StepExecutor {
       this.statusManager,
       step,
       this.settings.switchChainHook,
-      !this.executionStopped
+      !this.executionStopped && !this.settings.executeInBackground
     )
 
     if (!updatedSigner) {
@@ -76,7 +77,7 @@ export class StepExecutor {
     return step
   }
 
-  private executeSwap = async (signer: Signer, step: SwapStep) => {
+  private executeSwap = (signer: Signer, step: SwapStep) => {
     const swapParams = {
       signer,
       step,
@@ -84,10 +85,10 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    return await this.swapExecutionManager.execute(swapParams)
+    return this.swapExecutionManager.execute(swapParams)
   }
 
-  private executeCross = async (signer: Signer, step: CrossStep | LifiStep) => {
+  private executeCross = (signer: Signer, step: CrossStep | LifiStep) => {
     const crossParams = {
       signer,
       step,
@@ -95,6 +96,6 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    return await this.bridgeExecutionManager.execute(crossParams)
+    return this.bridgeExecutionManager.execute(crossParams)
   }
 }
