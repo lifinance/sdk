@@ -14,10 +14,10 @@ import { switchChain } from '../switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from '../utils'
 
 export class BridgeExecutionManager {
-  shouldContinue = true
+  allowUserInteraction = true
 
-  setShouldContinue = (val: boolean): void => {
-    this.shouldContinue = val
+  allowInteraction = (val: boolean): void => {
+    this.allowUserInteraction = val
   }
 
   execute = async ({
@@ -49,7 +49,7 @@ export class BridgeExecutionManager {
         estimate.approvalAddress,
         statusManager,
         settings.infiniteApproval,
-        this.shouldContinue
+        this.allowUserInteraction
       )
     }
 
@@ -79,7 +79,7 @@ export class BridgeExecutionManager {
             personalizedStep,
             updatedStep,
             settings.acceptSlippageUpdateHook,
-            this.shouldContinue
+            this.allowUserInteraction
           )),
           execution: step.execution,
         }
@@ -100,7 +100,7 @@ export class BridgeExecutionManager {
           statusManager,
           step,
           settings.switchChainHook,
-          this.shouldContinue
+          this.allowUserInteraction
         )
 
         if (!updatedSigner) {
@@ -115,7 +115,7 @@ export class BridgeExecutionManager {
           crossChainProcess.type,
           'ACTION_REQUIRED'
         )
-        if (!this.shouldContinue) {
+        if (!this.allowUserInteraction) {
           return step.execution!
         }
 

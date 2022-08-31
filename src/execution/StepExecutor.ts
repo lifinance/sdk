@@ -39,9 +39,9 @@ export class StepExecutor {
       ...settings,
     }
 
-    this.swapExecutionManager.setShouldContinue(false)
-    this.bridgeExecutionManager.setShouldContinue(false)
-    this.statusManager.setShouldUpdate(haltingSettings.allowUpdates)
+    this.swapExecutionManager.allowInteraction(false)
+    this.bridgeExecutionManager.allowInteraction(false)
+    this.statusManager.allowUpdates(haltingSettings.allowUpdates)
     this.executionStopped = haltingSettings.stopExecution
   }
 

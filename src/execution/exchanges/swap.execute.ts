@@ -17,10 +17,10 @@ import { switchChain } from '../switchChain'
 import { waitForReceivingTransaction } from '../utils'
 
 export class SwapExecutionManager {
-  shouldContinue = true
+  allowUserInteraction = true
 
-  setShouldContinue = (val: boolean): void => {
-    this.shouldContinue = val
+  allowInteraction = (val: boolean): void => {
+    this.allowUserInteraction = val
   }
 
   execute = async ({
@@ -48,7 +48,7 @@ export class SwapExecutionManager {
         estimate.approvalAddress,
         statusManager,
         settings.infiniteApproval,
-        this.shouldContinue
+        this.allowUserInteraction
       )
     }
 
@@ -77,7 +77,7 @@ export class SwapExecutionManager {
             personalizedStep,
             updatedStep,
             settings.acceptSlippageUpdateHook,
-            this.shouldContinue
+            this.allowUserInteraction
           )),
           execution: step.execution,
         }
@@ -96,7 +96,7 @@ export class SwapExecutionManager {
           statusManager,
           step,
           settings.switchChainHook,
-          this.shouldContinue
+          this.allowUserInteraction
         )
 
         if (!updatedSigner) {
@@ -112,7 +112,7 @@ export class SwapExecutionManager {
           swapProcess.type,
           'ACTION_REQUIRED'
         )
-        if (!this.shouldContinue) {
+        if (!this.allowUserInteraction) {
           return step.execution! // stop before user interaction is needed
         }
 

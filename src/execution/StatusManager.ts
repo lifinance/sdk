@@ -231,7 +231,7 @@ export class StatusManager {
     return this.route.steps[stepIndex]
   }
 
-  setShouldUpdate(value: boolean): void {
+  allowUpdates(value: boolean): void {
     this.shouldUpdate = value
   }
 }
