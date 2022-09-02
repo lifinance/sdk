@@ -62,7 +62,8 @@ export default class LIFI {
     this.configService = ConfigService.getInstance()
 
     if (configUpdate) {
-      this.configService.updateConfig(configUpdate) // update API urls before we request chains
+      // Update API urls before we request chains
+      this.configService.updateConfig(configUpdate)
     }
 
     this.chainsService = ChainsService.getInstance()
@@ -244,7 +245,11 @@ export default class LIFI {
       return route
     }
     for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution({ allowUpdates: false })
+      executor.setInteraction({
+        allowInteraction: false,
+        allowUpdates: false,
+        stopExecution: true,
+      })
     }
     delete this.activeRouteDictionary[route.id]
     return route
@@ -253,17 +258,45 @@ export default class LIFI {
   /**
    * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
    * @param {Route} route - A route that is currently in execution.
+   * @deprecated use updateRouteExecution instead.
    */
   moveExecutionToBackground = (route: Route): void => {
-    if (!this.activeRouteDictionary[route.id]) {
+    const activeRoute = this.activeRouteDictionary[route.id]
+    if (!activeRoute) {
       return
     }
-    for (const executor of this.activeRouteDictionary[route.id].executors) {
-      executor.stopStepExecution({ allowUpdates: true, stopExecution: false })
+    for (const executor of activeRoute.executors) {
+      executor.setInteraction({ allowInteraction: false, allowUpdates: true })
     }
-    this.activeRouteDictionary[route.id].settings = {
-      ...this.activeRouteDictionary[route.id].settings,
+    activeRoute.settings = {
+      ...activeRoute.settings,
       executeInBackground: true,
+    }
+  }
+
+  /**
+   * Updates route execution to background or foreground state.
+   * @param {Route} route - A route that is currently in execution.
+   * @param {boolean} settings - An object with execution settings.
+   */
+  updateRouteExecution = (
+    route: Route,
+    settings: Pick<ExecutionSettings, 'executeInBackground'>
+  ): void => {
+    const activeRoute = this.activeRouteDictionary[route.id]
+    if (!activeRoute) {
+      return
+    }
+    for (const executor of activeRoute.executors) {
+      executor.setInteraction({
+        allowInteraction: !settings.executeInBackground,
+        allowUpdates: true,
+      })
+    }
+    // Update active route settings so we know what the current state of execution is
+    activeRoute.settings = {
+      ...activeRoute.settings,
+      ...settings,
     }
   }
 
@@ -280,9 +313,10 @@ export default class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
-    const clonedRoute = deepClone<Route>(route) // deep clone to prevent side effects
+    // Deep clone to prevent side effects
+    const clonedRoute = deepClone<Route>(route)
 
-    // check if route is already running
+    // Check if route is already running
     if (this.activeRouteDictionary[clonedRoute.id]) {
       // TODO: maybe inform user why nothing happens?
       return clonedRoute
@@ -304,7 +338,8 @@ export default class LIFI {
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
-    const clonedRoute = deepClone<Route>(route) // deep clone to prevent side effects
+    // Deep clone to prevent side effects
+    const clonedRoute = deepClone<Route>(route)
 
     const activeRoute = this.activeRouteDictionary[clonedRoute.id]
     if (activeRoute) {
@@ -312,6 +347,10 @@ export default class LIFI {
         (executor) => executor.executionStopped
       )
       if (!executionHalted) {
+        // Check if we want to resume route execution in the background
+        this.updateRouteExecution(route, {
+          executeInBackground: settings?.executeInBackground,
+        })
         return clonedRoute
       }
     }
@@ -343,48 +382,54 @@ export default class LIFI {
       }
     )
 
-    // loop over steps and execute them
+    // Loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
-      //check if execution has stopped in meantime
-      if (!this.activeRouteDictionary[route.id]) {
+      const activeRoute = this.activeRouteDictionary[route.id]
+      // Check if execution has stopped in the meantime
+      if (!activeRoute) {
         break
       }
 
       const step = route.steps[index]
-      const previousStep = index !== 0 ? route.steps[index - 1] : undefined
-      // check if step already done
+      const previousStep = route.steps[index - 1]
+      // Check if the step is already done
       if (step.execution?.status === 'DONE') {
         continue
       }
 
-      // update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
+      // Update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
       if (previousStep?.execution?.toAmount) {
         step.action.fromAmount = previousStep.execution.toAmount
       }
 
-      let stepExecutor: StepExecutor
       try {
-        stepExecutor = new StepExecutor(
+        const stepExecutor = new StepExecutor(
           statusManager,
-          this.activeRouteDictionary[route.id].settings
+          activeRoute.settings
         )
-        this.activeRouteDictionary[route.id].executors.push(stepExecutor)
-        if (settings?.executeInBackground) {
-          this.moveExecutionToBackground(route)
+        activeRoute.executors.push(stepExecutor)
+
+        // Check if we want to execute this step in the background
+        this.updateRouteExecution(route, activeRoute.settings)
+
+        const executedStep = await stepExecutor.executeStep(signer, step)
+
+        // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
+        if (executedStep.execution?.status !== 'DONE') {
+          this.stopExecution(route)
         }
-        await stepExecutor.executeStep(signer, step)
+
+        // Execution stopped during the current step, we don't want to continue to the next step so we return already
+        if (stepExecutor.executionStopped) {
+          return route
+        }
       } catch (e) {
         this.stopExecution(route)
         throw e
       }
-
-      // execution stopped during the current step, we don't want to continue to the next step so we return already
-      if (stepExecutor.executionStopped) {
-        return route
-      }
     }
 
-    // clean up after execution
+    // Clean up after the execution
     delete this.activeRouteDictionary[route.id]
     return route
   }

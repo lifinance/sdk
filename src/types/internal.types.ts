@@ -107,7 +107,8 @@ export type RevokeTokenData = {
   approvalAddress: string
 }
 
-export interface HaltingSettings {
+export interface InteractionSettings {
+  allowInteraction?: boolean
   allowUpdates?: boolean
   stopExecution?: boolean
 }

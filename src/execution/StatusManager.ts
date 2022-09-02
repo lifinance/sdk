@@ -122,6 +122,10 @@ export class StatusManager {
     const process = step.execution.process.find((p) => p.type === type)
 
     if (process) {
+      if (status && process.status !== status) {
+        process.status = status
+        this.updateStepInRoute(step)
+      }
       return process
     }
 
@@ -189,6 +193,15 @@ export class StatusManager {
         currentProcess[key] = value
       }
     }
+    // Sort processes, the ones with DONE status go first
+    step.execution.process = [
+      ...step?.execution?.process.filter(
+        (process) => process.status === 'DONE'
+      ),
+      ...step?.execution?.process.filter(
+        (process) => process.status !== 'DONE'
+      ),
+    ]
     this.updateStepInRoute(step) // updates the step in the route
     return currentProcess
   }
