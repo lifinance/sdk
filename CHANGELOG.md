@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/lifinance/sdk/compare/v1.3.1...v1.4.0) (2022-09-05)
+
+
+### Features
+
+* skip step tx generation if tx data already provided ([#100](https://github.com/lifinance/sdk/issues/100)) ([280de4a](https://github.com/lifinance/sdk/commit/280de4a3d96b8077893e0bc1e0ed944f4772c5fb))
+
 ### [1.3.1](https://github.com/lifinance/sdk/compare/v1.3.0...v1.3.1) (2022-09-05)
 
 
