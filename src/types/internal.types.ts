@@ -1,12 +1,4 @@
-import {
-  CrossStep,
-  LifiStep,
-  Route,
-  RouteOptions,
-  Step,
-  SwapStep,
-  Token,
-} from '@lifi/types'
+import { Route, RouteOptions, Step, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
@@ -51,6 +43,7 @@ export type Config = {
   multicallAddresses: Record<ChainId, string | undefined>
   defaultExecutionSettings: InternalExecutionSettings
   defaultRouteOptions: RouteOptions
+  disableVersionCheck?: boolean
 }
 
 export type ConfigUpdate = {
@@ -59,6 +52,7 @@ export type ConfigUpdate = {
   multicallAddresses?: Record<number, string | undefined>
   defaultExecutionSettings?: ExecutionSettings
   defaultRouteOptions?: RouteOptions
+  disableVersionCheck?: boolean
 }
 
 export type SwitchChainHook = (

@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/lifinance/sdk/compare/v1.2.2...v1.3.0) (2022-09-05)
+
+
+### Features
+
+* add TransactionRejected error ([#104](https://github.com/lifinance/sdk/issues/104)) ([2c180fd](https://github.com/lifinance/sdk/commit/2c180fd0cedbdf3acbf77326d69eb2a328c59170))
+* **config:** set default integrator string ([#107](https://github.com/lifinance/sdk/issues/107)) ([f8ef3bf](https://github.com/lifinance/sdk/commit/f8ef3bfeff8bf0e6d5d9eec172bb7d7d86ec123f))
+
+
+### Bug Fixes
+
+* duplicates for LifiErrorCodes ([#106](https://github.com/lifinance/sdk/issues/106)) ([d63a80b](https://github.com/lifinance/sdk/commit/d63a80b2106d7f18d51e9f30b49dc896f5a30019))
+
+### [1.2.2](https://github.com/lifinance/sdk/compare/v1.2.1...v1.2.2) (2022-08-24)
+
+### [1.2.1](https://github.com/lifinance/sdk/compare/v1.2.0...v1.2.1) (2022-08-22)
+
+## [1.2.0](https://github.com/lifinance/sdk/compare/v1.1.6...v1.2.0) (2022-08-22)
+
+
+### Features
+
+* add version check ([#102](https://github.com/lifinance/sdk/issues/102)) ([dbc0fc5](https://github.com/lifinance/sdk/commit/dbc0fc5805a2d6c9b3da8547d44c3e93f1a3b8ed))
+
+### [1.1.6](https://github.com/lifinance/sdk/compare/v1.1.5...v1.1.6) (2022-08-19)
+
+### [1.1.5](https://github.com/lifinance/sdk/compare/v1.1.4...v1.1.5) (2022-08-19)
+
+### [1.1.4](https://github.com/lifinance/sdk/compare/v1.1.3...v1.1.4) (2022-08-19)
+
 ### [1.1.3](https://github.com/lifinance/sdk/compare/v1.1.2...v1.1.3) (2022-08-06)
 
 
