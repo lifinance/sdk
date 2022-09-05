@@ -125,11 +125,11 @@ const getQuote = async (
   request.preferBridges =
     request.preferBridges || config.defaultRouteOptions.bridges?.prefer
   request.allowExchanges =
-    request.allowExchanges || config.defaultRouteOptions.bridges?.allow
+    request.allowExchanges || config.defaultRouteOptions.exchanges?.allow
   request.denyExchanges =
-    request.denyExchanges || config.defaultRouteOptions.bridges?.deny
+    request.denyExchanges || config.defaultRouteOptions.exchanges?.deny
   request.preferExchanges =
-    request.preferExchanges || config.defaultRouteOptions.bridges?.prefer
+    request.preferExchanges || config.defaultRouteOptions.exchanges?.prefer
 
   try {
     const result = await axios.get<Step>(config.apiUrl + 'quote', {
@@ -184,11 +184,11 @@ const getContractCallQuote = async (
   request.preferBridges =
     request.preferBridges || config.defaultRouteOptions.bridges?.prefer
   request.allowExchanges =
-    request.allowExchanges || config.defaultRouteOptions.bridges?.allow
+    request.allowExchanges || config.defaultRouteOptions.exchanges?.allow
   request.denyExchanges =
-    request.denyExchanges || config.defaultRouteOptions.bridges?.deny
+    request.denyExchanges || config.defaultRouteOptions.exchanges?.deny
   request.preferExchanges =
-    request.preferExchanges || config.defaultRouteOptions.bridges?.prefer
+    request.preferExchanges || config.defaultRouteOptions.exchanges?.prefer
 
   // send request
   try {
