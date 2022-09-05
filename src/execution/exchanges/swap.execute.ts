@@ -79,19 +79,21 @@ export class SwapExecutionManager {
         await balanceCheck(signer, step)
 
         // Create new transaction
-        const personalizedStep = await personalizeStep(signer, step)
-        const updatedStep = await ApiService.getStepTransaction(
-          personalizedStep
-        )
-        step = {
-          ...(await stepComparison(
-            statusManager,
-            personalizedStep,
-            updatedStep,
-            settings.acceptSlippageUpdateHook,
-            this.allowUserInteraction
-          )),
-          execution: step.execution,
+        if (!step.transactionRequest) {
+          const personalizedStep = await personalizeStep(signer, step)
+          const updatedStep = await ApiService.getStepTransaction(
+            personalizedStep
+          )
+          step = {
+            ...(await stepComparison(
+              statusManager,
+              personalizedStep,
+              updatedStep,
+              settings.acceptSlippageUpdateHook,
+              this.allowUserInteraction
+            )),
+            execution: step.execution,
+          }
         }
 
         const { transactionRequest } = step

@@ -9,6 +9,7 @@ export const handlePreRestart = (route: Route) => {
     if (stepHasFailed) {
       handleErrorType(route, index)
       deleteFailedProcesses(route, index)
+      deleteTransactionData(route, index)
     }
   }
 }
@@ -42,4 +43,8 @@ const deleteFailedProcesses = (route: Route, index: number) => {
       index
     ].execution!.process.filter((process) => process.status === 'DONE')
   }
+}
+
+const deleteTransactionData = (route: Route, index: number) => {
+  route.steps[index].transactionRequest = undefined
 }
