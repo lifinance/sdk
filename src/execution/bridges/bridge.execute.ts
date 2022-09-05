@@ -71,20 +71,21 @@ export class BridgeExecutionManager {
         // check balance
         await balanceCheck(signer, step)
 
-        // create new transaction
-        const personalizedStep = await personalizeStep(signer, step)
-        const updatedStep = await ApiService.getStepTransaction(
-          personalizedStep
-        )
-        step = {
-          ...(await stepComparison(
-            statusManager,
-            personalizedStep,
-            updatedStep,
-            settings.acceptSlippageUpdateHook,
-            this.shouldContinue
-          )),
-          execution: step.execution,
+        if (!step.transactionRequest) {
+          const personalizedStep = await personalizeStep(signer, step)
+          const updatedStep = await ApiService.getStepTransaction(
+            personalizedStep
+          )
+          step = {
+            ...(await stepComparison(
+              statusManager,
+              personalizedStep,
+              updatedStep,
+              settings.acceptSlippageUpdateHook,
+              this.shouldContinue
+            )),
+            execution: step.execution,
+          }
         }
 
         const { transactionRequest } = step
