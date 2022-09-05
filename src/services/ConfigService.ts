@@ -113,7 +113,7 @@ export default class ConfigService {
       const chainId = chain.id as ChainId
 
       // set RPCs if they were not configured by the user before
-      if (!this.config.rpcs[chainId].length) {
+      if (!this.config.rpcs[chainId]?.length) {
         this.config.rpcs[chainId] = chain.metamask.rpcUrls
       }
 
