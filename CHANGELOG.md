@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.3.1](https://github.com/lifinance/sdk/compare/v1.3.0...v1.3.1) (2022-09-05)
+
+
+### Bug Fixes
+
+* pass default options right for quote requests ([#109](https://github.com/lifinance/sdk/issues/109)) ([776c5a3](https://github.com/lifinance/sdk/commit/776c5a33f0ac7e6525659878cf7323244f055e77))
+
 ## [1.3.0](https://github.com/lifinance/sdk/compare/v1.2.2...v1.3.0) (2022-09-05)
 
 
