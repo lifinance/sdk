@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://github.com/lifinance/sdk/compare/v1.4.1...v1.5.0) (2022-09-06)
+
+
+### Features
+
+* add an option to start or resume execution in background ([#103](https://github.com/lifinance/sdk/issues/103)) ([c452559](https://github.com/lifinance/sdk/commit/c45255991ebcf494715c094db77f6c7599080c5d)), closes [#106](https://github.com/lifinance/sdk/issues/106) [#104](https://github.com/lifinance/sdk/issues/104)
+
 ### [1.4.1](https://github.com/lifinance/sdk/compare/v1.4.0...v1.4.1) (2022-09-06)
 
 ## [1.4.0](https://github.com/lifinance/sdk/compare/v1.3.1...v1.4.0) (2022-09-05)
