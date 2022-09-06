@@ -1108,7 +1108,7 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@lifi/types@^1.5.1":
+"@lifi/types@^1.6.0":
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/@lifi/types/-/types-1.6.0.tgz#ab8203bbfd063e406170e21b710cf4c9e6b03582"
   integrity sha512-8oFhHmI+2z2b2nyKfSBWEsrtX1LIcWvjI88OC06maq7G6i8tbzMfD5N1lHW2JwTjamfavvALwEYpJVttZu1r2w==
