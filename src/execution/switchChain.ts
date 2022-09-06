@@ -29,12 +29,12 @@ export const switchChain = async (
 
   // -> set status message
   step.execution = statusManager.initExecutionObject(step)
-  statusManager.updateExecution(step, 'CHAIN_SWITCH_REQUIRED')
+  statusManager.updateExecution(step, 'ACTION_REQUIRED')
 
   let switchProcess = statusManager.findOrCreateProcess(
-    'SWITCH_CHAIN',
     step,
-    'PENDING'
+    'SWITCH_CHAIN',
+    'ACTION_REQUIRED'
   )
 
   if (!allowUserInteraction) {
@@ -66,7 +66,7 @@ export const switchChain = async (
       {
         error: {
           message: error.message,
-          code: error.code,
+          code: LifiErrorCode.ChainSwitchError,
         },
       }
     )

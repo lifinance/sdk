@@ -32,6 +32,7 @@ describe('StatusManager', () => {
         switchChainHook: () => Promise.resolve(undefined),
         acceptSlippageUpdateHook: () => Promise.resolve(undefined),
         infiniteApproval: false,
+        executeInBackground: false,
       },
       internalUpdateRouteCallbackMock
     )
@@ -129,7 +130,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess('SWAP', deepClone(step))
+          statusManager.findOrCreateProcess(deepClone(step), 'SWAP')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -142,8 +143,8 @@ describe('StatusManager', () => {
       describe('and the process already exists', () => {
         it('should return the process and not call the callbacks', () => {
           const process = statusManager.findOrCreateProcess(
-            'TOKEN_ALLOWANCE',
-            deepClone(step)
+            deepClone(step),
+            'TOKEN_ALLOWANCE'
           )
 
           expect(process).toEqual(step.execution?.process[0])
@@ -156,8 +157,8 @@ describe('StatusManager', () => {
       describe("and the process doesn't exist", () => {
         it('should create a process and call the callbacks with the updated route', () => {
           const process = statusManager.findOrCreateProcess(
-            'CROSS_CHAIN',
-            deepClone(step)
+            deepClone(step),
+            'CROSS_CHAIN'
           )
 
           expect(process.type).toEqual('CROSS_CHAIN')
@@ -203,7 +204,6 @@ describe('StatusManager', () => {
     describe('when a process is found', () => {
       ;[
         { status: 'ACTION_REQUIRED' },
-        { status: 'CHAIN_SWITCH_REQUIRED' },
         { status: 'PENDING' },
         { status: 'FAILED', doneAt: true },
         { status: 'DONE', doneAt: true },

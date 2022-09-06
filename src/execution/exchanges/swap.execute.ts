@@ -1,16 +1,12 @@
-import {
-  TransactionReceipt,
-  TransactionResponse,
-} from '@ethersproject/providers'
+import { TransactionResponse } from '@ethersproject/providers'
 import { Execution, StatusResponse } from '@lifi/types'
-import { constants } from 'ethers'
 import ApiService from '../../services/ApiService'
 import ChainsService from '../../services/ChainsService'
 import { ExecuteSwapParams } from '../../types'
 import { LifiErrorCode, TransactionError } from '../../utils/errors'
 import { getProvider } from '../../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../../utils/parseError'
-import { personalizeStep } from '../../utils/utils'
+import { isZeroAddress, personalizeStep } from '../../utils/utils'
 import { checkAllowance } from '../allowance.execute'
 import { balanceCheck } from '../balanceCheck.execute'
 import { stepComparison } from '../stepComparison'
@@ -18,10 +14,10 @@ import { switchChain } from '../switchChain'
 import { waitForReceivingTransaction } from '../utils'
 
 export class SwapExecutionManager {
-  shouldContinue = true
+  allowUserInteraction = true
 
-  setShouldContinue = (val: boolean): void => {
-    this.shouldContinue = val
+  allowInteraction = (value: boolean): void => {
+    this.allowUserInteraction = value
   }
 
   execute = async ({
@@ -30,44 +26,59 @@ export class SwapExecutionManager {
     statusManager,
     settings,
   }: ExecuteSwapParams): Promise<Execution> => {
-    // setup
-
-    const { action, estimate } = step
     step.execution = statusManager.initExecutionObject(step)
 
     const chainsService = ChainsService.getInstance()
-    const fromChain = await chainsService.getChainById(action.fromChainId)
+    const fromChain = await chainsService.getChainById(step.action.fromChainId)
 
-    // Approval
-    if (action.fromToken.address !== constants.AddressZero) {
+    // STEP 1: Check allowance
+    if (!isZeroAddress(step.action.fromToken.address)) {
       await checkAllowance(
         signer,
         step,
-        fromChain,
-        action.fromToken,
-        action.fromAmount,
-        estimate.approvalAddress,
         statusManager,
-        settings.infiniteApproval,
-        this.shouldContinue
+        settings,
+        fromChain,
+        this.allowUserInteraction
       )
     }
 
-    // Start Swap
-    // -> set step.execution
-    let swapProcess = statusManager.findOrCreateProcess('SWAP', step)
+    // STEP 2: Get transaction
+    let swapProcess = statusManager.findOrCreateProcess(step, 'SWAP')
 
-    // -> swapping
-    let tx: TransactionResponse
+    let transaction: TransactionResponse
     try {
       if (swapProcess.txHash) {
-        // -> restore existing tx
-        tx = await getProvider(signer).getTransaction(swapProcess.txHash)
+        // Make sure that the chain is still correct
+        const updatedSigner = await switchChain(
+          signer,
+          statusManager,
+          step,
+          settings.switchChainHook,
+          this.allowUserInteraction
+        )
+
+        if (!updatedSigner) {
+          // Chain switch was not successful, stop execution here
+          return step.execution!
+        }
+
+        signer = updatedSigner
+        // Load exiting transaction
+        transaction = await getProvider(signer).getTransaction(
+          swapProcess.txHash
+        )
       } else {
-        // -> check balance
+        swapProcess = statusManager.updateProcess(
+          step,
+          swapProcess.type,
+          'STARTED'
+        )
+
+        // Check balance
         await balanceCheck(signer, step)
 
-        // -> get tx from backend
+        // Create new transaction
         if (!step.transactionRequest) {
           const personalizedStep = await personalizeStep(signer, step)
           const updatedStep = await ApiService.getStepTransaction(
@@ -79,7 +90,7 @@ export class SwapExecutionManager {
               personalizedStep,
               updatedStep,
               settings.acceptSlippageUpdateHook,
-              this.shouldContinue
+              this.allowUserInteraction
             )),
             execution: step.execution,
           }
@@ -93,72 +104,52 @@ export class SwapExecutionManager {
           )
         }
 
-        // make sure that chain is still correct
+        // STEP 3: Send the transaction
+        // Make sure that the chain is still correct
         const updatedSigner = await switchChain(
           signer,
           statusManager,
           step,
           settings.switchChainHook,
-          this.shouldContinue
+          this.allowUserInteraction
         )
 
         if (!updatedSigner) {
-          // chain switch was not successful, stop execution here
+          // Chain switch was not successful, stop execution here
           return step.execution!
         }
 
         signer = updatedSigner
 
-        // -> set step.execution
-        swapProcess = swapProcess = statusManager.updateProcess(
+        swapProcess = statusManager.updateProcess(
           step,
           swapProcess.type,
           'ACTION_REQUIRED'
         )
-        if (!this.shouldContinue) {
-          return step.execution! // stop before user interaction is needed
+
+        if (!this.allowUserInteraction) {
+          return step.execution!
         }
 
-        // -> submit tx
-        tx = await signer.sendTransaction(transactionRequest)
+        // Submit the transaction
+        transaction = await signer.sendTransaction(transactionRequest)
       }
-    } catch (e) {
-      const error = await parseError(e, step, swapProcess)
+
+      // STEP 4: Wait for the transaction
       swapProcess = statusManager.updateProcess(
         step,
         swapProcess.type,
-        'FAILED',
+        'PENDING',
         {
-          error: {
-            message: error.message,
-            htmlMessage: error.htmlMessage,
-            code: error.code,
-          },
+          txLink:
+            fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
+          txHash: transaction.hash,
         }
       )
-      statusManager.updateExecution(step, 'FAILED')
-      throw error
-    }
 
-    // Wait for Transaction
-    swapProcess = statusManager.updateProcess(
-      step,
-      swapProcess.type,
-      'PENDING',
-      {
-        txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + tx.hash,
-        txHash: tx.hash,
-      }
-    )
-
-    // -> waiting
-    let receipt: TransactionReceipt
-    try {
-      receipt = await tx.wait()
+      await transaction.wait()
     } catch (e: any) {
-      // -> set status
       if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-        receipt = e.replacement
         swapProcess = statusManager.updateProcess(
           step,
           swapProcess.type,
@@ -190,6 +181,7 @@ export class SwapExecutionManager {
       }
     }
 
+    // STEP 5: Wait for the receiving chain
     let statusResponse: StatusResponse
     try {
       if (!swapProcess.txHash) {

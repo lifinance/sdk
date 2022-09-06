@@ -1,7 +1,7 @@
 import { Signer } from 'ethers'
 import {
   CrossStep,
-  HaltingSettings,
+  InteractionSettings,
   InternalExecutionSettings,
   LifiStep,
   Step,
@@ -12,8 +12,11 @@ import { SwapExecutionManager } from './exchanges/swap.execute'
 import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
-const defaultExecutionHaltSettings = {
+// Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
+const defaultInteractionSettings = {
+  allowInteraction: true,
   allowUpdates: true,
+  stopExecution: false,
 }
 
 export class StepExecutor {
@@ -22,6 +25,7 @@ export class StepExecutor {
   private swapExecutionManager = new SwapExecutionManager()
   private bridgeExecutionManager = new BridgeExecutionManager()
 
+  allowUserInteraction = true
   executionStopped = false
 
   constructor(
@@ -32,30 +36,41 @@ export class StepExecutor {
     this.settings = settings
   }
 
-  stopStepExecution = (settings?: HaltingSettings): void => {
-    const haltingSettings = {
-      ...defaultExecutionHaltSettings,
+  setInteraction = (settings?: InteractionSettings): void => {
+    const interactionSettings = {
+      ...defaultInteractionSettings,
       ...settings,
     }
+    this.allowUserInteraction = interactionSettings.allowInteraction
+    this.swapExecutionManager.allowInteraction(
+      interactionSettings.allowInteraction
+    )
+    this.bridgeExecutionManager.allowInteraction(
+      interactionSettings.allowInteraction
+    )
+    this.statusManager.allowUpdates(interactionSettings.allowUpdates)
+    this.executionStopped = interactionSettings.stopExecution
+  }
 
-    this.swapExecutionManager.setShouldContinue(false)
-    this.bridgeExecutionManager.setShouldContinue(false)
-    this.statusManager.setShouldUpdate(haltingSettings.allowUpdates)
-    this.executionStopped = true
+  // TODO: add checkChain method and update signer inside executors
+  // This can come in handy when we execute multiple routes simultaneously and
+  // should be sure that we are on the right chain when waiting for transactions.
+  checkChain = () => {
+    throw new Error('checkChain is not implemented.')
   }
 
   executeStep = async (signer: Signer, step: Step): Promise<Step> => {
-    // check if signer is for correct chain
+    // Make sure that the chain is still correct
     const updatedSigner = await switchChain(
       signer,
       this.statusManager,
       step,
       this.settings.switchChainHook,
-      !this.executionStopped
+      this.allowUserInteraction
     )
 
     if (!updatedSigner) {
-      // chain switch was not successful, stop execution here
+      // Chain switch was not successful, stop execution here
       return step
     }
 
@@ -76,7 +91,7 @@ export class StepExecutor {
     return step
   }
 
-  private executeSwap = async (signer: Signer, step: SwapStep) => {
+  private executeSwap = (signer: Signer, step: SwapStep) => {
     const swapParams = {
       signer,
       step,
@@ -84,10 +99,10 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    return await this.swapExecutionManager.execute(swapParams)
+    return this.swapExecutionManager.execute(swapParams)
   }
 
-  private executeCross = async (signer: Signer, step: CrossStep | LifiStep) => {
+  private executeCross = (signer: Signer, step: CrossStep | LifiStep) => {
     const crossParams = {
       signer,
       step,
@@ -95,6 +110,6 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    return await this.bridgeExecutionManager.execute(crossParams)
+    return this.bridgeExecutionManager.execute(crossParams)
   }
 }

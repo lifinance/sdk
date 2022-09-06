@@ -111,17 +111,21 @@ export class StatusManager {
    * @return {Process}
    */
   findOrCreateProcess = (
-    type: ProcessType,
     step: Step,
+    type: ProcessType,
     status?: Status
   ): Process => {
-    if (!step.execution || !step.execution.process) {
+    if (!step.execution?.process) {
       throw new Error("Execution hasn't been initialized.")
     }
 
     const process = step.execution.process.find((p) => p.type === type)
 
     if (process) {
+      if (status && process.status !== status) {
+        process.status = status
+        this.updateStepInRoute(step)
+      }
       return process
     }
 
@@ -177,9 +181,6 @@ export class StatusManager {
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
         break
-      case 'CHAIN_SWITCH_REQUIRED':
-        step.execution.status = 'CHAIN_SWITCH_REQUIRED'
-        break
       default:
         break
     }
@@ -192,6 +193,15 @@ export class StatusManager {
         currentProcess[key] = value
       }
     }
+    // Sort processes, the ones with DONE status go first
+    step.execution.process = [
+      ...step?.execution?.process.filter(
+        (process) => process.status === 'DONE'
+      ),
+      ...step?.execution?.process.filter(
+        (process) => process.status !== 'DONE'
+      ),
+    ]
     this.updateStepInRoute(step) // updates the step in the route
     return currentProcess
   }
@@ -234,7 +244,7 @@ export class StatusManager {
     return this.route.steps[stepIndex]
   }
 
-  setShouldUpdate(value: boolean): void {
+  allowUpdates(value: boolean): void {
     this.shouldUpdate = value
   }
 }

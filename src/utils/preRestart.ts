@@ -41,7 +41,7 @@ const deleteFailedProcesses = (route: Route, index: number) => {
   if (route.steps[index].execution) {
     route.steps[index].execution!.process = route.steps[
       index
-    ].execution!.process.filter((process) => process.status !== 'FAILED')
+    ].execution!.process.filter((process) => process.status === 'DONE')
   }
 }
 
