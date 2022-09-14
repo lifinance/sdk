@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.6.0](https://github.com/lifinance/sdk/compare/v1.5.0...v1.6.0) (2022-09-14)
+
+
+### Features
+
+* add bridgeExplorerLink to receiving chain process ([#110](https://github.com/lifinance/sdk/issues/110)) ([b9891a5](https://github.com/lifinance/sdk/commit/b9891a5b463412bbd29b88b91c2135bec9ef79fc))
+
 ## [1.5.0](https://github.com/lifinance/sdk/compare/v1.4.1...v1.5.0) (2022-09-06)
 
 
