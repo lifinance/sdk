@@ -48,7 +48,9 @@ export async function waitForReceivingTransaction(
                 statusResponse.status,
                 statusResponse.substatus
               ),
-            txLink: statusResponse.bridgeExplorerLink,
+            ...(statusResponse.bridgeExplorerLink && {
+              txLink: statusResponse.bridgeExplorerLink,
+            }),
           })
           return resolve(undefined)
         case 'NOT_FOUND':
