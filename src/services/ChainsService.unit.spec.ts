@@ -1,9 +1,10 @@
 import {
   AddEthereumChainParameter,
-  Chain,
   ChainKey,
   ChainType,
   CoinKey,
+  ExtendedChain,
+  Token,
 } from '../types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
@@ -14,7 +15,7 @@ const mockedApiService = ApiService as jest.Mocked<typeof ApiService>
 
 let chainsService: ChainsService
 
-const chain1: Chain = {
+const chain1: ExtendedChain = {
   chainType: ChainType.EVM,
   key: ChainKey.ETH,
   name: 'Ethereum',
@@ -22,9 +23,10 @@ const chain1: Chain = {
   id: 1,
   mainnet: true,
   metamask: {} as AddEthereumChainParameter,
+  nativeToken: {} as Token,
 }
 
-const chain2: Chain = {
+const chain2: ExtendedChain = {
   chainType: ChainType.EVM,
   key: ChainKey.POL,
   name: 'Polygon',
@@ -32,6 +34,7 @@ const chain2: Chain = {
   id: 137,
   mainnet: true,
   metamask: {} as AddEthereumChainParameter,
+  nativeToken: {} as Token,
 }
 
 describe('ChainsService', () => {

@@ -9,10 +9,10 @@ import {
 import axios from 'axios'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
-  Chain,
   ChainId,
   ChainKey,
   ChainsResponse,
+  ExtendedChain,
   PossibilitiesRequest,
   PossibilitiesResponse,
   RoutesRequest,
@@ -245,7 +245,9 @@ const getStatus = async (
   }
 }
 
-const getChains = async (options?: RequestOptions): Promise<Chain[]> => {
+const getChains = async (
+  options?: RequestOptions
+): Promise<ExtendedChain[]> => {
   const configService = ConfigService.getInstance()
   const config = configService.getConfig()
 
