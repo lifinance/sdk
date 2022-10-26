@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.6.3](https://github.com/lifinance/sdk/compare/v1.6.2...v1.6.3) (2022-10-26)
+
+
+### Bug Fixes
+
+* getChains types ([06f969b](https://github.com/lifinance/sdk/commit/06f969b18ce778cb66e8f14993cc8a215a1213e8))
+
 ### [1.6.2](https://github.com/lifinance/sdk/compare/v1.6.1...v1.6.2) (2022-10-26)
 
 ### [1.6.1](https://github.com/lifinance/sdk/compare/v1.6.0...v1.6.1) (2022-10-24)
