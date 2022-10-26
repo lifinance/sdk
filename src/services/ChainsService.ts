@@ -1,11 +1,11 @@
-import { Chain, ChainId } from '@lifi/types'
+import { ChainId, ExtendedChain } from '@lifi/types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 
 export default class ChainsService {
   private static instance: ChainsService
   private readonly loadingPromise: Promise<void>
-  private chains: Chain[] = []
+  private chains: ExtendedChain[] = []
 
   constructor() {
     this.loadingPromise = this.loadAvailableChains()
@@ -23,7 +23,7 @@ export default class ChainsService {
     return this.instance
   }
 
-  public async getChainById(chainId: ChainId): Promise<Chain> {
+  public async getChainById(chainId: ChainId): Promise<ExtendedChain> {
     if (this.loadingPromise) {
       await this.loadingPromise
     }
@@ -36,7 +36,7 @@ export default class ChainsService {
     return chain
   }
 
-  public async getChains(): Promise<Chain[]> {
+  public async getChains(): Promise<ExtendedChain[]> {
     if (this.loadingPromise) {
       await this.loadingPromise
     }

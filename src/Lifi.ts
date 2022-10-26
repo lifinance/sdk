@@ -5,6 +5,7 @@ import {
   ChainId,
   ChainKey,
   ContractCallQuoteRequest,
+  ExtendedChain,
   GetStatusRequest,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -205,7 +206,7 @@ export default class LIFI {
    * @return {Promise<Chain[]>} A list of all available chains
    * @throws {LifiError} Throws a LifiError if request fails.
    */
-  getChains = async (): Promise<Chain[]> => {
+  getChains = async (): Promise<ExtendedChain[]> => {
     return this.chainsService.getChains()
   }
 
