@@ -1116,12 +1116,12 @@
     "@jridgewell/resolve-uri" "3.1.0"
     "@jridgewell/sourcemap-codec" "1.4.14"
 
-"@lifi/types@^1.11.1":
-  version "1.11.1"
-  resolved "https://registry.yarnpkg.com/@lifi/types/-/types-1.11.1.tgz#f87d420989104240d12a6bd262bd6d8f44007568"
-  integrity sha512-DU1NnmfRUp8YLWzRoaev+kAaAXAwB+orFhQLPXY58rH0TocKcdV/tYvyzH82+67PpAAtOyImggULQl/i5YSatw==
+"@lifi/types@^1.16.0":
+  version "1.16.0"
+  resolved "https://registry.yarnpkg.com/@lifi/types/-/types-1.16.0.tgz#d738a8f2053134d546f26598ef6bc7af3bdd17ac"
+  integrity sha512-pngYZqvXtBELw9BCSgu0biAN8FO0jgjZWcIn/5QNXNB8PTKe0Y3ZdmMrY4ofXCWounC4reNSjKxnObF0/5dqNw==
   dependencies:
-    ethers "^5.6.9"
+    ethers "^5.7.2"
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -2692,7 +2692,7 @@ eth-rpc-errors@^4.0.3:
   dependencies:
     fast-safe-stringify "^2.0.6"
 
-ethers@^5.6.9, ethers@^5.7.2:
+ethers@^5.7.2:
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.7.2.tgz#3a7deeabbb8c030d4126b24f84e525466145872e"
   integrity sha512-wswUsmWo1aOK8rR7DIKiWSw9DbLWe6x98Jrn8wcTflTVvaXhAMaB5zGAXy0GYQEQp9iO1iSHWVyARQm11zUtyg==
