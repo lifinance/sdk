@@ -16,8 +16,11 @@ interface Receipt {
   fromAmount?: string
   toAmount?: string
   toToken?: Token
-  gasUsed?: string
   gasPrice?: string
+  gasUsed?: string
+  gasToken?: Token
+  gasAmount?: string
+  gasAmountUSD?: string
 }
 
 type InternalUpdateRouteCallback = (route: Route) => void

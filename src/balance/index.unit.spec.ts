@@ -1,5 +1,5 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
-import balances from '.'
+import { getTokenBalance, getTokenBalances, getTokenBalancesForChains } from '.'
 import utils from './utils'
 
 jest.mock('./utils')
@@ -16,7 +16,7 @@ describe('balances', () => {
     it('should load a token', () => {
       mockedUtils.getBalances.mockReturnValue(Promise.resolve([]))
       const token = findDefaultToken(CoinKey.WETH, ChainId.ETH)
-      balances.getTokenBalance(defaultWalletAddress, token)
+      getTokenBalance(defaultWalletAddress, token)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(1)
     })
   })
@@ -24,10 +24,7 @@ describe('balances', () => {
   describe('getTokenBalances', () => {
     it('should handle emty list', async () => {
       const tokens: Token[] = []
-      const result = await balances.getTokenBalances(
-        defaultWalletAddress,
-        tokens
-      )
+      const result = await getTokenBalances(defaultWalletAddress, tokens)
       expect(result).toEqual([])
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(0)
     })
@@ -38,7 +35,7 @@ describe('balances', () => {
         findDefaultToken(CoinKey.WETH, ChainId.ETH),
         findDefaultToken(CoinKey.USDC, ChainId.ETH),
       ]
-      balances.getTokenBalances(defaultWalletAddress, tokens)
+      getTokenBalances(defaultWalletAddress, tokens)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(1)
     })
 
@@ -49,7 +46,7 @@ describe('balances', () => {
         findDefaultToken(CoinKey.USDC, ChainId.POL),
         findDefaultToken(CoinKey.DAI, ChainId.POL),
       ]
-      balances.getTokenBalances(defaultWalletAddress, tokens)
+      getTokenBalances(defaultWalletAddress, tokens)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
     })
   })
@@ -61,7 +58,7 @@ describe('balances', () => {
         [ChainId.ETH]: [],
         [ChainId.POL]: [],
       }
-      balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
+      getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
     })
 
@@ -74,7 +71,7 @@ describe('balances', () => {
           findDefaultToken(CoinKey.MATIC, ChainId.POL),
         ],
       }
-      balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
+      getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
     })
 
@@ -87,7 +84,7 @@ describe('balances', () => {
           findDefaultToken(CoinKey.MATIC, ChainId.POL),
         ],
       }
-      balances.getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
+      getTokenBalancesForChains(defaultWalletAddress, tokensByChain)
       expect(mockedUtils.getBalances).toHaveBeenCalledTimes(2)
     })
   })

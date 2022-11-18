@@ -100,7 +100,7 @@ const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
     DONE: 'Transaction approved.',
   },
   RECEIVING_CHAIN: {
-    PENDING: 'Waiting for receiving chain.',
+    PENDING: 'Waiting for destination chain.',
     DONE: 'Funds received.',
   },
   TRANSACTION: {},
