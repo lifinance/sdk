@@ -19,20 +19,11 @@ export type ParsedReceipt = {
   toTokenAddress?: string
 }
 
-interface ExecutionParams {
+export interface ExecutionParams {
   signer: Signer
   step: Step
   statusManager: StatusManager
   settings: InternalExecutionSettings
-}
-
-export interface ExecuteSwapParams extends ExecutionParams {
-  step: Step
-}
-
-export interface ExecuteCrossParams extends ExecutionParams {
-  // step: CrossStep | LifiStep
-  step: Step
 }
 
 export type CallbackFunction = (updatedRoute: Route) => void

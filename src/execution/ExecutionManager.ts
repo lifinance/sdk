@@ -5,7 +5,7 @@ import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
-import { ExecuteCrossParams } from '../types'
+import { ExecutionParams } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { getProvider } from '../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../utils/parseError'
@@ -26,7 +26,7 @@ export class ExecutionManager {
     step,
     statusManager,
     settings,
-  }: ExecuteCrossParams): Promise<Execution> => {
+  }: ExecutionParams): Promise<Execution> => {
     step.execution = statusManager.initExecutionObject(step)
 
     const chainsService = ChainsService.getInstance()
@@ -92,14 +92,15 @@ export class ExecutionManager {
             const updatedStep = await ApiService.getStepTransaction(
               personalizedStep
             )
+            const comparedStep = await stepComparison(
+              statusManager,
+              personalizedStep,
+              updatedStep,
+              settings.acceptSlippageUpdateHook,
+              this.allowUserInteraction
+            )
             step = {
-              ...(await stepComparison(
-                statusManager,
-                personalizedStep,
-                updatedStep,
-                settings.acceptSlippageUpdateHook,
-                this.allowUserInteraction
-              )),
+              ...comparedStep,
               execution: step.execution,
             }
           }
@@ -153,13 +154,12 @@ export class ExecutionManager {
           })
         }
 
-        const transactionReceipt = await transaction.wait()
+        await transaction.wait()
 
         process = statusManager.updateProcess(step, process.type, 'PENDING', {
           txHash: transaction.hash,
           txLink:
             fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
-          // TODO: add gas used info from transactionReceipt -----------------
         })
 
         if (isBridgeExecution) {
@@ -225,8 +225,11 @@ export class ExecutionManager {
         fromAmount: statusResponse.sending.amount,
         toAmount: statusResponse.receiving?.amount,
         toToken: statusResponse.receiving?.token,
-        gasUsed: statusResponse.sending.gasUsed,
+        gasAmount: statusResponse.sending.gasAmount,
+        gasAmountUSD: statusResponse.sending.gasAmountUSD,
         gasPrice: statusResponse.sending.gasPrice,
+        gasToken: statusResponse.sending.gasToken,
+        gasUsed: statusResponse.sending.gasUsed,
       })
     } catch (e: unknown) {
       process = statusManager.updateProcess(step, process.type, 'FAILED', {
