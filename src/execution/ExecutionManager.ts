@@ -96,7 +96,7 @@ export class ExecutionManager {
               statusManager,
               personalizedStep,
               updatedStep,
-              settings.acceptSlippageUpdateHook,
+              settings,
               this.allowUserInteraction
             )
             step = {

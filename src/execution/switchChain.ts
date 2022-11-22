@@ -59,17 +59,12 @@ export const switchChain = async (
     statusManager.updateExecution(step, 'PENDING')
     return updatedSigner
   } catch (error: any) {
-    switchProcess = statusManager.updateProcess(
-      step,
-      switchProcess.type,
-      'FAILED',
-      {
-        error: {
-          message: error.message,
-          code: LifiErrorCode.ChainSwitchError,
-        },
-      }
-    )
+    statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
+      error: {
+        message: error.message,
+        code: LifiErrorCode.ChainSwitchError,
+      },
+    })
     statusManager.updateExecution(step, 'FAILED')
     throw error
   }

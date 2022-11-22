@@ -62,24 +62,29 @@ export type AcceptSlippageUpdateHook = (
   params: AcceptSlippageUpdateHookParams
 ) => Promise<boolean | undefined>
 
+export interface ExchangeRateUpdateParams {
+  toToken: Token
+  oldToAmount: string
+  newToAmount: string
+}
+
+export type AcceptExchangeRateUpdateHook = (
+  params: ExchangeRateUpdateParams
+) => Promise<boolean | undefined>
+
 export interface ExecutionData {
   route: Route
   executors: StepExecutor[]
   settings: InternalExecutionSettings
 }
 
-export interface ExecutionSettings {
-  updateCallback?: CallbackFunction
-  switchChainHook?: SwitchChainHook
-  acceptSlippageUpdateHook?: AcceptSlippageUpdateHook
-  infiniteApproval?: boolean
-  executeInBackground?: boolean
-}
+export type ExecutionSettings = Partial<InternalExecutionSettings>
 
-export interface InternalExecutionSettings extends ExecutionSettings {
+export interface InternalExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
   acceptSlippageUpdateHook: AcceptSlippageUpdateHook
+  acceptExchangeRateUpdateHook: AcceptExchangeRateUpdateHook
   infiniteApproval: boolean
   executeInBackground: boolean
 }

@@ -20,7 +20,7 @@ export enum LifiErrorCode {
   ChainSwitchError = 1007,
   TransactionUnprepared = 1008,
   GasLimitError = 1009,
-  SlippageNotMet = 1010,
+  TransactionCanceled = 1010,
   SlippageError = 1011,
   TransactionRejected = 1012,
   BalanceError = 1013,

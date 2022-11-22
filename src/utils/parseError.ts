@@ -95,6 +95,14 @@ export const getTransactionFailedMessage = (
     : baseString
 }
 
+export const getExchangeRateChangedMessage = (step: Step) => {
+  const { slippage } = step.action
+  return `Transaction was not sent, your funds are still in your wallet.
+  The updated quote for the current transaction does not meet your set slippage of ${
+    slippage * 100
+  }%.`
+}
+
 export const parseError = async (
   e: any,
   step?: Step,
@@ -227,12 +235,4 @@ export const parseBackendError = (e: any): LifiError => {
   }
 
   return new ServerError('Something went wrong.', undefined, e.stack)
-}
-
-export const getSlippageNotMetMessage = (step: Step) => {
-  const { slippage } = step.action
-  return `Transaction was not sent, your funds are still in your wallet.
-  The updated quote for the current transaction does not meet your set slippage of ${
-    slippage * 100
-  }%.`
 }

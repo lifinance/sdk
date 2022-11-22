@@ -1,13 +1,13 @@
 import { StatusManager } from '.'
-import { AcceptSlippageUpdateHook, Step } from '../types'
+import { InternalExecutionSettings, Step } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
-import { getSlippageNotMetMessage } from '../utils/parseError'
-import { updatedStepMeetsSlippageConditions } from './utils'
+import { getExchangeRateChangedMessage } from '../utils/parseError'
+import { checkStepSlippageThreshold } from './utils'
 
 /**
- * This method checks whether the new and updated Step meets the required slippage conditions.
+ * This method checks whether the new and updated Step meets the required exchange rate conditions.
  * If yes it returns the updated Step.
- * If no and if user interaction is allowed it triggers the acceptSlippageUpdateHook. If no user interaction is allowed it aborts.
+ * If no and if user interaction is allowed it triggers the acceptExchangeRateUpdateHook. If no user interaction is allowed it aborts.
  *
  * @param statusManager
  * @param oldStep
@@ -19,28 +19,33 @@ export const stepComparison = async (
   statusManager: StatusManager,
   oldStep: Step,
   newStep: Step,
-  acceptSlippageUpdateHook: AcceptSlippageUpdateHook,
+  settings: InternalExecutionSettings,
   allowUserInteraction: boolean
 ): Promise<Step> => {
-  if (updatedStepMeetsSlippageConditions(oldStep, newStep)) {
+  // Check if changed exchange rate is in the range of slippage threshold
+  if (checkStepSlippageThreshold(oldStep, newStep)) {
     return statusManager.updateStepInRoute(newStep)
   }
+
+  const acceptExchangeRateUpdateHook =
+    settings.acceptExchangeRateUpdateHook ?? settings.acceptSlippageUpdateHook
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
-    allowStepUpdate = await acceptSlippageUpdateHook({
+    allowStepUpdate = await acceptExchangeRateUpdateHook({
       oldToAmount: oldStep.estimate.toAmount,
       newToAmount: newStep.estimate.toAmount,
       toToken: newStep.action.toToken,
       oldSlippage: oldStep.action.slippage,
       newSlippage: newStep.action.slippage,
-    })
+    } as any)
   }
 
   if (!allowStepUpdate) {
+    // The user declined the new exchange rate, so we are not going to proceed
     throw new TransactionError(
-      LifiErrorCode.SlippageNotMet,
-      'Slippage conditions not met!',
-      getSlippageNotMetMessage(oldStep)
+      LifiErrorCode.TransactionCanceled,
+      'Exchange rate has changed!',
+      getExchangeRateChangedMessage(oldStep)
     )
   }
 

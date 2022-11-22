@@ -151,7 +151,8 @@ export function getSubstatusMessage(
   return message
 }
 
-export function updatedStepMeetsSlippageConditions(
+// Used to check if changed exchange rate is in the range of slippage threshold
+export function checkStepSlippageThreshold(
   oldStep: Step,
   newStep: Step
 ): boolean {
