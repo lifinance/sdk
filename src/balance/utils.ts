@@ -44,7 +44,7 @@ const getBalances = async (
   tokens.forEach((token) => {
     if (token.chainId !== chainId) {
       // eslint-disable-next-line no-console
-      console.warn(`Requested tokens have to be on same chain.`)
+      console.warn(`Requested tokens have to be on the same chain.`)
       return []
     }
   })
