@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import BigNumber from 'bignumber.js'
 import { constants, ContractTransaction, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
+import { StatusManager } from '../execution/StatusManager'
 import { Chain, InternalExecutionSettings, Process, Step } from '../types'
 import { getProvider } from '../utils/getProvider'
 import { parseError } from '../utils/parseError'
-import { StatusManager } from './StatusManager'
 
 export const checkAllowance = async (
   signer: Signer,

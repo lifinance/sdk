@@ -16,8 +16,11 @@ interface Receipt {
   fromAmount?: string
   toAmount?: string
   toToken?: Token
-  gasUsed?: string
   gasPrice?: string
+  gasUsed?: string
+  gasToken?: Token
+  gasAmount?: string
+  gasAmountUSD?: string
 }
 
 type InternalUpdateRouteCallback = (route: Route) => void
@@ -95,9 +98,10 @@ export class StatusManager {
     }
     step.execution.status = status
     if (receipt) {
-      step.execution.fromAmount = receipt.fromAmount
-      step.execution.toAmount = receipt.toAmount
-      step.execution.toToken = receipt.toToken
+      step.execution = {
+        ...step.execution,
+        ...receipt,
+      }
     }
     this.updateStepInRoute(step)
     return step

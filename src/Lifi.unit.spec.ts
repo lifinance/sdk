@@ -1,9 +1,9 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
-import balances from './balances'
+import * as balance from './balance'
 import Lifi from './Lifi'
 
-jest.mock('./balances')
-const mockedBalances = balances as jest.Mocked<typeof balances>
+jest.mock('./balance')
+const mockedBalances = balance as jest.Mocked<typeof balance>
 
 let lifi: Lifi
 

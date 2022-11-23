@@ -88,20 +88,20 @@ const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
     DONE: 'Chain switched successfully.',
   },
   SWAP: {
-    STARTED: 'Preparing swap.',
+    STARTED: 'Preparing swap transaction.',
     ACTION_REQUIRED: 'Please sign the transaction.',
-    PENDING: 'Swapping.',
+    PENDING: 'Waiting for swap transaction.',
     DONE: 'Swap completed.',
   },
   CROSS_CHAIN: {
-    STARTED: 'Preparing transaction.',
+    STARTED: 'Preparing bridge transaction.',
     ACTION_REQUIRED: 'Please sign the transaction.',
-    PENDING: 'Waiting for transaction.',
-    DONE: 'Transaction approved.',
+    PENDING: 'Waiting for bridge transaction.',
+    DONE: 'Bridge transaction confirmed.',
   },
   RECEIVING_CHAIN: {
-    PENDING: 'Waiting for receiving chain.',
-    DONE: 'Funds received.',
+    PENDING: 'Waiting for destination chain.',
+    DONE: 'Bridge completed.',
   },
   TRANSACTION: {},
 }
@@ -151,7 +151,8 @@ export function getSubstatusMessage(
   return message
 }
 
-export function updatedStepMeetsSlippageConditions(
+// Used to check if changed exchange rate is in the range of slippage threshold
+export function checkStepSlippageThreshold(
   oldStep: Step,
   newStep: Step
 ): boolean {

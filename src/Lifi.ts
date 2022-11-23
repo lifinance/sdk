@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { FallbackProvider } from '@ethersproject/providers'
 import {
-  Chain,
   ChainId,
   ChainKey,
   ContractCallQuoteRequest,
@@ -32,7 +31,7 @@ import {
   RevokeApprovalRequest,
   revokeTokenApproval,
 } from './allowance'
-import balances from './balances'
+import * as balance from './balance'
 import { getRpcProvider } from './connectors'
 import { StatusManager } from './execution/StatusManager'
 import { StepExecutor } from './execution/StepExecutor'
@@ -498,7 +497,7 @@ export default class LIFI {
       )
     }
 
-    return balances.getTokenBalance(walletAddress, token)
+    return balance.getTokenBalance(walletAddress, token)
   }
 
   /**
@@ -523,14 +522,14 @@ export default class LIFI {
       )
     }
 
-    return balances.getTokenBalances(walletAddress, tokens)
+    return balance.getTokenBalances(walletAddress, tokens)
   }
 
   /**
    * This method queries the balances of tokens for a specific list of chains for a given wallet.
    * @param {string} walletAddress - A walletaddress.
    * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
-   * @return {Promise<{ [chainId: number]: TokenAmount[] }} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
+   * @return {Promise<{ [chainId: number]: TokenAmount[] }>} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalancesForChains = async (
@@ -549,7 +548,7 @@ export default class LIFI {
       )
     }
 
-    return balances.getTokenBalancesForChains(walletAddress, tokensByChain)
+    return balance.getTokenBalancesForChains(walletAddress, tokensByChain)
   }
 
   /**

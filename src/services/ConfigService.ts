@@ -11,6 +11,7 @@ const DefaultExecutionSettings: InternalExecutionSettings = {
   updateCallback: () => {},
   switchChainHook: () => Promise.resolve(undefined),
   acceptSlippageUpdateHook: () => Promise.resolve(undefined),
+  acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
   infiniteApproval: false,
   executeInBackground: false,
 }

@@ -31,6 +31,7 @@ describe('StatusManager', () => {
         updateCallback: updateCallbackMock,
         switchChainHook: () => Promise.resolve(undefined),
         acceptSlippageUpdateHook: () => Promise.resolve(undefined),
+        acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
         infiniteApproval: false,
         executeInBackground: false,
       },
@@ -163,7 +164,7 @@ describe('StatusManager', () => {
 
           expect(process.type).toEqual('CROSS_CHAIN')
           expect(process.status).toEqual('STARTED')
-          expect(process.message).toEqual('Preparing transaction.')
+          expect(process.message).toEqual('Preparing bridge transaction.')
 
           const updatedExecution = Object.assign({}, step.execution, {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

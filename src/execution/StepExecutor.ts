@@ -1,14 +1,6 @@
 import { Signer } from 'ethers'
-import {
-  CrossStep,
-  InteractionSettings,
-  InternalExecutionSettings,
-  LifiStep,
-  Step,
-  SwapStep,
-} from '../types'
-import { BridgeExecutionManager } from './bridges/bridge.execute'
-import { SwapExecutionManager } from './exchanges/swap.execute'
+import { InteractionSettings, InternalExecutionSettings, Step } from '../types'
+import { ExecutionManager } from './ExecutionManager'
 import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
@@ -20,10 +12,9 @@ const defaultInteractionSettings = {
 }
 
 export class StepExecutor {
-  settings: InternalExecutionSettings
+  executionManager: ExecutionManager
   statusManager: StatusManager
-  private swapExecutionManager = new SwapExecutionManager()
-  private bridgeExecutionManager = new BridgeExecutionManager()
+  settings: InternalExecutionSettings
 
   allowUserInteraction = true
   executionStopped = false
@@ -32,6 +23,7 @@ export class StepExecutor {
     statusManager: StatusManager,
     settings: InternalExecutionSettings
   ) {
+    this.executionManager = new ExecutionManager()
     this.statusManager = statusManager
     this.settings = settings
   }
@@ -42,12 +34,7 @@ export class StepExecutor {
       ...settings,
     }
     this.allowUserInteraction = interactionSettings.allowInteraction
-    this.swapExecutionManager.allowInteraction(
-      interactionSettings.allowInteraction
-    )
-    this.bridgeExecutionManager.allowInteraction(
-      interactionSettings.allowInteraction
-    )
+    this.executionManager.allowInteraction(interactionSettings.allowInteraction)
     this.statusManager.allowUpdates(interactionSettings.allowUpdates)
     this.executionStopped = interactionSettings.stopExecution
   }
@@ -76,40 +63,15 @@ export class StepExecutor {
 
     signer = updatedSigner
 
-    switch (step.type) {
-      case 'lifi':
-      case 'cross':
-        await this.executeCross(signer, step)
-        break
-      case 'swap':
-        await this.executeSwap(signer, step)
-        break
-      default:
-        throw new Error('Unsupported step type.')
+    const parameters = {
+      signer,
+      step,
+      settings: this.settings,
+      statusManager: this.statusManager,
     }
+
+    await this.executionManager.execute(parameters)
 
     return step
-  }
-
-  private executeSwap = (signer: Signer, step: SwapStep) => {
-    const swapParams = {
-      signer,
-      step,
-      settings: this.settings,
-      statusManager: this.statusManager,
-    }
-
-    return this.swapExecutionManager.execute(swapParams)
-  }
-
-  private executeCross = (signer: Signer, step: CrossStep | LifiStep) => {
-    const crossParams = {
-      signer,
-      step,
-      settings: this.settings,
-      statusManager: this.statusManager,
-    }
-
-    return this.bridgeExecutionManager.execute(crossParams)
   }
 }

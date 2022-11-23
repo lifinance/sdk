@@ -1,7 +1,7 @@
 import { Token, TokenAmount } from '@lifi/types'
 import utils from './utils'
 
-const getTokenBalance = async (
+export const getTokenBalance = async (
   walletAddress: string,
   token: Token
 ): Promise<TokenAmount | null> => {
@@ -9,7 +9,7 @@ const getTokenBalance = async (
   return tokenAmounts.length ? tokenAmounts[0] : null
 }
 
-const getTokenBalances = async (
+export const getTokenBalances = async (
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -29,7 +29,7 @@ const getTokenBalances = async (
   return Object.values(tokenAmountsByChain).flat()
 }
 
-const getTokenBalancesForChains = async (
+export const getTokenBalancesForChains = async (
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }> => {
@@ -45,10 +45,4 @@ const getTokenBalancesForChains = async (
 
   await Promise.allSettled(promises)
   return tokenAmountsByChain
-}
-
-export default {
-  getTokenBalance,
-  getTokenBalances,
-  getTokenBalancesForChains,
 }

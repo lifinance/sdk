@@ -20,9 +20,10 @@ export enum LifiErrorCode {
   ChainSwitchError = 1007,
   TransactionUnprepared = 1008,
   GasLimitError = 1009,
-  SlippageNotMet = 1010,
+  TransactionCanceled = 1010,
   SlippageError = 1011,
   TransactionRejected = 1012,
+  BalanceError = 1013,
 }
 
 export enum MetaMaskRPCErrorCode {
@@ -144,6 +145,18 @@ export class SlippageError extends LifiError {
     super(
       ErrorType.SlippageError,
       LifiErrorCode.SlippageError,
+      message,
+      htmlMessage,
+      stack
+    )
+  }
+}
+
+export class BalanceError extends LifiError {
+  constructor(message: string, htmlMessage?: string, stack?: string) {
+    super(
+      ErrorType.ValidationError,
+      LifiErrorCode.BalanceError,
       message,
       htmlMessage,
       stack
