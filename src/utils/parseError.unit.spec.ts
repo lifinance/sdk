@@ -17,7 +17,7 @@ describe('parseError', () => {
       })
 
       it('should return an UnknownError with the given message', async () => {
-        const parsedError = await await parseError({
+        const parsedError = await parseError({
           message: 'Somethings fishy',
         })
 
