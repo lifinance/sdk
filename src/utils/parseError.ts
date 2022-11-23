@@ -95,14 +95,6 @@ export const getTransactionFailedMessage = (
     : baseString
 }
 
-export const getExchangeRateChangedMessage = (step: Step) => {
-  const { slippage } = step.action
-  return `Transaction was not sent, your funds are still in your wallet.
-  The updated quote for the current transaction does not meet your set slippage of ${
-    slippage * 100
-  }%.`
-}
-
 export const parseError = async (
   e: any,
   step?: Step,
