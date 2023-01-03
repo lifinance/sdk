@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
 import { Route, Status, Step } from '../types'
 import { deepClone } from '../utils/utils'
@@ -7,8 +8,8 @@ import { StatusManager } from './StatusManager'
 
 describe('StatusManager', () => {
   let statusManager: StatusManager
-  let internalUpdateRouteCallbackMock: jest.Mock
-  let updateCallbackMock: jest.Mock
+  let internalUpdateRouteCallbackMock: Mock
+  let updateCallbackMock: Mock
   let route: Route
   let step: Step
 
@@ -40,8 +41,8 @@ describe('StatusManager', () => {
   }
 
   beforeEach(() => {
-    internalUpdateRouteCallbackMock = jest.fn()
-    updateCallbackMock = jest.fn()
+    internalUpdateRouteCallbackMock = vi.fn()
+    updateCallbackMock = vi.fn()
   })
 
   describe('initExecutionObject', () => {

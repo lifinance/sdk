@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ES2017",
     "strict": true,
     "module": "ESNext",
     "moduleResolution": "Node",
+    "allowJs": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true /* Generates corresponding '.d.ts' file. */,
     "outDir": "./dist" /* Redirect output structure to the directory. */
   },
-  "include": ["./src/**/*"],
+  "include": ["./src/**/*", "test/server.ts"],
   "exclude": ["./test", "./src/**/*.spec.ts"]
 }

@@ -33,7 +33,7 @@ const balanceAbi = [
   },
 ]
 
-const getBalances = async (
+export const getBalances = async (
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
