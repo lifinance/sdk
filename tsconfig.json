@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "strict": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "allowJs": true,
-    "resolveJsonModule": true,
+    "declaration": true /* Generates corresponding '.d.ts' file. */,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "declaration": true /* Generates corresponding '.d.ts' file. */,
-    "outDir": "./dist" /* Redirect output structure to the directory. */
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist" /* Redirect output structure to the directory. */,
+    "resolveJsonModule": true,
+    "strict": true,
+    "target": "ES2020",
   },
   "include": ["./src/**/*", "test/server.ts"],
   "exclude": ["./test", "./src/**/*.spec.ts"]
