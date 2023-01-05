@@ -5,7 +5,7 @@
     "forceConsistentCasingInFileNames": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Node",
     "outDir": "./dist" /* Redirect output structure to the directory. */,
     "resolveJsonModule": true,
     "strict": true,
