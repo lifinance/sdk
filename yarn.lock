@@ -718,10 +718,10 @@
     "@jridgewell/resolve-uri" "3.1.0"
     "@jridgewell/sourcemap-codec" "1.4.14"
 
-"@lifi/types@^1.21.0":
-  version "1.21.0"
-  resolved "https://registry.yarnpkg.com/@lifi/types/-/types-1.21.0.tgz#a0c56ece1881eabc399f611b338b362bd3a40668"
-  integrity sha512-f9Zg0jbYhlZ1qnFIhwM04j55Vq5vTdO2MVVBm7CVY+1UhYz52v7wvYCdjEB5A45y0DbrzY/SllkOq/MbD4rVDA==
+"@lifi/types@^1.22.0":
+  version "1.22.0"
+  resolved "https://registry.yarnpkg.com/@lifi/types/-/types-1.22.0.tgz#f3c67dc213ee0fb7abb2b94da41188001ac7c58a"
+  integrity sha512-XtypbyMtxj3ihNt7PuiWSp6f2prEp5wfaj9UEnUjlI63lRoSngfM6ww699ChFY80quU4CvAEsXeOdZSRZ2Kc+g==
   dependencies:
     ethers "^5.7.2"
 
