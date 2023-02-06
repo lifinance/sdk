@@ -1,7 +1,7 @@
-import fs from 'fs'
-import Path from 'path'
-
-const __dirname = Path.resolve()
+/* eslint-disable */
+const fs = require('fs')
+const Path = require('path')
+/* eslint-enable */
 
 const deleteFolderRecursive = (path) => {
   if (fs.existsSync(path)) {

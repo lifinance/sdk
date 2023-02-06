@@ -2,9 +2,8 @@
   "name": "@lifi/sdk",
   "version": "1.7.2",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
-  "type": "module",
-  "exports": "./dist/index.js",
-  "main": "./dist/index.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "watch": "tsc -w -p ./tsconfig.json",
