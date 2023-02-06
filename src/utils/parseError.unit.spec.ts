@@ -154,7 +154,7 @@ describe('parseError', () => {
           expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
         })
 
-        it('should return the axios statusText if message not set', async () => {
+        it('should return the statusText if message not set', async () => {
           const parsedError = await parseBackendError({
             response: {
               status: 400,
@@ -182,7 +182,7 @@ describe('parseError', () => {
           expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
         })
 
-        it('should return the axios statusText if message not set', async () => {
+        it('should return the statusText if message not set', async () => {
           const parsedError = await parseBackendError({
             response: {
               status: 500,

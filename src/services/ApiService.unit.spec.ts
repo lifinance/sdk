@@ -9,7 +9,6 @@ import {
   StepTool,
   StepType,
 } from '@lifi/types'
-import ky from 'ky-universal'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import {
@@ -27,8 +26,7 @@ import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
 
-const mockedKyPost = vi.spyOn(ky, 'post')
-const mockedKyGet = vi.spyOn(ky, 'get')
+const mockedFetch = vi.spyOn(globalThis, 'fetch')
 
 describe('ApiService', () => {
   const config = ConfigService.getInstance().getConfig()
@@ -78,7 +76,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid fromAmount type', async () => {
@@ -89,7 +87,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid fromTokenAddress type', async () => {
@@ -100,7 +98,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid toChainId type', async () => {
@@ -111,7 +109,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid toTokenAddress type', async () => {
@@ -120,7 +118,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid options type', async () => {
@@ -131,7 +129,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedKyPost).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
@@ -142,7 +140,7 @@ describe('ApiService', () => {
           await expect(ApiService.getRoutes(request)).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -150,7 +148,7 @@ describe('ApiService', () => {
         it('call the server once', async () => {
           const request = getRoutesRequest({})
           await ApiService.getRoutes(request)
-          expect(mockedKyPost).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -171,7 +169,7 @@ describe('ApiService', () => {
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -179,7 +177,7 @@ describe('ApiService', () => {
         it('call the server once', async () => {
           await ApiService.getPossibilities()
 
-          expect(mockedKyPost).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -195,14 +193,14 @@ describe('ApiService', () => {
         ).rejects.toThrowError(
           new ValidationError('Required parameter "chain" is missing.')
         )
-        expect(mockedKyGet).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
           new ValidationError('Required parameter "token" is missing.')
         )
-        expect(mockedKyGet).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
@@ -218,7 +216,7 @@ describe('ApiService', () => {
           await expect(
             ApiService.getToken(ChainId.DAI, 'DAI')
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -226,7 +224,7 @@ describe('ApiService', () => {
         it('call the server once', async () => {
           await ApiService.getToken(ChainId.DAI, 'DAI')
 
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -320,7 +318,7 @@ describe('ApiService', () => {
           new ValidationError('Required parameter "toToken" is missing.')
         )
 
-        expect(mockedKyGet).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
@@ -343,7 +341,7 @@ describe('ApiService', () => {
               toToken,
             })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -358,7 +356,7 @@ describe('ApiService', () => {
             toToken,
           })
 
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -418,7 +416,7 @@ describe('ApiService', () => {
           new ValidationError('Required parameter "txHash" is missing.')
         )
 
-        expect(mockedKyGet).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
@@ -434,7 +432,7 @@ describe('ApiService', () => {
           await expect(
             ApiService.getStatus({ bridge, fromChain, toChain, txHash })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -442,7 +440,7 @@ describe('ApiService', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
 
-          expect(mockedKyGet).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -460,7 +458,7 @@ describe('ApiService', () => {
         await expect(ApiService.getChains()).rejects.toThrowError(
           new ServerError('Oops')
         )
-        expect(mockedKyGet).toHaveBeenCalledTimes(1)
+        expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -469,7 +467,7 @@ describe('ApiService', () => {
         const chains = await ApiService.getChains()
 
         expect(chains[0]?.id).toEqual(1)
-        expect(mockedKyGet).toHaveBeenCalledTimes(1)
+        expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -569,7 +567,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid type', async () => {
@@ -578,7 +576,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid tool', async () => {
@@ -587,7 +585,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         // more indepth checks for the action type should be done once we have real schema validation
@@ -597,7 +595,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         // more indepth checks for the estimate type should be done once we have real schema validation
@@ -609,7 +607,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedKyPost).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
       })
 
@@ -631,7 +629,7 @@ describe('ApiService', () => {
             await expect(
               ApiService.getStepTransaction(step)
             ).rejects.toThrowError(new ServerError('Oops'))
-            expect(mockedKyPost).toHaveBeenCalledTimes(1)
+            expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
 
@@ -640,7 +638,7 @@ describe('ApiService', () => {
             const step = getStep({})
 
             await ApiService.getStepTransaction(step)
-            expect(mockedKyPost).toHaveBeenCalledTimes(1)
+            expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
       })

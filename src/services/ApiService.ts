@@ -6,7 +6,6 @@ import {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
-import ky from 'ky-universal'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,
@@ -23,7 +22,7 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '../types'
-import { ValidationError } from '../utils/errors'
+import { HTTPError, ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
@@ -48,11 +47,18 @@ const getPossibilities = async (
 
   // send request
   try {
-    const response = await ky.post(`${config.apiUrl}/advanced/possibilities`, {
-      json: request,
+    const response = await fetch(`${config.apiUrl}/advanced/possibilities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
       signal: options?.signal,
     })
-    const data = await response.json<PossibilitiesResponse>()
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: PossibilitiesResponse = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -74,14 +80,19 @@ const getToken = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await ky.get(`${config.apiUrl}/token`, {
-      searchParams: {
+    const response = await fetch(
+      `${config.apiUrl}/token?${new URLSearchParams({
         chain,
         token,
-      },
-      signal: options?.signal,
-    })
-    const data = await response.json<Token>()
+      } as Record<string, string>)}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Token = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -139,11 +150,18 @@ const getQuote = async (
   )
 
   try {
-    const response = await ky.get(`${config.apiUrl}/quote`, {
-      searchParams: request as unknown as Record<string, string>,
-      signal: options?.signal,
-    })
-    const data = await response.json<Step>()
+    const response = await fetch(
+      `${config.apiUrl}/quote?${new URLSearchParams(
+        request as unknown as Record<string, string>
+      )}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -199,11 +217,18 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const response = await ky.post(`${config.apiUrl}/quote/contractCall`, {
-      json: request,
+    const response = await fetch(`${config.apiUrl}/quote/contractCall`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
       signal: options?.signal,
     })
-    const data = await response.json<Step>()
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -234,16 +259,21 @@ const getStatus = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await ky.get(`${config.apiUrl}/status`, {
-      searchParams: {
+    const response = await fetch(
+      `${config.apiUrl}/status?${new URLSearchParams({
         bridge,
         fromChain,
         toChain,
         txHash,
-      } as Record<string, string>,
-      signal: options?.signal,
-    })
-    const data = await response.json<StatusResponse>()
+      } as Record<string, string>)}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: StatusResponse = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -256,10 +286,13 @@ const getChains = async (
   const config = ConfigService.getInstance().getConfig()
 
   try {
-    const response = await ky.get(`${config.apiUrl}/chains`, {
+    const response = await fetch(`${config.apiUrl}/chains`, {
       signal: options?.signal,
     })
-    const data = await response.json<ChainsResponse>()
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: ChainsResponse = await response.json()
     return data.chains
   } catch (e) {
     throw await parseBackendError(e)
@@ -284,11 +317,18 @@ const getRoutes = async (
 
   // send request
   try {
-    const response = await ky.post(`${config.apiUrl}/advanced/routes`, {
-      json: request,
+    const response = await fetch(`${config.apiUrl}/advanced/routes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
       signal: options?.signal,
     })
-    const data = await response.json<RoutesResponse>()
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: RoutesResponse = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -307,14 +347,18 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await ky.post(
-      `${config.apiUrl}/advanced/stepTransaction`,
-      {
-        json: step,
-        signal: options?.signal,
-      }
-    )
-    const data = await response.json<Step>()
+    const response = await fetch(`${config.apiUrl}/advanced/stepTransaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(step),
+      signal: options?.signal,
+    })
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
     return data
   } catch (e) {
     throw await parseBackendError(e)
@@ -333,11 +377,18 @@ const getTools = async (
         delete request[key as keyof ToolsRequest]
     )
   }
-  const response = await ky.get(`${config.apiUrl}/tools`, {
-    searchParams: request as Record<string, string>,
-    signal: options?.signal,
-  })
-  const data = await response.json<ToolsResponse>()
+  const response = await fetch(
+    `${config.apiUrl}/tools?${new URLSearchParams(
+      request as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
+  if (!response.ok) {
+    throw new HTTPError(response)
+  }
+  const data: ToolsResponse = await response.json()
   return data
 }
 
@@ -353,11 +404,18 @@ const getTokens = async (
         delete request[key as keyof TokensRequest]
     )
   }
-  const response = await ky.get(`${config.apiUrl}/tokens`, {
-    searchParams: request as Record<string, string>,
-    signal: options?.signal,
-  })
-  const data = await response.json<TokensResponse>()
+  const response = await fetch(
+    `${config.apiUrl}/tokens?${new URLSearchParams(
+      request as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
+  if (!response.ok) {
+    throw new HTTPError(response)
+  }
+  const data: TokensResponse = await response.json()
   return data
 }
 

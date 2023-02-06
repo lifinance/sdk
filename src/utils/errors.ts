@@ -186,3 +186,19 @@ export class UnknownError extends LifiError {
     super(ErrorType.UnknownError, code, message, htmlMessage, stack)
   }
 }
+
+export class HTTPError extends Error {
+  public response: Response
+
+  constructor(response: Response) {
+    const code = response.status || response.status === 0 ? response.status : ''
+    const title = response.statusText || ''
+    const status = `${code} ${title}`.trim()
+    const reason = status ? `status code ${status}` : 'an unknown error'
+
+    super(`Request failed with ${reason}`)
+
+    this.name = 'HTTPError'
+    this.response = response
+  }
+}
