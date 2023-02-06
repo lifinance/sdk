@@ -87,7 +87,7 @@
     "@commitlint/config-conventional": "^17.4.2",
     "@typescript-eslint/eslint-plugin": "^5.50.0",
     "@typescript-eslint/parser": "^5.50.0",
-    "@vitest/coverage-c8": "^0.28.3",
+    "@vitest/coverage-c8": "^0.28.4",
     "cross-fetch": "^3.1.5",
     "eslint": "^8.33.0",
     "eslint-config-prettier": "^8.6.0",
@@ -101,7 +101,7 @@
     "standard-version": "^9.5.0",
     "ts-loader": "^9.4.1",
     "typescript": "^4.9.5",
-    "vitest": "^0.28.3"
+    "vitest": "^0.28.4"
   },
   "directories": {
     "test": "test"
