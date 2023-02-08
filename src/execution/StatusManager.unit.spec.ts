@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
 import { Route, Status, Step } from '../types'
-import { deepClone } from '../utils/utils'
 import { StatusManager } from './StatusManager'
 
-// Note: using `deepClone` when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
+// Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
 describe('StatusManager', () => {
   let statusManager: StatusManager
@@ -27,7 +26,7 @@ describe('StatusManager', () => {
     route = buildRouteObject({ step })
 
     return new StatusManager(
-      deepClone(route),
+      structuredClone(route),
       {
         updateCallback: updateCallbackMock,
         switchChainHook: () => Promise.resolve(undefined),
@@ -71,7 +70,7 @@ describe('StatusManager', () => {
     describe('when an execution is already defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.initExecutionObject(deepClone(step))
+        statusManager.initExecutionObject(structuredClone(step))
       })
 
       it('should not call the callbacks', () => {
@@ -90,7 +89,7 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         // function has to be wrapped into a function https://jestjs.io/docs/expect#tothrowerror
         expect(() =>
-          statusManager.updateExecution(deepClone(step), 'DONE')
+          statusManager.updateExecution(structuredClone(step), 'DONE')
         ).toThrow("Can't update empty execution.")
       })
     })
@@ -98,7 +97,7 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.updateExecution(deepClone(step), 'DONE', {
+        statusManager.updateExecution(structuredClone(step), 'DONE', {
           fromAmount: '123',
           toAmount: '312',
         })
@@ -132,7 +131,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess(deepClone(step), 'SWAP')
+          statusManager.findOrCreateProcess(structuredClone(step), 'SWAP')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -145,7 +144,7 @@ describe('StatusManager', () => {
       describe('and the process already exists', () => {
         it('should return the process and not call the callbacks', () => {
           const process = statusManager.findOrCreateProcess(
-            deepClone(step),
+            structuredClone(step),
             'TOKEN_ALLOWANCE'
           )
 
@@ -159,7 +158,7 @@ describe('StatusManager', () => {
       describe("and the process doesn't exist", () => {
         it('should create a process and call the callbacks with the updated route', () => {
           const process = statusManager.findOrCreateProcess(
-            deepClone(step),
+            structuredClone(step),
             'CROSS_CHAIN'
           )
 
@@ -195,7 +194,7 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         expect(() =>
           statusManager.updateProcess(
-            deepClone(step),
+            structuredClone(step),
             'CROSS_CHAIN',
             'CANCELLED'
           )
@@ -214,7 +213,7 @@ describe('StatusManager', () => {
         describe(`and the status is ${status}`, () => {
           it('should update the process and call the callbacks', () => {
             const process = statusManager.updateProcess(
-              deepClone(step),
+              structuredClone(step),
               'SWAP',
               status as Status
             )
@@ -259,7 +258,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
+          statusManager.removeProcess(structuredClone(step), 'TOKEN_ALLOWANCE')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -267,7 +266,7 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeProcess(deepClone(step), 'TOKEN_ALLOWANCE')
+        statusManager.removeProcess(structuredClone(step), 'TOKEN_ALLOWANCE')
       })
 
       it('should remove the process and call the callbacks', () => {

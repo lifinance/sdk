@@ -50,7 +50,6 @@ import {
 } from './types'
 import { ValidationError } from './utils/errors'
 import { handlePreRestart } from './utils/preRestart'
-import { deepClone } from './utils/utils'
 import { name, version } from './version'
 
 export default class LIFI {
@@ -314,7 +313,7 @@ export default class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     // Deep clone to prevent side effects
-    const clonedRoute = deepClone<Route>(route)
+    const clonedRoute = structuredClone<Route>(route)
 
     // Check if route is already running
     if (this.activeRouteDictionary[clonedRoute.id]) {
@@ -339,7 +338,7 @@ export default class LIFI {
     settings?: ExecutionSettings
   ): Promise<Route> => {
     // Deep clone to prevent side effects
-    const clonedRoute = deepClone<Route>(route)
+    const clonedRoute = structuredClone<Route>(route)
 
     const activeRoute = this.activeRouteDictionary[clonedRoute.id]
     if (activeRoute) {

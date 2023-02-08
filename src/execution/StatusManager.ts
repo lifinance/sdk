@@ -9,7 +9,6 @@ import {
   Step,
   Token,
 } from '../types'
-import { deepClone } from '../utils/utils'
 import { getProcessMessage } from './utils'
 
 interface Receipt {
@@ -68,7 +67,7 @@ export class StatusManager {
    */
   initExecutionObject = (step: Step): Execution => {
     const currentExecution =
-      step.execution || (deepClone(emptyExecution) as Execution)
+      step.execution || structuredClone<Execution>(emptyExecution)
 
     if (!step.execution) {
       step.execution = currentExecution
