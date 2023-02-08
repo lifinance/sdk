@@ -28,7 +28,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-        node: [16, 18]
+        node: 18
 
     steps:
       - uses: actions/checkout@v3
