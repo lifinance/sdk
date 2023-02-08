@@ -6,10 +6,6 @@ import { constants, Signer } from 'ethers'
 import { getRpcProvider } from '../connectors'
 import { ChainId, Step } from '../types'
 
-export const deepClone = <T>(src: T): T => {
-  return JSON.parse(JSON.stringify(src))
-}
-
 export const sleep = (mills: number): Promise<undefined> => {
   return new Promise((resolve) => {
     setTimeout(resolve, mills)
