@@ -1,5 +1,6 @@
 import { ExternalProvider } from '@ethersproject/providers'
 import { LifiStep, Route, Step, Token } from '@lifi/types'
+import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -93,8 +94,12 @@ export const checkPackageUpdates = async (
 }
 
 export const convertStepToRoute = (step: Step): Route | null => {
-  if (!step.estimate.fromAmountUSD || !step.estimate.toAmountUSD) {
-    return null
+  if (!step.estimate.fromAmountUSD) {
+    throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
+  }
+
+  if (!step.estimate.toAmountUSD) {
+    throw new ValidationError("Missing 'toAmountUSD' in step estimate.")
   }
 
   const lifiStep: LifiStep = {

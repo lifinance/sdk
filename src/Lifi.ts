@@ -263,7 +263,9 @@ export default class LIFI {
     const currRoute = convertStepToRoute(step)
 
     if (!currRoute) {
-      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+      throw new ValidationError(
+        "Missing 'fromAmountUSD' | 'toAmountUSD' in step estimate."
+      )
     }
 
     return this.stopExecution(currRoute)
@@ -326,7 +328,7 @@ export default class LIFI {
     const route = convertStepToRoute(step)
 
     if (!route) {
-      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+      return
     }
 
     this.updateRouteExecution(route, settings)
@@ -374,7 +376,7 @@ export default class LIFI {
     const route = convertStepToRoute(step)
 
     if (!route) {
-      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+      return Promise.reject()
     }
 
     return this.executeRoute(signer, route, settings)
@@ -397,7 +399,7 @@ export default class LIFI {
     const route = convertStepToRoute(step)
 
     if (!route) {
-      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+      return Promise.reject()
     }
 
     return this.resumeRoute(signer, route, settings)
