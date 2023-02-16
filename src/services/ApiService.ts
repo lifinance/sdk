@@ -6,7 +6,6 @@ import {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
-import axios from 'axios'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,
@@ -23,7 +22,7 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '../types'
-import { ValidationError } from '../utils/errors'
+import { HTTPError, ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
@@ -35,25 +34,34 @@ const getPossibilities = async (
     request = {}
   }
 
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
 
   // apply defaults
-  request.bridges = request.bridges || config.defaultRouteOptions.bridges
-  request.exchanges = request.exchanges || config.defaultRouteOptions.exchanges
+  if (request.bridges || config.defaultRouteOptions.bridges) {
+    request.bridges = request.bridges || config.defaultRouteOptions.bridges
+  }
+  if (request.exchanges || config.defaultRouteOptions.exchanges) {
+    request.exchanges =
+      request.exchanges || config.defaultRouteOptions.exchanges
+  }
 
   // send request
   try {
-    const result = await axios.post<PossibilitiesResponse>(
-      config.apiUrl + 'advanced/possibilities',
-      request,
-      {
-        signal: options?.signal,
-      }
-    )
-    return result.data
+    const response = await fetch(`${config.apiUrl}/advanced/possibilities`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: options?.signal,
+    })
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: PossibilitiesResponse = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -70,19 +78,24 @@ const getToken = async (
     throw new ValidationError('Required parameter "token" is missing.')
   }
 
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
   try {
-    const result = await axios.get<Token>(config.apiUrl + 'token', {
-      params: {
+    const response = await fetch(
+      `${config.apiUrl}/token?${new URLSearchParams({
         chain,
         token,
-      },
-      signal: options?.signal,
-    })
-    return result.data
+      } as Record<string, string>)}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Token = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -90,8 +103,7 @@ const getQuote = async (
   request: QuoteRequest,
   options?: RequestOptions
 ): Promise<Step> => {
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
 
   // validation
   const requiredParameters: Array<keyof QuoteRequest> = [
@@ -131,14 +143,28 @@ const getQuote = async (
   request.preferExchanges =
     request.preferExchanges || config.defaultRouteOptions.exchanges?.prefer
 
+  Object.keys(request).forEach(
+    (key) =>
+      !request[key as keyof QuoteRequest] &&
+      delete request[key as keyof QuoteRequest]
+  )
+
   try {
-    const result = await axios.get<Step>(config.apiUrl + 'quote', {
-      params: request,
-      signal: options?.signal,
-    })
-    return result.data
+    const response = await fetch(
+      `${config.apiUrl}/quote?${new URLSearchParams(
+        request as unknown as Record<string, string>
+      )}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -146,8 +172,7 @@ const getContractCallQuote = async (
   request: ContractCallQuoteRequest,
   options?: RequestOptions
 ): Promise<Step> => {
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
 
   // validation
   const requiredParameters: Array<keyof ContractCallQuoteRequest> = [
@@ -192,16 +217,21 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const result = await axios.post<Step>(
-      config.apiUrl + 'quote/contractCall',
-      request,
-      {
-        signal: options?.signal,
-      }
-    )
-    return result.data
+    const response = await fetch(`${config.apiUrl}/quote/contractCall`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: options?.signal,
+    })
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -227,37 +257,45 @@ const getStatus = async (
     throw new ValidationError('Required parameter "txHash" is missing.')
   }
 
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
   try {
-    const result = await axios.get<StatusResponse>(config.apiUrl + 'status', {
-      params: {
+    const response = await fetch(
+      `${config.apiUrl}/status?${new URLSearchParams({
         bridge,
         fromChain,
         toChain,
         txHash,
-      },
-      signal: options?.signal,
-    })
-    return result.data
+      } as Record<string, string>)}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: StatusResponse = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
 const getChains = async (
   options?: RequestOptions
 ): Promise<ExtendedChain[]> => {
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
 
   try {
-    const result = await axios.get<ChainsResponse>(config.apiUrl + 'chains', {
+    const response = await fetch(`${config.apiUrl}/chains`, {
       signal: options?.signal,
     })
-    return result.data.chains
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: ChainsResponse = await response.json()
+    return data.chains
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -269,8 +307,7 @@ const getRoutes = async (
     throw new ValidationError('Invalid routes request.')
   }
 
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
 
   // apply defaults
   request.options = {
@@ -280,16 +317,21 @@ const getRoutes = async (
 
   // send request
   try {
-    const result = await axios.post<RoutesResponse>(
-      config.apiUrl + 'advanced/routes',
-      request,
-      {
-        signal: options?.signal,
-      }
-    )
-    return result.data
+    const response = await fetch(`${config.apiUrl}/advanced/routes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+      signal: options?.signal,
+    })
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: RoutesResponse = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -303,19 +345,23 @@ const getStepTransaction = async (
     console.warn('SDK Validation: Invalid Step', step)
   }
 
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
+  const config = ConfigService.getInstance().getConfig()
   try {
-    const result = await axios.post<Step>(
-      config.apiUrl + 'advanced/stepTransaction',
-      step,
-      {
-        signal: options?.signal,
-      }
-    )
-    return result.data
+    const response = await fetch(`${config.apiUrl}/advanced/stepTransaction`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(step),
+      signal: options?.signal,
+    })
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: Step = await response.json()
+    return data
   } catch (e) {
-    throw parseBackendError(e)
+    throw await parseBackendError(e)
   }
 }
 
@@ -323,26 +369,54 @@ const getTools = async (
   request?: ToolsRequest,
   options?: RequestOptions
 ): Promise<ToolsResponse> => {
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
-  const r = await axios.get<ToolsResponse>(config.apiUrl + 'tools', {
-    params: request,
-    signal: options?.signal,
-  })
-  return r.data
+  const config = ConfigService.getInstance().getConfig()
+  if (request) {
+    Object.keys(request).forEach(
+      (key) =>
+        !request[key as keyof ToolsRequest] &&
+        delete request[key as keyof ToolsRequest]
+    )
+  }
+  const response = await fetch(
+    `${config.apiUrl}/tools?${new URLSearchParams(
+      request as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
+  if (!response.ok) {
+    throw new HTTPError(response)
+  }
+  const data: ToolsResponse = await response.json()
+  return data
 }
 
 const getTokens = async (
   request?: TokensRequest,
   options?: RequestOptions
 ): Promise<TokensResponse> => {
-  const configService = ConfigService.getInstance()
-  const config = configService.getConfig()
-  const r = await axios.get<TokensResponse>(config.apiUrl + 'tokens', {
-    params: request,
-    signal: options?.signal,
-  })
-  return r.data
+  const config = ConfigService.getInstance().getConfig()
+  if (request) {
+    Object.keys(request).forEach(
+      (key) =>
+        !request[key as keyof TokensRequest] &&
+        delete request[key as keyof TokensRequest]
+    )
+  }
+  const response = await fetch(
+    `${config.apiUrl}/tokens?${new URLSearchParams(
+      request as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
+  if (!response.ok) {
+    throw new HTTPError(response)
+  }
+  const data: TokensResponse = await response.json()
+  return data
 }
 
 export default {

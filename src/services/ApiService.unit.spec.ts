@@ -9,17 +9,39 @@ import {
   StepTool,
   StepType,
 } from '@lifi/types'
-import axios from 'axios'
+import { rest } from 'msw'
+import { setupServer } from 'msw/node'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import { ServerError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
+import { handlers } from './ApiService.unit.handlers'
+import ConfigService from './ConfigService'
 
-jest.mock('axios')
-const mockedAxios = axios as jest.Mocked<typeof axios>
+const mockedFetch = vi.spyOn(globalThis, 'fetch')
 
 describe('ApiService', () => {
-  beforeEach(() => {
-    jest.clearAllMocks()
+  const config = ConfigService.getInstance().getConfig()
+  const server = setupServer(...handlers)
+  beforeAll(() => {
+    server.listen({
+      onUnhandledRequest: 'warn',
+    })
+    // server.use(...handlers)
   })
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  afterEach(() => server.resetHandlers())
+  afterAll(() => server.close())
 
   describe('getRoutes', () => {
     const getRoutesRequest = ({
@@ -54,7 +76,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid fromAmount type', async () => {
@@ -65,7 +87,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid fromTokenAddress type', async () => {
@@ -76,7 +98,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid toChainId type', async () => {
@@ -87,7 +109,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid toTokenAddress type', async () => {
@@ -96,7 +118,7 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid options type', async () => {
@@ -107,33 +129,26 @@ describe('ApiService', () => {
         await expect(ApiService.getRoutes(request)).rejects.toThrow(
           'Invalid routes request.'
         )
-        expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
       describe('and the backend call fails', () => {
         it('throw a the error', async () => {
-          const request = getRoutesRequest({})
-          mockedAxios.post.mockRejectedValue({
-            response: { status: 500, data: { message: 'Oops' } },
-          })
-
+          const request = getRoutesRequest({ fromAmount: 'failed' })
           await expect(ApiService.getRoutes(request)).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           const request = getRoutesRequest({})
-          // axios.post always returns an object and we expect that in our code
-          mockedAxios.post.mockReturnValue(Promise.resolve({}))
-
           await ApiService.getRoutes(request)
-          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -143,23 +158,26 @@ describe('ApiService', () => {
     describe('user input is valid', () => {
       describe('and the backend call fails', () => {
         it('throw a the error', async () => {
-          mockedAxios.post.mockRejectedValue({
-            response: { status: 500, data: { message: 'Oops' } },
-          })
+          server.use(
+            rest.post(
+              `${config.apiUrl}/advanced/possibilities`,
+              async (_, response, context) =>
+                response(context.status(500), context.json({ message: 'Oops' }))
+            )
+          )
 
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          mockedAxios.post.mockReturnValue(Promise.resolve({}))
           await ApiService.getPossibilities()
 
-          expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -175,37 +193,38 @@ describe('ApiService', () => {
         ).rejects.toThrowError(
           new ValidationError('Required parameter "chain" is missing.')
         )
-        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
           new ValidationError('Required parameter "token" is missing.')
         )
-        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
-          mockedAxios.get.mockRejectedValue({
-            response: { status: 500, data: { message: 'Oops' } },
-          })
+          server.use(
+            rest.get(`${config.apiUrl}/token`, async (_, response, context) =>
+              response(context.status(500), context.json({ message: 'Oops' }))
+            )
+          )
 
           await expect(
             ApiService.getToken(ChainId.DAI, 'DAI')
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          mockedAxios.get.mockReturnValue(Promise.resolve({}))
           await ApiService.getToken(ChainId.DAI, 'DAI')
 
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -299,16 +318,18 @@ describe('ApiService', () => {
           new ValidationError('Required parameter "toToken" is missing.')
         )
 
-        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
-          mockedAxios.get.mockRejectedValue({
-            response: { status: 500, data: { message: 'Oops' } },
-          })
+          server.use(
+            rest.get(`${config.apiUrl}/quote`, async (_, response, context) =>
+              response(context.status(500), context.json({ message: 'Oops' }))
+            )
+          )
 
           await expect(
             ApiService.getQuote({
@@ -320,13 +341,12 @@ describe('ApiService', () => {
               toToken,
             })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          mockedAxios.get.mockReturnValue(Promise.resolve({}))
           await ApiService.getQuote({
             fromChain,
             fromToken,
@@ -336,7 +356,7 @@ describe('ApiService', () => {
             toToken,
           })
 
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -396,30 +416,31 @@ describe('ApiService', () => {
           new ValidationError('Required parameter "txHash" is missing.')
         )
 
-        expect(mockedAxios.get).toHaveBeenCalledTimes(0)
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
-          mockedAxios.get.mockRejectedValue({
-            response: { status: 500, data: { message: 'Oops' } },
-          })
+          server.use(
+            rest.get(`${config.apiUrl}/status`, async (_, response, context) =>
+              response(context.status(500), context.json({ message: 'Oops' }))
+            )
+          )
 
           await expect(
             ApiService.getStatus({ bridge, fromChain, toChain, txHash })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          mockedAxios.get.mockReturnValue(Promise.resolve({}))
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
 
-          expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
@@ -428,27 +449,25 @@ describe('ApiService', () => {
   describe('getChains', () => {
     describe('and the backend call fails', () => {
       it('throw an error', async () => {
-        mockedAxios.get.mockRejectedValue({
-          response: { status: 500, data: { message: 'Oops' } },
-        })
+        server.use(
+          rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
+            response(context.status(500), context.json({ message: 'Oops' }))
+          )
+        )
 
         await expect(ApiService.getChains()).rejects.toThrowError(
           new ServerError('Oops')
         )
-        expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
 
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
-        const chain = { id: 1 }
-        mockedAxios.get.mockReturnValue(
-          Promise.resolve({ data: { chains: [chain] } })
-        )
         const chains = await ApiService.getChains()
 
-        expect(chains).toEqual([chain])
-        expect(mockedAxios.get).toHaveBeenCalledTimes(1)
+        expect(chains[0]?.id).toEqual(1)
+        expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
   })
@@ -456,12 +475,10 @@ describe('ApiService', () => {
   describe('getTools', () => {
     describe('and the backend succeeds', () => {
       it('returns the tools', async () => {
-        mockedAxios.get.mockReturnValue(
-          Promise.resolve({ data: { bridges: [], exchanges: [] } })
-        )
         const tools = await ApiService.getTools({
           chains: [ChainId.ETH, ChainId.POL],
         })
+
         expect(tools).toBeDefined()
         expect(tools.bridges).toBeDefined()
         expect(tools.exchanges).toBeDefined()
@@ -471,15 +488,6 @@ describe('ApiService', () => {
 
   describe('getTokens', () => {
     it('return the tokens', async () => {
-      mockedAxios.get.mockReturnValue(
-        Promise.resolve({
-          data: {
-            tokens: {
-              [ChainId.ETH]: [findDefaultToken(CoinKey.ETH, ChainId.ETH)],
-            },
-          },
-        })
-      )
       const result = await ApiService.getTokens({
         chains: [ChainId.ETH, ChainId.POL],
       })
@@ -559,7 +567,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid type', async () => {
@@ -568,7 +576,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid tool', async () => {
@@ -577,7 +585,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         // more indepth checks for the action type should be done once we have real schema validation
@@ -587,7 +595,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         // more indepth checks for the estimate type should be done once we have real schema validation
@@ -599,7 +607,7 @@ describe('ApiService', () => {
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid step.'
           )
-          expect(mockedAxios.post).toHaveBeenCalledTimes(0)
+          expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
       })
 
@@ -607,24 +615,30 @@ describe('ApiService', () => {
         describe('and the backend call fails', () => {
           it('throw a the error', async () => {
             const step = getStep({})
-            mockedAxios.post.mockRejectedValue({
-              response: { status: 500, data: { message: 'Oops' } },
-            })
+            server.use(
+              rest.post(
+                `${config.apiUrl}/advanced/stepTransaction`,
+                async (_, response, context) =>
+                  response(
+                    context.status(500),
+                    context.json({ message: 'Oops' })
+                  )
+              )
+            )
 
             await expect(
               ApiService.getStepTransaction(step)
             ).rejects.toThrowError(new ServerError('Oops'))
-            expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+            expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
 
         describe('and the backend call is successful', () => {
           it('call the server once', async () => {
             const step = getStep({})
-            mockedAxios.post.mockReturnValue(Promise.resolve({}))
 
             await ApiService.getStepTransaction(step)
-            expect(mockedAxios.post).toHaveBeenCalledTimes(1)
+            expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
       })

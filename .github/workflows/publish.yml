@@ -30,7 +30,7 @@ jobs:
       - name: Setup .npmrc file to publish to npm
         uses: actions/setup-node@v3
         with:
-          node-version: 14
+          node-version: lts/*
           registry-url: 'https://registry.npmjs.org'
       - name: Install modules
         run: yarn install
