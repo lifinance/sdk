@@ -35,7 +35,7 @@ import * as balance from './balance'
 import { getRpcProvider } from './connectors'
 import { StatusManager } from './execution/StatusManager'
 import { StepExecutor } from './execution/StepExecutor'
-import { checkPackageUpdates } from './helpers'
+import { checkPackageUpdates, convertStepToRoute } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import ConfigService from './services/ConfigService'
@@ -255,6 +255,21 @@ export default class LIFI {
   }
 
   /**
+   * Stops the execution of an active quote.
+   * @param {Step} step - A route that is currently in execution.
+   * @return {Route} The stopped route.
+   */
+  stopQuoteExecution = (step: Step): Route => {
+    const currRoute = convertStepToRoute(step)
+
+    if (!currRoute) {
+      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+    }
+
+    return this.stopExecution(currRoute)
+  }
+
+  /**
    * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
    * @param {Route} route - A route that is currently in execution.
    * @deprecated use updateRouteExecution instead.
@@ -300,6 +315,24 @@ export default class LIFI {
   }
 
   /**
+   * Updates step quote execution to background or foreground state.
+   * @param {Step} step - A route that is currently in execution.
+   * @param {boolean} settings - An object with execution settings.
+   */
+  updateQuoteExecution = (
+    step: Step,
+    settings: Pick<ExecutionSettings, 'executeInBackground'>
+  ): void => {
+    const route = convertStepToRoute(step)
+
+    if (!route) {
+      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+    }
+
+    this.updateRouteExecution(route, settings)
+  }
+
+  /**
    * Execute a route.
    * @param {Signer} signer - The signer required to send the transactions.
    * @param {Route} route - The route that should be executed. Cannot be an active route.
@@ -323,6 +356,63 @@ export default class LIFI {
 
     return this.executeSteps(signer, clonedRoute, settings)
   }
+
+  /**
+   * Execute a quote.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Route} route - The route that should be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   * @throws {LifiError} Throws a LifiError if the execution fails.
+   */
+
+  executeQuote = async (
+    signer: Signer,
+    step: Step,
+    settings?: ExecutionSettings
+  ): Promise<Route> => {
+    const route = convertStepToRoute(step)
+
+    if (!route) {
+      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+    }
+
+    return this.executeRoute(signer, route, settings)
+  }
+
+  /**
+   * Resume the execution of a quote that has been stopped or had an error while executing.
+   * @param {Signer} signer - The signer required to send the transactions.
+   * @param {Step} step - The route that is to be executed. Cannot be an active route.
+   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
+   * @return {Promise<Route>} The executed route.
+   * @throws {LifiError} Throws a LifiError if the execution fails.
+   */
+
+  resumeQuote = async (
+    signer: Signer,
+    step: Step,
+    settings?: ExecutionSettings
+  ): Promise<Route> => {
+    const route = convertStepToRoute(step)
+
+    if (!route) {
+      throw new ValidationError("Missing 'toAmount' or 'fromAmount' in step")
+    }
+
+    return this.resumeRoute(signer, route, settings)
+  }
+
+  /**
+   --
+   return this.executeSteps(signer, clonedRoute, settings)
+   new route.steps = [ step ]
+   pass in this.executeRoute | this.executeQuote
+   --
+   write a resumeQuote function to execute the quote
+   --
+   maybe a function that accepts step and returns a route
+   */
 
   /**
    * Resume the execution of a route that has been stopped or had an error while executing.

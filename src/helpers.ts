@@ -1,5 +1,5 @@
 import { ExternalProvider } from '@ethersproject/providers'
-import { Token } from '@lifi/types'
+import { Route, Step, Token } from '@lifi/types'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -90,4 +90,26 @@ export const checkPackageUpdates = async (
   } catch (error) {
     // Cannot verify version, might be network error etc. We don't bother showing anything in that case
   }
+}
+
+export const convertStepToRoute = (step: Step): Route | null => {
+  if (!step.estimate.fromAmountUSD || !step.estimate.toAmountUSD) {
+    return null
+  }
+
+  const route: Route = {
+    fromToken: step.action.fromToken,
+    toToken: step.action.toToken,
+    fromAmount: step.action.fromAmount,
+    toAmount: step.estimate.toAmount,
+    id: step.id,
+    fromChainId: step.action.fromToken.chainId,
+    toChainId: step.action.toToken.chainId,
+    fromAmountUSD: step.estimate.fromAmountUSD,
+    toAmountUSD: step.estimate.toAmountUSD,
+    steps: [step],
+    toAmountMin: step.estimate.toAmountMin,
+  }
+
+  return route
 }
