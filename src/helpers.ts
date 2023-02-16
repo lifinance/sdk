@@ -1,5 +1,5 @@
 import { ExternalProvider } from '@ethersproject/providers'
-import { Route, Step, Token } from '@lifi/types'
+import { LifiStep, Route, Step, Token } from '@lifi/types'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -97,6 +97,12 @@ export const convertStepToRoute = (step: Step): Route | null => {
     return null
   }
 
+  const lifiStep: LifiStep = {
+    ...step,
+    type: 'lifi',
+    includedSteps: [],
+  }
+
   const route: Route = {
     fromToken: step.action.fromToken,
     toToken: step.action.toToken,
@@ -107,7 +113,7 @@ export const convertStepToRoute = (step: Step): Route | null => {
     toChainId: step.action.toToken.chainId,
     fromAmountUSD: step.estimate.fromAmountUSD,
     toAmountUSD: step.estimate.toAmountUSD,
-    steps: [step],
+    steps: [lifiStep],
     toAmountMin: step.estimate.toAmountMin,
   }
 
