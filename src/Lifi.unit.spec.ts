@@ -1,15 +1,25 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as balance from './balance'
 import Lifi from './Lifi'
 
-jest.mock('./balance')
-const mockedBalances = balance as jest.Mocked<typeof balance>
+vi.mock('./balance', () => ({
+  getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
+  getTokenBalance: vi.fn(() => Promise.resolve([])),
+  getTokenBalances: vi.fn(() => Promise.resolve([])),
+}))
+
+const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
+const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
+const mockedGetTokenBalancesForChains = vi.spyOn(
+  balance,
+  'getTokenBalancesForChains'
+)
 
 let lifi: Lifi
-
 describe('LIFI SDK', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     lifi = new Lifi()
   })
 
@@ -23,7 +33,7 @@ describe('LIFI SDK', () => {
           'Missing walletAddress.'
         )
 
-        expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(0)
+        expect(mockedGetTokenBalance).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of invalid token', async () => {
@@ -36,7 +46,7 @@ describe('LIFI SDK', () => {
           'Invalid token passed: address "some wrong stuff" on chainId "not a chain Id"'
         )
 
-        expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(0)
+        expect(mockedGetTokenBalance).toHaveBeenCalledTimes(0)
       })
     })
 
@@ -48,16 +58,14 @@ describe('LIFI SDK', () => {
           blockNumber: 1,
         }
 
-        mockedBalances.getTokenBalance.mockReturnValue(
-          Promise.resolve(balanceResponse)
-        )
+        mockedGetTokenBalance.mockReturnValue(Promise.resolve(balanceResponse))
 
         const result = await lifi.getTokenBalance(
           SOME_WALLET_ADDRESS,
           SOME_TOKEN
         )
 
-        expect(mockedBalances.getTokenBalance).toHaveBeenCalledTimes(1)
+        expect(mockedGetTokenBalance).toHaveBeenCalledTimes(1)
         expect(result).toEqual(balanceResponse)
       })
     })
@@ -73,7 +81,7 @@ describe('LIFI SDK', () => {
           'Missing walletAddress.'
         )
 
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
+        expect(mockedGetTokenBalances).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of an invalid token', async () => {
@@ -86,14 +94,14 @@ describe('LIFI SDK', () => {
           'Invalid token passed: address "undefined" on chainId "undefined"'
         )
 
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(0)
+        expect(mockedGetTokenBalances).toHaveBeenCalledTimes(0)
       })
 
       it('should return empty token list as it is', async () => {
-        mockedBalances.getTokenBalances.mockReturnValue(Promise.resolve([]))
+        mockedGetTokenBalances.mockReturnValue(Promise.resolve([]))
         const result = await lifi.getTokenBalances(SOME_WALLET_ADDRESS, [])
         expect(result).toEqual([])
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetTokenBalances).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -107,15 +115,13 @@ describe('LIFI SDK', () => {
           },
         ]
 
-        mockedBalances.getTokenBalances.mockReturnValue(
-          Promise.resolve(balanceResponse)
-        )
+        mockedGetTokenBalances.mockReturnValue(Promise.resolve(balanceResponse))
 
         const result = await lifi.getTokenBalances(SOME_WALLET_ADDRESS, [
           SOME_TOKEN,
         ])
 
-        expect(mockedBalances.getTokenBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetTokenBalances).toHaveBeenCalledTimes(1)
         expect(result).toEqual(balanceResponse)
       })
     })
@@ -131,9 +137,7 @@ describe('LIFI SDK', () => {
           lifi.getTokenBalancesForChains('', { [ChainId.DAI]: [SOME_TOKEN] })
         ).rejects.toThrow('Missing walletAddress.')
 
-        expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          0
-        )
+        expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(0)
       })
 
       it('should throw Error because of an invalid token', async () => {
@@ -145,15 +149,11 @@ describe('LIFI SDK', () => {
           'Invalid token passed: address "undefined" on chainId "undefined"'
         )
 
-        expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          0
-        )
+        expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(0)
       })
 
       it('should return empty token list as it is', async () => {
-        mockedBalances.getTokenBalancesForChains.mockReturnValue(
-          Promise.resolve([])
-        )
+        mockedGetTokenBalancesForChains.mockReturnValue(Promise.resolve([]))
 
         const result = await lifi.getTokenBalancesForChains(
           SOME_WALLET_ADDRESS,
@@ -163,9 +163,7 @@ describe('LIFI SDK', () => {
         )
 
         expect(result).toEqual([])
-        expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          1
-        )
+        expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -181,7 +179,7 @@ describe('LIFI SDK', () => {
           ],
         }
 
-        mockedBalances.getTokenBalancesForChains.mockReturnValue(
+        mockedGetTokenBalancesForChains.mockReturnValue(
           Promise.resolve(balanceResponse)
         )
 
@@ -192,9 +190,7 @@ describe('LIFI SDK', () => {
           }
         )
 
-        expect(mockedBalances.getTokenBalancesForChains).toHaveBeenCalledTimes(
-          1
-        )
+        expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
         expect(result).toEqual(balanceResponse)
       })
     })

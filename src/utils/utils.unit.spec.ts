@@ -1,6 +1,6 @@
 import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { formatTokenAmountOnly, repeatUntilDone } from './utils'
 
 const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
@@ -119,11 +119,12 @@ describe('utils', () => {
   })
 
   describe('repeatUntilDone', () => {
-    let mockedFunction: jest.Mock
+    let mockedFunction
 
     beforeEach(() => {
-      mockedFunction = jest.fn()
+      mockedFunction = vi.fn()
     })
+    //.mockImplementation(() => Promise.reject(new Error('some error')))
 
     it('should throw an error if repeat function fails', async () => {
       mockedFunction.mockRejectedValue(new Error('some error'))

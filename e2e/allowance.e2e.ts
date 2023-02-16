@@ -1,6 +1,7 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { constants, providers, Signer, Wallet } from 'ethers'
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   approveToken,
   bulkGetTokenApproval,
@@ -54,13 +55,13 @@ describe('allowance e2e tests', () => {
     signer = Wallet.fromMnemonic(mnemonic).connect(provider)
   })
 
-  describe('approveToken', () => {
-    beforeEach(async () => {
-      // revoke approval to get a clean start
-      console.log('revoking old approvals')
-      await revokeApproval(USDC_ON_DAI)
-    })
+  beforeEach(async () => {
+    // revoke approval to get a clean start
+    console.log('revoking old approvals')
+    await revokeApproval(USDC_ON_DAI)
+  })
 
+  describe('approveToken', () => {
     it('it should approve the requested amount', async () => {
       const amount = '100000000'
 
@@ -110,8 +111,6 @@ describe('allowance e2e tests', () => {
         amount,
         infiniteApproval: false,
       })
-
-      await sleep(2000)
 
       await checkSetApproval(USDC_ON_DAI.address, amount)
 

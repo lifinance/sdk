@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'vitest'
 import { ChainId, getChainById, supportedChains } from '../types'
 import ConfigService from './ConfigService'
 
@@ -12,7 +13,7 @@ describe('ConfigService', () => {
     it('should return the default config', () => {
       const defaultConfig = configService.getConfig()
 
-      expect(defaultConfig.apiUrl).toEqual('https://li.quest/v1/')
+      expect(defaultConfig.apiUrl).toEqual('https://li.quest/v1')
       expect(defaultConfig.defaultRouteOptions).toEqual({
         integrator: 'lifi-sdk',
       })

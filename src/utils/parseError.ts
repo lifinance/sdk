@@ -194,10 +194,16 @@ export const parseError = async (
   }
 }
 
-export const parseBackendError = (e: any): LifiError => {
+export const parseBackendError = async (e: any): Promise<LifiError> => {
+  let data
+  try {
+    data = await e.response?.json()
+  } catch (error) {
+    // ignore
+  }
   if (e.response?.status === 400) {
     return new ValidationError(
-      e.response?.data?.message || e.response?.statusText,
+      data?.message || e.response?.statusText,
       undefined,
       e.stack
     )
@@ -205,7 +211,7 @@ export const parseBackendError = (e: any): LifiError => {
 
   if (e.response?.status === 404) {
     return new NotFoundError(
-      e.response?.data?.message || e.response?.statusText,
+      data?.message || e.response?.statusText,
       undefined,
       e.stack
     )
@@ -213,7 +219,7 @@ export const parseBackendError = (e: any): LifiError => {
 
   if (e.response?.status === 409) {
     return new SlippageError(
-      e.response?.data?.message || e.response?.statusText,
+      data?.message || e.response?.statusText,
       'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
       e.stack
     )
@@ -221,7 +227,7 @@ export const parseBackendError = (e: any): LifiError => {
 
   if (e.response?.status === 500) {
     return new ServerError(
-      e.response?.data?.message || e.response?.statusText,
+      data?.message || e.response?.statusText,
       undefined,
       e.stack
     )

@@ -1,5 +1,6 @@
 import { Step } from '@lifi/types'
 import { Signer } from 'ethers'
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { buildStepObject } from '../../test/fixtures'
 import { InternalExecutionSettings } from '../types'
 import { StatusManager } from './StatusManager'
@@ -9,33 +10,33 @@ let signer: Signer,
   step: Step,
   statusManager: StatusManager,
   hooks: InternalExecutionSettings,
-  getChainIdMock: jest.Mock,
-  switchChainHookMock: jest.Mock,
-  findOrCreateProcessMock: jest.Mock,
-  updateExecutionMock: jest.Mock,
-  updateProcessMock: jest.Mock
+  getChainIdMock: Mock,
+  switchChainHookMock: Mock,
+  findOrCreateProcessMock: Mock,
+  updateExecutionMock: Mock,
+  updateProcessMock: Mock
 
 describe('switchChain', () => {
   beforeEach(() => {
-    getChainIdMock = jest.fn()
+    getChainIdMock = vi.fn()
     signer = {
       getChainId: getChainIdMock,
     } as unknown as Signer
 
-    switchChainHookMock = jest.fn()
+    switchChainHookMock = vi.fn()
     hooks = {
       switchChainHook: switchChainHookMock,
     } as unknown as InternalExecutionSettings
 
     step = buildStepObject({ includingExecution: false })
 
-    findOrCreateProcessMock = jest.fn()
-    updateExecutionMock = jest.fn()
-    updateProcessMock = jest.fn()
+    findOrCreateProcessMock = vi.fn()
+    updateExecutionMock = vi.fn()
+    updateProcessMock = vi.fn()
     statusManager = {
-      initExecutionObject: jest.fn(),
+      initExecutionObject: vi.fn(),
       findOrCreateProcess: findOrCreateProcessMock,
-      removeProcess: jest.fn(),
+      removeProcess: vi.fn(),
       updateExecution: updateExecutionMock,
       updateProcess: updateProcessMock,
     } as unknown as StatusManager

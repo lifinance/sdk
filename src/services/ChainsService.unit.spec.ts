@@ -1,3 +1,6 @@
+import { rest } from 'msw'
+import { setupServer } from 'msw/node'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   AddEthereumChainParameter,
   ChainKey,
@@ -7,11 +10,8 @@ import {
   Token,
 } from '../types'
 import { ValidationError } from '../utils/errors'
-import ApiService from './ApiService'
 import ChainsService from './ChainsService'
-
-jest.mock('./ApiService')
-const mockedApiService = ApiService as jest.Mocked<typeof ApiService>
+import ConfigService from './ConfigService'
 
 let chainsService: ChainsService
 
@@ -38,10 +38,19 @@ const chain2: ExtendedChain = {
 }
 
 describe('ChainsService', () => {
+  const config = ConfigService.getInstance().getConfig()
+  const server = setupServer(
+    rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
+      response(context.json({ chains: [chain1, chain2] }))
+    )
+  )
   beforeAll(() => {
-    mockedApiService.getChains.mockResolvedValue([chain1, chain2])
+    server.listen({
+      onUnhandledRequest: 'warn',
+    })
     chainsService = ChainsService.getInstance()
   })
+  afterAll(() => server.close())
 
   describe('getChains', () => {
     it('should load and return the chains', async () => {

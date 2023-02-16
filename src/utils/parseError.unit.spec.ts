@@ -2,6 +2,7 @@ import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
+import { describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../test/fixtures'
 import { LifiErrorCode } from './errors'
 import { parseBackendError, parseError } from './parseError'
@@ -132,7 +133,7 @@ describe('parseError', () => {
   describe('parseBackendError', () => {
     describe("when the error doesn't contain a status", () => {
       it('should return a ServerError with a default messsage', async () => {
-        const parsedError = parseBackendError('Oops')
+        const parsedError = await parseBackendError('Oops')
 
         expect(parsedError.message).toEqual('Something went wrong.')
         expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
@@ -142,16 +143,19 @@ describe('parseError', () => {
     describe('when the error contains a status', () => {
       describe('when the status is 400', () => {
         it('should return the error message if set', async () => {
-          const parsedError = parseBackendError({
-            response: { status: 400, data: { message: 'Oops' } },
+          const parsedError = await parseBackendError({
+            response: {
+              status: 400,
+              json: () => Promise.resolve({ message: 'Oops' }),
+            },
           })
 
           expect(parsedError.message).toEqual('Oops')
           expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
         })
 
-        it('should return the axios statusText if message not set', async () => {
-          const parsedError = parseBackendError({
+        it('should return the statusText if message not set', async () => {
+          const parsedError = await parseBackendError({
             response: {
               status: 400,
               statusText: 'Request failed with statusCode 400',
@@ -167,16 +171,19 @@ describe('parseError', () => {
 
       describe('when the status is 500', () => {
         it('should return the error message if set', async () => {
-          const parsedError = parseBackendError({
-            response: { status: 500, data: { message: 'Oops' } },
+          const parsedError = await parseBackendError({
+            response: {
+              status: 500,
+              json: () => Promise.resolve({ message: 'Oops' }),
+            },
           })
 
           expect(parsedError.message).toEqual('Oops')
           expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
         })
 
-        it('should return the axios statusText if message not set', async () => {
-          const parsedError = parseBackendError({
+        it('should return the statusText if message not set', async () => {
+          const parsedError = await parseBackendError({
             response: {
               status: 500,
               statusText: 'Request failed with statusCode 500',
