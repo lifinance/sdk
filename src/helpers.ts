@@ -93,7 +93,7 @@ export const checkPackageUpdates = async (
   }
 }
 
-export const convertStepToRoute = (step: Step): Route | null => {
+export const convertStepToRoute = (step: Step): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
   }

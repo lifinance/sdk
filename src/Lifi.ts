@@ -260,15 +260,9 @@ export default class LIFI {
    * @return {Route} The stopped route.
    */
   stopQuoteExecution = (step: Step): Route => {
-    const currRoute = convertStepToRoute(step)
+    const currentRoute = convertStepToRoute(step)
 
-    if (!currRoute) {
-      throw new ValidationError(
-        "Missing 'fromAmountUSD' | 'toAmountUSD' in step estimate."
-      )
-    }
-
-    return this.stopExecution(currRoute)
+    return this.stopExecution(currentRoute)
   }
 
   /**
@@ -327,10 +321,6 @@ export default class LIFI {
   ): void => {
     const route = convertStepToRoute(step)
 
-    if (!route) {
-      return
-    }
-
     this.updateRouteExecution(route, settings)
   }
 
@@ -375,10 +365,6 @@ export default class LIFI {
   ): Promise<Route> => {
     const route = convertStepToRoute(step)
 
-    if (!route) {
-      return Promise.reject()
-    }
-
     return this.executeRoute(signer, route, settings)
   }
 
@@ -398,23 +384,8 @@ export default class LIFI {
   ): Promise<Route> => {
     const route = convertStepToRoute(step)
 
-    if (!route) {
-      return Promise.reject()
-    }
-
     return this.resumeRoute(signer, route, settings)
   }
-
-  /**
-   --
-   return this.executeSteps(signer, clonedRoute, settings)
-   new route.steps = [ step ]
-   pass in this.executeRoute | this.executeQuote
-   --
-   write a resumeQuote function to execute the quote
-   --
-   maybe a function that accepts step and returns a route
-   */
 
   /**
    * Resume the execution of a route that has been stopped or had an error while executing.
