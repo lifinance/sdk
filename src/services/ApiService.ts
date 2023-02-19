@@ -29,7 +29,7 @@ import ConfigService from './ConfigService'
 const retryFetch = async (
   url: string,
   options: any,
-  retries = 3
+  retries = 1
 ): Promise<Response> => {
   try {
     const response = await fetch(url, options)
