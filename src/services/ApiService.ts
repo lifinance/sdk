@@ -28,7 +28,7 @@ import ConfigService from './ConfigService'
 
 const retryFetch = async (
   url: string,
-  options: any,
+  options: RequestInit,
   retries = 1
 ): Promise<Response> => {
   try {
@@ -37,11 +37,11 @@ const retryFetch = async (
       throw new HTTPError(response)
     }
     return response
-  } catch (e) {
-    if (retries > 0) {
+  } catch (error) {
+    if (retries > 0 && (error as HTTPError)?.status === 500) {
       return retryFetch(url, options, retries - 1)
     }
-    throw e
+    throw error
   }
 }
 
