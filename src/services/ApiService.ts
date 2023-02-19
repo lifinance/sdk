@@ -26,6 +26,25 @@ import { HTTPError, ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
+const retryFetch = async (
+  url: string,
+  options: any,
+  retries = 3
+): Promise<Response> => {
+  try {
+    const response = await fetch(url, options)
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    return response
+  } catch (e) {
+    if (retries > 0) {
+      return retryFetch(url, options, retries - 1)
+    }
+    throw e
+  }
+}
+
 const getPossibilities = async (
   request?: PossibilitiesRequest,
   options?: RequestOptions
@@ -47,17 +66,17 @@ const getPossibilities = async (
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/possibilities`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
+    const response = await retryFetch(
+      `${config.apiUrl}/advanced/possibilities`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: options?.signal,
+      }
+    )
     const data: PossibilitiesResponse = await response.json()
     return data
   } catch (e) {
