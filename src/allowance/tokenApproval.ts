@@ -36,7 +36,7 @@ export const getTokenApproval = async (
   }
 
   const approved = await getApproved(signer, token.address, approvalAddress)
-  return approved.toFixed(0)
+  return approved.toString()
 }
 
 export const bulkGetTokenApproval = async (
