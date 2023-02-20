@@ -1,7 +1,9 @@
+import { buildStepObject } from './../test/fixtures'
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as balance from './balance'
 import Lifi from './Lifi'
+import { convertQuoteToRoute } from './helpers'
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
@@ -193,6 +195,20 @@ describe('LIFI SDK', () => {
         expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
         expect(result).toEqual(balanceResponse)
       })
+    })
+  })
+
+  describe('Should convert Step to Route', () => {
+    it('should convert Step to Route', () => {
+      const mockStep = buildStepObject({
+        includingExecution: true,
+      })
+
+      const convertedRoute = convertQuoteToRoute(mockStep)
+
+      expect(convertedRoute.fromAmountUSD).toEqual(
+        mockStep.estimate.fromAmountUSD
+      )
     })
   })
 })
