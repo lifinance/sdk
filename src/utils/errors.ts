@@ -201,6 +201,6 @@ export class HTTPError extends Error {
 
     this.name = 'HTTPError'
     this.response = response
-    this.status = response.code
+    this.status = response.status
   }
 }

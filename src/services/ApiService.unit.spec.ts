@@ -173,7 +173,7 @@ describe('ApiService', () => {
         })
       })
 
-      describe('and the backend call fails with 429', () => {
+      describe('and the backend call fails with 409', () => {
         it('throw a the error without retrying', async () => {
           server.use(
             rest.post(
