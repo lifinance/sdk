@@ -21,7 +21,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { ServerError, ValidationError } from '../utils/errors'
+import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
@@ -156,8 +156,8 @@ describe('ApiService', () => {
 
   describe('getPossibilities', () => {
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw a the error', async () => {
+      describe('and the backend call fails with 500', () => {
+        it('throw a the error after retrying once', async () => {
           server.use(
             rest.post(
               `${config.apiUrl}/advanced/possibilities`,
@@ -168,6 +168,28 @@ describe('ApiService', () => {
 
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
+          )
+          expect(mockedFetch).toHaveBeenCalledTimes(2)
+        })
+      })
+
+      describe('and the backend call fails with 429', () => {
+        it('throw a the error without retrying', async () => {
+          server.use(
+            rest.post(
+              `${config.apiUrl}/advanced/possibilities`,
+              async (_, response, context) =>
+                response(
+                  context.status(409),
+                  context.json({
+                    message: 'Slippage error',
+                  })
+                )
+            )
+          )
+
+          await expect(ApiService.getPossibilities()).rejects.toThrowError(
+            new SlippageError('Slippage error')
           )
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
