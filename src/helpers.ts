@@ -93,7 +93,14 @@ export const checkPackageUpdates = async (
   }
 }
 
-export const convertStepToRoute = (step: Step): Route => {
+/**
+ * Converts a quote to Route
+ * @param {Step} step - Step returned from the quote endpoint.
+ * @return {Route} - The route to be executed.
+ * @throws {ValidationError} Throws a ValidationError if the step has missing values.
+ */
+
+export const convertQuoteToRoute = (step: Step): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
   }
