@@ -24,6 +24,7 @@ import {
 } from '../types'
 import { HTTPError, ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
+import { sleep } from '../utils/utils'
 import ConfigService from './ConfigService'
 
 const retryFetch = async (
@@ -39,6 +40,7 @@ const retryFetch = async (
     return response
   } catch (error) {
     if (retries > 0 && (error as HTTPError)?.status === 500) {
+      await sleep(500)
       return retryFetch(url, options, retries - 1)
     }
     throw error
