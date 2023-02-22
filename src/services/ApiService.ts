@@ -27,7 +27,7 @@ import { parseBackendError } from '../utils/parseError'
 import { sleep } from '../utils/utils'
 import ConfigService from './ConfigService'
 
-const retryFetch = async (
+const lifiFetch = async (
   url: string,
   options: RequestInit,
   retries = 1
@@ -41,7 +41,7 @@ const retryFetch = async (
   } catch (error) {
     if (retries > 0 && (error as HTTPError)?.status === 500) {
       await sleep(500)
-      return retryFetch(url, options, retries - 1)
+      return lifiFetch(url, options, retries - 1)
     }
     throw error
   }
@@ -68,7 +68,7 @@ const getPossibilities = async (
 
   // send request
   try {
-    const response = await retryFetch(
+    const response = await lifiFetch(
       `${config.apiUrl}/advanced/possibilities`,
       {
         method: 'POST',
