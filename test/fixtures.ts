@@ -33,7 +33,9 @@ export const buildStepObject = ({
   },
   estimate: {
     fromAmount: '1000000',
+    fromAmountUSD: '100',
     toAmount: '260982615655554',
+    toAmountUSD: '26098',
     toAmountMin: '253153137185887',
     approvalAddress: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
     executionDuration: 300,
