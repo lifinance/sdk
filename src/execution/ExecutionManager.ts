@@ -232,11 +232,16 @@ export class ExecutionManager {
         gasUsed: statusResponse.sending.gasUsed,
       })
     } catch (e: unknown) {
+      const htmlMessage = await getTransactionFailedMessage(
+        step,
+        process.txLink
+      )
+
       process = statusManager.updateProcess(step, process.type, 'FAILED', {
         error: {
           code: LifiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
-          htmlMessage: getTransactionFailedMessage(step, process.txLink),
+          htmlMessage,
         },
       })
       statusManager.updateExecution(step, 'FAILED')
