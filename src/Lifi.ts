@@ -322,7 +322,7 @@ export default class LIFI {
     // Check if route is already running
     if (this.activeRouteDictionary[clonedRoute.id]) {
       // TODO: maybe inform user why nothing happens?
-      return clonedRoute
+      return this.activeRouteDictionary[clonedRoute.id].executionPromise
     }
 
     const promiseRoute = this.executeSteps(signer, clonedRoute, settings)
@@ -367,7 +367,15 @@ export default class LIFI {
       }
     }
     handlePreRestart(clonedRoute)
-    return this.executeSteps(signer, clonedRoute, settings)
+
+    const newRoutePromise = this.executeSteps(signer, clonedRoute, settings)
+
+    this.activeRouteDictionary[clonedRoute.id] = {
+      ...this.activeRouteDictionary[clonedRoute.id],
+      executionPromise: newRoutePromise,
+    }
+
+    return newRoutePromise
   }
 
   private executeSteps = async (
