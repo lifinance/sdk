@@ -86,10 +86,10 @@ export const getTransactionFailedMessage = async (
   txLink?: string
 ): Promise<string> => {
   const chainsService = ChainsService.getInstance()
-  const chainName = await chainsService.getChainById(step.action.toChainId)
+  const chain = await chainsService.getChainById(step.action.toChainId)
 
   const baseString = `It appears that your transaction may not have been successful.
-  However, to confirm this, please check your ${chainName.name} wallet for ${step.action.toToken.symbol}.`
+  However, to confirm this, please check your ${chain.name} wallet for ${step.action.toToken.symbol}.`
   return txLink
     ? `${baseString}
     You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
