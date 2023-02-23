@@ -1,7 +1,6 @@
 import { ExternalProvider } from '@ethersproject/providers'
 import { LifiStep, Route, Step, Token } from '@lifi/types'
 import { HTTPError, ValidationError } from './utils/errors'
-import { parseBackendError } from './utils/parseError'
 import { sleep } from './utils/utils'
 import { name, version } from './version'
 

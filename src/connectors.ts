@@ -1,9 +1,10 @@
 import { providers } from 'ethers'
-import { getRandomNumber, ServerError } from '.'
 
 import { ChainId } from './types'
 import { FallbackProvider } from '@ethersproject/providers'
 import ConfigService from './services/ConfigService'
+import { getRandomNumber } from './helpers'
+import { ServerError } from './utils/errors'
 
 // cached providers
 const chainProviders: Record<number, providers.FallbackProvider[]> = {}
