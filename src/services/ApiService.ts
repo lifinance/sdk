@@ -416,5 +416,3 @@ export default {
   getTools,
   getTokens,
 }
-
-// create a wrapper function for fetch that prints response with a short and descriptive name not fetch

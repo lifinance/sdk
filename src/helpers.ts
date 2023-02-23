@@ -141,7 +141,7 @@ export const serverRequest = async <T = Response>(
   retries = 1
 ): Promise<T> => {
   try {
-    const response: Response = await serverRequest(url, options)
+    const response: Response = await fetch(url, options)
     if (!response.ok) {
       throw new HTTPError(response)
     }
@@ -153,6 +153,6 @@ export const serverRequest = async <T = Response>(
       await sleep(500)
       return serverRequest<T>(url, options, retries - 1)
     }
-    throw await parseBackendError(error)
+    throw error
   }
 }
