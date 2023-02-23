@@ -243,7 +243,10 @@ export default class LIFI {
     if (!this.activeRouteDictionary[route.id]) {
       return route
     }
-    for (const executor of this.activeRouteDictionary[route.id].executors) {
+
+    const activeRoute = this.activeRouteDictionary[route.id].executionData
+
+    for (const executor of activeRoute.executors) {
       executor.setInteraction({
         allowInteraction: false,
         allowUpdates: false,
@@ -260,7 +263,8 @@ export default class LIFI {
    * @deprecated use updateRouteExecution instead.
    */
   moveExecutionToBackground = (route: Route): void => {
-    const activeRoute = this.activeRouteDictionary[route.id]
+    const activeRoute = this.activeRouteDictionary[route.id].executionData
+
     if (!activeRoute) {
       return
     }
@@ -282,7 +286,7 @@ export default class LIFI {
     route: Route,
     settings: Pick<ExecutionSettings, 'executeInBackground'>
   ): void => {
-    const activeRoute = this.activeRouteDictionary[route.id]
+    const activeRoute = this.activeRouteDictionary[route.id].executionData
     if (!activeRoute) {
       return
     }
@@ -321,7 +325,14 @@ export default class LIFI {
       return clonedRoute
     }
 
-    return this.executeSteps(signer, clonedRoute, settings)
+    const promiseRoute = this.executeSteps(signer, clonedRoute, settings)
+
+    this.activeRouteDictionary[clonedRoute.id] = {
+      ...this.activeRouteDictionary[clonedRoute.id],
+      executionPromise: promiseRoute,
+    }
+
+    return promiseRoute
   }
 
   /**
@@ -340,7 +351,9 @@ export default class LIFI {
     // Deep clone to prevent side effects
     const clonedRoute = structuredClone<Route>(route)
 
-    const activeRoute = this.activeRouteDictionary[clonedRoute.id]
+    const { executionData: activeRoute, executionPromise: promiseRoute } =
+      this.activeRouteDictionary[clonedRoute.id]
+
     if (activeRoute) {
       const executionHalted = activeRoute.executors.some(
         (executor) => executor.executionStopped
@@ -350,7 +363,7 @@ export default class LIFI {
         this.updateRouteExecution(route, {
           executeInBackground: settings?.executeInBackground,
         })
-        return clonedRoute
+        return promiseRoute
       }
     }
     handlePreRestart(clonedRoute)
@@ -369,23 +382,27 @@ export default class LIFI {
       executors: [],
       settings: { ...config.defaultExecutionSettings, ...settings },
     }
-    this.activeRouteDictionary[route.id] = executionData
+
+    this.activeRouteDictionary[route.id].executionData = { ...executionData }
+
+    const activeRoute = this.activeRouteDictionary[route.id].executionData
 
     const statusManager = new StatusManager(
       route,
-      this.activeRouteDictionary[route.id].settings,
+      activeRoute.settings,
       (route: Route) => {
         if (this.activeRouteDictionary[route.id]) {
-          this.activeRouteDictionary[route.id].route = route
+          activeRoute.route = route
         }
       }
     )
 
     // Loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
-      const activeRoute = this.activeRouteDictionary[route.id]
+      const currentActiveRoute =
+        this.activeRouteDictionary[route.id].executionData
       // Check if execution has stopped in the meantime
-      if (!activeRoute) {
+      if (!currentActiveRoute) {
         break
       }
 
@@ -404,12 +421,12 @@ export default class LIFI {
       try {
         const stepExecutor = new StepExecutor(
           statusManager,
-          activeRoute.settings
+          currentActiveRoute.settings
         )
-        activeRoute.executors.push(stepExecutor)
+        currentActiveRoute.executors.push(stepExecutor)
 
         // Check if we want to execute this step in the background
-        this.updateRouteExecution(route, activeRoute.settings)
+        this.updateRouteExecution(route, currentActiveRoute.settings)
 
         const executedStep = await stepExecutor.executeStep(signer, step)
 
@@ -450,7 +467,7 @@ export default class LIFI {
     }
 
     const config = this.configService.getConfig()
-    this.activeRouteDictionary[route.id].settings = {
+    this.activeRouteDictionary[route.id].executionData.settings = {
       ...config.defaultExecutionSettings,
       ...settings,
     }
@@ -461,7 +478,9 @@ export default class LIFI {
    * @return {Route[]} A list of routes.
    */
   getActiveRoutes = (): Route[] => {
-    return Object.values(this.activeRouteDictionary).map((dict) => dict.route)
+    return Object.values(this.activeRouteDictionary).map(
+      (dict) => dict.executionData.route
+    )
   }
 
   /**
@@ -470,7 +489,7 @@ export default class LIFI {
    * @return {Route} The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
-    return this.activeRouteDictionary[route.id]?.route
+    return this.activeRouteDictionary[route.id]?.executionData.route
   }
 
   /**
