@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ChainId, getChainById, supportedChains } from '../types'
+import ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
 
 let configService: ConfigService
+let chainsService: ChainsService
 
 describe('ConfigService', () => {
   beforeEach(() => {
@@ -120,7 +122,7 @@ describe('ConfigService', () => {
   })
 
   describe('updateChains', () => {
-    it('should set rpcs/multicall address', () => {
+    it('should set rpcs/multicall address', async () => {
       const config = configService.updateChains(supportedChains)
       for (const chainId of Object.values(ChainId)) {
         // This is a workaround until we complete the transition to
@@ -128,7 +130,7 @@ describe('ConfigService', () => {
         try {
           // This will fail with SOL, SOLT, TER, TERT, OAS, OAST
           // as getChainById(ChainId) returns EVMChain
-          getChainById(Number(chainId))
+          chainsService.getChainById(chainId as ChainId)
         } catch {
           continue
         }
