@@ -6,6 +6,7 @@ import {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
+import { serverRequest } from '../helpers'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,
@@ -22,30 +23,9 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '../types'
-import { HTTPError, ValidationError } from '../utils/errors'
+import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
-import { sleep } from '../utils/utils'
 import ConfigService from './ConfigService'
-
-const serverRequest = async (
-  url: string,
-  options: RequestInit,
-  retries = 1
-): Promise<Response> => {
-  try {
-    const response = await serverRequest(url, options)
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    return response
-  } catch (error) {
-    if (retries > 0 && (error as HTTPError)?.status === 500) {
-      await sleep(500)
-      return serverRequest(url, options, retries - 1)
-    }
-    throw error
-  }
-}
 
 const getPossibilities = async (
   request?: PossibilitiesRequest,
@@ -68,7 +48,7 @@ const getPossibilities = async (
 
   // send request
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<PossibilitiesResponse>(
       `${config.apiUrl}/advanced/possibilities`,
       {
         method: 'POST',
@@ -79,8 +59,7 @@ const getPossibilities = async (
         signal: options?.signal,
       }
     )
-    const data: PossibilitiesResponse = await response.json()
-    return data
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -101,7 +80,7 @@ const getToken = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<Token>(
       `${config.apiUrl}/token?${new URLSearchParams({
         chain,
         token,
@@ -110,11 +89,8 @@ const getToken = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Token = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -171,7 +147,7 @@ const getQuote = async (
   )
 
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<Step>(
       `${config.apiUrl}/quote?${new URLSearchParams(
         request as unknown as Record<string, string>
       )}`,
@@ -179,11 +155,8 @@ const getQuote = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -238,7 +211,7 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<Step>(
       `${config.apiUrl}/quote/contractCall`,
       {
         method: 'POST',
@@ -249,11 +222,8 @@ const getContractCallQuote = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -283,7 +253,7 @@ const getStatus = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<StatusResponse>(
       `${config.apiUrl}/status?${new URLSearchParams({
         bridge,
         fromChain,
@@ -294,11 +264,8 @@ const getStatus = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: StatusResponse = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -310,14 +277,14 @@ const getChains = async (
   const config = ConfigService.getInstance().getConfig()
 
   try {
-    const response = await serverRequest(`${config.apiUrl}/chains`, {
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: ChainsResponse = await response.json()
-    return data.chains
+    const response = await serverRequest<ChainsResponse>(
+      `${config.apiUrl}/chains`,
+      {
+        signal: options?.signal,
+      }
+    )
+
+    return response.chains
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -341,19 +308,19 @@ const getRoutes = async (
 
   // send request
   try {
-    const response = await serverRequest(`${config.apiUrl}/advanced/routes`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: RoutesResponse = await response.json()
-    return data
+    const response = await serverRequest<RoutesResponse>(
+      `${config.apiUrl}/advanced/routes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: options?.signal,
+      }
+    )
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -371,7 +338,7 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await serverRequest(
+    const response = await serverRequest<Step>(
       `${config.apiUrl}/advanced/stepTransaction`,
       {
         method: 'POST',
@@ -382,11 +349,8 @@ const getStepTransaction = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -404,7 +368,7 @@ const getTools = async (
         delete request[key as keyof ToolsRequest]
     )
   }
-  const response = await serverRequest(
+  const response = await serverRequest<ToolsResponse>(
     `${config.apiUrl}/tools?${new URLSearchParams(
       request as Record<string, string>
     )}`,
@@ -412,11 +376,8 @@ const getTools = async (
       signal: options?.signal,
     }
   )
-  if (!response.ok) {
-    throw new HTTPError(response)
-  }
-  const data: ToolsResponse = await response.json()
-  return data
+
+  return response
 }
 
 const getTokens = async (
@@ -431,7 +392,7 @@ const getTokens = async (
         delete request[key as keyof TokensRequest]
     )
   }
-  const response = await serverRequest(
+  const response = await serverRequest<TokensResponse>(
     `${config.apiUrl}/tokens?${new URLSearchParams(
       request as Record<string, string>
     )}`,
@@ -439,11 +400,8 @@ const getTokens = async (
       signal: options?.signal,
     }
   )
-  if (!response.ok) {
-    throw new HTTPError(response)
-  }
-  const data: TokensResponse = await response.json()
-  return data
+
+  return response
 }
 
 export default {
