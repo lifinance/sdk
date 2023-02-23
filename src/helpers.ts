@@ -77,7 +77,7 @@ export const checkPackageUpdates = async (
   try {
     const pkgName = packageName ?? name
     const response = await (
-      await fetch(`https://registry.npmjs.org/${pkgName}/latest`)
+      await serverRequest(`https://registry.npmjs.org/${pkgName}/latest`)
     ).json()
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version

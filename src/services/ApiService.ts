@@ -27,13 +27,13 @@ import { parseBackendError } from '../utils/parseError'
 import { sleep } from '../utils/utils'
 import ConfigService from './ConfigService'
 
-const lifiFetch = async (
+const serverRequest = async (
   url: string,
   options: RequestInit,
   retries = 1
 ): Promise<Response> => {
   try {
-    const response = await fetch(url, options)
+    const response = await serverRequest(url, options)
     if (!response.ok) {
       throw new HTTPError(response)
     }
@@ -41,7 +41,7 @@ const lifiFetch = async (
   } catch (error) {
     if (retries > 0 && (error as HTTPError)?.status === 500) {
       await sleep(500)
-      return lifiFetch(url, options, retries - 1)
+      return serverRequest(url, options, retries - 1)
     }
     throw error
   }
@@ -68,7 +68,7 @@ const getPossibilities = async (
 
   // send request
   try {
-    const response = await lifiFetch(
+    const response = await serverRequest(
       `${config.apiUrl}/advanced/possibilities`,
       {
         method: 'POST',
@@ -101,7 +101,7 @@ const getToken = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(
+    const response = await serverRequest(
       `${config.apiUrl}/token?${new URLSearchParams({
         chain,
         token,
@@ -171,7 +171,7 @@ const getQuote = async (
   )
 
   try {
-    const response = await fetch(
+    const response = await serverRequest(
       `${config.apiUrl}/quote?${new URLSearchParams(
         request as unknown as Record<string, string>
       )}`,
@@ -238,14 +238,17 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/quote/contractCall`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
+    const response = await serverRequest(
+      `${config.apiUrl}/quote/contractCall`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+        signal: options?.signal,
+      }
+    )
     if (!response.ok) {
       throw new HTTPError(response)
     }
@@ -280,7 +283,7 @@ const getStatus = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(
+    const response = await serverRequest(
       `${config.apiUrl}/status?${new URLSearchParams({
         bridge,
         fromChain,
@@ -307,7 +310,7 @@ const getChains = async (
   const config = ConfigService.getInstance().getConfig()
 
   try {
-    const response = await fetch(`${config.apiUrl}/chains`, {
+    const response = await serverRequest(`${config.apiUrl}/chains`, {
       signal: options?.signal,
     })
     if (!response.ok) {
@@ -338,7 +341,7 @@ const getRoutes = async (
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/routes`, {
+    const response = await serverRequest(`${config.apiUrl}/advanced/routes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -368,14 +371,17 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/stepTransaction`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(step),
-      signal: options?.signal,
-    })
+    const response = await serverRequest(
+      `${config.apiUrl}/advanced/stepTransaction`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(step),
+        signal: options?.signal,
+      }
+    )
     if (!response.ok) {
       throw new HTTPError(response)
     }
@@ -398,7 +404,7 @@ const getTools = async (
         delete request[key as keyof ToolsRequest]
     )
   }
-  const response = await fetch(
+  const response = await serverRequest(
     `${config.apiUrl}/tools?${new URLSearchParams(
       request as Record<string, string>
     )}`,
@@ -425,7 +431,7 @@ const getTokens = async (
         delete request[key as keyof TokensRequest]
     )
   }
-  const response = await fetch(
+  const response = await serverRequest(
     `${config.apiUrl}/tokens?${new URLSearchParams(
       request as Record<string, string>
     )}`,
@@ -452,3 +458,5 @@ export default {
   getTools,
   getTokens,
 }
+
+// create a wrapper function for fetch that prints response with a short and descriptive name not fetch
