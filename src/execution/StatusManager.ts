@@ -170,19 +170,23 @@ export class StatusManager {
     switch (status) {
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
+        step.execution.pauseTimestamp = null
         break
       case 'FAILED':
         currentProcess.doneAt = Date.now()
         step.execution.status = 'FAILED'
+        step.execution.pauseTimestamp = null
         break
       case 'DONE':
         currentProcess.doneAt = Date.now()
+        step.execution.pauseTimestamp = null
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
         break
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
+        step.execution.pauseTimestamp = Date.now()
         break
       default:
         break
