@@ -77,7 +77,7 @@ export const checkPackageUpdates = async (
   }
   try {
     const pkgName = packageName ?? name
-    const response = await serverRequest<Response>(
+    const response = await request<Response>(
       'https://registry.npmjs.org/${pkgName}/latest'
     )
     const data = await response.json()
@@ -134,7 +134,7 @@ export const convertQuoteToRoute = (step: Step): Route => {
   return route
 }
 
-export const serverRequest = async <T = Response>(
+export const request = async <T = Response>(
   url: string,
   options?: RequestInit,
   retries = 1
@@ -150,7 +150,7 @@ export const serverRequest = async <T = Response>(
   } catch (error) {
     if (retries > 0 && (error as HTTPError)?.status === 500) {
       await sleep(500)
-      return serverRequest<T>(url, options, retries - 1)
+      return request<T>(url, options, retries - 1)
     }
     throw error
   }
