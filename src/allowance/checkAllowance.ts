@@ -39,6 +39,12 @@ export const checkAllowance = async (
         'DONE'
       )
     } else {
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'ACTION_REQUIRED'
+      )
+
       const approved = await getApproved(
         signer,
         step.action.fromToken.address,

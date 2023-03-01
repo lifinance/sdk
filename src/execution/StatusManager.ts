@@ -170,23 +170,23 @@ export class StatusManager {
     switch (status) {
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
-        step.execution.pauseTimestamp = null
         break
       case 'FAILED':
         currentProcess.doneAt = Date.now()
         step.execution.status = 'FAILED'
-        step.execution.pauseTimestamp = null
         break
       case 'DONE':
         currentProcess.doneAt = Date.now()
-        step.execution.pauseTimestamp = null
         break
       case 'PENDING':
+        if (step.execution.status === 'ACTION_REQUIRED') {
+          // the start of eoa confirmation process can be marked by the startAt of process
+          currentProcess.eoaConfirmationAt = Date.now()
+        }
         step.execution.status = 'PENDING'
         break
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
-        step.execution.pauseTimestamp = Date.now()
         break
       default:
         break
