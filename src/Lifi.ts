@@ -368,14 +368,14 @@ export default class LIFI {
     }
     handlePreRestart(clonedRoute)
 
-    const newRoutePromise = this.executeSteps(signer, clonedRoute, settings)
+    const newExecutionPromise = this.executeSteps(signer, clonedRoute, settings)
 
     this.activeRouteDictionary[clonedRoute.id] = {
       ...this.activeRouteDictionary[clonedRoute.id],
-      executionPromise: newRoutePromise,
+      executionPromise: newExecutionPromise,
     }
 
-    return newRoutePromise
+    return newExecutionPromise
   }
 
   private executeSteps = async (
@@ -409,10 +409,9 @@ export default class LIFI {
 
     // Loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
-      const currentActiveRoute =
-        this.activeRouteDictionary[route.id].executionData
+      const { executionData } = this.activeRouteDictionary[route.id]
       // Check if execution has stopped in the meantime
-      if (!currentActiveRoute) {
+      if (!executionData) {
         break
       }
 
@@ -431,12 +430,12 @@ export default class LIFI {
       try {
         const stepExecutor = new StepExecutor(
           statusManager,
-          currentActiveRoute.settings
+          executionData.settings
         )
-        currentActiveRoute.executors.push(stepExecutor)
+        executionData.executors.push(stepExecutor)
 
         // Check if we want to execute this step in the background
-        this.updateRouteExecution(route, currentActiveRoute.settings)
+        this.updateRouteExecution(route, executionData.settings)
 
         const executedStep = await stepExecutor.executeStep(signer, step)
 
