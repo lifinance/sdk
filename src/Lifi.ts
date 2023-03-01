@@ -244,9 +244,9 @@ export default class LIFI {
       return route
     }
 
-    const activeRoute = this.activeRouteDictionary[route.id].executionData
+    const { executionData } = this.activeRouteDictionary[route.id]
 
-    for (const executor of activeRoute.executors) {
+    for (const executor of executionData.executors) {
       executor.setInteraction({
         allowInteraction: false,
         allowUpdates: false,
@@ -263,16 +263,16 @@ export default class LIFI {
    * @deprecated use updateRouteExecution instead.
    */
   moveExecutionToBackground = (route: Route): void => {
-    const activeRoute = this.activeRouteDictionary[route.id].executionData
+    const { executionData } = this.activeRouteDictionary[route.id]
 
-    if (!activeRoute) {
+    if (!executionData) {
       return
     }
-    for (const executor of activeRoute.executors) {
+    for (const executor of executionData.executors) {
       executor.setInteraction({ allowInteraction: false, allowUpdates: true })
     }
-    activeRoute.settings = {
-      ...activeRoute.settings,
+    executionData.settings = {
+      ...executionData.settings,
       executeInBackground: true,
     }
   }
@@ -286,19 +286,19 @@ export default class LIFI {
     route: Route,
     settings: Pick<ExecutionSettings, 'executeInBackground'>
   ): void => {
-    const activeRoute = this.activeRouteDictionary[route.id].executionData
-    if (!activeRoute) {
+    const { executionData } = this.activeRouteDictionary[route.id]
+    if (!executionData) {
       return
     }
-    for (const executor of activeRoute.executors) {
+    for (const executor of executionData.executors) {
       executor.setInteraction({
         allowInteraction: !settings.executeInBackground,
         allowUpdates: true,
       })
     }
     // Update active route settings so we know what the current state of execution is
-    activeRoute.settings = {
-      ...activeRoute.settings,
+    executionData.settings = {
+      ...executionData.settings,
       ...settings,
     }
   }
@@ -351,11 +351,11 @@ export default class LIFI {
     // Deep clone to prevent side effects
     const clonedRoute = structuredClone<Route>(route)
 
-    const { executionData: activeRoute, executionPromise: promiseRoute } =
+    const { executionData, executionPromise } =
       this.activeRouteDictionary[clonedRoute.id]
 
-    if (activeRoute) {
-      const executionHalted = activeRoute.executors.some(
+    if (executionData) {
+      const executionHalted = executionData.executors.some(
         (executor) => executor.executionStopped
       )
       if (!executionHalted) {
@@ -363,7 +363,7 @@ export default class LIFI {
         this.updateRouteExecution(route, {
           executeInBackground: settings?.executeInBackground,
         })
-        return promiseRoute
+        return executionPromise
       }
     }
     handlePreRestart(clonedRoute)
@@ -385,22 +385,24 @@ export default class LIFI {
   ): Promise<Route> => {
     const config = this.configService.getConfig()
 
-    const executionData: ExecutionData = {
+    const updatedExecutionData: ExecutionData = {
       route,
       executors: [],
       settings: { ...config.defaultExecutionSettings, ...settings },
     }
 
-    this.activeRouteDictionary[route.id].executionData = { ...executionData }
+    this.activeRouteDictionary[route.id].executionData = {
+      ...updatedExecutionData,
+    }
 
-    const activeRoute = this.activeRouteDictionary[route.id].executionData
+    const { executionData } = this.activeRouteDictionary[route.id]
 
     const statusManager = new StatusManager(
       route,
-      activeRoute.settings,
+      executionData.settings,
       (route: Route) => {
         if (this.activeRouteDictionary[route.id]) {
-          activeRoute.route = route
+          executionData.route = route
         }
       }
     )
