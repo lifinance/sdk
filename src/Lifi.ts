@@ -418,6 +418,7 @@ export default class LIFI {
       const step = route.steps[index]
       const previousStep = route.steps[index - 1]
       // Check if the step is already done
+      //
       if (step.execution?.status === 'DONE') {
         continue
       }
