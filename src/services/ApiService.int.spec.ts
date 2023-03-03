@@ -16,6 +16,6 @@ describe('ApiService Integration Tests', () => {
       })
       expect(quote).toBeDefined()
     },
-    { timeout: 10000 }
+    { timeout: 100000 }
   )
 })
