@@ -325,14 +325,14 @@ export default class LIFI {
       return this.activeRouteDictionary[clonedRoute.id].executionPromise
     }
 
-    const promiseRoute = this.executeSteps(signer, clonedRoute, settings)
+    const executionPromise = this.executeSteps(signer, clonedRoute, settings)
 
     this.activeRouteDictionary[clonedRoute.id] = {
       ...this.activeRouteDictionary[clonedRoute.id],
-      executionPromise: promiseRoute,
+      executionPromise,
     }
 
-    return promiseRoute
+    return executionPromise
   }
 
   /**
