@@ -181,7 +181,7 @@ export class StatusManager {
       case 'PENDING':
         if (step.execution.status === 'ACTION_REQUIRED') {
           // the start of eoa confirmation process can be marked by the startAt of process
-          currentProcess.eoaConfirmationAt = Date.now()
+          currentProcess.approvedAt = Date.now()
         }
         step.execution.status = 'PENDING'
         break
