@@ -95,7 +95,10 @@ export type EnforcedObjectProperties<T> = T & {
 }
 
 export interface ActiveRouteDictionary {
-  [k: string]: ExecutionData
+  [k: string]: {
+    executionData: ExecutionData
+    executionPromise: Promise<Route>
+  }
 }
 
 export type RevokeTokenData = {
