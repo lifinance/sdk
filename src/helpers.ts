@@ -147,21 +147,24 @@ export const request = async <T = Response>(
   const { userId, integrator } = ConfigService.getInstance().getConfig()
 
   try {
-    if (options) {
-      if (userId) {
-        options.headers = {
-          ...options?.headers,
-          'X-LIFI-UserId': userId,
-        }
-      }
+    const updatedOptions: RequestInit = {
+      ...(options ?? {}),
+    }
 
-      options.headers = {
+    if (userId) {
+      updatedOptions.headers = {
         ...options?.headers,
-        'X-LIFI-Integrator': integrator,
+        'X-LIFI-UserId': userId,
       }
     }
 
-    const response: Response = await fetch(url, options)
+    // integrator is mandatory during SDK initialization
+    updatedOptions.headers = {
+      ...options?.headers,
+      'X-LIFI-Integrator': integrator,
+    }
+
+    const response: Response = await fetch(url, updatedOptions)
     if (!response.ok) {
       throw new HTTPError(response)
     }
