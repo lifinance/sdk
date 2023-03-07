@@ -36,7 +36,7 @@ export type Config = {
   defaultRouteOptions: RouteOptions
   disableVersionCheck?: boolean
   userId?: string
-  integrator?: string
+  integrator: string
 }
 
 export type ConfigUpdate = {
@@ -47,7 +47,7 @@ export type ConfigUpdate = {
   defaultRouteOptions?: RouteOptions
   disableVersionCheck?: boolean
   userId?: string
-  integrator?: string
+  integrator: string
 }
 
 export type SwitchChainHook = (

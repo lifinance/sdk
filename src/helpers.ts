@@ -154,11 +154,10 @@ export const request = async <T = Response>(
           'X-LIFI-UserId': userId,
         }
       }
-      if (integrator) {
-        options.headers = {
-          ...options?.headers,
-          'X-LIFI-Integrator': integrator,
-        }
+
+      options.headers = {
+        ...options?.headers,
+        'X-LIFI-Integrator': integrator,
       }
     }
 
