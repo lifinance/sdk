@@ -1,6 +1,7 @@
 import { ExternalProvider } from '@ethersproject/providers'
 import { LifiStep, Route, Step, Token } from '@lifi/types'
-import { ValidationError } from './utils/errors'
+import { HTTPError, ValidationError } from './utils/errors'
+import { sleep } from './utils/utils'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -76,10 +77,11 @@ export const checkPackageUpdates = async (
   }
   try {
     const pkgName = packageName ?? name
-    const response = await (
-      await fetch(`https://registry.npmjs.org/${pkgName}/latest`)
-    ).json()
-    const latestVersion = response.version
+    const response = await request<Response>(
+      'https://registry.npmjs.org/${pkgName}/latest'
+    )
+    const data = await response.json()
+    const latestVersion = data.version
     const currentVersion = packageVersion ?? version
 
     if (semverCompare(latestVersion, currentVersion)) {
@@ -130,4 +132,30 @@ export const convertQuoteToRoute = (step: Step): Route => {
   }
 
   return route
+}
+
+export const requestSettings = {
+  retries: 1,
+}
+
+export const request = async <T = Response>(
+  url: string,
+  options?: RequestInit,
+  retries = requestSettings.retries
+): Promise<T> => {
+  try {
+    const response: Response = await fetch(url, options)
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+
+    const data: T = await response.json()
+    return data
+  } catch (error) {
+    if (retries > 0 && (error as HTTPError)?.status === 500) {
+      await sleep(500)
+      return request<T>(url, options, retries - 1)
+    }
+    throw error
+  }
 }

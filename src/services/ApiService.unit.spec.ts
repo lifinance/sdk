@@ -21,7 +21,8 @@ import {
   it,
   vi,
 } from 'vitest'
-import { ServerError, ValidationError } from '../utils/errors'
+import { requestSettings } from '../helpers'
+import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
@@ -35,13 +36,17 @@ describe('ApiService', () => {
     server.listen({
       onUnhandledRequest: 'warn',
     })
+    requestSettings.retries = 0
     // server.use(...handlers)
   })
   beforeEach(() => {
     vi.clearAllMocks()
   })
   afterEach(() => server.resetHandlers())
-  afterAll(() => server.close())
+  afterAll(() => {
+    requestSettings.retries = 1
+    server.close()
+  })
 
   describe('getRoutes', () => {
     const getRoutesRequest = ({
@@ -156,8 +161,16 @@ describe('ApiService', () => {
 
   describe('getPossibilities', () => {
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw a the error', async () => {
+      describe('and the backend call fails with 500', () => {
+        beforeEach(() => {
+          requestSettings.retries = 1
+        })
+
+        afterEach(() => {
+          requestSettings.retries = 0
+        })
+
+        it('throw a the error after retrying once', async () => {
           server.use(
             rest.post(
               `${config.apiUrl}/advanced/possibilities`,
@@ -168,6 +181,28 @@ describe('ApiService', () => {
 
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
+          )
+          expect(mockedFetch).toHaveBeenCalledTimes(2)
+        })
+      })
+
+      describe('and the backend call fails with 409', () => {
+        it('throw a the error without retrying', async () => {
+          server.use(
+            rest.post(
+              `${config.apiUrl}/advanced/possibilities`,
+              async (_, response, context) =>
+                response(
+                  context.status(409),
+                  context.json({
+                    message: 'Slippage error',
+                  })
+                )
+            )
+          )
+
+          await expect(ApiService.getPossibilities()).rejects.toThrowError(
+            new SlippageError('Slippage error')
           )
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })

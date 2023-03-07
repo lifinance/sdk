@@ -189,6 +189,7 @@ export class UnknownError extends LifiError {
 
 export class HTTPError extends Error {
   public response: Response
+  public status: number
 
   constructor(response: Response) {
     const code = response.status || response.status === 0 ? response.status : ''
@@ -200,5 +201,6 @@ export class HTTPError extends Error {
 
     this.name = 'HTTPError'
     this.response = response
+    this.status = response.status
   }
 }

@@ -6,6 +6,7 @@ import {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
+import { request } from '../helpers'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,
@@ -22,44 +23,44 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '../types'
-import { HTTPError, ValidationError } from '../utils/errors'
+import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
 const getPossibilities = async (
-  request?: PossibilitiesRequest,
+  requestConfig?: PossibilitiesRequest,
   options?: RequestOptions
 ): Promise<PossibilitiesResponse> => {
-  if (!request) {
-    request = {}
+  if (!requestConfig) {
+    requestConfig = {}
   }
 
   const config = ConfigService.getInstance().getConfig()
 
   // apply defaults
-  if (request.bridges || config.defaultRouteOptions.bridges) {
-    request.bridges = request.bridges || config.defaultRouteOptions.bridges
+  if (requestConfig.bridges || config.defaultRouteOptions.bridges) {
+    requestConfig.bridges =
+      requestConfig.bridges || config.defaultRouteOptions.bridges
   }
-  if (request.exchanges || config.defaultRouteOptions.exchanges) {
-    request.exchanges =
-      request.exchanges || config.defaultRouteOptions.exchanges
+  if (requestConfig.exchanges || config.defaultRouteOptions.exchanges) {
+    requestConfig.exchanges =
+      requestConfig.exchanges || config.defaultRouteOptions.exchanges
   }
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/possibilities`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: PossibilitiesResponse = await response.json()
-    return data
+    const response = await request<PossibilitiesResponse>(
+      `${config.apiUrl}/advanced/possibilities`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestConfig),
+        signal: options?.signal,
+      }
+    )
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -80,7 +81,7 @@ const getToken = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(
+    const response = await request<Token>(
       `${config.apiUrl}/token?${new URLSearchParams({
         chain,
         token,
@@ -89,18 +90,15 @@ const getToken = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Token = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
 }
 
 const getQuote = async (
-  request: QuoteRequest,
+  requestConfig: QuoteRequest,
   options?: RequestOptions
 ): Promise<Step> => {
   const config = ConfigService.getInstance().getConfig()
@@ -115,7 +113,7 @@ const getQuote = async (
     'toToken',
   ]
   requiredParameters.forEach((requiredParameter) => {
-    if (!request[requiredParameter]) {
+    if (!requestConfig[requiredParameter]) {
       throw new ValidationError(
         `Required parameter "${requiredParameter}" is missing.`
       )
@@ -123,53 +121,53 @@ const getQuote = async (
   })
 
   // apply defaults
-  request.order = request.order || config.defaultRouteOptions.order
-  request.slippage = request.slippage || config.defaultRouteOptions.slippage
-  request.integrator =
-    request.integrator || config.defaultRouteOptions.integrator
-  request.referrer = request.referrer || config.defaultRouteOptions.referrer
-  request.fee = request.fee || config.defaultRouteOptions.fee
+  requestConfig.order = requestConfig.order || config.defaultRouteOptions.order
+  requestConfig.slippage =
+    requestConfig.slippage || config.defaultRouteOptions.slippage
+  requestConfig.integrator =
+    requestConfig.integrator || config.defaultRouteOptions.integrator
+  requestConfig.referrer =
+    requestConfig.referrer || config.defaultRouteOptions.referrer
+  requestConfig.fee = requestConfig.fee || config.defaultRouteOptions.fee
 
-  request.allowBridges =
-    request.allowBridges || config.defaultRouteOptions.bridges?.allow
-  request.denyBridges =
-    request.denyBridges || config.defaultRouteOptions.bridges?.deny
-  request.preferBridges =
-    request.preferBridges || config.defaultRouteOptions.bridges?.prefer
-  request.allowExchanges =
-    request.allowExchanges || config.defaultRouteOptions.exchanges?.allow
-  request.denyExchanges =
-    request.denyExchanges || config.defaultRouteOptions.exchanges?.deny
-  request.preferExchanges =
-    request.preferExchanges || config.defaultRouteOptions.exchanges?.prefer
+  requestConfig.allowBridges =
+    requestConfig.allowBridges || config.defaultRouteOptions.bridges?.allow
+  requestConfig.denyBridges =
+    requestConfig.denyBridges || config.defaultRouteOptions.bridges?.deny
+  requestConfig.preferBridges =
+    requestConfig.preferBridges || config.defaultRouteOptions.bridges?.prefer
+  requestConfig.allowExchanges =
+    requestConfig.allowExchanges || config.defaultRouteOptions.exchanges?.allow
+  requestConfig.denyExchanges =
+    requestConfig.denyExchanges || config.defaultRouteOptions.exchanges?.deny
+  requestConfig.preferExchanges =
+    requestConfig.preferExchanges ||
+    config.defaultRouteOptions.exchanges?.prefer
 
-  Object.keys(request).forEach(
+  Object.keys(requestConfig).forEach(
     (key) =>
-      !request[key as keyof QuoteRequest] &&
-      delete request[key as keyof QuoteRequest]
+      !requestConfig[key as keyof QuoteRequest] &&
+      delete requestConfig[key as keyof QuoteRequest]
   )
 
   try {
-    const response = await fetch(
+    const response = await request<Step>(
       `${config.apiUrl}/quote?${new URLSearchParams(
-        request as unknown as Record<string, string>
+        requestConfig as unknown as Record<string, string>
       )}`,
       {
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
 }
 
 const getContractCallQuote = async (
-  request: ContractCallQuoteRequest,
+  requestConfig: ContractCallQuoteRequest,
   options?: RequestOptions
 ): Promise<Step> => {
   const config = ConfigService.getInstance().getConfig()
@@ -187,7 +185,7 @@ const getContractCallQuote = async (
     'toContractGasLimit',
   ]
   requiredParameters.forEach((requiredParameter) => {
-    if (!request[requiredParameter]) {
+    if (!requestConfig[requiredParameter]) {
       throw new ValidationError(
         `Required parameter "${requiredParameter}" is missing.`
       )
@@ -196,40 +194,43 @@ const getContractCallQuote = async (
 
   // apply defaults
   // option.order is not used in this endpoint
-  request.slippage = request.slippage || config.defaultRouteOptions.slippage
-  request.integrator =
-    request.integrator || config.defaultRouteOptions.integrator
-  request.referrer = request.referrer || config.defaultRouteOptions.referrer
-  request.fee = request.fee || config.defaultRouteOptions.fee
+  requestConfig.slippage =
+    requestConfig.slippage || config.defaultRouteOptions.slippage
+  requestConfig.integrator =
+    requestConfig.integrator || config.defaultRouteOptions.integrator
+  requestConfig.referrer =
+    requestConfig.referrer || config.defaultRouteOptions.referrer
+  requestConfig.fee = requestConfig.fee || config.defaultRouteOptions.fee
 
-  request.allowBridges =
-    request.allowBridges || config.defaultRouteOptions.bridges?.allow
-  request.denyBridges =
-    request.denyBridges || config.defaultRouteOptions.bridges?.deny
-  request.preferBridges =
-    request.preferBridges || config.defaultRouteOptions.bridges?.prefer
-  request.allowExchanges =
-    request.allowExchanges || config.defaultRouteOptions.exchanges?.allow
-  request.denyExchanges =
-    request.denyExchanges || config.defaultRouteOptions.exchanges?.deny
-  request.preferExchanges =
-    request.preferExchanges || config.defaultRouteOptions.exchanges?.prefer
+  requestConfig.allowBridges =
+    requestConfig.allowBridges || config.defaultRouteOptions.bridges?.allow
+  requestConfig.denyBridges =
+    requestConfig.denyBridges || config.defaultRouteOptions.bridges?.deny
+  requestConfig.preferBridges =
+    requestConfig.preferBridges || config.defaultRouteOptions.bridges?.prefer
+  requestConfig.allowExchanges =
+    requestConfig.allowExchanges || config.defaultRouteOptions.exchanges?.allow
+  requestConfig.denyExchanges =
+    requestConfig.denyExchanges || config.defaultRouteOptions.exchanges?.deny
+  requestConfig.preferExchanges =
+    requestConfig.preferExchanges ||
+    config.defaultRouteOptions.exchanges?.prefer
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/quote/contractCall`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+    const response = await request<Step>(
+      `${config.apiUrl}/quote/contractCall`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestConfig),
+        signal: options?.signal,
+      }
+    )
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -259,7 +260,7 @@ const getStatus = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(
+    const response = await request<StatusResponse>(
       `${config.apiUrl}/status?${new URLSearchParams({
         bridge,
         fromChain,
@@ -270,11 +271,8 @@ const getStatus = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: StatusResponse = await response.json()
-    return data
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -286,50 +284,47 @@ const getChains = async (
   const config = ConfigService.getInstance().getConfig()
 
   try {
-    const response = await fetch(`${config.apiUrl}/chains`, {
+    const response = await request<ChainsResponse>(`${config.apiUrl}/chains`, {
       signal: options?.signal,
     })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: ChainsResponse = await response.json()
-    return data.chains
+
+    return response.chains
   } catch (e) {
     throw await parseBackendError(e)
   }
 }
 
 const getRoutes = async (
-  request: RoutesRequest,
+  requestConfig: RoutesRequest,
   options?: RequestOptions
 ): Promise<RoutesResponse> => {
-  if (!isRoutesRequest(request)) {
+  if (!isRoutesRequest(requestConfig)) {
     throw new ValidationError('Invalid routes request.')
   }
 
   const config = ConfigService.getInstance().getConfig()
 
   // apply defaults
-  request.options = {
+  requestConfig.options = {
     ...config.defaultRouteOptions,
-    ...request.options,
+    ...requestConfig.options,
   }
 
   // send request
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/routes`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: RoutesResponse = await response.json()
-    return data
+    const response = await request<RoutesResponse>(
+      `${config.apiUrl}/advanced/routes`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestConfig),
+        signal: options?.signal,
+      }
+    )
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
@@ -347,76 +342,70 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await fetch(`${config.apiUrl}/advanced/stepTransaction`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(step),
-      signal: options?.signal,
-    })
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: Step = await response.json()
-    return data
+    const response = await request<Step>(
+      `${config.apiUrl}/advanced/stepTransaction`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(step),
+        signal: options?.signal,
+      }
+    )
+
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
 }
 
 const getTools = async (
-  request?: ToolsRequest,
+  requestConfig?: ToolsRequest,
   options?: RequestOptions
 ): Promise<ToolsResponse> => {
   const config = ConfigService.getInstance().getConfig()
-  if (request) {
-    Object.keys(request).forEach(
+  if (requestConfig) {
+    Object.keys(requestConfig).forEach(
       (key) =>
-        !request[key as keyof ToolsRequest] &&
-        delete request[key as keyof ToolsRequest]
+        !requestConfig[key as keyof ToolsRequest] &&
+        delete requestConfig[key as keyof ToolsRequest]
     )
   }
-  const response = await fetch(
+  const response = await request<ToolsResponse>(
     `${config.apiUrl}/tools?${new URLSearchParams(
-      request as Record<string, string>
+      requestConfig as Record<string, string>
     )}`,
     {
       signal: options?.signal,
     }
   )
-  if (!response.ok) {
-    throw new HTTPError(response)
-  }
-  const data: ToolsResponse = await response.json()
-  return data
+
+  return response
 }
 
 const getTokens = async (
-  request?: TokensRequest,
+  requestConfig?: TokensRequest,
   options?: RequestOptions
 ): Promise<TokensResponse> => {
   const config = ConfigService.getInstance().getConfig()
-  if (request) {
-    Object.keys(request).forEach(
+  if (requestConfig) {
+    Object.keys(requestConfig).forEach(
       (key) =>
-        !request[key as keyof TokensRequest] &&
-        delete request[key as keyof TokensRequest]
+        !requestConfig[key as keyof TokensRequest] &&
+        delete requestConfig[key as keyof TokensRequest]
     )
   }
-  const response = await fetch(
+  const response = await request<TokensResponse>(
     `${config.apiUrl}/tokens?${new URLSearchParams(
-      request as Record<string, string>
+      requestConfig as Record<string, string>
     )}`,
     {
       signal: options?.signal,
     }
   )
-  if (!response.ok) {
-    throw new HTTPError(response)
-  }
-  const data: TokensResponse = await response.json()
-  return data
+
+  return response
 }
 
 export default {
