@@ -1,5 +1,6 @@
 import { ExternalProvider } from '@ethersproject/providers'
 import { LifiStep, Route, Step, Token } from '@lifi/types'
+import ConfigService from './services/ConfigService'
 import { HTTPError, ValidationError } from './utils/errors'
 import { sleep } from './utils/utils'
 import { name, version } from './version'
@@ -143,7 +144,24 @@ export const request = async <T = Response>(
   options?: RequestInit,
   retries = requestSettings.retries
 ): Promise<T> => {
+  const { userId, integrator } = ConfigService.getInstance().getConfig()
+
   try {
+    if (options) {
+      if (userId) {
+        options.headers = {
+          ...options?.headers,
+          'X-LIFI-UserId': userId,
+        }
+      }
+      if (integrator) {
+        options.headers = {
+          ...options?.headers,
+          'X-LIFI-Integrator': integrator,
+        }
+      }
+    }
+
     const response: Response = await fetch(url, options)
     if (!response.ok) {
       throw new HTTPError(response)

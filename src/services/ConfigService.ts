@@ -107,6 +107,9 @@ export default class ConfigService {
       configUpdate.defaultRouteOptions
     )
 
+    this.config.userId = configUpdate.userId || this.config.userId
+    this.config.integrator = configUpdate.integrator || this.config.integrator
+
     return this.config
   }
 
