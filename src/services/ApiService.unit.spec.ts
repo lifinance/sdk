@@ -162,6 +162,14 @@ describe('ApiService', () => {
   describe('getPossibilities', () => {
     describe('user input is valid', () => {
       describe('and the backend call fails with 500', () => {
+        beforeEach(() => {
+          requestSettings.retries = 1
+        })
+
+        afterEach(() => {
+          requestSettings.retries = 0
+        })
+
         it('throw a the error after retrying once', async () => {
           server.use(
             rest.post(
@@ -174,7 +182,7 @@ describe('ApiService', () => {
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
+          expect(mockedFetch).toHaveBeenCalledTimes(2)
         })
       })
 
