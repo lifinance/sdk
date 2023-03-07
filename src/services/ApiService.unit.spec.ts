@@ -21,6 +21,7 @@ import {
   it,
   vi,
 } from 'vitest'
+import { requestSettings } from '../helpers'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
@@ -35,13 +36,17 @@ describe('ApiService', () => {
     server.listen({
       onUnhandledRequest: 'warn',
     })
+    requestSettings.retries = 0
     // server.use(...handlers)
   })
   beforeEach(() => {
     vi.clearAllMocks()
   })
   afterEach(() => server.resetHandlers())
-  afterAll(() => server.close())
+  afterAll(() => {
+    requestSettings.retries = 1
+    server.close()
+  })
 
   describe('getRoutes', () => {
     const getRoutesRequest = ({
@@ -140,7 +145,7 @@ describe('ApiService', () => {
           await expect(ApiService.getRoutes(request)).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -169,7 +174,7 @@ describe('ApiService', () => {
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -238,7 +243,7 @@ describe('ApiService', () => {
           await expect(
             ApiService.getToken(ChainId.DAI, 'DAI')
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -363,7 +368,7 @@ describe('ApiService', () => {
               toToken,
             })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -454,7 +459,7 @@ describe('ApiService', () => {
           await expect(
             ApiService.getStatus({ bridge, fromChain, toChain, txHash })
           ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
@@ -480,7 +485,7 @@ describe('ApiService', () => {
         await expect(ApiService.getChains()).rejects.toThrowError(
           new ServerError('Oops')
         )
-        expect(mockedFetch).toHaveBeenCalledTimes(2)
+        expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
 
@@ -651,7 +656,7 @@ describe('ApiService', () => {
             await expect(
               ApiService.getStepTransaction(step)
             ).rejects.toThrowError(new ServerError('Oops'))
-            expect(mockedFetch).toHaveBeenCalledTimes(2)
+            expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
 

@@ -78,7 +78,8 @@ export const checkPackageUpdates = async (
   try {
     const pkgName = packageName ?? name
     const response = await request<Response>(
-      'https://registry.npmjs.org/${pkgName}/latest'
+      'https://registry.npmjs.org/${pkgName}/latest',
+      {}
     )
     const data = await response.json()
     const latestVersion = data.version
@@ -134,10 +135,14 @@ export const convertQuoteToRoute = (step: Step): Route => {
   return route
 }
 
+export const requestSettings = {
+  retries: 1,
+}
+
 export const request = async <T = Response>(
   url: string,
-  options?: RequestInit,
-  retries = 1
+  options: RequestInit,
+  retries = requestSettings.retries
 ): Promise<T> => {
   try {
     const response: Response = await fetch(url, options)
