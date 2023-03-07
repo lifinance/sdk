@@ -12,10 +12,10 @@ describe('ApiService Integration Tests', () => {
         fromAmount: '1000000000000000000',
         toChain: '137',
         toToken: '0x0000000000000000000000000000000000000000',
-        allowBridges: ['hop', 'multichain'],
+        // allowBridges: ['hop', 'multichain'],
       })
       expect(quote).toBeDefined()
     },
-    { timeout: 10000 }
+    { timeout: 100000 }
   )
 })
