@@ -1,5 +1,7 @@
 import {
   ContractCallQuoteRequest,
+  GasRecommendationRequest,
+  GasRecommendationResponse,
   GetStatusRequest,
   QuoteRequest,
   RequestOptions,
@@ -408,15 +410,46 @@ const getTokens = async (
   return response
 }
 
+const getGasRecommendation = async (
+  { chainId, fromChain, fromToken }: GasRecommendationRequest,
+  options?: RequestOptions
+): Promise<GasRecommendationResponse> => {
+  const config = ConfigService.getInstance().getConfig()
+
+  if (!chainId) {
+    throw new ValidationError('Required parameter "chainId" is missing.')
+  }
+
+  try {
+    const response = await fetch(
+      `${config.apiUrl}/gas/suggestion/${chainId}?${new URLSearchParams({
+        fromChain,
+        fromToken,
+      } as unknown as Record<string, string>)}`,
+      {
+        signal: options?.signal,
+      }
+    )
+    if (!response.ok) {
+      throw new HTTPError(response)
+    }
+    const data: GasRecommendationResponse = await response.json()
+    return data
+  } catch (e) {
+    throw await parseBackendError(e)
+  }
+}
+
 export default {
-  getPossibilities,
-  getToken,
-  getQuote,
-  getContractCallQuote,
-  getStatus,
   getChains,
+  getContractCallQuote,
+  getGasRecommendation,
+  getPossibilities,
+  getQuote,
   getRoutes,
+  getStatus,
   getStepTransaction,
-  getTools,
+  getToken,
   getTokens,
+  getTools,
 }
