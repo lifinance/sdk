@@ -54,6 +54,7 @@ export default class ConfigService {
       defaultRouteOptions: {
         integrator: 'lifi-sdk',
       },
+      integrator: 'lifi-sdk',
     }
   }
 
