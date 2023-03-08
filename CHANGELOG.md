@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.2](https://github.com/lifinance/sdk/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2023-03-08)
+
+
+### Bug Fixes
+
+* add missing types for gas recommendation ([3d2a044](https://github.com/lifinance/sdk/commit/3d2a044fadb1dff7213baea5e946c7541a121f74))
+
 ## [2.0.0-beta.1](https://github.com/lifinance/sdk/compare/v2.0.0-beta.0...v2.0.0-beta.1) (2023-03-08)
 
 
