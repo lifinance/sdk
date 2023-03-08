@@ -96,7 +96,7 @@ export type EnforcedObjectProperties<T> = T & {
 
 export interface ActiveRouteDictionary {
   [k: string]: {
-    executionData: ExecutionData
+    executionData?: ExecutionData
     executionPromise: Promise<Route>
   }
 }

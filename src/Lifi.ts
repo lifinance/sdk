@@ -260,6 +260,10 @@ export default class LIFI {
 
     const { executionData } = this.activeRouteDictionary[route.id]
 
+    if (!executionData) {
+      return route
+    }
+
     for (const executor of executionData.executors) {
       executor.setInteraction({
         allowInteraction: false,
@@ -349,8 +353,9 @@ export default class LIFI {
 
     const executionPromise = this.executeSteps(signer, clonedRoute, settings)
 
-    this.activeRouteDictionary[clonedRoute.id].executionPromise =
-      executionPromise
+    this.activeRouteDictionary[clonedRoute.id] = {
+      executionPromise,
+    }
 
     return executionPromise
   }
@@ -493,7 +498,16 @@ export default class LIFI {
     }
 
     const config = this.configService.getConfig()
-    this.activeRouteDictionary[route.id].executionData.settings = {
+
+    const { executionData } = this.activeRouteDictionary[route.id]
+
+    if (!executionData) {
+      throw new ValidationError(
+        "Can't set ExecutionSettings for the inactive route."
+      )
+    }
+
+    executionData.settings = {
       ...config.defaultExecutionSettings,
       ...settings,
     }
@@ -504,9 +518,11 @@ export default class LIFI {
    * @return {Route[]} A list of routes.
    */
   getActiveRoutes = (): Route[] => {
-    return Object.values(this.activeRouteDictionary).map(
-      (dict) => dict.executionData.route
+    const allRoutes = Object.values(this.activeRouteDictionary).map(
+      (dict) => dict.executionData?.route
     )
+
+    return allRoutes.filter((route) => !!route) as Route[]
   }
 
   /**
@@ -515,7 +531,7 @@ export default class LIFI {
    * @return {Route} The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
-    return this.activeRouteDictionary[route.id]?.executionData.route
+    return this.activeRouteDictionary[route.id]?.executionData?.route
   }
 
   /**
