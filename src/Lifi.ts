@@ -277,6 +277,10 @@ export default class LIFI {
    * @deprecated use updateRouteExecution instead.
    */
   moveExecutionToBackground = (route: Route): void => {
+    if (!this.activeRouteDictionary[route.id]) {
+      return
+    }
+
     const { executionData } = this.activeRouteDictionary[route.id]
 
     if (!executionData) {
@@ -300,6 +304,10 @@ export default class LIFI {
     route: Route,
     settings: Pick<ExecutionSettings, 'executeInBackground'>
   ): void => {
+    if (!this.activeRouteDictionary[route.id]) {
+      return
+    }
+
     const { executionData } = this.activeRouteDictionary[route.id]
     if (!executionData) {
       return
@@ -341,10 +349,8 @@ export default class LIFI {
 
     const executionPromise = this.executeSteps(signer, clonedRoute, settings)
 
-    this.activeRouteDictionary[clonedRoute.id] = {
-      ...this.activeRouteDictionary[clonedRoute.id],
-      executionPromise,
-    }
+    this.activeRouteDictionary[clonedRoute.id].executionPromise =
+      executionPromise
 
     return executionPromise
   }
@@ -399,17 +405,13 @@ export default class LIFI {
   ): Promise<Route> => {
     const config = this.configService.getConfig()
 
-    const updatedExecutionData: ExecutionData = {
+    const executionData: ExecutionData = {
       route,
       executors: [],
       settings: { ...config.defaultExecutionSettings, ...settings },
     }
 
-    this.activeRouteDictionary[route.id].executionData = {
-      ...updatedExecutionData,
-    }
-
-    const { executionData } = this.activeRouteDictionary[route.id]
+    this.activeRouteDictionary[route.id].executionData = executionData
 
     const statusManager = new StatusManager(
       route,
