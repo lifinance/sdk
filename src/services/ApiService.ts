@@ -421,7 +421,7 @@ const getGasRecommendation = async (
   }
 
   try {
-    const response = await fetch(
+    const response = await request<GasRecommendationResponse>(
       `${config.apiUrl}/gas/suggestion/${chainId}?${new URLSearchParams({
         fromChain,
         fromToken,
@@ -430,11 +430,7 @@ const getGasRecommendation = async (
         signal: options?.signal,
       }
     )
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-    const data: GasRecommendationResponse = await response.json()
-    return data
+    return response
   } catch (e) {
     throw await parseBackendError(e)
   }
