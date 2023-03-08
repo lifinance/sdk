@@ -51,4 +51,10 @@ export const handlers = [
       return response(context.json({}))
     }
   ),
+  rest.get(
+    `${config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
+    async (request, response, context) => {
+      return response(context.json({}))
+    }
+  ),
 ]
