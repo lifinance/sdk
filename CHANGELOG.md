@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.0](https://github.com/lifinance/sdk/compare/v1.7.2...v2.0.0-beta.0) (2023-03-08)
+
+
+### Features
+
+* add gas recommendation endpoint ([#122](https://github.com/lifinance/sdk/issues/122)) ([ea31d1e](https://github.com/lifinance/sdk/commit/ea31d1e9989fc0e3fa1ba04f3fdf97d0601fa366))
+* move to yarn 3 ([3f39a7a](https://github.com/lifinance/sdk/commit/3f39a7adf3054c8df1d84d34ef5b3866251b4c6f))
+* remove axios and move to native fetch ([#113](https://github.com/lifinance/sdk/issues/113)) ([7783122](https://github.com/lifinance/sdk/commit/7783122d931461d2951cf84619b210677ff427ae))
+
+
+### Bug Fixes
+
+* add handling for replacement fee too low ([#112](https://github.com/lifinance/sdk/issues/112)) ([b09c874](https://github.com/lifinance/sdk/commit/b09c8741cb79f0e10685d648e0472dbb249218e4))
+* configured as step as lifi-step ([22962b1](https://github.com/lifinance/sdk/commit/22962b18409a01a89ccb34d17ee8091249587f1f))
+* error handling ([bb73fc9](https://github.com/lifinance/sdk/commit/bb73fc93bde151e936e68de88bf9b5de79fe2aa5))
+* return large numbers as string ([cc927e0](https://github.com/lifinance/sdk/commit/cc927e0a033c29adf01ee4d3c6c39e30642a494f))
+* review comments ([260335b](https://github.com/lifinance/sdk/commit/260335bc79303b8ce9acdaf0d0cb1db00bf953bb))
+
 ### [1.7.2](https://github.com/lifinance/sdk/compare/v1.7.1...v1.7.2) (2022-12-13)
 
 ### [1.7.1](https://github.com/lifinance/sdk/compare/v1.7.0...v1.7.1) (2022-12-12)
