@@ -5,6 +5,8 @@ import {
   ChainKey,
   ContractCallQuoteRequest,
   ExtendedChain,
+  GasRecommendationRequest,
+  GasRecommendationResponse,
   GetStatusRequest,
   PossibilitiesRequest,
   PossibilitiesResponse,
@@ -210,7 +212,7 @@ export default class LIFI {
 
   /**
    * Get a set of routes for a request that describes a transfer of tokens.
-   * @param {RoutesRequest} routesRequest - A description of the transfer.
+   * @param {RoutesRequest} request - A description of the transfer.
    * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
@@ -232,6 +234,18 @@ export default class LIFI {
     options?: RequestOptions
   ): Promise<Step> => {
     return ApiService.getStepTransaction(step, options)
+  }
+
+  /**
+   * Get gas recommendation for a certain chain
+   * @param {GasRecommendationRequest} request - Configuration of the requested recommendation.
+   * @throws {LifiError} Throws a LifiError if request fails.
+   */
+  getGasRecommendation = async (
+    request: GasRecommendationRequest,
+    options?: RequestOptions
+  ): Promise<GasRecommendationResponse> => {
+    return ApiService.getGasRecommendation(request, options)
   }
 
   /**
