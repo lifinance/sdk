@@ -411,20 +411,28 @@ const getTokens = async (
 }
 
 const getGasRecommendation = async (
-  { chainId, fromChain, fromToken }: GasRecommendationRequest,
+  requestConfig: GasRecommendationRequest,
   options?: RequestOptions
 ): Promise<GasRecommendationResponse> => {
   const config = ConfigService.getInstance().getConfig()
 
-  if (!chainId) {
+  Object.keys(requestConfig).forEach(
+    (key) =>
+      !requestConfig[key as keyof GasRecommendationRequest] &&
+      delete requestConfig[key as keyof GasRecommendationRequest]
+  )
+
+  if (!requestConfig.chainId) {
     throw new ValidationError('Required parameter "chainId" is missing.')
   }
 
   try {
     const response = await request<GasRecommendationResponse>(
-      `${config.apiUrl}/gas/suggestion/${chainId}?${new URLSearchParams({
-        fromChain,
-        fromToken,
+      `${config.apiUrl}/gas/suggestion/${
+        requestConfig.chainId
+      }?${new URLSearchParams({
+        fromChain: requestConfig.fromChain,
+        fromToken: requestConfig.fromToken,
       } as unknown as Record<string, string>)}`,
       {
         signal: options?.signal,
