@@ -1,7 +1,7 @@
 import { Signer } from 'ethers'
 import { InteractionSettings, InternalExecutionSettings, Step } from '../types'
-import { ExecutionManager } from './ExecutionManager'
 import { StatusManager } from './StatusManager'
+import { StepExecutionManager } from './StepExecutionManager'
 import { switchChain } from './switchChain'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
@@ -12,7 +12,7 @@ const defaultInteractionSettings = {
 }
 
 export class StepExecutor {
-  executionManager: ExecutionManager
+  stepExecutionManager: StepExecutionManager
   statusManager: StatusManager
   settings: InternalExecutionSettings
 
@@ -23,7 +23,7 @@ export class StepExecutor {
     statusManager: StatusManager,
     settings: InternalExecutionSettings
   ) {
-    this.executionManager = new ExecutionManager()
+    this.stepExecutionManager = new StepExecutionManager()
     this.statusManager = statusManager
     this.settings = settings
   }
@@ -34,7 +34,9 @@ export class StepExecutor {
       ...settings,
     }
     this.allowUserInteraction = interactionSettings.allowInteraction
-    this.executionManager.allowInteraction(interactionSettings.allowInteraction)
+    this.stepExecutionManager.allowInteraction(
+      interactionSettings.allowInteraction
+    )
     this.statusManager.allowUpdates(interactionSettings.allowUpdates)
     this.executionStopped = interactionSettings.stopExecution
   }
@@ -70,7 +72,7 @@ export class StepExecutor {
       statusManager: this.statusManager,
     }
 
-    await this.executionManager.execute(parameters)
+    await this.stepExecutionManager.execute(parameters)
 
     return step
   }

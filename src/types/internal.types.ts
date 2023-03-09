@@ -72,7 +72,7 @@ export type AcceptExchangeRateUpdateHook = (
   params: ExchangeRateUpdateParams
 ) => Promise<boolean | undefined>
 
-export interface ExecutionData {
+export interface RouteExecutionData {
   route: Route
   executors: StepExecutor[]
   settings: InternalExecutionSettings
@@ -94,12 +94,13 @@ export type EnforcedObjectProperties<T> = T & {
   [P in keyof T]-?: T[P]
 }
 
-export interface ActiveRouteDictionary {
-  [k: string]: {
-    executionData?: ExecutionData
-    executionPromise: Promise<Route>
-  }
-}
+export type RouteExecutionDictionary = Partial<
+  Record<string, RouteExecutionData>
+>
+
+export type RouteExecutionPromiseDictionary = Partial<
+  Record<string, Promise<Route>>
+>
 
 export type RevokeTokenData = {
   token: Token

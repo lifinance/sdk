@@ -1,9 +1,9 @@
-import { buildStepObject } from './../test/fixtures'
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildStepObject } from '../test/fixtures'
 import * as balance from './balance'
-import Lifi from './Lifi'
 import { convertQuoteToRoute } from './helpers'
+import { LiFi } from './LiFi'
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
@@ -18,11 +18,11 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   'getTokenBalancesForChains'
 )
 
-let lifi: Lifi
+let lifi: LiFi
 describe('LIFI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    lifi = new Lifi()
+    lifi = new LiFi()
   })
 
   describe('getTokenBalance', () => {
