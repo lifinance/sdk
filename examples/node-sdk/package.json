@@ -1,0 +1,17 @@
+{
+  "name": "lifi-sdk-node-sample",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Sample project to showcase the usage of @lifi/sdk",
+  "main": "index.js",
+  "author": "Max Klenk <max@li.finance>",
+  "license": "MIT",
+  "dependencies": {
+    "@lifi/sdk": "^1.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.17",
+    "ts-node": "^10.8.2",
+    "typescript": "^4.9.4"
+  }
+}
