@@ -1,8 +1,8 @@
-import LIFI from '@lifi/sdk'
+import { LiFi } from '@lifi/sdk'
 
 import ethers from 'ethers'
 
-const Lifi = new LIFI.default()
+const lifis = new LiFi()
 
 async function demo() {
   // setup wallet
@@ -38,7 +38,7 @@ async function demo() {
     },
   }
 
-  const routeResponse = await Lifi.getRoutes(routeRequest)
+  const routeResponse = await lifi.getRoutes(routeRequest)
   const route = routeResponse.routes[0]
   console.log('>> Got Route')
   console.log(route)
@@ -68,7 +68,7 @@ async function demo() {
     },
   }
 
-  await Lifi.executeRoute(wallet, route, settings)
+  await lifi.executeRoute(wallet, route, settings)
 
   console.log('DONE')
 }

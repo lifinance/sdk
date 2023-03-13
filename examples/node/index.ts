@@ -1,10 +1,11 @@
-import Lifi, {
+import {
   ChainId,
   CoinKey,
   ConfigUpdate,
   Execution,
   ExecutionSettings,
   findDefaultToken,
+  LiFi,
   Route,
 } from '@lifi/sdk'
 import { providers, Signer, Wallet } from 'ethers'
@@ -72,10 +73,10 @@ async function demo() {
   }
   // ---------------------------------------------------------------------------
 
-  const api = new Lifi(optionalConfigs)
+  const lifi = new LiFi(optionalConfigs)
 
   // STEP 2: Request a route
-  const routeResponse = await api.getRoutes(routeRequest)
+  const routeResponse = await lifi.getRoutes(routeRequest)
   const route = routeResponse.routes[0]
   console.log('>> Got Route')
   console.log(route)
@@ -106,7 +107,7 @@ async function demo() {
   }
   // ---------------------------------------------------------------------------
 
-  await api.executeRoute(wallet, route, settings)
+  await lifi.executeRoute(wallet, route, settings)
 
   console.log('>> Done')
 }

@@ -440,7 +440,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lifi/sdk@npm:^1.7.2":
+"@lifi/sdk@npm:latest":
   version: 1.7.2
   resolution: "@lifi/sdk@npm:1.7.2"
   dependencies:
@@ -741,7 +741,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lifi-sdk-node-sample@workspace:."
   dependencies:
-    "@lifi/sdk": ^1.7.2
+    "@lifi/sdk": latest
     "@types/node": ^18.11.17
     ts-node: ^10.8.2
     typescript: ^4.9.4
