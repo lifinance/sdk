@@ -137,7 +137,7 @@ export const requestSettings = {
 }
 
 export const request = async <T = Response>(
-  url: string,
+  url: RequestInfo | URL,
   options?: RequestInit,
   retries = requestSettings.retries
 ): Promise<T> => {

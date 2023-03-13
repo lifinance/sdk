@@ -12,7 +12,6 @@ import {
   PossibilitiesResponse,
   QuoteRequest,
   RequestOptions,
-  Route,
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
@@ -35,37 +34,20 @@ import {
 } from './allowance'
 import * as balance from './balance'
 import { getRpcProvider } from './connectors'
-import { StatusManager } from './execution/StatusManager'
-import { StepExecutor } from './execution/StepExecutor'
+import { RouteExecutionManager } from './execution/RouteExecutionManager'
 import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
-import ConfigService from './services/ConfigService'
 import { isToken } from './typeguards'
-import {
-  ActiveRouteDictionary,
-  Config,
-  ConfigUpdate,
-  ExecutionData,
-  ExecutionSettings,
-  RevokeTokenData,
-} from './types'
+import { Config, ConfigUpdate, RevokeTokenData } from './types'
 import { ValidationError } from './utils/errors'
-import { handlePreRestart } from './utils/preRestart'
 import { name, version } from './version'
 
-export default class LIFI {
-  private activeRouteDictionary: ActiveRouteDictionary = {}
-  private configService: ConfigService
+export class LiFi extends RouteExecutionManager {
   private chainsService: ChainsService
 
   constructor(configUpdate?: ConfigUpdate) {
-    this.configService = ConfigService.getInstance()
-
-    if (configUpdate) {
-      // Update API urls before we request chains
-      this.configService.updateConfig(configUpdate)
-    }
+    super(configUpdate)
 
     this.chainsService = ChainsService.getInstance()
 
@@ -246,274 +228,6 @@ export default class LIFI {
     options?: RequestOptions
   ): Promise<GasRecommendationResponse> => {
     return ApiService.getGasRecommendation(request, options)
-  }
-
-  /**
-   * Stops the execution of an active route.
-   * @param {Route} route - A route that is currently in execution.
-   * @return {Route} The stopped route.
-   */
-  stopExecution = (route: Route): Route => {
-    if (!this.activeRouteDictionary[route.id]) {
-      return route
-    }
-
-    const { executionData } = this.activeRouteDictionary[route.id]
-
-    for (const executor of executionData.executors) {
-      executor.setInteraction({
-        allowInteraction: false,
-        allowUpdates: false,
-        stopExecution: true,
-      })
-    }
-    delete this.activeRouteDictionary[route.id]
-    return route
-  }
-
-  /**
-   * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
-   * @param {Route} route - A route that is currently in execution.
-   * @deprecated use updateRouteExecution instead.
-   */
-  moveExecutionToBackground = (route: Route): void => {
-    const { executionData } = this.activeRouteDictionary[route.id]
-
-    if (!executionData) {
-      return
-    }
-    for (const executor of executionData.executors) {
-      executor.setInteraction({ allowInteraction: false, allowUpdates: true })
-    }
-    executionData.settings = {
-      ...executionData.settings,
-      executeInBackground: true,
-    }
-  }
-
-  /**
-   * Updates route execution to background or foreground state.
-   * @param {Route} route - A route that is currently in execution.
-   * @param {boolean} settings - An object with execution settings.
-   */
-  updateRouteExecution = (
-    route: Route,
-    settings: Pick<ExecutionSettings, 'executeInBackground'>
-  ): void => {
-    const { executionData } = this.activeRouteDictionary[route.id]
-    if (!executionData) {
-      return
-    }
-    for (const executor of executionData.executors) {
-      executor.setInteraction({
-        allowInteraction: !settings.executeInBackground,
-        allowUpdates: true,
-      })
-    }
-    // Update active route settings so we know what the current state of execution is
-    executionData.settings = {
-      ...executionData.settings,
-      ...settings,
-    }
-  }
-
-  /**
-   * Execute a route.
-   * @param {Signer} signer - The signer required to send the transactions.
-   * @param {Route} route - The route that should be executed. Cannot be an active route.
-   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
-   * @return {Promise<Route>} The executed route.
-   * @throws {LifiError} Throws a LifiError if the execution fails.
-   */
-  executeRoute = async (
-    signer: Signer,
-    route: Route,
-    settings?: ExecutionSettings
-  ): Promise<Route> => {
-    // Deep clone to prevent side effects
-    const clonedRoute = structuredClone<Route>(route)
-
-    // Check if route is already running
-    if (this.activeRouteDictionary[clonedRoute.id]) {
-      // TODO: maybe inform user why nothing happens?
-      return this.activeRouteDictionary[clonedRoute.id].executionPromise
-    }
-
-    const executionPromise = this.executeSteps(signer, clonedRoute, settings)
-
-    this.activeRouteDictionary[clonedRoute.id] = {
-      ...this.activeRouteDictionary[clonedRoute.id],
-      executionPromise,
-    }
-
-    return executionPromise
-  }
-
-  /**
-   * Resume the execution of a route that has been stopped or had an error while executing.
-   * @param {Signer} signer - The signer required to send the transactions.
-   * @param {Route} route - The route that is to be executed. Cannot be an active route.
-   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
-   * @return {Promise<Route>} The executed route.
-   * @throws {LifiError} Throws a LifiError if the execution fails.
-   */
-  resumeRoute = async (
-    signer: Signer,
-    route: Route,
-    settings?: ExecutionSettings
-  ): Promise<Route> => {
-    // Deep clone to prevent side effects
-    const clonedRoute = structuredClone<Route>(route)
-
-    const { executionData, executionPromise } =
-      this.activeRouteDictionary[clonedRoute.id]
-
-    if (executionData) {
-      const executionHalted = executionData.executors.some(
-        (executor) => executor.executionStopped
-      )
-      if (!executionHalted) {
-        // Check if we want to resume route execution in the background
-        this.updateRouteExecution(route, {
-          executeInBackground: settings?.executeInBackground,
-        })
-        return executionPromise
-      }
-    }
-    handlePreRestart(clonedRoute)
-
-    const newExecutionPromise = this.executeSteps(signer, clonedRoute, settings)
-
-    this.activeRouteDictionary[clonedRoute.id] = {
-      ...this.activeRouteDictionary[clonedRoute.id],
-      executionPromise: newExecutionPromise,
-    }
-
-    return newExecutionPromise
-  }
-
-  private executeSteps = async (
-    signer: Signer,
-    route: Route,
-    settings?: ExecutionSettings
-  ): Promise<Route> => {
-    const config = this.configService.getConfig()
-
-    const updatedExecutionData: ExecutionData = {
-      route,
-      executors: [],
-      settings: { ...config.defaultExecutionSettings, ...settings },
-    }
-
-    this.activeRouteDictionary[route.id].executionData = {
-      ...updatedExecutionData,
-    }
-
-    const { executionData } = this.activeRouteDictionary[route.id]
-
-    const statusManager = new StatusManager(
-      route,
-      executionData.settings,
-      (route: Route) => {
-        if (this.activeRouteDictionary[route.id]) {
-          executionData.route = route
-        }
-      }
-    )
-
-    // Loop over steps and execute them
-    for (let index = 0; index < route.steps.length; index++) {
-      const { executionData } = this.activeRouteDictionary[route.id]
-      // Check if execution has stopped in the meantime
-      if (!executionData) {
-        break
-      }
-
-      const step = route.steps[index]
-      const previousStep = route.steps[index - 1]
-      // Check if the step is already done
-      //
-      if (step.execution?.status === 'DONE') {
-        continue
-      }
-
-      // Update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
-      if (previousStep?.execution?.toAmount) {
-        step.action.fromAmount = previousStep.execution.toAmount
-      }
-
-      try {
-        const stepExecutor = new StepExecutor(
-          statusManager,
-          executionData.settings
-        )
-        executionData.executors.push(stepExecutor)
-
-        // Check if we want to execute this step in the background
-        this.updateRouteExecution(route, executionData.settings)
-
-        const executedStep = await stepExecutor.executeStep(signer, step)
-
-        // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
-        if (executedStep.execution?.status !== 'DONE') {
-          this.stopExecution(route)
-        }
-
-        // Execution stopped during the current step, we don't want to continue to the next step so we return already
-        if (stepExecutor.executionStopped) {
-          return route
-        }
-      } catch (e) {
-        this.stopExecution(route)
-        throw e
-      }
-    }
-
-    // Clean up after the execution
-    delete this.activeRouteDictionary[route.id]
-    return route
-  }
-
-  /**
-   * Update the ExecutionSettings for an active route.
-   * @param {ExecutionSettings} settings - An object with execution settings.
-   * @param {Route} route - The active route that gets the new execution settings.
-   * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
-   */
-  updateExecutionSettings = (
-    settings: ExecutionSettings,
-    route: Route
-  ): void => {
-    if (!this.activeRouteDictionary[route.id]) {
-      throw new ValidationError(
-        "Can't set ExecutionSettings for the inactive route."
-      )
-    }
-
-    const config = this.configService.getConfig()
-    this.activeRouteDictionary[route.id].executionData.settings = {
-      ...config.defaultExecutionSettings,
-      ...settings,
-    }
-  }
-
-  /**
-   * Get the list of active routes.
-   * @return {Route[]} A list of routes.
-   */
-  getActiveRoutes = (): Route[] => {
-    return Object.values(this.activeRouteDictionary).map(
-      (dict) => dict.executionData.route
-    )
-  }
-
-  /**
-   * Return the current route information for given route. The route has to be active.
-   * @param {Route} route - A route object.
-   * @return {Route} The updated route.
-   */
-  getActiveRoute = (route: Route): Route | undefined => {
-    return this.activeRouteDictionary[route.id]?.executionData.route
   }
 
   /**

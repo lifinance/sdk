@@ -14,7 +14,7 @@ import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
 
-export class ExecutionManager {
+export class StepExecutionManager {
   allowUserInteraction = true
 
   allowInteraction = (value: boolean): void => {
