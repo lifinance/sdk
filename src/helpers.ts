@@ -78,13 +78,11 @@ export const checkPackageUpdates = async (
   }
   try {
     const pkgName = packageName ?? name
-    const response = await request<Response>(
-      'https://registry.npmjs.org/${pkgName}/latest'
+    const response = await request<{ version: string }>(
+      `https://registry.npmjs.org/${pkgName}/latest`
     )
-    const data = await response.json()
-    const latestVersion = data.version
+    const latestVersion = response.version
     const currentVersion = packageVersion ?? version
-
     if (semverCompare(latestVersion, currentVersion)) {
       console.warn(
         // eslint-disable-next-line max-len
@@ -140,7 +138,7 @@ export const requestSettings = {
 }
 
 export const request = async <T = Response>(
-  url: string,
+  url: RequestInfo | URL,
   options?: RequestInit,
   retries = requestSettings.retries
 ): Promise<T> => {

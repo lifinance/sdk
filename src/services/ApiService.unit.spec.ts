@@ -679,4 +679,50 @@ describe('ApiService', () => {
       })
     })
   })
+
+  describe('getGasRecommendation', () => {
+    describe('user input is invalid', () => {
+      it('throw an error', async () => {
+        await expect(
+          ApiService.getGasRecommendation({
+            chainId: undefined as unknown as number,
+          })
+        ).rejects.toThrowError(
+          new ValidationError('Required parameter "chainId" is missing.')
+        )
+        expect(mockedFetch).toHaveBeenCalledTimes(0)
+      })
+    })
+
+    describe('user input is valid', () => {
+      describe('and the backend call fails', () => {
+        it('throw an error', async () => {
+          server.use(
+            rest.get(
+              `${config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
+              async (_, response, context) =>
+                response(context.status(500), context.json({ message: 'Oops' }))
+            )
+          )
+
+          await expect(
+            ApiService.getGasRecommendation({
+              chainId: ChainId.OPT,
+            })
+          ).rejects.toThrowError(new ServerError('Oops'))
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
+        })
+      })
+
+      describe('and the backend call is successful', () => {
+        it('call the server once', async () => {
+          await ApiService.getGasRecommendation({
+            chainId: ChainId.OPT,
+          })
+
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
+        })
+      })
+    })
+  })
 })
