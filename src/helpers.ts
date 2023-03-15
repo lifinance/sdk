@@ -142,8 +142,6 @@ export const request = async <T = Response>(
   options?: RequestInit,
   retries = requestSettings.retries
 ): Promise<T> => {
-  const currentVersion = version
-
   const { userId, integrator, widgetVersion } =
     ConfigService.getInstance().getConfig()
 
@@ -166,10 +164,10 @@ export const request = async <T = Response>(
       }
     }
 
-    if (currentVersion) {
+    if (version) {
       updatedOptions.headers = {
         ...options?.headers,
-        'X-LIFI-SDK': currentVersion,
+        'X-LIFI-SDK': version,
       }
     }
 

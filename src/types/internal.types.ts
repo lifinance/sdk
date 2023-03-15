@@ -49,6 +49,7 @@ export type ConfigUpdate = {
   disableVersionCheck?: boolean
   userId?: string
   integrator: string
+  widgetVersion?: string
 }
 
 export type SwitchChainHook = (
