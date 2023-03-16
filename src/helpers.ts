@@ -142,7 +142,8 @@ export const request = async <T = Response>(
   options?: RequestInit,
   retries = requestSettings.retries
 ): Promise<T> => {
-  const { userId, integrator } = ConfigService.getInstance().getConfig()
+  const { userId, integrator, widgetVersion } =
+    ConfigService.getInstance().getConfig()
 
   try {
     const updatedOptions: RequestInit = {
@@ -153,6 +154,20 @@ export const request = async <T = Response>(
       updatedOptions.headers = {
         ...options?.headers,
         'X-LIFI-UserId': userId,
+      }
+    }
+
+    if (widgetVersion) {
+      updatedOptions.headers = {
+        ...options?.headers,
+        'X-LIFI-Widget': widgetVersion,
+      }
+    }
+
+    if (version) {
+      updatedOptions.headers = {
+        ...options?.headers,
+        'X-LIFI-SDK': version,
       }
     }
 
