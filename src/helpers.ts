@@ -79,7 +79,10 @@ export const checkPackageUpdates = async (
   try {
     const pkgName = packageName ?? name
     const response = await request<{ version: string }>(
-      `https://registry.npmjs.org/${pkgName}/latest`
+      `https://registry.npmjs.org/${pkgName}/latest`,
+      undefined,
+      1,
+      true
     )
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version
@@ -140,7 +143,8 @@ export const requestSettings = {
 export const request = async <T = Response>(
   url: RequestInfo | URL,
   options?: RequestInit,
-  retries = requestSettings.retries
+  retries = requestSettings.retries,
+  skipTrackingHeaders = false
 ): Promise<T> => {
   const { userId, integrator, widgetVersion } =
     ConfigService.getInstance().getConfig()
@@ -150,31 +154,33 @@ export const request = async <T = Response>(
       ...(options ?? {}),
     }
 
-    if (userId) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-UserId': userId,
+    if (!skipTrackingHeaders) {
+      if (userId) {
+        updatedOptions.headers = {
+          ...updatedOptions?.headers,
+          'X-LIFI-UserId': userId,
+        }
       }
-    }
 
-    if (widgetVersion) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-Widget': widgetVersion,
+      if (widgetVersion) {
+        updatedOptions.headers = {
+          ...updatedOptions?.headers,
+          'X-LIFI-Widget': widgetVersion,
+        }
       }
-    }
 
-    if (version) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-SDK': version,
+      if (version) {
+        updatedOptions.headers = {
+          ...updatedOptions?.headers,
+          'X-LIFI-SDK': version,
+        }
       }
-    }
 
-    // integrator is mandatory during SDK initialization
-    updatedOptions.headers = {
-      ...options?.headers,
-      'X-LIFI-Integrator': integrator,
+      // integrator is mandatory during SDK initialization
+      updatedOptions.headers = {
+        ...updatedOptions?.headers,
+        'X-LIFI-Integrator': integrator,
+      }
     }
 
     const response: Response = await fetch(url, updatedOptions)
