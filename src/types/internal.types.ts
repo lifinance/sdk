@@ -118,3 +118,45 @@ export interface InteractionSettings {
   allowUpdates?: boolean
   stopExecution?: boolean
 }
+
+export interface TenderlyResponse {
+  hash: string
+  block_hash: string
+  block_number: number
+  from: string
+  gas: number
+  gas_price: number
+  gas_fee_cap: number
+  gas_tip_cap: number
+  cumulative_gas_used: number
+  gas_used: number
+  effective_gas_price: number
+  input: string
+  nonce: number
+  to: string
+  index: number
+  value: string
+  access_list: any
+  status: boolean
+  addresses: string[]
+  contract_ids: string[]
+  network_id: string
+  timestamp: string
+  function_selector: string
+  l1_block_number: number
+  l1_timestamp: number
+  deposit_tx: boolean
+  system_tx: boolean
+  mint: number
+  sig: Signature
+  error_message: string
+  method: string
+  decoded_input: any
+  call_trace: any
+}
+
+export interface Signature {
+  v: string
+  r: string
+  s: string
+}

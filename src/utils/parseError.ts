@@ -1,8 +1,9 @@
-import { getChainById, Process, Step } from '@lifi/types'
+import { Process, Step } from '@lifi/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
+
 import ChainsService from '../services/ChainsService'
 import {
   LifiError,
@@ -18,6 +19,8 @@ import {
   ValidationError,
 } from './errors'
 import { formatTokenAmountOnly } from './utils'
+import { request } from '../helpers'
+import { TenderlyResponse } from '..'
 
 /**
  * Available MetaMask error codes:
@@ -55,6 +58,7 @@ export const getTransactionNotSentMessage = async (
   step?: Step,
   process?: Process
 ): Promise<string> => {
+  console.trace('here')
   let transactionNotSend =
     'Transaction was not sent, your funds are still in your wallet'
 
@@ -158,12 +162,38 @@ export const parseError = async (
 
   switch (e.code) {
     case 'CALL_EXCEPTION':
-      return new ProviderError(
-        LifiErrorCode.TransactionFailed,
-        e.reason,
-        await getTransactionNotSentMessage(step, process),
-        e.stack
-      )
+      try {
+        if (!step?.action.fromChainId) {
+          throw new Error('Signer is not defined.')
+        }
+
+        const response = await fetchTxErrorDetails(
+          e.transactionHash,
+          step?.action.fromChainId
+        )
+
+        const defaultErrorMessage = await getTransactionNotSentMessage(
+          step,
+          process
+        )
+
+        const errorMessage = response?.error_message ?? defaultErrorMessage
+
+        return new ProviderError(
+          LifiErrorCode.TransactionFailed,
+          errorMessage,
+          await getTransactionNotSentMessage(step, process),
+          e.stack
+        )
+      } catch (error) {
+        return new ProviderError(
+          LifiErrorCode.TransactionFailed,
+          e.reason,
+          await getTransactionNotSentMessage(step, process),
+          e.stack
+        )
+      }
+
     case 'ACTION_REJECTED':
     case MetaMaskProviderErrorCode.userRejectedRequest:
       return new TransactionError(
@@ -235,4 +265,14 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
   }
 
   return new ServerError('Something went wrong.', undefined, e.stack)
+}
+
+const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
+  const response = await request<TenderlyResponse>(
+    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
+    undefined,
+    0
+  )
+
+  return response
 }

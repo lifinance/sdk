@@ -24,6 +24,7 @@ export enum LifiErrorCode {
   SlippageError = 1011,
   TransactionRejected = 1012,
   BalanceError = 1013,
+  AllowanceRequired = 1014,
 }
 
 export enum MetaMaskRPCErrorCode {
