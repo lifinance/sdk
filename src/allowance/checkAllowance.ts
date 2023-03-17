@@ -13,7 +13,8 @@ export const checkAllowance = async (
   statusManager: StatusManager,
   settings: InternalExecutionSettings,
   chain: Chain,
-  allowUserInteraction = false
+  allowUserInteraction = false,
+  configCallback?: (tx: any) => Promise<void>
 ): Promise<void> => {
   // Ask the user to set an allowance
 
@@ -39,10 +40,17 @@ export const checkAllowance = async (
         'DONE'
       )
     } else {
+      const approvalRequest = {
+        signerAddress: step.action.fromToken.address,
+        contractAddress: step.estimate.approvalAddress,
+      }
+
+      const config = configCallback?.(approvalRequest)
+
       const approved = await getApproved(
         signer,
-        step.action.fromToken.address,
-        step.estimate.approvalAddress
+        approvalRequest.signerAddress,
+        approvalRequest.contractAddress
       )
 
       if (new BigNumber(step.action.fromAmount).gt(approved)) {
