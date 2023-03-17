@@ -13,6 +13,7 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -26,6 +27,7 @@ export class StepExecutionManager {
     step,
     statusManager,
     settings,
+    customConfigCallback,
   }: ExecutionParams): Promise<Execution> => {
     step.execution = statusManager.initExecutionObject(step)
 
@@ -139,6 +141,18 @@ export class StepExecutionManager {
 
           if (!this.allowUserInteraction) {
             return step.execution!
+          }
+
+          if (customConfigCallback) {
+            const customConfig: TransactionRequest = await customConfigCallback(
+              transactionRequest
+            )
+
+            transactionRequest.gasLimit = customConfig.gasLimit
+            transactionRequest.gasPrice = customConfig.gasPrice
+            transactionRequest.maxPriorityFeePerGas =
+              customConfig.maxPriorityFeePerGas
+            transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
           }
 
           // Submit the transaction

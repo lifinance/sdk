@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
 import BigNumber from 'bignumber.js'
 import { constants, ContractTransaction, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
@@ -14,7 +15,7 @@ export const checkAllowance = async (
   settings: InternalExecutionSettings,
   chain: Chain,
   allowUserInteraction = false,
-  configCallback?: (tx: any) => Promise<void>
+  configCallback?: (tx: TransactionRequest) => Promise<TransactionRequest>
 ): Promise<void> => {
   // Ask the user to set an allowance
 
@@ -40,17 +41,31 @@ export const checkAllowance = async (
         'DONE'
       )
     } else {
-      const approvalRequest = {
-        signerAddress: step.action.fromToken.address,
-        contractAddress: step.estimate.approvalAddress,
+      const approvalRequest: TransactionRequest = {
+        from: step.action.fromToken.address,
+        to: step.estimate.approvalAddress,
       }
 
-      const config = configCallback?.(approvalRequest)
+      if (configCallback) {
+        const config = await configCallback(approvalRequest)
+
+        approvalRequest.gasLimit = config.gasLimit
+        approvalRequest.gasPrice = config.gasPrice
+      }
+
+      if (!approvalRequest.from) {
+        throw new Error('Missing Signer address')
+      }
+
+      if (!approvalRequest.to) {
+        throw new Error('Missing ERC20 contract address')
+      }
 
       const approved = await getApproved(
         signer,
-        approvalRequest.signerAddress,
-        approvalRequest.contractAddress
+        approvalRequest.from,
+        approvalRequest.to,
+        approvalRequest
       )
 
       if (new BigNumber(step.action.fromAmount).gt(approved)) {

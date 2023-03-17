@@ -1,3 +1,4 @@
+import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
 import { Route, RouteOptions, Step, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
@@ -24,6 +25,9 @@ export interface ExecutionParams {
   step: Step
   statusManager: StatusManager
   settings: InternalExecutionSettings
+  customConfigCallback?: (
+    transactionRequest: TransactionRequest
+  ) => Promise<TransactionRequest>
 }
 
 export type CallbackFunction = (updatedRoute: Route) => void
