@@ -1,4 +1,4 @@
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
+import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { ChainId, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Contract, ContractTransaction, Signer } from 'ethers'

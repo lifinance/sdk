@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
+import { TransactionRequest } from '@ethersproject/abstract-provider'
 import BigNumber from 'bignumber.js'
 import { constants, ContractTransaction, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'

@@ -13,7 +13,7 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
-import { TransactionRequest } from '@ethersproject/abstract-provider/src.ts/index'
+import { TransactionRequest } from '@ethersproject/abstract-provider'
 
 export class StepExecutionManager {
   allowUserInteraction = true
