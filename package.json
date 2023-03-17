@@ -76,7 +76,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
-    "@lifi/types": "^2.4.1",
+    "@lifi/types": "^2.5.2",
     "bignumber.js": "^9.1.1",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.7.2"
@@ -84,9 +84,9 @@
   "devDependencies": {
     "@commitlint/cli": "^17.4.4",
     "@commitlint/config-conventional": "^17.4.4",
-    "@typescript-eslint/eslint-plugin": "^5.54.1",
-    "@typescript-eslint/parser": "^5.54.1",
-    "@vitest/coverage-c8": "^0.29.2",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "@vitest/coverage-c8": "^0.29.3",
     "cross-fetch": "^3.1.5",
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",
@@ -99,8 +99,8 @@
     "prettier": "^2.8.4",
     "standard-version": "^9.5.0",
     "ts-loader": "^9.4.2",
-    "typescript": "^4.9.5",
-    "vitest": "^0.29.2"
+    "typescript": "^5.0.2",
+    "vitest": "^0.29.3"
   },
   "directories": {
     "test": "test"
