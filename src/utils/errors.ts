@@ -27,6 +27,8 @@ export enum LifiErrorCode {
   AllowanceRequired = 1014,
 }
 
+export const ERC20AllowanceError = 'ERC20: transfer amount exceeds allowance'
+
 export enum MetaMaskRPCErrorCode {
   invalidInput = -32000,
   resourceNotFound = -32001,

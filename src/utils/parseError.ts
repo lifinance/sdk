@@ -6,6 +6,7 @@ import {
 
 import ChainsService from '../services/ChainsService'
 import {
+  ERC20AllowanceError,
   LifiError,
   LifiErrorCode,
   MetaMaskProviderErrorCode,
@@ -162,37 +163,20 @@ export const parseError = async (
 
   switch (e.code) {
     case 'CALL_EXCEPTION':
-      try {
-        if (!step?.action.fromChainId) {
-          throw new Error('Signer is not defined.')
-        }
-
-        const response = await fetchTxErrorDetails(
-          e.transactionHash,
-          step?.action.fromChainId
-        )
-
-        const defaultErrorMessage = await getTransactionNotSentMessage(
-          step,
-          process
-        )
-
-        const errorMessage = response?.error_message ?? defaultErrorMessage
-
-        return new ProviderError(
-          LifiErrorCode.TransactionFailed,
-          errorMessage,
-          await getTransactionNotSentMessage(step, process),
-          e.stack
-        )
-      } catch (error) {
-        return new ProviderError(
-          LifiErrorCode.TransactionFailed,
+      if (e.reason === ERC20AllowanceError) {
+        return new TransactionError(
+          LifiErrorCode.AllowanceRequired,
           e.reason,
           await getTransactionNotSentMessage(step, process),
           e.stack
         )
       }
+      return new ProviderError(
+        LifiErrorCode.TransactionFailed,
+        e.reason,
+        await getTransactionNotSentMessage(step, process),
+        e.stack
+      )
 
     case 'ACTION_REJECTED':
     case MetaMaskProviderErrorCode.userRejectedRequest:
