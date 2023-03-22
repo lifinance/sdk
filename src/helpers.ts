@@ -131,6 +131,7 @@ export const convertQuoteToRoute = (step: Step): Route => {
     toAmountUSD: step.estimate.toAmountUSD,
     steps: [lifiStep],
     toAmountMin: step.estimate.toAmountMin,
+    insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
   }
 
   return route

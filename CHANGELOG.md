@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.6](https://github.com/lifinance/sdk/compare/v2.0.0-beta.5...v2.0.0-beta.6) (2023-03-21)
+
+## [2.0.0-beta.5](https://github.com/lifinance/sdk/compare/v2.0.0-beta.4...v2.0.0-beta.5) (2023-03-17)
+
+
+### Features
+
+* adding widget + sdk version in header ([#125](https://github.com/lifinance/sdk/issues/125)) ([3516717](https://github.com/lifinance/sdk/commit/35167179c0130194a4800842f1afd8376aefa699))
+* allow user tracking by passing userId in header ([#123](https://github.com/lifinance/sdk/issues/123)) ([d5b2d84](https://github.com/lifinance/sdk/commit/d5b2d845e9b7aa22ea3c287183e4e3118a328fe5))
+
 ## [2.0.0-beta.4](https://github.com/lifinance/sdk/compare/v2.0.0-beta.3...v2.0.0-beta.4) (2023-03-13)
 
 ## [2.0.0-beta.3](https://github.com/lifinance/sdk/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2023-03-09)
