@@ -59,7 +59,6 @@ export const getTransactionNotSentMessage = async (
   step?: Step,
   process?: Process
 ): Promise<string> => {
-  console.trace('here')
   let transactionNotSend =
     'Transaction was not sent, your funds are still in your wallet'
 
