@@ -25,7 +25,7 @@ export interface ExecutionParams {
   step: Step
   statusManager: StatusManager
   settings: InternalExecutionSettings
-  customConfigCallback?: (
+  updateTransactionRequest?: (
     transactionRequest: TransactionRequest
   ) => Promise<TransactionRequest>
 }
