@@ -1,4 +1,6 @@
 import {
+  ConnectionsRequest,
+  ConnectionsResponse,
   ContractCallQuoteRequest,
   GasRecommendationRequest,
   GasRecommendationResponse,
@@ -438,6 +440,43 @@ const getGasRecommendation = async (
   }
 }
 
+const getAvailableConnections = async (
+  connectionRequest: ConnectionsRequest
+): Promise<ConnectionsResponse> => {
+  const config = ConfigService.getInstance().getConfig()
+
+  const url = new URL(`${config.apiUrl}/connections`)
+
+  const { fromChain, fromToken, toChain, toToken, allowBridges } =
+    connectionRequest
+
+  if (fromChain) {
+    url.searchParams.append('fromChain', fromChain as unknown as string)
+  }
+  if (fromToken) {
+    url.searchParams.append('fromToken', fromToken)
+  }
+  if (toChain) {
+    url.searchParams.append('fromToken', toChain as unknown as string)
+  }
+  if (toToken) {
+    url.searchParams.append('fromToken', toToken)
+  }
+
+  if (allowBridges?.length) {
+    allowBridges.forEach((bridge) => {
+      url.searchParams.append('allowBridges', bridge)
+    })
+  }
+
+  try {
+    const response = await request<ConnectionsResponse>(url)
+    return response
+  } catch (e) {
+    throw await parseBackendError(e)
+  }
+}
+
 export default {
   getChains,
   getContractCallQuote,
@@ -450,4 +489,5 @@ export default {
   getToken,
   getTokens,
   getTools,
+  getAvailableConnections,
 }

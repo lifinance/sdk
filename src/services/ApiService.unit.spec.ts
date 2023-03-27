@@ -2,6 +2,7 @@ import {
   Action,
   ChainId,
   CoinKey,
+  ConnectionsRequest,
   Estimate,
   findDefaultToken,
   RoutesRequest,
@@ -723,6 +724,36 @@ describe('ApiService', () => {
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
+    })
+  })
+  describe('getAvailableConnections', () => {
+    it('returns empty array in response', async () => {
+      server.use(
+        rest.get(`${config.apiUrl}/connections`, async (_, response, context) =>
+          response(context.status(200), context.json({ connections: [] }))
+        )
+      )
+
+      const connectionRequest: ConnectionsRequest = {
+        fromChain: ChainId.BSC,
+        toChain: ChainId.OPT,
+        fromToken: findDefaultToken(CoinKey.USDC, ChainId.BSC).address,
+        toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
+        allowBridges: ['connext', 'uniswap', 'polygon'],
+      }
+
+      const generatedURL =
+        // eslint-disable-next-line max-len
+        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&fromToken=10&fromToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon'
+
+      await expect(
+        ApiService.getAvailableConnections(connectionRequest)
+      ).resolves.toEqual({
+        connections: [],
+      })
+
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
 })

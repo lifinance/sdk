@@ -3,6 +3,8 @@ import { FallbackProvider } from '@ethersproject/providers'
 import {
   ChainId,
   ChainKey,
+  ConnectionsRequest,
+  ConnectionsResponse,
   ContractCallQuoteRequest,
   ExtendedChain,
   GasRecommendationRequest,
@@ -348,4 +350,20 @@ export class LiFi extends RouteExecutionManager {
   revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
     return revokeTokenApproval(request)
   }
+}
+
+/**
+ * Get all the available connections for swap/bridging tokens
+ * @param connectionRequest ConnectionsRequest
+ * @returns ConnectionsResponse
+ */
+
+export const getConnections = async (
+  connectionRequest: ConnectionsRequest
+): Promise<ConnectionsResponse> => {
+  const connections = await ApiService.getAvailableConnections(
+    connectionRequest
+  )
+
+  return connections
 }
