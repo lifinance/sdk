@@ -162,7 +162,7 @@ export const parseError = async (
 
   switch (e.code) {
     case 'CALL_EXCEPTION':
-      if (e.reason === ERC20AllowanceError) {
+      if (e.reason?.includes === ERC20AllowanceError) {
         return new TransactionError(
           LifiErrorCode.AllowanceRequired,
           e.reason,
