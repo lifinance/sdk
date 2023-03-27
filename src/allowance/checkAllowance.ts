@@ -14,10 +14,7 @@ export const checkAllowance = async (
   statusManager: StatusManager,
   settings: InternalExecutionSettings,
   chain: Chain,
-  allowUserInteraction = false,
-  updateTransactionRequest?: (
-    tx: TransactionRequest
-  ) => Promise<TransactionRequest>
+  allowUserInteraction = false
 ): Promise<void> => {
   // Ask the user to set an allowance
 
@@ -48,8 +45,8 @@ export const checkAllowance = async (
         to: step.estimate.approvalAddress,
       }
 
-      if (updateTransactionRequest) {
-        const config = await updateTransactionRequest(approvalRequest)
+      if (settings.updateTransactionRequest) {
+        const config = await settings.updateTransactionRequest(approvalRequest)
 
         approvalRequest.gasLimit = config.gasLimit
         approvalRequest.gasPrice = config.gasPrice

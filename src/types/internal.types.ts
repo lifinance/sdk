@@ -25,12 +25,12 @@ export interface ExecutionParams {
   step: Step
   statusManager: StatusManager
   settings: InternalExecutionSettings
-  updateTransactionRequest?: (
-    transactionRequest: TransactionRequest
-  ) => Promise<TransactionRequest>
 }
 
 export type CallbackFunction = (updatedRoute: Route) => void
+export type TxRequestCallbackFunction = (
+  updatedTxRequest: TransactionRequest
+) => Promise<TransactionRequest>
 
 export type Config = {
   apiUrl: string
@@ -97,6 +97,7 @@ export interface InternalExecutionSettings {
   acceptExchangeRateUpdateHook: AcceptExchangeRateUpdateHook
   infiniteApproval: boolean
   executeInBackground: boolean
+  updateTransactionRequest?: TxRequestCallbackFunction
 }
 
 // Hard to read but this creates a new type that enforces all optional properties in a given interface

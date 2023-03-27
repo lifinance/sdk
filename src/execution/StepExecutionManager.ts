@@ -27,7 +27,6 @@ export class StepExecutionManager {
     step,
     statusManager,
     settings,
-    updateTransactionRequest,
   }: ExecutionParams): Promise<Execution> => {
     step.execution = statusManager.initExecutionObject(step)
 
@@ -143,9 +142,9 @@ export class StepExecutionManager {
             return step.execution!
           }
 
-          if (updateTransactionRequest) {
+          if (settings.updateTransactionRequest) {
             const customConfig: TransactionRequest =
-              await updateTransactionRequest(transactionRequest)
+              await settings.updateTransactionRequest(transactionRequest)
 
             transactionRequest.gasLimit = customConfig.gasLimit
             transactionRequest.gasPrice = customConfig.gasPrice
