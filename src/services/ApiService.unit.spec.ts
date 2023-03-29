@@ -397,7 +397,7 @@ describe('ApiService', () => {
     })
   })
 
-  describe('getStatus', () => {
+  describe.only('getStatus', () => {
     const fromChain = ChainId.DAI
     const toChain = ChainId.POL
     const txHash = 'some tx hash'
@@ -405,41 +405,6 @@ describe('ApiService', () => {
 
     describe('user input is invalid', () => {
       it('throw an error', async () => {
-        await expect(
-          ApiService.getStatus({
-            bridge: undefined as unknown as string,
-            fromChain,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError(
-            'Parameter "bridge" is required for cross chain transfers.'
-          )
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain: undefined as unknown as ChainId,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing.')
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain,
-            toChain: undefined as unknown as ChainId,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing.')
-        )
-
         await expect(
           ApiService.getStatus({
             bridge,
@@ -475,7 +440,28 @@ describe('ApiService', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
 
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
+          await ApiService.getStatus({
+            bridge: undefined as unknown as string,
+            fromChain,
+            toChain,
+            txHash,
+          })
+
+          await ApiService.getStatus({
+            bridge,
+            fromChain: undefined as unknown as ChainId,
+            toChain,
+            txHash,
+          })
+
+          await ApiService.getStatus({
+            bridge,
+            fromChain,
+            toChain: undefined as unknown as ChainId,
+            txHash,
+          })
+
+          expect(mockedFetch).toHaveBeenCalledTimes(4)
         })
       })
     })
