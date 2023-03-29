@@ -397,7 +397,7 @@ describe('ApiService', () => {
     })
   })
 
-  describe.only('getStatus', () => {
+  describe('getStatus', () => {
     const fromChain = ChainId.DAI
     const toChain = ChainId.POL
     const txHash = 'some tx hash'
