@@ -407,41 +407,6 @@ describe('ApiService', () => {
       it('throw an error', async () => {
         await expect(
           ApiService.getStatus({
-            bridge: undefined as unknown as string,
-            fromChain,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError(
-            'Parameter "bridge" is required for cross chain transfers.'
-          )
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain: undefined as unknown as ChainId,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing.')
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain,
-            toChain: undefined as unknown as ChainId,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing.')
-        )
-
-        await expect(
-          ApiService.getStatus({
             bridge,
             fromChain,
             toChain,
@@ -474,7 +439,6 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
-
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })

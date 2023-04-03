@@ -239,36 +239,20 @@ const getContractCallQuote = async (
 }
 
 const getStatus = async (
-  { bridge, fromChain, toChain, txHash }: GetStatusRequest,
+  requestConfig: GetStatusRequest,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
-  if (fromChain !== toChain && !bridge) {
-    throw new ValidationError(
-      'Parameter "bridge" is required for cross chain transfers.'
-    )
-  }
-
-  if (!fromChain) {
-    throw new ValidationError('Required parameter "fromChain" is missing.')
-  }
-
-  if (!toChain) {
-    throw new ValidationError('Required parameter "toChain" is missing.')
-  }
-
-  if (!txHash) {
+  if (!requestConfig.txHash) {
     throw new ValidationError('Required parameter "txHash" is missing.')
   }
 
   const config = ConfigService.getInstance().getConfig()
+  const queryParams = new URLSearchParams(
+    requestConfig as unknown as Record<string, string>
+  )
   try {
     const response = await request<StatusResponse>(
-      `${config.apiUrl}/status?${new URLSearchParams({
-        bridge,
-        fromChain,
-        toChain,
-        txHash,
-      } as Record<string, string>)}`,
+      `${config.apiUrl}/status?${queryParams}`,
       {
         signal: options?.signal,
       }
