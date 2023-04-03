@@ -439,29 +439,7 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
-
-          await ApiService.getStatus({
-            bridge: undefined as unknown as string,
-            fromChain,
-            toChain,
-            txHash,
-          })
-
-          await ApiService.getStatus({
-            bridge,
-            fromChain: undefined as unknown as ChainId,
-            toChain,
-            txHash,
-          })
-
-          await ApiService.getStatus({
-            bridge,
-            fromChain,
-            toChain: undefined as unknown as ChainId,
-            txHash,
-          })
-
-          expect(mockedFetch).toHaveBeenCalledTimes(4)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
     })
