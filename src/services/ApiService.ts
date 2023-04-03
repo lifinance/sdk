@@ -247,11 +247,12 @@ const getStatus = async (
   }
 
   const config = ConfigService.getInstance().getConfig()
+  const queryParams = new URLSearchParams(
+    requestConfig as unknown as Record<string, string>
+  )
   try {
     const response = await request<StatusResponse>(
-      `${config.apiUrl}/status?${new URLSearchParams(
-        requestConfig as unknown as Record<string, string>
-      )}`,
+      `${config.apiUrl}/status?${queryParams}`,
       {
         signal: options?.signal,
       }
