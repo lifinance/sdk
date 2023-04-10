@@ -10,7 +10,7 @@ import {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
-import { request } from '../helpers'
+import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,

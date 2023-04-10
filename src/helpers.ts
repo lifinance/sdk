@@ -1,8 +1,7 @@
 import { ExternalProvider } from '@ethersproject/providers'
 import { LifiStep, Route, Step, Token } from '@lifi/types'
-import ConfigService from './services/ConfigService'
-import { HTTPError, ValidationError } from './utils/errors'
-import { sleep } from './utils/utils'
+import { request } from './request'
+import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -79,7 +78,8 @@ export const checkPackageUpdates = async (
   try {
     const pkgName = packageName ?? name
     const response = await request<{ version: string }>(
-      `https://registry.npmjs.org/${pkgName}/latest`
+      `https://registry.npmjs.org/${pkgName}/latest`,
+      { skipTrackingHeaders: true }
     )
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version
@@ -132,64 +132,4 @@ export const convertQuoteToRoute = (step: Step): Route => {
   }
 
   return route
-}
-
-export const requestSettings = {
-  retries: 1,
-}
-
-export const request = async <T = Response>(
-  url: RequestInfo | URL,
-  options?: RequestInit,
-  retries = requestSettings.retries
-): Promise<T> => {
-  const { userId, integrator, widgetVersion } =
-    ConfigService.getInstance().getConfig()
-
-  try {
-    const updatedOptions: RequestInit = {
-      ...(options ?? {}),
-    }
-
-    if (userId) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-UserId': userId,
-      }
-    }
-
-    if (widgetVersion) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-Widget': widgetVersion,
-      }
-    }
-
-    if (version) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-SDK': version,
-      }
-    }
-
-    // integrator is mandatory during SDK initialization
-    updatedOptions.headers = {
-      ...options?.headers,
-      'X-LIFI-Integrator': integrator,
-    }
-
-    const response: Response = await fetch(url, updatedOptions)
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-
-    const data: T = await response.json()
-    return data
-  } catch (error) {
-    if (retries > 0 && (error as HTTPError)?.status === 500) {
-      await sleep(500)
-      return request<T>(url, options, retries - 1)
-    }
-    throw error
-  }
 }

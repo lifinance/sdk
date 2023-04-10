@@ -22,7 +22,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { requestSettings } from '../helpers'
+import { requestSettings } from '../request'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
