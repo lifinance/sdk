@@ -10,6 +10,7 @@ import {
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
+  LifiStep,
   PossibilitiesRequest,
   PossibilitiesResponse,
   QuoteRequest,
@@ -27,11 +28,11 @@ import {
 } from '@lifi/types'
 import { Signer } from 'ethers'
 import {
-  approveToken,
   ApproveTokenRequest,
+  RevokeApprovalRequest,
+  approveToken,
   bulkGetTokenApproval,
   getTokenApproval,
-  RevokeApprovalRequest,
   revokeTokenApproval,
 } from './allowance'
 import * as balance from './balance'
@@ -214,9 +215,9 @@ export class LiFi extends RouteExecutionManager {
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getStepTransaction = async (
-    step: Step,
+    step: LifiStep,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getStepTransaction(step, options)
   }
 
