@@ -1,4 +1,4 @@
-import { Step } from '@lifi/types'
+import { LifiStep } from '@lifi/types'
 import { Signer } from 'ethers'
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { buildStepObject } from '../../test/fixtures'
@@ -7,7 +7,7 @@ import { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
 let signer: Signer,
-  step: Step,
+  step: LifiStep,
   statusManager: StatusManager,
   hooks: InternalExecutionSettings,
   getChainIdMock: Mock,

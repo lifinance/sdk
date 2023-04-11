@@ -1,8 +1,7 @@
 import { ExternalProvider } from '@ethersproject/providers'
-import { LifiStep, Route, Step, Token } from '@lifi/types'
-import ConfigService from './services/ConfigService'
-import { HTTPError, ValidationError } from './utils/errors'
-import { sleep } from './utils/utils'
+import { LifiStep, Route, Token } from '@lifi/types'
+import { request } from './request'
+import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
 declare const ethereum: ExternalProvider
@@ -79,7 +78,8 @@ export const checkPackageUpdates = async (
   try {
     const pkgName = packageName ?? name
     const response = await request<{ version: string }>(
-      `https://registry.npmjs.org/${pkgName}/latest`
+      `https://registry.npmjs.org/${pkgName}/latest`,
+      { skipTrackingHeaders: true }
     )
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version
@@ -96,24 +96,18 @@ export const checkPackageUpdates = async (
 
 /**
  * Converts a quote to Route
- * @param {Step} step - Step returned from the quote endpoint.
+ * @param {LifiStep} step - Step returned from the quote endpoint.
  * @return {Route} - The route to be executed.
  * @throws {ValidationError} Throws a ValidationError if the step has missing values.
  */
 
-export const convertQuoteToRoute = (step: Step): Route => {
+export const convertQuoteToRoute = (step: LifiStep): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
   }
 
   if (!step.estimate.toAmountUSD) {
     throw new ValidationError("Missing 'toAmountUSD' in step estimate.")
-  }
-
-  const lifiStep: LifiStep = {
-    ...step,
-    type: 'lifi',
-    includedSteps: [],
   }
 
   const route: Route = {
@@ -126,70 +120,10 @@ export const convertQuoteToRoute = (step: Step): Route => {
     toChainId: step.action.toToken.chainId,
     fromAmountUSD: step.estimate.fromAmountUSD,
     toAmountUSD: step.estimate.toAmountUSD,
-    steps: [lifiStep],
+    steps: [step],
     toAmountMin: step.estimate.toAmountMin,
     insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
   }
 
   return route
-}
-
-export const requestSettings = {
-  retries: 1,
-}
-
-export const request = async <T = Response>(
-  url: RequestInfo | URL,
-  options?: RequestInit,
-  retries = requestSettings.retries
-): Promise<T> => {
-  const { userId, integrator, widgetVersion } =
-    ConfigService.getInstance().getConfig()
-
-  try {
-    const updatedOptions: RequestInit = {
-      ...(options ?? {}),
-    }
-
-    if (userId) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-UserId': userId,
-      }
-    }
-
-    if (widgetVersion) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-Widget': widgetVersion,
-      }
-    }
-
-    if (version) {
-      updatedOptions.headers = {
-        ...options?.headers,
-        'X-LIFI-SDK': version,
-      }
-    }
-
-    // integrator is mandatory during SDK initialization
-    updatedOptions.headers = {
-      ...options?.headers,
-      'X-LIFI-Integrator': integrator,
-    }
-
-    const response: Response = await fetch(url, updatedOptions)
-    if (!response.ok) {
-      throw new HTTPError(response)
-    }
-
-    const data: T = await response.json()
-    return data
-  } catch (error) {
-    if (retries > 0 && (error as HTTPError)?.status === 500) {
-      await sleep(500)
-      return request<T>(url, options, retries - 1)
-    }
-    throw error
-  }
 }

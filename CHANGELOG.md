@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.8](https://github.com/lifinance/sdk/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2023-04-11)
+
+
+### Bug Fixes
+
+* update step types tests ([a2a75bd](https://github.com/lifinance/sdk/commit/a2a75bdda59f82da3732ebbe02d536b534c4902f))
+
+## [2.0.0-beta.7](https://github.com/lifinance/sdk/compare/v2.0.0-beta.6...v2.0.0-beta.7) (2023-04-11)
+
+
+### Features
+
+* adding getConnections endpoint to SDK ([#130](https://github.com/lifinance/sdk/issues/130)) ([20f8464](https://github.com/lifinance/sdk/commit/20f84640df445224351f4c1817eb8e7e9f66c909))
+
+
+### Bug Fixes
+
+* errors in getStatus caused by the change of lifi/types ([#131](https://github.com/lifinance/sdk/issues/131)) ([f1eae4a](https://github.com/lifinance/sdk/commit/f1eae4acc86484632c904ac72eb8ff1048daf814))
+* skip tracking headers in non-lifi api calls ([#126](https://github.com/lifinance/sdk/issues/126)) ([8a02690](https://github.com/lifinance/sdk/commit/8a026907dd75c2a9cafe8e1adb6c8914c8ff6867))
+* typos ([#129](https://github.com/lifinance/sdk/issues/129)) ([a676806](https://github.com/lifinance/sdk/commit/a676806924968cea13ae8d7f0ac6a1bad735472d))
+* update step types ([#132](https://github.com/lifinance/sdk/issues/132)) ([be473a5](https://github.com/lifinance/sdk/commit/be473a5e38d840a748356515b9080eb05a44325d))
+
 ## [2.0.0-beta.6](https://github.com/lifinance/sdk/compare/v2.0.0-beta.5...v2.0.0-beta.6) (2023-03-21)
 
 ## [2.0.0-beta.5](https://github.com/lifinance/sdk/compare/v2.0.0-beta.4...v2.0.0-beta.5) (2023-03-17)

@@ -1,10 +1,10 @@
 import { TransactionReceipt } from '@ethersproject/providers'
-import { Token } from '@lifi/types'
+import { LifiStep, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { constants, Signer } from 'ethers'
+import { Signer, constants } from 'ethers'
 
 import { getRpcProvider } from '../connectors'
-import { ChainId, Step } from '../types'
+import { ChainId } from '../types'
 
 export const sleep = (mills: number): Promise<undefined> => {
   return new Promise((resolve) => {
@@ -14,8 +14,8 @@ export const sleep = (mills: number): Promise<undefined> => {
 
 export const personalizeStep = async (
   signer: Signer,
-  step: Step
-): Promise<Step> => {
+  step: LifiStep
+): Promise<LifiStep> => {
   if (step.action.toAddress && step.action.fromAddress) {
     return step
   }
