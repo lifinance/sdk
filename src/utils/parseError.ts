@@ -6,7 +6,9 @@ import {
 
 import ChainsService from '../services/ChainsService'
 import {
-  ERC20AllowanceError,
+  ErrorMessages,
+  GenericErrorType,
+  EthersErrorMessages,
   LifiError,
   LifiErrorCode,
   MetaMaskProviderErrorCode,
@@ -20,8 +22,6 @@ import {
   ValidationError,
 } from './errors'
 import { formatTokenAmountOnly } from './utils'
-import { request } from '../helpers'
-import { TenderlyResponse } from '..'
 
 /**
  * Available MetaMask error codes:
@@ -117,24 +117,24 @@ export const parseError = async (
         // underpriced errors are sent as internal errors, so we need to parse the message manually
         if (
           e.code === MetaMaskErrorCodes.rpc.internal &&
-          (e.message?.includes('underpriced') ||
-            e.message?.includes('replacement fee too low'))
+          (e.message?.includes(EthersErrorMessages.Underpriced) ||
+            e.message?.includes(EthersErrorMessages.LowReplacementFee))
         ) {
           return new RPCError(
             LifiErrorCode.TransactionUnderpriced,
-            'Transaction is underpriced.',
+            ErrorMessages.TransactionUnderpriced,
             await getTransactionNotSentMessage(step, process),
             e.stack
           )
         }
 
         if (
-          e.message?.includes('intrinsic gas too low') ||
-          e.message?.includes('out of gas')
+          e.message?.includes(EthersErrorMessages.LowGas) ||
+          e.message?.includes(EthersErrorMessages.OutOfGas)
         ) {
           return new TransactionError(
             LifiErrorCode.GasLimitError,
-            'Gas limit is too low.',
+            ErrorMessages.GasLimitLow,
             await getTransactionNotSentMessage(step, process),
             e.stack
           )
@@ -161,8 +161,8 @@ export const parseError = async (
   }
 
   switch (e.code) {
-    case 'CALL_EXCEPTION':
-      if (e.reason?.includes?.includes(ERC20AllowanceError)) {
+    case GenericErrorType.CallExecption:
+      if (e.reason?.includes?.includes(EthersErrorMessages.ERC20Allowance)) {
         return new TransactionError(
           LifiErrorCode.AllowanceRequired,
           e.reason,
@@ -177,7 +177,7 @@ export const parseError = async (
         e.stack
       )
 
-    case 'ACTION_REJECTED':
+    case GenericErrorType.ActionRejected:
     case MetaMaskProviderErrorCode.userRejectedRequest:
       return new TransactionError(
         LifiErrorCode.TransactionRejected,
@@ -201,7 +201,7 @@ export const parseError = async (
     default:
       return new UnknownError(
         LifiErrorCode.InternalError,
-        e.message || 'Unknown error occurred.',
+        e.message || ErrorMessages.UnknownError,
         undefined,
         e.stack
       )
@@ -234,7 +234,7 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
   if (e.response?.status === 409) {
     return new SlippageError(
       data?.message || e.response?.statusText,
-      'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
+      ErrorMessages.SlippageError,
       e.stack
     )
   }
@@ -247,15 +247,15 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
     )
   }
 
-  return new ServerError('Something went wrong.', undefined, e.stack)
+  return new ServerError(ErrorMessages.Default, undefined, e.stack)
 }
 
-const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
-  const response = await request<TenderlyResponse>(
-    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
-    undefined,
-    0
-  )
+// const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
+//   const response = await request<TenderlyResponse>(
+//     `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
+//     undefined,
+//     0
+//   )
 
-  return response
-}
+//   return response
+// }
