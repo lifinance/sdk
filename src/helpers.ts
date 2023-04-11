@@ -1,5 +1,5 @@
 import { ExternalProvider } from '@ethersproject/providers'
-import { LifiStep, Route, Step, Token } from '@lifi/types'
+import { LifiStep, Route, Token } from '@lifi/types'
 import { request } from './request'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
@@ -96,24 +96,18 @@ export const checkPackageUpdates = async (
 
 /**
  * Converts a quote to Route
- * @param {Step} step - Step returned from the quote endpoint.
+ * @param {LifiStep} step - Step returned from the quote endpoint.
  * @return {Route} - The route to be executed.
  * @throws {ValidationError} Throws a ValidationError if the step has missing values.
  */
 
-export const convertQuoteToRoute = (step: Step): Route => {
+export const convertQuoteToRoute = (step: LifiStep): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
   }
 
   if (!step.estimate.toAmountUSD) {
     throw new ValidationError("Missing 'toAmountUSD' in step estimate.")
-  }
-
-  const lifiStep: LifiStep = {
-    ...step,
-    type: 'lifi',
-    includedSteps: [],
   }
 
   const route: Route = {
@@ -126,7 +120,7 @@ export const convertQuoteToRoute = (step: Step): Route => {
     toChainId: step.action.toToken.chainId,
     fromAmountUSD: step.estimate.fromAmountUSD,
     toAmountUSD: step.estimate.toAmountUSD,
-    steps: [lifiStep],
+    steps: [step],
     toAmountMin: step.estimate.toAmountMin,
     insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
   }

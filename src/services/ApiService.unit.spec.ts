@@ -5,10 +5,9 @@ import {
   ConnectionsRequest,
   Estimate,
   findDefaultToken,
+  LifiStep,
   RoutesRequest,
-  Step,
   StepTool,
-  StepType,
 } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
@@ -523,40 +522,41 @@ describe('ApiService', () => {
       toAmountMin = '999999999999',
       approvalAddress = 'some approval address', // we don't validate the format of addresses atm;
       executionDuration = 300,
+      tool = '1inch',
     }): Estimate => ({
       fromAmount,
       toAmount,
       toAmountMin,
       approvalAddress,
       executionDuration,
+      tool,
     })
 
     const getStep = ({
       id = 'some random id',
-      type = 'swap',
+      type = 'lifi',
       tool = 'some swap tool',
       action = getAction({}),
       estimate = getEstimate({}),
     }: {
       id?: string
-      type?: StepType
+      type?: 'lifi'
       tool?: StepTool
       action?: Action
       estimate?: Estimate
-    }): Step =>
-      ({
-        id,
-        type,
-        tool,
-        toolDetails: {
-          key: tool,
-          name: tool,
-          logoURI: '',
-        },
-        action,
-        estimate,
-        includedSteps: [],
-      } as Step)
+    }): LifiStep => ({
+      id,
+      type,
+      tool,
+      toolDetails: {
+        key: tool,
+        name: tool,
+        logoURI: '',
+      },
+      action,
+      estimate,
+      includedSteps: [],
+    })
 
     describe('with a swap step', () => {
       // While the validation fails for some users we should not enforce it
@@ -571,7 +571,7 @@ describe('ApiService', () => {
         })
 
         it('should throw Error because of invalid type', async () => {
-          const step = getStep({ type: 42 as unknown as StepType })
+          const step = getStep({ type: 42 as unknown as 'lifi' })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'

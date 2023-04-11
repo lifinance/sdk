@@ -23,7 +23,6 @@ import {
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
-  Step,
   Token,
   ToolsRequest,
   ToolsResponse,
@@ -105,7 +104,7 @@ const getToken = async (
 const getQuote = async (
   requestConfig: QuoteRequest,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   const config = ConfigService.getInstance().getConfig()
 
   // validation
@@ -156,7 +155,7 @@ const getQuote = async (
   )
 
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/quote?${new URLSearchParams(
         requestConfig as unknown as Record<string, string>
       )}`,
@@ -174,7 +173,7 @@ const getQuote = async (
 const getContractCallQuote = async (
   requestConfig: ContractCallQuoteRequest,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   const config = ConfigService.getInstance().getConfig()
 
   // validation
@@ -223,7 +222,7 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/quote/contractCall`,
       {
         method: 'POST',

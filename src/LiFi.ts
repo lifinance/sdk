@@ -18,7 +18,6 @@ import {
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
-  Step,
   Token,
   TokenAmount,
   TokensRequest,
@@ -134,7 +133,7 @@ export class LiFi extends RouteExecutionManager {
   getQuote = async (
     request: QuoteRequest,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getQuote(request, options)
   }
 
@@ -146,7 +145,7 @@ export class LiFi extends RouteExecutionManager {
   getContractCallQuote = async (
     request: ContractCallQuoteRequest,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getContractCallQuote(request, options)
   }
 
@@ -210,7 +209,7 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the transaction data for a single step of a route
-   * @param {Step} step - The step object.
+   * @param {LifiStep} step - The step object.
    * @return {Promise<Step>} The step populated with the transaction data.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
