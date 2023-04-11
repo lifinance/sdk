@@ -1,4 +1,4 @@
-import { Step } from '@lifi/types'
+import { LifiStep } from '@lifi/types'
 import { Signer } from 'ethers'
 import { SwitchChainHook } from '../types'
 import { LifiErrorCode, ProviderError } from '../utils/errors'
@@ -18,7 +18,7 @@ import { StatusManager } from './StatusManager'
 export const switchChain = async (
   signer: Signer,
   statusManager: StatusManager,
-  step: Step,
+  step: LifiStep,
   switchChainHook: SwitchChainHook,
   allowUserInteraction: boolean
 ): Promise<Signer | undefined> => {

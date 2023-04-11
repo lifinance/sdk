@@ -1,9 +1,9 @@
 import {
+  LifiStep,
   ProcessType,
   Status,
   StatusMessage,
   StatusResponse,
-  Step,
   Substatus,
 } from '@lifi/types'
 import BigNumber from 'bignumber.js'
@@ -19,7 +19,7 @@ export async function waitForReceivingTransaction(
   txHash: string,
   statusManager: StatusManager,
   processType: ProcessType,
-  step: Step
+  step: LifiStep
 ): Promise<StatusResponse> {
   const getStatus = (): Promise<StatusResponse | undefined> =>
     new Promise(async (resolve, reject) => {
@@ -153,8 +153,8 @@ export function getSubstatusMessage(
 
 // Used to check if changed exchange rate is in the range of slippage threshold
 export function checkStepSlippageThreshold(
-  oldStep: Step,
-  newStep: Step
+  oldStep: LifiStep,
+  newStep: LifiStep
 ): boolean {
   const setSlippage = new BigNumber(oldStep.action.slippage)
   const oldEstimatedToAmount = new BigNumber(oldStep.estimate.toAmountMin)

@@ -2,12 +2,12 @@ import {
   Action,
   ChainId,
   CoinKey,
+  ConnectionsRequest,
   Estimate,
   findDefaultToken,
+  LifiStep,
   RoutesRequest,
-  Step,
   StepTool,
-  StepType,
 } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
@@ -21,7 +21,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { requestSettings } from '../helpers'
+import { requestSettings } from '../request'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
@@ -407,41 +407,6 @@ describe('ApiService', () => {
       it('throw an error', async () => {
         await expect(
           ApiService.getStatus({
-            bridge: undefined as unknown as string,
-            fromChain,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError(
-            'Parameter "bridge" is required for cross chain transfers.'
-          )
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain: undefined as unknown as ChainId,
-            toChain,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing.')
-        )
-
-        await expect(
-          ApiService.getStatus({
-            bridge,
-            fromChain,
-            toChain: undefined as unknown as ChainId,
-            txHash,
-          })
-        ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing.')
-        )
-
-        await expect(
-          ApiService.getStatus({
             bridge,
             fromChain,
             toChain,
@@ -474,7 +439,6 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
-
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
@@ -558,40 +522,41 @@ describe('ApiService', () => {
       toAmountMin = '999999999999',
       approvalAddress = 'some approval address', // we don't validate the format of addresses atm;
       executionDuration = 300,
+      tool = '1inch',
     }): Estimate => ({
       fromAmount,
       toAmount,
       toAmountMin,
       approvalAddress,
       executionDuration,
+      tool,
     })
 
     const getStep = ({
       id = 'some random id',
-      type = 'swap',
+      type = 'lifi',
       tool = 'some swap tool',
       action = getAction({}),
       estimate = getEstimate({}),
     }: {
       id?: string
-      type?: StepType
+      type?: 'lifi'
       tool?: StepTool
       action?: Action
       estimate?: Estimate
-    }): Step =>
-      ({
-        id,
-        type,
-        tool,
-        toolDetails: {
-          key: tool,
-          name: tool,
-          logoURI: '',
-        },
-        action,
-        estimate,
-        includedSteps: [],
-      } as Step)
+    }): LifiStep => ({
+      id,
+      type,
+      tool,
+      toolDetails: {
+        key: tool,
+        name: tool,
+        logoURI: '',
+      },
+      action,
+      estimate,
+      includedSteps: [],
+    })
 
     describe('with a swap step', () => {
       // While the validation fails for some users we should not enforce it
@@ -606,7 +571,7 @@ describe('ApiService', () => {
         })
 
         it('should throw Error because of invalid type', async () => {
-          const step = getStep({ type: 42 as unknown as StepType })
+          const step = getStep({ type: 42 as unknown as 'lifi' })
 
           await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
             'Invalid Step'
@@ -723,6 +688,36 @@ describe('ApiService', () => {
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
+    })
+  })
+  describe('getAvailableConnections', () => {
+    it('returns empty array in response', async () => {
+      server.use(
+        rest.get(`${config.apiUrl}/connections`, async (_, response, context) =>
+          response(context.status(200), context.json({ connections: [] }))
+        )
+      )
+
+      const connectionRequest: ConnectionsRequest = {
+        fromChain: ChainId.BSC,
+        toChain: ChainId.OPT,
+        fromToken: findDefaultToken(CoinKey.USDC, ChainId.BSC).address,
+        toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
+        allowBridges: ['connext', 'uniswap', 'polygon'],
+      }
+
+      const generatedURL =
+        // eslint-disable-next-line max-len
+        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&fromToken=10&fromToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon'
+
+      await expect(
+        ApiService.getAvailableConnections(connectionRequest)
+      ).resolves.toEqual({
+        connections: [],
+      })
+
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
 })

@@ -2,6 +2,7 @@ import {
   emptyExecution,
   Execution,
   InternalExecutionSettings,
+  LifiStep,
   Process,
   ProcessType,
   Route,
@@ -62,10 +63,10 @@ export class StatusManager {
 
   /**
    * Initializes the execution object of a Step.
-   * @param  {Step} step  The current step in execution
+   * @param  {LifiStep} step  The current step in execution
    * @return {Execution}       The initialized execution object for this step and a function to update this step
    */
-  initExecutionObject = (step: Step): Execution => {
+  initExecutionObject = (step: LifiStep): Execution => {
     const currentExecution =
       step.execution || structuredClone<Execution>(emptyExecution)
 
@@ -86,12 +87,12 @@ export class StatusManager {
 
   /**
    * Updates the execution object of a Step.
-   * @param  {Step} step  The current step in execution
+   * @param  {LifiStep} step  The current step in execution
    * @param  {Status} status  The status for the execution
    * @param  {Receipt} receipt Optional. Information about received tokens
    * @return {Step}       The step with the updated execution object
    */
-  updateExecution(step: Step, status: Status, receipt?: Receipt): Step {
+  updateExecution(step: LifiStep, status: Status, receipt?: Receipt): LifiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
@@ -109,12 +110,12 @@ export class StatusManager {
   /**
    * Create and push a new process into the execution.
    * @param  {ProcessType} type Type of the process. Used to identify already existing processes.
-   * @param  {Step} step The step that should contain the new process.
+   * @param  {LifiStep} step The step that should contain the new process.
    * @param  {Status} status By default created procces is set to the STARTED status. We can override new process with the needed status.
    * @return {Process}
    */
   findOrCreateProcess = (
-    step: Step,
+    step: LifiStep,
     type: ProcessType,
     status?: Status
   ): Process => {
@@ -146,14 +147,14 @@ export class StatusManager {
 
   /**
    * Update a process object.
-   * @param  {Step} step The step where the process should be updated
+   * @param  {LifiStep} step The step where the process should be updated
    * @param  {ProcessType} type  The process type to update
    * @param  {Status} status The status the process gets.
    * @param  {object} [params]   Additional parameters to append to the process.
    * @return {Process} The update process
    */
   updateProcess = (
-    step: Step,
+    step: LifiStep,
     type: ProcessType,
     status: Status,
     params?: OptionalParameters
@@ -211,11 +212,11 @@ export class StatusManager {
 
   /**
    * Remove a process from the execution
-   * @param  {Step} step The step where the process should be removed from
+   * @param  {LifiStep} step The step where the process should be removed from
    * @param  {ProcessType} type  The process type to remove
    * @return {void}
    */
-  removeProcess = (step: Step, type: ProcessType): void => {
+  removeProcess = (step: LifiStep, type: ProcessType): void => {
     if (!step.execution) {
       throw new Error("Execution hasn't been initialized.")
     }
@@ -224,7 +225,7 @@ export class StatusManager {
     this.updateStepInRoute(step)
   }
 
-  updateStepInRoute = (step: Step): Step => {
+  updateStepInRoute = (step: LifiStep): LifiStep => {
     if (!this.shouldUpdate) {
       return step
     }

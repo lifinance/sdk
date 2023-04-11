@@ -1,12 +1,12 @@
 import BigNumber from 'bignumber.js'
 import { ethers } from 'ethers'
-import { Step } from '..'
+import { LifiStep } from '..'
 import { BalanceError } from '../utils/errors'
 import { getTokenBalance } from './getTokenBalance'
 
 export const checkBalance = async (
   signer: ethers.Signer,
-  step: Step,
+  step: LifiStep,
   depth = 0
 ): Promise<void> => {
   const tokenAmount = await getTokenBalance(

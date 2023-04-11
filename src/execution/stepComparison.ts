@@ -1,5 +1,5 @@
 import { StatusManager } from '.'
-import { InternalExecutionSettings, Step } from '../types'
+import { InternalExecutionSettings, LifiStep } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { checkStepSlippageThreshold } from './utils'
 
@@ -16,11 +16,11 @@ import { checkStepSlippageThreshold } from './utils'
  */
 export const stepComparison = async (
   statusManager: StatusManager,
-  oldStep: Step,
-  newStep: Step,
+  oldStep: LifiStep,
+  newStep: LifiStep,
   settings: InternalExecutionSettings,
   allowUserInteraction: boolean
-): Promise<Step> => {
+): Promise<LifiStep> => {
   // Check if changed exchange rate is in the range of slippage threshold
   if (checkStepSlippageThreshold(oldStep, newStep)) {
     return statusManager.updateStepInRoute(newStep)

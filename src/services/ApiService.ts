@@ -1,14 +1,17 @@
 import {
+  ConnectionsRequest,
+  ConnectionsResponse,
   ContractCallQuoteRequest,
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
+  LifiStep,
   QuoteRequest,
   RequestOptions,
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
-import { request } from '../helpers'
+import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
 import {
   ChainId,
@@ -20,7 +23,6 @@ import {
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
-  Step,
   Token,
   ToolsRequest,
   ToolsResponse,
@@ -102,7 +104,7 @@ const getToken = async (
 const getQuote = async (
   requestConfig: QuoteRequest,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   const config = ConfigService.getInstance().getConfig()
 
   // validation
@@ -153,7 +155,7 @@ const getQuote = async (
   )
 
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/quote?${new URLSearchParams(
         requestConfig as unknown as Record<string, string>
       )}`,
@@ -171,7 +173,7 @@ const getQuote = async (
 const getContractCallQuote = async (
   requestConfig: ContractCallQuoteRequest,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   const config = ConfigService.getInstance().getConfig()
 
   // validation
@@ -220,7 +222,7 @@ const getContractCallQuote = async (
 
   // send request
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/quote/contractCall`,
       {
         method: 'POST',
@@ -239,36 +241,20 @@ const getContractCallQuote = async (
 }
 
 const getStatus = async (
-  { bridge, fromChain, toChain, txHash }: GetStatusRequest,
+  requestConfig: GetStatusRequest,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
-  if (fromChain !== toChain && !bridge) {
-    throw new ValidationError(
-      'Parameter "bridge" is required for cross chain transfers.'
-    )
-  }
-
-  if (!fromChain) {
-    throw new ValidationError('Required parameter "fromChain" is missing.')
-  }
-
-  if (!toChain) {
-    throw new ValidationError('Required parameter "toChain" is missing.')
-  }
-
-  if (!txHash) {
+  if (!requestConfig.txHash) {
     throw new ValidationError('Required parameter "txHash" is missing.')
   }
 
   const config = ConfigService.getInstance().getConfig()
+  const queryParams = new URLSearchParams(
+    requestConfig as unknown as Record<string, string>
+  )
   try {
     const response = await request<StatusResponse>(
-      `${config.apiUrl}/status?${new URLSearchParams({
-        bridge,
-        fromChain,
-        toChain,
-        txHash,
-      } as Record<string, string>)}`,
+      `${config.apiUrl}/status?${queryParams}`,
       {
         signal: options?.signal,
       }
@@ -333,9 +319,9 @@ const getRoutes = async (
 }
 
 const getStepTransaction = async (
-  step: Step,
+  step: LifiStep,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   if (!isStep(step)) {
     // While the validation fails for some users we should not enforce it
     // eslint-disable-next-line no-console
@@ -344,7 +330,7 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/advanced/stepTransaction`,
       {
         method: 'POST',
@@ -438,6 +424,43 @@ const getGasRecommendation = async (
   }
 }
 
+const getAvailableConnections = async (
+  connectionRequest: ConnectionsRequest
+): Promise<ConnectionsResponse> => {
+  const config = ConfigService.getInstance().getConfig()
+
+  const url = new URL(`${config.apiUrl}/connections`)
+
+  const { fromChain, fromToken, toChain, toToken, allowBridges } =
+    connectionRequest
+
+  if (fromChain) {
+    url.searchParams.append('fromChain', fromChain as unknown as string)
+  }
+  if (fromToken) {
+    url.searchParams.append('fromToken', fromToken)
+  }
+  if (toChain) {
+    url.searchParams.append('fromToken', toChain as unknown as string)
+  }
+  if (toToken) {
+    url.searchParams.append('fromToken', toToken)
+  }
+
+  if (allowBridges?.length) {
+    allowBridges.forEach((bridge) => {
+      url.searchParams.append('allowBridges', bridge)
+    })
+  }
+
+  try {
+    const response = await request<ConnectionsResponse>(url)
+    return response
+  } catch (e) {
+    throw await parseBackendError(e)
+  }
+}
+
 export default {
   getChains,
   getContractCallQuote,
@@ -450,4 +473,5 @@ export default {
   getToken,
   getTokens,
   getTools,
+  getAvailableConnections,
 }

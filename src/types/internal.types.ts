@@ -1,5 +1,5 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
-import { Route, RouteOptions, Step, Token } from '@lifi/types'
+import { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
@@ -22,7 +22,7 @@ export type ParsedReceipt = {
 
 export interface ExecutionParams {
   signer: Signer
-  step: Step
+  step: LifiStep
   statusManager: StatusManager
   settings: InternalExecutionSettings
 }

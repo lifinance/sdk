@@ -4,13 +4,13 @@ import BigNumber from 'bignumber.js'
 import { constants, ContractTransaction, Signer } from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
 import { StatusManager } from '../execution/StatusManager'
-import { Chain, InternalExecutionSettings, Process, Step } from '../types'
+import { Chain, InternalExecutionSettings, LifiStep, Process } from '../types'
 import { getProvider } from '../utils/getProvider'
 import { parseError } from '../utils/parseError'
 
 export const checkAllowance = async (
   signer: Signer,
-  step: Step,
+  step: LifiStep,
   statusManager: StatusManager,
   settings: InternalExecutionSettings,
   chain: Chain,
@@ -140,7 +140,7 @@ export const checkAllowance = async (
 const transactionReplaced = async (
   replacementTx: ContractTransaction,
   allowanceProcess: Process,
-  step: Step,
+  step: LifiStep,
   chain: Chain,
   statusManager: StatusManager
 ) => {

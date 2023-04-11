@@ -3,11 +3,14 @@ import { FallbackProvider } from '@ethersproject/providers'
 import {
   ChainId,
   ChainKey,
+  ConnectionsRequest,
+  ConnectionsResponse,
   ContractCallQuoteRequest,
   ExtendedChain,
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
+  LifiStep,
   PossibilitiesRequest,
   PossibilitiesResponse,
   QuoteRequest,
@@ -15,7 +18,6 @@ import {
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
-  Step,
   Token,
   TokenAmount,
   TokensRequest,
@@ -25,11 +27,11 @@ import {
 } from '@lifi/types'
 import { Signer } from 'ethers'
 import {
-  approveToken,
   ApproveTokenRequest,
+  RevokeApprovalRequest,
+  approveToken,
   bulkGetTokenApproval,
   getTokenApproval,
-  RevokeApprovalRequest,
   revokeTokenApproval,
 } from './allowance'
 import * as balance from './balance'
@@ -131,7 +133,7 @@ export class LiFi extends RouteExecutionManager {
   getQuote = async (
     request: QuoteRequest,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getQuote(request, options)
   }
 
@@ -143,7 +145,7 @@ export class LiFi extends RouteExecutionManager {
   getContractCallQuote = async (
     request: ContractCallQuoteRequest,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getContractCallQuote(request, options)
   }
 
@@ -207,14 +209,14 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the transaction data for a single step of a route
-   * @param {Step} step - The step object.
+   * @param {LifiStep} step - The step object.
    * @return {Promise<Step>} The step populated with the transaction data.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getStepTransaction = async (
-    step: Step,
+    step: LifiStep,
     options?: RequestOptions
-  ): Promise<Step> => {
+  ): Promise<LifiStep> => {
     return ApiService.getStepTransaction(step, options)
   }
 
@@ -348,4 +350,20 @@ export class LiFi extends RouteExecutionManager {
   revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
     return revokeTokenApproval(request)
   }
+}
+
+/**
+ * Get all the available connections for swap/bridging tokens
+ * @param connectionRequest ConnectionsRequest
+ * @returns ConnectionsResponse
+ */
+
+export const getConnections = async (
+  connectionRequest: ConnectionsRequest
+): Promise<ConnectionsResponse> => {
+  const connections = await ApiService.getAvailableConnections(
+    connectionRequest
+  )
+
+  return connections
 }
