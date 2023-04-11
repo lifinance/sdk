@@ -5,6 +5,7 @@ import {
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
+  LifiStep,
   QuoteRequest,
   RequestOptions,
   TokensRequest,
@@ -319,9 +320,9 @@ const getRoutes = async (
 }
 
 const getStepTransaction = async (
-  step: Step,
+  step: LifiStep,
   options?: RequestOptions
-): Promise<Step> => {
+): Promise<LifiStep> => {
   if (!isStep(step)) {
     // While the validation fails for some users we should not enforce it
     // eslint-disable-next-line no-console
@@ -330,7 +331,7 @@ const getStepTransaction = async (
 
   const config = ConfigService.getInstance().getConfig()
   try {
-    const response = await request<Step>(
+    const response = await request<LifiStep>(
       `${config.apiUrl}/advanced/stepTransaction`,
       {
         method: 'POST',

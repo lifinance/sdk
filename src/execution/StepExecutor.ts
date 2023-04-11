@@ -1,5 +1,9 @@
 import { Signer } from 'ethers'
-import { InteractionSettings, InternalExecutionSettings, Step } from '../types'
+import {
+  InteractionSettings,
+  InternalExecutionSettings,
+  LifiStep,
+} from '../types'
 import { StatusManager } from './StatusManager'
 import { StepExecutionManager } from './StepExecutionManager'
 import { switchChain } from './switchChain'
@@ -48,7 +52,7 @@ export class StepExecutor {
     throw new Error('checkChain is not implemented.')
   }
 
-  executeStep = async (signer: Signer, step: Step): Promise<Step> => {
+  executeStep = async (signer: Signer, step: LifiStep): Promise<LifiStep> => {
     // Make sure that the chain is still correct
     const updatedSigner = await switchChain(
       signer,
