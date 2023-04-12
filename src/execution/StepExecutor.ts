@@ -55,10 +55,14 @@ export class StepExecutor {
   executeStep = async (signer: Signer, step: LifiStep): Promise<LifiStep> => {
     // Make sure that the chain is still correct
 
+    // Find if the step is waiting for a transaction on the receiving chain
     const recievingChainProcess = step.execution?.process.find(
       (process) => process.type === 'RECEIVING_CHAIN'
     )
 
+    // If the step is waiting for a transaction on the receiving chain, we do not switch the chain
+    // All changes are already done from the source chain
+    // Return the step
     if (recievingChainProcess?.substatus === 'WAIT_DESTINATION_TRANSACTION') {
       return step
     }
