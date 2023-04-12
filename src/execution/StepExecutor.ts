@@ -54,6 +54,15 @@ export class StepExecutor {
 
   executeStep = async (signer: Signer, step: LifiStep): Promise<LifiStep> => {
     // Make sure that the chain is still correct
+
+    const recievingChainProcess = step.execution?.process.find(
+      (process) => process.type === 'RECEIVING_CHAIN'
+    )
+
+    if (recievingChainProcess?.substatus === 'WAIT_DESTINATION_TRANSACTION') {
+      return step
+    }
+
     const updatedSigner = await switchChain(
       signer,
       this.statusManager,
