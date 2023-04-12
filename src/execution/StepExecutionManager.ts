@@ -13,6 +13,7 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
+import { TransactionRequest } from '@ethersproject/abstract-provider'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -139,6 +140,17 @@ export class StepExecutionManager {
 
           if (!this.allowUserInteraction) {
             return step.execution!
+          }
+
+          if (settings.updateTransactionRequest) {
+            const customConfig: TransactionRequest =
+              await settings.updateTransactionRequest(transactionRequest)
+
+            transactionRequest.gasLimit = customConfig.gasLimit
+            transactionRequest.gasPrice = customConfig.gasPrice
+            transactionRequest.maxPriorityFeePerGas =
+              customConfig.maxPriorityFeePerGas
+            transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
           }
 
           // Submit the transaction
