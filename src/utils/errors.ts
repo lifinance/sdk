@@ -27,12 +27,12 @@ export enum LifiErrorCode {
   AllowanceRequired = 1014,
 }
 
-export enum GenericErrorType {
+export enum EthersErrorType {
   CallExecption = 'CALL_EXCEPTION',
   ActionRejected = 'ACTION_REJECTED',
 }
 
-export enum EthersErrorMessages {
+export enum EthersErrorMessage {
   ERC20Allowance = 'ERC20: transfer amount exceeds allowance',
   LowGas = 'intrinsic gas too low',
   OutOfGas = 'out of gas',
@@ -40,7 +40,7 @@ export enum EthersErrorMessages {
   LowReplacementFee = 'replacement fee too low',
 }
 
-export enum ErrorMessages {
+export enum ErrorMessage {
   UnknownError = 'Unknown error occurred.',
   SlippageError = 'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
   GasLimitLow = 'Gas limit is too low.',

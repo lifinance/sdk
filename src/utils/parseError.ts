@@ -6,9 +6,9 @@ import {
 
 import ChainsService from '../services/ChainsService'
 import {
-  ErrorMessages,
-  GenericErrorType,
-  EthersErrorMessages,
+  ErrorMessage,
+  EthersErrorType,
+  EthersErrorMessage,
   LifiError,
   LifiErrorCode,
   MetaMaskProviderErrorCode,
@@ -117,24 +117,24 @@ export const parseError = async (
         // underpriced errors are sent as internal errors, so we need to parse the message manually
         if (
           e.code === MetaMaskErrorCodes.rpc.internal &&
-          (e.message?.includes(EthersErrorMessages.Underpriced) ||
-            e.message?.includes(EthersErrorMessages.LowReplacementFee))
+          (e.message?.includes(EthersErrorMessage.Underpriced) ||
+            e.message?.includes(EthersErrorMessage.LowReplacementFee))
         ) {
           return new RPCError(
             LifiErrorCode.TransactionUnderpriced,
-            ErrorMessages.TransactionUnderpriced,
+            ErrorMessage.TransactionUnderpriced,
             await getTransactionNotSentMessage(step, process),
             e.stack
           )
         }
 
         if (
-          e.message?.includes(EthersErrorMessages.LowGas) ||
-          e.message?.includes(EthersErrorMessages.OutOfGas)
+          e.message?.includes(EthersErrorMessage.LowGas) ||
+          e.message?.includes(EthersErrorMessage.OutOfGas)
         ) {
           return new TransactionError(
             LifiErrorCode.GasLimitError,
-            ErrorMessages.GasLimitLow,
+            ErrorMessage.GasLimitLow,
             await getTransactionNotSentMessage(step, process),
             e.stack
           )
@@ -161,8 +161,8 @@ export const parseError = async (
   }
 
   switch (e.code) {
-    case GenericErrorType.CallExecption:
-      if (e.reason?.includes?.includes(EthersErrorMessages.ERC20Allowance)) {
+    case EthersErrorType.CallExecption:
+      if (e.reason?.includes?.includes(EthersErrorMessage.ERC20Allowance)) {
         return new TransactionError(
           LifiErrorCode.AllowanceRequired,
           e.reason,
@@ -177,7 +177,7 @@ export const parseError = async (
         e.stack
       )
 
-    case GenericErrorType.ActionRejected:
+    case EthersErrorType.ActionRejected:
     case MetaMaskProviderErrorCode.userRejectedRequest:
       return new TransactionError(
         LifiErrorCode.TransactionRejected,
@@ -201,7 +201,7 @@ export const parseError = async (
     default:
       return new UnknownError(
         LifiErrorCode.InternalError,
-        e.message || ErrorMessages.UnknownError,
+        e.message || ErrorMessage.UnknownError,
         undefined,
         e.stack
       )
@@ -234,7 +234,7 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
   if (e.response?.status === 409) {
     return new SlippageError(
       data?.message || e.response?.statusText,
-      ErrorMessages.SlippageError,
+      ErrorMessage.SlippageError,
       e.stack
     )
   }
@@ -247,7 +247,7 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
     )
   }
 
-  return new ServerError(ErrorMessages.Default, undefined, e.stack)
+  return new ServerError(ErrorMessage.Default, undefined, e.stack)
 }
 
 // const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
