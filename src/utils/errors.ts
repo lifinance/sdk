@@ -24,6 +24,28 @@ export enum LifiErrorCode {
   SlippageError = 1011,
   TransactionRejected = 1012,
   BalanceError = 1013,
+  AllowanceRequired = 1014,
+}
+
+export enum EthersErrorType {
+  CallExecption = 'CALL_EXCEPTION',
+  ActionRejected = 'ACTION_REJECTED',
+}
+
+export enum EthersErrorMessage {
+  ERC20Allowance = 'ERC20: transfer amount exceeds allowance',
+  LowGas = 'intrinsic gas too low',
+  OutOfGas = 'out of gas',
+  Underpriced = 'underpriced',
+  LowReplacementFee = 'replacement fee too low',
+}
+
+export enum ErrorMessage {
+  UnknownError = 'Unknown error occurred.',
+  SlippageError = 'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
+  GasLimitLow = 'Gas limit is too low.',
+  TransactionUnderpriced = 'Transaction is underpriced.',
+  Default = 'Something went wrong.',
 }
 
 export enum MetaMaskRPCErrorCode {
