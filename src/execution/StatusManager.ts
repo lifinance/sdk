@@ -7,7 +7,6 @@ import {
   ProcessType,
   Route,
   Status,
-  Step,
   Token,
 } from '../types'
 import { getProcessMessage } from './utils'
