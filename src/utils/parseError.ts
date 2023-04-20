@@ -22,6 +22,7 @@ import {
   ValidationError,
 } from './errors'
 import { formatTokenAmountOnly } from './utils'
+import { fetchTxErrorDetails } from '../helpers'
 
 /**
  * Available MetaMask error codes:
@@ -162,20 +163,41 @@ export const parseError = async (
 
   switch (e.code) {
     case EthersErrorType.CallExecption:
-      if (e.reason?.includes?.includes(EthersErrorMessage.ERC20Allowance)) {
-        return new TransactionError(
-          LifiErrorCode.AllowanceRequired,
+      const defaultErrorMessage = await getTransactionNotSentMessage(
+        step,
+        process
+      )
+      try {
+        if (!step?.action.fromChainId) {
+          throw new Error('Signer is not defined.')
+        }
+
+        const response = await fetchTxErrorDetails(
+          e.transactionHash,
+          step?.action.fromChainId
+        )
+
+        const errorMessage = response?.error_message ?? defaultErrorMessage
+
+        if (errorMessage?.includes(EthersErrorMessage.ERC20Allowance)) {
+          return new TransactionError(
+            LifiErrorCode.AllowanceRequired,
+            e.reason,
+            errorMessage,
+            e.stack
+          )
+        }
+
+        // Error messages other than allowance error will be handled in catch block
+        throw new Error(e)
+      } catch (error) {
+        return new ProviderError(
+          LifiErrorCode.TransactionFailed,
           e.reason,
-          await getTransactionNotSentMessage(step, process),
+          defaultErrorMessage,
           e.stack
         )
       }
-      return new ProviderError(
-        LifiErrorCode.TransactionFailed,
-        e.reason,
-        await getTransactionNotSentMessage(step, process),
-        e.stack
-      )
 
     case EthersErrorType.ActionRejected:
     case MetaMaskProviderErrorCode.userRejectedRequest:
@@ -249,13 +271,3 @@ export const parseBackendError = async (e: any): Promise<LifiError> => {
 
   return new ServerError(ErrorMessage.Default, undefined, e.stack)
 }
-
-// const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
-//   const response = await request<TenderlyResponse>(
-//     `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
-//     undefined,
-//     0
-//   )
-
-//   return response
-// }
