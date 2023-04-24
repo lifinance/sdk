@@ -1,10 +1,10 @@
+import { Chain, LifiStep, Route } from '@lifi/types'
+import { Signer } from 'ethers'
 import { Mock, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
-import { checkAllowance } from './checkAllowance'
-import { Chain, Route, Step } from '@lifi/types'
-import { Signer } from 'ethers'
 import { StatusManager } from '../execution'
 import { InternalExecutionSettings } from '../types'
+import { checkAllowance } from './checkAllowance'
 
 import * as allowance from '../allowance/utils'
 
@@ -19,7 +19,7 @@ let statusManager: StatusManager
 const updateCallbackMock: Mock = vi.fn()
 const internalUpdateRouteCallbackMock: Mock = vi.fn()
 let route: Route
-let step: Step
+let step: LifiStep
 let chain: Chain
 const mockSettings: InternalExecutionSettings = {
   updateCallback: updateCallbackMock,

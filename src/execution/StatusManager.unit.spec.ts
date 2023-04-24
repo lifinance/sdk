@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
-import { Route, Status, Step } from '../types'
+import { LifiStep, Route, Status } from '../types'
 import { StatusManager } from './StatusManager'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
@@ -10,7 +10,7 @@ describe('StatusManager', () => {
   let internalUpdateRouteCallbackMock: Mock
   let updateCallbackMock: Mock
   let route: Route
-  let step: Step
+  let step: LifiStep
 
   const expectCallbacksToHaveBeenCalledWith = (route: Route) => {
     expect(updateCallbackMock).toHaveBeenCalledWith(route)
