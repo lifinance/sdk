@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.10](https://github.com/lifinance/sdk/compare/v2.0.0-beta.9...v2.0.0-beta.10) (2023-04-25)
+
+
+### Bug Fixes
+
+* don't trigger chain switch if all actions are done from source chain [LF-1131] ([#133](https://github.com/lifinance/sdk/issues/133)) ([e6d2076](https://github.com/lifinance/sdk/commit/e6d20763a7077978da61915dc579f3e8c6894204))
+
 ## [2.0.0-beta.9](https://github.com/lifinance/sdk/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2023-04-21)
 
 
