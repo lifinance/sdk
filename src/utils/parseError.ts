@@ -177,9 +177,14 @@ export const parseError = async (
           step?.action.fromChainId
         )
 
-        const errorMessage = response?.error_message ?? defaultErrorMessage
+        const errorMessage = response?.error_message ?? e.reason
 
-        if (errorMessage?.includes(EthersErrorMessage.ERC20Allowance)) {
+        const isAllowanceError =
+          response?.error_message?.includes(
+            EthersErrorMessage.ERC20Allowance
+          ) || e.reason?.includes(EthersErrorMessage.ERC20Allowance)
+
+        if (isAllowanceError) {
           return new TransactionError(
             LifiErrorCode.AllowanceRequired,
             e.reason,
