@@ -3,6 +3,7 @@ import { LifiStep, Route, Token } from '@lifi/types'
 import { request } from './request'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
+import { TenderlyResponse } from './types'
 
 declare const ethereum: ExternalProvider
 
@@ -126,4 +127,12 @@ export const convertQuoteToRoute = (step: LifiStep): Route => {
   }
 
   return route
+}
+
+export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
+  const response = await request<TenderlyResponse>(
+    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
+  )
+
+  return response
 }
