@@ -24,7 +24,6 @@ let chain: Chain
 const mockSettings: InternalExecutionSettings = {
   updateCallback: updateCallbackMock,
   switchChainHook: () => Promise.resolve(undefined),
-  acceptSlippageUpdateHook: () => Promise.resolve(undefined),
   acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
   infiniteApproval: false,
   executeInBackground: false,

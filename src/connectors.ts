@@ -1,13 +1,14 @@
-import { providers } from 'ethers'
-
-import { ChainId } from './types'
-import { FallbackProvider } from '@ethersproject/providers'
-import ConfigService from './services/ConfigService'
+import {
+  FallbackProvider,
+  StaticJsonRpcProvider,
+} from '@ethersproject/providers'
 import { getRandomNumber } from './helpers'
+import ConfigService from './services/ConfigService'
+import { ChainId } from './types'
 import { ServerError } from './utils/errors'
 
 // cached providers
-const chainProviders: Record<number, providers.FallbackProvider[]> = {}
+const chainProviders: Record<number, FallbackProvider[]> = {}
 
 // Archive RPC Provider
 const archiveRpcs: Record<number, string> = {
@@ -44,8 +45,8 @@ export const getRpcUrls = async (
 }
 
 const getRandomProvider = (
-  providerList: providers.FallbackProvider[]
-): providers.FallbackProvider => {
+  providerList: FallbackProvider[]
+): FallbackProvider => {
   const index = getRandomNumber(0, providerList.length - 1)
   return providerList[index]
 }
@@ -57,23 +58,18 @@ export const getRpcProvider = async (
 ): Promise<FallbackProvider> => {
   if (archive && archiveRpcs[chainId]) {
     // return archive PRC, but don't cache it
-    return new providers.FallbackProvider([
-      new providers.StaticJsonRpcProvider(
-        await getRpcUrl(chainId, archive),
-        chainId
-      ),
+    return new FallbackProvider([
+      new StaticJsonRpcProvider(await getRpcUrl(chainId, archive), chainId),
     ])
   }
 
-  if (!chainProviders[chainId]) {
+  if (!chainProviders[chainId]?.length) {
     chainProviders[chainId] = []
 
     const urls = await getRpcUrls(chainId, archive)
     urls.forEach((url) => {
       chainProviders[chainId].push(
-        new providers.FallbackProvider([
-          new providers.StaticJsonRpcProvider(url, chainId),
-        ])
+        new FallbackProvider([new StaticJsonRpcProvider(url, chainId)])
       )
     })
   }

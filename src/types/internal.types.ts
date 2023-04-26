@@ -93,7 +93,6 @@ export type ExecutionSettings = Partial<InternalExecutionSettings>
 export interface InternalExecutionSettings {
   updateCallback: CallbackFunction
   switchChainHook: SwitchChainHook
-  acceptSlippageUpdateHook: AcceptSlippageUpdateHook
   acceptExchangeRateUpdateHook: AcceptExchangeRateUpdateHook
   infiniteApproval: boolean
   executeInBackground: boolean
