@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.9](https://github.com/lifinance/sdk/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2023-04-21)
+
+
+### Features
+
+* add callbacks to support custom transaction config ([#128](https://github.com/lifinance/sdk/issues/128)) ([122f6b2](https://github.com/lifinance/sdk/commit/122f6b25d29e73ffe494f0c7fca28052956a9b28))
+
+
+### Bug Fixes
+
+* return contextual transaction error message ([#127](https://github.com/lifinance/sdk/issues/127)) ([4af19be](https://github.com/lifinance/sdk/commit/4af19be58d8afa1ce6f1c7b9bd5c5bcf054270f1))
+* update step types ([de1434a](https://github.com/lifinance/sdk/commit/de1434a1ad825ee801dda3852bd8a8663c5c90dd))
+
 ## [2.0.0-beta.8](https://github.com/lifinance/sdk/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2023-04-11)
 
 
