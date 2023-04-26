@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { TransactionResponse } from '@ethersproject/abstract-provider'
+import {
+  TransactionRequest,
+  TransactionResponse,
+} from '@ethersproject/abstract-provider'
 import { Execution, StatusResponse } from '@lifi/types'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
@@ -13,7 +16,6 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
-import { TransactionRequest } from '@ethersproject/abstract-provider'
 
 export class StepExecutionManager {
   allowUserInteraction = true

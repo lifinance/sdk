@@ -10,7 +10,6 @@ const DefaultExecutionSettings: InternalExecutionSettings = {
   /* eslint-disable-next-line @typescript-eslint/no-empty-function */
   updateCallback: () => {},
   switchChainHook: () => Promise.resolve(undefined),
-  acceptSlippageUpdateHook: () => Promise.resolve(undefined),
   acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
   infiniteApproval: false,
   executeInBackground: false,

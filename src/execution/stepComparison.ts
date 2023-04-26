@@ -11,7 +11,7 @@ import { checkStepSlippageThreshold } from './utils'
  * @param statusManager
  * @param oldStep
  * @param newStep
- * @param acceptSlippageUpdateHook
+ * @param settings
  * @param allowUserInteraction
  */
 export const stepComparison = async (
@@ -26,17 +26,13 @@ export const stepComparison = async (
     return statusManager.updateStepInRoute(newStep)
   }
 
-  const acceptExchangeRateUpdateHook =
-    settings.acceptExchangeRateUpdateHook ?? settings.acceptSlippageUpdateHook
   let allowStepUpdate: boolean | undefined
   if (allowUserInteraction) {
-    allowStepUpdate = await acceptExchangeRateUpdateHook({
+    allowStepUpdate = await settings.acceptExchangeRateUpdateHook({
       oldToAmount: oldStep.estimate.toAmount,
       newToAmount: newStep.estimate.toAmount,
       toToken: newStep.action.toToken,
-      oldSlippage: oldStep.action.slippage,
-      newSlippage: newStep.action.slippage,
-    } as any)
+    })
   }
 
   if (!allowStepUpdate) {
