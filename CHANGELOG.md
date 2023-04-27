@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.11](https://github.com/lifinance/sdk/compare/v2.0.0-beta.10...v2.0.0-beta.11) (2023-04-27)
+
+
+### Bug Fixes
+
+* add tenderly for readable error messages ([#134](https://github.com/lifinance/sdk/issues/134)) ([0246a2c](https://github.com/lifinance/sdk/commit/0246a2c246fb6aa98b9ce85611d75b577e0d909a))
+* remove acceptSlippageUpdateHook (use acceptExchangeRateUpdateHook) ([22eabed](https://github.com/lifinance/sdk/commit/22eabedc04ade1dae359eca3809275e1324c97a7))
+* unable to configure provider for chain on first load ([9c3590e](https://github.com/lifinance/sdk/commit/9c3590e623b0b0ab671fbe043762af2621717099))
+
 ## [2.0.0-beta.10](https://github.com/lifinance/sdk/compare/v2.0.0-beta.9...v2.0.0-beta.10) (2023-04-25)
 
 

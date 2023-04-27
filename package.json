@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "2.0.0-beta.10",
+  "version": "2.0.0-beta.11",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
@@ -76,7 +76,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
-    "@lifi/types": "^4.0.0",
+    "@lifi/types": "^5.0.0",
     "bignumber.js": "^9.1.1",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.7.2"
@@ -93,7 +93,7 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^8.0.3",
-    "lint-staged": "^13.2.1",
+    "lint-staged": "^13.2.2",
     "msw": "1.0.1",
     "npm-run-all": "^4.1.5",
     "pinst": "^3.0.0",
