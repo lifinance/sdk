@@ -19,7 +19,7 @@ export class RouteExecutionManager {
   private executionPromiseDictionary: RouteExecutionPromiseDictionary = {}
   protected configService: ConfigService
 
-  constructor(configUpdate?: ConfigUpdate) {
+  constructor(configUpdate: ConfigUpdate) {
     this.configService = ConfigService.getInstance()
 
     if (configUpdate) {

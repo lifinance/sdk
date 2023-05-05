@@ -8,12 +8,12 @@ import { StatusManager } from './StatusManager'
 describe('StatusManager', () => {
   let statusManager: StatusManager
   let internalUpdateRouteCallbackMock: Mock
-  let updateCallbackMock: Mock
+  let updateRouteHookMock: Mock
   let route: Route
   let step: LifiStep
 
   const expectCallbacksToHaveBeenCalledWith = (route: Route) => {
-    expect(updateCallbackMock).toHaveBeenCalledWith(route)
+    expect(updateRouteHookMock).toHaveBeenCalledWith(route)
     expect(internalUpdateRouteCallbackMock).toHaveBeenCalledWith(route)
   }
 
@@ -28,7 +28,7 @@ describe('StatusManager', () => {
     return new StatusManager(
       structuredClone(route),
       {
-        updateCallback: updateCallbackMock,
+        updateRouteHook: updateRouteHookMock,
         switchChainHook: () => Promise.resolve(undefined),
         acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
         infiniteApproval: false,
@@ -40,7 +40,7 @@ describe('StatusManager', () => {
 
   beforeEach(() => {
     internalUpdateRouteCallbackMock = vi.fn()
-    updateCallbackMock = vi.fn()
+    updateRouteHookMock = vi.fn()
   })
 
   describe('initExecutionObject', () => {
@@ -73,7 +73,7 @@ describe('StatusManager', () => {
       })
 
       it('should not call the callbacks', () => {
-        expect(updateCallbackMock).not.toHaveBeenCalled()
+        expect(updateRouteHookMock).not.toHaveBeenCalled()
         expect(internalUpdateRouteCallbackMock).not.toHaveBeenCalled()
       })
     })
@@ -149,7 +149,7 @@ describe('StatusManager', () => {
 
           expect(process).toEqual(step.execution?.process[0])
 
-          expect(updateCallbackMock).not.toHaveBeenCalled()
+          expect(updateRouteHookMock).not.toHaveBeenCalled()
           expect(internalUpdateRouteCallbackMock).not.toHaveBeenCalled()
         })
       })

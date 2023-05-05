@@ -16,13 +16,13 @@ const mockedApprovedAllowance = vi.spyOn(allowance, 'getApproved')
 
 let signer: Signer
 let statusManager: StatusManager
-const updateCallbackMock: Mock = vi.fn()
+const updateRouteHookMock: Mock = vi.fn()
 const internalUpdateRouteCallbackMock: Mock = vi.fn()
 let route: Route
 let step: LifiStep
 let chain: Chain
 const mockSettings: InternalExecutionSettings = {
-  updateCallback: updateCallbackMock,
+  updateRouteHook: updateRouteHookMock,
   switchChainHook: () => Promise.resolve(undefined),
   acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
   infiniteApproval: false,

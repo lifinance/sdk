@@ -242,7 +242,7 @@ export class StatusManager {
       step
     )
 
-    this.settings.updateCallback(this.route)
+    this.settings.updateRouteHook(this.route)
     this.internalUpdateRouteCallback(this.route)
     return this.route.steps[stepIndex]
   }
