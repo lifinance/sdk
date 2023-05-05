@@ -48,7 +48,7 @@ import { name, version } from './version'
 export class LiFi extends RouteExecutionManager {
   private chainsService: ChainsService
 
-  constructor(configUpdate: ConfigUpdate) {
+  constructor(configUpdate?: ConfigUpdate) {
     super(configUpdate)
 
     this.chainsService = ChainsService.getInstance()
