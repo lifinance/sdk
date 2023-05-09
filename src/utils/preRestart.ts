@@ -3,19 +3,19 @@ import { Signer } from 'ethers'
 import { Route } from '../types'
 import { LifiErrorCode } from './errors'
 
-export const handlePreRestart = (route: Route, signer: Signer) => {
+export const handlePreRestart = async (route: Route, signer: Signer) => {
   for (let index = 0; index < route.steps.length; index++) {
     const stepHasFailed = route.steps[index].execution?.status === 'FAILED'
 
     if (stepHasFailed) {
-      handleErrorType(route, index, signer)
+      await handleErrorType(route, index, signer)
       deleteFailedProcesses(route, index)
       deleteTransactionData(route, index)
     }
   }
 }
 
-const handleErrorType = (route: Route, index: number, signer: Signer) => {
+const handleErrorType = async (route: Route, index: number, signer: Signer) => {
   const isGasLimitError = route.steps[index].execution?.process.some(
     (p) => p.error?.code === LifiErrorCode.GasLimitError
   )
@@ -27,10 +27,15 @@ const handleErrorType = (route: Route, index: number, signer: Signer) => {
 
   if (isGasLimitError) {
     if (transactionRequest) {
-      const gasLimit = signer.estimateGas(transactionRequest)
-      const increasedGasCost = `${Math.round(Number(gasLimit) * 1.25)}`
+      let gasLimit = transactionRequest.gasLimit
 
-      transactionRequest.gasLimit = increasedGasCost
+      try {
+        gasLimit = await signer.estimateGas(transactionRequest)
+      } catch (error) {
+        console.log(error)
+      }
+
+      transactionRequest.gasLimit = `${Math.round(Number(gasLimit) * 1.25)}`
     }
 
     route.steps[index].estimate.gasCosts?.forEach(

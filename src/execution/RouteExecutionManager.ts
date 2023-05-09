@@ -89,7 +89,7 @@ export class RouteExecutionManager {
       }
     }
 
-    handlePreRestart(clonedRoute, signer)
+    await handlePreRestart(clonedRoute, signer)
 
     const executionPromise = this.executeSteps(signer, clonedRoute, settings)
 
