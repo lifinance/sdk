@@ -153,6 +153,14 @@ export class StepExecutionManager {
             transactionRequest.maxPriorityFeePerGas =
               customConfig.maxPriorityFeePerGas
             transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
+          } else {
+            const estimatedGasLimit = await signer.estimateGas(
+              transactionRequest
+            )
+
+            transactionRequest.gasLimit = `${Math.round(
+              Number(estimatedGasLimit) * 1.25
+            )}`
           }
 
           // Submit the transaction
