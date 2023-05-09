@@ -1,15 +1,63 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../test/fixtures'
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
+import {
+  buildRouteObject,
+  buildStepObject,
+  mockChainsResponse,
+  mockTransactionRequest,
+} from '../test/fixtures'
 import * as balance from './balance'
 import { convertQuoteToRoute } from './helpers'
 import { LiFi } from './LiFi'
+import { Signer } from 'ethers'
+
+const step = buildStepObject({
+  includingExecution: true,
+})
+
+vi.mock('./services/ApiService', () => ({
+  default: {
+    getStepTransaction: vi.fn(() =>
+      Promise.resolve({ ...step, transactionRequest: mockTransactionRequest })
+    ),
+    getChains: vi.fn(() => Promise.resolve(mockChainsResponse)),
+    getStatus: vi.fn(() =>
+      Promise.resolve({
+        status: 'DONE',
+        receiving: true,
+        sending: {
+          amount: '123',
+          gasAmount: '123',
+          gasAmountUSD: '123',
+          gasPrice: '123',
+          gasToken: '123',
+          gasUsed: '123',
+        },
+      })
+    ),
+  },
+}))
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
   getTokenBalance: vi.fn(() => Promise.resolve([])),
   getTokenBalances: vi.fn(() => Promise.resolve([])),
+  checkBalance: vi.fn(() => Promise.resolve([])),
 }))
+
+vi.mock('./execution/switchChain', () => ({
+  switchChain: vi.fn(() => Promise.resolve(signer)),
+}))
+
+vi.mock('./allowance/utils', () => ({
+  getApproved: vi.fn(() => Promise.resolve([])),
+}))
+
+// vi.mock('./execution/utils', () => ({
+// waitForReceivingTransaction: vi.fn(() => Promise.resolve()),
+// getProcessMessage: vi.fn(() => 'message'),
+// checkStepSlippageThreshold: vi.fn(() => true),
+// }))
 
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
 const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
@@ -18,11 +66,21 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   'getTokenBalancesForChains'
 )
 
+let signer: Signer
+
 let lifi: LiFi
 describe('LIFI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lifi = new LiFi()
+
+    signer = {
+      estimateGas: vi.fn(() => Promise.resolve(100000)),
+      sendTransaction: vi.fn().mockResolvedValue({
+        hash: '0xabc',
+        wait: () => Promise.resolve({ hash: '0xabc' }),
+      }),
+    } as unknown as Signer
   })
 
   describe('getTokenBalance', () => {
@@ -209,6 +267,20 @@ describe('LIFI SDK', () => {
       expect(convertedRoute.fromAmountUSD).toEqual(
         mockStep.estimate.fromAmountUSD
       )
+    })
+  })
+
+  describe('Should pick up gas from signer estimation', () => {
+    it('should pick up gas estimation from signer', async () => {
+      const route = buildRouteObject({
+        step,
+      })
+
+      const response = await lifi.executeRoute(signer, route)
+
+      // expect(signer.sendTransaction).rejects.toThrow(
+      //   'Invalid token passed: address "undefined" on chainId "undefined"'
+      // )
     })
   })
 })
