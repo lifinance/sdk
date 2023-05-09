@@ -28,7 +28,7 @@ export interface ExecutionParams {
 }
 
 export type UpdateRouteHook = (updatedRoute: Route) => void
-export type TransactionRequestUpdate = (
+export type TransactionRequestUpdateHook = (
   updatedTxRequest: TransactionRequest
 ) => Promise<TransactionRequest>
 
@@ -94,7 +94,7 @@ export interface InternalExecutionSettings {
   acceptExchangeRateUpdateHook: AcceptExchangeRateUpdateHook
   switchChainHook: SwitchChainHook
   updateRouteHook: UpdateRouteHook
-  updateTransactionRequest?: TransactionRequestUpdate
+  updateTransactionRequestHook?: TransactionRequestUpdateHook
   executeInBackground: boolean
   infiniteApproval: boolean
 }
