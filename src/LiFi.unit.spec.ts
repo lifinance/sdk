@@ -276,11 +276,42 @@ describe('LIFI SDK', () => {
         step,
       })
 
-      const response = await lifi.executeRoute(signer, route)
+      await lifi.executeRoute(signer, route)
 
-      // expect(signer.sendTransaction).rejects.toThrow(
-      //   'Invalid token passed: address "undefined" on chainId "undefined"'
-      // )
+      expect(signer.sendTransaction).toHaveBeenCalledWith({
+        gasLimit: '125000',
+        // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
+        transactionRequest: {
+          chainId: 137,
+          data: '0xdata',
+          from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+          gasLimit: '682701',
+          gasPrice: '0x27c01c1727',
+          to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
+          value: '0x0600830dbc7f5bf7',
+        },
+      })
+      it('should not pick up gas estimation from backend', async () => {
+        const route = buildRouteObject({
+          step,
+        })
+
+        await lifi.executeRoute(signer, route)
+
+        expect(signer.sendTransaction).not.toHaveBeenCalledWith({
+          gasLimit: '125',
+          // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
+          transactionRequest: {
+            chainId: 137,
+            data: '0xdata',
+            from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+            gasLimit: '682701',
+            gasPrice: '0x27c01c1727',
+            to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
+            value: '0x0600830dbc7f5bf7',
+          },
+        })
+      })
     })
   })
 })
