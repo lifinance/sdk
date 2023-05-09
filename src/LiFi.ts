@@ -77,7 +77,7 @@ export class LiFi extends RouteExecutionManager {
   }
 
   /**
-   * Get an instance of a provider for a specific cahin
+   * Get an instance of a provider for a specific chain
    * @param {number} chainId - Id of the chain the provider is for
    * @param {boolean} archive - Whether to use an archive provider that is based on a default rpc or not. defaults to false
    * @return {FallbackProvider} The provider for the given chain
@@ -350,20 +350,20 @@ export class LiFi extends RouteExecutionManager {
   revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
     return revokeTokenApproval(request)
   }
-}
 
-/**
- * Get all the available connections for swap/bridging tokens
- * @param connectionRequest ConnectionsRequest
- * @returns ConnectionsResponse
- */
+  /**
+   * Get all the available connections for swap/bridging tokens
+   * @param connectionRequest ConnectionsRequest
+   * @returns ConnectionsResponse
+   */
 
-export const getConnections = async (
-  connectionRequest: ConnectionsRequest
-): Promise<ConnectionsResponse> => {
-  const connections = await ApiService.getAvailableConnections(
-    connectionRequest
-  )
+  getConnections = async (
+    connectionRequest: ConnectionsRequest
+  ): Promise<ConnectionsResponse> => {
+    const connections = await ApiService.getAvailableConnections(
+      connectionRequest
+    )
 
-  return connections
+    return connections
+  }
 }
