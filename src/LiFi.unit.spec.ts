@@ -87,7 +87,9 @@ describe('LIFI SDK', () => {
   beforeEach(() => {
     requestSettings.retries = 0
     vi.clearAllMocks()
-    lifi = new LiFi()
+    lifi = new LiFi({
+      integrator: 'test-example',
+    })
 
     signer = {
       estimateGas: vi.fn(() => Promise.resolve(100000)),
@@ -103,10 +105,13 @@ describe('LIFI SDK', () => {
     server.close()
   })
 
-  describe('getTokenBalance', () => {
-    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
-    const SOME_WALLET_ADDRESS = 'some wallet address'
+  const SOME_TOKEN = {
+    ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
+    priceUSD: '',
+  }
+  const SOME_WALLET_ADDRESS = 'some wallet address'
 
+  describe('getTokenBalance', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(lifi.getTokenBalance('', SOME_TOKEN)).rejects.toThrow(
@@ -152,9 +157,6 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalances', () => {
-    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
-    const SOME_WALLET_ADDRESS = 'some wallet address'
-
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(lifi.getTokenBalances('', [SOME_TOKEN])).rejects.toThrow(
@@ -208,9 +210,6 @@ describe('LIFI SDK', () => {
   })
 
   describe('getTokenBalancesForChains', () => {
-    const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
-    const SOME_WALLET_ADDRESS = 'some wallet address'
-
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(

@@ -27,8 +27,8 @@ export interface ExecutionParams {
   settings: InternalExecutionSettings
 }
 
-export type CallbackFunction = (updatedRoute: Route) => void
-export type TxRequestCallbackFunction = (
+export type UpdateRouteHook = (updatedRoute: Route) => void
+export type TransactionRequestUpdateHook = (
   updatedTxRequest: TransactionRequest
 ) => Promise<TransactionRequest>
 
@@ -91,17 +91,12 @@ export interface RouteExecutionData {
 export type ExecutionSettings = Partial<InternalExecutionSettings>
 
 export interface InternalExecutionSettings {
-  updateCallback: CallbackFunction
-  switchChainHook: SwitchChainHook
   acceptExchangeRateUpdateHook: AcceptExchangeRateUpdateHook
-  infiniteApproval: boolean
+  switchChainHook: SwitchChainHook
+  updateRouteHook: UpdateRouteHook
+  updateTransactionRequestHook?: TransactionRequestUpdateHook
   executeInBackground: boolean
-  updateTransactionRequest?: TxRequestCallbackFunction
-}
-
-// Hard to read but this creates a new type that enforces all optional properties in a given interface
-export type EnforcedObjectProperties<T> = T & {
-  [P in keyof T]-?: T[P]
+  infiniteApproval: boolean
 }
 
 export type RouteExecutionDictionary = Partial<

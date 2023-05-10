@@ -17,6 +17,7 @@ import {
   RequestOptions,
   RoutesRequest,
   RoutesResponse,
+  StaticToken,
   StatusResponse,
   Token,
   TokenAmount,
@@ -48,7 +49,7 @@ import { name, version } from './version'
 export class LiFi extends RouteExecutionManager {
   private chainsService: ChainsService
 
-  constructor(configUpdate?: ConfigUpdate) {
+  constructor(configUpdate: ConfigUpdate) {
     super(configUpdate)
 
     this.chainsService = ChainsService.getInstance()
@@ -57,7 +58,7 @@ export class LiFi extends RouteExecutionManager {
       this.configService.updateChains(chains)
     })
 
-    checkPackageUpdates(name, version, configUpdate?.disableVersionCheck)
+    checkPackageUpdates(name, version, configUpdate.disableVersionCheck)
   }
 
   /**
@@ -77,7 +78,7 @@ export class LiFi extends RouteExecutionManager {
   }
 
   /**
-   * Get an instance of a provider for a specific cahin
+   * Get an instance of a provider for a specific chain
    * @param {number} chainId - Id of the chain the provider is for
    * @param {boolean} archive - Whether to use an archive provider that is based on a default rpc or not. defaults to false
    * @return {FallbackProvider} The provider for the given chain
@@ -94,7 +95,7 @@ export class LiFi extends RouteExecutionManager {
    * @param {ConfigUpdate} configUpdate - An object containing the configuration fields that should be updated.
    * @return {Config} The renewed config object
    */
-  setConfig = (configUpdate: ConfigUpdate): Config => {
+  setConfig = (configUpdate: Partial<ConfigUpdate>): Config => {
     return this.configService.updateConfig(configUpdate)
   }
 
@@ -250,8 +251,8 @@ export class LiFi extends RouteExecutionManager {
     if (!isToken(token)) {
       throw new ValidationError(
         `Invalid token passed: address "${
-          (token as Token).address
-        }" on chainId "${(token as Token).chainId}"`
+          (token as StaticToken).address
+        }" on chainId "${(token as StaticToken).chainId}"`
       )
     }
 
@@ -350,20 +351,20 @@ export class LiFi extends RouteExecutionManager {
   revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
     return revokeTokenApproval(request)
   }
-}
 
-/**
- * Get all the available connections for swap/bridging tokens
- * @param connectionRequest ConnectionsRequest
- * @returns ConnectionsResponse
- */
+  /**
+   * Get all the available connections for swap/bridging tokens
+   * @param connectionRequest ConnectionsRequest
+   * @returns ConnectionsResponse
+   */
 
-export const getConnections = async (
-  connectionRequest: ConnectionsRequest
-): Promise<ConnectionsResponse> => {
-  const connections = await ApiService.getAvailableConnections(
-    connectionRequest
-  )
+  getConnections = async (
+    connectionRequest: ConnectionsRequest
+  ): Promise<ConnectionsResponse> => {
+    const connections = await ApiService.getAvailableConnections(
+      connectionRequest
+    )
 
-  return connections
+    return connections
+  }
 }

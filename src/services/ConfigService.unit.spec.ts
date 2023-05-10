@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ChainId, getChainById, supportedChains } from '../types'
+import { ChainId, supportedChains } from '../types'
 import ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
 
@@ -22,7 +22,7 @@ describe('ConfigService', () => {
       expect(defaultConfig.rpcs).toBeDefined()
       expect(defaultConfig.multicallAddresses).toBeDefined()
       expect(
-        defaultConfig.defaultExecutionSettings.updateCallback
+        defaultConfig.defaultExecutionSettings.updateRouteHook
       ).toBeDefined()
       expect(
         defaultConfig.defaultExecutionSettings.switchChainHook
@@ -77,7 +77,7 @@ describe('ConfigService', () => {
       const configA = configService.getConfig()
       const configB = {
         defaultExecutionSettings: {
-          updateCallback: () => 'something else',
+          updateRouteHook: () => 'something else',
         },
       }
       const mergedConfig = configService.updateConfig(configB)
@@ -85,8 +85,8 @@ describe('ConfigService', () => {
       expect(mergedConfig.defaultExecutionSettings.switchChainHook).toEqual(
         configA.defaultExecutionSettings.switchChainHook
       )
-      expect(mergedConfig.defaultExecutionSettings.updateCallback).toEqual(
-        configB.defaultExecutionSettings.updateCallback
+      expect(mergedConfig.defaultExecutionSettings.updateRouteHook).toEqual(
+        configB.defaultExecutionSettings.updateRouteHook
       )
     })
 
