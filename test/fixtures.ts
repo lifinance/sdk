@@ -262,3 +262,25 @@ export const mockTransactionRequest = {
     gasLimit: '682701',
   },
 }
+
+export const mockStatus = {
+  status: 'DONE',
+  receiving: true,
+  sending: {
+    amount: '123',
+    gasAmount: '123',
+    gasAmountUSD: '123',
+    gasPrice: '123',
+    gasToken: '123',
+    gasUsed: '123',
+  },
+}
+
+export const mockStepTransactionWithTxRequest = (
+  step: LifiStep = buildStepObject({
+    includingExecution: false,
+  })
+) => ({
+  ...step,
+  transactionRequest: mockTransactionRequest,
+})

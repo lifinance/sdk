@@ -1,3 +1,4 @@
+import { buildStepObject, mockTransactionRequest } from './../../test/fixtures'
 import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
 import { rest } from 'msw'
 import ConfigService from './ConfigService'
@@ -48,7 +49,14 @@ export const handlers = [
   rest.post(
     `${config.apiUrl}/advanced/stepTransaction`,
     async (request, response, context) => {
-      return response(context.json({}))
+      return response(
+        context.json({
+          ...buildStepObject({
+            includingExecution: true,
+          }),
+          transactionRequest: mockTransactionRequest,
+        })
+      )
     }
   ),
   rest.get(

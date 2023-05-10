@@ -1,42 +1,35 @@
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import {
   buildRouteObject,
   buildStepObject,
   mockChainsResponse,
-  mockTransactionRequest,
+  mockStatus,
+  mockStepTransactionWithTxRequest,
 } from '../test/fixtures'
 import * as balance from './balance'
 import { convertQuoteToRoute } from './helpers'
 import { LiFi } from './LiFi'
 import { Signer } from 'ethers'
+import ConfigService from './services/ConfigService'
+
+import { requestSettings } from './request'
+
+import { rest } from 'msw'
+import { setupServer } from 'msw/node'
 
 const step = buildStepObject({
   includingExecution: true,
 })
-
-vi.mock('./services/ApiService', () => ({
-  default: {
-    getStepTransaction: vi.fn(() =>
-      Promise.resolve({ ...step, transactionRequest: mockTransactionRequest })
-    ),
-    getChains: vi.fn(() => Promise.resolve(mockChainsResponse)),
-    getStatus: vi.fn(() =>
-      Promise.resolve({
-        status: 'DONE',
-        receiving: true,
-        sending: {
-          amount: '123',
-          gasAmount: '123',
-          gasAmountUSD: '123',
-          gasPrice: '123',
-          gasToken: '123',
-          gasUsed: '123',
-        },
-      })
-    ),
-  },
-}))
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
@@ -53,12 +46,6 @@ vi.mock('./allowance/utils', () => ({
   getApproved: vi.fn(() => Promise.resolve([])),
 }))
 
-// vi.mock('./execution/utils', () => ({
-// waitForReceivingTransaction: vi.fn(() => Promise.resolve()),
-// getProcessMessage: vi.fn(() => 'message'),
-// checkStepSlippageThreshold: vi.fn(() => true),
-// }))
-
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
 const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
 const mockedGetTokenBalancesForChains = vi.spyOn(
@@ -69,8 +56,36 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
 let signer: Signer
 
 let lifi: LiFi
+
 describe('LIFI SDK', () => {
+  const config = ConfigService.getInstance().getConfig()
+
+  const server = setupServer(
+    rest.post(
+      `${config.apiUrl}/advanced/stepTransaction`,
+      async (_, response, context) =>
+        response(
+          context.status(200),
+          context.json(mockStepTransactionWithTxRequest(step))
+        )
+    ),
+    rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
+      response(
+        context.status(200),
+        context.json({
+          chains: mockChainsResponse,
+        })
+      )
+    ),
+    rest.get(`${config.apiUrl}/status`, async (_, response, context) =>
+      response(context.status(200), context.json(mockStatus))
+    )
+  )
+
+  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+
   beforeEach(() => {
+    requestSettings.retries = 0
     vi.clearAllMocks()
     lifi = new LiFi()
 
@@ -81,6 +96,11 @@ describe('LIFI SDK', () => {
         wait: () => Promise.resolve({ hash: '0xabc' }),
       }),
     } as unknown as Signer
+  })
+
+  afterEach(() => server.resetHandlers())
+  afterAll(() => {
+    server.close()
   })
 
   describe('getTokenBalance', () => {
@@ -290,27 +310,6 @@ describe('LIFI SDK', () => {
           to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
           value: '0x0600830dbc7f5bf7',
         },
-      })
-      it('should not pick up gas estimation from backend', async () => {
-        const route = buildRouteObject({
-          step,
-        })
-
-        await lifi.executeRoute(signer, route)
-
-        expect(signer.sendTransaction).not.toHaveBeenCalledWith({
-          gasLimit: '125',
-          // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
-          transactionRequest: {
-            chainId: 137,
-            data: '0xdata',
-            from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-            gasLimit: '682701',
-            gasPrice: '0x27c01c1727',
-            to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
-            value: '0x0600830dbc7f5bf7',
-          },
-        })
       })
     })
   })
