@@ -4,7 +4,7 @@ import {
   LifiStep,
   RouteOptions,
   RoutesRequest,
-  Token,
+  StaticToken,
 } from './types'
 
 export const isRoutesRequest = (
@@ -78,7 +78,7 @@ const isEstimate = (estimate: Estimate): estimate is Estimate => {
   )
 }
 
-export const isToken = (token: Token): token is Token => {
+export const isToken = (token: StaticToken): token is StaticToken => {
   const { address, decimals, chainId } = token
 
   return (

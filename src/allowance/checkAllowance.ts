@@ -45,8 +45,10 @@ export const checkAllowance = async (
         to: step.estimate.approvalAddress,
       }
 
-      if (settings.updateTransactionRequest) {
-        const config = await settings.updateTransactionRequest(approvalRequest)
+      if (settings.updateTransactionRequestHook) {
+        const config = await settings.updateTransactionRequestHook(
+          approvalRequest
+        )
 
         approvalRequest.gasLimit = config.gasLimit
         approvalRequest.gasPrice = config.gasPrice

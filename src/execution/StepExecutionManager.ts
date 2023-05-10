@@ -144,9 +144,9 @@ export class StepExecutionManager {
             return step.execution!
           }
 
-          if (settings.updateTransactionRequest) {
+          if (settings.updateTransactionRequestHook) {
             const customConfig: TransactionRequest =
-              await settings.updateTransactionRequest(transactionRequest)
+              await settings.updateTransactionRequestHook(transactionRequest)
 
             transactionRequest.gasLimit = customConfig.gasLimit
             transactionRequest.gasPrice = customConfig.gasPrice

@@ -8,7 +8,7 @@ import {
 
 const DefaultExecutionSettings: InternalExecutionSettings = {
   /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-  updateCallback: () => {},
+  updateRouteHook: () => {},
   switchChainHook: () => Promise.resolve(undefined),
   acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
   infiniteApproval: false,
@@ -82,7 +82,7 @@ export default class ConfigService {
     return this.config
   }
 
-  public updateConfig = (configUpdate: ConfigUpdate): Config => {
+  public updateConfig = (configUpdate: Partial<ConfigUpdate>): Config => {
     // API
     this.config.apiUrl = configUpdate.apiUrl || this.config.apiUrl
 
