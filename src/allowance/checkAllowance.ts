@@ -52,6 +52,8 @@ export const checkAllowance = async (
 
         approvalRequest.gasLimit = config.gasLimit
         approvalRequest.gasPrice = config.gasPrice
+        approvalRequest.maxFeePerGas = config.maxFeePerGas
+        approvalRequest.maxPriorityFeePerGas = config.maxPriorityFeePerGas
       }
 
       if (!approvalRequest.from) {
