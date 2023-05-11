@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.12](https://github.com/lifinance/sdk/compare/v2.0.0-beta.11...v2.0.0-beta.12) (2023-05-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* types and names cleanup (#136)
+
+### Features
+
+* types and names cleanup ([#136](https://github.com/lifinance/sdk/issues/136)) ([91c510a](https://github.com/lifinance/sdk/commit/91c510a708704a18ae4767446f390c4a95f2e0f7))
+
+
+### Bug Fixes
+
+* add missing config while updating transaction request ([#135](https://github.com/lifinance/sdk/issues/135)) ([e783d3c](https://github.com/lifinance/sdk/commit/e783d3c7d3d101bc6eb014e8be7264d97e58f862))
+* moved getconnections method inside the lifi class ([#140](https://github.com/lifinance/sdk/issues/140)) ([ce7b6e6](https://github.com/lifinance/sdk/commit/ce7b6e6fba1141f2a7ed6f686ef70d4c3251621b))
+
 ## [2.0.0-beta.11](https://github.com/lifinance/sdk/compare/v2.0.0-beta.10...v2.0.0-beta.11) (2023-04-27)
 
 
