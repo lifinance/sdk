@@ -1,3 +1,4 @@
+import { lifiHandlers } from './LiFi.unit.handlers'
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import {
   afterAll,
@@ -9,22 +10,14 @@ import {
   it,
   vi,
 } from 'vitest'
-import {
-  buildRouteObject,
-  buildStepObject,
-  mockChainsResponse,
-  mockStatus,
-  mockStepTransactionWithTxRequest,
-} from '../test/fixtures'
+import { buildRouteObject, buildStepObject } from '../test/fixtures'
 import * as balance from './balance'
 import { convertQuoteToRoute } from './helpers'
 import { LiFi } from './LiFi'
 import { Signer } from 'ethers'
-import ConfigService from './services/ConfigService'
 
 import { requestSettings } from './request'
 
-import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 
 const step = buildStepObject({
@@ -58,29 +51,7 @@ let signer: Signer
 let lifi: LiFi
 
 describe('LIFI SDK', () => {
-  const config = ConfigService.getInstance().getConfig()
-
-  const server = setupServer(
-    rest.post(
-      `${config.apiUrl}/advanced/stepTransaction`,
-      async (_, response, context) =>
-        response(
-          context.status(200),
-          context.json(mockStepTransactionWithTxRequest(step))
-        )
-    ),
-    rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
-      response(
-        context.status(200),
-        context.json({
-          chains: mockChainsResponse,
-        })
-      )
-    ),
-    rest.get(`${config.apiUrl}/status`, async (_, response, context) =>
-      response(context.status(200), context.json(mockStatus))
-    )
-  )
+  const server = setupServer(...lifiHandlers)
 
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 
