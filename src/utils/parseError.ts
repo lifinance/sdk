@@ -4,11 +4,12 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 
+import { fetchTxErrorDetails } from '../helpers'
 import ChainsService from '../services/ChainsService'
 import {
   ErrorMessage,
-  EthersErrorType,
   EthersErrorMessage,
+  EthersErrorType,
   LifiError,
   LifiErrorCode,
   MetaMaskProviderErrorCode,
@@ -22,7 +23,6 @@ import {
   ValidationError,
 } from './errors'
 import { formatTokenAmountOnly } from './utils'
-import { fetchTxErrorDetails } from '../helpers'
 
 /**
  * Available MetaMask error codes:
@@ -203,7 +203,13 @@ export const parseError = async (
           e.stack
         )
       }
-
+    case EthersErrorType.InsufficientFunds:
+      return new TransactionError(
+        LifiErrorCode.InsufficientFunds,
+        e.message,
+        await getTransactionNotSentMessage(step, process),
+        e.stack
+      )
     case EthersErrorType.ActionRejected:
     case MetaMaskProviderErrorCode.userRejectedRequest:
       return new TransactionError(

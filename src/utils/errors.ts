@@ -25,11 +25,13 @@ export enum LifiErrorCode {
   TransactionRejected = 1012,
   BalanceError = 1013,
   AllowanceRequired = 1014,
+  InsufficientFunds = 1015,
 }
 
 export enum EthersErrorType {
-  CallExecption = 'CALL_EXCEPTION',
   ActionRejected = 'ACTION_REJECTED',
+  CallExecption = 'CALL_EXCEPTION',
+  InsufficientFunds = 'INSUFFICIENT_FUNDS',
 }
 
 export enum EthersErrorMessage {
