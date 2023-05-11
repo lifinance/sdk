@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.13](https://github.com/lifinance/sdk/compare/v2.0.0-beta.12...v2.0.0-beta.13) (2023-05-11)
+
+
+### Bug Fixes
+
+* add insufficient funds error ([#141](https://github.com/lifinance/sdk/issues/141)) ([e179453](https://github.com/lifinance/sdk/commit/e179453a4740b3bf48db1de559cf6551bc276210))
+
 ## [2.0.0-beta.12](https://github.com/lifinance/sdk/compare/v2.0.0-beta.11...v2.0.0-beta.12) (2023-05-11)
 
 
