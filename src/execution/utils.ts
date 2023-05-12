@@ -13,7 +13,7 @@ import ApiService from '../services/ApiService'
 import { ServerError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
 
-const TRANSACTION_HASH_OBSERVERS: { [txHash: string]: Promise<any> } = {}
+const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
 export async function waitForReceivingTransaction(
   txHash: string,
