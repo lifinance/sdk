@@ -1,42 +1,14 @@
-import { lifiHandlers } from './execution/RouteExecutionManager.unit.handlers'
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
-import { buildRouteObject, buildStepObject } from '../test/fixtures'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildStepObject } from '../test/fixtures'
 import * as balance from './balance'
 import { convertQuoteToRoute } from './helpers'
 import { LiFi } from './LiFi'
-import { Signer } from 'ethers'
-
-import { requestSettings } from './request'
-
-import { setupServer } from 'msw/node'
-
-const step = buildStepObject({
-  includingExecution: true,
-})
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
   getTokenBalance: vi.fn(() => Promise.resolve([])),
   getTokenBalances: vi.fn(() => Promise.resolve([])),
-  checkBalance: vi.fn(() => Promise.resolve([])),
-}))
-
-vi.mock('./execution/switchChain', () => ({
-  switchChain: vi.fn(() => Promise.resolve(signer)),
-}))
-
-vi.mock('./allowance/utils', () => ({
-  getApproved: vi.fn(() => Promise.resolve([])),
 }))
 
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
@@ -46,8 +18,6 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   'getTokenBalancesForChains'
 )
 
-let signer: Signer
-
 let lifi: LiFi
 
 describe('LIFI SDK', () => {
@@ -56,14 +26,6 @@ describe('LIFI SDK', () => {
     lifi = new LiFi({
       integrator: 'test-example',
     })
-
-    signer = {
-      estimateGas: vi.fn(() => Promise.resolve(100000)),
-      sendTransaction: vi.fn().mockResolvedValue({
-        hash: '0xabc',
-        wait: () => Promise.resolve({ hash: '0xabc' }),
-      }),
-    } as unknown as Signer
   })
 
   const SOME_TOKEN = {
