@@ -1,4 +1,4 @@
-import { lifiHandlers } from './LiFi.unit.handlers'
+import { lifiHandlers } from './execution/RouteExecutionManager.unit.handlers'
 import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
 import {
   afterAll,
@@ -51,12 +51,7 @@ let signer: Signer
 let lifi: LiFi
 
 describe('LIFI SDK', () => {
-  const server = setupServer(...lifiHandlers)
-
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-
   beforeEach(() => {
-    requestSettings.retries = 0
     vi.clearAllMocks()
     lifi = new LiFi({
       integrator: 'test-example',
@@ -69,11 +64,6 @@ describe('LIFI SDK', () => {
         wait: () => Promise.resolve({ hash: '0xabc' }),
       }),
     } as unknown as Signer
-  })
-
-  afterEach(() => server.resetHandlers())
-  afterAll(() => {
-    server.close()
   })
 
   const SOME_TOKEN = {
@@ -257,30 +247,6 @@ describe('LIFI SDK', () => {
       expect(convertedRoute.fromAmountUSD).toEqual(
         mockStep.estimate.fromAmountUSD
       )
-    })
-  })
-
-  describe('Should pick up gas from signer estimation', () => {
-    it('should pick up gas estimation from signer', async () => {
-      const route = buildRouteObject({
-        step,
-      })
-
-      await lifi.executeRoute(signer, route)
-
-      expect(signer.sendTransaction).toHaveBeenCalledWith({
-        gasLimit: '125000',
-        // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
-        transactionRequest: {
-          chainId: 137,
-          data: '0xdata',
-          from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-          gasLimit: '682701',
-          gasPrice: '0x27c01c1727',
-          to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
-          value: '0x0600830dbc7f5bf7',
-        },
-      })
     })
   })
 })

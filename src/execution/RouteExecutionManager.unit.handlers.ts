@@ -3,9 +3,9 @@ import {
   mockStepTransactionWithTxRequest,
   mockChainsResponse,
   mockStatus,
-} from './LiFi.unit.mock'
-import ConfigService from './services/ConfigService'
-import { buildStepObject } from '../test/fixtures'
+} from './RouteExecutionManager.unit.mock'
+import ConfigService from '../services/ConfigService'
+import { buildStepObject } from '../../test/fixtures'
 
 const config = ConfigService.getInstance().getConfig()
 
