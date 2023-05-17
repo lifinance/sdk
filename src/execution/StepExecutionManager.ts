@@ -158,9 +158,11 @@ export class StepExecutionManager {
               transactionRequest
             )
 
-            transactionRequest.gasLimit = `${Math.round(
-              Number(estimatedGasLimit) * 1.25
-            )}`
+            if (estimatedGasLimit) {
+              transactionRequest.gasLimit = `${
+                (BigInt(estimatedGasLimit?.toString()) * 125n) / 100n
+              }`
+            }
           }
 
           // Submit the transaction

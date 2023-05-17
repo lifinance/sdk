@@ -33,7 +33,11 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
         gasLimit = await signer.estimateGas(transactionRequest)
       } catch (error) {}
 
-      transactionRequest.gasLimit = `${Math.round(Number(gasLimit) * 1.25)}`
+      if (gasLimit) {
+        transactionRequest.gasLimit = `${
+          (BigInt(gasLimit?.toString()) * 125n) / 100n
+        }`
+      }
     }
 
     route.steps[index].estimate.gasCosts?.forEach(
