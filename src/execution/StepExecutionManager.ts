@@ -160,7 +160,7 @@ export class StepExecutionManager {
 
             if (estimatedGasLimit) {
               transactionRequest.gasLimit = `${
-                (BigInt(estimatedGasLimit?.toString()) * 125n) / 100n
+                (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
               }`
             }
           }

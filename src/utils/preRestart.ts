@@ -35,7 +35,7 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
 
       if (gasLimit) {
         transactionRequest.gasLimit = `${
-          (BigInt(gasLimit?.toString()) * 125n) / 100n
+          (BigInt(gasLimit.toString()) * 125n) / 100n
         }`
       }
     }
