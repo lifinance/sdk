@@ -19,6 +19,7 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
 )
 
 let lifi: LiFi
+
 describe('LIFI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()

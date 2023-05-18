@@ -6,10 +6,17 @@ import {
   findDefaultToken,
   LifiStep,
   Route,
+  Token,
 } from '@lifi/types'
 
-const SOME_TOKEN = findDefaultToken(CoinKey.USDC, ChainId.DAI)
-const SOME_OTHER_TOKEN = findDefaultToken(CoinKey.USDT, ChainId.DAI)
+const SOME_TOKEN: Token = {
+  ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
+  priceUSD: '',
+}
+const SOME_OTHER_TOKEN: Token = {
+  ...findDefaultToken(CoinKey.USDT, ChainId.DAI),
+  priceUSD: '',
+}
 
 const SOME_DATE = new Date('2021-04-10').getTime()
 
