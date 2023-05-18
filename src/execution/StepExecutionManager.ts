@@ -158,9 +158,17 @@ export class StepExecutionManager {
               transactionRequest
             )
 
+            const estimatedGasPrice = await signer.getGasPrice()
+
             if (estimatedGasLimit) {
               transactionRequest.gasLimit = `${
                 (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
+              }`
+            }
+
+            if (estimatedGasPrice) {
+              transactionRequest.gasPrice = `${
+                (BigInt(estimatedGasPrice.toString()) * 125n) / 100n
               }`
             }
           }
