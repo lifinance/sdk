@@ -70,7 +70,6 @@ describe('Should pick up gas from signer estimation', () => {
 
     expect(signer.sendTransaction).toHaveBeenCalledWith({
       gasLimit: '125000',
-      gasPrice: '125000',
       // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
       transactionRequest: {
         chainId: 137,
