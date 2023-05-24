@@ -48,7 +48,7 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
 
   if (isGasPriceError) {
     if (transactionRequest) {
-      let gasPrice = transactionRequest.gasLimit
+      let gasPrice = transactionRequest.gasPrice
 
       try {
         gasPrice = await signer.getGasPrice()
