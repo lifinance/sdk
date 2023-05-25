@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0-beta.14](https://github.com/lifinance/sdk/compare/v2.0.0-beta.13...v2.0.0-beta.14) (2023-05-25)
+
+
+### Bug Fixes
+
+* increment gas on retry if out of gas ([#137](https://github.com/lifinance/sdk/issues/137)) ([c65fb0d](https://github.com/lifinance/sdk/commit/c65fb0d64196de90bc4b6f8b43d1b2923c7e7ed6))
+
 ## [2.0.0-beta.13](https://github.com/lifinance/sdk/compare/v2.0.0-beta.12...v2.0.0-beta.13) (2023-05-11)
 
 
