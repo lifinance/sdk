@@ -1,11 +1,11 @@
 import { rest } from 'msw'
+import { buildStepObject } from '../../test/fixtures'
+import ConfigService from '../services/ConfigService'
 import {
-  mockStepTransactionWithTxRequest,
   mockChainsResponse,
   mockStatus,
+  mockStepTransactionWithTxRequest,
 } from './RouteExecutionManager.unit.mock'
-import ConfigService from '../services/ConfigService'
-import { buildStepObject } from '../../test/fixtures'
 
 const config = ConfigService.getInstance().getConfig()
 

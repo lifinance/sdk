@@ -1,3 +1,5 @@
+import { Signer } from 'ethers'
+import { setupServer } from 'msw/node'
 import {
   afterAll,
   afterEach,
@@ -9,11 +11,9 @@ import {
   vi,
 } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
-import { Signer } from 'ethers'
-import { lifiHandlers } from './RouteExecutionManager.unit.handlers'
 import { requestSettings } from '../request'
 import { RouteExecutionManager } from './RouteExecutionManager'
-import { setupServer } from 'msw/node'
+import { lifiHandlers } from './RouteExecutionManager.unit.handlers'
 
 vi.mock('../balance', () => ({
   checkBalance: vi.fn(() => Promise.resolve([])),
