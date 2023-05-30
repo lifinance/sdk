@@ -163,6 +163,13 @@ export class StepExecutionManager {
                 (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
               }`
             }
+
+            // Fetch latest gasPrice from provider and use it
+            const gasPrice = await getProvider(signer).getGasPrice()
+
+            if (gasPrice) {
+              transactionRequest.gasPrice = gasPrice
+            }
           }
 
           // Submit the transaction
