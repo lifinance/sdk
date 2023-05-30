@@ -165,7 +165,7 @@ export class StepExecutionManager {
             }
 
             // Fetch latest gasPrice from provider and use it
-            const gasPrice = await getProvider(signer).getGasPrice()
+            const gasPrice = await signer.getGasPrice()
 
             if (gasPrice) {
               transactionRequest.gasPrice = gasPrice
