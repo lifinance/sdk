@@ -52,9 +52,6 @@ async function demo() {
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
-      // exchanges: {
-      //   allow: [], // only find direct transfers
-      // },
     },
   }
 
@@ -62,7 +59,7 @@ async function demo() {
 
   // ☝️ This configuration is totally optional! ------------------------------------
   const optionalConfigs: ConfigUpdate = {
-    integrator: 'lifi-sdk', // DEFAULT 'lifi-sdk'
+    integrator: 'lifi-sdk-node-example', // DEFAULT 'lifi-sdk'
     apiUrl: 'https://li.quest/v1', // DEFAULT production endpoint
     defaultExecutionSettings: {
       // You can provide default execution settings @see {ExecutionSettings}

@@ -1,8 +1,7 @@
 import { LiFi, ChainId, CoinKey, findDefaultToken } from '@lifi/sdk'
 import { RPCProvider } from '@lifi/rpc-wrapper'
 import { Wallet } from 'ethers'
-
-const lifi = new LiFi()
+import 'dotenv/config'
 
 async function demo() {
   // setup wallet
@@ -12,6 +11,9 @@ async function demo() {
     )
     return
   }
+
+  const mnemonic = process.env.MNEMONIC || ''
+
   console.log('>> Setup Wallet')
   const myRpcProviders = [
     {
@@ -28,6 +30,24 @@ async function demo() {
 
   const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
 
+  const optionalConfigs = {
+    integrator: 'lifi-sdk-node-example', // DEFAULT 'lifi-sdk'
+    apiUrl: 'https://li.quest/v1', // DEFAULT production endpoint
+    defaultExecutionSettings: {
+      // You can provide default execution settings @see {ExecutionSettings}
+      updateRouteHook: (route) => {
+        return console.log('>> Route updated', route)
+      },
+      switchChainHook: (requiredChainId) => {
+        console.log('>> Switching to chain', requiredChainId)
+        return Promise.resolve(wallet)
+      },
+      infiniteApproval: false, // DEFAULT false
+    },
+  }
+
+  const lifi = new LiFi(optionalConfigs)
+
   // get Route
   console.log('>> Request route')
   const routeRequest = {
@@ -39,9 +59,6 @@ async function demo() {
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
-      // exchanges: {
-      //   allow: [], // only find direct transfers
-      // },
     },
   }
 

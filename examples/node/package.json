@@ -12,14 +12,12 @@
     "dotenv": "^16.1.1"
   },
   "scripts": {
-    "start": "ts-node index.ts"
+    "run-ts": "ts-node index.ts",
+    "run": "node index.js"
   },
   "devDependencies": {
     "@types/node": "^18.11.17",
     "ts-node": "^10.8.2",
     "typescript": "^4.9.4"
-  },
-  "resolutions": {
-    "@lifi/sdk": "portal:/Users/abhishekkumar/Desktop/work/sdk"
   }
 }
