@@ -8,11 +8,11 @@ import {
   LiFi,
   Route,
 } from '@lifi/sdk'
+import { RPCProvider } from '@lifi/rpc-wrapper'
 import { providers, Signer, Wallet } from 'ethers'
 import 'dotenv/config'
 
 console.log('>> Starting Demo')
-console.log(process.env.MNEMONIC)
 
 const mnemonic = process.env.MNEMONIC || ''
 
@@ -25,20 +25,33 @@ async function demo() {
     return
   }
   console.log('>> Setup Wallet')
-  const provider = new providers.JsonRpcProvider(
-    'https://polygon-rpc.com/',
-    137
-  )
+
+  const myRpcProviders = [
+    {
+      chainId: 43114,
+      url: 'https://open-platform.nodereal.io/959d0cc48937455d937a1a52ef1d503f/avalanche-c/ext/bc/C/rpc',
+    },
+    {
+      chainId: 43114,
+      url: 'https://avax-mainnet.gateway.pokt.network/v1/lb/6303a5e60295e8003b5bce00',
+    },
+  ]
+
+  const provider = new RPCProvider(myRpcProviders)
+
   const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
+
+  console.log(findDefaultToken(CoinKey.USDT, ChainId.AVA).address)
+  console.log(findDefaultToken(CoinKey.USDC, ChainId.AVA).address)
 
   // get Route
   console.log('>> Configuring route')
   const routeRequest = {
-    fromChainId: ChainId.POL, // Polygon
+    fromChainId: ChainId.AVA, // Avalanche
     fromAmount: '1000000', // 1 USDT
-    fromTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.POL).address,
-    toChainId: ChainId.DAI, // xDai
-    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.DAI).address,
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.AVA).address,
+    toChainId: ChainId.AVA, // Avalanche
+    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.AVA).address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
@@ -52,16 +65,8 @@ async function demo() {
 
   // ☝️ This configuration is totally optional! ------------------------------------
   const optionalConfigs: ConfigUpdate = {
-    integrator: 'my-integrator', // DEFAULT 'lifi-sdk'
-    apiUrl: 'https://li.quest', // DEFAULT production endpoint
-    rpcs: {
-      // You can provide custom RPCs
-      137: ['https://polygon-rpc.com/'],
-    },
-    multicallAddresses: {
-      // You can provide custom addresses for multicall
-      137: '0x02817C1e3543c2d908a590F5dB6bc97f933dB4BD',
-    },
+    integrator: 'lifi-sdk', // DEFAULT 'lifi-sdk'
+    apiUrl: 'https://li.quest/v1', // DEFAULT production endpoint
     defaultExecutionSettings: {
       // You can provide default execution settings @see {ExecutionSettings}
       updateRouteHook: (route: Route): void => {
@@ -88,7 +93,6 @@ async function demo() {
   const routeResponse = await lifi.getRoutes(routeRequest)
   const route = routeResponse.routes[0]
   console.log('>> Got Route')
-  console.log(route)
 
   // STEP 3: Execute the route
   console.log('>> Start Execution')
@@ -115,6 +119,8 @@ async function demo() {
     },
   }
   // ---------------------------------------------------------------------------
+
+  console.log({ route })
 
   await lifi.executeRoute(wallet, route, settings)
 
