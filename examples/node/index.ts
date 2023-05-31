@@ -9,6 +9,10 @@ import {
   Route,
 } from '@lifi/sdk'
 import { providers, Signer, Wallet } from 'ethers'
+import 'dotenv/config'
+
+console.log('>> Starting Demo')
+console.log(process.env.MNEMONIC)
 
 const mnemonic = process.env.MNEMONIC || ''
 
@@ -28,7 +32,7 @@ async function demo() {
   const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
 
   // get Route
-  console.log('>> Request route')
+  console.log('>> Configuring route')
   const routeRequest = {
     fromChainId: ChainId.POL, // Polygon
     fromAmount: '1000000', // 1 USDT
@@ -48,6 +52,7 @@ async function demo() {
 
   // ☝️ This configuration is totally optional! ------------------------------------
   const optionalConfigs: ConfigUpdate = {
+    integrator: 'my-integrator', // DEFAULT 'lifi-sdk'
     apiUrl: 'https://li.quest', // DEFAULT production endpoint
     rpcs: {
       // You can provide custom RPCs
@@ -59,8 +64,8 @@ async function demo() {
     },
     defaultExecutionSettings: {
       // You can provide default execution settings @see {ExecutionSettings}
-      updateCallback: (route: Route): void => {
-        console.log('>> Route updated', route)
+      updateRouteHook: (route: Route): void => {
+        return console.log('>> Route updated', route)
       },
       switchChainHook: (
         requiredChainId: number
@@ -73,7 +78,11 @@ async function demo() {
   }
   // ---------------------------------------------------------------------------
 
+  console.log('>> Initialize LiFi')
+
   const lifi = new LiFi(optionalConfigs)
+
+  console.log('>> Initialized, Requesting route')
 
   // STEP 2: Request a route
   const routeResponse = await lifi.getRoutes(routeRequest)
@@ -86,7 +95,7 @@ async function demo() {
 
   // These are optonal settings for execution ------------------------------------
   const settings: ExecutionSettings = {
-    updateCallback: (updatedRoute) => {
+    updateRouteHook: (updatedRoute) => {
       let lastExecution: Execution | undefined = undefined
       for (const step of updatedRoute.steps) {
         if (step.execution) {

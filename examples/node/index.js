@@ -2,7 +2,7 @@ import { LiFi } from '@lifi/sdk'
 
 import ethers from 'ethers'
 
-const lifis = new LiFi()
+const lifi = new LiFi()
 
 async function demo() {
   // setup wallet
