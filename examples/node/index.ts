@@ -41,9 +41,6 @@ async function demo() {
 
   const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
 
-  console.log(findDefaultToken(CoinKey.USDT, ChainId.AVA).address)
-  console.log(findDefaultToken(CoinKey.USDC, ChainId.AVA).address)
-
   // get Route
   console.log('>> Configuring route')
   const routeRequest = {

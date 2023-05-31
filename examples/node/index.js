@@ -1,6 +1,6 @@
-import { LiFi } from '@lifi/sdk'
-
-import ethers from 'ethers'
+import { LiFi, ChainId, CoinKey, findDefaultToken } from '@lifi/sdk'
+import { RPCProvider } from '@lifi/rpc-wrapper'
+import { Wallet } from 'ethers'
 
 const lifi = new LiFi()
 
@@ -13,28 +13,35 @@ async function demo() {
     return
   }
   console.log('>> Setup Wallet')
-  const provider = new ethers.providers.JsonRpcProvider(
-    'https://polygon-rpc.com/',
-    137
-  )
-  const wallet = ethers.Wallet.fromMnemonic(process.env.MNEMONIC).connect(
-    provider
-  )
+  const myRpcProviders = [
+    {
+      chainId: 43114,
+      url: 'https://open-platform.nodereal.io/959d0cc48937455d937a1a52ef1d503f/avalanche-c/ext/bc/C/rpc',
+    },
+    {
+      chainId: 43114,
+      url: 'https://avax-mainnet.gateway.pokt.network/v1/lb/6303a5e60295e8003b5bce00',
+    },
+  ]
+
+  const provider = new RPCProvider(myRpcProviders)
+
+  const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
 
   // get Route
   console.log('>> Request route')
   const routeRequest = {
-    fromChainId: 137, // Polygon
-    fromAmount: '1000000', // 1 USDT
-    fromTokenAddress: '0xc2132d05d31c914a87c6611c10748aeb04b58e8f', // USDT
-    toChainId: 100, // xDai
-    toTokenAddress: '0x4ecaba5870353805a9f068101a40e0f32ed605c6', // USDT
+    fromChainId: ChainId.AVA, // Avalanche
+    fromAmount: '100000', // 1 USDT
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.AVA).address,
+    toChainId: ChainId.AVA, // Avalanche
+    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.AVA).address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
-      exchanges: {
-        allow: [], // only find direct transfers
-      },
+      // exchanges: {
+      //   allow: [], // only find direct transfers
+      // },
     },
   }
 
