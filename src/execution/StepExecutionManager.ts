@@ -154,22 +154,24 @@ export class StepExecutionManager {
               customConfig.maxPriorityFeePerGas
             transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
           } else {
-            const estimatedGasLimit = await signer.estimateGas(
-              transactionRequest
-            )
+            try {
+              const estimatedGasLimit = await signer.estimateGas(
+                transactionRequest
+              )
 
-            if (estimatedGasLimit) {
-              transactionRequest.gasLimit = `${
-                (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
-              }`
-            }
+              if (estimatedGasLimit) {
+                transactionRequest.gasLimit = `${
+                  (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
+                }`
+              }
 
-            // Fetch latest gasPrice from provider and use it
-            const gasPrice = await signer.getGasPrice()
+              // Fetch latest gasPrice from provider and use it
+              const gasPrice = await signer.getGasPrice()
 
-            if (gasPrice) {
-              transactionRequest.gasPrice = gasPrice
-            }
+              if (gasPrice) {
+                transactionRequest.gasPrice = gasPrice
+              }
+            } catch (error) {}
           }
 
           // Submit the transaction
