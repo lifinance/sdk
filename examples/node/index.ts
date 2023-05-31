@@ -48,16 +48,16 @@ async function demo() {
   console.log('>> Configuring route')
   const routeRequest = {
     fromChainId: ChainId.AVA, // Avalanche
-    fromAmount: '1000000', // 1 USDT
+    fromAmount: '100000', // 1 USDT
     fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.AVA).address,
     toChainId: ChainId.AVA, // Avalanche
     toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.AVA).address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
-      exchanges: {
-        allow: [], // only find direct transfers
-      },
+      // exchanges: {
+      //   allow: [], // only find direct transfers
+      // },
     },
   }
 
@@ -88,6 +88,8 @@ async function demo() {
   const lifi = new LiFi(optionalConfigs)
 
   console.log('>> Initialized, Requesting route')
+
+  console.log(JSON.stringify(routeRequest, null, 4))
 
   // STEP 2: Request a route
   const routeResponse = await lifi.getRoutes(routeRequest)
