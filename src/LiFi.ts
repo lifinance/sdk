@@ -268,7 +268,8 @@ export class LiFi extends RouteExecutionManager {
    */
   getTokenBalances = async (
     walletAddress: string,
-    tokens: Token[]
+    tokens: Token[],
+    hideZeroBalance?: boolean
   ): Promise<TokenAmount[]> => {
     if (!walletAddress) {
       throw new ValidationError('Missing walletAddress.')
@@ -281,7 +282,15 @@ export class LiFi extends RouteExecutionManager {
       )
     }
 
-    return balance.getTokenBalances(walletAddress, tokens)
+    const tokenResponse = await balance.getTokenBalances(walletAddress, tokens)
+
+    if (hideZeroBalance) {
+      return tokenResponse.filter(
+        (tokenAmount: TokenAmount) => tokenAmount.amount !== '0'
+      )
+    }
+
+    return tokenResponse
   }
 
   /**
@@ -293,7 +302,8 @@ export class LiFi extends RouteExecutionManager {
    */
   getTokenBalancesForChains = async (
     walletAddress: string,
-    tokensByChain: { [chainId: number]: Token[] }
+    tokensByChain: { [chainId: number]: Token[] },
+    hideZeroBalance?: boolean
   ): Promise<{ [chainId: number]: TokenAmount[] }> => {
     if (!walletAddress) {
       throw new ValidationError('Missing walletAddress.')
@@ -307,7 +317,24 @@ export class LiFi extends RouteExecutionManager {
       )
     }
 
-    return balance.getTokenBalancesForChains(walletAddress, tokensByChain)
+    const response = await balance.getTokenBalancesForChains(
+      walletAddress,
+      tokensByChain
+    )
+
+    if (hideZeroBalance) {
+      const filteredResponse: { [chainId: number]: TokenAmount[] } = {}
+      for (const chainId in response) {
+        const typedChainId = Number(chainId)
+        filteredResponse[typedChainId] = response[typedChainId].filter(
+          (tokenAmount: TokenAmount) => tokenAmount.amount !== '0'
+        )
+      }
+
+      return filteredResponse
+    }
+
+    return response
   }
 
   /**
