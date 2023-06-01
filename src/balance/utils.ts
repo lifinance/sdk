@@ -6,6 +6,8 @@ import { ethers } from 'ethers'
 import { getMulticallAddress, getRpcProvider } from '../connectors'
 import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
 import { isZeroAddress } from '../utils/utils'
+import { ProviderError } from '../utils/errors'
+import { getMessageFromCode } from 'eth-rpc-errors'
 
 type Balance = {
   amount: BigNumber
@@ -158,8 +160,11 @@ const getBalancesFromProvider = async (
           .toString()
         blockNumber = balance.blockNumber
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.warn(e)
+        throw new ProviderError(
+          (e as any).code,
+          getMessageFromCode((e as any).code)
+        )
       }
 
       return {
