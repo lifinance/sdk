@@ -12,8 +12,7 @@
     "dotenv": "^16.1.1"
   },
   "scripts": {
-    "run-ts": "ts-node index.ts",
-    "run": "node index.js"
+    "run-ts": "ts-node swap.ts"
   },
   "devDependencies": {
     "@types/node": "^18.11.17",

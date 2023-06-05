@@ -5,44 +5,18 @@ import {
   Execution,
   ExecutionSettings,
   findDefaultToken,
-  LiFi,
   Route,
 } from '@lifi/sdk'
-import { RPCProvider } from '@lifi/rpc-wrapper'
-import { providers, Signer, Wallet } from 'ethers'
+import { providers, Wallet } from 'ethers'
 import 'dotenv/config'
+import { getLifi, getSigner, promptConfirm } from './helpers'
 
 console.log('>> Starting Demo')
 
 const mnemonic = process.env.MNEMONIC || ''
 
 async function demo() {
-  // setup wallet
-  if (!process.env.MNEMONIC) {
-    console.warn(
-      'Please specify a MNEMONIC phrase in your environment variables: `export MNEMONIC="..."`'
-    )
-    return
-  }
-  console.log('>> Setup Wallet')
-
-  const myRpcProviders = [
-    {
-      chainId: 43114,
-      url: 'https://open-platform.nodereal.io/959d0cc48937455d937a1a52ef1d503f/avalanche-c/ext/bc/C/rpc',
-    },
-    {
-      chainId: 43114,
-      url: 'https://avax-mainnet.gateway.pokt.network/v1/lb/6303a5e60295e8003b5bce00',
-    },
-  ]
-
-  const provider = new RPCProvider(myRpcProviders)
-
-  const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
-
   // get Route
-  console.log('>> Configuring route')
   const routeRequest = {
     fromChainId: ChainId.AVA, // Avalanche
     fromAmount: '100000', // 1 USDT
@@ -66,12 +40,6 @@ async function demo() {
       updateRouteHook: (route: Route): void => {
         return console.log('>> Route updated', route)
       },
-      switchChainHook: (
-        requiredChainId: number
-      ): Promise<Signer | undefined> => {
-        console.log('>> Switching to chain', requiredChainId)
-        return Promise.resolve(wallet)
-      },
       infiniteApproval: false, // DEFAULT false
     },
   }
@@ -79,7 +47,9 @@ async function demo() {
 
   console.log('>> Initialize LiFi')
 
-  const lifi = new LiFi(optionalConfigs)
+  const wallet = await getSigner(ChainId.AVA)
+
+  const lifi = getLifi(optionalConfigs)
 
   console.log('>> Initialized, Requesting route')
 
@@ -116,7 +86,9 @@ async function demo() {
   }
   // ---------------------------------------------------------------------------
 
-  console.log({ route })
+  if (!(await promptConfirm('Execute Route?'))) {
+    return
+  }
 
   await lifi.executeRoute(wallet, route, settings)
 
