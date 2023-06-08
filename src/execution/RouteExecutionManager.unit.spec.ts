@@ -47,6 +47,7 @@ describe('Should pick up gas from signer estimation', () => {
 
     signer = {
       estimateGas: vi.fn(() => Promise.resolve(100000)),
+      getGasPrice: vi.fn(() => Promise.resolve(100000)),
       sendTransaction: vi.fn().mockResolvedValue({
         hash: '0xabc',
         wait: () => Promise.resolve({ hash: '0xabc' }),
@@ -60,7 +61,7 @@ describe('Should pick up gas from signer estimation', () => {
     server.close()
   })
 
-  it('should pick up gas estimation from signer', async () => {
+  it('should pick up gas limit + price estimation from signer', async () => {
     const route = buildRouteObject({
       step,
     })
@@ -69,6 +70,7 @@ describe('Should pick up gas from signer estimation', () => {
 
     expect(signer.sendTransaction).toHaveBeenCalledWith({
       gasLimit: '125000',
+      gasPrice: 100000,
       // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
       transactionRequest: {
         chainId: 137,
