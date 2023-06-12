@@ -47,6 +47,20 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
   }
 
   if (isGasPriceError) {
+    if (transactionRequest) {
+      let gasPrice = transactionRequest.gasPrice
+
+      try {
+        gasPrice = await signer.getGasPrice()
+      } catch (error) {}
+
+      if (gasPrice) {
+        transactionRequest.gasPrice = `${
+          (BigInt(gasPrice.toString()) * 125n) / 100n
+        }`
+      }
+    }
+
     route.steps[index].estimate.gasCosts?.forEach(
       (gasCost) =>
         (gasCost.price = `${Math.round(Number(gasCost.price) * 1.25)}`)
