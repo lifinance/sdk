@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "2.0.0-beta.15",
+  "version": "2.0.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
@@ -82,14 +82,14 @@
     "ethers": "^5.7.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.6.3",
-    "@commitlint/config-conventional": "^17.6.3",
+    "@commitlint/cli": "^17.6.5",
+    "@commitlint/config-conventional": "^17.6.5",
     "@mswjs/interceptors": "^0.22.15",
-    "@typescript-eslint/eslint-plugin": "^5.59.7",
-    "@typescript-eslint/parser": "^5.59.7",
-    "@vitest/coverage-c8": "^0.31.1",
+    "@typescript-eslint/eslint-plugin": "^5.59.9",
+    "@typescript-eslint/parser": "^5.59.9",
+    "@vitest/coverage-c8": "^0.32.0",
     "cross-fetch": "^3.1.6",
-    "eslint": "^8.41.0",
+    "eslint": "^8.42.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
     "husky": "^8.0.3",
@@ -99,8 +99,8 @@
     "pinst": "^3.0.0",
     "prettier": "^2.8.8",
     "standard-version": "^9.5.0",
-    "typescript": "^5.0.4",
-    "vitest": "^0.31.1"
+    "typescript": "^5.1.3",
+    "vitest": "^0.32.0"
   },
   "directories": {
     "test": "test"
