@@ -160,7 +160,11 @@ export function checkStepSlippageThreshold(
   const oldEstimatedToAmount = new BigNumber(oldStep.estimate.toAmountMin)
   const newEstimatedToAmount = new BigNumber(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
-  const actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
+  // oldEstimatedToAmount can be 0 when we use conract calls
+  let actualSlippage = new BigNumber(0)
+  if (oldEstimatedToAmount.gt(0)) {
+    actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
+  }
   return (
     newEstimatedToAmount.gte(oldEstimatedToAmount) &&
     actualSlippage.lte(setSlippage)
