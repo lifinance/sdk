@@ -30,6 +30,8 @@ export class StepExecutionManager {
     statusManager,
     settings,
   }: ExecutionParams): Promise<Execution> => {
+    const isSafeSigner = !!(signer.provider as any)?.provider?.safe?.safeAddress
+
     step.execution = statusManager.initExecutionObject(step)
 
     const chainsService = ChainsService.getInstance()
@@ -43,10 +45,12 @@ export class StepExecutionManager {
     const existingProcess = step.execution.process.find(
       (p) => p.type === currentProcessType
     )
+
     // Check token approval only if fromToken is not the native token => no approval needed in that case
     if (
       !existingProcess?.txHash &&
-      !isZeroAddress(step.action.fromToken.address)
+      !isZeroAddress(step.action.fromToken.address) &&
+      !isSafeSigner
     ) {
       await checkAllowance(
         signer,
@@ -186,6 +190,8 @@ export class StepExecutionManager {
               transaction.hash,
           })
         }
+
+        // if safe tx return with correct status
 
         await transaction.wait()
 
