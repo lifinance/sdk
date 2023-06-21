@@ -3,7 +3,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from '@ethersproject/abstract-provider'
-import { Execution, StatusResponse } from '@lifi/types'
+import { Execution, LifiStep, StatusResponse } from '@lifi/types'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
@@ -66,6 +66,25 @@ export class StepExecutionManager {
     let process = statusManager.findOrCreateProcess(step, currentProcessType)
 
     if (process.status !== 'DONE') {
+      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+      if (isSafeSigner && step.execution.status === 'SAFE_SIGNING_PENDING') {
+        // TODO: access the safe methods from provider [DO NOT MERGE IF YOU SEE THIS]
+        /**
+         *
+         * Poll for SAFE tx confirmation
+         *
+         * if done then update the process
+         *
+         * process = statusManager.updateProcess(step, process.type, 'DONE', {
+         *  txHash: transaction.hash,
+         *  txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
+         * })
+         *
+         * return step.execution!
+         *
+         */
+      }
+
       try {
         let transaction: TransactionResponse
         if (process.txHash) {
@@ -182,18 +201,43 @@ export class StepExecutionManager {
           transaction = await signer.sendTransaction(transactionRequest)
 
           // STEP 4: Wait for the transaction
-          process = statusManager.updateProcess(step, process.type, 'PENDING', {
-            txHash: transaction.hash,
-            txLink:
-              fromChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              transaction.hash,
-          })
+          if (isSafeSigner) {
+            // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+            process = statusManager.updateProcess(
+              step,
+              process.type,
+              'SAFE_SIGNING_PENDING',
+              {
+                multiSigInternalTxHash: transaction.hash,
+              }
+            )
+
+            // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+            statusManager.updateExecution(step, 'SAFE_SIGNING_PENDING')
+          } else {
+            process = statusManager.updateProcess(
+              step,
+              process.type,
+              'PENDING',
+              {
+                txHash: transaction.hash,
+                txLink:
+                  fromChain.metamask.blockExplorerUrls[0] +
+                  'tx/' +
+                  transaction.hash,
+              }
+            )
+          }
+
+          console.log({ process })
         }
 
-        // if safe tx return with correct status
-
         await transaction.wait()
+
+        if (isSafeSigner) {
+          // send event to open the modal
+          return step.execution!
+        }
 
         process = statusManager.updateProcess(step, process.type, 'PENDING', {
           txHash: transaction.hash,
