@@ -77,6 +77,7 @@
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
     "@lifi/types": "^6.0.0",
+    "@safe-global/safe-apps-sdk": "^7.11.0",
     "bignumber.js": "^9.1.1",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.7.2"

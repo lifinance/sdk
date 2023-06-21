@@ -3,7 +3,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from '@ethersproject/abstract-provider'
-import { Execution, LifiStep, StatusResponse } from '@lifi/types'
+import { Execution, StatusResponse } from '@lifi/types'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
@@ -16,6 +16,10 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
+import {
+  GatewayTransactionDetails,
+  TransactionStatus,
+} from '@safe-global/safe-apps-sdk'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -31,6 +35,11 @@ export class StepExecutionManager {
     settings,
   }: ExecutionParams): Promise<Execution> => {
     const isSafeSigner = !!(signer.provider as any)?.provider?.safe?.safeAddress
+
+    const safeProvider = (signer.provider as any)?.provider?.safe
+    const safeProviderSDK = (signer.provider as any)?.provider?.sdk
+
+    console.log({ safeProvider, safeProviderSDK })
 
     step.execution = statusManager.initExecutionObject(step)
 
@@ -67,7 +76,71 @@ export class StepExecutionManager {
 
     if (process.status !== 'DONE') {
       // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+
+      console.log('NOT DONE YET!!')
+
+      console.log({ isSafeSigner, process, step })
+
       if (isSafeSigner && step.execution.status === 'SAFE_SIGNING_PENDING') {
+        console.log('Alrighty coming here')
+
+        const multiSigProcess = step.execution.process.find(
+          (p) => p.status === 'SAFE_SIGNING_PENDING'
+        )
+
+        console.log({ multiSigProcess })
+
+        if (!multiSigProcess) {
+          throw new Error('MultiSig process is undefined.')
+        }
+
+        const multiSigInternalTxHash = multiSigProcess.multiSigInternalTxHash
+
+        console.log('Trying to get transaction by hash', multiSigInternalTxHash)
+
+        const response: GatewayTransactionDetails =
+          await safeProviderSDK.txs.getBySafeTxHash(multiSigInternalTxHash)
+
+        console.log({ response })
+
+        if (response.txStatus === TransactionStatus.AWAITING_CONFIRMATIONS) {
+          console.log('please tell your frens to sign the transaction')
+          console.log(
+            'https://www.meme-arsenal.com/memes/3bf0545aabd513235123f8605401aaa8.jpg'
+          )
+
+          return step.execution!
+        }
+
+        if (response.txStatus === TransactionStatus.SUCCESS) {
+          console.log('transaction is confirmed')
+          /**
+           * process = statusManager.updateProcess(step, process.type, 'DONE', {
+           *  txHash: transaction.hash,
+           *  txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
+           * })
+           */
+
+          return step.execution!
+        }
+
+        if (response.txStatus === TransactionStatus.FAILED) {
+          console.log('transaction failed')
+          /**
+           *
+           * process = statusManager.updateProcess(step, process.type, 'FAILED', {
+           *   error: {
+           *     message: error.message,
+           *     htmlMessage: error.htmlMessage,
+           *     code: error.code,
+           *   },
+           * })
+           * statusManager.updateExecution(step, 'FAILED')
+           */
+
+          return step.execution!
+        }
+
         // TODO: access the safe methods from provider [DO NOT MERGE IF YOU SEE THIS]
         /**
          *
