@@ -1,4 +1,5 @@
 import {
+  FullStatusData,
   LifiStep,
   ProcessType,
   Status,
@@ -48,9 +49,7 @@ export async function waitForReceivingTransaction(
                 statusResponse.status,
                 statusResponse.substatus
               ),
-            ...(statusResponse.bridgeExplorerLink && {
-              txLink: statusResponse.bridgeExplorerLink,
-            }),
+            txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
           })
           return resolve(undefined)
         case 'NOT_FOUND':
