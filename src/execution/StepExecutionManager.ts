@@ -76,11 +76,6 @@ export class StepExecutionManager {
 
     if (process.status !== 'DONE') {
       // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-
-      console.log('NOT DONE YET!!')
-
-      console.log({ isSafeSigner, process, step })
-
       if (isSafeSigner && step.execution.status === 'SAFE_SIGNING_PENDING') {
         console.log('Alrighty coming here')
 
@@ -109,48 +104,29 @@ export class StepExecutionManager {
 
         if (response.txStatus === TransactionStatus.SUCCESS) {
           console.log('transaction is confirmed')
-          /**
-           * process = statusManager.updateProcess(step, process.type, 'DONE', {
-           *  txHash: transaction.hash,
-           *  txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
-           * })
-           */
+
+          process = statusManager.updateProcess(step, process.type, 'DONE', {
+            txHash: response.txHash,
+            txLink:
+              fromChain.metamask.blockExplorerUrls[0] + 'tx/' + response.txHash,
+          })
 
           return step.execution!
         }
 
         if (response.txStatus === TransactionStatus.FAILED) {
-          console.log('transaction failed')
-          /**
-           *
-           * process = statusManager.updateProcess(step, process.type, 'FAILED', {
-           *   error: {
-           *     message: error.message,
-           *     htmlMessage: error.htmlMessage,
-           *     code: error.code,
-           *   },
-           * })
-           * statusManager.updateExecution(step, 'FAILED')
-           */
+          // Figure out how to show rejections
+          console.log('transaction is rejected')
+          process = statusManager.updateProcess(step, process.type, 'FAILED', {
+            error: {
+              message: 'Transaction failed',
+              htmlMessage: 'Transaction failed',
+              code: LifiErrorCode.TransactionFailed,
+            },
+          })
 
           return step.execution!
         }
-
-        // TODO: access the safe methods from provider [DO NOT MERGE IF YOU SEE THIS]
-        /**
-         *
-         * Poll for SAFE tx confirmation
-         *
-         * if done then update the process
-         *
-         * process = statusManager.updateProcess(step, process.type, 'DONE', {
-         *  txHash: transaction.hash,
-         *  txLink: fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
-         * })
-         *
-         * return step.execution!
-         *
-         */
       }
 
       try {
