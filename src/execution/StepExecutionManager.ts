@@ -104,11 +104,6 @@ export class StepExecutionManager {
         console.log({ response })
 
         if (response.txStatus === TransactionStatus.AWAITING_CONFIRMATIONS) {
-          console.log('please tell your frens to sign the transaction')
-          console.log(
-            'https://www.meme-arsenal.com/memes/3bf0545aabd513235123f8605401aaa8.jpg'
-          )
-
           return step.execution!
         }
 
