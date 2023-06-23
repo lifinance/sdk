@@ -70,11 +70,11 @@ export class StepExecutionManager {
     let process = statusManager.findOrCreateProcess(step, currentProcessType)
 
     if (process.status !== 'DONE') {
+      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
       const multisigProcess = step.execution.process.find(
-        (p) => !!p.multisigInternalTxHash
+        (p) => !!p.multisigTxHash
       )
 
-      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
       if (isMultisigSigner && multisigProcess) {
         if (
           !multisigProcess ||
@@ -88,16 +88,16 @@ export class StepExecutionManager {
           )
         }
 
-        const multisigInternalTxHash = multisigProcess.multisigInternalTxHash
+        const multisigTxHash = multisigProcess.multisigTxHash
 
-        if (!multisigInternalTxHash) {
+        if (!multisigTxHash) {
           // need to check what happens in failed tx
           throw new Error('Multisig internal transaction hash is undefined.')
         }
 
         const response: MultiSigTxDetails =
           await config.multisigConfig?.getMultisigTransactionDetails(
-            multisigInternalTxHash
+            multisigTxHash
           )
 
         if (response.status === 'PENDING') {
@@ -116,7 +116,7 @@ export class StepExecutionManager {
         }
 
         if (response.status === 'FAILED') {
-          // @eugene should we remove the multisigInternalTxHash from the process?
+          // @eugene should we remove the multisigTxHash from the process?
           statusManager.updateExecution(step, 'FAILED')
           process = statusManager.updateProcess(step, process.type, 'FAILED', {
             error: {
@@ -247,14 +247,13 @@ export class StepExecutionManager {
 
           // STEP 4: Wait for the transaction
           if (isMultisigSigner) {
-            // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-            statusManager.updateExecution(step, 'PENDING')
+            statusManager.updateExecution(step, 'ACTION_REQUIRED')
             process = statusManager.updateProcess(
               step,
               process.type,
-              'PENDING',
+              'ACTION_REQUIRED',
               {
-                multisigInternalTxHash: transaction.hash,
+                multisigTxHash: transaction.hash,
               }
             )
           } else {
