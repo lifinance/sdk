@@ -42,7 +42,7 @@ export type Config = {
   userId?: string
   integrator: string
   widgetVersion?: string
-  multiSigConfig?: MultiSigConfig
+  multisigConfig?: MultiSigConfig
 }
 
 export interface MultiSigTxDetails {
@@ -52,8 +52,8 @@ export interface MultiSigTxDetails {
 }
 
 export interface MultiSigConfig {
-  isMultiSigSigner: boolean
-  getMultiSigTransactionDetails: (txHash: string) => Promise<MultiSigTxDetails>
+  isMultisigSigner: boolean
+  getMultisigTransactionDetails: (txHash: string) => Promise<MultiSigTxDetails>
 }
 
 export type ConfigUpdate = {
@@ -66,7 +66,7 @@ export type ConfigUpdate = {
   userId?: string
   integrator: string
   widgetVersion?: string
-  multiSigConfig?: MultiSigConfig
+  multisigConfig?: MultiSigConfig
 }
 
 export type SwitchChainHook = (

@@ -33,7 +33,7 @@ export class StepExecutionManager {
     settings,
   }: ExecutionParams): Promise<Execution> => {
     const config = ConfigService.getInstance().getConfig()
-    const isSafeSigner = !!config.multiSigConfig?.isMultiSigSigner
+    const isMultisigSigner = !!config.multisigConfig?.isMultisigSigner
 
     step.execution = statusManager.initExecutionObject(step)
 
@@ -50,11 +50,12 @@ export class StepExecutionManager {
     )
 
     // Check token approval only if fromToken is not the native token => no approval needed in that case
-    if (
+    const checkForAllowance =
       !existingProcess?.txHash &&
       !isZeroAddress(step.action.fromToken.address) &&
-      !isSafeSigner
-    ) {
+      !isMultisigSigner
+
+    if (checkForAllowance) {
       await checkAllowance(
         signer,
         step,
@@ -69,32 +70,34 @@ export class StepExecutionManager {
     let process = statusManager.findOrCreateProcess(step, currentProcessType)
 
     if (process.status !== 'DONE') {
-      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-      if (
-        isSafeSigner &&
-        step.execution.status === 'MULTISIG_SIGNING_PENDING'
-      ) {
-        const multiSigProcess = step.execution.process.find(
-          (p) => p.status === 'MULTISIG_SIGNING_PENDING'
-        )
+      const multisigProcess = step.execution.process.find(
+        (p) => !!p.multisigInternalTxHash
+      )
 
+      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+      if (isMultisigSigner && multisigProcess) {
         if (
-          !multiSigProcess ||
-          !config.multiSigConfig?.getMultiSigTransactionDetails
+          !multisigProcess ||
+          !config.multisigConfig?.getMultisigTransactionDetails
         ) {
           throw new Error('MultiSig process is undefined')
         }
-        if (!config.multiSigConfig?.getMultiSigTransactionDetails) {
+        if (!config.multisigConfig?.getMultisigTransactionDetails) {
           throw new Error(
-            '"getMultiSigTransactionDetails" is missing in MultiSig config.'
+            '"getMultiSigTransactionDetails()" is missing in MultiSig config.'
           )
         }
 
-        const multiSigInternalTxHash = multiSigProcess.multiSigInternalTxHash
+        const multisigInternalTxHash = multisigProcess.multisigInternalTxHash
+
+        if (!multisigInternalTxHash) {
+          // need to check what happens in failed tx
+          throw new Error('Multisig internal transaction hash is undefined.')
+        }
 
         const response: MultiSigTxDetails =
-          await config.multiSigConfig?.getMultiSigTransactionDetails(
-            multiSigInternalTxHash
+          await config.multisigConfig?.getMultisigTransactionDetails(
+            multisigInternalTxHash
           )
 
         if (response.status === 'PENDING') {
@@ -102,6 +105,7 @@ export class StepExecutionManager {
         }
 
         if (response.status === 'SUCCESS') {
+          statusManager.updateExecution(step, 'DONE')
           process = statusManager.updateProcess(step, process.type, 'DONE', {
             txHash: response.txHash,
             txLink:
@@ -112,6 +116,8 @@ export class StepExecutionManager {
         }
 
         if (response.status === 'FAILED') {
+          // @eugene should we remove the multisigInternalTxHash from the process?
+          statusManager.updateExecution(step, 'FAILED')
           process = statusManager.updateProcess(step, process.type, 'FAILED', {
             error: {
               message: response.message,
@@ -240,19 +246,17 @@ export class StepExecutionManager {
           transaction = await signer.sendTransaction(transactionRequest)
 
           // STEP 4: Wait for the transaction
-          if (isSafeSigner) {
+          if (isMultisigSigner) {
             // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
+            statusManager.updateExecution(step, 'PENDING')
             process = statusManager.updateProcess(
               step,
               process.type,
-              'MULTISIG_SIGNING_PENDING',
+              'PENDING',
               {
-                multiSigInternalTxHash: transaction.hash,
+                multisigInternalTxHash: transaction.hash,
               }
             )
-
-            // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-            statusManager.updateExecution(step, 'MULTISIG_SIGNING_PENDING')
           } else {
             process = statusManager.updateProcess(
               step,
@@ -267,14 +271,13 @@ export class StepExecutionManager {
               }
             )
           }
-
-          console.log({ process })
         }
 
         await transaction.wait()
 
-        if (isSafeSigner) {
-          // send event to open the modal
+        if (isMultisigSigner) {
+          // Return the execution object without updating the process
+          // The execution would progress once all multisigs signer approve
           return step.execution!
         }
 

@@ -34,7 +34,7 @@ type OptionalParameters = Partial<
     | 'error'
     | 'substatus'
     | 'substatusMessage'
-    | 'multiSigInternalTxHash'
+    | 'multisigInternalTxHash'
   >
 >
 
