@@ -42,6 +42,18 @@ export type Config = {
   userId?: string
   integrator: string
   widgetVersion?: string
+  multiSigConfig?: MultiSigConfig
+}
+
+export interface MultiSigTxDetails {
+  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  message: string
+  txHash?: string
+}
+
+export interface MultiSigConfig {
+  isMultiSigSigner: boolean
+  getMultiSigTransactionDetails: (txHash: string) => Promise<MultiSigTxDetails>
 }
 
 export type ConfigUpdate = {
@@ -54,6 +66,7 @@ export type ConfigUpdate = {
   userId?: string
   integrator: string
   widgetVersion?: string
+  multiSigConfig?: MultiSigConfig
 }
 
 export type SwitchChainHook = (

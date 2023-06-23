@@ -111,6 +111,8 @@ export default class ConfigService {
     this.config.integrator = configUpdate.integrator || this.config.integrator
     this.config.widgetVersion =
       configUpdate.widgetVersion || this.config.widgetVersion
+    this.config.multiSigConfig =
+      configUpdate.multiSigConfig || this.config.multiSigConfig
 
     return this.config
   }

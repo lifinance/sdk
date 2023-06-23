@@ -8,7 +8,7 @@ import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
-import { ExecutionParams } from '../types'
+import { ExecutionParams, MultiSigTxDetails } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { getProvider } from '../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../utils/parseError'
@@ -16,10 +16,8 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
-import {
-  GatewayTransactionDetails,
-  TransactionStatus,
-} from '@safe-global/safe-apps-sdk'
+
+import ConfigService from '../services/ConfigService'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -34,12 +32,8 @@ export class StepExecutionManager {
     statusManager,
     settings,
   }: ExecutionParams): Promise<Execution> => {
-    const isSafeSigner = !!(signer.provider as any)?.provider?.safe?.safeAddress
-
-    const safeProvider = (signer.provider as any)?.provider?.safe
-    const safeProviderSDK = (signer.provider as any)?.provider?.sdk
-
-    console.log({ safeProvider, safeProviderSDK })
+    const config = ConfigService.getInstance().getConfig()
+    const isSafeSigner = !!config.multiSigConfig?.isMultiSigSigner
 
     step.execution = statusManager.initExecutionObject(step)
 
@@ -76,35 +70,38 @@ export class StepExecutionManager {
 
     if (process.status !== 'DONE') {
       // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-      if (isSafeSigner && step.execution.status === 'SAFE_SIGNING_PENDING') {
-        console.log('Alrighty coming here')
-
+      if (
+        isSafeSigner &&
+        step.execution.status === 'MULTISIG_SIGNING_PENDING'
+      ) {
         const multiSigProcess = step.execution.process.find(
-          (p) => p.status === 'SAFE_SIGNING_PENDING'
+          (p) => p.status === 'MULTISIG_SIGNING_PENDING'
         )
 
-        console.log({ multiSigProcess })
-
-        if (!multiSigProcess) {
-          throw new Error('MultiSig process is undefined.')
+        if (
+          !multiSigProcess ||
+          !config.multiSigConfig?.getMultiSigTransactionDetails
+        ) {
+          throw new Error('MultiSig process is undefined')
+        }
+        if (!config.multiSigConfig?.getMultiSigTransactionDetails) {
+          throw new Error(
+            '"getMultiSigTransactionDetails" is missing in MultiSig config.'
+          )
         }
 
         const multiSigInternalTxHash = multiSigProcess.multiSigInternalTxHash
 
-        console.log('Trying to get transaction by hash', multiSigInternalTxHash)
+        const response: MultiSigTxDetails =
+          await config.multiSigConfig?.getMultiSigTransactionDetails(
+            multiSigInternalTxHash
+          )
 
-        const response: GatewayTransactionDetails =
-          await safeProviderSDK.txs.getBySafeTxHash(multiSigInternalTxHash)
-
-        console.log({ response })
-
-        if (response.txStatus === TransactionStatus.AWAITING_CONFIRMATIONS) {
+        if (response.status === 'PENDING') {
           return step.execution!
         }
 
-        if (response.txStatus === TransactionStatus.SUCCESS) {
-          console.log('transaction is confirmed')
-
+        if (response.status === 'SUCCESS') {
           process = statusManager.updateProcess(step, process.type, 'DONE', {
             txHash: response.txHash,
             txLink:
@@ -114,14 +111,12 @@ export class StepExecutionManager {
           return step.execution!
         }
 
-        if (response.txStatus === TransactionStatus.FAILED) {
-          // Figure out how to show rejections
-          console.log('transaction is rejected')
+        if (response.status === 'FAILED') {
           process = statusManager.updateProcess(step, process.type, 'FAILED', {
             error: {
-              message: 'Transaction failed',
-              htmlMessage: 'Transaction failed',
-              code: LifiErrorCode.TransactionFailed,
+              message: response.message,
+              htmlMessage: response.message,
+              code: LifiErrorCode.MultiSigTransactionFailed,
             },
           })
 
@@ -250,14 +245,14 @@ export class StepExecutionManager {
             process = statusManager.updateProcess(
               step,
               process.type,
-              'SAFE_SIGNING_PENDING',
+              'MULTISIG_SIGNING_PENDING',
               {
                 multiSigInternalTxHash: transaction.hash,
               }
             )
 
             // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
-            statusManager.updateExecution(step, 'SAFE_SIGNING_PENDING')
+            statusManager.updateExecution(step, 'MULTISIG_SIGNING_PENDING')
           } else {
             process = statusManager.updateProcess(
               step,
