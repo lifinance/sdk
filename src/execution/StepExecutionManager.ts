@@ -70,67 +70,72 @@ export class StepExecutionManager {
     let process = statusManager.findOrCreateProcess(step, currentProcessType)
 
     if (process.status !== 'DONE') {
-      // TODO: update @lifi/types repo for these changes [DO NOT MERGE IF YOU SEE THIS]
       const multisigProcess = step.execution.process.find(
         (p) => !!p.multisigTxHash
       )
 
-      if (isMultisigSigner && multisigProcess) {
-        if (
-          !multisigProcess ||
-          !config.multisigConfig?.getMultisigTransactionDetails
-        ) {
-          throw new Error('MultiSig process is undefined')
-        }
-        if (!config.multisigConfig?.getMultisigTransactionDetails) {
-          throw new Error(
-            '"getMultiSigTransactionDetails()" is missing in MultiSig config.'
-          )
-        }
-
-        const multisigTxHash = multisigProcess.multisigTxHash
-
-        if (!multisigTxHash) {
-          // need to check what happens in failed tx
-          throw new Error('Multisig internal transaction hash is undefined.')
-        }
-
-        const response: MultiSigTxDetails =
-          await config.multisigConfig?.getMultisigTransactionDetails(
-            multisigTxHash
-          )
-
-        if (response.status === 'PENDING') {
-          return step.execution!
-        }
-
-        if (response.status === 'SUCCESS') {
-          statusManager.updateExecution(step, 'DONE')
-          process = statusManager.updateProcess(step, process.type, 'DONE', {
-            txHash: response.txHash,
-            txLink:
-              fromChain.metamask.blockExplorerUrls[0] + 'tx/' + response.txHash,
-          })
-
-          return step.execution!
-        }
-
-        if (response.status === 'FAILED') {
-          // @eugene should we remove the multisigTxHash from the process?
-          statusManager.updateExecution(step, 'FAILED')
-          process = statusManager.updateProcess(step, process.type, 'FAILED', {
-            error: {
-              message: response.message,
-              htmlMessage: response.message,
-              code: LifiErrorCode.MultiSigTransactionFailed,
-            },
-          })
-
-          return step.execution!
-        }
-      }
-
       try {
+        if (isMultisigSigner && multisigProcess) {
+          if (!multisigProcess) {
+            throw new Error('MultiSig process is undefined')
+          }
+          if (!config.multisigConfig?.getMultisigTransactionDetails) {
+            throw new Error(
+              '"getMultiSigTransactionDetails()" is missing in MultiSig config.'
+            )
+          }
+
+          const multisigTxHash = multisigProcess.multisigTxHash
+
+          if (!multisigTxHash) {
+            // need to check what happens in failed tx
+            throw new Error('Multisig internal transaction hash is undefined.')
+          }
+
+          const response: MultiSigTxDetails =
+            await config.multisigConfig?.getMultisigTransactionDetails(
+              multisigTxHash
+            )
+
+          if (response.status === 'PENDING') {
+            return step.execution!
+          }
+
+          if (response.status === 'SUCCESS') {
+            process = statusManager.updateProcess(
+              step,
+              process.type,
+              'PENDING',
+              {
+                txHash: response.txHash,
+                multisigTxHash: undefined,
+                txLink:
+                  fromChain.metamask.blockExplorerUrls[0] +
+                  'tx/' +
+                  response.txHash,
+              }
+            )
+          }
+
+          if (response.status === 'FAILED') {
+            throw new TransactionError(
+              LifiErrorCode.TransactionFailed,
+              '',
+              '',
+              ''
+            )
+          }
+
+          if (response.status === 'CANCELLED') {
+            throw new TransactionError(
+              LifiErrorCode.TransactionRejected,
+              '',
+              '',
+              ''
+            )
+          }
+        }
+
         let transaction: TransactionResponse
         if (process.txHash) {
           // Make sure that the chain is still correct
@@ -274,7 +279,9 @@ export class StepExecutionManager {
 
         await transaction.wait()
 
-        if (isMultisigSigner) {
+        // if it's multisig signer and the process is in ACTION_REQUIRED
+        // then signatures are still needed
+        if (isMultisigSigner && process.status === 'ACTION_REQUIRED') {
           // Return the execution object without updating the process
           // The execution would progress once all multisigs signer approve
           return step.execution!

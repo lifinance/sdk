@@ -46,7 +46,7 @@ export type Config = {
 }
 
 export interface MultiSigTxDetails {
-  status: 'SUCCESS' | 'FAILED' | 'PENDING'
+  status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'CANCELLED'
   message: string
   txHash?: string
 }
