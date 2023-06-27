@@ -1,7 +1,7 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { ChainId, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { Contract, ContractTransaction, Signer } from 'ethers'
+import { Contract, ContractTransaction, Signer, ethers } from 'ethers'
 import ChainsService from '../services/ChainsService'
 import { ERC20Contract, ERC20_ABI, RevokeTokenData } from '../types'
 import { ServerError } from '../utils/errors'
@@ -29,15 +29,30 @@ export const getApproved = async (
   }
 }
 
-export const setApproval = (
+export const setApproval = async (
   signer: Signer,
   tokenAddress: string,
   contractAddress: string,
   amount: string
 ): Promise<ContractTransaction> => {
   const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
+  const transactionRequest = await erc20.populateTransaction.approve(
+    contractAddress,
+    amount
+  )
 
-  return erc20.approve(contractAddress, amount)
+  try {
+    const estimatedGasLimit = await signer.estimateGas(transactionRequest)
+    if (estimatedGasLimit) {
+      const formattedGasLimit = ethers.utils.parseEther(
+        `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
+      )
+
+      transactionRequest.gasLimit = formattedGasLimit
+    }
+  } catch (error) {}
+
+  return signer.sendTransaction(transactionRequest)
 }
 
 export const getAllowanceViaMulticall = async (
