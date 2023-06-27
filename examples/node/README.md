@@ -5,6 +5,7 @@ The demo of [our SDK](https://github.com/lifinance/sdk) executes a simple cross 
 It needs access to an actual wallet and makes real transactions on chain.
 
 1. First you need to specify your `MNEMONIC` in your environment, e.g.
+
 ```bash
 export MNEMONIC="..."
 ```
@@ -12,10 +13,13 @@ export MNEMONIC="..."
 2. Execute the script.
 
 Either the TypeScript version:
+
 ```bash
 ts-node index.ts
 ```
+
 Or the Javascript version:
+
 ```bash
 node index.js
 ```
@@ -23,9 +27,10 @@ node index.js
 3. Sit back, relax and watch the show.
 
 First a route is searched and the script prints out what it found. The property `toAmount` will tell you how much USDT will end up on xDAI.
- Then the SDK will execute all necessary steps to do the transfer (approval, send Transaction, wait the bridge, claim, ... ). It prints out status updates for each of these steps
- 
+Then the SDK will execute all necessary steps to do the transfer (approval, send Transaction, wait the bridge, claim, ... ). It prints out status updates for each of these steps
+
 Sample output:
+
 ```bash
 {
   route: {

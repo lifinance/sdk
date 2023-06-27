@@ -211,7 +211,7 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get the transaction data for a single step of a route
    * @param {LifiStep} step - The step object.
-   * @return {Promise<Step>} The step populated with the transaction data.
+   * @return {Promise<LifiStep>} The step populated with the transaction data.
    * @throws {LifiError} Throws a LifiError if request fails.
    */
   getStepTransaction = async (
