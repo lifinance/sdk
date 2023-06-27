@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/lifinance/sdk/compare/v2.0.0...v2.1.0) (2023-06-27)
+
+
+### Features
+
+* adding node example to sdk ([#146](https://github.com/lifinance/sdk/issues/146)) ([8b3e9df](https://github.com/lifinance/sdk/commit/8b3e9df5817976e554b53923df0152802764c2dc))
+
+
+### Bug Fixes
+
+* add custom gas limit for approvals ([#148](https://github.com/lifinance/sdk/issues/148)) ([dead0ce](https://github.com/lifinance/sdk/commit/dead0ceba1de4875ee0f14049cfef258b367986b))
+* prevent division by zero ([51ab537](https://github.com/lifinance/sdk/commit/51ab537492f3d36a8d1ce12c162d2680f2ead17c))
+* update status types ([#149](https://github.com/lifinance/sdk/issues/149)) ([18bde05](https://github.com/lifinance/sdk/commit/18bde05741305b106f0cf4aeb47944f8a9d19cc7))
+
 ### [2.0.1](https://github.com/lifinance/sdk/compare/v2.0.0...v2.0.1) (2023-06-16)
 
 
