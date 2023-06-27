@@ -1,7 +1,7 @@
 <div align="center">
 
 [![license](https://img.shields.io/badge/license-Apache%202-blue)](/LICENSE.md)
-[![npm latest package](https://img.shields.io/npm/v/@lifi/sdk/beta.svg)](https://www.npmjs.com/package/@lifi/sdk)
+[![npm latest package](https://img.shields.io/npm/v/@lifi/sdk/latest.svg)](https://www.npmjs.com/package/@lifi/sdk)
 [![npm downloads](https://img.shields.io/npm/dm/@lifi/sdk.svg)](https://www.npmjs.com/package/@lifi/sdk)
 [![Follow on Twitter](https://img.shields.io/twitter/follow/lifiprotocol.svg?label=follow+LI.FI)](https://twitter.com/lifiprotocol)
 

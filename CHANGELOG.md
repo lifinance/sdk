@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.1](https://github.com/lifinance/sdk/compare/v2.0.0...v2.0.1) (2023-06-16)
+
+
+### Bug Fixes
+
+* prevent division by zero ([43340f0](https://github.com/lifinance/sdk/commit/43340f0dcd0df912e6a40a1a1edbdf0a1b71015d))
+
+## [2.0.0](https://github.com/lifinance/sdk/compare/v2.0.0-beta.16...v2.0.0) (2023-06-15)
+
+## [2.0.0-beta.16](https://github.com/lifinance/sdk/compare/v2.0.0-beta.15...v2.0.0-beta.16) (2023-06-12)
+
+
+### Bug Fixes
+
+* estimate gas price from signer LF-2417 ([#143](https://github.com/lifinance/sdk/issues/143)) ([a71152d](https://github.com/lifinance/sdk/commit/a71152d4a0e7901307dbf911d6c9b5c5c94d63b8))
+
 ## [2.0.0-beta.15](https://github.com/lifinance/sdk/compare/v2.0.0-beta.14...v2.0.0-beta.15) (2023-05-25)
 
 
