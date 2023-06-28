@@ -6,6 +6,7 @@ import {
   ContractTransaction,
   PopulatedTransaction,
   Signer,
+  ethers,
 } from 'ethers'
 import ChainsService from '../services/ChainsService'
 import { ERC20Contract, ERC20_ABI, RevokeTokenData } from '../types'
@@ -34,7 +35,7 @@ export const getApproved = async (
   }
 }
 
-export const setApproval = (
+export const setApproval = async (
   signer: Signer,
   tokenAddress: string,
   contractAddress: string,
@@ -42,10 +43,21 @@ export const setApproval = (
   returnPopulatedTransaction?: boolean
 ): Promise<ContractTransaction | PopulatedTransaction> => {
   const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
+  const transactionRequest = await erc20.populateTransaction.approve(
+    contractAddress,
+    amount
+  )
 
-  if (returnPopulatedTransaction) {
-    return erc20.populateTransaction.approve(contractAddress, amount)
-  }
+  try {
+    const estimatedGasLimit = await signer.estimateGas(transactionRequest)
+    if (estimatedGasLimit) {
+      const formattedGasLimit = ethers.utils.parseEther(
+        `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
+      )
+
+      transactionRequest.gasLimit = formattedGasLimit
+    }
+  } catch (error) {}
 
   return erc20.approve(contractAddress, amount)
 }

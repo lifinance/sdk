@@ -3,7 +3,7 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from '@ethersproject/abstract-provider'
-import { Execution, StatusResponse } from '@lifi/types'
+import { Execution, ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
@@ -380,33 +380,37 @@ export class StepExecutionManager {
         'PENDING'
       )
     }
-    let statusResponse: StatusResponse
+    let statusResponse: FullStatusData
     try {
       if (!processTxHash) {
         throw new Error('Transaction hash is undefined.')
       }
-      statusResponse = await waitForReceivingTransaction(
+      statusResponse = (await waitForReceivingTransaction(
         processTxHash,
         statusManager,
         process.type,
         step
-      )
+      )) as FullStatusData
+
+      const statusReceiving =
+        statusResponse.receiving as ExtendedTransactionInfo
+
       process = statusManager.updateProcess(step, process.type, 'DONE', {
         substatus: statusResponse.substatus,
         substatusMessage:
           statusResponse.substatusMessage ||
           getSubstatusMessage(statusResponse.status, statusResponse.substatus),
-        txHash: statusResponse.receiving?.txHash,
+        txHash: statusReceiving?.txHash,
         txLink:
           toChain.metamask.blockExplorerUrls[0] +
           'tx/' +
-          statusResponse.receiving?.txHash,
+          statusReceiving?.txHash,
       })
 
       statusManager.updateExecution(step, 'DONE', {
         fromAmount: statusResponse.sending.amount,
-        toAmount: statusResponse.receiving?.amount,
-        toToken: statusResponse.receiving?.token,
+        toAmount: statusReceiving?.amount,
+        toToken: statusReceiving?.token,
         gasAmount: statusResponse.sending.gasAmount,
         gasAmountUSD: statusResponse.sending.gasAmountUSD,
         gasPrice: statusResponse.sending.gasPrice,

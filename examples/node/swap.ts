@@ -5,42 +5,27 @@ import {
   Execution,
   ExecutionSettings,
   findDefaultToken,
-  LiFi,
   Route,
 } from '@lifi/sdk'
-import { providers, Signer, Wallet } from 'ethers'
+import { providers, Wallet } from 'ethers'
+import 'dotenv/config'
+import { getLifi, getSigner, promptConfirm } from './helpers'
+
+console.log('>> Starting Demo')
 
 const mnemonic = process.env.MNEMONIC || ''
 
 async function demo() {
-  // setup wallet
-  if (!process.env.MNEMONIC) {
-    console.warn(
-      'Please specify a MNEMONIC phrase in your environment variables: `export MNEMONIC="..."`'
-    )
-    return
-  }
-  console.log('>> Setup Wallet')
-  const provider = new providers.JsonRpcProvider(
-    'https://polygon-rpc.com/',
-    137
-  )
-  const wallet = Wallet.fromMnemonic(mnemonic).connect(provider)
-
   // get Route
-  console.log('>> Request route')
   const routeRequest = {
-    fromChainId: ChainId.POL, // Polygon
-    fromAmount: '1000000', // 1 USDT
-    fromTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.POL).address,
-    toChainId: ChainId.DAI, // xDai
-    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.DAI).address,
+    fromChainId: ChainId.AVA, // Avalanche
+    fromAmount: '100000', // 1 USDT
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.AVA).address,
+    toChainId: ChainId.AVA, // Avalanche
+    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.AVA).address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
-      exchanges: {
-        allow: [], // only find direct transfers
-      },
     },
   }
 
@@ -48,45 +33,39 @@ async function demo() {
 
   // ☝️ This configuration is totally optional! ------------------------------------
   const optionalConfigs: ConfigUpdate = {
-    apiUrl: 'https://li.quest', // DEFAULT production endpoint
-    rpcs: {
-      // You can provide custom RPCs
-      137: ['https://polygon-rpc.com/'],
-    },
-    multicallAddresses: {
-      // You can provide custom addresses for multicall
-      137: '0x02817C1e3543c2d908a590F5dB6bc97f933dB4BD',
-    },
+    integrator: 'lifi-sdk-node-example', // DEFAULT 'lifi-sdk'
+    apiUrl: 'https://li.quest/v1', // DEFAULT production endpoint
     defaultExecutionSettings: {
       // You can provide default execution settings @see {ExecutionSettings}
-      updateCallback: (route: Route): void => {
-        console.log('>> Route updated', route)
-      },
-      switchChainHook: (
-        requiredChainId: number
-      ): Promise<Signer | undefined> => {
-        console.log('>> Switching to chain', requiredChainId)
-        return Promise.resolve(wallet)
+      updateRouteHook: (route: Route): void => {
+        return console.log('>> Route updated', route)
       },
       infiniteApproval: false, // DEFAULT false
     },
   }
   // ---------------------------------------------------------------------------
 
-  const lifi = new LiFi(optionalConfigs)
+  console.log('>> Initialize LiFi')
+
+  const wallet = await getSigner(ChainId.AVA)
+
+  const lifi = getLifi(optionalConfigs)
+
+  console.log('>> Initialized, Requesting route')
+
+  console.log(JSON.stringify(routeRequest, null, 4))
 
   // STEP 2: Request a route
   const routeResponse = await lifi.getRoutes(routeRequest)
   const route = routeResponse.routes[0]
   console.log('>> Got Route')
-  console.log(route)
 
   // STEP 3: Execute the route
   console.log('>> Start Execution')
 
   // These are optonal settings for execution ------------------------------------
   const settings: ExecutionSettings = {
-    updateCallback: (updatedRoute) => {
+    updateRouteHook: (updatedRoute) => {
       let lastExecution: Execution | undefined = undefined
       for (const step of updatedRoute.steps) {
         if (step.execution) {
@@ -106,6 +85,10 @@ async function demo() {
     },
   }
   // ---------------------------------------------------------------------------
+
+  if (!(await promptConfirm('Execute Route?'))) {
+    return
+  }
 
   await lifi.executeRoute(wallet, route, settings)
 
