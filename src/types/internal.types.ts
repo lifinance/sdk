@@ -1,7 +1,7 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { Signer } from 'ethers'
+import { PopulatedTransaction, Signer } from 'ethers'
 import { ChainId } from '.'
 import { StatusManager } from '../execution/StatusManager'
 import { StepExecutor } from '../execution/StepExecutor'
@@ -42,18 +42,32 @@ export type Config = {
   userId?: string
   integrator: string
   widgetVersion?: string
-  multisigConfig?: MultiSigConfig
+  multisigConfig?: MultisigConfig
 }
 
-export interface MultiSigTxDetails {
+export interface MultisigTxDetails {
   status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'CANCELLED'
   message: string
   txHash?: string
 }
 
-export interface MultiSigConfig {
+export interface SendTransactionsMultisigResponse {
+  hash: string
+}
+
+export interface BaseTransaction {
+  to: string
+  value: string
+  data: string
+}
+
+export interface MultisigConfig {
   isMultisigSigner: boolean
-  getMultisigTransactionDetails: (txHash: string) => Promise<MultiSigTxDetails>
+  getMultisigTransactionDetails: (txHash: string) => Promise<MultisigTxDetails>
+  sendBatchTransaction?: (
+    batchTransactions: BaseTransaction[]
+  ) => Promise<SendTransactionsMultisigResponse>
+  shouldBatchTransactions?: boolean
 }
 
 export type ConfigUpdate = {
@@ -66,7 +80,7 @@ export type ConfigUpdate = {
   userId?: string
   integrator: string
   widgetVersion?: string
-  multisigConfig?: MultiSigConfig
+  multisigConfig?: MultisigConfig
 }
 
 export type SwitchChainHook = (

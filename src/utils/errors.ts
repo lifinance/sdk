@@ -26,7 +26,6 @@ export enum LifiErrorCode {
   BalanceError = 1013,
   AllowanceRequired = 1014,
   InsufficientFunds = 1015,
-  MultiSigTransactionFailed = 1016,
 }
 
 export enum EthersErrorType {
