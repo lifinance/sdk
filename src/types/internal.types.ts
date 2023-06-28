@@ -51,7 +51,7 @@ export interface MultisigTxDetails {
   txHash?: string
 }
 
-export interface SendTransactionsMultisigResponse {
+export interface MultisigTransactionResponse {
   hash: string
 }
 
@@ -66,7 +66,7 @@ export interface MultisigConfig {
   getMultisigTransactionDetails: (txHash: string) => Promise<MultisigTxDetails>
   sendBatchTransaction?: (
     batchTransactions: BaseTransaction[]
-  ) => Promise<SendTransactionsMultisigResponse>
+  ) => Promise<MultisigTransactionResponse>
   shouldBatchTransactions?: boolean
 }
 

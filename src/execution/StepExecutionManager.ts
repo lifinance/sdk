@@ -100,7 +100,7 @@ export class StepExecutionManager {
       try {
         if (isMultisigSigner && multisigProcess) {
           if (!multisigProcess) {
-            throw new Error('Multisig process is undefined')
+            throw new Error('Multisig process is undefined.')
           }
           if (!config.multisigConfig?.getMultisigTransactionDetails) {
             throw new Error(
@@ -150,7 +150,7 @@ export class StepExecutionManager {
           if (response.status === 'CANCELLED') {
             throw new TransactionError(
               LifiErrorCode.TransactionRejected,
-              'Transaction was rejected by users'
+              'Transaction was rejected by users.'
             )
           }
         }
