@@ -124,7 +124,7 @@ export class StepExecutionManager {
             return step.execution!
           }
 
-          if (response.status === 'SUCCESS') {
+          if (response.status === 'DONE') {
             process = statusManager.updateProcess(
               step,
               process.type,
