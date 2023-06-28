@@ -94,6 +94,12 @@ export const checkAllowance = async (
             true
           )
 
+          allowanceProcess = statusManager.updateProcess(
+            step,
+            allowanceProcess.type,
+            'DONE'
+          )
+
           return populatedTransaction as PopulatedTransaction
         }
 
