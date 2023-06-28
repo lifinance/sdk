@@ -43,6 +43,11 @@ export const setApproval = async (
   returnPopulatedTransaction?: boolean
 ): Promise<ContractTransaction | PopulatedTransaction> => {
   const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
+
+  if (returnPopulatedTransaction) {
+    return erc20.populateTransaction.approve(contractAddress, amount)
+  }
+
   const transactionRequest = await erc20.populateTransaction.approve(
     contractAddress,
     amount
