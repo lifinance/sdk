@@ -4,6 +4,7 @@ import {
   TransactionResponse,
 } from '@ethersproject/abstract-provider'
 import { Execution, ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
+import { BigNumber } from 'ethers'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
@@ -16,7 +17,6 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
-import { BigNumber, ethers } from 'ethers'
 
 export class StepExecutionManager {
   allowUserInteraction = true
