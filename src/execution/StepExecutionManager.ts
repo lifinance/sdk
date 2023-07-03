@@ -19,13 +19,10 @@ import { getTransactionFailedMessage, parseError } from '../utils/parseError'
 import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
-import {
-  getSubstatusMessage,
-  updateSafeRouteProcess,
-  waitForReceivingTransaction,
-} from './utils'
+import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
 
 import ConfigService from '../services/ConfigService'
+import { updateMultisigRouteProcess } from '../multisig'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -125,7 +122,7 @@ export class StepExecutionManager {
             )
           }
 
-          await updateSafeRouteProcess(
+          await updateMultisigRouteProcess(
             multisigTxHash,
             step,
             statusManager,
@@ -268,8 +265,6 @@ export class StepExecutionManager {
               transaction = await config.multisigConfig?.sendBatchTransaction(
                 multisigBatchTransactions
               )
-
-              console.log({ transaction })
             } else {
               throw new TransactionError(
                 LifiErrorCode.TransactionUnprepared,
@@ -318,7 +313,7 @@ export class StepExecutionManager {
           // Return the execution object without updating the process
           // The execution would progress once all multisigs signer approve
 
-          await updateSafeRouteProcess(
+          await updateMultisigRouteProcess(
             transaction.hash,
             step,
             statusManager,
