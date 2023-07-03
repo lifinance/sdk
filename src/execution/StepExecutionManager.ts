@@ -16,6 +16,7 @@ import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
+import { BigNumber, ethers } from 'ethers'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -160,9 +161,9 @@ export class StepExecutionManager {
               )
 
               if (estimatedGasLimit) {
-                transactionRequest.gasLimit = `${
-                  (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
-                }`
+                transactionRequest.gasLimit = BigNumber.from(
+                  `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
+                )
               }
 
               // Fetch latest gasPrice from provider and use it
