@@ -1,8 +1,8 @@
 import { LifiStep, Process, ExtendedChain } from '@lifi/types'
-import { MultisigTxDetails } from '.'
-import { StatusManager } from './execution'
-import ConfigService from './services/ConfigService'
-import { TransactionError, LifiErrorCode } from './utils/errors'
+import { MultisigTxDetails } from '..'
+import { StatusManager } from '.'
+import ConfigService from '../services/ConfigService'
+import { TransactionError, LifiErrorCode } from '../utils/errors'
 
 export const updateMultisigRouteProcess = async (
   internalTxHash: string,

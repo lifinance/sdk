@@ -22,7 +22,7 @@ import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
 
 import ConfigService from '../services/ConfigService'
-import { updateMultisigRouteProcess } from '../multisig'
+import { updateMultisigRouteProcess } from './multisig'
 
 export class StepExecutionManager {
   allowUserInteraction = true
