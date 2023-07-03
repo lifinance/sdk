@@ -117,7 +117,8 @@ export class StepExecutionManager {
 
           const response: MultisigTxDetails =
             await config.multisigConfig?.getMultisigTransactionDetails(
-              multisigTxHash
+              multisigTxHash,
+              fromChain.id
             )
 
           if (response.status === 'PENDING') {

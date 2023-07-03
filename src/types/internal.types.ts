@@ -63,7 +63,10 @@ export interface BaseTransaction {
 
 export interface MultisigConfig {
   isMultisigSigner: boolean
-  getMultisigTransactionDetails: (txHash: string) => Promise<MultisigTxDetails>
+  getMultisigTransactionDetails: (
+    txHash: string,
+    fromChainId: number
+  ) => Promise<MultisigTxDetails>
   sendBatchTransaction?: (
     batchTransactions: BaseTransaction[]
   ) => Promise<MultisigTransactionResponse>
