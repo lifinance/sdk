@@ -1,6 +1,8 @@
 import {
+  ExtendedChain,
   FullStatusData,
   LifiStep,
+  Process,
   ProcessType,
   Status,
   StatusMessage,
@@ -8,11 +10,12 @@ import {
   Substatus,
 } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { StatusManager } from '..'
+import { MultisigTxDetails, StatusManager } from '..'
 
 import ApiService from '../services/ApiService'
-import { ServerError } from '../utils/errors'
+import { LifiErrorCode, ServerError, TransactionError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
+import ConfigService from '../services/ConfigService'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
@@ -168,4 +171,55 @@ export function checkStepSlippageThreshold(
     newEstimatedToAmount.gte(oldEstimatedToAmount) &&
     actualSlippage.lte(setSlippage)
   )
+}
+
+export const updateSafeRouteProcess = async (
+  internalTxHash: string,
+  step: LifiStep,
+  statusManager: StatusManager,
+  process: Process,
+  fromChain: ExtendedChain
+) => {
+  const config = ConfigService.getInstance().getConfig()
+
+  if (!config.multisigConfig?.getMultisigTransactionDetails) {
+    throw new Error(
+      '"getMultisigTransactionDetails()" is missing in Multisig config.'
+    )
+  }
+
+  const safeStatusResponse: MultisigTxDetails =
+    await config.multisigConfig?.getMultisigTransactionDetails(
+      internalTxHash,
+      fromChain.id
+    )
+
+  if (safeStatusResponse.status === 'DONE') {
+    console.log('Updating transaction hash --> ', {
+      txHash: safeStatusResponse.txHash,
+    })
+
+    process = statusManager.updateProcess(step, process.type, 'PENDING', {
+      txHash: safeStatusResponse.txHash,
+      multisigTxHash: undefined,
+      txLink:
+        fromChain.metamask.blockExplorerUrls[0] +
+        'tx/' +
+        safeStatusResponse.txHash,
+    })
+  }
+
+  if (safeStatusResponse.status === 'FAILED') {
+    throw new TransactionError(
+      LifiErrorCode.TransactionFailed,
+      'Multisig transaction failed.'
+    )
+  }
+
+  if (safeStatusResponse.status === 'CANCELLED') {
+    throw new TransactionError(
+      LifiErrorCode.TransactionRejected,
+      'Transaction was rejected by users.'
+    )
+  }
 }
