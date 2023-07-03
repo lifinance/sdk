@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.1.1](https://github.com/lifinance/sdk/compare/v2.1.0...v2.1.1) (2023-07-03)
+
+
+### Bug Fixes
+
+* added gasLimit as BigNumber ([#151](https://github.com/lifinance/sdk/issues/151)) ([42dab98](https://github.com/lifinance/sdk/commit/42dab98f3a6574c8212c2f4af920eda1c8e5e4fd))
+* convert to BigNumberish gas values ([#152](https://github.com/lifinance/sdk/issues/152)) ([a8cc17d](https://github.com/lifinance/sdk/commit/a8cc17d0d39a42c959a329b3c7dea28c3c9d9749))
+
 ## [2.1.0](https://github.com/lifinance/sdk/compare/v2.0.0...v2.1.0) (2023-06-27)
 
 
