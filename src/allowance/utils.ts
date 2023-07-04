@@ -11,7 +11,7 @@ import {
 import ChainsService from '../services/ChainsService'
 import { ERC20Contract, ERC20_ABI, RevokeTokenData } from '../types'
 import { ServerError } from '../utils/errors'
-import { fetchDataUsingMulticall, MultiCallData } from '../utils/multicall'
+import { MultiCallData, fetchDataUsingMulticall } from '../utils/multicall'
 
 export const getApproved = async (
   signer: Signer,
@@ -56,7 +56,7 @@ export const setApproval = async (
   try {
     const estimatedGasLimit = await signer.estimateGas(transactionRequest)
     if (estimatedGasLimit) {
-      const formattedGasLimit = ethers.utils.parseEther(
+      const formattedGasLimit = ethers.BigNumber.from(
         `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
       )
 

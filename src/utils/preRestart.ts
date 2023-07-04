@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Signer } from 'ethers'
+import { BigNumber, Signer } from 'ethers'
 import { Route } from '../types'
 import { LifiErrorCode } from './errors'
 
@@ -34,9 +34,9 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
       } catch (error) {}
 
       if (gasLimit) {
-        transactionRequest.gasLimit = `${
-          (BigInt(gasLimit.toString()) * 125n) / 100n
-        }`
+        transactionRequest.gasLimit = BigNumber.from(
+          `${(BigInt(gasLimit.toString()) * 125n) / 100n}`
+        )
       }
     }
 
@@ -55,9 +55,9 @@ const handleErrorType = async (route: Route, index: number, signer: Signer) => {
       } catch (error) {}
 
       if (gasPrice) {
-        transactionRequest.gasPrice = `${
-          (BigInt(gasPrice.toString()) * 125n) / 100n
-        }`
+        transactionRequest.gasPrice = BigNumber.from(
+          `${(BigInt(gasPrice.toString()) * 125n) / 100n}`
+        )
       }
     }
 

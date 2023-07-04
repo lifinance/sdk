@@ -4,6 +4,7 @@ import {
   TransactionResponse,
 } from '@ethersproject/abstract-provider'
 import { Execution, ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
+import { BigNumber } from 'ethers'
 import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
@@ -229,9 +230,9 @@ export class StepExecutionManager {
               )
 
               if (estimatedGasLimit) {
-                transactionRequest.gasLimit = `${
-                  (BigInt(estimatedGasLimit.toString()) * 125n) / 100n
-                }`
+                transactionRequest.gasLimit = BigNumber.from(
+                  `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
+                )
               }
 
               // Fetch latest gasPrice from provider and use it

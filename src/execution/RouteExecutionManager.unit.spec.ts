@@ -1,4 +1,4 @@
-import { Signer } from 'ethers'
+import { BigNumber, Signer, ethers } from 'ethers'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -69,7 +69,7 @@ describe('Should pick up gas from signer estimation', () => {
     await routeExecutionManager.executeRoute(signer, route)
 
     expect(signer.sendTransaction).toHaveBeenCalledWith({
-      gasLimit: '125000',
+      gasLimit: BigNumber.from('125000'),
       gasPrice: 100000,
       // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
       transactionRequest: {

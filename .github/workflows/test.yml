@@ -28,12 +28,8 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: lts/*
-      - name: Install modules
-        run: yarn
+      - name: Install dependencies
+        uses: ./.github/actions/yarn-install
       - name: Run tests
         run: yarn test
       - name: Test build
