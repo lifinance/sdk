@@ -9,7 +9,6 @@ on:
       - '.editorconfig'
     branches:
       - main
-      - cache-actions
   pull_request:
     paths-ignore:
       - 'docs/**'
