@@ -23,6 +23,7 @@ import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
 
 import ConfigService from '../services/ConfigService'
 import { updateMultisigRouteProcess } from './multisig'
+import { BigNumber } from 'ethers'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -84,7 +85,7 @@ export class StepExecutionManager {
         if (to && data) {
           // allowance doesn't need value
           const cleanedPopulatedTransaction: BaseTransaction = {
-            value: '0x0',
+            value: BigNumber.from(0).toString(),
             to,
             data,
           }
@@ -256,7 +257,7 @@ export class StepExecutionManager {
 
             if (isValidTransaction) {
               const populatedTransaction: BaseTransaction = {
-                value: value?.toString() ?? '0x0',
+                value: value?.toString() ?? BigNumber.from(0).toString(),
                 to,
                 data: data.toString(),
               }
