@@ -24,7 +24,6 @@ import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
 
 import ConfigService from '../services/ConfigService'
 import { updateMultisigRouteProcess } from './multisig'
-import { BigNumber } from 'ethers'
 
 export class StepExecutionManager {
   allowUserInteraction = true
