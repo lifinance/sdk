@@ -4,32 +4,6 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [2.1.3-beta.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.1.3-beta.0) (2023-07-04)
 
-
-### Bug Fixes
-
-* abstract safe logic ([e3201d9](https://github.com/lifinance/sdk/commit/e3201d93f3eb3064ae56aa48e22f95f6677cc995))
-* added safe types ([08f0154](https://github.com/lifinance/sdk/commit/08f015449ebc61d97e6b960fb22cdd143415a60d))
-* batching transactions done ([7e4f4e4](https://github.com/lifinance/sdk/commit/7e4f4e4d8a62624ea7f8f12d3ecbf16863ef221c))
-* changes to accept multisig config ([36718aa](https://github.com/lifinance/sdk/commit/36718aacee7f3f570d3b04f37a1cbb377b5bad8f))
-* checkpoint changes ([1b1bd87](https://github.com/lifinance/sdk/commit/1b1bd87cc580e340c4370b3d6883b0498693e138))
-* handle succes state ([25a6337](https://github.com/lifinance/sdk/commit/25a633799612ca1fc54b4f840c83944df88cafe4))
-* minor cleanup ([3c45225](https://github.com/lifinance/sdk/commit/3c45225ac50b9d7394482c7c1a71d8638152a8ee))
-* minor text changes ([a5ede21](https://github.com/lifinance/sdk/commit/a5ede21ecae415f57fa802485c023e81ecbb38fd))
-* more status checks for multisig ([63be925](https://github.com/lifinance/sdk/commit/63be92574267dbfeeae1bc89fe8141f53928f674))
-* moved multisig to execution folder ([4c5744a](https://github.com/lifinance/sdk/commit/4c5744afeace3f3351dc1e15fc695358e712bc90))
-* moving multisig utils ([719bafe](https://github.com/lifinance/sdk/commit/719bafe6e3c015addfc885d0c54273c961a7710f))
-* passing multisig data via config ([5a853f0](https://github.com/lifinance/sdk/commit/5a853f0f08950ffea179f2cb16d12c367d9cfcd1))
-* removed duplicate imports ([b038d1f](https://github.com/lifinance/sdk/commit/b038d1f96460aeaff0d226266ba89265d3836fd8))
-* replace value with bignumber ([042fd62](https://github.com/lifinance/sdk/commit/042fd620abe4109651f0045940b11db7cdca5929))
-* returing populated transaction ([bcc766d](https://github.com/lifinance/sdk/commit/bcc766d15432062d7c13b58d7c6fdefb3debef82))
-* review based changes ([8ffcd67](https://github.com/lifinance/sdk/commit/8ffcd675488ce6042abb394205049f7ca2dca341))
-* review changes ([eb45b7e](https://github.com/lifinance/sdk/commit/eb45b7e663a8da0c99968b8b886ce08924d26318))
-* safe integration ([8d1dc1d](https://github.com/lifinance/sdk/commit/8d1dc1d3e443ad2f5077aaa3397bc15bebb3efb2))
-* throwing correct errors ([21d8ffa](https://github.com/lifinance/sdk/commit/21d8fface40710b4d5ac7db3f42acc253c58a195))
-* type fix ([bd29236](https://github.com/lifinance/sdk/commit/bd29236ae8f759e2984c0e5f14bb7665bec690cc))
-* updating allowance to done ([2136e3a](https://github.com/lifinance/sdk/commit/2136e3a9e1be58097c4ee27f6654e4b15a9ad18b))
-* valid Bignumber in value ([3cbab82](https://github.com/lifinance/sdk/commit/3cbab82b5e91b6fb3dc77179ef8a92eaa8c7113e))
-
 ### [2.1.2](https://github.com/lifinance/sdk/compare/v2.1.2-beta.1...v2.1.2) (2023-07-04)
 
 ### [2.1.2-beta.1](https://github.com/lifinance/sdk/compare/v2.1.2-beta.0...v2.1.2-beta.1) (2023-07-04)
