@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
@@ -76,7 +76,7 @@
   "dependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
-    "@lifi/types": "^8.0.2",
+    "@lifi/types": "^8.0.3",
     "bignumber.js": "^9.1.1",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.7.2"
@@ -84,11 +84,11 @@
   "devDependencies": {
     "@commitlint/cli": "^17.6.6",
     "@commitlint/config-conventional": "^17.6.6",
-    "@mswjs/interceptors": "^0.22.15",
-    "@typescript-eslint/eslint-plugin": "^5.60.1",
-    "@typescript-eslint/parser": "^5.60.1",
-    "@vitest/coverage-c8": "^0.32.3",
-    "cross-fetch": "^3.1.8",
+    "@mswjs/interceptors": "^0.22.16",
+    "@typescript-eslint/eslint-plugin": "^5.61.0",
+    "@typescript-eslint/parser": "^5.61.0",
+    "@vitest/coverage-c8": "^0.32.4",
+    "cross-fetch": "^4.0.0",
     "eslint": "^8.44.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -100,7 +100,7 @@
     "prettier": "^2.8.8",
     "standard-version": "^9.5.0",
     "typescript": "^5.1.6",
-    "vitest": "^0.32.3"
+    "vitest": "^0.32.4"
   },
   "directories": {
     "test": "test"
