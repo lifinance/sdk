@@ -84,7 +84,7 @@ export class StepExecutionManager {
         if (to && data) {
           // allowance doesn't need value
           const cleanedPopulatedTransaction: BaseTransaction = {
-            value: '',
+            value: '0x0',
             to,
             data,
           }
@@ -256,7 +256,7 @@ export class StepExecutionManager {
 
             if (isValidTransaction) {
               const populatedTransaction: BaseTransaction = {
-                value: value?.toString() ?? '',
+                value: value?.toString() ?? '0x0',
                 to,
                 data: data.toString(),
               }
