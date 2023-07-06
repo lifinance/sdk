@@ -1,7 +1,7 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { PopulatedTransaction, Signer } from 'ethers'
+import { Signer } from 'ethers'
 import { ChainId } from '.'
 import { StatusManager } from '../execution/StatusManager'
 import { StepExecutor } from '../execution/StepExecutor'
