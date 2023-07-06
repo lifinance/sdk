@@ -64,7 +64,7 @@ export const setApproval = async (
     }
   } catch (error) {}
 
-  return erc20.approve(contractAddress, amount)
+  return signer.sendTransaction(transactionRequest)
 }
 
 export const getAllowanceViaMulticall = async (
