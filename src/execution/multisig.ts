@@ -19,10 +19,15 @@ export const updateMultisigRouteProcess = async (
     )
   }
 
+  const updateIntermediateMultisigStatus = () => {
+    process = statusManager.updateProcess(step, process.type, 'PENDING')
+  }
+
   const multisigStatusResponse: MultisigTxDetails =
     await config.multisigConfig?.getMultisigTransactionDetails(
       internalTxHash,
-      fromChain.id
+      fromChain.id,
+      updateIntermediateMultisigStatus
     )
 
   if (multisigStatusResponse.status === 'DONE') {
