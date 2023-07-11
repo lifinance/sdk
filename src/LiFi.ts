@@ -104,6 +104,7 @@ export class LiFi extends RouteExecutionManager {
    * @param {PossibilitiesRequest} request - Object defining preferences regarding chain, exchanges and bridges
    * @return {Promise<PossibilitiesResponse>} Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
    * @throws {LifiError} Throws a LifiError if request fails.
+   * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
    */
   getPossibilities = async (
     request?: PossibilitiesRequest,

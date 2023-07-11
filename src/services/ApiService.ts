@@ -31,6 +31,9 @@ import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
+/**
+ * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
+ */
 const getPossibilities = async (
   requestConfig?: PossibilitiesRequest,
   options?: RequestOptions
