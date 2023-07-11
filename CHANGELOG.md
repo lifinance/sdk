@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.2.0) (2023-07-11)
+
+
+### Features
+
+* multisig wallets support ([#150](https://github.com/lifinance/sdk/issues/150)) ([3825d99](https://github.com/lifinance/sdk/commit/3825d99de85032b6b4334552b1311ecefeca8001))
+
+
+### Bug Fixes
+
+* deprecate possibilities endpoint ([80e6e98](https://github.com/lifinance/sdk/commit/80e6e98630edde2eb33f591d50cc746ed78fb6de))
+
 ### [2.1.3-beta.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.1.3-beta.0) (2023-07-04)
 
 ### [2.1.2](https://github.com/lifinance/sdk/compare/v2.1.2-beta.1...v2.1.2) (2023-07-04)
