@@ -1,4 +1,4 @@
-import { BigNumber, Signer, ethers } from 'ethers'
+import { BigNumber, Signer } from 'ethers'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
