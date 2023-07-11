@@ -9,14 +9,21 @@ import { checkAllowance } from '../allowance'
 import { checkBalance } from '../balance'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
-import { ExecutionParams } from '../types'
-import { LifiErrorCode, TransactionError } from '../utils/errors'
+import { BaseTransaction, ExecutionParams } from '../types'
+import {
+  LifiErrorCode,
+  TransactionError,
+  ValidationError,
+} from '../utils/errors'
 import { getProvider } from '../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../utils/parseError'
 import { isZeroAddress, personalizeStep } from '../utils/utils'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
+
+import ConfigService from '../services/ConfigService'
+import { updateMultisigRouteProcess } from './multisig'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -31,6 +38,15 @@ export class StepExecutionManager {
     statusManager,
     settings,
   }: ExecutionParams): Promise<Execution> => {
+    const config = ConfigService.getInstance().getConfig()
+    const isMultisigSigner = !!config.multisigConfig?.isMultisigSigner
+
+    const multisigBatchTransactions: BaseTransaction[] = []
+
+    const shouldBatchTransactions =
+      config.multisigConfig?.shouldBatchTransactions &&
+      !!config.multisigConfig.sendBatchTransaction
+
     step.execution = statusManager.initExecutionObject(step)
 
     const chainsService = ChainsService.getInstance()
@@ -44,27 +60,79 @@ export class StepExecutionManager {
     const existingProcess = step.execution.process.find(
       (p) => p.type === currentProcessType
     )
+
     // Check token approval only if fromToken is not the native token => no approval needed in that case
-    if (
+
+    const checkForAllowance =
       !existingProcess?.txHash &&
-      !isZeroAddress(step.action.fromToken.address)
-    ) {
-      await checkAllowance(
+      !isZeroAddress(step.action.fromToken.address) &&
+      (shouldBatchTransactions || !isMultisigSigner)
+
+    if (checkForAllowance) {
+      const populatedTransaction = await checkAllowance(
         signer,
         step,
         statusManager,
         settings,
         fromChain,
-        this.allowUserInteraction
+        this.allowUserInteraction,
+        shouldBatchTransactions
       )
+
+      if (populatedTransaction) {
+        const { to, data } = populatedTransaction
+
+        if (to && data) {
+          // allowance doesn't need value
+          const cleanedPopulatedTransaction: BaseTransaction = {
+            value: BigNumber.from(0).toString(),
+            to,
+            data,
+          }
+
+          multisigBatchTransactions.push(cleanedPopulatedTransaction)
+        }
+      }
     }
 
     // STEP 2: Get transaction
     let process = statusManager.findOrCreateProcess(step, currentProcessType)
 
     if (process.status !== 'DONE') {
+      const multisigProcess = step.execution.process.find(
+        (p) => !!p.multisigTxHash
+      )
+
       try {
-        let transaction: TransactionResponse
+        if (isMultisigSigner && multisigProcess) {
+          if (!multisigProcess) {
+            throw new ValidationError('Multisig process is undefined.')
+          }
+          if (!config.multisigConfig?.getMultisigTransactionDetails) {
+            throw new ValidationError(
+              '"getMultisigTransactionDetails()" is missing in Multisig config.'
+            )
+          }
+
+          const multisigTxHash = multisigProcess.multisigTxHash
+
+          if (!multisigTxHash) {
+            // need to check what happens in failed tx
+            throw new ValidationError(
+              'Multisig internal transaction hash is undefined.'
+            )
+          }
+
+          await updateMultisigRouteProcess(
+            multisigTxHash,
+            step,
+            statusManager,
+            process,
+            fromChain
+          )
+        }
+
+        let transaction: Partial<TransactionResponse>
         if (process.txHash) {
           // Make sure that the chain is still correct
           const updatedSigner = await switchChain(
@@ -176,9 +244,86 @@ export class StepExecutionManager {
           }
 
           // Submit the transaction
-          transaction = await signer.sendTransaction(transactionRequest)
+
+          if (
+            shouldBatchTransactions &&
+            config.multisigConfig?.sendBatchTransaction
+          ) {
+            const { to, data, value } = await signer.populateTransaction(
+              transactionRequest
+            )
+
+            const isValidTransaction = to && data
+
+            if (isValidTransaction) {
+              const populatedTransaction: BaseTransaction = {
+                value: value?.toString() ?? BigNumber.from(0).toString(),
+                to,
+                data: data.toString(),
+              }
+              multisigBatchTransactions.push(populatedTransaction)
+
+              transaction = await config.multisigConfig?.sendBatchTransaction(
+                multisigBatchTransactions
+              )
+            } else {
+              throw new TransactionError(
+                LifiErrorCode.TransactionUnprepared,
+                'Unable to prepare transaction.'
+              )
+            }
+          } else {
+            transaction = await signer.sendTransaction(transactionRequest)
+          }
 
           // STEP 4: Wait for the transaction
+          if (isMultisigSigner) {
+            process = statusManager.updateProcess(
+              step,
+              process.type,
+              'ACTION_REQUIRED',
+              {
+                multisigTxHash: transaction.hash,
+              }
+            )
+          } else {
+            process = statusManager.updateProcess(
+              step,
+              process.type,
+              'PENDING',
+              {
+                txHash: transaction.hash,
+                txLink:
+                  fromChain.metamask.blockExplorerUrls[0] +
+                  'tx/' +
+                  transaction.hash,
+              }
+            )
+          }
+        }
+
+        await transaction.wait?.()
+
+        // if it's multisig signer and the process is in ACTION_REQUIRED
+        // then signatures are still needed
+        if (
+          isMultisigSigner &&
+          process.status === 'ACTION_REQUIRED' &&
+          transaction.hash
+        ) {
+          // Return the execution object without updating the process
+          // The execution would progress once all multisigs signer approve
+
+          await updateMultisigRouteProcess(
+            transaction.hash,
+            step,
+            statusManager,
+            process,
+            fromChain
+          )
+        }
+
+        if (!isMultisigSigner) {
           process = statusManager.updateProcess(step, process.type, 'PENDING', {
             txHash: transaction.hash,
             txLink:
@@ -187,14 +332,6 @@ export class StepExecutionManager {
               transaction.hash,
           })
         }
-
-        await transaction.wait()
-
-        process = statusManager.updateProcess(step, process.type, 'PENDING', {
-          txHash: transaction.hash,
-          txLink:
-            fromChain.metamask.blockExplorerUrls[0] + 'tx/' + transaction.hash,
-        })
 
         if (isBridgeExecution) {
           process = statusManager.updateProcess(step, process.type, 'DONE')

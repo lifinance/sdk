@@ -1,6 +1,6 @@
 import { Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { constants, Signer } from 'ethers'
+import { constants, ContractTransaction, Signer } from 'ethers'
 import { isSameToken } from '../helpers'
 import { RevokeTokenData } from '../types'
 import { isNativeTokenAddress } from '../utils/utils'
@@ -110,7 +110,7 @@ export const approveToken = async ({
       approvalAmount
     )
 
-    await approveTx.wait()
+    await (approveTx as ContractTransaction).wait()
   }
 }
 
@@ -137,6 +137,6 @@ export const revokeTokenApproval = async ({
       '0'
     )
 
-    await approveTx.wait()
+    await (approveTx as ContractTransaction).wait()
   }
 }

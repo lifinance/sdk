@@ -42,6 +42,36 @@ export type Config = {
   userId?: string
   integrator: string
   widgetVersion?: string
+  multisigConfig?: MultisigConfig
+}
+
+export interface MultisigTxDetails {
+  status: 'DONE' | 'FAILED' | 'PENDING' | 'CANCELLED'
+  message: string
+  txHash?: string
+}
+
+export interface MultisigTransactionResponse {
+  hash: string
+}
+
+export interface BaseTransaction {
+  to: string
+  value: string
+  data: string
+}
+
+export interface MultisigConfig {
+  isMultisigSigner: boolean
+  getMultisigTransactionDetails: (
+    txHash: string,
+    fromChainId: number,
+    updateIntermediateStatus?: () => void
+  ) => Promise<MultisigTxDetails>
+  sendBatchTransaction?: (
+    batchTransactions: BaseTransaction[]
+  ) => Promise<MultisigTransactionResponse>
+  shouldBatchTransactions?: boolean
 }
 
 export type ConfigUpdate = {
@@ -54,6 +84,7 @@ export type ConfigUpdate = {
   userId?: string
   integrator: string
   widgetVersion?: string
+  multisigConfig?: MultisigConfig
 }
 
 export type SwitchChainHook = (

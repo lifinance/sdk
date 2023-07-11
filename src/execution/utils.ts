@@ -1,6 +1,8 @@
 import {
+  ExtendedChain,
   FullStatusData,
   LifiStep,
+  Process,
   ProcessType,
   Status,
   StatusMessage,
@@ -8,11 +10,12 @@ import {
   Substatus,
 } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { StatusManager } from '..'
+import { MultisigTxDetails, StatusManager } from '..'
 
 import ApiService from '../services/ApiService'
-import { ServerError } from '../utils/errors'
+import { LifiErrorCode, ServerError, TransactionError } from '../utils/errors'
 import { repeatUntilDone } from '../utils/utils'
+import ConfigService from '../services/ConfigService'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 

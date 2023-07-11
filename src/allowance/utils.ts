@@ -1,7 +1,13 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { ChainId, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
-import { Contract, ContractTransaction, Signer, ethers } from 'ethers'
+import {
+  Contract,
+  ContractTransaction,
+  PopulatedTransaction,
+  Signer,
+  ethers,
+} from 'ethers'
 import ChainsService from '../services/ChainsService'
 import { ERC20Contract, ERC20_ABI, RevokeTokenData } from '../types'
 import { ServerError } from '../utils/errors'
@@ -33,9 +39,15 @@ export const setApproval = async (
   signer: Signer,
   tokenAddress: string,
   contractAddress: string,
-  amount: string
-): Promise<ContractTransaction> => {
+  amount: string,
+  returnPopulatedTransaction?: boolean
+): Promise<ContractTransaction | PopulatedTransaction> => {
   const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
+
+  if (returnPopulatedTransaction) {
+    return erc20.populateTransaction.approve(contractAddress, amount)
+  }
+
   const transactionRequest = await erc20.populateTransaction.approve(
     contractAddress,
     amount
