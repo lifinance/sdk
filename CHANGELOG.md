@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.2.0) (2023-07-11)
+
+
+### Features
+
+* multisig wallets support ([#150](https://github.com/lifinance/sdk/issues/150)) ([3825d99](https://github.com/lifinance/sdk/commit/3825d99de85032b6b4334552b1311ecefeca8001))
+
+
+### Bug Fixes
+
+* deprecate possibilities endpoint ([80e6e98](https://github.com/lifinance/sdk/commit/80e6e98630edde2eb33f591d50cc746ed78fb6de))
+
+### [2.1.3-beta.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.1.3-beta.0) (2023-07-04)
+
+### [2.1.2](https://github.com/lifinance/sdk/compare/v2.1.2-beta.1...v2.1.2) (2023-07-04)
+
+### [2.1.2-beta.1](https://github.com/lifinance/sdk/compare/v2.1.2-beta.0...v2.1.2-beta.1) (2023-07-04)
+
+### [2.1.2-beta.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.1.2-beta.0) (2023-07-04)
+
+### [2.1.1](https://github.com/lifinance/sdk/compare/v2.1.0...v2.1.1) (2023-07-03)
+
+
+### Bug Fixes
+
+* added gasLimit as BigNumber ([#151](https://github.com/lifinance/sdk/issues/151)) ([42dab98](https://github.com/lifinance/sdk/commit/42dab98f3a6574c8212c2f4af920eda1c8e5e4fd))
+* convert to BigNumberish gas values ([#152](https://github.com/lifinance/sdk/issues/152)) ([a8cc17d](https://github.com/lifinance/sdk/commit/a8cc17d0d39a42c959a329b3c7dea28c3c9d9749))
+
+## [2.1.0](https://github.com/lifinance/sdk/compare/v2.0.0...v2.1.0) (2023-06-27)
+
+
+### Features
+
+* adding node example to sdk ([#146](https://github.com/lifinance/sdk/issues/146)) ([8b3e9df](https://github.com/lifinance/sdk/commit/8b3e9df5817976e554b53923df0152802764c2dc))
+
+
+### Bug Fixes
+
+* add custom gas limit for approvals ([#148](https://github.com/lifinance/sdk/issues/148)) ([dead0ce](https://github.com/lifinance/sdk/commit/dead0ceba1de4875ee0f14049cfef258b367986b))
+* prevent division by zero ([51ab537](https://github.com/lifinance/sdk/commit/51ab537492f3d36a8d1ce12c162d2680f2ead17c))
+* update status types ([#149](https://github.com/lifinance/sdk/issues/149)) ([18bde05](https://github.com/lifinance/sdk/commit/18bde05741305b106f0cf4aeb47944f8a9d19cc7))
+
+### [2.0.1](https://github.com/lifinance/sdk/compare/v2.0.0...v2.0.1) (2023-06-16)
+
+
+### Bug Fixes
+
+* prevent division by zero ([43340f0](https://github.com/lifinance/sdk/commit/43340f0dcd0df912e6a40a1a1edbdf0a1b71015d))
+
 ## [2.0.0](https://github.com/lifinance/sdk/compare/v2.0.0-beta.16...v2.0.0) (2023-06-15)
 
 ## [2.0.0-beta.16](https://github.com/lifinance/sdk/compare/v2.0.0-beta.15...v2.0.0-beta.16) (2023-06-12)

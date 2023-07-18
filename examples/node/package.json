@@ -7,7 +7,12 @@
   "author": "Max Klenk <max@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/sdk": "latest"
+    "@lifi/rpc-wrapper": "^0.0.23",
+    "@types/dotenv": "^8.2.0",
+    "dotenv": "^16.1.1"
+  },
+  "scripts": {
+    "run-ts": "ts-node swap.ts"
   },
   "devDependencies": {
     "@types/node": "^18.11.17",

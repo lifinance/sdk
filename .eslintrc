@@ -16,6 +16,7 @@
         "ignoreComments": true
       }
     ],
+    "@typescript-eslint/no-explicit-any": "warn",
     "curly": 2
   },
   "plugins": [
