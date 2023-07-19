@@ -434,8 +434,7 @@ const getAvailableConnections = async (
 
   const url = new URL(`${config.apiUrl}/connections`)
 
-  const { fromChain, fromToken, toChain, toToken, allowBridges } =
-    connectionRequest
+  const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
   if (fromChain) {
     url.searchParams.append('fromChain', fromChain as unknown as string)
@@ -450,11 +449,26 @@ const getAvailableConnections = async (
     url.searchParams.append('fromToken', toToken)
   }
 
-  if (allowBridges?.length) {
-    allowBridges.forEach((bridge) => {
-      url.searchParams.append('allowBridges', bridge)
-    })
-  }
+  const connectionRequestArrayParams: Array<keyof ConnectionsRequest> = [
+    'allowBridges',
+    'denyBridges',
+    'preferBridges',
+    'allowExchanges',
+    'denyExchanges',
+    'preferExchanges',
+  ]
+
+  connectionRequestArrayParams.forEach((parameter) => {
+    const connectionRequestArrayParam: string[] = connectionRequest[
+      parameter
+    ] as string[]
+
+    if (connectionRequestArrayParam?.length) {
+      connectionRequestArrayParam?.forEach((value) => {
+        url.searchParams.append(parameter, value)
+      })
+    }
+  })
 
   try {
     const response = await request<ConnectionsResponse>(url)
