@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.1](https://github.com/lifinance/sdk/compare/v2.2.0...v2.2.1) (2023-07-24)
+
+
+### Bug Fixes
+
+* fixed types for multisig config ([#156](https://github.com/lifinance/sdk/issues/156)) ([9a28de6](https://github.com/lifinance/sdk/commit/9a28de61026ab6804ee87932d609bf9897fff391))
+* parsing params in available connections api request ([#155](https://github.com/lifinance/sdk/issues/155)) ([177723a](https://github.com/lifinance/sdk/commit/177723a4eaa8007c4f3e5348bb4e60977392b786))
+
 ## [2.2.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.2.0) (2023-07-11)
 
 
