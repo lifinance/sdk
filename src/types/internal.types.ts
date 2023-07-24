@@ -47,7 +47,6 @@ export type Config = {
 
 export interface MultisigTxDetails {
   status: 'DONE' | 'FAILED' | 'PENDING' | 'CANCELLED'
-  message: string
   txHash?: string
 }
 
@@ -62,8 +61,8 @@ export interface BaseTransaction {
 }
 
 export interface MultisigConfig {
-  isMultisigSigner: boolean
-  getMultisigTransactionDetails: (
+  isMultisigSigner?: boolean
+  getMultisigTransactionDetails?: (
     txHash: string,
     fromChainId: number,
     updateIntermediateStatus?: () => void
