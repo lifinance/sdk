@@ -704,16 +704,16 @@ describe('ApiService', () => {
         fromToken: findDefaultToken(CoinKey.USDC, ChainId.BSC).address,
         toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
         allowBridges: ['connext', 'uniswap', 'polygon'],
-        allowExchanges: ['a', 'b', 'c'],
-        denyBridges: ['testValue1', 'testValue2'],
-        preferBridges: ['testValue1', 'testValue2'],
-        denyExchanges: ['testValue1', 'testValue2'],
-        preferExchanges: ['testValue1', 'testValue2'],
+        allowExchanges: ['1inch', 'ParaSwap', 'SushiSwap'],
+        denyBridges: ['Hop', 'Multichain'],
+        preferBridges: ['Hyphen', 'Across'],
+        denyExchanges: ['UbeSwap', 'BeamSwap'],
+        preferExchanges: ['Evmoswap', 'Diffusion'],
       }
 
       const generatedURL =
         // eslint-disable-next-line max-len
-        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&fromToken=10&fromToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=testValue1&denyBridges=testValue2&preferBridges=testValue1&preferBridges=testValue2&allowExchanges=a&allowExchanges=b&allowExchanges=c&denyExchanges=testValue1&denyExchanges=testValue2&preferExchanges=testValue1&preferExchanges=testValue2'
+        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&fromToken=10&fromToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
       await expect(
         ApiService.getAvailableConnections(connectionRequest)
