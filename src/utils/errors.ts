@@ -10,7 +10,7 @@ enum ErrorType {
 }
 
 export enum LifiErrorCode {
-  InternalError = 1000, // we can discuss which number field we want to use for our custom error codes.
+  InternalError = 1000,
   ValidationError = 1001,
   TransactionUnderpriced = 1002,
   TransactionFailed = 1003,

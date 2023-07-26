@@ -1,43 +1,41 @@
-import { ExtendedChain, LifiStep, Process } from '@lifi/types'
-import { StatusManager } from '.'
-import { MultisigTxDetails } from '..'
+import type { ExtendedChain, LifiStep, ProcessType } from '@lifi/types'
+import type { Hash } from 'viem'
+import type { StatusManager } from '.'
+import type { MultisigTxDetails } from '..'
 import ConfigService from '../services/ConfigService'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 
 export const updateMultisigRouteProcess = async (
-  internalTxHash: string,
+  internalTxHash: Hash,
   step: LifiStep,
   statusManager: StatusManager,
-  process: Process,
+  processType: ProcessType,
   fromChain: ExtendedChain
 ) => {
   const config = ConfigService.getInstance().getConfig()
 
-  if (!config.multisigConfig?.getMultisigTransactionDetails) {
+  if (!config.multisig?.getMultisigTransactionDetails) {
     throw new Error(
-      '"getMultisigTransactionDetails()" is missing in Multisig config.'
+      'getMultisigTransactionDetails is missing in multisig config.'
     )
   }
 
   const updateIntermediateMultisigStatus = () => {
-    process = statusManager.updateProcess(step, process.type, 'PENDING')
+    statusManager.updateProcess(step, processType, 'PENDING')
   }
 
   const multisigStatusResponse: MultisigTxDetails =
-    await config.multisigConfig?.getMultisigTransactionDetails(
+    await config.multisig?.getMultisigTransactionDetails(
       internalTxHash,
       fromChain.id,
       updateIntermediateMultisigStatus
     )
 
   if (multisigStatusResponse.status === 'DONE') {
-    process = statusManager.updateProcess(step, process.type, 'PENDING', {
+    statusManager.updateProcess(step, processType, 'PENDING', {
       txHash: multisigStatusResponse.txHash,
       multisigTxHash: undefined,
-      txLink:
-        fromChain.metamask.blockExplorerUrls[0] +
-        'tx/' +
-        multisigStatusResponse.txHash,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${multisigStatusResponse.txHash}`,
     })
   }
 
@@ -51,7 +49,7 @@ export const updateMultisigRouteProcess = async (
   if (multisigStatusResponse.status === 'CANCELLED') {
     throw new TransactionError(
       LifiErrorCode.TransactionRejected,
-      'Transaction was rejected by users.'
+      'Transaction was rejected by user.'
     )
   }
 }

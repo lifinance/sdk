@@ -1,10 +1,10 @@
-import { Signer } from 'ethers'
-import {
+import type { WalletClient } from 'viem'
+import type {
   InteractionSettings,
   InternalExecutionSettings,
   LifiStep,
 } from '../types'
-import { StatusManager } from './StatusManager'
+import type { StatusManager } from './StatusManager'
 import { StepExecutionManager } from './StepExecutionManager'
 import { switchChain } from './switchChain'
 
@@ -45,14 +45,17 @@ export class StepExecutor {
     this.executionStopped = interactionSettings.stopExecution
   }
 
-  // TODO: add checkChain method and update signer inside executors
+  // TODO: add checkChain method and update wallet client inside executors
   // This can come in handy when we execute multiple routes simultaneously and
   // should be sure that we are on the right chain when waiting for transactions.
   checkChain = () => {
     throw new Error('checkChain is not implemented.')
   }
 
-  executeStep = async (signer: Signer, step: LifiStep): Promise<LifiStep> => {
+  executeStep = async (
+    walletClient: WalletClient,
+    step: LifiStep
+  ): Promise<LifiStep> => {
     // Make sure that the chain is still correct
 
     // Find if it's bridging and the step is waiting for a transaction on the receiving chain
@@ -67,24 +70,24 @@ export class StepExecutor {
       recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION' ||
       !recievingChainProcess
     ) {
-      const updatedSigner = await switchChain(
-        signer,
+      const updatedWalletClient = await switchChain(
+        walletClient,
         this.statusManager,
         step,
         this.settings.switchChainHook,
         this.allowUserInteraction
       )
 
-      if (!updatedSigner) {
+      if (!updatedWalletClient) {
         // Chain switch was not successful, stop execution here
         return step
       }
 
-      signer = updatedSigner
+      walletClient = updatedWalletClient
     }
 
     const parameters = {
-      signer,
+      walletClient,
       step,
       settings: this.settings,
       statusManager: this.statusManager,

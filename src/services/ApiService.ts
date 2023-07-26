@@ -1,4 +1,4 @@
-import {
+import type {
   ConnectionsRequest,
   ConnectionsResponse,
   ContractCallQuoteRequest,
@@ -13,7 +13,7 @@ import {
 } from '@lifi/types'
 import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
-import {
+import type {
   ChainId,
   ChainKey,
   ChainsResponse,

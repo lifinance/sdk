@@ -1,5 +1,4 @@
-import {
-  emptyExecution,
+import type {
   Execution,
   InternalExecutionSettings,
   LifiStep,
@@ -9,6 +8,7 @@ import {
   Status,
   Token,
 } from '../types'
+import { emptyExecution } from '../types'
 import { getProcessMessage } from './utils'
 
 interface Receipt {

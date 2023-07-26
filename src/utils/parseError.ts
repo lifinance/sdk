@@ -1,9 +1,9 @@
-import { LifiStep, Process } from '@lifi/types'
+import type { LifiStep, Process } from '@lifi/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
-
+import { formatUnits } from 'viem'
 import { fetchTxErrorDetails } from '../helpers'
 import ChainsService from '../services/ChainsService'
 import {
@@ -22,7 +22,6 @@ import {
   UnknownError,
   ValidationError,
 } from './errors'
-import { formatTokenAmountOnly } from './utils'
 
 /**
  * Available MetaMask error codes:
@@ -68,9 +67,9 @@ export const getTransactionNotSentMessage = async (
     const chainService = ChainsService.getInstance()
     const chain = await chainService.getChainById(step.action.fromChainId)
 
-    transactionNotSend += ` (${formatTokenAmountOnly(
-      step.action.fromToken,
-      step.action.fromAmount
+    transactionNotSend += ` (${formatUnits(
+      BigInt(step.action.fromAmount),
+      step.action.fromToken.decimals
     )} ${step.action.fromToken.symbol} on ${chain.name})`
   }
 
@@ -169,7 +168,7 @@ export const parseError = async (
       )
       try {
         if (!step?.action.fromChainId) {
-          throw new Error('Signer is not defined.')
+          throw new Error('fromChainId is not defined.')
         }
 
         const response = await fetchTxErrorDetails(

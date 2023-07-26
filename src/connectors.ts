@@ -1,84 +1,52 @@
-import {
-  FallbackProvider,
-  StaticJsonRpcProvider,
-} from '@ethersproject/providers'
-import { getRandomNumber } from './helpers'
+import type { PublicClient } from 'viem'
+import { createPublicClient, fallback, http } from 'viem'
+import type { Chain } from 'viem/chains' // TODO: optimize using BE chains
+import * as chains from 'viem/chains' // TODO: optimize using BE chains
 import ConfigService from './services/ConfigService'
-import { ChainId } from './types'
+import type { ChainId } from './types'
 import { ServerError } from './utils/errors'
 
 // cached providers
-const chainProviders: Record<number, FallbackProvider[]> = {}
+const publicClients: Record<number, PublicClient> = {}
 
-// Archive RPC Provider
-const archiveRpcs: Record<number, string> = {
-  [ChainId.ETH]:
-    'https://speedy-nodes-nyc.moralis.io/5ed6053dc39eba789ff466c9/eth/mainnet/archive',
-  [ChainId.BSC]:
-    'https://speedy-nodes-nyc.moralis.io/5ed6053dc39eba789ff466c9/bsc/mainnet/archive',
-  [ChainId.POL]:
-    'https://speedy-nodes-nyc.moralis.io/5ed6053dc39eba789ff466c9/polygon/mainnet/archive',
-  [ChainId.FTM]:
-    'https://speedy-nodes-nyc.moralis.io/5ed6053dc39eba789ff466c9/fantom/mainnet',
+export const getChainById = (chainId: ChainId): Chain | undefined => {
+  return Object.values(chains).find((chain) => chain.id === chainId)
 }
 
 // RPC Urls
-export const getRpcUrl = async (
-  chainId: ChainId,
-  archive = false
-): Promise<string> => {
-  const rpcUrls = await getRpcUrls(chainId, archive)
+export const getRpcUrl = async (chainId: ChainId): Promise<string> => {
+  const rpcUrls = await getRpcUrls(chainId)
   return rpcUrls[0]
 }
 
-export const getRpcUrls = async (
-  chainId: ChainId,
-  archive = false
-): Promise<string[]> => {
-  if (archive && archiveRpcs[chainId]) {
-    return [archiveRpcs[chainId]]
-  }
-
+export const getRpcUrls = async (chainId: ChainId): Promise<string[]> => {
   const configService = ConfigService.getInstance()
   const config = await configService.getConfigAsync()
   return config.rpcs[chainId]
 }
 
-const getRandomProvider = (
-  providerList: FallbackProvider[]
-): FallbackProvider => {
-  const index = getRandomNumber(0, providerList.length - 1)
-  return providerList[index]
-}
+export const getPublicClient = async (
+  chainId: number
+): Promise<PublicClient> => {
+  if (!publicClients[chainId]) {
+    const urls = await getRpcUrls(chainId)
+    const fallbackTransports = urls.map((url) =>
+      http(url, {
+        batch: true,
+      })
+    )
 
-// Provider
-export const getRpcProvider = async (
-  chainId: number,
-  archive = false
-): Promise<FallbackProvider> => {
-  if (archive && archiveRpcs[chainId]) {
-    // return archive PRC, but don't cache it
-    return new FallbackProvider([
-      new StaticJsonRpcProvider(await getRpcUrl(chainId, archive), chainId),
-    ])
-  }
-
-  if (!chainProviders[chainId]?.length) {
-    chainProviders[chainId] = []
-
-    const urls = await getRpcUrls(chainId, archive)
-    urls.forEach((url) => {
-      chainProviders[chainId].push(
-        new FallbackProvider([new StaticJsonRpcProvider(url, chainId)])
-      )
+    publicClients[chainId] = createPublicClient({
+      chain: getChainById(chainId),
+      transport: fallback(fallbackTransports),
     })
   }
 
-  if (!chainProviders[chainId].length) {
+  if (!publicClients[chainId]) {
     throw new ServerError(`Unable to configure provider for chain ${chainId}`)
   }
 
-  return getRandomProvider(chainProviders[chainId])
+  return publicClients[chainId]
 }
 
 // Multicall

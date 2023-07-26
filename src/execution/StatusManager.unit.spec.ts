@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
+import type { Mock } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../test/fixtures'
-import { LifiStep, Route, Status } from '../types'
+import type { LifiStep, Route, Status } from '../types'
 import { StatusManager } from './StatusManager'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
@@ -166,7 +167,6 @@ describe('StatusManager', () => {
           expect(process.message).toEqual('Preparing bridge transaction.')
 
           const updatedExecution = Object.assign({}, step.execution, {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             process: [...step.execution!.process, process],
           })
 
@@ -229,7 +229,6 @@ describe('StatusManager', () => {
             const notUpdateableStatus =
               status === 'DONE' || status === 'CANCELLED'
             const updatedExecution = Object.assign({}, step.execution, {
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               process: [step.execution!.process[0], process],
               status: notUpdateableStatus
                 ? step.execution!.status
@@ -270,7 +269,6 @@ describe('StatusManager', () => {
 
       it('should remove the process and call the callbacks', () => {
         const updatedExecution = Object.assign({}, step.execution, {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           process: [step.execution!.process[1]],
         })
 

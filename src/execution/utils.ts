@@ -1,80 +1,11 @@
-import {
-  FullStatusData,
+import type {
   LifiStep,
   ProcessType,
   Status,
   StatusMessage,
-  StatusResponse,
   Substatus,
 } from '@lifi/types'
-import BigNumber from 'bignumber.js'
-import { StatusManager } from '..'
-
-import ApiService from '../services/ApiService'
-import { ServerError } from '../utils/errors'
-import { repeatUntilDone } from '../utils/utils'
-
-const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
-
-export async function waitForReceivingTransaction(
-  txHash: string,
-  statusManager: StatusManager,
-  processType: ProcessType,
-  step: LifiStep
-): Promise<StatusResponse> {
-  const getStatus = (): Promise<StatusResponse | undefined> =>
-    new Promise(async (resolve, reject) => {
-      let statusResponse: StatusResponse
-      try {
-        statusResponse = await ApiService.getStatus({
-          bridge: step.tool,
-          fromChain: step.action.fromChainId,
-          toChain: step.action.toChainId,
-          txHash,
-        })
-      } catch (e: any) {
-        console.debug('Fetching status from backend failed.', e)
-        return resolve(undefined)
-      }
-
-      switch (statusResponse.status) {
-        case 'DONE':
-          return resolve(statusResponse)
-        case 'PENDING':
-          statusManager?.updateProcess(step, processType, 'PENDING', {
-            substatus: statusResponse.substatus,
-            substatusMessage:
-              statusResponse.substatusMessage ||
-              getSubstatusMessage(
-                statusResponse.status,
-                statusResponse.substatus
-              ),
-            txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
-          })
-          return resolve(undefined)
-        case 'NOT_FOUND':
-          return resolve(undefined)
-        case 'FAILED':
-        default:
-          return reject()
-      }
-    })
-
-  let status
-
-  if (txHash in TRANSACTION_HASH_OBSERVERS) {
-    status = await TRANSACTION_HASH_OBSERVERS[txHash]
-  } else {
-    TRANSACTION_HASH_OBSERVERS[txHash] = repeatUntilDone(getStatus, 5_000)
-    status = await TRANSACTION_HASH_OBSERVERS[txHash]
-  }
-
-  if (!status.receiving) {
-    throw new ServerError("Status doesn't contain receiving information.")
-  }
-
-  return status
-}
+import Big from 'big.js'
 
 const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
   TOKEN_ALLOWANCE: {
@@ -155,14 +86,14 @@ export function checkStepSlippageThreshold(
   oldStep: LifiStep,
   newStep: LifiStep
 ): boolean {
-  const setSlippage = new BigNumber(oldStep.action.slippage)
-  const oldEstimatedToAmount = new BigNumber(oldStep.estimate.toAmountMin)
-  const newEstimatedToAmount = new BigNumber(newStep.estimate.toAmountMin)
+  const setSlippage = Big(oldStep.action.slippage)
+  const oldEstimatedToAmount = Big(oldStep.estimate.toAmountMin)
+  const newEstimatedToAmount = Big(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
   // oldEstimatedToAmount can be 0 when we use conract calls
-  let actualSlippage = new BigNumber(0)
+  let actualSlippage = Big(0)
   if (oldEstimatedToAmount.gt(0)) {
-    actualSlippage = amountDifference.dividedBy(oldEstimatedToAmount)
+    actualSlippage = amountDifference.div(oldEstimatedToAmount)
   }
   return (
     newEstimatedToAmount.gte(oldEstimatedToAmount) &&

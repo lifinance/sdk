@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
-import { FallbackProvider } from '@ethersproject/providers'
-import {
+import type {
   ChainId,
   ChainKey,
   ConnectionsRequest,
@@ -26,23 +25,27 @@ import {
   ToolsRequest,
   ToolsResponse,
 } from '@lifi/types'
-import { Signer } from 'ethers'
-import {
+import type { Hash, PublicClient } from 'viem'
+import type {
   ApproveTokenRequest,
   RevokeApprovalRequest,
-  approveToken,
-  bulkGetTokenApproval,
-  getTokenApproval,
+  TokenAllowance,
+  TokenSpender,
+} from './allowance'
+import {
+  getTokenAllowance,
+  getTokenAllowanceMulticall,
   revokeTokenApproval,
+  setTokenAllowance,
 } from './allowance'
 import * as balance from './balance'
-import { getRpcProvider } from './connectors'
+import { getPublicClient } from './connectors'
 import { RouteExecutionManager } from './execution/RouteExecutionManager'
 import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import { isToken } from './typeguards'
-import { Config, ConfigUpdate, RevokeTokenData } from './types'
+import type { Config, ConfigUpdate } from './types'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
@@ -80,14 +83,10 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get an instance of a provider for a specific chain
    * @param {number} chainId - Id of the chain the provider is for
-   * @param {boolean} archive - Whether to use an archive provider that is based on a default rpc or not. defaults to false
-   * @return {FallbackProvider} The provider for the given chain
+   * @return {PublicClient} The public client for the given chain
    */
-  getRpcProvider = (
-    chainId: number,
-    archive = false
-  ): Promise<FallbackProvider> => {
-    return getRpcProvider(chainId, archive)
+  getPublicClient = (chainId: number): Promise<PublicClient> => {
+    return getPublicClient(chainId)
   }
 
   /**
@@ -292,7 +291,7 @@ export class LiFi extends RouteExecutionManager {
    * @return {Promise<{ [chainId: number]: TokenAmount[] }>} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
-  getTokenBalancesForChains = async (
+  getTokenBalancesByChain = async (
     walletAddress: string,
     tokensByChain: { [chainId: number]: Token[] }
   ): Promise<{ [chainId: number]: TokenAmount[] }> => {
@@ -308,48 +307,50 @@ export class LiFi extends RouteExecutionManager {
       )
     }
 
-    return balance.getTokenBalancesForChains(walletAddress, tokensByChain)
+    return balance.getTokenBalancesByChain(walletAddress, tokensByChain)
   }
 
   /**
-   * Get the current approval for a certain token.
-   * @param signer - The signer owning the token
+   * Get the current allowance for a certain token.
    * @param token - The token that should be checked
-   * @param approvalAddress - The address that has be approved
+   * @param ownerAddress - The owner of the token
+   * @param spenderAddress - The spender address that has to be approved
    */
-  getTokenApproval = async (
-    signer: Signer,
+  getTokenAllowance = async (
     token: Token,
-    approvalAddress: string
-  ): Promise<string | undefined> => {
-    return getTokenApproval(signer, token, approvalAddress)
+    ownerAddress: string,
+    spenderAddress: string
+  ): Promise<bigint | undefined> => {
+    return getTokenAllowance(token, ownerAddress, spenderAddress)
   }
 
   /**
-   * Get the current approval for a list of token / approval address pairs.
-   * @param signer - The signer owning the tokens
-   * @param tokenData - A list of token and approval address pairs
+   * Get the current allowance for a list of token / spender address pairs.
+   * @param ownerAddress - The owner of the tokens
+   * @param tokens - A list of token and spender address pairs
    */
-  bulkGetTokenApproval = async (
-    signer: Signer,
-    tokenData: RevokeTokenData[]
-  ): Promise<{ token: Token; approval: string | undefined }[]> => {
-    return bulkGetTokenApproval(signer, tokenData)
+  getTokenAllowanceMulticall = async (
+    ownerAddress: string,
+    tokens: TokenSpender[]
+  ): Promise<TokenAllowance[]> => {
+    return getTokenAllowanceMulticall(ownerAddress, tokens)
   }
 
   /**
    * Set approval for a certain token and amount.
    * @param { ApproveTokenRequest } request - The approval request
    */
-  approveToken = (request: ApproveTokenRequest): Promise<void> => {
-    return approveToken(request)
+  setTokenApproval = (request: ApproveTokenRequest): Promise<Hash | void> => {
+    return setTokenAllowance(request)
   }
 
   /**
    * Revoke approval for a certain token.
    * @param { RevokeApprovalRequest } request - The revoke request
    */
-  revokeTokenApproval = (request: RevokeApprovalRequest): Promise<void> => {
+  revokeTokenApproval = (
+    request: RevokeApprovalRequest
+  ): Promise<Hash | void> => {
     return revokeTokenApproval(request)
   }
 

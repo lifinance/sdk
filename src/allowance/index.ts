@@ -1,2 +1,3 @@
-export * from './checkAllowance'
-export * from './tokenApproval'
+export * from './getAllowance'
+export * from './setAllowance'
+export * from './types'

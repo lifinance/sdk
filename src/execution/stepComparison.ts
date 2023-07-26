@@ -1,5 +1,5 @@
-import { StatusManager } from '.'
-import { InternalExecutionSettings, LifiStep } from '../types'
+import type { StatusManager } from '.'
+import type { InternalExecutionSettings, LifiStep } from '../types'
 import { LifiErrorCode, TransactionError } from '../utils/errors'
 import { checkStepSlippageThreshold } from './utils'
 

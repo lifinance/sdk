@@ -1,6 +1,6 @@
 import ConfigService from './services/ConfigService'
 import { HTTPError } from './utils/errors'
-import { sleep } from './utils/utils'
+import { wait } from './utils/utils'
 import { version } from './version'
 
 export const requestSettings = {
@@ -61,7 +61,7 @@ export const request = async <T = Response>(
     return data
   } catch (error) {
     if (options.retries > 0 && (error as HTTPError)?.status === 500) {
-      await sleep(500)
+      await wait(500)
       return request<T>(url, { ...options, retries: options.retries - 1 })
     }
     throw error

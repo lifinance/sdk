@@ -1,5 +1,5 @@
-import { Token, TokenAmount } from '@lifi/types'
-import utils from './utils'
+import type { Token, TokenAmount } from '@lifi/types'
+import { getBalance } from './getBalance'
 
 export const getTokenBalance = async (
   walletAddress: string,
@@ -22,24 +22,21 @@ export const getTokenBalances = async (
     tokensByChain[token.chainId].push(token)
   })
 
-  const tokenAmountsByChain = await getTokenBalancesForChains(
+  const tokenAmountsByChain = await getTokenBalancesByChain(
     walletAddress,
     tokensByChain
   )
   return Object.values(tokenAmountsByChain).flat()
 }
 
-export const getTokenBalancesForChains = async (
+export const getTokenBalancesByChain = async (
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }> => {
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
   const promises = Object.keys(tokensByChain).map(async (chainIdStr) => {
     const chainId = parseInt(chainIdStr)
-    const tokenAmounts = await utils.getBalances(
-      walletAddress,
-      tokensByChain[chainId]
-    )
+    const tokenAmounts = await getBalance(walletAddress, tokensByChain[chainId])
     tokenAmountsByChain[chainId] = tokenAmounts
   })
 

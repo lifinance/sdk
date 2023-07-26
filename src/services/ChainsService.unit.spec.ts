@@ -1,14 +1,8 @@
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import {
-  AddEthereumChainParameter,
-  ChainKey,
-  ChainType,
-  CoinKey,
-  ExtendedChain,
-  Token,
-} from '../types'
+import type { AddEthereumChainParameter, ExtendedChain, Token } from '../types'
+import { ChainKey, ChainType, CoinKey } from '../types'
 import { ValidationError } from '../utils/errors'
 import ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
@@ -61,7 +55,9 @@ describe('ChainsService', () => {
 
   describe('getChainById', () => {
     it('should throw an error if the chain is unknown', async () => {
-      await expect(chainsService.getChainById(1337)).rejects.toThrowError(
+      await expect(
+        chainsService.getChainById(1337 as any)
+      ).rejects.toThrowError(
         new ValidationError(`Unknown chainId passed: ${1337}.`)
       )
     })

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ChainId, supportedChains } from '../types'
-import ChainsService from './ChainsService'
+import type ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
 
 let configService: ConfigService

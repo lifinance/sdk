@@ -1,29 +1,33 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import {
-  TransactionRequest,
-  TransactionResponse,
-} from '@ethersproject/abstract-provider'
-import { Execution, ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
-import { BigNumber } from 'ethers'
-import { checkAllowance } from '../allowance'
-import { checkBalance } from '../balance'
+import type {
+  Execution,
+  ExtendedTransactionInfo,
+  FullStatusData,
+} from '@lifi/types'
+import type { Address, Hash, PublicClient } from 'viem'
+import { publicActions } from 'viem'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
-import { BaseTransaction, ExecutionParams } from '../types'
+import ConfigService from '../services/ConfigService'
+import type {
+  BaseTransaction,
+  ExecutionParams,
+  TransactionRequest,
+} from '../types'
+import { getMaxPriorityFeePerGas } from '../utils'
 import {
   LifiErrorCode,
   TransactionError,
   ValidationError,
 } from '../utils/errors'
-import { getProvider } from '../utils/getProvider'
 import { getTransactionFailedMessage, parseError } from '../utils/parseError'
-import { isZeroAddress, personalizeStep } from '../utils/utils'
+import { isZeroAddress } from '../utils/utils'
+import { checkAllowance } from './checkAllowance'
+import { checkBalance } from './checkBalance'
+import { updateMultisigRouteProcess } from './multisig'
 import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
-import { getSubstatusMessage, waitForReceivingTransaction } from './utils'
-
-import ConfigService from '../services/ConfigService'
-import { updateMultisigRouteProcess } from './multisig'
+import { getSubstatusMessage } from './utils'
+import { waitForReceivingTransaction } from './waitForReceivingTransaction'
 
 export class StepExecutionManager {
   allowUserInteraction = true
@@ -33,19 +37,20 @@ export class StepExecutionManager {
   }
 
   execute = async ({
-    signer,
+    walletClient,
     step,
     statusManager,
     settings,
   }: ExecutionParams): Promise<Execution> => {
+    const client = walletClient.extend(publicActions)
     const config = ConfigService.getInstance().getConfig()
-    const isMultisigSigner = !!config.multisigConfig?.isMultisigSigner
+    const isMultisigWalletClient = !!config.multisig?.isMultisigWalletClient
 
     const multisigBatchTransactions: BaseTransaction[] = []
 
     const shouldBatchTransactions =
-      config.multisigConfig?.shouldBatchTransactions &&
-      !!config.multisigConfig.sendBatchTransaction
+      config.multisig?.shouldBatchTransactions &&
+      !!config.multisig.sendBatchTransaction
 
     step.execution = statusManager.initExecutionObject(step)
 
@@ -66,11 +71,11 @@ export class StepExecutionManager {
     const checkForAllowance =
       !existingProcess?.txHash &&
       !isZeroAddress(step.action.fromToken.address) &&
-      (shouldBatchTransactions || !isMultisigSigner)
+      (shouldBatchTransactions || !isMultisigWalletClient)
 
     if (checkForAllowance) {
-      const populatedTransaction = await checkAllowance(
-        signer,
+      const data = await checkAllowance(
+        client,
         step,
         statusManager,
         settings,
@@ -79,19 +84,14 @@ export class StepExecutionManager {
         shouldBatchTransactions
       )
 
-      if (populatedTransaction) {
-        const { to, data } = populatedTransaction
-
-        if (to && data) {
-          // allowance doesn't need value
-          const cleanedPopulatedTransaction: BaseTransaction = {
-            value: BigNumber.from(0).toString(),
-            to,
-            data,
-          }
-
-          multisigBatchTransactions.push(cleanedPopulatedTransaction)
+      if (data) {
+        // allowance doesn't need value
+        const baseTransaction: BaseTransaction = {
+          to: step.action.fromToken.address,
+          data,
         }
+
+        multisigBatchTransactions.push(baseTransaction)
       }
     }
 
@@ -104,17 +104,17 @@ export class StepExecutionManager {
       )
 
       try {
-        if (isMultisigSigner && multisigProcess) {
+        if (isMultisigWalletClient && multisigProcess) {
           if (!multisigProcess) {
             throw new ValidationError('Multisig process is undefined.')
           }
-          if (!config.multisigConfig?.getMultisigTransactionDetails) {
+          if (!config.multisig?.getMultisigTransactionDetails) {
             throw new ValidationError(
               '"getMultisigTransactionDetails()" is missing in Multisig config.'
             )
           }
 
-          const multisigTxHash = multisigProcess.multisigTxHash
+          const multisigTxHash = multisigProcess.multisigTxHash as Hash
 
           if (!multisigTxHash) {
             // need to check what happens in failed tx
@@ -127,46 +127,43 @@ export class StepExecutionManager {
             multisigTxHash,
             step,
             statusManager,
-            process,
+            process.type,
             fromChain
           )
         }
 
-        let transaction: Partial<TransactionResponse>
+        let txHash: Hash
         if (process.txHash) {
           // Make sure that the chain is still correct
-          const updatedSigner = await switchChain(
-            signer,
+          const updatedWalletClient = await switchChain(
+            walletClient,
             statusManager,
             step,
             settings.switchChainHook,
             this.allowUserInteraction
           )
 
-          if (!updatedSigner) {
+          if (!updatedWalletClient) {
             // Chain switch was not successful, stop execution here
             return step.execution
           }
 
-          signer = updatedSigner
+          walletClient = updatedWalletClient
 
           // Load exiting transaction
-          transaction = await getProvider(signer).getTransaction(process.txHash)
+          txHash = process.txHash as Hash
         } else {
           process = statusManager.updateProcess(step, process.type, 'STARTED')
 
           // Check balance
-          await checkBalance(signer, step)
+          await checkBalance(client.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
-            const personalizedStep = await personalizeStep(signer, step)
-            const updatedStep = await ApiService.getStepTransaction(
-              personalizedStep
-            )
+            const updatedStep = await ApiService.getStepTransaction(step)
             const comparedStep = await stepComparison(
               statusManager,
-              personalizedStep,
+              step,
               updatedStep,
               settings,
               this.allowUserInteraction
@@ -177,7 +174,30 @@ export class StepExecutionManager {
             }
           }
 
-          const { transactionRequest } = step
+          let transactionRequest: TransactionRequest = {
+            to: step.transactionRequest?.to as Hash,
+            from: step.transactionRequest?.from as Hash,
+            data: step.transactionRequest?.data as Hash,
+            value: step.transactionRequest?.value
+              ? BigInt(step.transactionRequest.value as string)
+              : undefined,
+            maxPriorityFeePerGas:
+              walletClient.account?.type === 'local'
+                ? await getMaxPriorityFeePerGas(client as PublicClient)
+                : undefined,
+            // gas: step.transactionRequest?.gasLimit
+            //   ? BigInt(step.transactionRequest.gasLimit as string)
+            //   : undefined,
+            // gasPrice: step.transactionRequest?.gasPrice
+            //   ? BigInt(step.transactionRequest.gasPrice as string)
+            //   : undefined,
+            // maxFeePerGas: step.transactionRequest?.maxFeePerGas
+            //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
+            //   : undefined,
+            // maxPriorityFeePerGas: step.transactionRequest?.maxPriorityFeePerGas
+            //   ? BigInt(step.transactionRequest.maxPriorityFeePerGas as string)
+            //   : undefined,
+          }
 
           if (!transactionRequest) {
             throw new TransactionError(
@@ -188,20 +208,20 @@ export class StepExecutionManager {
 
           // STEP 3: Send the transaction
           // Make sure that the chain is still correct
-          const updatedSigner = await switchChain(
-            signer,
+          const updatedWalletClient = await switchChain(
+            walletClient,
             statusManager,
             step,
             settings.switchChainHook,
             this.allowUserInteraction
           )
 
-          if (!updatedSigner) {
+          if (!updatedWalletClient) {
             // Chain switch was not successful, stop execution here
             return step.execution!
           }
 
-          signer = updatedSigner
+          walletClient = updatedWalletClient
 
           process = statusManager.updateProcess(
             step,
@@ -214,56 +234,28 @@ export class StepExecutionManager {
           }
 
           if (settings.updateTransactionRequestHook) {
-            const customConfig: TransactionRequest =
+            const customizedTransactionRequest: TransactionRequest =
               await settings.updateTransactionRequestHook(transactionRequest)
 
-            transactionRequest.gasLimit = customConfig.gasLimit
-            transactionRequest.gasPrice = customConfig.gasPrice
-            transactionRequest.maxPriorityFeePerGas =
-              customConfig.maxPriorityFeePerGas
-            transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
-          } else {
-            try {
-              const estimatedGasLimit = await signer.estimateGas(
-                transactionRequest
-              )
-
-              if (estimatedGasLimit) {
-                transactionRequest.gasLimit = BigNumber.from(
-                  `${(BigInt(estimatedGasLimit.toString()) * 125n) / 100n}`
-                )
-              }
-
-              // Fetch latest gasPrice from provider and use it
-              const gasPrice = await signer.getGasPrice()
-
-              if (gasPrice) {
-                transactionRequest.gasPrice = gasPrice
-              }
-            } catch (error) {}
+            transactionRequest = {
+              ...transactionRequest,
+              ...customizedTransactionRequest,
+            }
           }
-
-          // Submit the transaction
 
           if (
             shouldBatchTransactions &&
-            config.multisigConfig?.sendBatchTransaction
+            config.multisig?.sendBatchTransaction
           ) {
-            const { to, data, value } = await signer.populateTransaction(
-              transactionRequest
-            )
-
-            const isValidTransaction = to && data
-
-            if (isValidTransaction) {
+            if (transactionRequest.to && transactionRequest.data) {
               const populatedTransaction: BaseTransaction = {
-                value: value?.toString() ?? BigNumber.from(0).toString(),
-                to,
-                data: data.toString(),
+                value: transactionRequest.value,
+                to: transactionRequest.to,
+                data: transactionRequest.data,
               }
               multisigBatchTransactions.push(populatedTransaction)
 
-              transaction = await config.multisigConfig?.sendBatchTransaction(
+              txHash = await config.multisig?.sendBatchTransaction(
                 multisigBatchTransactions
               )
             } else {
@@ -273,17 +265,23 @@ export class StepExecutionManager {
               )
             }
           } else {
-            transaction = await signer.sendTransaction(transactionRequest)
+            txHash = await client.sendTransaction({
+              to: transactionRequest.to as Address,
+              account: client.account!,
+              data: transactionRequest.data,
+              maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+              chain: walletClient.chain,
+            })
           }
 
           // STEP 4: Wait for the transaction
-          if (isMultisigSigner) {
+          if (isMultisigWalletClient) {
             process = statusManager.updateProcess(
               step,
               process.type,
               'ACTION_REQUIRED',
               {
-                multisigTxHash: transaction.hash,
+                multisigTxHash: txHash,
               }
             )
           } else {
@@ -292,44 +290,44 @@ export class StepExecutionManager {
               process.type,
               'PENDING',
               {
-                txHash: transaction.hash,
-                txLink:
-                  fromChain.metamask.blockExplorerUrls[0] +
-                  'tx/' +
-                  transaction.hash,
+                txHash: txHash,
+                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               }
             )
           }
         }
 
-        await transaction.wait?.()
+        const transactionReceipt = await client.waitForTransactionReceipt({
+          hash: txHash,
+          onReplaced(response) {
+            txHash = response.transaction.hash
+            statusManager.updateProcess(step, process.type, 'PENDING', {
+              txHash: response.transaction.hash,
+              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+            })
+          },
+        })
 
-        // if it's multisig signer and the process is in ACTION_REQUIRED
+        // if it's multisig wallet client and the process is in ACTION_REQUIRED
         // then signatures are still needed
         if (
-          isMultisigSigner &&
+          isMultisigWalletClient &&
           process.status === 'ACTION_REQUIRED' &&
-          transaction.hash
+          txHash
         ) {
-          // Return the execution object without updating the process
-          // The execution would progress once all multisigs signer approve
-
           await updateMultisigRouteProcess(
-            transaction.hash,
+            txHash,
             step,
             statusManager,
-            process,
+            process.type,
             fromChain
           )
         }
 
-        if (!isMultisigSigner) {
+        if (!isMultisigWalletClient) {
           process = statusManager.updateProcess(step, process.type, 'PENDING', {
-            txHash: transaction.hash,
-            txLink:
-              fromChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              transaction.hash,
+            txHash: txHash,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
           })
         }
 
@@ -337,26 +335,16 @@ export class StepExecutionManager {
           process = statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        if (e.code === 'TRANSACTION_REPLACED' && e.replacement) {
-          process = statusManager.updateProcess(step, process.type, 'DONE', {
-            txHash: e.replacement.hash,
-            txLink:
-              fromChain.metamask.blockExplorerUrls[0] +
-              'tx/' +
-              e.replacement.hash,
-          })
-        } else {
-          const error = await parseError(e, step, process)
-          process = statusManager.updateProcess(step, process.type, 'FAILED', {
-            error: {
-              message: error.message,
-              htmlMessage: error.htmlMessage,
-              code: error.code,
-            },
-          })
-          statusManager.updateExecution(step, 'FAILED')
-          throw error
-        }
+        const error = await parseError(e, step, process)
+        process = statusManager.updateProcess(step, process.type, 'FAILED', {
+          error: {
+            message: error.message,
+            htmlMessage: error.htmlMessage,
+            code: error.code,
+          },
+        })
+        statusManager.updateExecution(step, 'FAILED')
+        throw error
       }
     }
 
@@ -390,10 +378,7 @@ export class StepExecutionManager {
           statusResponse.substatusMessage ||
           getSubstatusMessage(statusResponse.status, statusResponse.substatus),
         txHash: statusReceiving?.txHash,
-        txLink:
-          toChain.metamask.blockExplorerUrls[0] +
-          'tx/' +
-          statusReceiving?.txHash,
+        txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
       })
 
       statusManager.updateExecution(step, 'DONE', {

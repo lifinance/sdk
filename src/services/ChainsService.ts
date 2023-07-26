@@ -1,4 +1,4 @@
-import { ChainId, ExtendedChain } from '@lifi/types'
+import type { ChainId, ExtendedChain } from '@lifi/types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 

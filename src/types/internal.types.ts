@@ -1,27 +1,24 @@
-import { TransactionRequest } from '@ethersproject/abstract-provider'
-import { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
-import BigNumber from 'bignumber.js'
-import { Signer } from 'ethers'
-import { ChainId } from '.'
-import { StatusManager } from '../execution/StatusManager'
-import { StepExecutor } from '../execution/StepExecutor'
+import type { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
+import type { Hash, Hex, WalletClient } from 'viem'
+import type { ChainId } from '.'
+import type { StatusManager } from '../execution/StatusManager'
+import type { StepExecutor } from '../execution/StepExecutor'
 
-export interface TokenWithAmounts extends Token {
-  amount?: BigNumber
-  amountRendered?: string
-}
-
-export type ParsedReceipt = {
-  fromAmount?: string
-  toAmount: string
-  gasUsed: string
-  gasPrice: string
-  gasFee: string
-  toTokenAddress?: string
+export type TransactionRequest = {
+  chainId?: number
+  to?: string
+  from?: string
+  nonce?: number
+  data?: Hex
+  value?: bigint
+  gas?: bigint
+  gasPrice?: bigint
+  maxFeePerGas?: bigint
+  maxPriorityFeePerGas?: bigint
 }
 
 export interface ExecutionParams {
-  signer: Signer
+  walletClient: WalletClient
   step: LifiStep
   statusManager: StatusManager
   settings: InternalExecutionSettings
@@ -42,35 +39,29 @@ export type Config = {
   userId?: string
   integrator: string
   widgetVersion?: string
-  multisigConfig?: MultisigConfig
+  multisig?: MultisigConfig
 }
 
 export interface MultisigTxDetails {
   status: 'DONE' | 'FAILED' | 'PENDING' | 'CANCELLED'
   message: string
-  txHash?: string
-}
-
-export interface MultisigTransactionResponse {
-  hash: string
+  txHash?: Hash
 }
 
 export interface BaseTransaction {
   to: string
-  value: string
+  value?: bigint
   data: string
 }
 
 export interface MultisigConfig {
-  isMultisigSigner: boolean
+  isMultisigWalletClient: boolean
   getMultisigTransactionDetails: (
-    txHash: string,
+    txHash: Hash,
     fromChainId: number,
     updateIntermediateStatus?: () => void
   ) => Promise<MultisigTxDetails>
-  sendBatchTransaction?: (
-    batchTransactions: BaseTransaction[]
-  ) => Promise<MultisigTransactionResponse>
+  sendBatchTransaction?: (batchTransactions: BaseTransaction[]) => Promise<Hash>
   shouldBatchTransactions?: boolean
 }
 
@@ -89,7 +80,7 @@ export type ConfigUpdate = {
 
 export type SwitchChainHook = (
   requiredChainId: number
-) => Promise<Signer | undefined>
+) => Promise<WalletClient | undefined>
 
 export interface AcceptSlippageUpdateHookParams {
   toToken: Token
@@ -137,11 +128,6 @@ export type RouteExecutionDictionary = Partial<
 export type RouteExecutionPromiseDictionary = Partial<
   Record<string, Promise<Route>>
 >
-
-export type RevokeTokenData = {
-  token: Token
-  approvalAddress: string
-}
 
 export interface InteractionSettings {
   allowInteraction?: boolean

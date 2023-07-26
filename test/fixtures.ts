@@ -39,7 +39,7 @@ export const buildStepObject = ({
     toChainId: 137,
     fromToken: SOME_TOKEN,
     toToken: SOME_OTHER_TOKEN,
-    fromAmount: '1000000',
+    fromAmount: '1500000',
     slippage: 0.03,
     fromAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
     toAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',

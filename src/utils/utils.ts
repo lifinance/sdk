@@ -1,81 +1,9 @@
-import { TransactionReceipt } from '@ethersproject/providers'
-import { LifiStep, Token } from '@lifi/types'
-import BigNumber from 'bignumber.js'
-import { Signer, constants } from 'ethers'
+import { AddressZero, AlternativeAddressZero } from '../constants'
 
-import { getRpcProvider } from '../connectors'
-import { ChainId } from '../types'
-
-export const sleep = (mills: number): Promise<undefined> => {
+export const wait = (ms: number): Promise<undefined> => {
   return new Promise((resolve) => {
-    setTimeout(resolve, mills)
+    setTimeout(resolve, ms)
   })
-}
-
-export const personalizeStep = async (
-  signer: Signer,
-  step: LifiStep
-): Promise<LifiStep> => {
-  if (step.action.toAddress && step.action.fromAddress) {
-    return step
-  }
-
-  const address = await signer.getAddress()
-  const fromAddress = step.action.fromAddress || address
-  const toAddress = step.action.toAddress || address
-
-  return {
-    ...step,
-    action: {
-      ...step.action,
-      fromAddress,
-      toAddress,
-    },
-  }
-}
-
-export const splitListIntoChunks = <T>(list: T[], chunkSize: number): T[][] =>
-  list.reduce((resultList: T[][], item, index) => {
-    const chunkIndex = Math.floor(index / chunkSize)
-
-    if (!resultList[chunkIndex]) {
-      resultList[chunkIndex] = [] // start a new chunk
-    }
-
-    resultList[chunkIndex].push(item)
-
-    return resultList
-  }, [])
-
-export const formatTokenAmountOnly = (
-  token: Token,
-  amount: string | BigNumber | undefined
-) => {
-  if (!amount) {
-    return '0.0'
-  }
-
-  let floated
-  if (typeof amount === 'string') {
-    if (amount === '0') {
-      return '0.0'
-    }
-
-    floated = new BigNumber(amount).shiftedBy(-token.decimals)
-  } else {
-    floated = amount
-
-    if (floated.isZero()) {
-      return '0.0'
-    }
-  }
-
-  // show at least 4 decimal places and at least two non-zero digests
-  let decimalPlaces = 3
-  while (floated.lt(1 / 10 ** decimalPlaces)) {
-    decimalPlaces++
-  }
-  return floated.toFixed(decimalPlaces + 1, 1)
 }
 
 /**
@@ -93,33 +21,15 @@ export const repeatUntilDone = async <T>(
   while (!result) {
     result = await toRepeat()
     if (!result) {
-      await sleep(timeout)
+      await wait(timeout)
     }
   }
 
   return result
 }
 
-/**
- * Loads a transaction receipt using the rpc for the given chain id
- * @param chainId The chain id where the transaction should be loaded from
- * @param txHash The hash of the transaction
- * @returns TransactionReceipt
- */
-export const loadTransactionReceipt = async (
-  chainId: ChainId,
-  txHash: string
-): Promise<TransactionReceipt> => {
-  const rpc = await getRpcProvider(chainId)
-  const tx = await rpc.getTransaction(txHash)
-  return tx.wait()
-}
-
 export const isZeroAddress = (address: string): boolean => {
-  if (
-    address === constants.AddressZero ||
-    address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
-  ) {
+  if (address === AddressZero || address === AlternativeAddressZero) {
     return true
   }
   return false
@@ -127,8 +37,8 @@ export const isZeroAddress = (address: string): boolean => {
 
 export const isNativeTokenAddress = (address: string): boolean => {
   if (
-    address === constants.AddressZero ||
-    address === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ||
+    address === AddressZero ||
+    address === AlternativeAddressZero ||
     // CELO native token
     address === '0x471ece3750da237f93b8e339c536989b8978a438'
   ) {

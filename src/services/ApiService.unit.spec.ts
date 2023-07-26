@@ -1,14 +1,13 @@
-import {
+import type {
   Action,
-  ChainId,
-  CoinKey,
   ConnectionsRequest,
   Estimate,
-  findDefaultToken,
   LifiStep,
   RoutesRequest,
   StepTool,
+  Token,
 } from '@lifi/types'
+import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import {
@@ -508,10 +507,10 @@ describe('ApiService', () => {
     }): Action => ({
       fromChainId,
       fromAmount,
-      fromToken,
+      fromToken: fromToken as Token,
       fromAddress,
       toChainId,
-      toToken,
+      toToken: toToken as Token,
       toAddress,
       slippage,
     })

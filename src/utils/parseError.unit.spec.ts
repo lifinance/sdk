@@ -105,7 +105,7 @@ describe('parseError', () => {
 
         expect(parsedError.htmlMessage).toEqual(
           // eslint-disable-next-line max-len
-          "Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
+          "Transaction was not sent, your funds are still in your wallet (1.5 USDC on Polygon), please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
         )
       })
     })
@@ -124,7 +124,7 @@ describe('parseError', () => {
 
         expect(parsedError.htmlMessage).toEqual(
           // eslint-disable-next-line max-len
-          'Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn\'t work, it is safe to delete this transfer and start a new one.<br>You can check the failed transaction&nbsp;<a href="https://example.com" target="_blank" rel="nofollow noreferrer">here</a>.'
+          'Transaction was not sent, your funds are still in your wallet (1.5 USDC on Polygon), please retry.<br/>If it still doesn\'t work, it is safe to delete this transfer and start a new one.<br>You can check the failed transaction&nbsp;<a href="https://example.com" target="_blank" rel="nofollow noreferrer">here</a>.'
         )
       })
     })

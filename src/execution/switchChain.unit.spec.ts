@@ -1,12 +1,13 @@
-import { LifiStep } from '@lifi/types'
-import { Signer } from 'ethers'
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest'
+import type { LifiStep } from '@lifi/types'
+import type { WalletClient } from 'viem'
+import type { Mock } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../../test/fixtures'
-import { InternalExecutionSettings } from '../types'
-import { StatusManager } from './StatusManager'
+import type { InternalExecutionSettings } from '../types'
+import type { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
-let signer: Signer,
+let walletClient: WalletClient,
   step: LifiStep,
   statusManager: StatusManager,
   hooks: InternalExecutionSettings,
@@ -19,9 +20,9 @@ let signer: Signer,
 describe('switchChain', () => {
   beforeEach(() => {
     getChainIdMock = vi.fn()
-    signer = {
+    walletClient = {
       getChainId: getChainIdMock,
-    } as unknown as Signer
+    } as unknown as WalletClient
 
     switchChainHookMock = vi.fn()
     hooks = {
@@ -47,16 +48,16 @@ describe('switchChain', () => {
       getChainIdMock.mockResolvedValue(step.action.fromChainId)
     })
 
-    it('should return the signer and do nothing else', async () => {
-      const updatedSigner = await switchChain(
-        signer,
+    it('should return the WalletClient and do nothing else', async () => {
+      const updatedWalletClient = await switchChain(
+        walletClient,
         statusManager,
         step,
         hooks.switchChainHook,
         true
       )
 
-      expect(updatedSigner).toEqual(signer)
+      expect(updatedWalletClient).toEqual(walletClient)
       expect(statusManager.initExecutionObject).not.toHaveBeenCalled()
       expect(hooks.switchChainHook).not.toHaveBeenCalled()
     })
@@ -70,15 +71,15 @@ describe('switchChain', () => {
 
     describe('when allowUserInteraction is false', () => {
       it('should initialize the status manager and abort', async () => {
-        const updatedSigner = await switchChain(
-          signer,
+        const updatedWalletClient = await switchChain(
+          walletClient,
           statusManager,
           step,
           hooks.switchChainHook,
           false
         )
 
-        expect(updatedSigner).toBeUndefined()
+        expect(updatedWalletClient).toBeUndefined()
 
         expect(statusManager.initExecutionObject).toHaveBeenCalled()
         expect(statusManager.findOrCreateProcess).toHaveBeenCalled()
@@ -97,7 +98,7 @@ describe('switchChain', () => {
         it('should throw the error', async () => {
           await expect(
             switchChain(
-              signer,
+              walletClient,
               statusManager,
               step,
               hooks.switchChainHook,
@@ -114,13 +115,13 @@ describe('switchChain', () => {
 
       describe("when the switchChainHook doesn't change the chain", () => {
         beforeEach(() => {
-          switchChainHookMock.mockResolvedValue(signer)
+          switchChainHookMock.mockResolvedValue(walletClient)
         })
 
         it('should throw the error', async () => {
           await expect(
             switchChain(
-              signer,
+              walletClient,
               statusManager,
               step,
               hooks.switchChainHook,
@@ -136,19 +137,19 @@ describe('switchChain', () => {
       })
 
       describe('when the switchChainHook changes the chain', () => {
-        let newSigner: Signer
+        let newWalletClient: WalletClient
 
         beforeEach(() => {
-          newSigner = {
+          newWalletClient = {
             getChainId: () => Promise.resolve(step.action.fromChainId),
-          } as unknown as Signer
+          } as unknown as WalletClient
 
-          switchChainHookMock.mockResolvedValue(newSigner)
+          switchChainHookMock.mockResolvedValue(newWalletClient)
         })
 
-        it('should return the updated signer', async () => {
-          const updatedSigner = await switchChain(
-            signer,
+        it('should return the updated WalletClient', async () => {
+          const updatedWalletClient = await switchChain(
+            walletClient,
             statusManager,
             step,
             hooks.switchChainHook,
@@ -158,7 +159,7 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(updatedSigner).toEqual(newSigner)
+          expect(updatedWalletClient).toEqual(newWalletClient)
           expect(statusManager.updateProcess).toHaveBeenCalledWith(
             step,
             'SWITCH_CHAIN',

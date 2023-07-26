@@ -1,10 +1,10 @@
-import {
+import type {
   Chain,
-  ChainId,
   Config,
   ConfigUpdate,
   InternalExecutionSettings,
 } from '../types'
+import { ChainId } from '../types'
 
 const DefaultExecutionSettings: InternalExecutionSettings = {
   /* eslint-disable-next-line @typescript-eslint/no-empty-function */
@@ -111,8 +111,7 @@ export default class ConfigService {
     this.config.integrator = configUpdate.integrator || this.config.integrator
     this.config.widgetVersion =
       configUpdate.widgetVersion || this.config.widgetVersion
-    this.config.multisigConfig =
-      configUpdate.multisigConfig || this.config.multisigConfig
+    this.config.multisig = configUpdate.multisigConfig || this.config.multisig
 
     return this.config
   }

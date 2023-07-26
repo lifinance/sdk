@@ -1,7 +1,9 @@
-import { LiFi, ConfigUpdate, StatusResponse, LifiStep } from '@lifi/sdk'
-import { BigNumber, ethers, Signer } from 'ethers'
-import * as readline from 'readline'
+import type { ConfigUpdate, LifiStep, StatusResponse } from '@lifi/sdk'
+import { LiFi } from '@lifi/sdk'
 import { config } from 'dotenv'
+import type { Signer } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
+import * as readline from 'readline'
 
 config({
   path: '../.env',
