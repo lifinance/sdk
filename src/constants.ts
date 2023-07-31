@@ -4,3 +4,7 @@ export const AlternativeAddressZero =
 export const MaxUint256: bigint = BigInt(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 )
+/**
+ * Cronos require bigger multicall chunks than default 1024 (1 KB)
+ */
+export const MulticallBatchSize = 8192 // 8 Kilobytes (KB)
