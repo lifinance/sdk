@@ -34,7 +34,7 @@ export const setAllowance = async (
     account: walletClient.account!,
     data,
     maxPriorityFeePerGas,
-    chain: walletClient.chain,
+    chain: null,
   })
 }
 

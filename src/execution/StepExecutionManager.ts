@@ -265,12 +265,12 @@ export class StepExecutionManager {
               )
             }
           } else {
-            txHash = await client.sendTransaction({
+            txHash = await walletClient.sendTransaction({
               to: transactionRequest.to as Address,
-              account: client.account!,
+              account: walletClient.account!,
               data: transactionRequest.data,
               maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-              chain: walletClient.chain,
+              chain: null,
             })
           }
 
