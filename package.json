@@ -77,7 +77,6 @@
   },
   "dependencies": {
     "@lifi/types": "^8.2.0",
-    "big.js": "^6.2.1",
     "eth-rpc-errors": "^4.0.3",
     "viem": "^1.5.0"
   },
@@ -85,7 +84,6 @@
     "@commitlint/cli": "^17.6.7",
     "@commitlint/config-conventional": "^17.6.7",
     "@mswjs/interceptors": "^0.22.16",
-    "@types/big.js": "^6.1.6",
     "@types/ws": "^8.5.5",
     "@typescript-eslint/eslint-plugin": "^6.2.1",
     "@typescript-eslint/parser": "^6.2.1",

@@ -5,7 +5,6 @@ import type {
   StatusMessage,
   Substatus,
 } from '@lifi/types'
-import Big from 'big.js'
 
 const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
   TOKEN_ALLOWANCE: {
@@ -86,17 +85,19 @@ export function checkStepSlippageThreshold(
   oldStep: LifiStep,
   newStep: LifiStep
 ): boolean {
-  const setSlippage = Big(oldStep.action.slippage)
-  const oldEstimatedToAmount = Big(oldStep.estimate.toAmountMin)
-  const newEstimatedToAmount = Big(newStep.estimate.toAmountMin)
-  const amountDifference = oldEstimatedToAmount.minus(newEstimatedToAmount)
+  const setSlippage = oldStep.action.slippage
+  const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)
+  const newEstimatedToAmount = BigInt(newStep.estimate.toAmountMin)
+  const amountDifference = oldEstimatedToAmount - newEstimatedToAmount
   // oldEstimatedToAmount can be 0 when we use conract calls
-  let actualSlippage = Big(0)
-  if (oldEstimatedToAmount.gt(0)) {
-    actualSlippage = amountDifference.div(oldEstimatedToAmount)
+  let actualSlippage = 0
+  if (oldEstimatedToAmount > 0) {
+    actualSlippage =
+      Number((amountDifference * 1_000_000_000n) / oldEstimatedToAmount) /
+      1_000_000_000
   }
   return (
-    newEstimatedToAmount.gte(oldEstimatedToAmount) &&
-    actualSlippage.lte(setSlippage)
+    newEstimatedToAmount >= oldEstimatedToAmount &&
+    actualSlippage <= setSlippage
   )
 }
