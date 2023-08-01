@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.2](https://github.com/lifinance/sdk/compare/v2.2.1...v2.2.2) (2023-08-01)
+
+
+### Bug Fixes
+
+* integrator string is not applied in quote requests ([f76dbe6](https://github.com/lifinance/sdk/commit/f76dbe6d29e0bda6d578c9092f0b2d40e8ac1231))
+
 ### [2.2.1](https://github.com/lifinance/sdk/compare/v2.2.0...v2.2.1) (2023-07-24)
 
 
