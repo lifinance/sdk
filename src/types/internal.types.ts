@@ -44,8 +44,11 @@ export type Config = {
 
 export interface MultisigTxDetails {
   status: 'DONE' | 'FAILED' | 'PENDING' | 'CANCELLED'
-  message: string
   txHash?: Hash
+}
+
+export interface MultisigTransactionResponse {
+  hash: string
 }
 
 export interface BaseTransaction {
