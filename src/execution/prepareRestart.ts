@@ -1,6 +1,6 @@
 import { publicActions, type WalletClient } from 'viem'
 import type { LifiStep, Route } from '../types'
-import { LifiErrorCode } from '../utils/errors'
+import { LiFiErrorCode } from '../utils/errors'
 
 export const prepareRestart = async (
   route: Route,
@@ -22,10 +22,10 @@ const handleErrorType = async (walletClient: WalletClient, step: LifiStep) => {
   const client = walletClient.extend(publicActions)
 
   const isGasLimitError = step.execution?.process.some(
-    (p) => p.error?.code === LifiErrorCode.GasLimitError
+    (p) => p.error?.code === LiFiErrorCode.GasLimitError
   )
   const isGasPriceError = step.execution?.process.some(
-    (p) => p.error?.code === LifiErrorCode.TransactionUnderpriced
+    (p) => p.error?.code === LiFiErrorCode.TransactionUnderpriced
   )
 
   const { transactionRequest } = step

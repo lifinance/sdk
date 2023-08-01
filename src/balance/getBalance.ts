@@ -85,7 +85,6 @@ const getBalanceDefault = async (
     if (isZeroAddress(token.address)) {
       return client.getBalance({
         address: walletAddress as Address,
-        blockNumber,
       })
     }
     return client.readContract({
@@ -93,7 +92,6 @@ const getBalanceDefault = async (
       abi: balanceOfAbi,
       functionName: 'balanceOf',
       args: [walletAddress],
-      blockNumber,
     }) as Promise<bigint>
   })
 

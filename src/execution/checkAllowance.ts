@@ -1,4 +1,4 @@
-import type { Address, Hash, WalletClient } from 'viem'
+import type { Address, Hash, ReplacementReason, WalletClient } from 'viem'
 import { maxUint256, publicActions } from 'viem'
 import { getAllowance, setAllowance } from '../allowance'
 import type { StatusManager } from '../execution/StatusManager'
@@ -9,6 +9,7 @@ import type {
   Process,
   ProcessType,
 } from '../types'
+import { LiFiErrorCode, TransactionError } from '../utils'
 import { parseError } from '../utils/parseError'
 
 export const checkAllowance = async (
@@ -128,15 +129,24 @@ const waitForApprovalTransaction = async (
     txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
   })
 
+  let replacementReason: ReplacementReason | undefined
   const transactionReceipt = await client.waitForTransactionReceipt({
     hash: txHash,
     onReplaced(response) {
+      replacementReason = response.reason
       statusManager.updateProcess(step, processType, 'PENDING', {
         txHash: response.transaction.hash,
         txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
       })
     },
   })
+
+  if (replacementReason === 'cancelled') {
+    throw new TransactionError(
+      LiFiErrorCode.TransactionCanceled,
+      'User canceled transaction.'
+    )
+  }
 
   statusManager.updateProcess(step, processType, 'DONE', {
     txHash: transactionReceipt.transactionHash,

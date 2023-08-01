@@ -10,8 +10,8 @@ import {
   ErrorMessage,
   EthersErrorMessage,
   EthersErrorType,
-  LifiError,
-  LifiErrorCode,
+  LiFiError,
+  LiFiErrorCode,
   MetaMaskProviderErrorCode,
   NotFoundError,
   ProviderError,
@@ -104,63 +104,14 @@ export const parseError = async (
   e: any,
   step?: LifiStep,
   process?: Process
-): Promise<LifiError> => {
-  if (e instanceof LifiError) {
+): Promise<LiFiError> => {
+  if (e instanceof LiFiError) {
     return e
   }
 
-  if (e.code) {
-    // MetaMask errors have a numeric error code
-    if (typeof e.code === 'number') {
-      if (Object.values(MetaMaskErrorCodes.rpc).includes(e.code)) {
-        // rpc errors
-        // underpriced errors are sent as internal errors, so we need to parse the message manually
-        if (
-          e.code === MetaMaskErrorCodes.rpc.internal &&
-          (e.message?.includes(EthersErrorMessage.Underpriced) ||
-            e.message?.includes(EthersErrorMessage.LowReplacementFee))
-        ) {
-          return new RPCError(
-            LifiErrorCode.TransactionUnderpriced,
-            ErrorMessage.TransactionUnderpriced,
-            await getTransactionNotSentMessage(step, process),
-            e.stack
-          )
-        }
+  const errorCode = e.code || e.cause?.code
 
-        if (
-          e.message?.includes(EthersErrorMessage.LowGas) ||
-          e.message?.includes(EthersErrorMessage.OutOfGas)
-        ) {
-          return new TransactionError(
-            LifiErrorCode.GasLimitError,
-            ErrorMessage.GasLimitLow,
-            await getTransactionNotSentMessage(step, process),
-            e.stack
-          )
-        }
-
-        return new RPCError(
-          e.code,
-          getMessageFromCode(e.code),
-          await getTransactionNotSentMessage(step, process),
-          e.stack
-        )
-      }
-
-      // provider errors
-      if (Object.values(MetaMaskErrorCodes.provider).includes(e.code)) {
-        return new ProviderError(
-          e.code,
-          getMessageFromCode(e.code),
-          await getTransactionNotSentMessage(step, process),
-          e.stack
-        )
-      }
-    }
-  }
-
-  switch (e.code) {
+  switch (errorCode) {
     case EthersErrorType.CallExecption:
       const defaultErrorMessage = await getTransactionNotSentMessage(
         step,
@@ -185,7 +136,7 @@ export const parseError = async (
 
         if (isAllowanceError) {
           return new TransactionError(
-            LifiErrorCode.AllowanceRequired,
+            LiFiErrorCode.AllowanceRequired,
             e.reason,
             errorMessage,
             e.stack
@@ -196,7 +147,7 @@ export const parseError = async (
         throw new Error(e)
       } catch (error) {
         return new ProviderError(
-          LifiErrorCode.TransactionFailed,
+          LiFiErrorCode.TransactionFailed,
           e.reason,
           defaultErrorMessage,
           e.stack
@@ -204,7 +155,7 @@ export const parseError = async (
       }
     case EthersErrorType.InsufficientFunds:
       return new TransactionError(
-        LifiErrorCode.InsufficientFunds,
+        LiFiErrorCode.InsufficientFunds,
         e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
@@ -212,35 +163,97 @@ export const parseError = async (
     case EthersErrorType.ActionRejected:
     case MetaMaskProviderErrorCode.userRejectedRequest:
       return new TransactionError(
-        LifiErrorCode.TransactionRejected,
+        LiFiErrorCode.SignatureRejected,
         e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
       )
-    case LifiErrorCode.TransactionUnprepared:
+    case LiFiErrorCode.TransactionUnprepared:
       return new TransactionError(
-        LifiErrorCode.TransactionUnprepared,
+        LiFiErrorCode.TransactionUnprepared,
         e.message,
         await getTransactionNotSentMessage(step, process),
         e.stack
       )
-    case LifiErrorCode.ValidationError:
+    case LiFiErrorCode.ValidationError:
       return new TransactionError(
-        LifiErrorCode.ValidationError,
+        LiFiErrorCode.ValidationError,
         e.message,
         e.htmlMessage
       )
-    default:
+    case LiFiErrorCode.TransactionCanceled:
+      return new TransactionError(
+        LiFiErrorCode.TransactionCanceled,
+        e.message,
+        e.htmlMessage
+      )
+    case LiFiErrorCode.ExchangeRateUpdateCanceled:
+      return new TransactionError(
+        LiFiErrorCode.ExchangeRateUpdateCanceled,
+        e.message,
+        e.htmlMessage
+      )
+    default: {
+      if (errorCode && typeof errorCode === 'number') {
+        if (Object.values(MetaMaskErrorCodes.rpc).includes(errorCode as any)) {
+          // rpc errors
+          // underpriced errors are sent as internal errors, so we need to parse the message manually
+          if (
+            errorCode === MetaMaskErrorCodes.rpc.internal &&
+            (e.message?.includes(EthersErrorMessage.Underpriced) ||
+              e.message?.includes(EthersErrorMessage.LowReplacementFee))
+          ) {
+            return new RPCError(
+              LiFiErrorCode.TransactionUnderpriced,
+              ErrorMessage.TransactionUnderpriced,
+              await getTransactionNotSentMessage(step, process),
+              e.stack
+            )
+          }
+
+          if (
+            e.message?.includes(EthersErrorMessage.LowGas) ||
+            e.message?.includes(EthersErrorMessage.OutOfGas)
+          ) {
+            return new TransactionError(
+              LiFiErrorCode.GasLimitError,
+              ErrorMessage.GasLimitLow,
+              await getTransactionNotSentMessage(step, process),
+              e.stack
+            )
+          }
+
+          return new RPCError(
+            errorCode,
+            getMessageFromCode(errorCode),
+            await getTransactionNotSentMessage(step, process),
+            e.stack
+          )
+        }
+
+        // provider errors
+        if (
+          Object.values(MetaMaskErrorCodes.provider).includes(errorCode as any)
+        ) {
+          return new ProviderError(
+            errorCode,
+            getMessageFromCode(errorCode),
+            await getTransactionNotSentMessage(step, process),
+            e.stack
+          )
+        }
+      }
       return new UnknownError(
-        LifiErrorCode.InternalError,
+        LiFiErrorCode.InternalError,
         e.message || ErrorMessage.UnknownError,
         undefined,
         e.stack
       )
+    }
   }
 }
 
-export const parseBackendError = async (e: any): Promise<LifiError> => {
+export const parseBackendError = async (e: any): Promise<LiFiError> => {
   let data
   try {
     data = await e.response?.json()

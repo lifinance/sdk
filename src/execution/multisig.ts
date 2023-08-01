@@ -3,7 +3,7 @@ import type { Hash } from 'viem'
 import type { StatusManager } from '.'
 import type { MultisigTxDetails } from '..'
 import ConfigService from '../services/ConfigService'
-import { LifiErrorCode, TransactionError } from '../utils/errors'
+import { LiFiErrorCode, TransactionError } from '../utils/errors'
 
 export const updateMultisigRouteProcess = async (
   internalTxHash: Hash,
@@ -41,14 +41,14 @@ export const updateMultisigRouteProcess = async (
 
   if (multisigStatusResponse.status === 'FAILED') {
     throw new TransactionError(
-      LifiErrorCode.TransactionFailed,
+      LiFiErrorCode.TransactionFailed,
       'Multisig transaction failed.'
     )
   }
 
   if (multisigStatusResponse.status === 'CANCELLED') {
     throw new TransactionError(
-      LifiErrorCode.TransactionRejected,
+      LiFiErrorCode.SignatureRejected,
       'Transaction was rejected by user.'
     )
   }

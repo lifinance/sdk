@@ -3,7 +3,7 @@ import type {
   ExtendedTransactionInfo,
   FullStatusData,
 } from '@lifi/types'
-import type { Address, Hash, PublicClient } from 'viem'
+import type { Address, Hash, PublicClient, ReplacementReason } from 'viem'
 import { publicActions } from 'viem'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
@@ -15,7 +15,7 @@ import type {
 } from '../types'
 import { getMaxPriorityFeePerGas } from '../utils'
 import {
-  LifiErrorCode,
+  LiFiErrorCode,
   TransactionError,
   ValidationError,
 } from '../utils/errors'
@@ -44,8 +44,8 @@ export class StepExecutionManager {
   }: ExecutionParams): Promise<Execution> => {
     const client = walletClient.extend(publicActions)
     const config = ConfigService.getInstance().getConfig()
-    const isMultisigWalletClient = !!config.multisig?.isMultisigWalletClient
 
+    const isMultisigWalletClient = !!config.multisig?.isMultisigWalletClient
     const multisigBatchTransactions: BaseTransaction[] = []
 
     const shouldBatchTransactions =
@@ -105,24 +105,12 @@ export class StepExecutionManager {
 
       try {
         if (isMultisigWalletClient && multisigProcess) {
-          if (!multisigProcess) {
-            throw new ValidationError('Multisig process is undefined.')
-          }
-          if (!config.multisig?.getMultisigTransactionDetails) {
-            throw new ValidationError(
-              '"getMultisigTransactionDetails()" is missing in Multisig config.'
-            )
-          }
-
           const multisigTxHash = multisigProcess.multisigTxHash as Hash
-
           if (!multisigTxHash) {
-            // need to check what happens in failed tx
             throw new ValidationError(
               'Multisig internal transaction hash is undefined.'
             )
           }
-
           await updateMultisigRouteProcess(
             multisigTxHash,
             step,
@@ -201,7 +189,7 @@ export class StepExecutionManager {
 
           if (!transactionRequest) {
             throw new TransactionError(
-              LifiErrorCode.TransactionUnprepared,
+              LiFiErrorCode.TransactionUnprepared,
               'Unable to prepare transaction.'
             )
           }
@@ -260,7 +248,7 @@ export class StepExecutionManager {
               )
             } else {
               throw new TransactionError(
-                LifiErrorCode.TransactionUnprepared,
+                LiFiErrorCode.TransactionUnprepared,
                 'Unable to prepare transaction.'
               )
             }
@@ -297,10 +285,11 @@ export class StepExecutionManager {
           }
         }
 
+        let replacementReason: ReplacementReason | undefined
         const transactionReceipt = await client.waitForTransactionReceipt({
           hash: txHash,
           onReplaced(response) {
-            txHash = response.transaction.hash
+            replacementReason = response.reason
             statusManager.updateProcess(step, process.type, 'PENDING', {
               txHash: response.transaction.hash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
@@ -308,15 +297,18 @@ export class StepExecutionManager {
           },
         })
 
+        if (replacementReason === 'cancelled') {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionCanceled,
+            'User canceled transaction.'
+          )
+        }
+
         // if it's multisig wallet client and the process is in ACTION_REQUIRED
         // then signatures are still needed
-        if (
-          isMultisigWalletClient &&
-          process.status === 'ACTION_REQUIRED' &&
-          txHash
-        ) {
+        if (isMultisigWalletClient && process.status === 'ACTION_REQUIRED') {
           await updateMultisigRouteProcess(
-            txHash,
+            transactionReceipt.transactionHash,
             step,
             statusManager,
             process.type,
@@ -326,8 +318,8 @@ export class StepExecutionManager {
 
         if (!isMultisigWalletClient) {
           process = statusManager.updateProcess(step, process.type, 'PENDING', {
-            txHash: txHash,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+            txHash: transactionReceipt.transactionHash,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
           })
         }
 
@@ -399,7 +391,7 @@ export class StepExecutionManager {
 
       process = statusManager.updateProcess(step, process.type, 'FAILED', {
         error: {
-          code: LifiErrorCode.TransactionFailed,
+          code: LiFiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
           htmlMessage,
         },

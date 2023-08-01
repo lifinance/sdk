@@ -9,7 +9,7 @@ enum ErrorType {
   SlippageError = 'SlippageError',
 }
 
-export enum LifiErrorCode {
+export enum LiFiErrorCode {
   InternalError = 1000,
   ValidationError = 1001,
   TransactionUnderpriced = 1002,
@@ -22,10 +22,11 @@ export enum LifiErrorCode {
   GasLimitError = 1009,
   TransactionCanceled = 1010,
   SlippageError = 1011,
-  TransactionRejected = 1012,
+  SignatureRejected = 1012,
   BalanceError = 1013,
   AllowanceRequired = 1014,
   InsufficientFunds = 1015,
+  ExchangeRateUpdateCanceled = 1016,
 }
 
 export enum EthersErrorType {
@@ -73,11 +74,11 @@ export enum MetaMaskProviderErrorCode {
 }
 
 export type ErrorCode =
-  | LifiErrorCode
+  | LiFiErrorCode
   | MetaMaskRPCErrorCode
   | MetaMaskProviderErrorCode
 
-export class LifiError extends Error {
+export class LiFiError extends Error {
   code: ErrorCode
   htmlMessage?: string
 
@@ -91,7 +92,7 @@ export class LifiError extends Error {
     super(message)
 
     // Set the prototype explicitly: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-    Object.setPrototypeOf(this, LifiError.prototype)
+    Object.setPrototypeOf(this, LiFiError.prototype)
 
     this.code = code
 
@@ -107,7 +108,7 @@ export class LifiError extends Error {
   }
 }
 
-export class RPCError extends LifiError {
+export class RPCError extends LiFiError {
   constructor(
     code: ErrorCode,
     message: string,
@@ -118,7 +119,7 @@ export class RPCError extends LifiError {
   }
 }
 
-export class ProviderError extends LifiError {
+export class ProviderError extends LiFiError {
   constructor(
     code: ErrorCode,
     message: string,
@@ -129,11 +130,11 @@ export class ProviderError extends LifiError {
   }
 }
 
-export class ServerError extends LifiError {
+export class ServerError extends LiFiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ServerError,
-      LifiErrorCode.InternalError,
+      LiFiErrorCode.InternalError,
       message,
       htmlMessage,
       stack
@@ -141,11 +142,11 @@ export class ServerError extends LifiError {
   }
 }
 
-export class ValidationError extends LifiError {
+export class ValidationError extends LiFiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ValidationError,
-      LifiErrorCode.ValidationError,
+      LiFiErrorCode.ValidationError,
       message,
       htmlMessage,
       stack
@@ -153,7 +154,7 @@ export class ValidationError extends LifiError {
   }
 }
 
-export class TransactionError extends LifiError {
+export class TransactionError extends LiFiError {
   constructor(
     code: ErrorCode,
     message: string,
@@ -164,11 +165,11 @@ export class TransactionError extends LifiError {
   }
 }
 
-export class SlippageError extends LifiError {
+export class SlippageError extends LiFiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.SlippageError,
-      LifiErrorCode.SlippageError,
+      LiFiErrorCode.SlippageError,
       message,
       htmlMessage,
       stack
@@ -176,11 +177,11 @@ export class SlippageError extends LifiError {
   }
 }
 
-export class BalanceError extends LifiError {
+export class BalanceError extends LiFiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.ValidationError,
-      LifiErrorCode.BalanceError,
+      LiFiErrorCode.BalanceError,
       message,
       htmlMessage,
       stack
@@ -188,11 +189,11 @@ export class BalanceError extends LifiError {
   }
 }
 
-export class NotFoundError extends LifiError {
+export class NotFoundError extends LiFiError {
   constructor(message: string, htmlMessage?: string, stack?: string) {
     super(
       ErrorType.NotFoundError,
-      LifiErrorCode.NotFound,
+      LiFiErrorCode.NotFound,
       message,
       htmlMessage,
       stack
@@ -200,7 +201,7 @@ export class NotFoundError extends LifiError {
   }
 }
 
-export class UnknownError extends LifiError {
+export class UnknownError extends LiFiError {
   constructor(
     code: ErrorCode,
     message: string,
