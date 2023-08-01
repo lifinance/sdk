@@ -109,6 +109,10 @@ export default class ConfigService {
 
     this.config.userId = configUpdate.userId || this.config.userId
     this.config.integrator = configUpdate.integrator || this.config.integrator
+    this.config.defaultRouteOptions.integrator =
+      configUpdate.integrator ||
+      configUpdate.defaultRouteOptions?.integrator ||
+      this.config.integrator
     this.config.widgetVersion =
       configUpdate.widgetVersion || this.config.widgetVersion
     this.config.multisigConfig =
