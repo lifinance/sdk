@@ -1,6 +1,5 @@
 import type { Address, Hash, PublicClient, WalletClient } from 'viem'
-import { encodeFunctionData, publicActions } from 'viem'
-import { MaxUint256 } from '../constants'
+import { encodeFunctionData, maxUint256, publicActions } from 'viem'
 import { approveAbi } from '../types'
 import { getMaxPriorityFeePerGas } from '../utils'
 import { isNativeTokenAddress } from '../utils/utils'
@@ -57,7 +56,7 @@ export const setTokenAllowance = async ({
   )
 
   if (amount > approvedAmount) {
-    const approvalAmount = infiniteApproval ? MaxUint256 : amount
+    const approvalAmount = infiniteApproval ? maxUint256 : amount
 
     const approveTx = await setAllowance(
       walletClient,

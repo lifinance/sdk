@@ -1,7 +1,6 @@
 import type { Address, Hash, WalletClient } from 'viem'
-import { publicActions } from 'viem'
+import { maxUint256, publicActions } from 'viem'
 import { getAllowance, setAllowance } from '../allowance'
-import { MaxUint256 } from '../constants'
 import type { StatusManager } from '../execution/StatusManager'
 import type {
   Chain,
@@ -53,7 +52,7 @@ export const checkAllowance = async (
           return
         }
         const approvalAmount = settings.infiniteApproval
-          ? MaxUint256
+          ? maxUint256
           : fromAmount
 
         if (shouldBatchTransactions) {
