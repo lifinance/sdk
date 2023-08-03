@@ -20,6 +20,7 @@
     "prepublishOnly": "run-s build use:npmReadme && pinst --enable",
     "prettier:fix": "prettier --write ./src/.",
     "release": "standard-version -a",
+    "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
     "release:beta": "standard-version -a --prerelease beta --skip.changelog",
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
     "test:cov": "yarn test --coverage",
