@@ -4,7 +4,7 @@ import {
 } from 'eth-rpc-errors'
 import { describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../test/fixtures'
-import { LifiErrorCode } from './errors'
+import { LiFiErrorCode } from './errors'
 import { parseBackendError, parseError } from './parseError'
 
 describe('parseError', () => {
@@ -14,7 +14,7 @@ describe('parseError', () => {
         const parsedError = await parseError('Oops')
 
         expect(parsedError.message).toEqual('Unknown error occurred.')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
 
       it('should return an UnknownError with the given message', async () => {
@@ -23,7 +23,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -35,7 +35,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -59,7 +59,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Transaction is underpriced.')
-        expect(parsedError.code).toEqual(LifiErrorCode.TransactionUnderpriced)
+        expect(parsedError.code).toEqual(LiFiErrorCode.TransactionUnderpriced)
       })
     })
 
@@ -136,7 +136,7 @@ describe('parseError', () => {
         const parsedError = await parseBackendError('Oops')
 
         expect(parsedError.message).toEqual('Something went wrong.')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -151,7 +151,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.ValidationError)
         })
 
         it('should return the statusText if message not set', async () => {
@@ -165,7 +165,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 400'
           )
-          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.ValidationError)
         })
       })
 
@@ -179,7 +179,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
         })
 
         it('should return the statusText if message not set', async () => {
@@ -193,7 +193,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 500'
           )
-          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
         })
       })
     })
