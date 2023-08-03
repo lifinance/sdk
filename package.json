@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "2.1.2",
+  "version": "2.2.2",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
@@ -26,7 +26,8 @@
     "prepublishOnly": "run-s build use:npmReadme && pinst --enable",
     "postpublish": "npm run use:gitReadme && pinst --enable",
     "prepare": "husky install",
-    "release": "standard-version -a"
+    "release": "standard-version -a",
+    "release:beta": "standard-version -a --prerelease beta --skip.changelog"
   },
   "standard-version": {
     "scripts": {
@@ -76,34 +77,34 @@
   "dependencies": {
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/contracts": "^5.7.0",
-    "@lifi/types": "^8.0.3",
+    "@lifi/types": "^8.0.4",
     "bignumber.js": "^9.1.1",
     "eth-rpc-errors": "^4.0.3",
     "ethers": "^5.7.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.6.6",
-    "@commitlint/config-conventional": "^17.6.6",
+    "@commitlint/cli": "^17.6.7",
+    "@commitlint/config-conventional": "^17.6.7",
     "@mswjs/interceptors": "^0.22.16",
-    "@typescript-eslint/eslint-plugin": "^5.61.0",
-    "@typescript-eslint/parser": "^5.61.0",
-    "@vitest/coverage-c8": "^0.32.4",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "@vitest/coverage-c8": "^0.33.0",
     "cross-fetch": "^4.0.0",
-    "eslint": "^8.44.0",
+    "eslint": "^8.45.0",
     "eslint-config-prettier": "^8.8.0",
-    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-prettier": "^5.0.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.3",
     "msw": "1.0.1",
     "npm-run-all": "^4.1.5",
     "pinst": "^3.0.0",
-    "prettier": "^2.8.8",
+    "prettier": "^3.0.0",
     "standard-version": "^9.5.0",
     "typescript": "^5.1.6",
-    "vitest": "^0.32.4"
+    "vitest": "^0.33.0"
   },
   "directories": {
     "test": "test"
   },
-  "packageManager": "yarn@3.5.1"
+  "packageManager": "yarn@3.6.1"
 }

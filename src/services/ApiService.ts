@@ -31,6 +31,9 @@ import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
+/**
+ * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
+ */
 const getPossibilities = async (
   requestConfig?: PossibilitiesRequest,
   options?: RequestOptions
@@ -107,7 +110,6 @@ const getQuote = async (
 ): Promise<LifiStep> => {
   const config = ConfigService.getInstance().getConfig()
 
-  // validation
   const requiredParameters: Array<keyof QuoteRequest> = [
     'fromChain',
     'fromToken',
@@ -125,28 +127,18 @@ const getQuote = async (
   })
 
   // apply defaults
-  requestConfig.order = requestConfig.order || config.defaultRouteOptions.order
-  requestConfig.slippage =
-    requestConfig.slippage || config.defaultRouteOptions.slippage
-  requestConfig.integrator =
-    requestConfig.integrator || config.defaultRouteOptions.integrator
-  requestConfig.referrer =
-    requestConfig.referrer || config.defaultRouteOptions.referrer
-  requestConfig.fee = requestConfig.fee || config.defaultRouteOptions.fee
+  requestConfig.order ||= config.defaultRouteOptions.order
+  requestConfig.slippage ||= config.defaultRouteOptions.slippage
+  requestConfig.integrator ||= config.defaultRouteOptions.integrator
+  requestConfig.referrer ||= config.defaultRouteOptions.referrer
+  requestConfig.fee ||= config.defaultRouteOptions.fee
 
-  requestConfig.allowBridges =
-    requestConfig.allowBridges || config.defaultRouteOptions.bridges?.allow
-  requestConfig.denyBridges =
-    requestConfig.denyBridges || config.defaultRouteOptions.bridges?.deny
-  requestConfig.preferBridges =
-    requestConfig.preferBridges || config.defaultRouteOptions.bridges?.prefer
-  requestConfig.allowExchanges =
-    requestConfig.allowExchanges || config.defaultRouteOptions.exchanges?.allow
-  requestConfig.denyExchanges =
-    requestConfig.denyExchanges || config.defaultRouteOptions.exchanges?.deny
-  requestConfig.preferExchanges =
-    requestConfig.preferExchanges ||
-    config.defaultRouteOptions.exchanges?.prefer
+  requestConfig.allowBridges ||= config.defaultRouteOptions.bridges?.allow
+  requestConfig.denyBridges ||= config.defaultRouteOptions.bridges?.deny
+  requestConfig.preferBridges ||= config.defaultRouteOptions.bridges?.prefer
+  requestConfig.allowExchanges ||= config.defaultRouteOptions.exchanges?.allow
+  requestConfig.denyExchanges ||= config.defaultRouteOptions.exchanges?.deny
+  requestConfig.preferExchanges ||= config.defaultRouteOptions.exchanges?.prefer
 
   Object.keys(requestConfig).forEach(
     (key) =>
@@ -198,27 +190,17 @@ const getContractCallQuote = async (
 
   // apply defaults
   // option.order is not used in this endpoint
-  requestConfig.slippage =
-    requestConfig.slippage || config.defaultRouteOptions.slippage
-  requestConfig.integrator =
-    requestConfig.integrator || config.defaultRouteOptions.integrator
-  requestConfig.referrer =
-    requestConfig.referrer || config.defaultRouteOptions.referrer
-  requestConfig.fee = requestConfig.fee || config.defaultRouteOptions.fee
+  requestConfig.slippage ||= config.defaultRouteOptions.slippage
+  requestConfig.integrator ||= config.defaultRouteOptions.integrator
+  requestConfig.referrer ||= config.defaultRouteOptions.referrer
+  requestConfig.fee ||= config.defaultRouteOptions.fee
 
-  requestConfig.allowBridges =
-    requestConfig.allowBridges || config.defaultRouteOptions.bridges?.allow
-  requestConfig.denyBridges =
-    requestConfig.denyBridges || config.defaultRouteOptions.bridges?.deny
-  requestConfig.preferBridges =
-    requestConfig.preferBridges || config.defaultRouteOptions.bridges?.prefer
-  requestConfig.allowExchanges =
-    requestConfig.allowExchanges || config.defaultRouteOptions.exchanges?.allow
-  requestConfig.denyExchanges =
-    requestConfig.denyExchanges || config.defaultRouteOptions.exchanges?.deny
-  requestConfig.preferExchanges =
-    requestConfig.preferExchanges ||
-    config.defaultRouteOptions.exchanges?.prefer
+  requestConfig.allowBridges ||= config.defaultRouteOptions.bridges?.allow
+  requestConfig.denyBridges ||= config.defaultRouteOptions.bridges?.deny
+  requestConfig.preferBridges ||= config.defaultRouteOptions.bridges?.prefer
+  requestConfig.allowExchanges ||= config.defaultRouteOptions.exchanges?.allow
+  requestConfig.denyExchanges ||= config.defaultRouteOptions.exchanges?.deny
+  requestConfig.preferExchanges ||= config.defaultRouteOptions.exchanges?.prefer
 
   // send request
   try {
@@ -431,8 +413,7 @@ const getAvailableConnections = async (
 
   const url = new URL(`${config.apiUrl}/connections`)
 
-  const { fromChain, fromToken, toChain, toToken, allowBridges } =
-    connectionRequest
+  const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
   if (fromChain) {
     url.searchParams.append('fromChain', fromChain as unknown as string)
@@ -447,11 +428,26 @@ const getAvailableConnections = async (
     url.searchParams.append('fromToken', toToken)
   }
 
-  if (allowBridges?.length) {
-    allowBridges.forEach((bridge) => {
-      url.searchParams.append('allowBridges', bridge)
-    })
-  }
+  const connectionRequestArrayParams: Array<keyof ConnectionsRequest> = [
+    'allowBridges',
+    'denyBridges',
+    'preferBridges',
+    'allowExchanges',
+    'denyExchanges',
+    'preferExchanges',
+  ]
+
+  connectionRequestArrayParams.forEach((parameter) => {
+    const connectionRequestArrayParam: string[] = connectionRequest[
+      parameter
+    ] as string[]
+
+    if (connectionRequestArrayParam?.length) {
+      connectionRequestArrayParam?.forEach((value) => {
+        url.searchParams.append(parameter, value)
+      })
+    }
+  })
 
   try {
     const response = await request<ConnectionsResponse>(url)

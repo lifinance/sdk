@@ -1,4 +1,10 @@
-import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
+import {
+  ChainId,
+  CoinKey,
+  findDefaultToken,
+  StaticToken,
+  Token,
+} from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../test/setup'
@@ -18,7 +24,7 @@ describe('balances utils', () => {
   describe('getBalances Integration Tests', () => {
     const loadAndCompareTokenAmounts = async (
       walletAddress: string,
-      tokens: Token[]
+      tokens: StaticToken[]
     ) => {
       const tokenBalances = await utils.getBalances(walletAddress, tokens)
 

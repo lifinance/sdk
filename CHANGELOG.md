@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.2](https://github.com/lifinance/sdk/compare/v2.2.1...v2.2.2) (2023-08-01)
+
+
+### Bug Fixes
+
+* integrator string is not applied in quote requests ([f76dbe6](https://github.com/lifinance/sdk/commit/f76dbe6d29e0bda6d578c9092f0b2d40e8ac1231))
+
+### [2.2.1](https://github.com/lifinance/sdk/compare/v2.2.0...v2.2.1) (2023-07-24)
+
+
+### Bug Fixes
+
+* fixed types for multisig config ([#156](https://github.com/lifinance/sdk/issues/156)) ([9a28de6](https://github.com/lifinance/sdk/commit/9a28de61026ab6804ee87932d609bf9897fff391))
+* parsing params in available connections api request ([#155](https://github.com/lifinance/sdk/issues/155)) ([177723a](https://github.com/lifinance/sdk/commit/177723a4eaa8007c4f3e5348bb4e60977392b786))
+
+## [2.2.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.2.0) (2023-07-11)
+
+
+### Features
+
+* multisig wallets support ([#150](https://github.com/lifinance/sdk/issues/150)) ([3825d99](https://github.com/lifinance/sdk/commit/3825d99de85032b6b4334552b1311ecefeca8001))
+
+
+### Bug Fixes
+
+* deprecate possibilities endpoint ([80e6e98](https://github.com/lifinance/sdk/commit/80e6e98630edde2eb33f591d50cc746ed78fb6de))
+
+### [2.1.3-beta.0](https://github.com/lifinance/sdk/compare/v2.1.1...v2.1.3-beta.0) (2023-07-04)
+
 ### [2.1.2](https://github.com/lifinance/sdk/compare/v2.1.2-beta.1...v2.1.2) (2023-07-04)
 
 ### [2.1.2-beta.1](https://github.com/lifinance/sdk/compare/v2.1.2-beta.0...v2.1.2-beta.1) (2023-07-04)

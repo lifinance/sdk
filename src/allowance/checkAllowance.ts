@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { TransactionRequest } from '@ethersproject/abstract-provider'
 import BigNumber from 'bignumber.js'
-import { constants, ContractTransaction, Signer } from 'ethers'
+import {
+  constants,
+  ContractTransaction,
+  PopulatedTransaction,
+  Signer,
+} from 'ethers'
 import { getApproved, setApproval } from '../allowance/utils'
 import { StatusManager } from '../execution/StatusManager'
 import { Chain, InternalExecutionSettings, LifiStep, Process } from '../types'
@@ -14,8 +19,9 @@ export const checkAllowance = async (
   statusManager: StatusManager,
   settings: InternalExecutionSettings,
   chain: Chain,
-  allowUserInteraction = false
-): Promise<void> => {
+  allowUserInteraction = false,
+  shouldBatchTransactions = false
+): Promise<void | PopulatedTransaction> => {
   // Ask the user to set an allowance
 
   let allowanceProcess: Process = statusManager.findOrCreateProcess(
@@ -78,12 +84,31 @@ export const checkAllowance = async (
         const approvalAmount = settings.infiniteApproval
           ? constants.MaxUint256.toString()
           : step.action.fromAmount
-        const approveTx = await setApproval(
+
+        if (shouldBatchTransactions) {
+          const populatedTransaction = await setApproval(
+            signer,
+            step.action.fromToken.address,
+            step.estimate.approvalAddress,
+            approvalAmount,
+            true
+          )
+
+          allowanceProcess = statusManager.updateProcess(
+            step,
+            allowanceProcess.type,
+            'DONE'
+          )
+
+          return populatedTransaction as PopulatedTransaction
+        }
+
+        const approveTx = (await setApproval(
           signer,
           step.action.fromToken.address,
           step.estimate.approvalAddress,
           approvalAmount
-        )
+        )) as ContractTransaction
 
         allowanceProcess = statusManager.updateProcess(
           step,

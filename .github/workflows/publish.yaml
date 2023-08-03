@@ -29,13 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Setup .npmrc file to publish to npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: lts/*
-          registry-url: 'https://registry.npmjs.org'
-      - name: Install modules
-        run: yarn install
+      - name: Install dependencies
+        uses: ./.github/actions/yarn-install
       - name: Build
         run: yarn build
       - name: Publish to npm
