@@ -40,10 +40,10 @@ type OptionalParameters = Partial<
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
- * @param  {Route} route  The route this StatusManger belongs to.
- * @param  {InternalExecutionSettings} settings   The ExecutionSettings for this route.
- * @param  {InternalUpdateRouteCallback} internalUpdateRouteCallback  Internal callback to propage route changes.
- * @return {StatusManager}       An instance of StatusManager.
+ * @param {Route} route The route this StatusManger belongs to.
+ * @param {InternalExecutionSettings} settings The ExecutionSettings for this route.
+ * @param {InternalUpdateRouteCallback} internalUpdateRouteCallback Internal callback to propage route changes.
+ * @returns {StatusManager} An instance of StatusManager.
  */
 export class StatusManager {
   private readonly route: Route
@@ -63,8 +63,8 @@ export class StatusManager {
 
   /**
    * Initializes the execution object of a Step.
-   * @param  {LifiStep} step  The current step in execution
-   * @return {Execution}       The initialized execution object for this step and a function to update this step
+   * @param step  The current step in execution
+   * @returns The initialized execution object for this step and a function to update this step
    */
   initExecutionObject = (step: LifiStep): Execution => {
     const currentExecution =
@@ -87,10 +87,10 @@ export class StatusManager {
 
   /**
    * Updates the execution object of a Step.
-   * @param  {LifiStep} step  The current step in execution
-   * @param  {Status} status  The status for the execution
-   * @param  {Receipt} receipt Optional. Information about received tokens
-   * @return {Step}       The step with the updated execution object
+   * @param step  The current step in execution
+   * @param status  The status for the execution
+   * @param receipt Optional. Information about received tokens
+   * @returns       The step with the updated execution object
    */
   updateExecution(step: LifiStep, status: Status, receipt?: Receipt): LifiStep {
     if (!step.execution) {
@@ -109,10 +109,10 @@ export class StatusManager {
 
   /**
    * Create and push a new process into the execution.
-   * @param  {ProcessType} type Type of the process. Used to identify already existing processes.
-   * @param  {LifiStep} step The step that should contain the new process.
-   * @param  {Status} status By default created procces is set to the STARTED status. We can override new process with the needed status.
-   * @return {Process}
+   * @param step The step that should contain the new process.
+   * @param type Type of the process. Used to identify already existing processes.
+   * @param status By default created procces is set to the STARTED status. We can override new process with the needed status.
+   * @returns Returns process.
    */
   findOrCreateProcess = (
     step: LifiStep,
@@ -147,11 +147,11 @@ export class StatusManager {
 
   /**
    * Update a process object.
-   * @param  {LifiStep} step The step where the process should be updated
-   * @param  {ProcessType} type  The process type to update
-   * @param  {Status} status The status the process gets.
-   * @param  {object} [params]   Additional parameters to append to the process.
-   * @return {Process} The update process
+   * @param step The step where the process should be updated
+   * @param type  The process type to update
+   * @param status The status the process gets.
+   * @param [params]   Additional parameters to append to the process.
+   * @returns The update process
    */
   updateProcess = (
     step: LifiStep,
@@ -212,9 +212,8 @@ export class StatusManager {
 
   /**
    * Remove a process from the execution
-   * @param  {LifiStep} step The step where the process should be removed from
-   * @param  {ProcessType} type  The process type to remove
-   * @return {void}
+   * @param step The step where the process should be removed from
+   * @param type  The process type to remove
    */
   removeProcess = (step: LifiStep, type: ProcessType): void => {
     if (!step.execution) {

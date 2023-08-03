@@ -32,6 +32,8 @@ import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'
 
 /**
+ * @param requestConfig
+ * @param options
  * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
  */
 const getPossibilities = async (

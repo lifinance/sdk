@@ -6,6 +6,9 @@ import { name, version } from './version'
 
 /**
  * Returns a random number between min (inclusive) and max (inclusive)
+ * @param min - minimum number.
+ * @param max - maximum number.
+ * @returns - random number.
  */
 export const getRandomNumber = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1) + min)
@@ -54,11 +57,10 @@ export const checkPackageUpdates = async (
 
 /**
  * Converts a quote to Route
- * @param {LifiStep} step - Step returned from the quote endpoint.
- * @return {Route} - The route to be executed.
+ * @param step - Step returned from the quote endpoint.
+ * @returns - The route to be executed.
  * @throws {ValidationError} Throws a ValidationError if the step has missing values.
  */
-
 export const convertQuoteToRoute = (step: LifiStep): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")

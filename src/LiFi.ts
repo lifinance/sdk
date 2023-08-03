@@ -66,7 +66,7 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the current configuration of the SDK
-   * @return {Config} - The config object
+   * @returns - The config object
    */
   getConfig = (): Config => {
     return this.configService.getConfig()
@@ -74,7 +74,7 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the SDK configuration after all setup calls are finished
-   * @return {Promise<Config>} - The config object
+   * @returns - The config object
    */
   getConfigAsync = (): Promise<Config> => {
     return this.configService.getConfigAsync()
@@ -82,8 +82,8 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get an instance of a provider for a specific chain
-   * @param {number} chainId - Id of the chain the provider is for
-   * @return {PublicClient} The public client for the given chain
+   * @param chainId - Id of the chain the provider is for
+   * @returns The public client for the given chain
    */
   getPublicClient = (chainId: number): Promise<PublicClient> => {
     return getPublicClient(chainId)
@@ -91,8 +91,8 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Set a new confuration for the SDK
-   * @param {ConfigUpdate} configUpdate - An object containing the configuration fields that should be updated.
-   * @return {Config} The renewed config object
+   * @param configUpdate - An object containing the configuration fields that should be updated.
+   * @returns The renewed config object
    */
   setConfig = (configUpdate: Partial<ConfigUpdate>): Config => {
     return this.configService.updateConfig(configUpdate)
@@ -100,9 +100,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get a set of current possibilities based on a request that specifies which chains, exchanges and bridges are preferred or unwanted.
-   * @param {PossibilitiesRequest} request - Object defining preferences regarding chain, exchanges and bridges
-   * @return {Promise<PossibilitiesResponse>} Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
-   * @throws {LifiError} Throws a LifiError if request fails.
+   * @param request - Object defining preferences regarding chain, exchanges and bridges
+   * @param options
+   * @returns Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
+   * @throws {LiFiError} Throws a LiFiError if request fails.
    * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
    */
   getPossibilities = async (
@@ -114,9 +115,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Fetch information about a Token
-   * @param {ChainKey | ChainId} chain - Id or key of the chain that contains the token
-   * @param {string} token - Address or symbol of the token on the requested chain
-   * @throws {LifiError} - Throws a LifiError if request fails
+   * @param chain - Id or key of the chain that contains the token
+   * @param token - Address or symbol of the token on the requested chain
+   * @param options
+   * @throws {LiFiError} - Throws a LiFiError if request fails
    */
   getToken = async (
     chain: ChainKey | ChainId,
@@ -128,8 +130,9 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get a quote for a token transfer
-   * @param {QuoteRequest} request - The configuration of the requested quote
-   * @throws {LifiError} - Throws a LifiError if request fails
+   * @param request - The configuration of the requested quote
+   * @param options
+   * @throws {LiFiError} - Throws a LiFiError if request fails
    */
   getQuote = async (
     request: QuoteRequest,
@@ -140,8 +143,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get a quote for a destination contract call
-   * @param {ContractCallQuoteRequest} request - The configuration of the requested destination call
-   * @throws {LifiError} - Throws a LifiError if request fails
+   * @param request - The configuration of the requested destination call
+   * @param options
+   * @throws {LiFiError} - Throws a LiFiError if request fails
+   * @returns - Returns step.
    */
   getContractCallQuote = async (
     request: ContractCallQuoteRequest,
@@ -152,8 +157,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Check the status of a transfer. For cross chain transfers, the "bridge" parameter is required.
-   * @param {GetStatusRequest} request - Configuration of the requested status
-   * @throws {LifiError} - Throws a LifiError if request fails
+   * @param request - Configuration of the requested status
+   * @param options - Rrquest options.
+   * @throws {LiFiError} - Throws a LiFiError if request fails
+   * @returns Returns status response.
    */
   getStatus = async (
     request: GetStatusRequest,
@@ -164,7 +171,8 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the available tools to bridge and swap tokens.
-   * @param {ToolsRequest?} request - The configuration of the requested tools
+   * @param request - The configuration of the requested tools
+   * @param options
    * @returns The tools that are available on the requested chains
    */
   getTools = async (
@@ -176,7 +184,8 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get all known tokens.
-   * @param {TokensRequest?} request - The configuration of the requested tokens
+   * @param request - The configuration of the requested tokens
+   * @param options
    * @returns The tokens that are available on the requested chains
    */
   getTokens = async (
@@ -188,8 +197,8 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get all available chains
-   * @return {Promise<Chain[]>} A list of all available chains
-   * @throws {LifiError} Throws a LifiError if request fails.
+   * @returns A list of all available chains
+   * @throws {LiFiError} Throws a LiFiError if request fails.
    */
   getChains = async (): Promise<ExtendedChain[]> => {
     return this.chainsService.getChains()
@@ -197,9 +206,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get a set of routes for a request that describes a transfer of tokens.
-   * @param {RoutesRequest} request - A description of the transfer.
-   * @return {Promise<RoutesResponse>} The resulting routes that can be used to realize the described transfer of tokens.
-   * @throws {LifiError} Throws a LifiError if request fails.
+   * @param request - A description of the transfer.
+   * @param options
+   * @returns The resulting routes that can be used to realize the described transfer of tokens.
+   * @throws {LiFiError} Throws a LiFiError if request fails.
    */
   getRoutes = async (
     request: RoutesRequest,
@@ -210,9 +220,10 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get the transaction data for a single step of a route
-   * @param {LifiStep} step - The step object.
-   * @return {Promise<LifiStep>} The step populated with the transaction data.
-   * @throws {LifiError} Throws a LifiError if request fails.
+   * @param step - The step object.
+   * @param options
+   * @returns The step populated with the transaction data.
+   * @throws {LiFiError} Throws a LiFiError if request fails.
    */
   getStepTransaction = async (
     step: LifiStep,
@@ -223,8 +234,9 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Get gas recommendation for a certain chain
-   * @param {GasRecommendationRequest} request - Configuration of the requested recommendation.
-   * @throws {LifiError} Throws a LifiError if request fails.
+   * @param request - Configuration of the requested recommendation.
+   * @param options
+   * @throws {LiFiError} Throws a LiFiError if request fails.
    */
   getGasRecommendation = async (
     request: GasRecommendationRequest,
@@ -235,9 +247,9 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Returns the balances of a specific token a wallet holds across all aggregated chains.
-   * @param {string} walletAddress - A wallet address.
-   * @param {Token} token - A Token object.
-   * @return {Promise<TokenAmount | null>} An object containing the token and the amounts on different chains.
+   * @param walletAddress - A wallet address.
+   * @param token - A Token object.
+   * @returns An object containing the token and the amounts on different chains.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalance = async (
@@ -261,9 +273,9 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
-   * @param {string} walletAddress - A wallet address.
-   * @param {Token[]} tokens - A list of Token objects.
-   * @return {Promise<TokenAmount[]>} A list of objects containing the tokens and the amounts on different chains.
+   * @param walletAddress - A wallet address.
+   * @param tokens - A list of Token objects.
+   * @returns A list of objects containing the tokens and the amounts on different chains.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalances = async (
@@ -286,9 +298,9 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * This method queries the balances of tokens for a specific list of chains for a given wallet.
-   * @param {string} walletAddress - A walletaddress.
-   * @param {{ [chainId: number]: Token[] }} tokensByChain - A list of Token objects organized by chain ids.
-   * @return {Promise<{ [chainId: number]: TokenAmount[] }>} A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
+   * @param walletAddress - A walletaddress.
+   * @param tokensByChain - A list of Token objects organized by chain ids.
+   * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   getTokenBalancesByChain = async (
@@ -338,7 +350,7 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Set approval for a certain token and amount.
-   * @param { ApproveTokenRequest } request - The approval request
+   * @param request - The approval request
    */
   setTokenApproval = (request: ApproveTokenRequest): Promise<Hash | void> => {
     return setTokenAllowance(request)
@@ -346,7 +358,7 @@ export class LiFi extends RouteExecutionManager {
 
   /**
    * Revoke approval for a certain token.
-   * @param { RevokeApprovalRequest } request - The revoke request
+   * @param request - The revoke request
    */
   revokeTokenApproval = (
     request: RevokeApprovalRequest

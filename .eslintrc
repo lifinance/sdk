@@ -2,6 +2,7 @@
   "parser": "@typescript-eslint/parser",
   "extends": [
     "plugin:@typescript-eslint/recommended",
+    "plugin:jsdoc/recommended-typescript",
     "prettier"
   ],
   "parserOptions": {
@@ -19,10 +20,12 @@
     "@typescript-eslint/consistent-type-imports": "warn",
     "@typescript-eslint/no-unused-vars": "warn",
     "@typescript-eslint/no-explicit-any": "warn",
+    "jsdoc/require-jsdoc": "off",
     "curly": 2
   },
   "plugins": [
     "@typescript-eslint",
-    "prettier"
+    "prettier",
+    "jsdoc"
   ]
 }

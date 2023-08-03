@@ -30,11 +30,11 @@ export class RouteExecutionManager {
 
   /**
    * Execute a route.
-   * @param {WalletClient} walletClient - The walletClient required to send the transactions.
-   * @param {Route} route - The route that should be executed. Cannot be an active route.
-   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
-   * @return {Promise<Route>} The executed route.
-   * @throws {LifiError} Throws a LifiError if the execution fails.
+   * @param walletClient - The walletClient required to send the transactions.
+   * @param route - The route that should be executed. Cannot be an active route.
+   * @param settings - An object containing settings and callbacks.
+   * @returns The executed route.
+   * @throws {LiFiError} Throws a LiFiError if the execution fails.
    */
   executeRoute = async (
     walletClient: WalletClient,
@@ -59,11 +59,11 @@ export class RouteExecutionManager {
 
   /**
    * Resume the execution of a route that has been stopped or had an error while executing.
-   * @param {WalletClient} walletClient - The walletClient required to send the transactions.
-   * @param {Route} route - The route that is to be executed. Cannot be an active route.
-   * @param {ExecutionSettings} settings - An object containing settings and callbacks.
-   * @return {Promise<Route>} The executed route.
-   * @throws {LifiError} Throws a LifiError if the execution fails.
+   * @param walletClient - The walletClient required to send the transactions.
+   * @param route - The route that is to be executed. Cannot be an active route.
+   * @param settings - An object containing settings and callbacks.
+   * @returns The executed route.
+   * @throws {LiFiError} Throws a LiFiError if the execution fails.
    */
   resumeRoute = async (
     walletClient: WalletClient,
@@ -179,8 +179,8 @@ export class RouteExecutionManager {
 
   /**
    * Updates route execution to background or foreground state.
-   * @param {Route} route - A route that is currently in execution.
-   * @param {boolean} settings - An object with execution settings.
+   * @param route - A route that is currently in execution.
+   * @param settings - An object with execution settings.
    */
   updateRouteExecution = (
     route: Route,
@@ -206,8 +206,8 @@ export class RouteExecutionManager {
 
   /**
    * Update the ExecutionSettings for an active route.
-   * @param {ExecutionSettings} settings - An object with execution settings.
-   * @param {Route} route - The active route that gets the new execution settings.
+   * @param settings - An object with execution settings.
+   * @param route - The active route that gets the new execution settings.
    * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
    */
   updateExecutionSettings = (
@@ -230,29 +230,9 @@ export class RouteExecutionManager {
   }
 
   /**
-   * Executes a route until a user interaction is necessary (signing transactions, etc.) and then halts until the route is resumed.
-   * @param {Route} route - A route that is currently in execution.
-   * @deprecated use updateRouteExecution instead.
-   */
-  moveExecutionToBackground = (route: Route): void => {
-    const execution = this.executionDictionary[route.id]
-    if (!execution) {
-      return
-    }
-
-    for (const executor of execution.executors) {
-      executor.setInteraction({ allowInteraction: false, allowUpdates: true })
-    }
-    execution.settings = {
-      ...execution.settings,
-      executeInBackground: true,
-    }
-  }
-
-  /**
    * Stops the execution of an active route.
-   * @param {Route} route - A route that is currently in execution.
-   * @return {Route} The stopped route.
+   * @param route - A route that is currently in execution.
+   * @returns The stopped route.
    */
   stopExecution = (route: Route): Route => {
     const execution = this.executionDictionary[route.id]
@@ -273,7 +253,7 @@ export class RouteExecutionManager {
 
   /**
    * Get the list of active routes.
-   * @return {Route[]} A list of routes.
+   * @returns A list of routes.
    */
   getActiveRoutes = (): Route[] => {
     return Object.values(this.executionDictionary)
@@ -283,8 +263,8 @@ export class RouteExecutionManager {
 
   /**
    * Return the current route information for given route. The route has to be active.
-   * @param {Route} route - A route object.
-   * @return {Route} The updated route.
+   * @param route - A route object.
+   * @returns The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
     return this.executionDictionary[route.id]?.route

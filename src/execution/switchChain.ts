@@ -14,7 +14,6 @@ import type { StatusManager } from './StatusManager'
  *
  * Account Type: json-rpc -
  * We can switch chain and return existing WalletClient from the switchChainHook in order to continue execution on a new chain.
- *
  * @param walletClient
  * @param statusManager
  * @param step
