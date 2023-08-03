@@ -1,10 +1,12 @@
-name: Beta Release & Publish
+name: Release & Publish
 
 on:
-  workflow_dispatch:
   push:
     tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -12,7 +14,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Create Release
+      - name: Create release
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -37,7 +39,8 @@ jobs:
       - name: Build
         run: yarn build
       - name: Publish to npm
-        run: npm publish --tag beta --access public
+        run: |
+          npm publish --access public \
+          ${{ contains(github.ref_name, 'alpha') && '--tag alpha' || contains(github.ref_name, 'beta') && '--tag beta' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
