@@ -27,7 +27,7 @@ export const request = async <T = Response>(
       if (apiKey) {
         options.headers = {
           ...options?.headers,
-          'X-LIFI-api-key': apiKey,
+          'X-LIFI-API-Key': apiKey,
         }
       }
 
