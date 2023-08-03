@@ -1012,7 +1012,7 @@ __metadata:
   dependencies:
     "@commitlint/cli": ^17.6.7
     "@commitlint/config-conventional": ^17.6.7
-    "@lifi/types": ^8.2.0
+    "@lifi/types": ^9.0.0-alpha.0
     "@mswjs/interceptors": ^0.22.16
     "@types/ws": ^8.5.5
     "@typescript-eslint/eslint-plugin": ^6.2.1
@@ -1037,13 +1037,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lifi/types@portal:/Users/Eugene/Projects/types::locator=%40lifi%2Fsdk%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "@lifi/types@portal:/Users/Eugene/Projects/types::locator=%40lifi%2Fsdk%40workspace%3A."
+"@lifi/types@npm:^9.0.0-alpha.0":
+  version: 9.0.0-alpha.0
+  resolution: "@lifi/types@npm:9.0.0-alpha.0"
   dependencies:
     ethers: ^5.7.2
+  checksum: 4acd0699043b581e51537072f32f7122b2affc65f3c1b34b854026f17b9c0cac0391c31210647c64722d588bec4d5686abc23cfec328a0a753f3e858f4f3a698
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "@mswjs/cookies@npm:^0.2.2":
   version: 0.2.2

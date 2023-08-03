@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.0",
+  "version": "3.0.0-alpha.1",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
@@ -77,7 +77,7 @@
     "url": "https://github.com/lifinance/sdk/issues"
   },
   "dependencies": {
-    "@lifi/types": "^8.2.0",
+    "@lifi/types": "^9.0.0-alpha.0",
     "eth-rpc-errors": "^4.0.3",
     "viem": "^1.5.2"
   },
@@ -107,8 +107,5 @@
   "directories": {
     "test": "test"
   },
-  "packageManager": "yarn@3.6.1",
-  "resolutions": {
-    "@lifi/types": "portal:/Users/Eugene/Projects/types"
-  }
+  "packageManager": "yarn@3.6.1"
 }
