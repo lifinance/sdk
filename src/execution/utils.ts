@@ -80,7 +80,11 @@ export function getSubstatusMessage(
   return message
 }
 
-// Used to check if changed exchange rate is in the range of slippage threshold
+/**
+ * Used to check if changed exchange rate is in the range of slippage threshold.
+ * We use a slippage value as a threshold to trigger the rate change hook.
+ * This can result in almost doubled slippage for the user and need to be revisited.
+ */
 export function checkStepSlippageThreshold(
   oldStep: LifiStep,
   newStep: LifiStep
@@ -96,8 +100,5 @@ export function checkStepSlippageThreshold(
       Number((amountDifference * 1_000_000_000n) / oldEstimatedToAmount) /
       1_000_000_000
   }
-  return (
-    newEstimatedToAmount >= oldEstimatedToAmount &&
-    actualSlippage <= setSlippage
-  )
+  return actualSlippage <= setSlippage
 }
