@@ -18,12 +18,19 @@ export const request = async <T = Response>(
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion } =
+  const { userId, integrator, widgetVersion, apiKey } =
     ConfigService.getInstance().getConfig()
 
   options.retries = options.retries ?? requestSettings.retries
   try {
     if (!options.skipTrackingHeaders) {
+      if (apiKey) {
+        options.headers = {
+          ...options?.headers,
+          'X-LIFI-api-key': apiKey,
+        }
+      }
+
       if (userId) {
         options.headers = {
           ...options?.headers,
