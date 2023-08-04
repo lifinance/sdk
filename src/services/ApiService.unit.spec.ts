@@ -713,7 +713,7 @@ describe('ApiService', () => {
 
       const generatedURL =
         // eslint-disable-next-line max-len
-        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&fromToken=10&fromToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
+        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
       await expect(
         ApiService.getAvailableConnections(connectionRequest)
