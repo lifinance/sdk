@@ -34,6 +34,7 @@ export type TransactionRequestUpdateHook = (
 
 export type Config = {
   apiUrl: string
+  apiKey?: string
   rpcs: Record<ChainId, string[]>
   multicallAddresses: Record<ChainId, string | undefined>
   defaultExecutionSettings: InternalExecutionSettings
@@ -75,6 +76,7 @@ export interface MultisigConfig {
 
 export type ConfigUpdate = {
   apiUrl?: string
+  apiKey?: string
   rpcs?: Record<number, string[]>
   multicallAddresses?: Record<number, string | undefined>
   defaultExecutionSettings?: ExecutionSettings
