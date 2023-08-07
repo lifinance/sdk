@@ -422,10 +422,10 @@ const getAvailableConnections = async (
     url.searchParams.append('fromToken', fromToken)
   }
   if (toChain) {
-    url.searchParams.append('fromToken', toChain as unknown as string)
+    url.searchParams.append('toChain', toChain as unknown as string)
   }
   if (toToken) {
-    url.searchParams.append('fromToken', toToken)
+    url.searchParams.append('toToken', toToken)
   }
 
   const connectionRequestArrayParams: Array<keyof ConnectionsRequest> = [
