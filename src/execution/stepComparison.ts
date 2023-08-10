@@ -1,6 +1,6 @@
-import type { StatusManager } from '.'
 import type { InternalExecutionSettings, LifiStep } from '../types'
 import { LiFiErrorCode, TransactionError } from '../utils/errors'
+import type { StatusManager } from './StatusManager'
 import { checkStepSlippageThreshold } from './utils'
 
 /**

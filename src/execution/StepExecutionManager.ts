@@ -11,7 +11,7 @@ import ConfigService from '../services/ConfigService'
 import type {
   BaseTransaction,
   ExecutionParams,
-  TransactionRequest,
+  TransactionParameters,
 } from '../types'
 import { getMaxPriorityFeePerGas } from '../utils'
 import {
@@ -162,7 +162,7 @@ export class StepExecutionManager {
             }
           }
 
-          let transactionRequest: TransactionRequest = {
+          let transactionRequest: TransactionParameters = {
             to: step.transactionRequest?.to as Hash,
             from: step.transactionRequest?.from as Hash,
             data: step.transactionRequest?.data as Hash,
@@ -222,7 +222,7 @@ export class StepExecutionManager {
           }
 
           if (settings.updateTransactionRequestHook) {
-            const customizedTransactionRequest: TransactionRequest =
+            const customizedTransactionRequest: TransactionParameters =
               await settings.updateTransactionRequestHook(transactionRequest)
 
             transactionRequest = {

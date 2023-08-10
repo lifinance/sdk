@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../test/fixtures'
+import { buildRouteObject, buildStepObject } from '../../tests/fixtures'
 import type { LifiStep, Route, Status } from '../types'
 import { StatusManager } from './StatusManager'
 

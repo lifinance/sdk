@@ -3,7 +3,7 @@ import { createWalletClient, http, publicActions } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts'
 import { polygon } from 'viem/chains'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../test/setup'
+import { setupTestEnvironment } from '../../tests/setup'
 import { revokeTokenApproval, setTokenAllowance } from './setAllowance'
 
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
@@ -35,9 +35,7 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
 
   const client = walletClient.extend(publicActions)
 
-  beforeAll(() => {
-    setupTestEnvironment()
-  })
+  beforeAll(setupTestEnvironment)
 
   it(
     'should revoke allowance for ERC20 on POL',

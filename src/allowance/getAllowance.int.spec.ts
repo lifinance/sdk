@@ -1,6 +1,7 @@
-import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
+import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../test/setup'
+import { setupTestEnvironment } from '../../tests/setup'
+import { findDefaultToken } from '../../tests/tokens'
 import ApiService from '../services/ApiService'
 import {
   getAllowance,
@@ -24,9 +25,7 @@ const defaultMemeAllowance = 123000000000000000000n
 const retryTimes = 2
 const timeout = 10000
 
-beforeAll(() => {
-  setupTestEnvironment()
-})
+beforeAll(setupTestEnvironment)
 
 describe('allowance integration tests', () => {
   it(

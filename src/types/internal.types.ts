@@ -1,10 +1,9 @@
-import type { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
+import type { ChainId, LifiStep, Route, RouteOptions, Token } from '@lifi/types'
 import type { Hash, Hex, WalletClient } from 'viem'
-import type { ChainId } from '.'
 import type { StatusManager } from '../execution/StatusManager'
 import type { StepExecutor } from '../execution/StepExecutor'
 
-export type TransactionRequest = {
+export type TransactionParameters = {
   chainId?: number
   to?: string
   from?: string
@@ -26,8 +25,8 @@ export interface ExecutionParams {
 
 export type UpdateRouteHook = (updatedRoute: Route) => void
 export type TransactionRequestUpdateHook = (
-  updatedTxRequest: TransactionRequest
-) => Promise<TransactionRequest>
+  updatedTxRequest: TransactionParameters
+) => Promise<TransactionParameters>
 
 export type Config = {
   apiUrl: string

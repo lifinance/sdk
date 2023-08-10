@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ChainId, supportedChains } from '../types'
+import { ChainId } from '../types'
 import type ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
 
@@ -118,33 +118,6 @@ describe('ConfigService', () => {
       expect(mergedConfig.multicallAddresses[ChainId.ETH]).toEqual(
         configB.multicallAddresses[ChainId.ETH]
       )
-    })
-  })
-
-  describe('updateChains', () => {
-    it('should set rpcs/multicall address', async () => {
-      const config = configService.updateChains(supportedChains)
-      for (const chainId of Object.values(ChainId)) {
-        // This is a workaround until we complete the transition to
-        // supporting non EVM chains.
-        try {
-          // This will fail with SOL, SOLT, TER, TERT, OAS, OAST
-          // as getChainById(ChainId) returns EVMChain
-          chainsService.getChainById(chainId as ChainId)
-        } catch {
-          continue
-        }
-        if (typeof chainId !== 'string') {
-          expect(config.rpcs[chainId].length).toBeGreaterThan(0)
-        }
-      }
-    })
-
-    it('should return the async config after updateChains was called', async () => {
-      configService.updateChains(supportedChains)
-      const config = await configService.getConfigAsync()
-
-      expect(config).toBeDefined()
     })
   })
 })

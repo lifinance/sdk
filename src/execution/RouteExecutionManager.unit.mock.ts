@@ -1,5 +1,5 @@
 import type { LifiStep } from '@lifi/types'
-import { buildStepObject } from '../../test/fixtures'
+import { buildStepObject } from '../../tests/fixtures'
 
 export const mockChainsResponse = [
   {

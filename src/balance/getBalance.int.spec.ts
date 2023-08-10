@@ -1,7 +1,8 @@
 import type { StaticToken, Token } from '@lifi/types'
-import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
+import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../test/setup'
+import { setupTestEnvironment } from '../../tests/setup'
+import { findDefaultToken } from '../../tests/tokens'
 import ApiService from '../services/ApiService'
 import { getBalance } from './getBalance'
 
@@ -10,9 +11,7 @@ const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const retryTimes = 2
 const timeout = 10000
 
-beforeAll(() => {
-  setupTestEnvironment()
-})
+beforeAll(setupTestEnvironment)
 
 describe('getBalances integration tests', () => {
   const loadAndCompareTokenAmounts = async (
@@ -98,17 +97,6 @@ describe('getBalances integration tests', () => {
     },
     { retry: retryTimes, timeout }
   )
-
-  // we currently don't have a chain where we don't have a multicall address.
-  // leaving this test here for the future if we add a chain w/o a multicall address again.
-  // it('should fallback to multiple calls if multicall in not available', async () => {
-  //   const walletAddress = defaultWalletAddress
-  //   const tokens = [
-  //     findDefaultToken(CoinKey.ETH, ChainId.OPT),
-  //     findDefaultToken(CoinKey.USDC, ChainId.OPT),
-  //   ]
-  //   await loadAndCompareTokenAmounts(walletAddress, tokens)
-  // })
 
   it(
     'should handle empty lists',

@@ -1,8 +1,13 @@
 import type { Token } from '@lifi/types'
-import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
+import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getTokenBalance, getTokenBalances, getTokenBalancesByChain } from '.'
+import { findDefaultToken } from '../../tests/tokens'
 import * as getBalance from './getBalance'
+import {
+  getTokenBalance,
+  getTokenBalances,
+  getTokenBalancesByChain,
+} from './getTokenBalance'
 
 vi.mock('./getBalance', () => ({
   getBalance: vi.fn(() => Promise.resolve([])),
@@ -19,7 +24,7 @@ describe('balances', () => {
 
   describe('getTokenBalance', () => {
     it('should load a token', async () => {
-      const token = findDefaultToken(CoinKey.WETH, ChainId.ETH)
+      const token = findDefaultToken(CoinKey.USDC, ChainId.ETH)
       getTokenBalance(defaultWalletAddress, token as Token)
       expect(mockedGetBalances).toHaveBeenCalledTimes(1)
     })
@@ -35,7 +40,7 @@ describe('balances', () => {
 
     it('should load mutliple token in one request', async () => {
       const tokens = [
-        findDefaultToken(CoinKey.WETH, ChainId.ETH),
+        findDefaultToken(CoinKey.USDT, ChainId.ETH),
         findDefaultToken(CoinKey.USDC, ChainId.ETH),
       ]
       getTokenBalances(defaultWalletAddress, tokens as Token[])
@@ -44,7 +49,7 @@ describe('balances', () => {
 
     it('should load tokens in one request per chain', () => {
       const tokens = [
-        findDefaultToken(CoinKey.WETH, ChainId.ETH),
+        findDefaultToken(CoinKey.USDT, ChainId.ETH),
         findDefaultToken(CoinKey.USDC, ChainId.POL),
         findDefaultToken(CoinKey.DAI, ChainId.POL),
       ]
@@ -77,7 +82,7 @@ describe('balances', () => {
 
     it('should load tokens in one request per chain', () => {
       const tokensByChain = {
-        [ChainId.ETH]: [findDefaultToken(CoinKey.WETH, ChainId.ETH) as Token],
+        [ChainId.ETH]: [findDefaultToken(CoinKey.USDT, ChainId.ETH) as Token],
         [ChainId.POL]: [
           findDefaultToken(CoinKey.USDC, ChainId.POL) as Token,
           findDefaultToken(CoinKey.MATIC, ChainId.POL) as Token,

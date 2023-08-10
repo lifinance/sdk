@@ -3,7 +3,7 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 import { describe, expect, it } from 'vitest'
-import { buildStepObject } from '../../test/fixtures'
+import { buildStepObject } from '../../tests/fixtures'
 import { LiFiErrorCode } from './errors'
 import { parseBackendError, parseError } from './parseError'
 

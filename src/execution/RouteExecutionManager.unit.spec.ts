@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../test/fixtures'
+import { buildRouteObject, buildStepObject } from '../../tests/fixtures'
 import { requestSettings } from '../request'
 import { RouteExecutionManager } from './RouteExecutionManager'
 import { lifiHandlers } from './RouteExecutionManager.unit.handlers'

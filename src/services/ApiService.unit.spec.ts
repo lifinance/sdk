@@ -7,7 +7,7 @@ import type {
   StepTool,
   Token,
 } from '@lifi/types'
-import { ChainId, CoinKey, findDefaultToken } from '@lifi/types'
+import { ChainId, CoinKey } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import {
@@ -20,6 +20,7 @@ import {
   it,
   vi,
 } from 'vitest'
+import { findDefaultToken } from '../../tests/tokens'
 import { requestSettings } from '../request'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'

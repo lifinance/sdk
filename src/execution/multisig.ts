@@ -1,9 +1,9 @@
 import type { ExtendedChain, LifiStep, ProcessType } from '@lifi/types'
 import type { Hash } from 'viem'
-import type { StatusManager } from '.'
-import type { MultisigTxDetails } from '..'
 import ConfigService from '../services/ConfigService'
+import type { MultisigTxDetails } from '../types'
 import { LiFiErrorCode, TransactionError } from '../utils/errors'
+import type { StatusManager } from './StatusManager'
 
 export const updateMultisigRouteProcess = async (
   internalTxHash: Hash,
