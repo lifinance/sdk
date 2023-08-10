@@ -458,9 +458,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lifi/rpc-wrapper@npm:^0.0.23":
-  version: 0.0.23
-  resolution: "@lifi/rpc-wrapper@npm:0.0.23"
+"@lifi/rpc-wrapper@npm:^0.0.25":
+  version: 0.0.25
+  resolution: "@lifi/rpc-wrapper@npm:0.0.25"
   dependencies:
     "@ethersproject/abi": ^5.7.0
     "@ethersproject/contracts": ^5.7.0
@@ -470,7 +470,30 @@ __metadata:
     eth-rpc-errors: ^4.0.3
     ethers: ^5.7.2
     winston: ^3.8.2
-  checksum: 9117db8882556ad0d2087837999adf3e7d64938ea433f90c0c30c5e977d5d018209ba71391ef532ab35236c1e6f867bd442df0895fa7901e42626498aeba7e76
+  checksum: 718e97d03dfbea5c1d80ca940a78cddf4db0082ecf347e1aeb16021c73db6302cc6f522acf8781a2a45edabebe6a4a7815dab8e99e7a51368237375550403e6e
+  languageName: node
+  linkType: hard
+
+"@lifi/sdk@npm:^2.2.3":
+  version: 2.2.3
+  resolution: "@lifi/sdk@npm:2.2.3"
+  dependencies:
+    "@ethersproject/abi": ^5.7.0
+    "@ethersproject/contracts": ^5.7.0
+    "@lifi/types": ^8.0.4
+    bignumber.js: ^9.1.1
+    eth-rpc-errors: ^4.0.3
+    ethers: ^5.7.2
+  checksum: af747759374cbf17302a7def2fa9eb7f80e4dee2eefd155f44db71abf7156a6db0cb103bbf452d7fa976c97ef4af486140183970d73c7378898fddaf3b918ba6
+  languageName: node
+  linkType: hard
+
+"@lifi/types@npm:^8.0.4":
+  version: 8.3.0
+  resolution: "@lifi/types@npm:8.3.0"
+  dependencies:
+    ethers: ^5.7.2
+  checksum: 4a16ca3a0beb097461c03b3cc35ea7d090d42e9ec299e70cfe6c033a02618946efe122cb8e79c72ea9f4af6f5d4447ba69592caa6253a4c22972342c19fae734
   languageName: node
   linkType: hard
 
@@ -518,10 +541,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^18.11.17":
-  version: 18.11.17
-  resolution: "@types/node@npm:18.11.17"
-  checksum: 1933afd068d5c75c068c6c4df6d10edb3b0b2bb6503d544e2f0496ac007c90596e6a5e284a8ef032451bc16f871b7e46719d7d2bea60e9b25d13a77d52161cac
+"@types/node@npm:^20.4.9":
+  version: 20.4.9
+  resolution: "@types/node@npm:20.4.9"
+  checksum: 504e3da96274f3865c1251830f4750bb0a8f6ef6f8648902cd3bba33370c5f219235471bfbf55cce726b25c8eacfcc8e2aad0ec3b13e27ea6708b00d4a9a46c8
   languageName: node
   linkType: hard
 
@@ -594,7 +617,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bignumber.js@npm:^9.1.0":
+"bignumber.js@npm:^9.1.0, bignumber.js@npm:^9.1.1":
   version: 9.1.1
   resolution: "bignumber.js@npm:9.1.1"
   checksum: ad243b7e2f9120b112d670bb3d674128f0bd2ca1745b0a6c9df0433bd2c0252c43e6315d944c2ac07b4c639e7496b425e46842773cf89c6a2dcd4f31e5c4b11e
@@ -705,10 +728,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv@npm:*, dotenv@npm:^16.1.1":
+"dotenv@npm:*":
   version: 16.1.1
   resolution: "dotenv@npm:16.1.1"
   checksum: e3786267ce7951e747edef6bf45ac60fdba8b846201f82f8811b7222e78aef9cdc51763f07696934d4feebab2ab4d01b1d61ac9301919a8f317dc66672127814
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^16.3.1":
+  version: 16.3.1
+  resolution: "dotenv@npm:16.3.1"
+  checksum: 15d75e7279018f4bafd0ee9706593dd14455ddb71b3bcba9c52574460b7ccaf67d5cf8b2c08a5af1a9da6db36c956a04a1192b101ee102a3e0cf8817bbcf3dfd
   languageName: node
   linkType: hard
 
@@ -883,12 +913,13 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "lifi-sdk-node-sample@workspace:."
   dependencies:
-    "@lifi/rpc-wrapper": ^0.0.23
+    "@lifi/rpc-wrapper": ^0.0.25
+    "@lifi/sdk": ^2.2.3
     "@types/dotenv": ^8.2.0
-    "@types/node": ^18.11.17
-    dotenv: ^16.1.1
-    ts-node: ^10.8.2
-    typescript: ^4.9.4
+    "@types/node": ^20.4.9
+    dotenv: ^16.3.1
+    ts-node: ^10.9.1
+    typescript: ^5.1.6
   languageName: unknown
   linkType: soft
 
@@ -1037,7 +1068,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-node@npm:^10.8.2":
+"ts-node@npm:^10.9.1":
   version: 10.9.1
   resolution: "ts-node@npm:10.9.1"
   dependencies:
@@ -1075,23 +1106,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^4.9.4":
-  version: 4.9.4
-  resolution: "typescript@npm:4.9.4"
+"typescript@npm:^5.1.6":
+  version: 5.1.6
+  resolution: "typescript@npm:5.1.6"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: e782fb9e0031cb258a80000f6c13530288c6d63f1177ed43f770533fdc15740d271554cdae86701c1dd2c83b082cea808b07e97fd68b38a172a83dbf9e0d0ef9
+  checksum: b2f2c35096035fe1f5facd1e38922ccb8558996331405eb00a5111cc948b2e733163cc22fab5db46992aba7dd520fff637f2c1df4996ff0e134e77d3249a7350
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@^4.9.4#~builtin<compat/typescript>":
-  version: 4.9.4
-  resolution: "typescript@patch:typescript@npm%3A4.9.4#~builtin<compat/typescript>::version=4.9.4&hash=289587"
+"typescript@patch:typescript@^5.1.6#~builtin<compat/typescript>":
+  version: 5.1.6
+  resolution: "typescript@patch:typescript@npm%3A5.1.6#~builtin<compat/typescript>::version=5.1.6&hash=5da071"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 2160f7ad975c59b2f5816817d3916be1d156c5688a7517602b3b640c5015e740f4ba933996ac85371d68f7bbdd41602150fb8b68334122ac637fdb5418085e7a
+  checksum: f53bfe97f7c8b2b6d23cf572750d4e7d1e0c5fff1c36d859d0ec84556a827b8785077bc27676bf7e71fae538e517c3ecc0f37e7f593be913d884805d931bc8be
   languageName: node
   linkType: hard
 
