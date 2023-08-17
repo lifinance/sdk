@@ -73,8 +73,7 @@ export const checkAllowance = async (
       const approved = await getApproved(
         signer,
         approvalRequest.from,
-        approvalRequest.to,
-        approvalRequest
+        approvalRequest.to
       )
 
       if (new BigNumber(step.action.fromAmount).gt(approved)) {

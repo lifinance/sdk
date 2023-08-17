@@ -1,4 +1,3 @@
-import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { ChainId, Token } from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import {
@@ -16,19 +15,13 @@ import { MultiCallData, fetchDataUsingMulticall } from '../utils/multicall'
 export const getApproved = async (
   signer: Signer,
   tokenAddress: string,
-  contractAddress: string,
-  transactionRequest?: TransactionRequest
+  contractAddress: string
 ): Promise<BigNumber> => {
   const signerAddress = await signer.getAddress()
   const erc20 = new Contract(tokenAddress, ERC20_ABI, signer) as ERC20Contract
 
   try {
-    const approved = await erc20.allowance(signerAddress, contractAddress, {
-      gasLimit: transactionRequest?.gasLimit,
-      gasPrice: transactionRequest?.gasPrice,
-      maxFeePerGas: transactionRequest?.maxFeePerGas,
-      maxPriorityFeePerGas: transactionRequest?.maxPriorityFeePerGas,
-    })
+    const approved = await erc20.allowance(signerAddress, contractAddress)
     return new BigNumber(approved.toString())
   } catch (e) {
     return new BigNumber(0)
