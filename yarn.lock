@@ -1003,7 +1003,7 @@ __metadata:
     "@commitlint/config-conventional": ^17.6.7
     "@ethersproject/abi": ^5.7.0
     "@ethersproject/contracts": ^5.7.0
-    "@lifi/types": ^8.0.4
+    "@lifi/types": ^8.4.0
     "@mswjs/interceptors": ^0.22.16
     "@typescript-eslint/eslint-plugin": ^6.1.0
     "@typescript-eslint/parser": ^6.1.0
@@ -1027,12 +1027,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lifi/types@npm:^8.0.4":
-  version: 8.0.4
-  resolution: "@lifi/types@npm:8.0.4"
+"@lifi/types@npm:^8.4.0":
+  version: 8.4.0
+  resolution: "@lifi/types@npm:8.4.0"
   dependencies:
     ethers: ^5.7.2
-  checksum: b081ec0267ca0f53f3aa14c2beb269866cc5a374963661b9629005a51ed0a1e14edd9d3f9b3d5793f5cd33dcf93b73a756ca2c31f0799b60d9aa03c1fc5ae153
+  checksum: 54cc658b2d04b10c3faff72ac1bcbc5c69e5699be320dd913a15f4c2b2fdb6b4b888b488ffc40e90b4131ae6e5611677b863ac867227a7c1e19d1d9d8c434021
   languageName: node
   linkType: hard
 
