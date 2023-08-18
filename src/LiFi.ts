@@ -327,6 +327,7 @@ export class LiFi extends RouteExecutionManager {
    * @param token - The token that should be checked
    * @param ownerAddress - The owner of the token
    * @param spenderAddress - The spender address that has to be approved
+   * @returns Returns allowance
    */
   getTokenAllowance = async (
     token: Token,
@@ -337,9 +338,10 @@ export class LiFi extends RouteExecutionManager {
   }
 
   /**
-   * Get the current allowance for a list of token / spender address pairs.
+   * Get the current allowance for a list of token/spender address pairs.
    * @param ownerAddress - The owner of the tokens
    * @param tokens - A list of token and spender address pairs
+   * @returns Returns array of tokens and their allowance
    */
   getTokenAllowanceMulticall = async (
     ownerAddress: string,
@@ -351,18 +353,22 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Set approval for a certain token and amount.
    * @param request - The approval request
+   * @returns Returns Hash or nothing
    */
-  setTokenApproval = (request: ApproveTokenRequest): Promise<Hash | void> => {
+  setTokenApproval = (
+    request: ApproveTokenRequest
+  ): Promise<Hash | undefined> => {
     return setTokenAllowance(request)
   }
 
   /**
    * Revoke approval for a certain token.
    * @param request - The revoke request
+   * @returns Returns Hash or nothing
    */
   revokeTokenApproval = (
     request: RevokeApprovalRequest
-  ): Promise<Hash | void> => {
+  ): Promise<Hash | undefined> => {
     return revokeTokenApproval(request)
   }
 
@@ -371,7 +377,6 @@ export class LiFi extends RouteExecutionManager {
    * @param connectionRequest ConnectionsRequest
    * @returns ConnectionsResponse
    */
-
   getConnections = async (
     connectionRequest: ConnectionsRequest
   ): Promise<ConnectionsResponse> => {
