@@ -380,9 +380,8 @@ export class LiFi extends RouteExecutionManager {
   getConnections = async (
     connectionRequest: ConnectionsRequest
   ): Promise<ConnectionsResponse> => {
-    const connections = await ApiService.getAvailableConnections(
-      connectionRequest
-    )
+    const connections =
+      await ApiService.getAvailableConnections(connectionRequest)
 
     return connections
   }
