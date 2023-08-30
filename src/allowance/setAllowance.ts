@@ -1,5 +1,12 @@
-import type { Address, Hash, PublicClient, WalletClient } from 'viem'
+import type {
+  Address,
+  Hash,
+  PublicClient,
+  SendTransactionParameters,
+  WalletClient,
+} from 'viem'
 import { encodeFunctionData, maxUint256, publicActions } from 'viem'
+import type { InternalExecutionSettings, TransactionParameters } from '../types'
 import { approveAbi } from '../types'
 import { getMaxPriorityFeePerGas } from '../utils'
 import { isNativeTokenAddress } from '../utils/utils'
@@ -11,6 +18,7 @@ export const setAllowance = async (
   tokenAddress: string,
   contractAddress: string,
   amount: bigint,
+  settings?: InternalExecutionSettings,
   returnPopulatedTransaction?: boolean
 ): Promise<Hash> => {
   const data = encodeFunctionData({
@@ -23,18 +31,39 @@ export const setAllowance = async (
     return data
   }
   const client = walletClient.extend(publicActions)
-  let maxPriorityFeePerGas: bigint | undefined
-  if (walletClient.account?.type === 'local') {
-    maxPriorityFeePerGas = await getMaxPriorityFeePerGas(client as PublicClient)
+
+  let transactionRequest: TransactionParameters = {
+    to: tokenAddress,
+    data,
+    maxPriorityFeePerGas:
+      walletClient.account?.type === 'local'
+        ? await getMaxPriorityFeePerGas(client as PublicClient)
+        : undefined,
+  }
+
+  if (settings?.updateTransactionRequestHook) {
+    const customizedTransactionRequest: TransactionParameters =
+      await settings.updateTransactionRequestHook({
+        requestType: 'approve',
+        ...transactionRequest,
+      })
+
+    transactionRequest = {
+      ...transactionRequest,
+      ...customizedTransactionRequest,
+    }
   }
 
   return client.sendTransaction({
-    to: tokenAddress as Address,
+    to: transactionRequest.to as Address,
     account: walletClient.account!,
-    data,
-    maxPriorityFeePerGas,
+    data: transactionRequest.data,
+    gas: transactionRequest.gas,
+    gasPrice: transactionRequest.gasPrice,
+    maxFeePerGas: transactionRequest.maxFeePerGas,
+    maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
     chain: null,
-  })
+  } as SendTransactionParameters)
 }
 
 export const setTokenAllowance = async ({

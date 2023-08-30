@@ -62,6 +62,7 @@ export const checkAllowance = async (
             step.action.fromToken.address,
             step.estimate.approvalAddress,
             approvalAmount,
+            settings,
             true
           )
 

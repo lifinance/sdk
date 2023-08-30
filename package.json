@@ -2,56 +2,6 @@
   "name": "@lifi/sdk",
   "version": "3.0.0-alpha.4",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "addscope": "node tools/packagejson name @lifi/sdk",
-    "build": "yarn clean && tsc --project ./tsconfig.json && tsc --project ./tsconfig.cjs.json",
-    "clean": "node tools/cleanup",
-    "coverage": "vitest run --coverage",
-    "lint": "eslint --ext .tsx --ext .ts ./src",
-    "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
-    "package": "npm run build && npm pack",
-    "postpublish": "npm run use:gitReadme && pinst --enable",
-    "pre-commit": "lint-staged",
-    "pre-push": "yarn types:check && yarn build && yarn test:unit",
-    "prepublishOnly": "npm run build use:npmReadme && pinst --enable",
-    "prettier:fix": "prettier --write ./src/.",
-    "release": "standard-version -a",
-    "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
-    "release:beta": "standard-version -a --prerelease beta --skip.changelog",
-    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
-    "test:cov": "yarn test --coverage",
-    "test:e2e": "yarn test -c vitest.e2e.config.ts",
-    "test:unit": "yarn test .unit.spec.ts",
-    "types:check": "tsc --noEmit",
-    "use:gitReadme": "mv 'README.md' 'npm.README.md' && mv 'git.README.md' 'README.md'",
-    "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",
-    "watch": "tsc -w -p ./tsconfig.json",
-    "postinstall": "husky install",
-    "prepack": "pinst --disable",
-    "postpack": "pinst --enable"
-  },
-  "standard-version": {
-    "scripts": {
-      "postbump": "node scripts/version.js && git add ."
-    }
-  },
-  "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "yarn run lint:fix",
-      "yarn run prettier:fix"
-    ]
-  },
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "author": "Max Klenk <max@li.finance>",
-  "license": "Apache-2.0",
   "keywords": [
     "bridge",
     "bridge-aggregation",
@@ -73,42 +23,92 @@
     "web3-react"
   ],
   "homepage": "https://github.com/lifinance/sdk",
+  "bugs": {
+    "url": "https://github.com/lifinance/sdk/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/lifinance/sdk.git"
   },
-  "bugs": {
-    "url": "https://github.com/lifinance/sdk/issues"
+  "license": "Apache-2.0",
+  "author": "Max Klenk <max@li.finance>",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "directories": {
+    "test": "tests"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "addscope": "node tools/packagejson name @lifi/sdk",
+    "build": "yarn clean && tsc --project ./tsconfig.json && tsc --project ./tsconfig.cjs.json",
+    "clean": "node tools/cleanup",
+    "coverage": "vitest run --coverage",
+    "postinstall": "husky install",
+    "lint": "eslint --ext .tsx --ext .ts ./src",
+    "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
+    "prepack": "pinst --disable",
+    "postpack": "pinst --enable",
+    "package": "npm run build && npm pack",
+    "pre-commit": "lint-staged",
+    "pre-push": "yarn types:check && yarn build && yarn test:unit",
+    "prepublishOnly": "npm run build use:npmReadme && pinst --enable",
+    "prettier:fix": "prettier --write ./src/.",
+    "postpublish": "npm run use:gitReadme && pinst --enable",
+    "release": "standard-version -a",
+    "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
+    "release:beta": "standard-version -a --prerelease beta --skip.changelog",
+    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test:cov": "yarn test --coverage",
+    "test:e2e": "yarn test -c vitest.e2e.config.ts",
+    "test:unit": "yarn test .unit.spec.ts",
+    "types:check": "tsc --noEmit",
+    "use:gitReadme": "mv 'README.md' 'npm.README.md' && mv 'git.README.md' 'README.md'",
+    "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",
+    "watch": "tsc -w -p ./tsconfig.json"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "yarn run lint:fix",
+      "yarn run prettier:fix"
+    ]
   },
   "dependencies": {
-    "@lifi/types": "^9.0.0-alpha.10",
+    "@lifi/types": "^9.0.0-alpha.11",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^1.8.1"
+    "viem": "^1.9.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
     "@commitlint/config-conventional": "^17.7.0",
     "@mswjs/interceptors": "^0.22.16",
     "@types/ws": "^8.5.5",
-    "@typescript-eslint/eslint-plugin": "^6.4.1",
-    "@typescript-eslint/parser": "^6.4.1",
+    "@typescript-eslint/eslint-plugin": "^6.5.0",
+    "@typescript-eslint/parser": "^6.5.0",
     "@vitest/coverage-v8": "^0.34.3",
     "cross-fetch": "^4.0.0",
     "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-jsdoc": "^46.5.0",
+    "eslint-plugin-jsdoc": "^46.5.1",
     "eslint-plugin-prettier": "^5.0.0",
     "husky": "^8.0.3",
     "lint-staged": "^14.0.1",
     "msw": "1.0.1",
     "pinst": "^3.0.0",
-    "prettier": "^3.0.2",
+    "prettier": "^3.0.3",
     "standard-version": "^9.5.0",
     "typescript": "^5.2.2",
     "vitest": "^0.34.3"
   },
-  "directories": {
-    "test": "tests"
+  "packageManager": "yarn@3.6.3",
+  "publishConfig": {
+    "access": "public"
   },
-  "packageManager": "yarn@3.6.3"
+  "standard-version": {
+    "scripts": {
+      "postbump": "node scripts/version.js && git add ."
+    }
+  }
 }

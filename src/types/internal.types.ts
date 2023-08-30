@@ -24,8 +24,13 @@ export interface ExecutionParams {
 }
 
 export type UpdateRouteHook = (updatedRoute: Route) => void
+
+export interface TransactionRequestParameters extends TransactionParameters {
+  requestType: 'approve' | 'transaction'
+}
+
 export type TransactionRequestUpdateHook = (
-  updatedTxRequest: TransactionParameters
+  updatedTxRequest: TransactionRequestParameters
 ) => Promise<TransactionParameters>
 
 export type Config = {

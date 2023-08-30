@@ -3,7 +3,13 @@ import type {
   ExtendedTransactionInfo,
   FullStatusData,
 } from '@lifi/types'
-import type { Address, Hash, PublicClient, ReplacementReason } from 'viem'
+import type {
+  Address,
+  Hash,
+  PublicClient,
+  ReplacementReason,
+  SendTransactionParameters,
+} from 'viem'
 import { publicActions } from 'viem'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
@@ -162,32 +168,7 @@ export class StepExecutionManager {
             }
           }
 
-          let transactionRequest: TransactionParameters = {
-            to: step.transactionRequest?.to as Hash,
-            from: step.transactionRequest?.from as Hash,
-            data: step.transactionRequest?.data as Hash,
-            value: step.transactionRequest?.value
-              ? BigInt(step.transactionRequest.value as string)
-              : undefined,
-            maxPriorityFeePerGas:
-              walletClient.account?.type === 'local'
-                ? await getMaxPriorityFeePerGas(client as PublicClient)
-                : undefined,
-            // gas: step.transactionRequest?.gasLimit
-            //   ? BigInt(step.transactionRequest.gasLimit as string)
-            //   : undefined,
-            // gasPrice: step.transactionRequest?.gasPrice
-            //   ? BigInt(step.transactionRequest.gasPrice as string)
-            //   : undefined,
-            // maxFeePerGas: step.transactionRequest?.maxFeePerGas
-            //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
-            //   : undefined,
-            // maxPriorityFeePerGas: step.transactionRequest?.maxPriorityFeePerGas
-            //   ? BigInt(step.transactionRequest.maxPriorityFeePerGas as string)
-            //   : undefined,
-          }
-
-          if (!transactionRequest) {
+          if (!step.transactionRequest) {
             throw new TransactionError(
               LiFiErrorCode.TransactionUnprepared,
               'Unable to prepare transaction.'
@@ -221,9 +202,36 @@ export class StepExecutionManager {
             return step.execution!
           }
 
+          let transactionRequest: TransactionParameters = {
+            to: step.transactionRequest.to as Hash,
+            from: step.transactionRequest.from as Hash,
+            data: step.transactionRequest.data as Hash,
+            value: step.transactionRequest.value
+              ? BigInt(step.transactionRequest.value as string)
+              : undefined,
+            gas: step.transactionRequest.gasLimit
+              ? BigInt(step.transactionRequest.gasLimit as string)
+              : undefined,
+            // gasPrice: step.transactionRequest.gasPrice
+            //   ? BigInt(step.transactionRequest.gasPrice as string)
+            //   : undefined,
+            // maxFeePerGas: step.transactionRequest.maxFeePerGas
+            //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
+            //   : undefined,
+            maxPriorityFeePerGas:
+              walletClient.account?.type === 'local'
+                ? await getMaxPriorityFeePerGas(client as PublicClient)
+                : step.transactionRequest.maxPriorityFeePerGas
+                ? BigInt(step.transactionRequest.maxPriorityFeePerGas as string)
+                : undefined,
+          }
+
           if (settings.updateTransactionRequestHook) {
             const customizedTransactionRequest: TransactionParameters =
-              await settings.updateTransactionRequestHook(transactionRequest)
+              await settings.updateTransactionRequestHook({
+                requestType: 'transaction',
+                ...transactionRequest,
+              })
 
             transactionRequest = {
               ...transactionRequest,
@@ -257,9 +265,12 @@ export class StepExecutionManager {
               to: transactionRequest.to as Address,
               account: walletClient.account!,
               data: transactionRequest.data,
+              gas: transactionRequest.gas,
+              gasPrice: transactionRequest.gasPrice,
+              maxFeePerGas: transactionRequest.maxFeePerGas,
               maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
               chain: null,
-            })
+            } as SendTransactionParameters)
           }
 
           // STEP 4: Wait for the transaction
