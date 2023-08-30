@@ -54,9 +54,8 @@
     "package": "npm run build && npm pack",
     "pre-commit": "lint-staged",
     "pre-push": "yarn types:check && yarn build && yarn test:unit",
-    "prepublishOnly": "npm run build use:npmReadme && pinst --enable",
+    "prepublishOnly": "npm run build",
     "prettier:fix": "prettier --write ./src/.",
-    "postpublish": "npm run use:gitReadme && pinst --enable",
     "release": "standard-version -a",
     "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
     "release:beta": "standard-version -a --prerelease beta --skip.changelog",
@@ -65,8 +64,6 @@
     "test:e2e": "yarn test -c vitest.e2e.config.ts",
     "test:unit": "yarn test .unit.spec.ts",
     "types:check": "tsc --noEmit",
-    "use:gitReadme": "mv 'README.md' 'npm.README.md' && mv 'git.README.md' 'README.md'",
-    "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "lint-staged": {
