@@ -53,50 +53,13 @@ describe('parseError', () => {
     statusManager.initExecutionObject(mockStep)
   })
 
-  it('should consider gas config settings passed by developer', async () => {
-    const currentSettings: InternalExecutionSettings = {
-      ...mockSettings,
-      updateTransactionRequestHook: async (txRequest) => {
-        return {
-          ...txRequest,
-          gasLimit: 100000,
-          gasPrice: 1000000000,
-        }
-      },
-    }
-
-    await checkAllowance(
-      signer,
-      mockStep,
-      statusManager,
-      currentSettings,
-      chain
-    )
-
-    expect(mockedApprovedAllowance).toBeCalledWith(
-      signer,
-      mockStep.action.fromToken.address,
-      mockStep.estimate.approvalAddress,
-      {
-        from: mockStep.action.fromToken.address,
-        gasLimit: 100000,
-        gasPrice: 1000000000,
-        to: mockStep.estimate.approvalAddress,
-      }
-    )
-  })
-
   it('should continue without any config', async () => {
     await checkAllowance(signer, mockStep, statusManager, mockSettings, chain)
 
     expect(mockedApprovedAllowance).toBeCalledWith(
       signer,
       mockStep.action.fromToken.address,
-      mockStep.estimate.approvalAddress,
-      {
-        from: mockStep.action.fromToken.address,
-        to: mockStep.estimate.approvalAddress,
-      }
+      mockStep.estimate.approvalAddress
     )
   })
 })
