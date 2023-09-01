@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.3.0](https://github.com/lifinance/sdk/compare/v2.2.3...v2.3.0) (2023-08-17)
+
+
+### Features
+
+* allow to pass api key to all requests ([#159](https://github.com/lifinance/sdk/issues/159)) ([e9dc0fe](https://github.com/lifinance/sdk/commit/e9dc0fee146a76805cec7ab3bcf48b02a2c3febe))
+
 ### [2.2.3](https://github.com/lifinance/sdk/compare/v2.2.2...v2.2.3) (2023-08-04)
 
 
