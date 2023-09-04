@@ -1,8 +1,8 @@
 import type {
   Chain,
-  Config,
-  ConfigUpdate,
   InternalExecutionSettings,
+  SDKConfig,
+  SDKOptions,
 } from '../types'
 import { ChainId } from '../types'
 
@@ -19,7 +19,7 @@ type PromiseResolver = () => void
 
 export default class ConfigService {
   private static instance: ConfigService
-  private readonly config: Config
+  private readonly config: SDKConfig
   private readonly setupPromise: Promise<unknown>
   private resolveSetupPromise: PromiseResolver | undefined = undefined
 
@@ -44,7 +44,7 @@ export default class ConfigService {
     return result
   }
 
-  private static getDefaultConfig = (): Config => {
+  private static getDefaultConfig = (): SDKConfig => {
     return {
       apiUrl: 'https://li.quest/v1',
       rpcs: ConfigService.chainIdToObject([]),
@@ -69,7 +69,7 @@ export default class ConfigService {
    * This call immediately returns the current config. It does not make sure that all chain data is already loaded
    * Use this if you need access to basic information like API urls or settings
    */
-  public getConfig = (): Config => {
+  public getConfig = (): SDKConfig => {
     return this.config
   }
 
@@ -77,12 +77,12 @@ export default class ConfigService {
    * This call waits for all setup promises to be done.
    * Use this if you need access to chain data (RPCs or multicalls)
    */
-  public getConfigAsync = async (): Promise<Config> => {
+  public getConfigAsync = async (): Promise<SDKConfig> => {
     await this.setupPromise
     return this.config
   }
 
-  public updateConfig = (configUpdate: Partial<ConfigUpdate>): Config => {
+  public updateConfig = (configUpdate: Partial<SDKOptions>): SDKConfig => {
     // API
     this.config.apiUrl = configUpdate.apiUrl || this.config.apiUrl
 
@@ -115,12 +115,12 @@ export default class ConfigService {
       this.config.integrator
     this.config.widgetVersion =
       configUpdate.widgetVersion || this.config.widgetVersion
-    this.config.multisig = configUpdate.multisigConfig || this.config.multisig
+    this.config.multisig = configUpdate.multisig || this.config.multisig
 
     return this.config
   }
 
-  public updateChains = (chains: Chain[]): Config => {
+  public updateChains = (chains: Chain[]): SDKConfig => {
     for (const chain of chains) {
       const chainId = chain.id as ChainId
 

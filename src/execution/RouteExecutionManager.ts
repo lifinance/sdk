@@ -1,43 +1,39 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { Route } from '@lifi/types'
-import type { WalletClient } from 'viem'
+import type { BaseProvider } from '../providers/BaseProvider'
+import { EVMProvider } from '../providers/EvmProvider'
 import ConfigService from '../services/ConfigService'
+import type { SDKOptions } from '../types'
+import { ValidationError } from '../utils/errors'
+import { StatusManager } from './StatusManager'
+import { prepareRestart } from './prepareRestart'
 import type {
-  ConfigUpdate,
   ExecutionSettings,
   RouteExecutionData,
   RouteExecutionDictionary,
   RouteExecutionPromiseDictionary,
-} from '../types'
-import { ValidationError } from '../utils/errors'
-import { StatusManager } from './StatusManager'
-import { StepExecutor } from './StepExecutor'
-import { prepareRestart } from './prepareRestart'
+} from './types'
 
 export class RouteExecutionManager {
   private executionDictionary: RouteExecutionDictionary = {}
   private executionPromiseDictionary: RouteExecutionPromiseDictionary = {}
   protected configService: ConfigService
+  private providers: BaseProvider[]
 
-  constructor(configUpdate: ConfigUpdate) {
+  constructor(options: SDKOptions) {
     this.configService = ConfigService.getInstance()
-
-    if (configUpdate) {
-      // Update API urls before we request chains
-      this.configService.updateConfig(configUpdate)
-    }
+    this.configService.updateConfig(options)
+    this.providers = options.providers ?? [new EVMProvider()]
   }
 
   /**
    * Execute a route.
-   * @param walletClient - The walletClient required to send the transactions.
    * @param route - The route that should be executed. Cannot be an active route.
    * @param settings - An object containing settings and callbacks.
    * @returns The executed route.
    * @throws {LiFiError} Throws a LiFiError if the execution fails.
    */
   executeRoute = async (
-    walletClient: WalletClient,
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
@@ -50,7 +46,7 @@ export class RouteExecutionManager {
       return executionPromise
     }
 
-    executionPromise = this.executeSteps(walletClient, clonedRoute, settings)
+    executionPromise = this.executeSteps(clonedRoute, settings)
 
     this.executionPromiseDictionary[clonedRoute.id] = executionPromise
 
@@ -59,14 +55,12 @@ export class RouteExecutionManager {
 
   /**
    * Resume the execution of a route that has been stopped or had an error while executing.
-   * @param walletClient - The walletClient required to send the transactions.
    * @param route - The route that is to be executed. Cannot be an active route.
    * @param settings - An object containing settings and callbacks.
    * @returns The executed route.
    * @throws {LiFiError} Throws a LiFiError if the execution fails.
    */
   resumeRoute = async (
-    walletClient: WalletClient,
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
@@ -77,7 +71,7 @@ export class RouteExecutionManager {
 
     if (execution) {
       const executionHalted = execution.executors.some(
-        (executor) => executor.executionStopped
+        (executor) => !executor.allowExecution
       )
       if (!executionHalted) {
         // Check if we want to resume route execution in the background
@@ -89,13 +83,9 @@ export class RouteExecutionManager {
       }
     }
 
-    await prepareRestart(clonedRoute, walletClient)
+    await prepareRestart(clonedRoute)
 
-    const executionPromise = this.executeSteps(
-      walletClient,
-      clonedRoute,
-      settings
-    )
+    const executionPromise = this.executeSteps(clonedRoute, settings)
 
     this.executionPromiseDictionary[clonedRoute.id] = executionPromise
 
@@ -103,7 +93,6 @@ export class RouteExecutionManager {
   }
 
   private executeSteps = async (
-    walletClient: WalletClient,
     route: Route,
     settings?: ExecutionSettings
   ): Promise<Route> => {
@@ -149,13 +138,20 @@ export class RouteExecutionManager {
       }
 
       try {
-        const stepExecutor = new StepExecutor(statusManager, execution.settings)
+        const provider = this.providers.find((provider) =>
+          provider.isProviderStep(step)
+        )!
+
+        const stepExecutor = await provider.getStepExecutor({
+          statusManager,
+          settings: execution.settings,
+        })
         execution.executors.push(stepExecutor)
 
         // Check if we want to execute this step in the background
         this.updateRouteExecution(route, execution.settings)
 
-        const executedStep = await stepExecutor.executeStep(walletClient, step)
+        const executedStep = await stepExecutor.executeStep(step)
 
         // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
         if (executedStep.execution?.status !== 'DONE') {
@@ -163,7 +159,7 @@ export class RouteExecutionManager {
         }
 
         // Execution stopped during the current step, we don't want to continue to the next step so we return already
-        if (stepExecutor.executionStopped) {
+        if (stepExecutor.allowExecution) {
           return route
         }
       } catch (e) {
@@ -244,7 +240,7 @@ export class RouteExecutionManager {
       executor.setInteraction({
         allowInteraction: false,
         allowUpdates: false,
-        stopExecution: true,
+        allowExecution: false,
       })
     }
     delete this.executionDictionary[route.id]

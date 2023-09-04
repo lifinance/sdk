@@ -1,5 +1,5 @@
 import type {
-  LifiStep,
+  LiFiStep,
   ProcessType,
   Status,
   StatusMessage,
@@ -89,8 +89,8 @@ export function getSubstatusMessage(
  * @returns Boolean
  */
 export function checkStepSlippageThreshold(
-  oldStep: LifiStep,
-  newStep: LifiStep
+  oldStep: LiFiStep,
+  newStep: LiFiStep
 ): boolean {
   const setSlippage = oldStep.action.slippage
   const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)

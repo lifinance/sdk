@@ -2,7 +2,7 @@ import type {
   Action,
   ConnectionsRequest,
   Estimate,
-  LifiStep,
+  LiFiStep,
   RoutesRequest,
   StepTool,
   Token,
@@ -544,7 +544,7 @@ describe('ApiService', () => {
       tool?: StepTool
       action?: Action
       estimate?: Estimate
-    }): LifiStep => ({
+    }): LiFiStep => ({
       id,
       type,
       tool,

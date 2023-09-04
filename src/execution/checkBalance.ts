@@ -1,11 +1,11 @@
+import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
-import type { LifiStep } from '..'
 import { getTokenBalance } from '../balance'
 import { BalanceError } from '../utils/errors'
 
 export const checkBalance = async (
   walletAddress: string,
-  step: LifiStep,
+  step: LiFiStep,
   depth = 0
 ): Promise<void> => {
   const token = await getTokenBalance(walletAddress, step.action.fromToken)

@@ -1,11 +1,11 @@
 import type {
   Action,
   Estimate,
-  LifiStep,
+  LiFiStep,
   RouteOptions,
   RoutesRequest,
   StaticToken,
-} from './types'
+} from '@lifi/types'
 
 export const isRoutesRequest = (
   routesRequest: RoutesRequest
@@ -37,7 +37,7 @@ const isRoutesOptions = (
 ): routeOptions is RouteOptions =>
   !routeOptions?.slippage || typeof routeOptions.slippage === 'number'
 
-export const isStep = (step: LifiStep): step is LifiStep => {
+export const isStep = (step: LiFiStep): step is LiFiStep => {
   const { id, type, tool, action, estimate } = step
 
   return (

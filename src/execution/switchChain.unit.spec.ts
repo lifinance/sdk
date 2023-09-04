@@ -1,4 +1,4 @@
-import type { LifiStep } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 import type { WalletClient } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ import type { StatusManager } from './StatusManager'
 import { switchChain } from './switchChain'
 
 let walletClient: WalletClient,
-  step: LifiStep,
+  step: LiFiStep,
   statusManager: StatusManager,
   hooks: InternalExecutionSettings,
   getChainIdMock: Mock,

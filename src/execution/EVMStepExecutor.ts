@@ -9,6 +9,7 @@ import type {
   PublicClient,
   ReplacementReason,
   SendTransactionParameters,
+  WalletClient,
 } from 'viem'
 import { publicActions } from 'viem'
 import ApiService from '../services/ApiService'
@@ -22,6 +23,7 @@ import {
 } from '../utils/errors'
 import { getTransactionFailedMessage, parseError } from '../utils/parseError'
 import { isZeroAddress } from '../utils/utils'
+import { BaseStepExecutor } from './BaseStepExecutor'
 import { checkAllowance } from './checkAllowance'
 import { checkBalance } from './checkBalance'
 import { updateMultisigRouteProcess } from './multisig'
@@ -30,16 +32,72 @@ import { switchChain } from './switchChain'
 import type {
   BaseTransaction,
   ExecutionParams,
+  StepExecutorOptions,
   TransactionParameters,
 } from './types'
 import { getSubstatusMessage } from './utils'
 import { waitForReceivingTransaction } from './waitForReceivingTransaction'
 
-export class StepExecutionManager {
-  allowUserInteraction = true
+export interface EVMStepExecutorOptions extends StepExecutorOptions {
+  walletClient: WalletClient
+}
 
-  allowInteraction = (value: boolean): void => {
-    this.allowUserInteraction = value
+export class EVMStepExecutor extends BaseStepExecutor {
+  walletClient: WalletClient
+
+  constructor(options: EVMStepExecutorOptions) {
+    super(options)
+    this.walletClient = options.walletClient
+  }
+
+  // TODO: add checkChain method and update wallet client inside executors
+  // This can come in handy when we execute multiple routes simultaneously and
+  // should be sure that we are on the right chain when waiting for transactions.
+  checkChain = () => {
+    throw new Error('checkChain is not implemented.')
+  }
+
+  executeStep = async (step: LiFiStep): Promise<LiFiStep> => {
+    // Make sure that the chain is still correct
+
+    // Find if it's bridging and the step is waiting for a transaction on the receiving chain
+    const recievingChainProcess = step.execution?.process.find(
+      (process) => process.type === 'RECEIVING_CHAIN'
+    )
+
+    // If the step is waiting for a transaction on the receiving chain, we do not switch the chain
+    // All changes are already done from the source chain
+    // Return the step
+    if (
+      recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION' ||
+      !recievingChainProcess
+    ) {
+      const updatedWalletClient = await switchChain(
+        this.walletClient,
+        this.statusManager,
+        step,
+        this.settings.switchChainHook,
+        this.allowUserInteraction
+      )
+
+      if (!updatedWalletClient) {
+        // Chain switch was not successful, stop execution here
+        return step
+      }
+
+      this.walletClient = updatedWalletClient
+    }
+
+    const parameters = {
+      step,
+      walletClient: this.walletClient,
+      settings: this.settings,
+      statusManager: this.statusManager,
+    }
+
+    const executedStep = await this.execute(parameters)
+
+    return executedStep
   }
 
   execute = async ({

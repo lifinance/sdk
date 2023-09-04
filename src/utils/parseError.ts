@@ -1,4 +1,4 @@
-import type { LifiStep, Process } from '@lifi/types'
+import type { LiFiStep, Process } from '@lifi/types'
 import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
@@ -56,7 +56,7 @@ import {
  */
 
 export const getTransactionNotSentMessage = async (
-  step?: LifiStep,
+  step?: LiFiStep,
   process?: Process
 ): Promise<string> => {
   let transactionNotSend =
@@ -86,7 +86,7 @@ export const getTransactionNotSentMessage = async (
 }
 
 export const getTransactionFailedMessage = async (
-  step: LifiStep,
+  step: LiFiStep,
   txLink?: string
 ): Promise<string> => {
   const chainsService = ChainsService.getInstance()
@@ -102,7 +102,7 @@ export const getTransactionFailedMessage = async (
 
 export const parseError = async (
   e: any,
-  step?: LifiStep,
+  step?: LiFiStep,
   process?: Process
 ): Promise<LiFiError> => {
   if (e instanceof LiFiError) {

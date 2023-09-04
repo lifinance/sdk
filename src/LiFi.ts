@@ -9,7 +9,7 @@ import type {
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
-  LifiStep,
+  LiFiStep,
   PossibilitiesRequest,
   PossibilitiesResponse,
   QuoteRequest,
@@ -45,15 +45,15 @@ import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import { isToken } from './typeguards'
-import type { Config, ConfigUpdate } from './types'
+import type { SDKConfig, SDKOptions } from './types'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
 export class LiFi extends RouteExecutionManager {
   private chainsService: ChainsService
 
-  constructor(configUpdate: ConfigUpdate) {
-    super(configUpdate)
+  constructor(options: SDKOptions) {
+    super(options)
 
     this.chainsService = ChainsService.getInstance()
 
@@ -61,14 +61,14 @@ export class LiFi extends RouteExecutionManager {
       this.configService.updateChains(chains)
     })
 
-    checkPackageUpdates(name, version, configUpdate.disableVersionCheck)
+    checkPackageUpdates(name, version, options.disableVersionCheck)
   }
 
   /**
    * Get the current configuration of the SDK
    * @returns - The config object
    */
-  getConfig = (): Config => {
+  getConfig = (): SDKConfig => {
     return this.configService.getConfig()
   }
 
@@ -76,7 +76,7 @@ export class LiFi extends RouteExecutionManager {
    * Get the SDK configuration after all setup calls are finished
    * @returns - The config object
    */
-  getConfigAsync = (): Promise<Config> => {
+  getConfigAsync = (): Promise<SDKConfig> => {
     return this.configService.getConfigAsync()
   }
 
@@ -94,14 +94,14 @@ export class LiFi extends RouteExecutionManager {
    * @param configUpdate - An object containing the configuration fields that should be updated.
    * @returns The renewed config object
    */
-  setConfig = (configUpdate: Partial<ConfigUpdate>): Config => {
+  setConfig = (configUpdate: Partial<SDKOptions>): SDKConfig => {
     return this.configService.updateConfig(configUpdate)
   }
 
   /**
    * Get a set of current possibilities based on a request that specifies which chains, exchanges and bridges are preferred or unwanted.
    * @param request - Object defining preferences regarding chain, exchanges and bridges
-   * @param options
+   * @param options - Request options
    * @returns Object listing current possibilities for any-to-any cross-chain-swaps based on the provided preferences.
    * @throws {LiFiError} Throws a LiFiError if request fails.
    * @deprecated We don't want to support this endpoint anymore in the future. /chains, /tools, /connections, and /tokens should be used instead
@@ -117,8 +117,9 @@ export class LiFi extends RouteExecutionManager {
    * Fetch information about a Token
    * @param chain - Id or key of the chain that contains the token
    * @param token - Address or symbol of the token on the requested chain
-   * @param options
+   * @param options - Request options
    * @throws {LiFiError} - Throws a LiFiError if request fails
+   * @returns Token information
    */
   getToken = async (
     chain: ChainKey | ChainId,
@@ -131,27 +132,28 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get a quote for a token transfer
    * @param request - The configuration of the requested quote
-   * @param options
+   * @param options - Request options
    * @throws {LiFiError} - Throws a LiFiError if request fails
+   * @returns Quote for a token transfer
    */
   getQuote = async (
     request: QuoteRequest,
     options?: RequestOptions
-  ): Promise<LifiStep> => {
+  ): Promise<LiFiStep> => {
     return ApiService.getQuote(request, options)
   }
 
   /**
    * Get a quote for a destination contract call
    * @param request - The configuration of the requested destination call
-   * @param options
+   * @param options - Request options
    * @throws {LiFiError} - Throws a LiFiError if request fails
    * @returns - Returns step.
    */
   getContractCallQuote = async (
     request: ContractCallQuoteRequest,
     options?: RequestOptions
-  ): Promise<LifiStep> => {
+  ): Promise<LiFiStep> => {
     return ApiService.getContractCallQuote(request, options)
   }
 
@@ -172,7 +174,7 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get the available tools to bridge and swap tokens.
    * @param request - The configuration of the requested tools
-   * @param options
+   * @param options - Request options
    * @returns The tools that are available on the requested chains
    */
   getTools = async (
@@ -185,7 +187,7 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get all known tokens.
    * @param request - The configuration of the requested tokens
-   * @param options
+   * @param options - Request options
    * @returns The tokens that are available on the requested chains
    */
   getTokens = async (
@@ -207,7 +209,7 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get a set of routes for a request that describes a transfer of tokens.
    * @param request - A description of the transfer.
-   * @param options
+   * @param options - Request options
    * @returns The resulting routes that can be used to realize the described transfer of tokens.
    * @throws {LiFiError} Throws a LiFiError if request fails.
    */
@@ -221,22 +223,23 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get the transaction data for a single step of a route
    * @param step - The step object.
-   * @param options
+   * @param options - Request options
    * @returns The step populated with the transaction data.
    * @throws {LiFiError} Throws a LiFiError if request fails.
    */
   getStepTransaction = async (
-    step: LifiStep,
+    step: LiFiStep,
     options?: RequestOptions
-  ): Promise<LifiStep> => {
+  ): Promise<LiFiStep> => {
     return ApiService.getStepTransaction(step, options)
   }
 
   /**
    * Get gas recommendation for a certain chain
    * @param request - Configuration of the requested recommendation.
-   * @param options
+   * @param options - Request options
    * @throws {LiFiError} Throws a LiFiError if request fails.
+   * @returns Gas recommendation response.
    */
   getGasRecommendation = async (
     request: GasRecommendationRequest,

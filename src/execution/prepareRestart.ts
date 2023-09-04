@@ -1,24 +1,21 @@
+import type { LiFiStep, Route } from '@lifi/types'
 import { publicActions, type WalletClient } from 'viem'
-import type { LifiStep, Route } from '../types'
 import { LiFiErrorCode } from '../utils/errors'
 
-export const prepareRestart = async (
-  route: Route,
-  walletClient: WalletClient
-) => {
+export const prepareRestart = async (route: Route) => {
   for (let index = 0; index < route.steps.length; index++) {
     const step = route.steps[index]
     const stepHasFailed = step.execution?.status === 'FAILED'
 
     if (stepHasFailed) {
-      await handleErrorType(walletClient, step)
+      // await handleErrorType(walletClient, step)
       deleteFailedProcesses(step)
       deleteTransactionData(step)
     }
   }
 }
 
-const handleErrorType = async (walletClient: WalletClient, step: LifiStep) => {
+const handleErrorType = async (walletClient: WalletClient, step: LiFiStep) => {
   const client = walletClient.extend(publicActions)
 
   const isGasLimitError = step.execution?.process.some(
@@ -73,7 +70,7 @@ const handleErrorType = async (walletClient: WalletClient, step: LifiStep) => {
   // }
 }
 
-const deleteFailedProcesses = (step: LifiStep) => {
+const deleteFailedProcesses = (step: LiFiStep) => {
   if (step.execution) {
     step.execution.process = step.execution.process.filter(
       (process) => process.status === 'DONE'
@@ -81,6 +78,6 @@ const deleteFailedProcesses = (step: LifiStep) => {
   }
 }
 
-const deleteTransactionData = (step: LifiStep) => {
+const deleteTransactionData = (step: LiFiStep) => {
   step.transactionRequest = undefined
 }

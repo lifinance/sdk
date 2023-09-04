@@ -1,20 +1,15 @@
+import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
 import type { Address, Hash, ReplacementReason, WalletClient } from 'viem'
 import { maxUint256, publicActions } from 'viem'
 import { getAllowance, setAllowance } from '../allowance'
 import type { StatusManager } from '../execution/StatusManager'
-import type {
-  Chain,
-  InternalExecutionSettings,
-  LifiStep,
-  Process,
-  ProcessType,
-} from '../types'
 import { LiFiErrorCode, TransactionError } from '../utils'
 import { parseError } from '../utils/parseError'
+import type { InternalExecutionSettings } from './types'
 
 export const checkAllowance = async (
   walletClient: WalletClient,
-  step: LifiStep,
+  step: LiFiStep,
   statusManager: StatusManager,
   settings: InternalExecutionSettings,
   chain: Chain,
@@ -120,7 +115,7 @@ const waitForApprovalTransaction = async (
   walletClient: WalletClient,
   txHash: Hash,
   processType: ProcessType,
-  step: LifiStep,
+  step: LiFiStep,
   chain: Chain,
   statusManager: StatusManager
 ) => {

@@ -1,14 +1,14 @@
 import type {
   Execution,
-  InternalExecutionSettings,
-  LifiStep,
+  LiFiStep,
   Process,
   ProcessType,
   Route,
   Status,
   Token,
-} from '../types'
-import { emptyExecution } from '../types'
+} from '@lifi/types'
+import { emptyExecution } from '@lifi/types'
+import type { InternalExecutionSettings } from './types'
 import { getProcessMessage } from './utils'
 
 interface Receipt {
@@ -66,7 +66,7 @@ export class StatusManager {
    * @param step  The current step in execution
    * @returns The initialized execution object for this step and a function to update this step
    */
-  initExecutionObject = (step: LifiStep): Execution => {
+  initExecutionObject = (step: LiFiStep): Execution => {
     const currentExecution =
       step.execution || structuredClone<Execution>(emptyExecution)
 
@@ -92,7 +92,7 @@ export class StatusManager {
    * @param receipt Optional. Information about received tokens
    * @returns       The step with the updated execution object
    */
-  updateExecution(step: LifiStep, status: Status, receipt?: Receipt): LifiStep {
+  updateExecution(step: LiFiStep, status: Status, receipt?: Receipt): LiFiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
@@ -115,7 +115,7 @@ export class StatusManager {
    * @returns Returns process.
    */
   findOrCreateProcess = (
-    step: LifiStep,
+    step: LiFiStep,
     type: ProcessType,
     status?: Status
   ): Process => {
@@ -154,7 +154,7 @@ export class StatusManager {
    * @returns The update process
    */
   updateProcess = (
-    step: LifiStep,
+    step: LiFiStep,
     type: ProcessType,
     status: Status,
     params?: OptionalParameters
@@ -215,7 +215,7 @@ export class StatusManager {
    * @param step The step where the process should be removed from
    * @param type  The process type to remove
    */
-  removeProcess = (step: LifiStep, type: ProcessType): void => {
+  removeProcess = (step: LiFiStep, type: ProcessType): void => {
     if (!step.execution) {
       throw new Error("Execution hasn't been initialized.")
     }
@@ -224,7 +224,7 @@ export class StatusManager {
     this.updateStepInRoute(step)
   }
 
-  updateStepInRoute = (step: LifiStep): LifiStep => {
+  updateStepInRoute = (step: LiFiStep): LiFiStep => {
     if (!this.shouldUpdate) {
       return step
     }

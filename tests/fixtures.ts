@@ -1,6 +1,6 @@
 // This file holds generator functions to create objects for testing purposes
 
-import type { LifiStep, Route, Token } from '@lifi/types'
+import type { LiFiStep, Route, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { findDefaultToken } from './tokens'
 
@@ -19,7 +19,7 @@ export const buildStepObject = ({
   includingExecution = true,
 }: {
   includingExecution?: boolean
-}): LifiStep => ({
+}): LiFiStep => ({
   id: '8d3a0474-4ee3-4a7a-90c7-2a2264b7f3a9',
   type: 'lifi',
   tool: '1inch',
@@ -149,7 +149,7 @@ export const buildStepObject = ({
 export const buildRouteObject = ({
   step = buildStepObject({}),
 }: {
-  step?: LifiStep
+  step?: LiFiStep
 }): Route => ({
   id: '0x433df53dbf6dbd7b946fc4f3b501c3ff32957d77d96c9d5ba1805b01eb6461cc',
   fromChainId: 137,

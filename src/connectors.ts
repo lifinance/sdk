@@ -1,9 +1,9 @@
+import type { ChainId } from '@lifi/types'
 import type { PublicClient } from 'viem'
 import { createPublicClient, fallback, http } from 'viem'
 import type { Chain } from 'viem/chains' // TODO: optimize using BE chains
 import * as chains from 'viem/chains' // TODO: optimize using BE chains
 import ConfigService from './services/ConfigService'
-import type { ChainId } from './types'
 import { ServerError } from './utils/errors'
 
 // cached providers

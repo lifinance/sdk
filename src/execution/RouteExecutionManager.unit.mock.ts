@@ -1,4 +1,4 @@
-import type { LifiStep } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 import { buildStepObject } from '../../tests/fixtures'
 
 export const mockChainsResponse = [
@@ -73,7 +73,7 @@ export const mockStatus = {
 }
 
 export const mockStepTransactionWithTxRequest = (
-  step: LifiStep = buildStepObject({
+  step: LiFiStep = buildStepObject({
     includingExecution: false,
   })
 ) => ({

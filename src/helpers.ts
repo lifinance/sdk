@@ -1,4 +1,4 @@
-import type { LifiStep, Route } from '@lifi/types'
+import type { LiFiStep, Route } from '@lifi/types'
 import { request } from './request'
 import type { TenderlyResponse } from './types'
 import { ValidationError } from './utils/errors'
@@ -61,7 +61,7 @@ export const checkPackageUpdates = async (
  * @returns - The route to be executed.
  * @throws {ValidationError} Throws a ValidationError if the step has missing values.
  */
-export const convertQuoteToRoute = (step: LifiStep): Route => {
+export const convertQuoteToRoute = (step: LiFiStep): Route => {
   if (!step.estimate.fromAmountUSD) {
     throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
   }
