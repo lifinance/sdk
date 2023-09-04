@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.3.1](https://github.com/lifinance/sdk/compare/v2.3.0...v2.3.1) (2023-09-04)
+
+
+### Bug Fixes
+
+* remove updateTransactionRequestHook from allowance read call ([#162](https://github.com/lifinance/sdk/issues/162)) ([79ea63b](https://github.com/lifinance/sdk/commit/79ea63b4745ec6ea54c7d7b1c6841bed93b224a2))
+
+## [2.3.0](https://github.com/lifinance/sdk/compare/v2.2.3...v2.3.0) (2023-08-17)
+
+
+### Features
+
+* allow to pass api key to all requests ([#159](https://github.com/lifinance/sdk/issues/159)) ([e9dc0fe](https://github.com/lifinance/sdk/commit/e9dc0fee146a76805cec7ab3bcf48b02a2c3febe))
+
+### [2.2.3](https://github.com/lifinance/sdk/compare/v2.2.2...v2.2.3) (2023-08-04)
+
+
+### Bug Fixes
+
+* **getConnections:** get connections endpoint error ([#160](https://github.com/lifinance/sdk/issues/160)) ([53ad776](https://github.com/lifinance/sdk/commit/53ad7761c0e95101f4bf0a8b16f55d4187ce2a45))
+
 ### [2.2.2](https://github.com/lifinance/sdk/compare/v2.2.1...v2.2.2) (2023-08-01)
 
 

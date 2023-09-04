@@ -18,37 +18,44 @@ export const request = async <T = Response>(
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion } =
+  const { userId, integrator, widgetVersion, apiKey } =
     ConfigService.getInstance().getConfig()
 
   options.retries = options.retries ?? requestSettings.retries
   try {
     if (!options.skipTrackingHeaders) {
+      if (apiKey) {
+        options.headers = {
+          ...options?.headers,
+          'x-lifi-api-key': apiKey,
+        }
+      }
+
       if (userId) {
         options.headers = {
           ...options?.headers,
-          'X-LIFI-UserId': userId,
+          'x-lifi-userid': userId,
         }
       }
 
       if (widgetVersion) {
         options.headers = {
           ...options?.headers,
-          'X-LIFI-Widget': widgetVersion,
+          'x-lifi-widget': widgetVersion,
         }
       }
 
       if (version) {
         options.headers = {
           ...options?.headers,
-          'X-LIFI-SDK': version,
+          'x-lifi-sdk': version,
         }
       }
 
       // integrator is mandatory during SDK initialization
       options.headers = {
         ...options?.headers,
-        'X-LIFI-Integrator': integrator,
+        'x-lifi-integrator': integrator,
       }
     }
 
