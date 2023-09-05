@@ -18,7 +18,7 @@ export interface SDKConfig {
   integrator: string
   widgetVersion?: string
   multisig?: MultisigConfig
-  providers: BaseProvider[]
+  providers?: BaseProvider[]
 }
 
 export interface SDKOptions

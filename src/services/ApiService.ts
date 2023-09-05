@@ -1,32 +1,30 @@
 import type {
+  ChainId,
+  ChainKey,
+  ChainsResponse,
   ConnectionsRequest,
   ConnectionsResponse,
   ContractCallQuoteRequest,
+  ExtendedChain,
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
   LiFiStep,
-  QuoteRequest,
-  RequestOptions,
-  TokensRequest,
-  TokensResponse,
-} from '@lifi/types'
-import { request } from '../request'
-import { isRoutesRequest, isStep } from '../typeguards'
-import type {
-  ChainId,
-  ChainKey,
-  ChainsResponse,
-  ExtendedChain,
   PossibilitiesRequest,
   PossibilitiesResponse,
+  QuoteRequest,
+  RequestOptions,
   RoutesRequest,
   RoutesResponse,
   StatusResponse,
   Token,
+  TokensRequest,
+  TokensResponse,
   ToolsRequest,
   ToolsResponse,
-} from '../types'
+} from '@lifi/types'
+import { request } from '../request'
+import { isRoutesRequest, isStep } from '../typeguards'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
 import ConfigService from './ConfigService'

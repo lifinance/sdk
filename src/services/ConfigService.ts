@@ -1,13 +1,9 @@
-import type {
-  Chain,
-  InternalExecutionSettings,
-  SDKConfig,
-  SDKOptions,
-} from '../types'
-import { ChainId } from '../types'
+import type { Chain } from '@lifi/types'
+import { ChainId } from '@lifi/types'
+import type { InternalExecutionSettings } from '../execution/types'
+import type { SDKConfig, SDKOptions } from '../types'
 
 const DefaultExecutionSettings: InternalExecutionSettings = {
-  /* eslint-disable-next-line @typescript-eslint/no-empty-function */
   updateRouteHook: () => {},
   switchChainHook: () => Promise.resolve(undefined),
   acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),

@@ -6,7 +6,10 @@ import type {
   WalletClient,
 } from 'viem'
 import { encodeFunctionData, maxUint256, publicActions } from 'viem'
-import type { InternalExecutionSettings, TransactionParameters } from '../types'
+import type {
+  InternalExecutionSettings,
+  TransactionParameters,
+} from '../execution/types'
 import { approveAbi } from '../types'
 import { getMaxPriorityFeePerGas } from '../utils'
 import { isNativeTokenAddress } from '../utils/utils'

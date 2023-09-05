@@ -1,10 +1,8 @@
+import { ChainId } from '@lifi/types'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ChainId } from '../types'
-import type ChainsService from './ChainsService'
 import ConfigService from './ConfigService'
 
 let configService: ConfigService
-let chainsService: ChainsService
 
 describe('ConfigService', () => {
   beforeEach(() => {
@@ -95,7 +93,7 @@ describe('ConfigService', () => {
       const configB = {
         rpcs: {
           [ChainId.ETH]: ['some other rpc'],
-        },
+        } as Record<ChainId, string[]>,
       }
       const mergedConfig = configService.updateConfig(configB)
 
@@ -108,7 +106,7 @@ describe('ConfigService', () => {
       const configB = {
         multicallAddresses: {
           [ChainId.ETH]: 'some other multicallAddress',
-        },
+        } as Record<ChainId, string>,
       }
       const mergedConfig = configService.updateConfig(configB)
 

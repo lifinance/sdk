@@ -31,7 +31,6 @@ import { stepComparison } from './stepComparison'
 import { switchChain } from './switchChain'
 import type {
   BaseTransaction,
-  ExecutionParams,
   StepExecutorOptions,
   TransactionParameters,
 } from './types'
@@ -88,25 +87,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       this.walletClient = updatedWalletClient
     }
 
-    const parameters = {
-      step,
-      walletClient: this.walletClient,
-      settings: this.settings,
-      statusManager: this.statusManager,
-    }
-
-    const executedStep = await this.execute(parameters)
-
-    return executedStep
-  }
-
-  execute = async ({
-    walletClient,
-    step,
-    statusManager,
-    settings,
-  }: ExecutionParams): Promise<LiFiStep> => {
-    const client = walletClient.extend(publicActions)
+    const client = this.walletClient.extend(publicActions)
     const config = ConfigService.getInstance().getConfig()
 
     const isMultisigWalletClient = !!config.multisig?.isMultisigWalletClient
@@ -116,7 +97,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       config.multisig?.shouldBatchTransactions &&
       !!config.multisig.sendBatchTransaction
 
-    step.execution = statusManager.initExecutionObject(step)
+    step.execution = this.statusManager.initExecutionObject(step)
 
     const chainsService = ChainsService.getInstance()
     const fromChain = await chainsService.getChainById(step.action.fromChainId)
@@ -141,8 +122,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const data = await checkAllowance(
         client,
         step,
-        statusManager,
-        settings,
+        this.statusManager,
+        this.settings,
         fromChain,
         this.allowUserInteraction,
         shouldBatchTransactions
@@ -160,7 +141,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     // STEP 2: Get transaction
-    let process = statusManager.findOrCreateProcess(step, currentProcessType)
+    let process = this.statusManager.findOrCreateProcess(
+      step,
+      currentProcessType
+    )
 
     if (process.status !== 'DONE') {
       const multisigProcess = step.execution.process.find(
@@ -178,7 +162,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           await updateMultisigRouteProcess(
             multisigTxHash,
             step,
-            statusManager,
+            this.statusManager,
             process.type,
             fromChain
           )
@@ -188,10 +172,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (process.txHash) {
           // Make sure that the chain is still correct
           const updatedWalletClient = await switchChain(
-            walletClient,
-            statusManager,
+            this.walletClient,
+            this.statusManager,
             step,
-            settings.switchChainHook,
+            this.settings.switchChainHook,
             this.allowUserInteraction
           )
 
@@ -200,12 +184,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
             return step
           }
 
-          walletClient = updatedWalletClient
+          this.walletClient = updatedWalletClient
 
           // Load exiting transaction
           txHash = process.txHash as Hash
         } else {
-          process = statusManager.updateProcess(step, process.type, 'STARTED')
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'STARTED'
+          )
 
           // Check balance
           await checkBalance(client.account!.address, step)
@@ -214,10 +202,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
           if (!step.transactionRequest) {
             const updatedStep = await ApiService.getStepTransaction(step)
             const comparedStep = await stepComparison(
-              statusManager,
+              this.statusManager,
               step,
               updatedStep,
-              settings,
+              this.settings,
               this.allowUserInteraction
             )
             step = {
@@ -236,10 +224,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
           // STEP 3: Send the transaction
           // Make sure that the chain is still correct
           const updatedWalletClient = await switchChain(
-            walletClient,
-            statusManager,
+            this.walletClient,
+            this.statusManager,
             step,
-            settings.switchChainHook,
+            this.settings.switchChainHook,
             this.allowUserInteraction
           )
 
@@ -248,9 +236,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
             return step
           }
 
-          walletClient = updatedWalletClient
+          this.walletClient = updatedWalletClient
 
-          process = statusManager.updateProcess(
+          process = this.statusManager.updateProcess(
             step,
             process.type,
             'ACTION_REQUIRED'
@@ -277,16 +265,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
             //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
             //   : undefined,
             maxPriorityFeePerGas:
-              walletClient.account?.type === 'local'
+              this.walletClient.account?.type === 'local'
                 ? await getMaxPriorityFeePerGas(client as PublicClient)
                 : step.transactionRequest.maxPriorityFeePerGas
                 ? BigInt(step.transactionRequest.maxPriorityFeePerGas as string)
                 : undefined,
           }
 
-          if (settings.updateTransactionRequestHook) {
+          if (this.settings.updateTransactionRequestHook) {
             const customizedTransactionRequest: TransactionParameters =
-              await settings.updateTransactionRequestHook({
+              await this.settings.updateTransactionRequestHook({
                 requestType: 'transaction',
                 ...transactionRequest,
               })
@@ -319,9 +307,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
               )
             }
           } else {
-            txHash = await walletClient.sendTransaction({
+            txHash = await this.walletClient.sendTransaction({
               to: transactionRequest.to as Address,
-              account: walletClient.account!,
+              account: this.walletClient.account!,
               data: transactionRequest.data,
               gas: transactionRequest.gas,
               gasPrice: transactionRequest.gasPrice,
@@ -333,7 +321,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
           // STEP 4: Wait for the transaction
           if (isMultisigWalletClient) {
-            process = statusManager.updateProcess(
+            process = this.statusManager.updateProcess(
               step,
               process.type,
               'ACTION_REQUIRED',
@@ -342,7 +330,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
               }
             )
           } else {
-            process = statusManager.updateProcess(
+            process = this.statusManager.updateProcess(
               step,
               process.type,
               'PENDING',
@@ -357,9 +345,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         let replacementReason: ReplacementReason | undefined
         const transactionReceipt = await client.waitForTransactionReceipt({
           hash: txHash,
-          onReplaced(response) {
+          onReplaced: (response) => {
             replacementReason = response.reason
-            statusManager.updateProcess(step, process.type, 'PENDING', {
+            this.statusManager.updateProcess(step, process.type, 'PENDING', {
               txHash: response.transaction.hash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
             })
@@ -379,32 +367,42 @@ export class EVMStepExecutor extends BaseStepExecutor {
           await updateMultisigRouteProcess(
             transactionReceipt.transactionHash,
             step,
-            statusManager,
+            this.statusManager,
             process.type,
             fromChain
           )
         }
 
         if (!isMultisigWalletClient) {
-          process = statusManager.updateProcess(step, process.type, 'PENDING', {
-            txHash: transactionReceipt.transactionHash,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
-          })
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'PENDING',
+            {
+              txHash: transactionReceipt.transactionHash,
+              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
+            }
+          )
         }
 
         if (isBridgeExecution) {
-          process = statusManager.updateProcess(step, process.type, 'DONE')
+          process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
         const error = await parseError(e, step, process)
-        process = statusManager.updateProcess(step, process.type, 'FAILED', {
-          error: {
-            message: error.message,
-            htmlMessage: error.htmlMessage,
-            code: error.code,
-          },
-        })
-        statusManager.updateExecution(step, 'FAILED')
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'FAILED',
+          {
+            error: {
+              message: error.message,
+              htmlMessage: error.htmlMessage,
+              code: error.code,
+            },
+          }
+        )
+        this.statusManager.updateExecution(step, 'FAILED')
         throw error
       }
     }
@@ -412,7 +410,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // STEP 5: Wait for the receiving chain
     const processTxHash = process.txHash
     if (isBridgeExecution) {
-      process = statusManager.findOrCreateProcess(
+      process = this.statusManager.findOrCreateProcess(
         step,
         'RECEIVING_CHAIN',
         'PENDING'
@@ -425,7 +423,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
       statusResponse = (await waitForReceivingTransaction(
         processTxHash,
-        statusManager,
+        this.statusManager,
         process.type,
         step
       )) as FullStatusData
@@ -433,7 +431,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const statusReceiving =
         statusResponse.receiving as ExtendedTransactionInfo
 
-      process = statusManager.updateProcess(step, process.type, 'DONE', {
+      process = this.statusManager.updateProcess(step, process.type, 'DONE', {
         substatus: statusResponse.substatus,
         substatusMessage:
           statusResponse.substatusMessage ||
@@ -442,7 +440,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
       })
 
-      statusManager.updateExecution(step, 'DONE', {
+      this.statusManager.updateExecution(step, 'DONE', {
         fromAmount: statusResponse.sending.amount,
         toAmount: statusReceiving?.amount,
         toToken: statusReceiving?.token,
@@ -458,14 +456,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
         process.txLink
       )
 
-      process = statusManager.updateProcess(step, process.type, 'FAILED', {
+      process = this.statusManager.updateProcess(step, process.type, 'FAILED', {
         error: {
           code: LiFiErrorCode.TransactionFailed,
           message: 'Failed while waiting for receiving chain.',
           htmlMessage,
         },
       })
-      statusManager.updateExecution(step, 'FAILED')
+      this.statusManager.updateExecution(step, 'FAILED')
       console.warn(e)
       throw e
     }

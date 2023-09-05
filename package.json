@@ -76,15 +76,15 @@
     "@lifi/types": "^9.0.0-alpha.12",
     "@solana/web3.js": "^1.78.4",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^1.10.1"
+    "viem": "^1.10.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
     "@commitlint/config-conventional": "^17.7.0",
     "@mswjs/interceptors": "^0.22.16",
     "@types/ws": "^8.5.5",
-    "@typescript-eslint/eslint-plugin": "^6.5.0",
-    "@typescript-eslint/parser": "^6.5.0",
+    "@typescript-eslint/eslint-plugin": "^6.6.0",
+    "@typescript-eslint/parser": "^6.6.0",
     "@vitest/coverage-v8": "^0.34.3",
     "cross-fetch": "^4.0.0",
     "eslint": "^8.48.0",

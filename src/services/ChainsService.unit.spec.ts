@@ -1,8 +1,12 @@
+import type {
+  AddEthereumChainParameter,
+  ExtendedChain,
+  Token,
+} from '@lifi/types'
+import { ChainKey, ChainType, CoinKey } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import type { AddEthereumChainParameter, ExtendedChain, Token } from '../types'
-import { ChainKey, ChainType, CoinKey } from '../types'
 import { ValidationError } from '../utils/errors'
 import ChainsService from './ChainsService'
 import ConfigService from './ConfigService'

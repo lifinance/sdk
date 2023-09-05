@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { Route } from '@lifi/types'
 import type { BaseProvider } from '../providers/BaseProvider'
-import { EVMProvider } from '../providers/EvmProvider'
+import { EVMProvider } from '../providers/EVMProvider'
 import ConfigService from '../services/ConfigService'
 import type { SDKOptions } from '../types'
 import { ValidationError } from '../utils/errors'
