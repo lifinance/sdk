@@ -1,6 +1,6 @@
 import type { ExtendedChain, LiFiStep, ProcessType } from '@lifi/types'
 import type { Hash } from 'viem'
-import ConfigService from '../services/ConfigService'
+import { ConfigService } from '../services/ConfigService'
 import { LiFiErrorCode, TransactionError } from '../utils/errors'
 import type { StatusManager } from './StatusManager'
 import type { MultisigTxDetails } from './types'

@@ -27,7 +27,7 @@ import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
-import ConfigService from './ConfigService'
+import { ConfigService } from './ConfigService'
 
 /**
  * @param requestConfig

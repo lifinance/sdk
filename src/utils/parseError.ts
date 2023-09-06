@@ -5,7 +5,7 @@ import {
 } from 'eth-rpc-errors'
 import { formatUnits } from 'viem'
 import { fetchTxErrorDetails } from '../helpers'
-import ChainsService from '../services/ChainsService'
+import { ChainsService } from '../services/ChainsService'
 import {
   ErrorMessage,
   EthersErrorMessage,

@@ -12,8 +12,8 @@ import type {
 } from 'viem'
 import { publicActions } from 'viem'
 import ApiService from '../services/ApiService'
-import ChainsService from '../services/ChainsService'
-import ConfigService from '../services/ConfigService'
+import { ChainsService } from '../services/ChainsService'
+import { ConfigService } from '../services/ConfigService'
 import { getMaxPriorityFeePerGas } from '../utils'
 import {
   LiFiErrorCode,

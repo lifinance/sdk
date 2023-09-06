@@ -13,7 +13,7 @@ const DefaultExecutionSettings: InternalExecutionSettings = {
 
 type PromiseResolver = () => void
 
-export default class ConfigService {
+export class ConfigService {
   private static instance: ConfigService
   private readonly config: SDKConfig
   private readonly setupPromise: Promise<unknown>
@@ -64,6 +64,7 @@ export default class ConfigService {
   /**
    * This call immediately returns the current config. It does not make sure that all chain data is already loaded
    * Use this if you need access to basic information like API urls or settings
+   * @returns SDKConfig
    */
   public getConfig = (): SDKConfig => {
     return this.config
@@ -72,6 +73,7 @@ export default class ConfigService {
   /**
    * This call waits for all setup promises to be done.
    * Use this if you need access to chain data (RPCs or multicalls)
+   * @returns SDKConfig
    */
   public getConfigAsync = async (): Promise<SDKConfig> => {
     await this.setupPromise

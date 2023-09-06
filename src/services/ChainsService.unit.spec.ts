@@ -8,8 +8,8 @@ import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ValidationError } from '../utils/errors'
-import ChainsService from './ChainsService'
-import ConfigService from './ConfigService'
+import { ChainsService } from './ChainsService'
+import { ConfigService } from './ConfigService'
 
 let chainsService: ChainsService
 

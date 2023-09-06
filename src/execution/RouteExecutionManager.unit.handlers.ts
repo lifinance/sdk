@@ -1,6 +1,6 @@
 import { rest } from 'msw'
 import { buildStepObject } from '../../tests/fixtures'
-import ConfigService from '../services/ConfigService'
+import { ConfigService } from '../services/ConfigService'
 import {
   mockChainsResponse,
   mockStatus,

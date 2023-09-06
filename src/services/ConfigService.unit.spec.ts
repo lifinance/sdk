@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { beforeEach, describe, expect, it } from 'vitest'
-import ConfigService from './ConfigService'
+import { ConfigService } from './ConfigService'
 
 let configService: ConfigService
 

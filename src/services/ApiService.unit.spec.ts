@@ -25,7 +25,7 @@ import { requestSettings } from '../request'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
-import ConfigService from './ConfigService'
+import { ConfigService } from './ConfigService'
 
 const mockedFetch = vi.spyOn(globalThis, 'fetch')
 

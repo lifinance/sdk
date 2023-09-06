@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { Route } from '@lifi/types'
-import type { BaseProvider } from '../providers/BaseProvider'
-import { EVMProvider } from '../providers/EVMProvider'
-import ConfigService from '../services/ConfigService'
+import type { ProviderType, SDKProvider } from '../providers'
+import { ConfigService } from '../services/ConfigService'
 import type { SDKOptions } from '../types'
 import { ValidationError } from '../utils/errors'
 import { StatusManager } from './StatusManager'
@@ -18,12 +17,12 @@ export class RouteExecutionManager {
   private executionDictionary: RouteExecutionDictionary = {}
   private executionPromiseDictionary: RouteExecutionPromiseDictionary = {}
   protected configService: ConfigService
-  private providers: BaseProvider[]
+  private providers?: SDKProvider[]
 
   constructor(options: SDKOptions) {
     this.configService = ConfigService.getInstance()
     this.configService.updateConfig(options)
-    this.providers = options.providers ?? [new EVMProvider()]
+    this.providers = options.providers
   }
 
   /**
@@ -138,9 +137,13 @@ export class RouteExecutionManager {
       }
 
       try {
-        const provider = this.providers.find((provider) =>
+        const provider = this.providers?.find((provider) =>
           provider.isProviderStep(step)
-        )!
+        )
+
+        if (!provider) {
+          throw new Error('SDK Execution Provider not found.')
+        }
 
         const stepExecutor = await provider.getStepExecutor({
           statusManager,
@@ -264,5 +267,9 @@ export class RouteExecutionManager {
    */
   getActiveRoute = (route: Route): Route | undefined => {
     return this.executionDictionary[route.id]?.route
+  }
+
+  getProvider = (type: ProviderType): SDKProvider | undefined => {
+    return this.providers?.find((provider) => provider.type === type)
   }
 }

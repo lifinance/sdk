@@ -4,7 +4,7 @@ import type {
   InternalExecutionSettings,
   MultisigConfig,
 } from '../execution/types'
-import type { BaseProvider } from '../providers/BaseProvider'
+import type { SDKProvider } from '../providers'
 
 export interface SDKConfig {
   apiUrl: string
@@ -18,7 +18,7 @@ export interface SDKConfig {
   integrator: string
   widgetVersion?: string
   multisig?: MultisigConfig
-  providers?: BaseProvider[]
+  providers?: SDKProvider[]
 }
 
 export interface SDKOptions

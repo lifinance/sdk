@@ -1,7 +1,7 @@
 import { ChainId, CoinKey } from '@lifi/types'
 import { rest } from 'msw'
 import { findDefaultToken } from '../../tests/tokens'
-import ConfigService from './ConfigService'
+import { ConfigService } from './ConfigService'
 
 const config = ConfigService.getInstance().getConfig()
 

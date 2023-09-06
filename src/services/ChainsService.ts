@@ -2,7 +2,7 @@ import type { ChainId, ExtendedChain } from '@lifi/types'
 import { ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 
-export default class ChainsService {
+export class ChainsService {
   private static instance: ChainsService
   private readonly loadingPromise: Promise<void>
   private chains: ExtendedChain[] = []

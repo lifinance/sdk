@@ -1,4 +1,4 @@
-import ConfigService from './services/ConfigService'
+import { ConfigService } from './services/ConfigService'
 import { HTTPError } from './utils/errors'
 import { wait } from './utils/utils'
 import { version } from './version'

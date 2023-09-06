@@ -64,10 +64,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
       step,
     })
 
-    await routeExecutionManager.executeRoute(
-      walletClient as WalletClient,
-      route
-    )
+    await routeExecutionManager.executeRoute(route)
 
     expect(walletClient.sendTransaction).toHaveBeenCalledWith({
       gasLimit: 125000n,
