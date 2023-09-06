@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const path = require('path')
-const fs = require('fs-extra')
+import { readFile, writeFileSync } from 'fs'
+import { join } from 'path'
 
 async function run() {
-  const packagePath = path.join(process.cwd(), './package.json')
+  const packagePath = join(process.cwd(), './package.json')
 
-  const packageData = await fs.readFile(packagePath, 'utf8')
+  readFile(packagePath, 'utf8', (err, data) => {
+    const { version, name } = JSON.parse(data)
 
-  const { version, name } = JSON.parse(packageData)
+    const file = `export const name = '${name}'\nexport const version = '${version}'\n`
 
-  const src = `export const name = '${name}'\nexport const version = '${version}'\n`
-
-  await fs.writeFile(`${process.cwd()}/src/version.ts`, src, {
-    flat: 'w',
+    writeFileSync(`${process.cwd()}/src/version.ts`, file)
   })
 }
 

@@ -32,9 +32,19 @@
   },
   "license": "Apache-2.0",
   "author": "Max Klenk <max@li.finance>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "main": "./dist/cjs/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typings": "./dist/index.d.ts",
   "directories": {
     "test": "tests"
   },
@@ -42,9 +52,8 @@
     "dist"
   ],
   "scripts": {
-    "addscope": "node tools/packagejson name @lifi/sdk",
     "build": "yarn clean && tsc --project ./tsconfig.json && tsc --project ./tsconfig.cjs.json",
-    "clean": "node tools/cleanup",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "coverage": "vitest run --coverage",
     "postinstall": "husky install",
     "lint": "eslint --ext .tsx --ext .ts ./src",
@@ -73,10 +82,10 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^9.0.0-alpha.12",
+    "@lifi/types": "^9.0.0-alpha.13",
     "@solana/web3.js": "^1.78.4",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^1.10.3"
+    "viem": "^1.10.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
