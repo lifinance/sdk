@@ -1,13 +1,13 @@
 import type { Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { findDefaultToken } from '../../tests/tokens'
-import * as getBalance from './getBalance'
+import { findDefaultToken } from '../../tests/tokens.js'
+import * as getBalance from './getBalance.js'
 import {
   getTokenBalance,
   getTokenBalances,
   getTokenBalancesByChain,
-} from './getTokenBalance'
+} from './getTokenBalance.js'
 
 vi.mock('./getBalance', () => ({
   getBalance: vi.fn(() => Promise.resolve([])),

@@ -1,2 +1,2 @@
-export * from './abi'
-export * from './internal'
+export * from './abi.js'
+export * from './internal.js'

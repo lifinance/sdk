@@ -1,11 +1,11 @@
 import type { Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../tests/fixtures'
-import { findDefaultToken } from '../tests/tokens'
-import { LiFi } from './LiFi'
-import * as balance from './balance'
-import { convertQuoteToRoute } from './helpers'
+import { buildStepObject } from '../tests/fixtures.js'
+import { findDefaultToken } from '../tests/tokens.js'
+import { LiFi } from './LiFi.js'
+import * as balance from './balance/index.js'
+import { convertQuoteToRoute } from './helpers.js'
 
 vi.mock('./balance', () => ({
   getTokenBalancesByChain: vi.fn(() => Promise.resolve([])),

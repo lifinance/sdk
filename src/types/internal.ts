@@ -3,8 +3,8 @@ import type {
   ExecutionSettings,
   InternalExecutionSettings,
   MultisigConfig,
-} from '../execution/types'
-import type { SDKProvider } from '../providers'
+} from '../execution/types.js'
+import type { SDKProvider } from '../providers/index.js'
 
 export interface SDKConfig {
   apiUrl: string

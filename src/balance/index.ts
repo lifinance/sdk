@@ -1,2 +1,2 @@
-export * from './getBalance'
-export * from './getTokenBalance'
+export * from './getBalance.js'
+export * from './getTokenBalance.js'

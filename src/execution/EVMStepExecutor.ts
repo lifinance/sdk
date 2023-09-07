@@ -12,30 +12,31 @@ import type {
   WalletClient,
 } from 'viem'
 import { publicActions } from 'viem'
-import ApiService from '../services/ApiService'
-import { ChainsService } from '../services/ChainsService'
-import { ConfigService } from '../services/ConfigService'
-import { getMaxPriorityFeePerGas } from '../utils'
+import ApiService from '../services/ApiService.js'
+import { ChainsService } from '../services/ChainsService.js'
+import { ConfigService } from '../services/ConfigService.js'
 import {
   LiFiErrorCode,
   TransactionError,
   ValidationError,
-} from '../utils/errors'
-import { getTransactionFailedMessage, parseError } from '../utils/parseError'
-import { isZeroAddress } from '../utils/utils'
-import { BaseStepExecutor } from './BaseStepExecutor'
-import { checkAllowance } from './checkAllowance'
-import { checkBalance } from './checkBalance'
-import { updateMultisigRouteProcess } from './multisig'
-import { stepComparison } from './stepComparison'
-import { switchChain } from './switchChain'
+  getMaxPriorityFeePerGas,
+  getTransactionFailedMessage,
+  isZeroAddress,
+  parseError,
+} from '../utils/index.js'
+import { BaseStepExecutor } from './BaseStepExecutor.js'
+import { checkAllowance } from './checkAllowance.js'
+import { checkBalance } from './checkBalance.js'
+import { updateMultisigRouteProcess } from './multisig.js'
+import { stepComparison } from './stepComparison.js'
+import { switchChain } from './switchChain.js'
 import type {
   BaseTransaction,
   StepExecutorOptions,
   TransactionParameters,
-} from './types'
-import { getSubstatusMessage } from './utils'
-import { waitForReceivingTransaction } from './waitForReceivingTransaction'
+} from './types.js'
+import { getSubstatusMessage } from './utils.js'
+import { waitForReceivingTransaction } from './waitForReceivingTransaction.js'
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   walletClient: WalletClient

@@ -3,8 +3,8 @@ import { createWalletClient, http, publicActions } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts'
 import { polygon } from 'viem/chains'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../tests/setup'
-import { revokeTokenApproval, setTokenAllowance } from './setAllowance'
+import { setupTestEnvironment } from '../../tests/setup.js'
+import { revokeTokenApproval, setTokenAllowance } from './setAllowance.js'
 
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {

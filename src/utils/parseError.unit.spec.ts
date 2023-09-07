@@ -3,9 +3,9 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 import { describe, expect, it } from 'vitest'
-import { buildStepObject } from '../../tests/fixtures'
-import { LiFiErrorCode } from './errors'
-import { parseBackendError, parseError } from './parseError'
+import { buildStepObject } from '../../tests/fixtures.js'
+import { LiFiErrorCode } from './errors.js'
+import { parseBackendError, parseError } from './parseError.js'
 
 describe('parseError', () => {
   describe('parseWalletError', () => {

@@ -4,8 +4,8 @@ import {
   getMessageFromCode,
 } from 'eth-rpc-errors'
 import { formatUnits } from 'viem'
-import { fetchTxErrorDetails } from '../helpers'
-import { ChainsService } from '../services/ChainsService'
+import { fetchTxErrorDetails } from '../helpers.js'
+import { ChainsService } from '../services/ChainsService.js'
 import {
   ErrorMessage,
   EthersErrorMessage,
@@ -21,7 +21,7 @@ import {
   TransactionError,
   UnknownError,
   ValidationError,
-} from './errors'
+} from './errors.js'
 
 /**
  * Available MetaMask error codes:

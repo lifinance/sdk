@@ -1,5 +1,5 @@
-import { ChainsService } from '../src/services/ChainsService'
-import { ConfigService } from '../src/services/ConfigService'
+import { ChainsService } from '../src/services/ChainsService.js'
+import { ConfigService } from '../src/services/ConfigService.js'
 
 export const setupTestEnvironment = async () => {
   const configService = ConfigService.getInstance()

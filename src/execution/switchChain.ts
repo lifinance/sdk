@@ -1,8 +1,8 @@
 import type { LiFiStep } from '@lifi/types'
 import type { WalletClient } from 'viem'
-import { LiFiErrorCode, ProviderError } from '../utils/errors'
-import type { StatusManager } from './StatusManager'
-import type { SwitchChainHook } from './types'
+import { LiFiErrorCode, ProviderError } from '../utils/errors.js'
+import type { StatusManager } from './StatusManager.js'
+import type { SwitchChainHook } from './types.js'
 
 /**
  * This method checks whether the wallet client is configured for the correct chain.

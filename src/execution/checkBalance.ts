@@ -1,7 +1,7 @@
 import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
-import { getTokenBalance } from '../balance'
-import { BalanceError } from '../utils/errors'
+import { getTokenBalance } from '../balance/index.js'
+import { BalanceError } from '../utils/errors.js'
 
 export const checkBalance = async (
   walletAddress: string,

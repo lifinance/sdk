@@ -31,23 +31,23 @@ import type {
   RevokeApprovalRequest,
   TokenAllowance,
   TokenSpender,
-} from './allowance'
+} from './allowance/index.js'
 import {
   getTokenAllowance,
   getTokenAllowanceMulticall,
   revokeTokenApproval,
   setTokenAllowance,
-} from './allowance'
-import * as balance from './balance'
-import { getPublicClient } from './connectors'
-import { RouteExecutionManager } from './execution/RouteExecutionManager'
-import { checkPackageUpdates } from './helpers'
-import ApiService from './services/ApiService'
-import { ChainsService } from './services/ChainsService'
-import { isToken } from './typeguards'
-import type { SDKConfig, SDKOptions } from './types'
-import { ValidationError } from './utils/errors'
-import { name, version } from './version'
+} from './allowance/index.js'
+import * as balance from './balance/index.js'
+import { getPublicClient } from './connectors.js'
+import { RouteExecutionManager } from './execution/RouteExecutionManager.js'
+import { checkPackageUpdates } from './helpers.js'
+import ApiService from './services/ApiService.js'
+import { ChainsService } from './services/ChainsService.js'
+import { isToken } from './typeguards.js'
+import type { SDKConfig, SDKOptions } from './types/index.js'
+import { ValidationError } from './utils/errors.js'
+import { name, version } from './version.js'
 
 export class LiFi extends RouteExecutionManager {
   private chainsService: ChainsService
@@ -358,9 +358,7 @@ export class LiFi extends RouteExecutionManager {
    * @param request - The approval request
    * @returns Returns Hash or nothing
    */
-  setTokenApproval = (
-    request: ApproveTokenRequest
-  ): Promise<Hash | undefined> => {
+  setTokenApproval = (request: ApproveTokenRequest): Promise<Hash | void> => {
     return setTokenAllowance(request)
   }
 
@@ -371,7 +369,7 @@ export class LiFi extends RouteExecutionManager {
    */
   revokeTokenApproval = (
     request: RevokeApprovalRequest
-  ): Promise<Hash | undefined> => {
+  ): Promise<Hash | void> => {
     return revokeTokenApproval(request)
   }
 

@@ -9,12 +9,12 @@ import { encodeFunctionData, maxUint256, publicActions } from 'viem'
 import type {
   InternalExecutionSettings,
   TransactionParameters,
-} from '../execution/types'
-import { approveAbi } from '../types'
-import { getMaxPriorityFeePerGas } from '../utils'
-import { isNativeTokenAddress } from '../utils/utils'
-import { getAllowance } from './getAllowance'
-import type { ApproveTokenRequest, RevokeApprovalRequest } from './types'
+} from '../execution/types.js'
+import { approveAbi } from '../types/index.js'
+import { getMaxPriorityFeePerGas } from '../utils/index.js'
+import { isNativeTokenAddress } from '../utils/utils.js'
+import { getAllowance } from './getAllowance.js'
+import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
 
 export const setAllowance = async (
   walletClient: WalletClient,
@@ -75,7 +75,7 @@ export const setTokenAllowance = async ({
   spenderAddress,
   amount,
   infiniteApproval = false,
-}: ApproveTokenRequest): Promise<Hash | undefined> => {
+}: ApproveTokenRequest): Promise<Hash | void> => {
   // native token don't need approval
   if (isNativeTokenAddress(token.address)) {
     return
@@ -105,7 +105,7 @@ export const revokeTokenApproval = async ({
   walletClient,
   token,
   spenderAddress,
-}: RevokeApprovalRequest): Promise<Hash | undefined> => {
+}: RevokeApprovalRequest): Promise<Hash | void> => {
   // native token don't need approval
   if (isNativeTokenAddress(token.address)) {
     return

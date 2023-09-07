@@ -1,7 +1,7 @@
 import { ChainId, CoinKey } from '@lifi/types'
 import { rest } from 'msw'
-import { findDefaultToken } from '../../tests/tokens'
-import { ConfigService } from './ConfigService'
+import { findDefaultToken } from '../../tests/tokens.js'
+import { ConfigService } from './ConfigService.js'
 
 const config = ConfigService.getInstance().getConfig()
 
@@ -18,26 +18,26 @@ export const handlers = [
   ),
   rest.post(
     `${config.apiUrl}/advanced/possibilities`,
-    async (request, response, context) => {
+    async (_, response, context) => {
       return response(context.json({}))
     }
   ),
-  rest.get(`${config.apiUrl}/token`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/token`, async (_, response, context) => {
     return response(context.json({}))
   }),
-  rest.get(`${config.apiUrl}/quote`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/quote`, async (_, response, context) => {
     return response(context.json({}))
   }),
-  rest.get(`${config.apiUrl}/status`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/status`, async (_, response, context) => {
     return response(context.json({}))
   }),
-  rest.get(`${config.apiUrl}/chains`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/chains`, async (_, response, context) => {
     return response(context.json({ chains: [{ id: 1 }] }))
   }),
-  rest.get(`${config.apiUrl}/tools`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/tools`, async (_, response, context) => {
     return response(context.json({ bridges: [], exchanges: [] }))
   }),
-  rest.get(`${config.apiUrl}/tokens`, async (request, response, context) => {
+  rest.get(`${config.apiUrl}/tokens`, async (_, response, context) => {
     return response(
       context.json({
         tokens: {
@@ -48,13 +48,13 @@ export const handlers = [
   }),
   rest.post(
     `${config.apiUrl}/advanced/stepTransaction`,
-    async (request, response, context) => {
+    async (_, response, context) => {
       return response(context.json({}))
     }
   ),
   rest.get(
     `${config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
-    async (request, response, context) => {
+    async (_, response, context) => {
       return response(context.json({}))
     }
   ),

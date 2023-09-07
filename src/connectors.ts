@@ -3,8 +3,8 @@ import type { PublicClient } from 'viem'
 import { createPublicClient, fallback, http } from 'viem'
 import type { Chain } from 'viem/chains' // TODO: optimize using BE chains
 import * as chains from 'viem/chains' // TODO: optimize using BE chains
-import { ConfigService } from './services/ConfigService'
-import { ServerError } from './utils/errors'
+import { ConfigService } from './services/ConfigService.js'
+import { ServerError } from './utils/errors.js'
 
 // cached providers
 const publicClients: Record<number, PublicClient> = {}

@@ -1,7 +1,7 @@
 import type { Chain } from '@lifi/types'
 import { ChainId } from '@lifi/types'
-import type { InternalExecutionSettings } from '../execution/types'
-import type { SDKConfig, SDKOptions } from '../types'
+import type { InternalExecutionSettings } from '../execution/types.js'
+import type { SDKConfig, SDKOptions } from '../types/index.js'
 
 const DefaultExecutionSettings: InternalExecutionSettings = {
   updateRouteHook: () => {},

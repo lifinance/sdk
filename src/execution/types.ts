@@ -1,7 +1,7 @@
 import type { LiFiStep, Route, Token } from '@lifi/types'
 import type { Hash, Hex, WalletClient } from 'viem'
-import type { BaseStepExecutor } from './BaseStepExecutor'
-import type { StatusManager } from './StatusManager'
+import type { BaseStepExecutor } from './BaseStepExecutor.js'
+import type { StatusManager } from './StatusManager.js'
 
 export interface StepExecutorOptions {
   statusManager: StatusManager

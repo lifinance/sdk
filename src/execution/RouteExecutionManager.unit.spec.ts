@@ -10,10 +10,10 @@ import {
   it,
   vi,
 } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../tests/fixtures'
-import { requestSettings } from '../request'
-import { RouteExecutionManager } from './RouteExecutionManager'
-import { lifiHandlers } from './RouteExecutionManager.unit.handlers'
+import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
+import { requestSettings } from '../request.js'
+import { RouteExecutionManager } from './RouteExecutionManager.js'
+import { lifiHandlers } from './RouteExecutionManager.unit.handlers.js'
 
 let walletClient: Partial<WalletClient>
 

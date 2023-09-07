@@ -606,7 +606,7 @@ __metadata:
   dependencies:
     "@commitlint/cli": ^17.7.1
     "@commitlint/config-conventional": ^17.7.0
-    "@lifi/types": ^9.0.0-alpha.13
+    "@lifi/types": ^9.0.0-alpha.15
     "@mswjs/interceptors": ^0.22.16
     "@solana/web3.js": ^1.78.4
     "@types/ws": ^8.5.5
@@ -631,10 +631,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lifi/types@npm:^9.0.0-alpha.13":
-  version: 9.0.0-alpha.13
-  resolution: "@lifi/types@npm:9.0.0-alpha.13"
-  checksum: 7766f7a2bebccc0d55256d8da443c5f1862a41312684fc596a498fc969c6ca2192cc16fc16032cfc9a6d6d6538b8cdb301eee1747c9da4caa0859ead0d7a916a
+"@lifi/types@npm:^9.0.0-alpha.15":
+  version: 9.0.0-alpha.15
+  resolution: "@lifi/types@npm:9.0.0-alpha.15"
+  checksum: d7d7937fd1e49b808f7808f112dda4f7b2de9eb38b765eb951d0dc8760d17cd44c39e7a80498007ce1af7e8e778f3b982cd02b12fa19dc83aa450bd9686b8c71
   languageName: node
   linkType: hard
 

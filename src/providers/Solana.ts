@@ -1,9 +1,9 @@
 import type { LiFiStep } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
-import type { BaseStepExecutor } from '../execution/BaseStepExecutor'
-import type { StepExecutorOptions } from '../execution/types'
-import type { SDKProvider } from './types'
-import { ProviderType } from './types'
+import type { BaseStepExecutor } from '../execution/BaseStepExecutor.js'
+import type { StepExecutorOptions } from '../execution/types.js'
+import type { SDKProvider } from './types.js'
+import { ProviderType } from './types.js'
 
 export interface SolanaProviderOptions {
   getWalletClient: () => Promise<unknown>
@@ -29,13 +29,13 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
       }
     },
     async getStepExecutor(
-      options: StepExecutorOptions
+      _options: StepExecutorOptions
     ): Promise<BaseStepExecutor> {
       if (!getWalletClient) {
         throw new Error(`getWalletClient is not provided.`)
       }
 
-      const walletClient = await getWalletClient()
+      // const walletClient = await getWalletClient()
 
       return null!
     },

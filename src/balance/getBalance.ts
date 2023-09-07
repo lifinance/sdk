@@ -1,9 +1,9 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import type { Address } from 'viem'
-import { getMulticallAddress, getPublicClient } from '../connectors'
-import { MulticallBatchSize } from '../constants'
-import { balanceOfAbi, getEthBalanceAbi } from '../types'
-import { isZeroAddress } from '../utils/utils'
+import { getMulticallAddress, getPublicClient } from '../connectors.js'
+import { MulticallBatchSize } from '../constants.js'
+import { balanceOfAbi, getEthBalanceAbi } from '../types/index.js'
+import { isZeroAddress } from '../utils/utils.js'
 
 export const getBalance = async (
   walletAddress: string,
@@ -16,7 +16,6 @@ export const getBalance = async (
   tokens.forEach((token) => {
     if (token.chainId !== chainId) {
       console.warn(`Requested tokens have to be on the same chain.`)
-      return []
     }
   })
 

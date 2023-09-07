@@ -31,29 +31,33 @@
     "url": "git+ssh://git@github.com/lifinance/sdk.git"
   },
   "license": "Apache-2.0",
-  "author": "Max Klenk <max@li.finance>",
+  "author": "LI.FI <github@li.finance>",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
       "default": "./dist/cjs/index.js"
     },
     "./package.json": "./package.json"
   },
   "main": "./dist/cjs/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "typings": "./dist/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "typings": "./dist/types/index.d.ts",
   "directories": {
     "test": "tests"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/**/*.tsbuildinfo"
   ],
   "scripts": {
-    "build": "yarn clean && tsc --project ./tsconfig.json && tsc --project ./tsconfig.cjs.json",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "build": "yarn clean && yarn build:cjs && yarn build:esm && yarn build:types",
+    "build:cjs": "tsc --project tsconfig.build.json --module CommonJS --moduleResolution Node --outDir ./dist/cjs --removeComments --verbatimModuleSyntax false && echo > ./dist/cjs/package.json '{\"type\":\"commonjs\"}'",
+    "build:esm": "tsc --project tsconfig.build.json --outDir ./dist/esm && echo > ./dist/esm/package.json '{\"type\":\"module\",\"sideEffects\":false}'",
+    "build:types": "tsc --project tsconfig.build.json --declarationDir ./dist/types --emitDeclarationOnly --declaration --declarationMap",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
     "coverage": "vitest run --coverage",
     "postinstall": "husky install",
     "lint": "eslint --ext .tsx --ext .ts ./src",
@@ -62,8 +66,8 @@
     "postpack": "pinst --enable",
     "package": "npm run build && npm pack",
     "pre-commit": "lint-staged",
-    "pre-push": "yarn types:check && yarn build && yarn test:unit",
-    "prepublishOnly": "npm run build",
+    "pre-push": "yarn typecheck && yarn build && yarn test:unit",
+    "prepublishOnly": "yarn node scripts/prepublishOnly.js",
     "prettier:fix": "prettier --write ./src/.",
     "release": "standard-version -a",
     "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
@@ -72,7 +76,7 @@
     "test:cov": "yarn test --coverage",
     "test:e2e": "yarn test -c vitest.e2e.config.ts",
     "test:unit": "yarn test .unit.spec.ts",
-    "types:check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "lint-staged": {
@@ -82,7 +86,7 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^9.0.0-alpha.13",
+    "@lifi/types": "^9.0.0-alpha.15",
     "@solana/web3.js": "^1.78.4",
     "eth-rpc-errors": "^4.0.3",
     "viem": "^1.10.4"

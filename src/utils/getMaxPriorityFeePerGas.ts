@@ -1,5 +1,5 @@
 import type { PublicClient, Transaction } from 'viem'
-import { median } from './median'
+import { median } from './median.js'
 
 export const getMaxPriorityFeePerGas = async (
   client: PublicClient

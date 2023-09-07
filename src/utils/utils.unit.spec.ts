@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { repeatUntilDone } from './utils'
+import { repeatUntilDone } from './utils.js'
 
 describe('utils', () => {
   describe('repeatUntilDone', () => {
-    let mockedFunction
+    let mockedFunction: any
 
     beforeEach(() => {
       mockedFunction = vi.fn()

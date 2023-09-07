@@ -1,2 +1,2 @@
-export * from './StatusManager'
-export * from './types'
+export * from './StatusManager.js'
+export * from './types.js'

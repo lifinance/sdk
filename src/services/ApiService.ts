@@ -23,11 +23,11 @@ import type {
   ToolsRequest,
   ToolsResponse,
 } from '@lifi/types'
-import { request } from '../request'
-import { isRoutesRequest, isStep } from '../typeguards'
-import { ValidationError } from '../utils/errors'
-import { parseBackendError } from '../utils/parseError'
-import { ConfigService } from './ConfigService'
+import { request } from '../request.js'
+import { isRoutesRequest, isStep } from '../typeguards.js'
+import { ValidationError } from '../utils/errors.js'
+import { parseBackendError } from '../utils/parseError.js'
+import { ConfigService } from './ConfigService.js'
 
 /**
  * @param requestConfig

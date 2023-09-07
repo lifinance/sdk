@@ -1,14 +1,14 @@
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../tests/setup'
-import { findDefaultToken } from '../../tests/tokens'
-import ApiService from '../services/ApiService'
+import { setupTestEnvironment } from '../../tests/setup.js'
+import { findDefaultToken } from '../../tests/tokens.js'
+import ApiService from '../services/ApiService.js'
 import {
   getAllowance,
   getAllowanceMulticall,
   getTokenAllowanceMulticall,
-} from './getAllowance'
-import type { TokenSpender } from './types'
+} from './getAllowance.js'
+import type { TokenSpender } from './types.js'
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const defaultSpenderAddress = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'

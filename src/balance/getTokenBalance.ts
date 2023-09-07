@@ -1,5 +1,5 @@
 import type { Token, TokenAmount } from '@lifi/types'
-import { getBalance } from './getBalance'
+import { getBalance } from './getBalance.js'
 
 export const getTokenBalance = async (
   walletAddress: string,

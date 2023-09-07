@@ -1,8 +1,8 @@
 import type { LiFiStep, Route } from '@lifi/types'
-import { request } from './request'
-import type { TenderlyResponse } from './types'
-import { ValidationError } from './utils/errors'
-import { name, version } from './version'
+import { request } from './request.js'
+import type { TenderlyResponse } from './types/index.js'
+import { ValidationError } from './utils/errors.js'
+import { name, version } from './version.js'
 
 /**
  * Returns a random number between min (inclusive) and max (inclusive)

@@ -1,4 +1,4 @@
-import { AddressZero, AlternativeAddressZero } from '../constants'
+import { AddressZero, AlternativeAddressZero } from '../constants.js'
 
 export const wait = (ms: number): Promise<undefined> => {
   return new Promise((resolve) => {

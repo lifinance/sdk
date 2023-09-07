@@ -2,10 +2,10 @@ import type { LiFiStep } from '@lifi/types'
 import type { WalletClient } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../../tests/fixtures'
-import type { InternalExecutionSettings } from '../types'
-import type { StatusManager } from './StatusManager'
-import { switchChain } from './switchChain'
+import { buildStepObject } from '../../tests/fixtures.js'
+import type { StatusManager } from './StatusManager.js'
+import { switchChain } from './switchChain.js'
+import type { InternalExecutionSettings } from './types.js'
 
 let walletClient: WalletClient,
   step: LiFiStep,

@@ -1,6 +1,4 @@
 import type { LiFiStep, Route } from '@lifi/types'
-import { publicActions, type WalletClient } from 'viem'
-import { LiFiErrorCode } from '../utils/errors'
 
 export const prepareRestart = async (route: Route) => {
   for (let index = 0; index < route.steps.length; index++) {
@@ -15,60 +13,60 @@ export const prepareRestart = async (route: Route) => {
   }
 }
 
-const handleErrorType = async (walletClient: WalletClient, step: LiFiStep) => {
-  const client = walletClient.extend(publicActions)
+// const handleErrorType = async (walletClient: WalletClient, step: LiFiStep) => {
+//   const client = walletClient.extend(publicActions)
 
-  const isGasLimitError = step.execution?.process.some(
-    (p) => p.error?.code === LiFiErrorCode.GasLimitError
-  )
-  const isGasPriceError = step.execution?.process.some(
-    (p) => p.error?.code === LiFiErrorCode.TransactionUnderpriced
-  )
+//   const isGasLimitError = step.execution?.process.some(
+//     (p) => p.error?.code === LiFiErrorCode.GasLimitError
+//   )
+//   const isGasPriceError = step.execution?.process.some(
+//     (p) => p.error?.code === LiFiErrorCode.TransactionUnderpriced
+//   )
 
-  const { transactionRequest } = step
+//   const { transactionRequest } = step
 
-  // if (isGasLimitError) {
-  //   if (transactionRequest) {
-  //     let gasLimit = transactionRequest.gasLimit
+// if (isGasLimitError) {
+//   if (transactionRequest) {
+//     let gasLimit = transactionRequest.gasLimit
 
-  //     try {
-  //       gasLimit = await client.estimateGas(transactionRequest)
-  //     } catch (error) {}
+//     try {
+//       gasLimit = await client.estimateGas(transactionRequest)
+//     } catch (error) {}
 
-  //     if (gasLimit) {
-  //       transactionRequest.gasLimit = BigNumber.from(
-  //         `${(BigInt(gasLimit.toString()) * 125n) / 100n}`
-  //       )
-  //     }
-  //   }
+//     if (gasLimit) {
+//       transactionRequest.gasLimit = BigNumber.from(
+//         `${(BigInt(gasLimit.toString()) * 125n) / 100n}`
+//       )
+//     }
+//   }
 
-  //   step.estimate.gasCosts?.forEach(
-  //     (gasCost) =>
-  //       (gasCost.limit = `${Math.round(Number(gasCost.limit) * 1.25)}`)
-  //   )
-  // }
+//   step.estimate.gasCosts?.forEach(
+//     (gasCost) =>
+//       (gasCost.limit = `${Math.round(Number(gasCost.limit) * 1.25)}`)
+//   )
+// }
 
-  // if (isGasPriceError) {
-  //   if (transactionRequest) {
-  //     let gasPrice = transactionRequest.gasPrice
+// if (isGasPriceError) {
+//   if (transactionRequest) {
+//     let gasPrice = transactionRequest.gasPrice
 
-  //     try {
-  //       gasPrice = await client.getGasPrice()
-  //     } catch (error) {}
+//     try {
+//       gasPrice = await client.getGasPrice()
+//     } catch (error) {}
 
-  //     if (gasPrice) {
-  //       transactionRequest.gasPrice = BigNumber.from(
-  //         `${(BigInt(gasPrice.toString()) * 125n) / 100n}`
-  //       )
-  //     }
-  //   }
+//     if (gasPrice) {
+//       transactionRequest.gasPrice = BigNumber.from(
+//         `${(BigInt(gasPrice.toString()) * 125n) / 100n}`
+//       )
+//     }
+//   }
 
-  //   step.estimate.gasCosts?.forEach(
-  //     (gasCost) =>
-  //       (gasCost.price = `${Math.round(Number(gasCost.price) * 1.25)}`)
-  //   )
-  // }
-}
+//   step.estimate.gasCosts?.forEach(
+//     (gasCost) =>
+//       (gasCost.price = `${Math.round(Number(gasCost.price) * 1.25)}`)
+//   )
+// }
+// }
 
 const deleteFailedProcesses = (step: LiFiStep) => {
   if (step.execution) {

@@ -7,9 +7,9 @@ import { ChainKey, ChainType, CoinKey } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ValidationError } from '../utils/errors'
-import { ChainsService } from './ChainsService'
-import { ConfigService } from './ConfigService'
+import { ValidationError } from '../utils/errors.js'
+import { ChainsService } from './ChainsService.js'
+import { ConfigService } from './ConfigService.js'
 
 let chainsService: ChainsService
 

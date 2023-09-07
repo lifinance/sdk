@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import ApiService from './ApiService'
+import ApiService from './ApiService.js'
 
 describe('ApiService Integration Tests', () => {
   it(

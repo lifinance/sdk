@@ -1,7 +1,7 @@
-import { ConfigService } from './services/ConfigService'
-import { HTTPError } from './utils/errors'
-import { wait } from './utils/utils'
-import { version } from './version'
+import { ConfigService } from './services/ConfigService.js'
+import { HTTPError } from './utils/errors.js'
+import { wait } from './utils/utils.js'
+import { version } from './version.js'
 
 export const requestSettings = {
   retries: 1,

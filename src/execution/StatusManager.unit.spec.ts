@@ -1,8 +1,8 @@
+import type { LiFiStep, Route, Status } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../tests/fixtures'
-import type { LiFiStep, Route, Status } from '../types'
-import { StatusManager } from './StatusManager'
+import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
+import { StatusManager } from './StatusManager.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 

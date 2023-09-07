@@ -20,12 +20,12 @@ import {
   it,
   vi,
 } from 'vitest'
-import { findDefaultToken } from '../../tests/tokens'
-import { requestSettings } from '../request'
-import { ServerError, SlippageError, ValidationError } from '../utils/errors'
-import ApiService from './ApiService'
-import { handlers } from './ApiService.unit.handlers'
-import { ConfigService } from './ConfigService'
+import { findDefaultToken } from '../../tests/tokens.js'
+import { requestSettings } from '../request.js'
+import { ServerError, SlippageError, ValidationError } from '../utils/errors.js'
+import ApiService from './ApiService.js'
+import { handlers } from './ApiService.unit.handlers.js'
+import { ConfigService } from './ConfigService.js'
 
 const mockedFetch = vi.spyOn(globalThis, 'fetch')
 

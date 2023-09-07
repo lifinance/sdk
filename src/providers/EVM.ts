@@ -1,9 +1,9 @@
 import type { LiFiStep } from '@lifi/types'
 import { isAddress, type WalletClient } from 'viem'
-import { EVMStepExecutor } from '../execution/EVMStepExecutor'
-import type { StepExecutorOptions } from '../execution/types'
-import type { SDKProvider } from './types'
-import { ProviderType } from './types'
+import { EVMStepExecutor } from '../execution/EVMStepExecutor.js'
+import type { StepExecutorOptions } from '../execution/types.js'
+import type { SDKProvider } from './types.js'
+import { ProviderType } from './types.js'
 
 export interface EVMProviderOptions {
   getWalletClient: () => Promise<WalletClient>

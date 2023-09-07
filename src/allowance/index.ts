@@ -1,3 +1,3 @@
-export * from './getAllowance'
-export * from './setAllowance'
-export * from './types'
+export * from './getAllowance.js'
+export * from './setAllowance.js'
+export * from './types.js'

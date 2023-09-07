@@ -4,11 +4,11 @@ import type {
   ProcessType,
   StatusResponse,
 } from '@lifi/types'
-import ApiService from '../services/ApiService'
-import { ServerError } from '../utils/errors'
-import { repeatUntilDone } from '../utils/utils'
-import type { StatusManager } from './StatusManager'
-import { getSubstatusMessage } from './utils'
+import ApiService from '../services/ApiService.js'
+import { ServerError } from '../utils/errors.js'
+import { repeatUntilDone } from '../utils/utils.js'
+import type { StatusManager } from './StatusManager.js'
+import { getSubstatusMessage } from './utils.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 

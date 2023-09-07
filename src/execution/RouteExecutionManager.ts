@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { Route } from '@lifi/types'
-import type { ProviderType, SDKProvider } from '../providers'
-import { ConfigService } from '../services/ConfigService'
-import type { SDKOptions } from '../types'
-import { ValidationError } from '../utils/errors'
-import { StatusManager } from './StatusManager'
-import { prepareRestart } from './prepareRestart'
+import type { ProviderType, SDKProvider } from '../providers/types.js'
+import { ConfigService } from '../services/ConfigService.js'
+import type { SDKOptions } from '../types/index.js'
+import { ValidationError } from '../utils/errors.js'
+import { StatusManager } from './StatusManager.js'
+import { prepareRestart } from './prepareRestart.js'
 import type {
   ExecutionSettings,
   RouteExecutionData,
   RouteExecutionDictionary,
   RouteExecutionPromiseDictionary,
-} from './types'
+} from './types.js'
 
 export class RouteExecutionManager {
   private executionDictionary: RouteExecutionDictionary = {}

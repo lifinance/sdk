@@ -8,8 +8,8 @@ import type {
   Token,
 } from '@lifi/types'
 import { emptyExecution } from '@lifi/types'
-import type { InternalExecutionSettings } from './types'
-import { getProcessMessage } from './utils'
+import type { InternalExecutionSettings } from './types.js'
+import { getProcessMessage } from './utils.js'
 
 interface Receipt {
   fromAmount?: string
