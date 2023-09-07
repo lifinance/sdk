@@ -1,4 +1,5 @@
-import { ChainId, ContractCallQuoteRequest, LifiStep } from '@lifi/sdk'
+import type { ContractCallQuoteRequest, LiFiStep } from '@lifi/sdk'
+import { ChainId } from '@lifi/sdk'
 import { ethers } from 'ethers'
 import {
   executeCrossChainQuote,
@@ -12,7 +13,7 @@ const getKlimaQuote = async (
   fromToken: string,
   userAddress: string,
   retireAmount: string
-): Promise<LifiStep> => {
+): Promise<LiFiStep> => {
   const USDC_POL = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174'
   const BCT_POL = '0x2F800Db0fdb5223b3C3f354886d907A671414A7F'
 

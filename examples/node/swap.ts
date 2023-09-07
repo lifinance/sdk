@@ -1,14 +1,8 @@
-import {
-  ChainId,
-  CoinKey,
-  ConfigUpdate,
-  Execution,
-  ExecutionSettings,
-  findDefaultToken,
-  Route,
-} from '@lifi/sdk'
-import { providers, Wallet } from 'ethers'
+import { findDefaultToken } from '@lifi/data-types'
+import type { Execution, ExecutionSettings, Route, SDKOptions } from '@lifi/sdk'
+import { ChainId, CoinKey } from '@lifi/sdk'
 import 'dotenv/config'
+import { Wallet, providers } from 'ethers'
 import { getLifi, getSigner, promptConfirm } from './helpers'
 
 console.log('>> Starting Demo')
@@ -32,7 +26,7 @@ async function demo() {
   // STEP 1: Initialize the API
 
   // ☝️ This configuration is totally optional! ------------------------------------
-  const optionalConfigs: ConfigUpdate = {
+  const optionalConfigs: SDKOptions = {
     integrator: 'lifi-sdk-node-example', // DEFAULT 'lifi-sdk'
     apiUrl: 'https://li.quest/v1', // DEFAULT production endpoint
     defaultExecutionSettings: {

@@ -1,4 +1,5 @@
-import { ChainId, ContractCallQuoteRequest, LifiStep } from '@lifi/sdk'
+import type { ContractCallQuoteRequest, LiFiStep } from '@lifi/sdk'
+import { ChainId } from '@lifi/sdk'
 import { ethers } from 'ethers'
 import {
   executeCrossChainQuote,
@@ -12,7 +13,7 @@ const getPolynomialQuote = async (
   fromToken: string,
   userAddress: string,
   amount: string
-): Promise<LifiStep> => {
+): Promise<LiFiStep> => {
   const sETH_OPT = '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49'
   const POLYNOMIAL_ETHEREUM_CONTRACT_OPT =
     '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7'

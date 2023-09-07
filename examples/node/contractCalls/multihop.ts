@@ -1,5 +1,6 @@
 //error
-import { ChainId, ContractCallQuoteRequest, LifiStep } from '@lifi/sdk'
+import type { ContractCallQuoteRequest, LiFiStep } from '@lifi/sdk'
+import { ChainId } from '@lifi/sdk'
 import {
   executeCrossChainQuote,
   getLifi,
@@ -14,7 +15,7 @@ const getMultihopQuote = async (
   toToken: string,
   usdAmount: number,
   userAddress: string
-): Promise<LifiStep> => {
+): Promise<LiFiStep> => {
   const USDC_POL = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174'
 
   // Get bridge route from polygon to destination chain
