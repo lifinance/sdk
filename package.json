@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.11",
+  "version": "3.0.0-alpha.12",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -45,6 +45,7 @@
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "typings": "./dist/types/index.d.ts",
+  "sideEffects": false,
   "directories": {
     "test": "tests"
   },
