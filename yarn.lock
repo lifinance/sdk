@@ -606,7 +606,7 @@ __metadata:
   dependencies:
     "@commitlint/cli": ^17.7.1
     "@commitlint/config-conventional": ^17.7.0
-    "@lifi/types": ^9.0.0-alpha.15
+    "@lifi/types": ^9.0.0-alpha.16
     "@mswjs/interceptors": ^0.22.16
     "@solana/web3.js": ^1.78.4
     "@types/ws": ^8.5.5
@@ -626,15 +626,15 @@ __metadata:
     prettier: ^3.0.3
     standard-version: ^9.5.0
     typescript: ^5.2.2
-    viem: ^1.10.4
+    viem: ^1.10.8
     vitest: ^0.34.3
   languageName: unknown
   linkType: soft
 
-"@lifi/types@npm:^9.0.0-alpha.15":
-  version: 9.0.0-alpha.15
-  resolution: "@lifi/types@npm:9.0.0-alpha.15"
-  checksum: d7d7937fd1e49b808f7808f112dda4f7b2de9eb38b765eb951d0dc8760d17cd44c39e7a80498007ce1af7e8e778f3b982cd02b12fa19dc83aa450bd9686b8c71
+"@lifi/types@npm:^9.0.0-alpha.16":
+  version: 9.0.0-alpha.16
+  resolution: "@lifi/types@npm:9.0.0-alpha.16"
+  checksum: 7052727ee5ecd8083823ca8f6e3b766562be01c60810a3784085bbb79be4376a12cc2cb352fdda568353e0eeee21f5ee1a4541bdcb0acb115b272fab99633db8
   languageName: node
   linkType: hard
 
@@ -6411,9 +6411,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^1.10.4":
-  version: 1.10.4
-  resolution: "viem@npm:1.10.4"
+"viem@npm:^1.10.8":
+  version: 1.10.8
+  resolution: "viem@npm:1.10.8"
   dependencies:
     "@adraffy/ens-normalize": 1.9.4
     "@noble/curves": 1.2.0
@@ -6429,7 +6429,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: e83e3451b34ee5162d2c6914cff3126d8a5230710d7c38947e805972d1fe21c5b6d3727669581a79e1d66c67e37462fb8189566d352cdfa84da02675f27a5e85
+  checksum: f8d044a86a5d635ca968e47548aa0566a90a8e12ea9c15cd1bd373d15fd19cb188938ee1b7ab768b34ba4ee1dae9ad867881f56f07632ff41d421a95865961ec
   languageName: node
   linkType: hard
 

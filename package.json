@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.10",
+  "version": "3.0.0-alpha.11",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -86,10 +86,10 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^9.0.0-alpha.15",
+    "@lifi/types": "^9.0.0-alpha.16",
     "@solana/web3.js": "^1.78.4",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^1.10.4"
+    "viem": "^1.10.8"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
