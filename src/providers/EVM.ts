@@ -1,7 +1,7 @@
 import type { LiFiStep } from '@lifi/types'
 import { isAddress, type WalletClient } from 'viem'
+import type { StepExecutorOptions } from '../execution/BaseStepExecutor.js'
 import { EVMStepExecutor } from '../execution/EVMStepExecutor.js'
-import type { StepExecutorOptions } from '../execution/types.js'
 import type { SDKProvider } from './types.js'
 import { ProviderType } from './types.js'
 

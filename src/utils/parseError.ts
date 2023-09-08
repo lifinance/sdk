@@ -3,9 +3,7 @@ import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
-import { formatUnits } from 'viem'
 import { fetchTxErrorDetails } from '../helpers.js'
-import { ChainsService } from '../services/ChainsService.js'
 import {
   ErrorMessage,
   EthersErrorMessage,
@@ -13,15 +11,12 @@ import {
   LiFiError,
   LiFiErrorCode,
   MetaMaskProviderErrorCode,
-  NotFoundError,
   ProviderError,
   RPCError,
-  ServerError,
-  SlippageError,
   TransactionError,
   UnknownError,
-  ValidationError,
 } from './errors.js'
+import { getTransactionNotSentMessage } from './getTransactionMessage.js'
 
 /**
  * Available MetaMask error codes:
@@ -54,51 +49,6 @@ import {
  * https://eips.ethereum.org/EIPS/eip-1474#error-codes
  * https://eips.ethereum.org/EIPS/eip-1193#provider-errors
  */
-
-export const getTransactionNotSentMessage = async (
-  step?: LiFiStep,
-  process?: Process
-): Promise<string> => {
-  let transactionNotSend =
-    'Transaction was not sent, your funds are still in your wallet'
-
-  // add information about funds if available
-  if (step) {
-    const chainService = ChainsService.getInstance()
-    const chain = await chainService.getChainById(step.action.fromChainId)
-
-    transactionNotSend += ` (${formatUnits(
-      BigInt(step.action.fromAmount),
-      step.action.fromToken.decimals
-    )} ${step.action.fromToken.symbol} on ${chain.name})`
-  }
-
-  transactionNotSend +=
-    ", please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
-
-  // add transaction explorer link if available
-  transactionNotSend +=
-    process && process.txLink
-      ? `<br>You can check the failed transaction&nbsp;<a href="${process.txLink}" target="_blank" rel="nofollow noreferrer">here</a>.`
-      : ''
-
-  return transactionNotSend
-}
-
-export const getTransactionFailedMessage = async (
-  step: LiFiStep,
-  txLink?: string
-): Promise<string> => {
-  const chainsService = ChainsService.getInstance()
-  const chain = await chainsService.getChainById(step.action.toChainId)
-
-  const baseString = `It appears that your transaction may not have been successful.
-  However, to confirm this, please check your ${chain.name} wallet for ${step.action.toToken.symbol}.`
-  return txLink
-    ? `${baseString}
-    You can also check the&nbsp;<a href="${txLink}" target="_blank" rel="nofollow noreferrer">block explorer</a> for more information.`
-    : baseString
-}
 
 export const parseError = async (
   e: any,
@@ -251,46 +201,4 @@ export const parseError = async (
       )
     }
   }
-}
-
-export const parseBackendError = async (e: any): Promise<LiFiError> => {
-  let data
-  try {
-    data = await e.response?.json()
-  } catch (error) {
-    // ignore
-  }
-  if (e.response?.status === 400) {
-    return new ValidationError(
-      data?.message || e.response?.statusText,
-      undefined,
-      e.stack
-    )
-  }
-
-  if (e.response?.status === 404) {
-    return new NotFoundError(
-      data?.message || e.response?.statusText,
-      undefined,
-      e.stack
-    )
-  }
-
-  if (e.response?.status === 409) {
-    return new SlippageError(
-      data?.message || e.response?.statusText,
-      ErrorMessage.SlippageError,
-      e.stack
-    )
-  }
-
-  if (e.response?.status === 500) {
-    return new ServerError(
-      data?.message || e.response?.statusText,
-      undefined,
-      e.stack
-    )
-  }
-
-  return new ServerError(ErrorMessage.Default, undefined, e.stack)
 }

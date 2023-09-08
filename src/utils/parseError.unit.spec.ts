@@ -5,7 +5,8 @@ import {
 import { describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../tests/fixtures.js'
 import { LiFiErrorCode } from './errors.js'
-import { parseBackendError, parseError } from './parseError.js'
+import { parseBackendError } from './parseBackendError.js'
+import { parseError } from './parseError.js'
 
 describe('parseError', () => {
   describe('parseWalletError', () => {

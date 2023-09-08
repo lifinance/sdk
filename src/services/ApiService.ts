@@ -26,7 +26,7 @@ import type {
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { ValidationError } from '../utils/errors.js'
-import { parseBackendError } from '../utils/parseError.js'
+import { parseBackendError } from '../utils/parseBackendError.js'
 import { ConfigService } from './ConfigService.js'
 
 /**

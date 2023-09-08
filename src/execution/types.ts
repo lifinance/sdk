@@ -1,26 +1,5 @@
-import type { LiFiStep, Route, Token } from '@lifi/types'
+import type { Route, Token } from '@lifi/types'
 import type { Hash, Hex, WalletClient } from 'viem'
-import type { BaseStepExecutor } from './BaseStepExecutor.js'
-import type { StatusManager } from './StatusManager.js'
-
-export interface StepExecutorOptions {
-  statusManager: StatusManager
-  settings: InternalExecutionSettings
-}
-
-export interface RouteExecutionData {
-  route: Route
-  executors: BaseStepExecutor[]
-  settings: InternalExecutionSettings
-}
-
-export type RouteExecutionDictionary = Partial<
-  Record<string, RouteExecutionData>
->
-
-export type RouteExecutionPromiseDictionary = Partial<
-  Record<string, Promise<Route>>
->
 
 export type TransactionParameters = {
   chainId?: number
@@ -80,19 +59,6 @@ export interface InternalExecutionSettings {
   updateTransactionRequestHook?: TransactionRequestUpdateHook
   executeInBackground: boolean
   infiniteApproval: boolean
-}
-
-export interface ExecutionParams {
-  walletClient: WalletClient
-  step: LiFiStep
-  statusManager: StatusManager
-  settings: InternalExecutionSettings
-}
-
-export interface InteractionSettings {
-  allowInteraction?: boolean
-  allowUpdates?: boolean
-  allowExecution?: boolean
 }
 
 export interface MultisigTxDetails {

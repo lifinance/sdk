@@ -4,18 +4,26 @@ import type { ProviderType, SDKProvider } from '../providers/types.js'
 import { ConfigService } from '../services/ConfigService.js'
 import type { SDKOptions } from '../types/index.js'
 import { ValidationError } from '../utils/errors.js'
+import type { BaseStepExecutor } from './BaseStepExecutor.js'
 import { StatusManager } from './StatusManager.js'
 import { prepareRestart } from './prepareRestart.js'
-import type {
-  ExecutionSettings,
-  RouteExecutionData,
-  RouteExecutionDictionary,
-  RouteExecutionPromiseDictionary,
-} from './types.js'
+import type { ExecutionSettings, InternalExecutionSettings } from './types.js'
+
+export interface RouteExecutionData {
+  route: Route
+  executors: BaseStepExecutor[]
+  settings: InternalExecutionSettings
+}
+
+export type RouteExecutionDataDictionary = Partial<
+  Record<string, RouteExecutionData>
+>
+
+export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 
 export class RouteExecutionManager {
+  private executionDataDictionary: RouteExecutionDataDictionary = {}
   private executionDictionary: RouteExecutionDictionary = {}
-  private executionPromiseDictionary: RouteExecutionPromiseDictionary = {}
   protected configService: ConfigService
   private providers?: SDKProvider[]
 
@@ -39,7 +47,7 @@ export class RouteExecutionManager {
     // Deep clone to prevent side effects
     const clonedRoute = structuredClone<Route>(route)
 
-    let executionPromise = this.executionPromiseDictionary[clonedRoute.id]
+    let executionPromise = this.executionDictionary[clonedRoute.id]
     // Check if route is already running
     if (executionPromise) {
       return executionPromise
@@ -47,7 +55,7 @@ export class RouteExecutionManager {
 
     executionPromise = this.executeSteps(clonedRoute, settings)
 
-    this.executionPromiseDictionary[clonedRoute.id] = executionPromise
+    this.executionDictionary[clonedRoute.id] = executionPromise
 
     return executionPromise
   }
@@ -66,7 +74,7 @@ export class RouteExecutionManager {
     // Deep clone to prevent side effects
     const clonedRoute = structuredClone<Route>(route)
 
-    const execution = this.executionDictionary[clonedRoute.id]
+    const execution = this.executionDataDictionary[clonedRoute.id]
 
     if (execution) {
       const executionHalted = execution.executors.some(
@@ -77,7 +85,7 @@ export class RouteExecutionManager {
         this.updateRouteExecution(route, {
           executeInBackground: settings?.executeInBackground,
         })
-        const executionPromise = this.executionPromiseDictionary[clonedRoute.id]
+        const executionPromise = this.executionDictionary[clonedRoute.id]
         return executionPromise ?? clonedRoute
       }
     }
@@ -86,7 +94,7 @@ export class RouteExecutionManager {
 
     const executionPromise = this.executeSteps(clonedRoute, settings)
 
-    this.executionPromiseDictionary[clonedRoute.id] = executionPromise
+    this.executionDictionary[clonedRoute.id] = executionPromise
 
     return executionPromise
   }
@@ -97,19 +105,19 @@ export class RouteExecutionManager {
   ): Promise<Route> => {
     const config = this.configService.getConfig()
 
-    const execution: RouteExecutionData = {
+    const _settings = { ...config.defaultExecutionSettings, ...settings }
+    this.executionDataDictionary[route.id] = {
       route,
       executors: [],
       settings: { ...config.defaultExecutionSettings, ...settings },
     }
 
-    this.executionDictionary[route.id] = execution
-
     const statusManager = new StatusManager(
       route,
-      execution.settings,
+      _settings,
       (route: Route) => {
-        if (this.executionDictionary[route.id]) {
+        const execution = this.executionDataDictionary[route.id]
+        if (execution) {
           execution.route = route
         }
       }
@@ -117,7 +125,7 @@ export class RouteExecutionManager {
 
     // Loop over steps and execute them
     for (let index = 0; index < route.steps.length; index++) {
-      const execution = this.executionDictionary[route.id]
+      const execution = this.executionDataDictionary[route.id]
       // Check if execution has stopped in the meantime
       if (!execution) {
         break
@@ -172,7 +180,7 @@ export class RouteExecutionManager {
     }
 
     // Clean up after the execution
-    delete this.executionDictionary[route.id]
+    delete this.executionDataDictionary[route.id]
     return route
   }
 
@@ -185,7 +193,7 @@ export class RouteExecutionManager {
     route: Route,
     settings: Pick<ExecutionSettings, 'executeInBackground'>
   ): void => {
-    const execution = this.executionDictionary[route.id]
+    const execution = this.executionDataDictionary[route.id]
     if (!execution) {
       return
     }
@@ -213,7 +221,7 @@ export class RouteExecutionManager {
     settings: ExecutionSettings,
     route: Route
   ): void => {
-    const execution = this.executionDictionary[route.id]
+    const execution = this.executionDataDictionary[route.id]
     if (!execution) {
       throw new ValidationError(
         "Can't set ExecutionSettings for the inactive route."
@@ -234,7 +242,7 @@ export class RouteExecutionManager {
    * @returns The stopped route.
    */
   stopExecution = (route: Route): Route => {
-    const execution = this.executionDictionary[route.id]
+    const execution = this.executionDataDictionary[route.id]
     if (!execution) {
       return route
     }
@@ -246,7 +254,7 @@ export class RouteExecutionManager {
         allowExecution: false,
       })
     }
-    delete this.executionDictionary[route.id]
+    delete this.executionDataDictionary[route.id]
     return route
   }
 
@@ -255,7 +263,7 @@ export class RouteExecutionManager {
    * @returns A list of routes.
    */
   getActiveRoutes = (): Route[] => {
-    return Object.values(this.executionDictionary)
+    return Object.values(this.executionDataDictionary)
       .map((dict) => dict?.route)
       .filter(Boolean) as Route[]
   }
@@ -266,7 +274,7 @@ export class RouteExecutionManager {
    * @returns The updated route.
    */
   getActiveRoute = (route: Route): Route | undefined => {
-    return this.executionDictionary[route.id]?.route
+    return this.executionDataDictionary[route.id]?.route
   }
 
   getProvider = (type: ProviderType): SDKProvider | undefined => {
