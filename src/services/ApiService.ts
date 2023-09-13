@@ -206,7 +206,7 @@ const getContractCallQuote = async (
   // send request
   try {
     const response = await request<LifiStep>(
-      `${config.apiUrl}/quote/contractCalls`,
+      `${config.apiUrl}/quote/contractCall`,
       {
         method: 'POST',
         headers: {
