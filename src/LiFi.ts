@@ -368,4 +368,18 @@ export class LiFi extends RouteExecutionManager {
 
     return connections
   }
+
+  /**
+   * Get all the transaction history for swap/bridging done via LiFi
+   * @param address string
+   * @returns StatusResponse[]
+   */
+
+  getTransactionHistory = async (
+    address: string
+  ): Promise<StatusResponse[]> => {
+    const connections = await ApiService.getTransactionHistory(address)
+
+    return connections
+  }
 }

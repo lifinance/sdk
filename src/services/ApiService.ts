@@ -457,6 +457,18 @@ const getAvailableConnections = async (
   }
 }
 
+const getTransactionHistory = async (
+  address: string
+): Promise<StatusResponse[]> => {
+  const config = ConfigService.getInstance().getConfig()
+
+  const response = await request<StatusResponse[]>(
+    `${config.apiUrl}/analytics/wallets/${address}`
+  )
+
+  return response
+}
+
 export default {
   getChains,
   getContractCallQuote,
@@ -470,4 +482,5 @@ export default {
   getTokens,
   getTools,
   getAvailableConnections,
+  getTransactionHistory,
 }
