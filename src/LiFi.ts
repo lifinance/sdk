@@ -358,7 +358,6 @@ export class LiFi extends RouteExecutionManager {
    * @param connectionRequest ConnectionsRequest
    * @returns ConnectionsResponse
    */
-
   getConnections = async (
     connectionRequest: ConnectionsRequest
   ): Promise<ConnectionsResponse> => {
@@ -374,7 +373,6 @@ export class LiFi extends RouteExecutionManager {
    * @param address string
    * @returns StatusResponse[]
    */
-
   getTransactionHistory = async (
     address: string
   ): Promise<StatusResponse[]> => {
