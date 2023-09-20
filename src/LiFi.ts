@@ -6,6 +6,7 @@ import {
   ConnectionsRequest,
   ConnectionsResponse,
   ContractCallQuoteRequest,
+  ContractCallsQuoteRequest,
   ExtendedChain,
   GasRecommendationRequest,
   GasRecommendationResponse,
@@ -143,12 +144,25 @@ export class LiFi extends RouteExecutionManager {
    * Get a quote for a destination contract call
    * @param {ContractCallQuoteRequest} request - The configuration of the requested destination call
    * @throws {LifiError} - Throws a LifiError if request fails
+   * @deprecated This method is deprecated, please use `getContractCallsQuote` instead
    */
   getContractCallQuote = async (
     request: ContractCallQuoteRequest,
     options?: RequestOptions
   ): Promise<LifiStep> => {
     return ApiService.getContractCallQuote(request, options)
+  }
+
+  /**
+   * Get a quotes for multiple destination contract call
+   * @param {ContractCallsQuoteRequest} request - The configuration of the requested destination call
+   * @throws {LifiError} - Throws a LifiError if request fails
+   */
+  getContractCallsQuote = async (
+    request: ContractCallsQuoteRequest,
+    options?: RequestOptions
+  ): Promise<LifiStep> => {
+    return ApiService.getContractCallsQuote(request, options)
   }
 
   /**

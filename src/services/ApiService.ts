@@ -2,6 +2,7 @@ import {
   ConnectionsRequest,
   ConnectionsResponse,
   ContractCallQuoteRequest,
+  ContractCallsQuoteRequest,
   GasRecommendationRequest,
   GasRecommendationResponse,
   GetStatusRequest,
@@ -206,6 +207,68 @@ const getContractCallQuote = async (
   try {
     const response = await request<LifiStep>(
       `${config.apiUrl}/quote/contractCall`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestConfig),
+        signal: options?.signal,
+      }
+    )
+
+    return response
+  } catch (e) {
+    throw await parseBackendError(e)
+  }
+}
+
+const getContractCallsQuote = async (
+  requestConfig: ContractCallsQuoteRequest,
+  options?: RequestOptions
+): Promise<LifiStep> => {
+  const config = ConfigService.getInstance().getConfig()
+
+  // validation
+  const requiredParameters: Array<keyof ContractCallsQuoteRequest> = [
+    'fromChain',
+    'fromToken',
+    'fromAddress',
+    'toChain',
+    'toToken',
+    'toAmount',
+    'contractCalls',
+  ]
+
+  if (requestConfig.contractCalls.length === 0) {
+    throw new ValidationError(`Parameter "contractCalls" is empty.`)
+  }
+
+  requiredParameters.forEach((requiredParameter) => {
+    if (!requestConfig[requiredParameter]) {
+      throw new ValidationError(
+        `Required parameter "${requiredParameter}" is missing.`
+      )
+    }
+  })
+
+  // apply defaults
+  // option.order is not used in this endpoint
+  requestConfig.slippage ||= config.defaultRouteOptions.slippage
+  requestConfig.integrator ||= config.defaultRouteOptions.integrator
+  requestConfig.referrer ||= config.defaultRouteOptions.referrer
+
+  requestConfig.allowBridges ||= config.defaultRouteOptions.bridges?.allow
+  requestConfig.denyBridges ||= config.defaultRouteOptions.bridges?.deny
+  requestConfig.preferBridges ||= config.defaultRouteOptions.bridges?.prefer
+  requestConfig.allowExchanges ||= config.defaultRouteOptions.exchanges?.allow
+  requestConfig.denyExchanges ||= config.defaultRouteOptions.exchanges?.deny
+  requestConfig.preferExchanges ||= config.defaultRouteOptions.exchanges?.prefer
+
+  // send request
+  try {
+    const response = await request<LifiStep>(
+      `${config.apiUrl}/quote/contractCalls`,
       {
         method: 'POST',
         headers: {
@@ -472,6 +535,7 @@ const getTransactionHistory = async (
 export default {
   getChains,
   getContractCallQuote,
+  getContractCallsQuote,
   getGasRecommendation,
   getPossibilities,
   getQuote,
