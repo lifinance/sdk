@@ -1,6 +1,6 @@
 import type { LiFiStep, Process } from '@lifi/types'
+import { config } from 'config.js'
 import { formatUnits } from 'viem'
-import { ChainsService } from '../services/ChainsService.js'
 
 export const getTransactionNotSentMessage = async (
   step?: LiFiStep,
@@ -11,8 +11,7 @@ export const getTransactionNotSentMessage = async (
 
   // add information about funds if available
   if (step) {
-    const chainService = ChainsService.getInstance()
-    const chain = await chainService.getChainById(step.action.fromChainId)
+    const chain = await config.getChainById(step.action.fromChainId)
 
     transactionNotSend += ` (${formatUnits(
       BigInt(step.action.fromAmount),
@@ -36,8 +35,7 @@ export const getTransactionFailedMessage = async (
   step: LiFiStep,
   txLink?: string
 ): Promise<string> => {
-  const chainsService = ChainsService.getInstance()
-  const chain = await chainsService.getChainById(step.action.toChainId)
+  const chain = await config.getChainById(step.action.toChainId)
 
   const baseString = `It appears that your transaction may not have been successful.
   However, to confirm this, please check your ${chain.name} wallet for ${step.action.toToken.symbol}.`

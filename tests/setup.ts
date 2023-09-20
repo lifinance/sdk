@@ -1,9 +1,9 @@
-import { ChainsService } from '../src/services/ChainsService.js'
-import { ConfigService } from '../src/services/ConfigService.js'
+import { createConfig } from '../src/createConfig.js'
+import { EVM, Solana } from '../src/index.js'
 
 export const setupTestEnvironment = async () => {
-  const configService = ConfigService.getInstance()
-  const chainsService = ChainsService.getInstance()
-  const chains = await chainsService.getChains()
-  configService.updateChains(chains)
+  createConfig({
+    integrator: 'lifi-sdk',
+    providers: [EVM(), Solana()],
+  })
 }

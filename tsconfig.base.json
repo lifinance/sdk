@@ -41,6 +41,19 @@
     ],
 
     // Skip type checking for node modules
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    // Simplify import paths
+    "paths": {
+      "*": ["./src/*"],
+      "core": ["./src/core"],
+      "core/*": ["./src/core/*"],
+      "services": ["./src/services"],
+      "services/*": ["./src/services/*"],
+      "types": ["./src/types"],
+      "types/*": ["./src/types/*"],
+      "utils": ["./src/utils"],
+      "utils/*": ["./src/utils/*"],
+    }
   }
 }

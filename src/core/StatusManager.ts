@@ -1,0 +1,240 @@
+import type {
+  Execution,
+  LiFiStep,
+  Process,
+  ProcessType,
+  Status,
+  Token,
+} from '@lifi/types'
+import { emptyExecution } from '@lifi/types'
+import { executionState } from './executionState.js'
+import { getProcessMessage } from './utils.js'
+
+interface Receipt {
+  fromAmount?: string
+  toAmount?: string
+  toToken?: Token
+  gasPrice?: string
+  gasUsed?: string
+  gasToken?: Token
+  gasAmount?: string
+  gasAmountUSD?: string
+}
+
+type OptionalParameters = Partial<
+  Pick<
+    Process,
+    | 'doneAt'
+    | 'failedAt'
+    | 'txHash'
+    | 'txLink'
+    | 'error'
+    | 'substatus'
+    | 'substatusMessage'
+    | 'multisigTxHash'
+  >
+>
+
+/**
+ * Manages status updates of a route and provides various functions for tracking processes
+ * @param {Route} route The route this StatusManger belongs to.
+ * @param {ExecutionSettings} settings The ExecutionSettings for this route.
+ * @param {InternalUpdateRouteCallback} internalUpdateRouteCallback Internal callback to propage route changes.
+ * @returns {StatusManager} An instance of StatusManager.
+ */
+export class StatusManager {
+  private readonly routeId: string
+  private shouldUpdate = true
+
+  constructor(routeId: string) {
+    this.routeId = routeId
+  }
+
+  /**
+   * Initializes the execution object of a Step.
+   * @param step  The current step in execution
+   * @returns The initialized execution object for this step and a function to update this step
+   */
+  initExecutionObject = (step: LiFiStep): Execution => {
+    if (!step.execution) {
+      step.execution = structuredClone<Execution>(emptyExecution)
+      step.execution.status = 'PENDING'
+      this.updateStepInRoute(step)
+    }
+
+    // Change status to PENDING after resuming from FAILED
+    if (step.execution.status === 'FAILED') {
+      step.execution.status = 'PENDING'
+      this.updateStepInRoute(step)
+    }
+
+    return step.execution
+  }
+
+  /**
+   * Updates the execution object of a Step.
+   * @param step  The current step in execution
+   * @param status  The status for the execution
+   * @param receipt Optional. Information about received tokens
+   * @returns The step with the updated execution object
+   */
+  updateExecution(step: LiFiStep, status: Status, receipt?: Receipt): LiFiStep {
+    if (!step.execution) {
+      throw Error("Can't update empty execution.")
+    }
+    step.execution.status = status
+    if (receipt) {
+      step.execution = {
+        ...step.execution,
+        ...receipt,
+      }
+    }
+    this.updateStepInRoute(step)
+    return step
+  }
+
+  /**
+   * Create and push a new process into the execution.
+   * @param step The step that should contain the new process.
+   * @param type Type of the process. Used to identify already existing processes.
+   * @param status By default created procces is set to the STARTED status. We can override new process with the needed status.
+   * @returns Returns process.
+   */
+  findOrCreateProcess = (
+    step: LiFiStep,
+    type: ProcessType,
+    status?: Status
+  ): Process => {
+    if (!step.execution?.process) {
+      throw new Error("Execution hasn't been initialized.")
+    }
+
+    const process = step.execution.process.find((p) => p.type === type)
+
+    if (process) {
+      if (status && process.status !== status) {
+        process.status = status
+        this.updateStepInRoute(step)
+      }
+      return process
+    }
+
+    const newProcess: Process = {
+      type: type,
+      startedAt: Date.now(),
+      message: getProcessMessage(type, status ?? 'STARTED'),
+      status: status ?? 'STARTED',
+    }
+
+    step.execution.process.push(newProcess)
+    this.updateStepInRoute(step)
+    return newProcess
+  }
+
+  /**
+   * Update a process object.
+   * @param step The step where the process should be updated
+   * @param type  The process type to update
+   * @param status The status the process gets.
+   * @param [params]   Additional parameters to append to the process.
+   * @returns The update process
+   */
+  updateProcess = (
+    step: LiFiStep,
+    type: ProcessType,
+    status: Status,
+    params?: OptionalParameters
+  ): Process => {
+    if (!step.execution) {
+      throw new Error("Can't update an empty step execution.")
+    }
+    const currentProcess = step?.execution?.process.find((p) => p.type === type)
+
+    if (!currentProcess) {
+      throw new Error("Can't find a process for the given type.")
+    }
+
+    switch (status) {
+      case 'CANCELLED':
+        currentProcess.doneAt = Date.now()
+        break
+      case 'FAILED':
+        currentProcess.doneAt = Date.now()
+        step.execution.status = 'FAILED'
+        break
+      case 'DONE':
+        currentProcess.doneAt = Date.now()
+        break
+      case 'PENDING':
+        step.execution.status = 'PENDING'
+        break
+      case 'ACTION_REQUIRED':
+        step.execution.status = 'ACTION_REQUIRED'
+        break
+      default:
+        break
+    }
+
+    currentProcess.status = status
+    currentProcess.message = getProcessMessage(type, status)
+    // set extra parameters or overwritte the standard params set in the switch statement
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        currentProcess[key] = value
+      }
+    }
+    // Sort processes, the ones with DONE status go first
+    step.execution.process = [
+      ...step?.execution?.process.filter(
+        (process) => process.status === 'DONE'
+      ),
+      ...step?.execution?.process.filter(
+        (process) => process.status !== 'DONE'
+      ),
+    ]
+    this.updateStepInRoute(step) // updates the step in the route
+    return currentProcess
+  }
+
+  /**
+   * Remove a process from the execution
+   * @param step The step where the process should be removed from
+   * @param type  The process type to remove
+   */
+  removeProcess = (step: LiFiStep, type: ProcessType): void => {
+    if (!step.execution) {
+      throw new Error("Execution hasn't been initialized.")
+    }
+    const index = step.execution.process.findIndex((p) => p.type === type)
+    step.execution.process.splice(index, 1)
+    this.updateStepInRoute(step)
+  }
+
+  updateStepInRoute = (step: LiFiStep): LiFiStep => {
+    if (!this.shouldUpdate) {
+      return step
+    }
+    const data = executionState.get(this.routeId)
+
+    if (!data) {
+      throw new Error('Execution data not found.')
+    }
+
+    const stepIndex = data.route.steps.findIndex(
+      (routeStep) => routeStep.id === step.id
+    )
+
+    if (stepIndex === -1) {
+      throw new Error("Couldn't find a step to update.")
+    }
+
+    data.route.steps[stepIndex] = { ...data.route.steps[stepIndex], ...step }
+
+    data.executionOptions?.updateRouteHook?.(data.route)
+    return data.route.steps[stepIndex]
+  }
+
+  allowUpdates(value: boolean): void {
+    this.shouldUpdate = value
+  }
+}

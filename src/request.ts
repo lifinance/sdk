@@ -1,4 +1,4 @@
-import { ConfigService } from './services/ConfigService.js'
+import { config } from 'config.js'
 import { HTTPError } from './utils/errors.js'
 import { wait } from './utils/utils.js'
 import { version } from './version.js'
@@ -18,9 +18,12 @@ export const request = async <T = Response>(
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion, apiKey } =
-    ConfigService.getInstance().getConfig()
-
+  const { userId, integrator, widgetVersion, apiKey } = config.get()
+  if (!integrator) {
+    throw new Error(
+      'Integrator not found. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
+    )
+  }
   options.retries = options.retries ?? requestSettings.retries
   try {
     if (!options.skipTrackingHeaders) {

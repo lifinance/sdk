@@ -1,29 +1,19 @@
 import type { ChainId, RouteOptions } from '@lifi/types'
-import type {
-  ExecutionSettings,
-  InternalExecutionSettings,
-  MultisigConfig,
-} from '../execution/types.js'
-import type { SDKProvider } from '../providers/index.js'
+import type { SDKProvider } from 'core/types.js'
 
 export interface SDKConfig {
+  integrator: string
   apiUrl: string
   apiKey?: string
-  rpcs: Record<ChainId, string[]>
-  multicallAddresses: Record<ChainId, string | undefined>
-  defaultExecutionSettings: InternalExecutionSettings
-  defaultRouteOptions: RouteOptions
-  disableVersionCheck?: boolean
   userId?: string
-  integrator: string
+  disableVersionCheck?: boolean
   widgetVersion?: string
-  multisig?: MultisigConfig
+  routeOptions?: RouteOptions
   providers?: SDKProvider[]
+  rpcUrls: Partial<Record<ChainId, string[]>>
 }
 
-export interface SDKOptions
-  extends Partial<Omit<SDKConfig, 'defaultExecutionSettings' | 'integrator'>> {
-  defaultExecutionSettings?: ExecutionSettings
+export interface SDKOptions extends Partial<Omit<SDKConfig, 'integrator'>> {
   integrator: string
 }
 
