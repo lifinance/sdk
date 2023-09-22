@@ -8,7 +8,7 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
   const _options: SolanaProviderOptions = options ?? {}
   return {
     get type() {
-      return ChainType.Solana
+      return ChainType.SVM
     },
     isAddress(address: string): boolean {
       try {

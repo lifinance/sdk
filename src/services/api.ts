@@ -411,7 +411,7 @@ export const getGasRecommendation = async (
   }
 
   try {
-    const response = await request<GasRecommendationResponse>(url, {
+    const response = await request<GasRecommendationResponse>(url.toString(), {
       signal: options?.signal,
     })
     return response
@@ -464,7 +464,7 @@ export const getConnections = async (
     }
   })
   try {
-    const response = await request<ConnectionsResponse>(url)
+    const response = await request<ConnectionsResponse>(url.toString())
     return response
   } catch (e) {
     throw await parseBackendError(e)

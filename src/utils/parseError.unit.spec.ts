@@ -2,11 +2,14 @@ import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../tests/fixtures.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
 import { LiFiErrorCode } from './errors.js'
 import { parseBackendError } from './parseBackendError.js'
 import { parseError } from './parseError.js'
+
+beforeAll(setupTestEnvironment)
 
 describe('parseError', () => {
   describe('parseWalletError', () => {

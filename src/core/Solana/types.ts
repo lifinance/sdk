@@ -11,5 +11,5 @@ export interface SolanaProvider extends SDKProvider {
 }
 
 export function isSolana(provider: SDKProvider): provider is SolanaProvider {
-  return provider.type === ChainType.Solana
+  return provider.type === ChainType.SVM
 }

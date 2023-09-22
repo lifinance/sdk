@@ -4,7 +4,7 @@ import type { SDKConfig, SDKOptions } from './types/index.js'
 export const config = (() => {
   const _config: SDKConfig = {
     integrator: 'lifi-sdk',
-    apiUrl: 'https://develop.li.quest/v1',
+    apiUrl: 'https://li.quest/v1',
     rpcUrls: {},
   }
   let _chains: ExtendedChain[]

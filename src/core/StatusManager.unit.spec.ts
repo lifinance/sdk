@@ -1,10 +1,13 @@
 import type { LiFiStep, Route, Status } from '@lifi/types'
 import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
 import { StatusManager } from './StatusManager.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
+
+beforeAll(setupTestEnvironment)
 
 describe('StatusManager', () => {
   let statusManager: StatusManager
@@ -26,17 +29,7 @@ describe('StatusManager', () => {
     step = buildStepObject({ includingExecution })
     route = buildRouteObject({ step })
 
-    return new StatusManager(
-      structuredClone(route),
-      {
-        updateRouteHook: updateRouteHookMock,
-        switchChainHook: () => Promise.resolve(undefined),
-        acceptExchangeRateUpdateHook: () => Promise.resolve(undefined),
-        infiniteApproval: false,
-        executeInBackground: false,
-      },
-      internalUpdateRouteCallbackMock
-    )
+    return new StatusManager(route.id)
   }
 
   beforeEach(() => {

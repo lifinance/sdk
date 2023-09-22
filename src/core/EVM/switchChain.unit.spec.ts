@@ -53,8 +53,8 @@ describe('switchChain', () => {
         walletClient,
         statusManager,
         step,
-        hooks.switchChainHook,
-        true
+        true,
+        hooks.switchChainHook
       )
 
       expect(updatedWalletClient).toEqual(walletClient)
@@ -75,8 +75,8 @@ describe('switchChain', () => {
           walletClient,
           statusManager,
           step,
-          hooks.switchChainHook,
-          false
+          false,
+          hooks.switchChainHook
         )
 
         expect(updatedWalletClient).toBeUndefined()
@@ -101,8 +101,8 @@ describe('switchChain', () => {
               walletClient,
               statusManager,
               step,
-              hooks.switchChainHook,
-              true
+              true,
+              hooks.switchChainHook
             )
           ).rejects.toThrowError(new Error('something went wrong'))
 
@@ -124,8 +124,8 @@ describe('switchChain', () => {
               walletClient,
               statusManager,
               step,
-              hooks.switchChainHook,
-              true
+              true,
+              hooks.switchChainHook
             )
           ).rejects.toThrowError(new Error('Chain switch required.'))
 
@@ -152,8 +152,8 @@ describe('switchChain', () => {
             walletClient,
             statusManager,
             step,
-            hooks.switchChainHook,
-            true
+            true,
+            hooks.switchChainHook
           )
 
           expect(switchChainHookMock).toHaveBeenCalledWith(

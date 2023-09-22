@@ -20,7 +20,7 @@ function createBaseConfig(options: SDKOptions) {
 export async function createChainsConfig() {
   const _config = config.get()
   const chainTypes = _config.providers?.map((provider) => provider.type)
-  config.loading = getChains({ chainType: chainTypes }).then((chains) => {
+  config.loading = getChains({ chainTypes: chainTypes }).then((chains) => {
     config.chains = chains
     const evmProvider = _config.providers?.find(isEVM)
     const multicallAddresses: Partial<Record<ChainId, string>> = {}

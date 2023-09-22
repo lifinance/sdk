@@ -21,18 +21,21 @@ import {
   it,
   vi,
 } from 'vitest'
+import { setupTestEnvironment } from '../../tests/setup.js'
 import { findDefaultToken } from '../../tests/tokens.js'
+import * as request from '../request.js'
 import { requestSettings } from '../request.js'
 import { ServerError, ValidationError } from '../utils/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
-const mockedFetch = vi.spyOn(globalThis, 'fetch')
+const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
   const _config = config.get()
   const server = setupServer(...handlers)
   beforeAll(() => {
+    setupTestEnvironment()
     server.listen({
       onUnhandledRequest: 'warn',
     })
@@ -662,7 +665,7 @@ describe('ApiService', () => {
         connections: [],
       })
 
-      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledWith(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
