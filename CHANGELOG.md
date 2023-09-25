@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.1](https://github.com/lifinance/sdk/compare/v2.4.0...v2.4.1) (2023-09-25)
+
+
+### Bug Fixes
+
+* publish workflow ([c005f0a](https://github.com/lifinance/sdk/commit/c005f0a56a4df56ceceef90b4a220964094b1056))
+* type fix for transaction history response ([#166](https://github.com/lifinance/sdk/issues/166)) ([ee954b8](https://github.com/lifinance/sdk/commit/ee954b875f8a865b9504dd714f5dceb36b862d73))
+
 ## [2.4.0](https://github.com/lifinance/sdk/compare/v2.3.1...v2.4.0) (2023-09-20)
 
 
