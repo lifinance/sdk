@@ -1,5 +1,11 @@
 import { TransactionRequest } from '@ethersproject/abstract-provider'
-import { LifiStep, Route, RouteOptions, Token } from '@lifi/types'
+import {
+  LifiStep,
+  Route,
+  RouteOptions,
+  StatusResponse,
+  Token,
+} from '@lifi/types'
 import BigNumber from 'bignumber.js'
 import { Signer } from 'ethers'
 import { ChainId } from '.'
@@ -190,4 +196,9 @@ export interface Signature {
   v: string
   r: string
   s: string
+}
+
+export interface TransactionHistoryResponse {
+  transactions: StatusResponse[]
+  walletAddress: string
 }

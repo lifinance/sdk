@@ -27,6 +27,7 @@ import {
   Token,
   ToolsRequest,
   ToolsResponse,
+  TransactionHistoryResponse,
 } from '../types'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
@@ -522,10 +523,10 @@ const getAvailableConnections = async (
 
 const getTransactionHistory = async (
   address: string
-): Promise<StatusResponse[]> => {
+): Promise<TransactionHistoryResponse> => {
   const config = ConfigService.getInstance().getConfig()
 
-  const response = await request<StatusResponse[]>(
+  const response = await request<TransactionHistoryResponse>(
     `${config.apiUrl}/analytics/wallets/${address}`
   )
 

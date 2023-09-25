@@ -43,7 +43,12 @@ import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import { isToken } from './typeguards'
-import { Config, ConfigUpdate, RevokeTokenData } from './types'
+import {
+  Config,
+  ConfigUpdate,
+  RevokeTokenData,
+  TransactionHistoryResponse,
+} from './types'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 
@@ -385,11 +390,11 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get all the transaction history for swap/bridging done via LiFi
    * @param address string
-   * @returns StatusResponse[]
+   * @returns TransactionHistoryResponse
    */
   getTransactionHistory = async (
     address: string
-  ): Promise<StatusResponse[]> => {
+  ): Promise<TransactionHistoryResponse> => {
     const connections = await ApiService.getTransactionHistory(address)
 
     return connections
