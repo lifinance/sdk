@@ -26,6 +26,7 @@ import {
   TokensResponse,
   ToolsRequest,
   ToolsResponse,
+  WalletAnalytics,
 } from '@lifi/types'
 import { Signer } from 'ethers'
 import {
@@ -375,9 +376,8 @@ export class LiFi extends RouteExecutionManager {
   getConnections = async (
     connectionRequest: ConnectionsRequest
   ): Promise<ConnectionsResponse> => {
-    const connections = await ApiService.getAvailableConnections(
-      connectionRequest
-    )
+    const connections =
+      await ApiService.getAvailableConnections(connectionRequest)
 
     return connections
   }
@@ -385,11 +385,9 @@ export class LiFi extends RouteExecutionManager {
   /**
    * Get all the transaction history for swap/bridging done via LiFi
    * @param address string
-   * @returns StatusResponse[]
+   * @returns WalletAnalytics
    */
-  getTransactionHistory = async (
-    address: string
-  ): Promise<StatusResponse[]> => {
+  getTransactionHistory = async (address: string): Promise<WalletAnalytics> => {
     const connections = await ApiService.getTransactionHistory(address)
 
     return connections

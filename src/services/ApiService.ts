@@ -11,6 +11,7 @@ import {
   RequestOptions,
   TokensRequest,
   TokensResponse,
+  WalletAnalytics,
 } from '@lifi/types'
 import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
@@ -522,10 +523,10 @@ const getAvailableConnections = async (
 
 const getTransactionHistory = async (
   address: string
-): Promise<StatusResponse[]> => {
+): Promise<WalletAnalytics> => {
   const config = ConfigService.getInstance().getConfig()
 
-  const response = await request<StatusResponse[]>(
+  const response = await request<WalletAnalytics>(
     `${config.apiUrl}/analytics/wallets/${address}`
   )
 
