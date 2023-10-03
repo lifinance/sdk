@@ -391,10 +391,10 @@ export class LiFi extends RouteExecutionManager {
   getTransactionHistory = async (
     walletAnalyticsRequest: WalletAnalyticsRequest
   ): Promise<WalletAnalytics> => {
-    const connections = await ApiService.getTransactionHistory(
+    const transactions = await ApiService.getTransactionHistory(
       walletAnalyticsRequest
     )
 
-    return connections
+    return transactions
   }
 }
