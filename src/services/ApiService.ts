@@ -12,6 +12,7 @@ import {
   TokensRequest,
   TokensResponse,
   WalletAnalytics,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
@@ -522,13 +523,33 @@ const getAvailableConnections = async (
 }
 
 const getTransactionHistory = async (
-  address: string
+  walletAnalyticsRequest: WalletAnalyticsRequest
 ): Promise<WalletAnalytics> => {
   const config = ConfigService.getInstance().getConfig()
 
-  const response = await request<WalletAnalytics>(
-    `${config.apiUrl}/analytics/wallets/${address}`
+  if (!walletAnalyticsRequest.fromTimestamp) {
+    throw new ValidationError('Required parameter "fromTimestamp" is missing.')
+  }
+
+  if (!walletAnalyticsRequest.toTimestamp) {
+    throw new ValidationError('Required parameter "toTimestamp" is missing.')
+  }
+
+  const url = new URL(
+    `${config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.walletAddress}`
   )
+
+  url.searchParams.append(
+    'fromTimestamp',
+    walletAnalyticsRequest.fromTimestamp.toString()
+  )
+
+  url.searchParams.append(
+    'toTimestamp',
+    walletAnalyticsRequest.toTimestamp.toString()
+  )
+
+  const response = await request<WalletAnalytics>(url)
 
   return response
 }

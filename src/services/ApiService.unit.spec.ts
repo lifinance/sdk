@@ -8,6 +8,7 @@ import {
   LifiStep,
   RoutesRequest,
   StepTool,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
@@ -720,6 +721,33 @@ describe('ApiService', () => {
       ).resolves.toEqual({
         connections: [],
       })
+
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledOnce()
+    })
+  })
+  describe('getTransactionHistory', () => {
+    it('returns empty array in response', async () => {
+      server.use(
+        rest.get(
+          `${config.apiUrl}/analytics/wallets/0x5520abcd`,
+          async (_, response, context) =>
+            response(context.status(200), context.json({}))
+        )
+      )
+
+      const walletAnalyticsRequest: WalletAnalyticsRequest = {
+        fromTimestamp: 1696326609361,
+        toTimestamp: 1696326609362,
+        walletAddress: '0x5520abcd',
+      }
+
+      const generatedURL =
+        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362'
+
+      await expect(
+        ApiService.getTransactionHistory(walletAnalyticsRequest)
+      ).resolves.toEqual({})
 
       expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
