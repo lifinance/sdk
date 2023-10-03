@@ -161,9 +161,8 @@ export class StepExecutionManager {
           // Create new transaction
           if (!step.transactionRequest) {
             const personalizedStep = await personalizeStep(signer, step)
-            const updatedStep = await ApiService.getStepTransaction(
-              personalizedStep
-            )
+            const updatedStep =
+              await ApiService.getStepTransaction(personalizedStep)
             const comparedStep = await stepComparison(
               statusManager,
               personalizedStep,
@@ -224,9 +223,8 @@ export class StepExecutionManager {
             transactionRequest.maxFeePerGas = customConfig.maxFeePerGas
           } else {
             try {
-              const estimatedGasLimit = await signer.estimateGas(
-                transactionRequest
-              )
+              const estimatedGasLimit =
+                await signer.estimateGas(transactionRequest)
 
               if (estimatedGasLimit) {
                 transactionRequest.gasLimit = BigNumber.from(
@@ -249,9 +247,8 @@ export class StepExecutionManager {
             shouldBatchTransactions &&
             config.multisigConfig?.sendBatchTransaction
           ) {
-            const { to, data, value } = await signer.populateTransaction(
-              transactionRequest
-            )
+            const { to, data, value } =
+              await signer.populateTransaction(transactionRequest)
 
             const isValidTransaction = to && data
 

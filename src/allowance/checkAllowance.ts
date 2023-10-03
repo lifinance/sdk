@@ -52,9 +52,8 @@ export const checkAllowance = async (
       }
 
       if (settings.updateTransactionRequestHook) {
-        const config = await settings.updateTransactionRequestHook(
-          approvalRequest
-        )
+        const config =
+          await settings.updateTransactionRequestHook(approvalRequest)
 
         approvalRequest.gasLimit = config.gasLimit
         approvalRequest.gasPrice = config.gasPrice
