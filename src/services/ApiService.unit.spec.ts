@@ -743,7 +743,7 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362&integrator=lifi-sdk'
+        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
         ApiService.getTransactionHistory(walletAnalyticsRequest)
