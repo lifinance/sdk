@@ -27,6 +27,7 @@ import {
   ToolsRequest,
   ToolsResponse,
   WalletAnalytics,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { Signer } from 'ethers'
 import {
@@ -44,12 +45,7 @@ import { checkPackageUpdates } from './helpers'
 import ApiService from './services/ApiService'
 import ChainsService from './services/ChainsService'
 import { isToken } from './typeguards'
-import {
-  Config,
-  ConfigUpdate,
-  RevokeTokenData,
-  WalletAnalyticsRequest,
-} from './types'
+import { Config, ConfigUpdate, RevokeTokenData } from './types'
 import { ValidationError } from './utils/errors'
 import { name, version } from './version'
 

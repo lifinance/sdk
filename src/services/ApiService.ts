@@ -12,6 +12,7 @@ import {
   TokensRequest,
   TokensResponse,
   WalletAnalytics,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { request } from '../request'
 import { isRoutesRequest, isStep } from '../typeguards'
@@ -28,7 +29,6 @@ import {
   Token,
   ToolsRequest,
   ToolsResponse,
-  WalletAnalyticsRequest,
 } from '../types'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
@@ -536,7 +536,7 @@ const getTransactionHistory = async (
   }
 
   const url = new URL(
-    `${config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.wallet_address}`
+    `${config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.walletAddress}`
   )
 
   url.searchParams.append(
@@ -549,8 +549,8 @@ const getTransactionHistory = async (
     walletAnalyticsRequest.toTimestamp.toString()
   )
 
-  if (walletAnalyticsRequest.integrator) {
-    url.searchParams.append('integrator', walletAnalyticsRequest.integrator)
+  if (config.integrator) {
+    url.searchParams.append('integrator', config.integrator)
   }
 
   const response = await request<WalletAnalytics>(url)
