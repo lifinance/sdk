@@ -8,6 +8,7 @@ import {
   LifiStep,
   RoutesRequest,
   StepTool,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
@@ -26,7 +27,6 @@ import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
-import { WalletAnalyticsRequest } from '..'
 
 const mockedFetch = vi.spyOn(globalThis, 'fetch')
 
