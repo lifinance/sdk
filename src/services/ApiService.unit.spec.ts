@@ -732,7 +732,7 @@ describe('ApiService', () => {
         rest.get(
           `${config.apiUrl}/analytics/wallets/0x5520abcd`,
           async (_, response, context) =>
-            response(context.status(200), context.json({ connections: [] }))
+            response(context.status(200), context.json({}))
         )
       )
 
