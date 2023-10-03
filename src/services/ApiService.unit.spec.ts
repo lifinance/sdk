@@ -739,8 +739,7 @@ describe('ApiService', () => {
       const walletAnalyticsRequest: WalletAnalyticsRequest = {
         fromTimestamp: 1696326609361,
         toTimestamp: 1696326609362,
-        wallet_address: '0x5520abcd',
-        integrator: 'lifi-test-suite',
+        walletAddress: '0x5520abcd',
       }
 
       const generatedURL =
