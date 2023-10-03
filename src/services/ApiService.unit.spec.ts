@@ -26,6 +26,7 @@ import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
+import { WalletAnalyticsRequest } from '..'
 
 const mockedFetch = vi.spyOn(globalThis, 'fetch')
 
@@ -720,6 +721,34 @@ describe('ApiService', () => {
       ).resolves.toEqual({
         connections: [],
       })
+
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledOnce()
+    })
+  })
+  describe('getTransactionHistory', () => {
+    it('returns empty array in response', async () => {
+      server.use(
+        rest.get(
+          `${config.apiUrl}/analytics/wallets/0x5520abcd`,
+          async (_, response, context) =>
+            response(context.status(200), context.json({ connections: [] }))
+        )
+      )
+
+      const walletAnalyticsRequest: WalletAnalyticsRequest = {
+        fromTimestamp: 1696326609361,
+        toTimestamp: 1696326609362,
+        wallet_address: '0x5520abcd',
+        integrator: 'lifi-test-suite',
+      }
+
+      const generatedURL =
+        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362&integrator=lifi-test-suite'
+
+      await expect(
+        ApiService.getTransactionHistory(walletAnalyticsRequest)
+      ).resolves.toEqual({})
 
       expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()

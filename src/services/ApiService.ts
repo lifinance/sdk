@@ -28,6 +28,7 @@ import {
   Token,
   ToolsRequest,
   ToolsResponse,
+  WalletAnalyticsRequest,
 } from '../types'
 import { ValidationError } from '../utils/errors'
 import { parseBackendError } from '../utils/parseError'
@@ -522,13 +523,37 @@ const getAvailableConnections = async (
 }
 
 const getTransactionHistory = async (
-  address: string
+  walletAnalyticsRequest: WalletAnalyticsRequest
 ): Promise<WalletAnalytics> => {
   const config = ConfigService.getInstance().getConfig()
 
-  const response = await request<WalletAnalytics>(
-    `${config.apiUrl}/analytics/wallets/${address}`
+  if (!walletAnalyticsRequest.fromTimestamp) {
+    throw new ValidationError('Required parameter "fromTimestamp" is missing.')
+  }
+
+  if (!walletAnalyticsRequest.toTimestamp) {
+    throw new ValidationError('Required parameter "toTimestamp" is missing.')
+  }
+
+  const url = new URL(
+    `${config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.wallet_address}`
   )
+
+  url.searchParams.append(
+    'fromTimestamp',
+    walletAnalyticsRequest.fromTimestamp.toString()
+  )
+
+  url.searchParams.append(
+    'toTimestamp',
+    walletAnalyticsRequest.toTimestamp.toString()
+  )
+
+  if (walletAnalyticsRequest.integrator) {
+    url.searchParams.append('integrator', walletAnalyticsRequest.integrator)
+  }
+
+  const response = await request<WalletAnalytics>(url)
 
   return response
 }

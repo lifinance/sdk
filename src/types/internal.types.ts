@@ -191,3 +191,10 @@ export interface Signature {
   r: string
   s: string
 }
+
+export interface WalletAnalyticsRequest {
+  wallet_address: string
+  fromTimestamp: number
+  toTimestamp: number
+  integrator?: string
+}
