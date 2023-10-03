@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.4.2](https://github.com/lifinance/sdk/compare/v2.4.1...v2.4.2) (2023-10-03)
+
+
+### Bug Fixes
+
+* wallet analytics API request changes ([#167](https://github.com/lifinance/sdk/issues/167)) ([e4a145d](https://github.com/lifinance/sdk/commit/e4a145de96ef986b8ea52134cfb095d4a5fc5f44))
+
 ### [2.4.1](https://github.com/lifinance/sdk/compare/v2.4.0...v2.4.1) (2023-09-25)
 
 
