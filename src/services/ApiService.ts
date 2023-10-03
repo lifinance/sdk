@@ -549,10 +549,6 @@ const getTransactionHistory = async (
     walletAnalyticsRequest.toTimestamp.toString()
   )
 
-  if (config.integrator) {
-    url.searchParams.append('integrator', config.integrator)
-  }
-
   const response = await request<WalletAnalytics>(url)
 
   return response
