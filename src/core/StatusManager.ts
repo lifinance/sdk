@@ -37,9 +37,7 @@ type OptionalParameters = Partial<
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
- * @param {Route} route The route this StatusManger belongs to.
- * @param {ExecutionSettings} settings The ExecutionSettings for this route.
- * @param {InternalUpdateRouteCallback} internalUpdateRouteCallback Internal callback to propage route changes.
+ * @param {string} routeId The route dd this StatusManger belongs to.
  * @returns {StatusManager} An instance of StatusManager.
  */
 export class StatusManager {

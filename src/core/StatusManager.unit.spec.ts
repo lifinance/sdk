@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { StatusManager } from './StatusManager.js'
+import { executionState } from './executionState.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
@@ -11,14 +12,12 @@ beforeAll(setupTestEnvironment)
 
 describe('StatusManager', () => {
   let statusManager: StatusManager
-  let internalUpdateRouteCallbackMock: Mock
   let updateRouteHookMock: Mock
   let route: Route
   let step: LiFiStep
 
   const expectCallbacksToHaveBeenCalledWith = (route: Route) => {
     expect(updateRouteHookMock).toHaveBeenCalledWith(route)
-    expect(internalUpdateRouteCallbackMock).toHaveBeenCalledWith(route)
   }
 
   const initializeStatusManager = ({
@@ -29,11 +28,14 @@ describe('StatusManager', () => {
     step = buildStepObject({ includingExecution })
     route = buildRouteObject({ step })
 
+    executionState.create(route, {
+      updateRouteHook: updateRouteHookMock,
+    })
+
     return new StatusManager(route.id)
   }
 
   beforeEach(() => {
-    internalUpdateRouteCallbackMock = vi.fn()
     updateRouteHookMock = vi.fn()
   })
 
@@ -68,7 +70,6 @@ describe('StatusManager', () => {
 
       it('should not call the callbacks', () => {
         expect(updateRouteHookMock).not.toHaveBeenCalled()
-        expect(internalUpdateRouteCallbackMock).not.toHaveBeenCalled()
       })
     })
   })
@@ -144,7 +145,6 @@ describe('StatusManager', () => {
           expect(process).toEqual(step.execution?.process[0])
 
           expect(updateRouteHookMock).not.toHaveBeenCalled()
-          expect(internalUpdateRouteCallbackMock).not.toHaveBeenCalled()
         })
       })
 
