@@ -645,7 +645,7 @@ __metadata:
     "@commitlint/config-conventional": ^17.7.0
     "@lifi/types": ^10.0.0-alpha.21
     "@mswjs/interceptors": ^0.25.6
-    "@solana/web3.js": ^1.78.5
+    "@solana/web3.js": ^1.78.7
     "@types/ws": ^8.5.6
     "@typescript-eslint/eslint-plugin": ^6.7.4
     "@typescript-eslint/parser": ^6.7.4
@@ -664,7 +664,7 @@ __metadata:
     prettier: ^3.0.3
     standard-version: ^9.5.0
     typescript: ^5.2.2
-    viem: ^1.15.0
+    viem: ^1.15.3
     vite-tsconfig-paths: ^4.2.1
     vitest: ^0.34.6
   languageName: unknown
@@ -717,7 +717,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:1.2.0, @noble/curves@npm:^1.0.0, @noble/curves@npm:~1.2.0":
+"@noble/curves@npm:1.2.0, @noble/curves@npm:^1.2.0, @noble/curves@npm:~1.2.0":
   version: 1.2.0
   resolution: "@noble/curves@npm:1.2.0"
   dependencies:
@@ -865,12 +865,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.78.5":
-  version: 1.78.5
-  resolution: "@solana/web3.js@npm:1.78.5"
+"@solana/web3.js@npm:^1.78.7":
+  version: 1.78.7
+  resolution: "@solana/web3.js@npm:1.78.7"
   dependencies:
     "@babel/runtime": ^7.22.6
-    "@noble/curves": ^1.0.0
+    "@noble/curves": ^1.2.0
     "@noble/hashes": ^1.3.1
     "@solana/buffer-layout": ^4.0.0
     agentkeepalive: ^4.3.0
@@ -884,7 +884,7 @@ __metadata:
     node-fetch: ^2.6.12
     rpc-websockets: ^7.5.1
     superstruct: ^0.14.2
-  checksum: 66fe4ddcc073d0c539e23a2aae3ba23c081a11f5ebc8216dd18e0c6770f20e419c635a50529faa59baeec9722cd521a3502abc7cdf3b3d5f31b32066e0415c24
+  checksum: e532f90e7f6e00b7f0fd638ba5a094bb478f9b45568e27cb9147ae8c90c42ee8691b883dbfbe8ddecfc3e7396168394ab133de3b74c9b97a21c1fda1e4e85344
   languageName: node
   linkType: hard
 
@@ -7365,9 +7365,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^1.15.0":
-  version: 1.15.0
-  resolution: "viem@npm:1.15.0"
+"viem@npm:^1.15.3":
+  version: 1.15.3
+  resolution: "viem@npm:1.15.3"
   dependencies:
     "@adraffy/ens-normalize": 1.9.4
     "@noble/curves": 1.2.0
@@ -7383,7 +7383,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 6a636ddcc678126f0902309826f93bf643fb1403b2537cbb02ede523bf243fd58eec1f0b2ec0bb208470bb597333d89f957832131dafcc88692277285693fce8
+  checksum: 61d573158de32896f9f7957ae2ff943953838385f9b04414a55e6041f0e070827e4c5cfc6196485e0b0101c3dcbfdfd262fb54040817b257b38216a7f50e3384
   languageName: node
   linkType: hard
 

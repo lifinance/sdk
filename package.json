@@ -90,9 +90,9 @@
   },
   "dependencies": {
     "@lifi/types": "^10.0.0-alpha.21",
-    "@solana/web3.js": "^1.78.5",
+    "@solana/web3.js": "^1.78.7",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^1.15.0"
+    "viem": "^1.15.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.7.2",

@@ -24,20 +24,24 @@ const getSolanaBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
-  const blockNumber = 0n
+  const connection = await getSolanaConnection()
+  const blockNumber = await connection.getSlot()
   const queue: Promise<bigint>[] = tokens.map(async (token) => {
-    const connection = await getSolanaConnection()
-    const accountPublicKey = new PublicKey(walletAddress)
-    const tokenPublicKey = new PublicKey(token.address)
-    const response = await connection.getParsedTokenAccountsByOwner(
-      accountPublicKey,
-      {
-        mint: tokenPublicKey,
-      }
-    )
-    return BigInt(
-      response.value[0].account.data.parsed?.info?.tokenAmount?.amount || 0
-    )
+    try {
+      const accountPublicKey = new PublicKey(walletAddress)
+      const tokenPublicKey = new PublicKey(token.address)
+      const response = await connection.getParsedTokenAccountsByOwner(
+        accountPublicKey,
+        {
+          mint: tokenPublicKey,
+        }
+      )
+      return BigInt(
+        response.value[0].account.data.parsed?.info?.tokenAmount?.amount || 0
+      )
+    } catch (error) {
+      throw error
+    }
   })
 
   const results = await Promise.allSettled(queue)
@@ -45,16 +49,15 @@ const getSolanaBalanceDefault = async (
   const tokenAmounts: TokenAmount[] = tokens.map((token, index) => {
     const result = results[index]
     if (result.status === 'rejected') {
-      console.warn(result.reason)
       return {
         ...token,
-        blockNumber,
+        blockNumber: BigInt(blockNumber),
       }
     }
     return {
       ...token,
       amount: result.value,
-      blockNumber,
+      blockNumber: BigInt(blockNumber),
     }
   })
   return tokenAmounts

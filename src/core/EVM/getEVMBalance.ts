@@ -105,7 +105,6 @@ const getEVMBalanceDefault = async (
   const tokenAmounts: TokenAmount[] = tokens.map((token, index) => {
     const result = results[index]
     if (result.status === 'rejected') {
-      console.warn(result.reason)
       return {
         ...token,
         blockNumber,
