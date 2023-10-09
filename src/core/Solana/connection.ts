@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import { getRpcUrl } from 'core/utils.js'
+import { getRpcUrl } from '../utils.js'
 
 const solanaChainProvider: Connection | undefined = undefined
 

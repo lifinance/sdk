@@ -1,5 +1,5 @@
 import type { ChainId, RouteOptions } from '@lifi/types'
-import type { SDKProvider } from 'core/types.js'
+import type { SDKProvider } from '../core/types.js'
 
 export interface SDKConfig {
   integrator: string

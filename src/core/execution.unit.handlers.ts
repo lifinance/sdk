@@ -1,6 +1,6 @@
-import { config } from 'config.js'
 import { rest } from 'msw'
 import { buildStepObject } from '../../tests/fixtures.js'
+import { config } from '../config.js'
 import {
   mockChainsResponse,
   mockStatus,

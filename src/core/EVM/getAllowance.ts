@@ -1,8 +1,8 @@
 import type { ChainId, Token } from '@lifi/types'
-import { MulticallBatchSize } from 'constants.js'
-import { isNativeTokenAddress } from 'utils/utils.js'
 import type { Address } from 'viem'
 import { getContract } from 'viem'
+import { MulticallBatchSize } from '../../constants.js'
+import { isNativeTokenAddress } from '../../utils/utils.js'
 import { allowanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import type {

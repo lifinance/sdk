@@ -1,4 +1,4 @@
-import { config } from 'config.js'
+import { config } from './config.js'
 import { HTTPError } from './utils/errors.js'
 import { wait } from './utils/utils.js'
 import { version } from './version.js'

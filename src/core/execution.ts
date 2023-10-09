@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { Route } from '@lifi/types'
-import { config } from 'config.js'
+import { config } from '../config.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
 import type { ExecutionOptions } from './types.js'

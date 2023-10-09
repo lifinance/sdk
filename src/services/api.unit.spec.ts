@@ -8,7 +8,6 @@ import type {
   Token,
 } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { config } from 'config.js'
 import { rest } from 'msw'
 import { setupServer } from 'msw/node'
 import {
@@ -23,6 +22,7 @@ import {
 } from 'vitest'
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { findDefaultToken } from '../../tests/tokens.js'
+import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
 import { ServerError, ValidationError } from '../utils/errors.js'

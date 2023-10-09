@@ -22,11 +22,11 @@ import type {
   ToolsRequest,
   ToolsResponse,
 } from '@lifi/types'
-import { config } from 'config.js'
-import { request } from 'request.js'
-import { isRoutesRequest, isStep } from 'typeguards.js'
-import { ValidationError } from 'utils/errors.js'
-import { parseBackendError } from 'utils/parseBackendError.js'
+import { config } from '../config.js'
+import { request } from '../request.js'
+import { isRoutesRequest, isStep } from '../typeguards.js'
+import { ValidationError } from '../utils/errors.js'
+import { parseBackendError } from '../utils/parseBackendError.js'
 
 /**
  * Fetch information about a Token

@@ -1,7 +1,7 @@
-import { config } from 'config.js'
 import type { PublicClient } from 'viem'
 import { createPublicClient, fallback, http } from 'viem'
 import type { Chain } from 'viem/chains'
+import { config } from '../../config.js'
 import { getRpcUrls } from '../utils.js'
 
 // cached providers

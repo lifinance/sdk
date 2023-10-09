@@ -6,7 +6,7 @@ import {
   type StatusMessage,
   type Substatus,
 } from '@lifi/types'
-import { config } from 'config.js'
+import { config } from '../config.js'
 
 export const getRpcUrl = async (chainId: ChainId): Promise<string> => {
   const rpcUrls = await getRpcUrls(chainId)

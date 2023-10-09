@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import type { ChainId } from '@lifi/types'
-import { config } from 'config.js'
-import { isEVM } from 'core/EVM/types.js'
-import { getChains } from 'services/api.js'
+import { config } from './config.js'
+import { isEVM } from './core/EVM/types.js'
 import { checkPackageUpdates } from './helpers.js'
+import { getChains } from './services/api.js'
 import type { SDKOptions } from './types/index.js'
 import { name, version } from './version.js'
 

@@ -1,4 +1,3 @@
-import { isNativeTokenAddress } from 'utils/utils.js'
 import type {
   Address,
   Hash,
@@ -7,6 +6,7 @@ import type {
   WalletClient,
 } from 'viem'
 import { encodeFunctionData, maxUint256, publicActions } from 'viem'
+import { isNativeTokenAddress } from '../../utils/utils.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'

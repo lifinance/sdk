@@ -1,7 +1,7 @@
 import { ChainType, type ChainId } from '@lifi/types'
-import { getProvider } from 'core/provider.js'
-import { median } from 'utils/median.js'
 import type { PublicClient, Transaction } from 'viem'
+import { median } from '../../utils/median.js'
+import { getProvider } from '../provider.js'
 import type { EVMProvider } from './types.js'
 
 export const getMaxPriorityFeePerGas = async (

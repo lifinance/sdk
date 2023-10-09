@@ -3,16 +3,6 @@ import type {
   FullStatusData,
   LiFiStep,
 } from '@lifi/types'
-import { config } from 'config.js'
-import { getStepTransaction } from 'services/api.js'
-import {
-  LiFiErrorCode,
-  TransactionError,
-  ValidationError,
-  getTransactionFailedMessage,
-  isZeroAddress,
-  parseError,
-} from 'utils/index.js'
 import type {
   Address,
   Hash,
@@ -22,6 +12,16 @@ import type {
   WalletClient,
 } from 'viem'
 import { publicActions } from 'viem'
+import { config } from '../../config.js'
+import { getStepTransaction } from '../../services/api.js'
+import {
+  LiFiErrorCode,
+  TransactionError,
+  ValidationError,
+  getTransactionFailedMessage,
+  isZeroAddress,
+  parseError,
+} from '../../utils/index.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
