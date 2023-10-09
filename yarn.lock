@@ -516,10 +516,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:8.50.0":
-  version: 8.50.0
-  resolution: "@eslint/js@npm:8.50.0"
-  checksum: 302478f2acaaa7228729ec6a04f56641590185e1d8cd1c836a6db8a6b8009f80a57349341be9fbb9aa1721a7a569d1be3ffc598a33300d22816f11832095386c
+"@eslint/js@npm:8.51.0":
+  version: 8.51.0
+  resolution: "@eslint/js@npm:8.51.0"
+  checksum: 0228bf1e1e0414843e56d9ff362a2a72d579c078f93174666f29315690e9e30a8633ad72c923297f7fd7182381b5a476805ff04dac8debe638953eb1ded3ac73
   languageName: node
   linkType: hard
 
@@ -643,15 +643,15 @@ __metadata:
   dependencies:
     "@commitlint/cli": ^17.7.2
     "@commitlint/config-conventional": ^17.7.0
-    "@lifi/types": ^10.0.0-alpha.21
-    "@mswjs/interceptors": ^0.25.6
-    "@solana/web3.js": ^1.78.7
+    "@lifi/types": ^10.0.0-alpha.23
+    "@mswjs/interceptors": ^0.25.7
+    "@solana/web3.js": ^1.87.1
     "@types/ws": ^8.5.6
     "@typescript-eslint/eslint-plugin": ^6.7.4
     "@typescript-eslint/parser": ^6.7.4
     "@vitest/coverage-v8": ^0.34.6
     cross-fetch: ^4.0.0
-    eslint: ^8.50.0
+    eslint: ^8.51.0
     eslint-config-prettier: ^9.0.0
     eslint-plugin-jsdoc: ^46.8.2
     eslint-plugin-prettier: ^5.0.0
@@ -664,16 +664,16 @@ __metadata:
     prettier: ^3.0.3
     standard-version: ^9.5.0
     typescript: ^5.2.2
-    viem: ^1.15.3
+    viem: ^1.16.0
     vite-tsconfig-paths: ^4.2.1
     vitest: ^0.34.6
   languageName: unknown
   linkType: soft
 
-"@lifi/types@npm:^10.0.0-alpha.21":
-  version: 10.0.0-alpha.21
-  resolution: "@lifi/types@npm:10.0.0-alpha.21"
-  checksum: 9c1f8de55a0a27c2bdf81ad6cf0d30eeebca2910acd0951bb3f409257d08d944d2370245c921f7dd75935983053970fe51841f764b26a1d702f862f9220d1f6a
+"@lifi/types@npm:^10.0.0-alpha.23":
+  version: 10.0.0-alpha.23
+  resolution: "@lifi/types@npm:10.0.0-alpha.23"
+  checksum: 862f8df5d2a11e133c4c12e3cbb0dbb30e103fb8eb40a909511da19a6f8da256501acb7a4610361fa6b9adee0aa5321f28dab92dc9fffd84837679c40745b83e
   languageName: node
   linkType: hard
 
@@ -703,9 +703,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mswjs/interceptors@npm:^0.25.6":
-  version: 0.25.6
-  resolution: "@mswjs/interceptors@npm:0.25.6"
+"@mswjs/interceptors@npm:^0.25.7":
+  version: 0.25.7
+  resolution: "@mswjs/interceptors@npm:0.25.7"
   dependencies:
     "@open-draft/deferred-promise": ^2.2.0
     "@open-draft/logger": ^0.3.0
@@ -713,7 +713,7 @@ __metadata:
     is-node-process: ^1.2.0
     outvariant: ^1.2.1
     strict-event-emitter: ^0.5.1
-  checksum: cbcffbb32fbb5b6004a065dd6601e628b6cc95abc388f7bab2df1197203941eb29abc1d9bd653925ca7654e988e7249e1916be708793d7e191c5becb2cefa416
+  checksum: d9dc1bf11e088b52ba01a4fbcedb3bf7451592bd0255e3591a6478f5465caf0fbd9264c7a32b0aad5bbd31baa2c9eabd6a36b5deace23a82061e34c884eb5fcb
   languageName: node
   linkType: hard
 
@@ -865,9 +865,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.78.7":
-  version: 1.78.7
-  resolution: "@solana/web3.js@npm:1.78.7"
+"@solana/web3.js@npm:^1.87.1":
+  version: 1.87.1
+  resolution: "@solana/web3.js@npm:1.87.1"
   dependencies:
     "@babel/runtime": ^7.22.6
     "@noble/curves": ^1.2.0
@@ -884,7 +884,7 @@ __metadata:
     node-fetch: ^2.6.12
     rpc-websockets: ^7.5.1
     superstruct: ^0.14.2
-  checksum: e532f90e7f6e00b7f0fd638ba5a094bb478f9b45568e27cb9147ae8c90c42ee8691b883dbfbe8ddecfc3e7396168394ab133de3b74c9b97a21c1fda1e4e85344
+  checksum: 7e8ae7775f0df82d7d796befd1f2f95482e5935e6879dba7aa6c65093cb7a09158b965e3aba15e218c2652efaa7ec77c2287c01f343e4ec08afd1a298c16a039
   languageName: node
   linkType: hard
 
@@ -1056,15 +1056,6 @@ __metadata:
   dependencies:
     "@types/node": "*"
   checksum: b4c9b8ad209620c9b21e78314ce4ff07515c0cadab9af101c1651e7bfb992d7fd933bd8b9c99d110738fd6db523ed15f82f29f50b45510288da72e964dedb1a3
-  languageName: node
-  linkType: hard
-
-"@types/ws@npm:^8.5.5":
-  version: 8.5.5
-  resolution: "@types/ws@npm:8.5.5"
-  dependencies:
-    "@types/node": "*"
-  checksum: d00bf8070e6938e3ccf933010921c6ce78ac3606696ce37a393b27a9a603f7bd93ea64f3c5fa295a2f743575ba9c9a9fdb904af0f5fe2229bf2adf0630386e4a
   languageName: node
   linkType: hard
 
@@ -3155,14 +3146,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^8.50.0":
-  version: 8.50.0
-  resolution: "eslint@npm:8.50.0"
+"eslint@npm:^8.51.0":
+  version: 8.51.0
+  resolution: "eslint@npm:8.51.0"
   dependencies:
     "@eslint-community/eslint-utils": ^4.2.0
     "@eslint-community/regexpp": ^4.6.1
     "@eslint/eslintrc": ^2.1.2
-    "@eslint/js": 8.50.0
+    "@eslint/js": 8.51.0
     "@humanwhocodes/config-array": ^0.11.11
     "@humanwhocodes/module-importer": ^1.0.1
     "@nodelib/fs.walk": ^1.2.8
@@ -3198,7 +3189,7 @@ __metadata:
     text-table: ^0.2.0
   bin:
     eslint: bin/eslint.js
-  checksum: 9ebfe5615dc84700000d218e32ddfdcfc227ca600f65f18e5541ec34f8902a00356a9a8804d9468fd6c8637a5ef6a3897291dad91ba6579d5b32ffeae5e31768
+  checksum: 214fa5d1fcb67af1b8992ce9584ccd85e1aa7a482f8b8ea5b96edc28fa838a18a3b69456db45fc1ed3ef95f1e9efa9714f737292dc681e572d471d02fda9649c
   languageName: node
   linkType: hard
 
@@ -4429,21 +4420,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"isomorphic-ws@npm:5.0.0":
-  version: 5.0.0
-  resolution: "isomorphic-ws@npm:5.0.0"
-  peerDependencies:
-    ws: "*"
-  checksum: e20eb2aee09ba96247465fda40c6d22c1153394c0144fa34fe6609f341af4c8c564f60ea3ba762335a7a9c306809349f9b863c8beedf2beea09b299834ad5398
-  languageName: node
-  linkType: hard
-
 "isomorphic-ws@npm:^4.0.1":
   version: 4.0.1
   resolution: "isomorphic-ws@npm:4.0.1"
   peerDependencies:
     ws: "*"
   checksum: d7190eadefdc28bdb93d67b5f0c603385aaf87724fa2974abb382ac1ec9756ed2cfb27065cbe76122879c2d452e2982bc4314317f3d6c737ddda6c047328771a
+  languageName: node
+  linkType: hard
+
+"isows@npm:1.0.2":
+  version: 1.0.2
+  resolution: "isows@npm:1.0.2"
+  peerDependencies:
+    ws: "*"
+  checksum: 6c0114f76b62709d5b3caba0e62655c4a4a6abd05dafd501263f012f9db9def4e192e390aa6f34e18ac3b917489e1c874836719f3219d105bcfc3eabe49c01ad
   languageName: node
   linkType: hard
 
@@ -7365,25 +7356,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^1.15.3":
-  version: 1.15.3
-  resolution: "viem@npm:1.15.3"
+"viem@npm:^1.16.0":
+  version: 1.16.0
+  resolution: "viem@npm:1.16.0"
   dependencies:
     "@adraffy/ens-normalize": 1.9.4
     "@noble/curves": 1.2.0
     "@noble/hashes": 1.3.2
     "@scure/bip32": 1.3.2
     "@scure/bip39": 1.2.1
-    "@types/ws": ^8.5.5
     abitype: 0.9.8
-    isomorphic-ws: 5.0.0
+    isows: 1.0.2
     ws: 8.13.0
   peerDependencies:
     typescript: ">=5.0.4"
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 61d573158de32896f9f7957ae2ff943953838385f9b04414a55e6041f0e070827e4c5cfc6196485e0b0101c3dcbfdfd262fb54040817b257b38216a7f50e3384
+  checksum: 47960c72439933d63c1c246b94be2f78aa1199a325bd232471b5004512195a5fa103c02f5a023a0606f9154accb363deeb0fd654b67493ce7e6d746fe0ce87c4
   languageName: node
   linkType: hard
 
