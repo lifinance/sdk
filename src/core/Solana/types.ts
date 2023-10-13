@@ -13,3 +13,5 @@ export interface SolanaProvider extends SDKProvider {
 export function isSolana(provider: SDKProvider): provider is SolanaProvider {
   return provider.type === ChainType.SVM
 }
+
+export const TokenProgramAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'

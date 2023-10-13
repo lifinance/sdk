@@ -1,6 +1,7 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
 import { getSolanaConnection } from './connection.js'
+import { TokenProgramAddress } from './types.js'
 
 export const getSolanaBalance = async (
   walletAddress: string,
@@ -26,37 +27,34 @@ const getSolanaBalanceDefault = async (
 ): Promise<TokenAmount[]> => {
   const connection = await getSolanaConnection()
   const blockNumber = await connection.getSlot()
-  const queue: Promise<bigint>[] = tokens.map(async (token) => {
-    try {
-      const accountPublicKey = new PublicKey(walletAddress)
-      const tokenPublicKey = new PublicKey(token.address)
-      const response = await connection.getParsedTokenAccountsByOwner(
-        accountPublicKey,
-        {
-          mint: tokenPublicKey,
-        }
-      )
-      return BigInt(
-        response.value[0].account.data.parsed?.info?.tokenAmount?.amount || 0
-      )
-    } catch (error) {
-      throw error
+  const accountPublicKey = new PublicKey(walletAddress)
+  const tokenProgramPublicKey = new PublicKey(TokenProgramAddress)
+  const response = await connection.getParsedTokenAccountsByOwner(
+    accountPublicKey,
+    {
+      programId: tokenProgramPublicKey,
     }
-  })
-
-  const results = await Promise.allSettled(queue)
-
-  const tokenAmounts: TokenAmount[] = tokens.map((token, index) => {
-    const result = results[index]
-    if (result.status === 'rejected') {
+  )
+  const walletTokenAmounts = response.value.reduce(
+    (tokenAmounts, value) => {
+      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
+      if (amount > 0n) {
+        tokenAmounts[value.account.data.parsed.info.mint] = amount
+      }
+      return tokenAmounts
+    },
+    {} as Record<string, bigint>
+  )
+  const tokenAmounts: TokenAmount[] = tokens.map((token) => {
+    if (walletTokenAmounts[token.address]) {
       return {
         ...token,
+        amount: walletTokenAmounts[token.address],
         blockNumber: BigInt(blockNumber),
       }
     }
     return {
       ...token,
-      amount: result.value,
       blockNumber: BigInt(blockNumber),
     }
   })
