@@ -22,7 +22,7 @@ export const getAllowance = async (
   const contract = getContract({
     address: tokenAddress as Address,
     abi: allowanceAbi,
-    publicClient: client,
+    client: client,
   })
 
   try {

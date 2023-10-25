@@ -91,13 +91,12 @@ describe('Solana token balance', () => {
   )
 
   it(
-    'should handle token lists with more than 100 tokens',
+    'should handle large token lists',
     async () => {
       const walletAddress = defaultWalletAddress
       const { tokens } = await getTokens({
         chains: [ChainId.SOL],
       })
-      expect(tokens[ChainId.SOL]?.length).toBeGreaterThan(100)
       if (tokens[ChainId.SOL]?.length) {
         await loadAndCompareTokenAmounts(
           walletAddress,

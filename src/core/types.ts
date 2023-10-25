@@ -5,7 +5,7 @@ import type {
   Token,
   TokenAmount,
 } from '@lifi/types'
-import type { Hex, WalletClient } from 'viem'
+import type { WalletClient } from 'viem'
 
 export interface SDKProvider {
   readonly type: ChainType
@@ -37,7 +37,7 @@ export type TransactionParameters = {
   to?: string
   from?: string
   nonce?: number
-  data?: Hex
+  data?: string
   value?: bigint
   gas?: bigint
   gasPrice?: bigint

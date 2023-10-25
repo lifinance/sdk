@@ -199,7 +199,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
           // Create new transaction
           if (!step.transactionRequest) {
-            const updatedStep = await getStepTransaction(step)
+            const { execution, ...stepBase } = step
+            const updatedStep = await getStepTransaction(stepBase)
             const comparedStep = await stepComparison(
               this.statusManager,
               step,

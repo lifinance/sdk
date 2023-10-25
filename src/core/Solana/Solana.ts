@@ -1,6 +1,7 @@
 import { ChainType } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
-import type { BaseStepExecutor } from '../BaseStepExecutor.js'
+import type { StepExecutorOptions } from '../types.js'
+import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 import type { SolanaProvider, SolanaProviderOptions } from './types.js'
 
@@ -19,15 +20,24 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
       }
     },
     getBalance: getSolanaBalance,
-    // options: StepExecutorOptions
-    async getStepExecutor(): Promise<BaseStepExecutor> {
-      if (!_options.getWalletClient) {
-        throw new Error(`getWalletClient is not provided.`)
+    async getStepExecutor(
+      options: StepExecutorOptions
+    ): Promise<SolanaStepExecutor> {
+      if (!_options.getWalletAdapter) {
+        throw new Error(`getWalletAdapter is not provided.`)
       }
 
-      // const walletClient = await getWalletClient()
+      const walletAdapter = await _options.getWalletAdapter()
 
-      return null!
+      const executor = new SolanaStepExecutor({
+        walletAdapter,
+        routeId: options.routeId,
+        executionOptions: {
+          ...options.executionOptions,
+        },
+      })
+
+      return executor
     },
     setOptions(options: SolanaProviderOptions) {
       Object.assign(_options, options)

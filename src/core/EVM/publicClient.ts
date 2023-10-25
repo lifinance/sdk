@@ -26,7 +26,7 @@ export const getPublicClient = async (
     const chain: Chain = {
       ..._chain,
       ..._chain.metamask,
-      network: _chain.metamask.chainName,
+      name: _chain.metamask.chainName,
       rpcUrls: {
         default: { http: _chain.metamask.rpcUrls },
         public: { http: _chain.metamask.rpcUrls },
