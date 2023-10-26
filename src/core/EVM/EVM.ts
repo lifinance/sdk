@@ -14,6 +14,9 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     get multicall() {
       return _options.multicall
     },
+    get multisig() {
+      return _options.multisig
+    },
     isAddress(address: string): boolean {
       return isAddress(address)
     },

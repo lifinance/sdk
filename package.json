@@ -96,7 +96,7 @@
     "viem": "^2.0.0-alpha.17"
   },
   "devDependencies": {
-    "@commitlint/cli": "^18.1.0",
+    "@commitlint/cli": "^18.2.0",
     "@commitlint/config-conventional": "^18.1.0",
     "@mswjs/interceptors": "^0.25.7",
     "@types/ws": "^8.5.8",

@@ -6,13 +6,14 @@ import { type SDKProvider } from '../types.js'
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<WalletClient>
   switchChain?: SwitchChainHook
-  multisig?: MultisigConfig
   multicall?: Partial<Record<ChainId, string>>
+  multisig?: MultisigConfig
 }
 
 export interface EVMProvider extends SDKProvider {
-  multicall?: Partial<Record<ChainId, string>>
   setOptions(options: EVMProviderOptions): void
+  multicall?: Partial<Record<ChainId, string>>
+  multisig?: MultisigConfig
 }
 
 export function isEVM(provider: SDKProvider): provider is EVMProvider {
