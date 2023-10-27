@@ -1,2 +1,2 @@
 export const name = '@lifi/sdk'
-export const version = '3.0.0-alpha.25'
+export const version = '3.0.0-alpha.26'
