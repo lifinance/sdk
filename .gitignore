@@ -1,3 +1,8 @@
+# build
+_cjs
+_esm
+_types
+
 # idea
 .idea/
 

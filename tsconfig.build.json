@@ -7,6 +7,5 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "rootDir": "./src",
-    "sourceRoot": ".."
   }
 }

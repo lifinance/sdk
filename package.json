@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.23",
+  "version": "3.0.0-alpha.24",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -35,31 +35,34 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/_types/index.d.ts",
-      "import": "./dist/_esm/index.js",
-      "default": "./dist/_cjs/index.js"
+      "types": "./_types/index.d.ts",
+      "import": "./_esm/index.js",
+      "default": "./_cjs/index.js"
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/_cjs/index.js",
-  "module": "./dist/_esm/index.js",
-  "types": "./dist/_types/index.d.ts",
-  "typings": "./dist/_types/index.d.ts",
+  "main": "./_cjs/index.js",
+  "module": "./_esm/index.js",
+  "types": "./_types/index.d.ts",
+  "typings": "./_types/index.d.ts",
   "sideEffects": false,
   "directories": {
     "test": "tests"
   },
   "files": [
-    "dist",
-    "!dist/**/*.tsbuildinfo"
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo"
   ],
   "scripts": {
-    "build": "yarn clean && yarn build:cjs && yarn build:esm && yarn build:types && yarn build:copy-files",
-    "build:cjs": "tsc --project tsconfig.build.json --module commonjs --outDir ./dist/_cjs --removeComments --verbatimModuleSyntax false && echo > ./dist/_cjs/package.json '{\"type\":\"commonjs\"}'",
-    "build:esm": "tsc --project tsconfig.build.json --module es2015 --outDir ./dist/_esm && echo > ./dist/_esm/package.json '{\"type\":\"module\",\"sideEffects\":false}'",
-    "build:types": "tsc --project tsconfig.build.json --module esnext --declarationDir ./dist/_types --emitDeclarationOnly --declaration --declarationMap",
-    "build:copy-files": "cpy 'src/**/*.ts*' '!src/**/*.spec.ts' '!src/**/*.mock.ts' '!src/**/*.handlers.ts' dist",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo",
+    "build": "yarn clean && yarn build:cjs && yarn build:esm && yarn build:types",
+    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
+    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo src/_esm src/_cjs src/_types",
     "coverage": "vitest run --coverage",
     "postinstall": "husky install",
     "lint": "eslint --ext .tsx --ext .ts ./src",
@@ -68,7 +71,7 @@
     "postpack": "pinst --enable",
     "package": "npm run build && npm pack",
     "pre-commit": "lint-staged",
-    "pre-push": "yarn check:types && yarn check:circular-deps && yarn build && yarn test:unit",
+    "pre-push": "yarn check:types && yarn check:circular-deps && yarn test:unit",
     "prepublishOnly": "yarn node scripts/prepublishOnly.js",
     "prettier:fix": "prettier --write ./src/.",
     "release": "standard-version -a",
@@ -105,7 +108,6 @@
     "@typescript-eslint/parser": "^6.9.0",
     "@vitest/coverage-v8": "^0.34.6",
     "bs58": "^5.0.0",
-    "cpy-cli": "^5.0.0",
     "cross-fetch": "^4.0.0",
     "eslint": "^8.52.0",
     "eslint-config-prettier": "^9.0.0",
