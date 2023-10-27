@@ -4,6 +4,7 @@
   "include": ["src"],
   "exclude": ["tests", "./src/**/*.spec.ts", "./src/**/*.mock.ts", "./src/**/*.handlers.ts"],
   "compilerOptions": {
+    "moduleResolution": "node",
     "sourceMap": true,
     "rootDir": "./src"
   }

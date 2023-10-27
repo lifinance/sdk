@@ -73,7 +73,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.17.2, @babel/runtime@npm:^7.22.6":
+"@babel/runtime@npm:^7.17.2, @babel/runtime@npm:^7.23.2":
   version: 7.23.2
   resolution: "@babel/runtime@npm:7.23.2"
   dependencies:
@@ -644,7 +644,7 @@ __metadata:
     "@lifi/types": 10.0.0-alpha.23
     "@mswjs/interceptors": ^0.25.7
     "@solana/wallet-adapter-base": ^0.9.23
-    "@solana/web3.js": ^1.87.2
+    "@solana/web3.js": ^1.87.3
     "@types/ws": ^8.5.8
     "@typescript-eslint/eslint-plugin": ^6.9.0
     "@typescript-eslint/parser": ^6.9.0
@@ -974,11 +974,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solana/web3.js@npm:^1.87.2":
-  version: 1.87.2
-  resolution: "@solana/web3.js@npm:1.87.2"
+"@solana/web3.js@npm:^1.87.3":
+  version: 1.87.3
+  resolution: "@solana/web3.js@npm:1.87.3"
   dependencies:
-    "@babel/runtime": ^7.22.6
+    "@babel/runtime": ^7.23.2
     "@noble/curves": ^1.2.0
     "@noble/hashes": ^1.3.1
     "@solana/buffer-layout": ^4.0.0
@@ -993,7 +993,7 @@ __metadata:
     node-fetch: ^2.6.12
     rpc-websockets: ^7.5.1
     superstruct: ^0.14.2
-  checksum: 775378ea775bc2559202125eae8c7eb975301616690f12e391440200d229c6255b6fcc28718d837d072895fd6853f49fc7b738d8f6f834d61610af1766c6d8c7
+  checksum: 221f2f5e4e7b331beb250efc32213e6ef6ad0fe2621504c4c63d82dbb7272137b1f435bdc2cf4282c70734704744384b8b31e88a1001686addbed19e1c423329
   languageName: node
   linkType: hard
 
