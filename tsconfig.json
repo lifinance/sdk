@@ -5,6 +5,6 @@
   "exclude": [],
   "references": [{ "path": "./tsconfig.node.json" }],
   "compilerOptions": {
-    "resolveJsonModule": true // TODO: Try to avoid this. Maybe generate .ts files for bytecode too with wagmi?
+    "baseUrl": "."
   }
 }
