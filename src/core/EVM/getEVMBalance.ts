@@ -1,6 +1,5 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import type { Address } from 'viem'
-import { MulticallBatchSize } from '../../constants.js'
 import { isZeroAddress } from '../../utils/utils.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
@@ -63,7 +62,6 @@ const getEVMBalanceMulticall = async (
     contracts,
     multicallAddress: multicallAddress as Address,
     blockNumber,
-    batchSize: MulticallBatchSize,
   })
 
   if (!results.length) {
