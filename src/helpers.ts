@@ -14,20 +14,6 @@ export const getRandomNumber = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-function semverCompare(a: string, b: string) {
-  if (a.startsWith(b + '-')) {
-    return -1
-  }
-  if (b.startsWith(a + '-')) {
-    return 1
-  }
-  return a.localeCompare(b, undefined, {
-    numeric: true,
-    sensitivity: 'case',
-    caseFirst: 'upper',
-  })
-}
-
 export const checkPackageUpdates = async (
   packageName?: string,
   packageVersion?: string,
@@ -44,7 +30,7 @@ export const checkPackageUpdates = async (
     )
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version
-    if (semverCompare(latestVersion, currentVersion)) {
+    if (latestVersion > currentVersion) {
       console.warn(
         // eslint-disable-next-line max-len
         `${pkgName}: new package version is available. Please update as soon as possible to enjoy the newest features. Current version: ${currentVersion}. Latest version: ${latestVersion}.`
