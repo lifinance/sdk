@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.5.0](https://github.com/lifinance/sdk/compare/v2.4.3...v2.5.0) (2023-11-01)
+
+
+### Features
+
+* upgrade to msw v2 ([f1cde15](https://github.com/lifinance/sdk/commit/f1cde15326cf10e9ae4c39b08603fb181fdbacd2))
+
+
+### Bug Fixes
+
+* improve error handling during LiFi initialization ([#171](https://github.com/lifinance/sdk/issues/171)) ([0756631](https://github.com/lifinance/sdk/commit/075663180b50383a8672bb987dd841fd4ac3c43b))
+
 ### [2.4.3](https://github.com/lifinance/sdk/compare/v2.4.1...v2.4.3) (2023-10-03)
 
 
