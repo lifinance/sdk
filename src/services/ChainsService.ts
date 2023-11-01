@@ -12,7 +12,21 @@ export default class ChainsService {
   }
 
   private async loadAvailableChains(): Promise<void> {
-    this.chains = await ApiService.getChains()
+    try {
+      this.chains = await ApiService.getChains()
+    } catch (error) {
+      // We try to load chains during initialization of the LiFi class and
+      // because we no longer in scope of the constructor we fail silently here
+    }
+  }
+
+  private async checkLoading() {
+    if (this.loadingPromise) {
+      await this.loadingPromise
+    }
+    if (!this.chains.length) {
+      await this.loadAvailableChains()
+    }
   }
 
   public static getInstance(): ChainsService {
@@ -24,9 +38,7 @@ export default class ChainsService {
   }
 
   public async getChainById(chainId: ChainId): Promise<ExtendedChain> {
-    if (this.loadingPromise) {
-      await this.loadingPromise
-    }
+    await this.checkLoading()
 
     const chain = this.chains.find((chain) => chain.id === chainId)
     if (!chain) {
@@ -37,9 +49,7 @@ export default class ChainsService {
   }
 
   public async getChains(): Promise<ExtendedChain[]> {
-    if (this.loadingPromise) {
-      await this.loadingPromise
-    }
+    await this.checkLoading()
 
     return this.chains
   }
