@@ -10,7 +10,7 @@ import {
   StepTool,
   WalletAnalyticsRequest,
 } from '@lifi/types'
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -22,13 +22,14 @@ import {
   it,
   vi,
 } from 'vitest'
+import * as requestGlobal from '../request'
 import { requestSettings } from '../request'
 import { ServerError, SlippageError, ValidationError } from '../utils/errors'
 import ApiService from './ApiService'
 import { handlers } from './ApiService.unit.handlers'
 import ConfigService from './ConfigService'
 
-const mockedFetch = vi.spyOn(globalThis, 'fetch')
+const mockedFetch = vi.spyOn(requestGlobal, 'request')
 
 describe('ApiService', () => {
   const config = ConfigService.getInstance().getConfig()
@@ -173,32 +174,23 @@ describe('ApiService', () => {
 
         it('throw a the error after retrying once', async () => {
           server.use(
-            rest.post(
-              `${config.apiUrl}/advanced/possibilities`,
-              async (_, response, context) =>
-                response(context.status(500), context.json({ message: 'Oops' }))
+            http.post(`${config.apiUrl}/advanced/possibilities`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
           await expect(ApiService.getPossibilities()).rejects.toThrowError(
             new ServerError('Oops')
           )
-          expect(mockedFetch).toHaveBeenCalledTimes(2)
+          expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
 
       describe('and the backend call fails with 409', () => {
         it('throw a the error without retrying', async () => {
           server.use(
-            rest.post(
-              `${config.apiUrl}/advanced/possibilities`,
-              async (_, response, context) =>
-                response(
-                  context.status(409),
-                  context.json({
-                    message: 'Slippage error',
-                  })
-                )
+            http.post(`${config.apiUrl}/advanced/possibilities`, async () =>
+              HttpResponse.json({ message: 'Slippage error' }, { status: 409 })
             )
           )
 
@@ -244,8 +236,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${config.apiUrl}/token`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${config.apiUrl}/token`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -362,8 +354,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${config.apiUrl}/quote`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${config.apiUrl}/quote`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -425,8 +417,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${config.apiUrl}/status`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${config.apiUrl}/status`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -450,8 +442,8 @@ describe('ApiService', () => {
     describe('and the backend call fails', () => {
       it('throw an error', async () => {
         server.use(
-          rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
-            response(context.status(500), context.json({ message: 'Oops' }))
+          http.get(`${config.apiUrl}/chains`, async () =>
+            HttpResponse.json({ message: 'Oops' }, { status: 500 })
           )
         )
 
@@ -617,13 +609,8 @@ describe('ApiService', () => {
           it('throw a the error', async () => {
             const step = getStep({})
             server.use(
-              rest.post(
-                `${config.apiUrl}/advanced/stepTransaction`,
-                async (_, response, context) =>
-                  response(
-                    context.status(500),
-                    context.json({ message: 'Oops' })
-                  )
+              http.post(`${config.apiUrl}/advanced/stepTransaction`, async () =>
+                HttpResponse.json({ message: 'Oops' }, { status: 500 })
               )
             )
 
@@ -664,10 +651,10 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(
+            http.get(
               `${config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
-              async (_, response, context) =>
-                response(context.status(500), context.json({ message: 'Oops' }))
+              async () =>
+                HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -694,8 +681,8 @@ describe('ApiService', () => {
   describe('getAvailableConnections', () => {
     it('returns empty array in response', async () => {
       server.use(
-        rest.get(`${config.apiUrl}/connections`, async (_, response, context) =>
-          response(context.status(200), context.json({ connections: [] }))
+        http.get(`${config.apiUrl}/connections`, async () =>
+          HttpResponse.json({ connections: [] })
         )
       )
 
@@ -729,10 +716,8 @@ describe('ApiService', () => {
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        rest.get(
-          `${config.apiUrl}/analytics/wallets/0x5520abcd`,
-          async (_, response, context) =>
-            response(context.status(200), context.json({}))
+        http.get(`${config.apiUrl}/analytics/wallets/0x5520abcd`, async () =>
+          HttpResponse.json({})
         )
       )
 

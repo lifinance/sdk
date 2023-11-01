@@ -1,8 +1,9 @@
-import { rest } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   AddEthereumChainParameter,
+  ChainId,
   ChainKey,
   ChainType,
   CoinKey,
@@ -40,8 +41,8 @@ const chain2: ExtendedChain = {
 describe('ChainsService', () => {
   const config = ConfigService.getInstance().getConfig()
   const server = setupServer(
-    rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
-      response(context.json({ chains: [chain1, chain2] }))
+    http.get(`${config.apiUrl}/chains`, async () =>
+      HttpResponse.json({ chains: [chain1, chain2] })
     )
   )
   beforeAll(() => {
@@ -61,7 +62,9 @@ describe('ChainsService', () => {
 
   describe('getChainById', () => {
     it('should throw an error if the chain is unknown', async () => {
-      await expect(chainsService.getChainById(1337)).rejects.toThrowError(
+      await expect(
+        chainsService.getChainById(1337 as ChainId)
+      ).rejects.toThrowError(
         new ValidationError(`Unknown chainId passed: ${1337}.`)
       )
     })

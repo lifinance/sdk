@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { buildStepObject } from '../../test/fixtures'
 import ConfigService from '../services/ConfigService'
 import {
@@ -10,29 +10,21 @@ import {
 const config = ConfigService.getInstance().getConfig()
 
 export const lifiHandlers = [
-  rest.post(
-    `${config.apiUrl}/advanced/stepTransaction`,
-    async (_, response, context) =>
-      response(
-        context.status(200),
-        context.json(
-          mockStepTransactionWithTxRequest(
-            buildStepObject({
-              includingExecution: true,
-            })
-          )
-        )
+  http.post(`${config.apiUrl}/advanced/stepTransaction`, async () =>
+    HttpResponse.json(
+      mockStepTransactionWithTxRequest(
+        buildStepObject({
+          includingExecution: true,
+        })
       )
-  ),
-  rest.get(`${config.apiUrl}/chains`, async (_, response, context) =>
-    response(
-      context.status(200),
-      context.json({
-        chains: mockChainsResponse,
-      })
     )
   ),
-  rest.get(`${config.apiUrl}/status`, async (_, response, context) =>
-    response(context.status(200), context.json(mockStatus))
+  http.get(`${config.apiUrl}/chains`, async () =>
+    HttpResponse.json({
+      chains: mockChainsResponse,
+    })
+  ),
+  http.get(`${config.apiUrl}/status`, async () =>
+    HttpResponse.json(mockStatus)
   ),
 ]
