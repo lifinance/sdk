@@ -97,15 +97,15 @@
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.87.3",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.0.0-alpha.18"
+    "viem": "^2.0.0-alpha.20"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.2.0",
     "@commitlint/config-conventional": "^18.1.0",
     "@mswjs/interceptors": "^0.25.7",
     "@types/ws": "^8.5.8",
-    "@typescript-eslint/eslint-plugin": "^6.9.0",
-    "@typescript-eslint/parser": "^6.9.0",
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "@typescript-eslint/parser": "^6.9.1",
     "@vitest/coverage-v8": "^0.34.6",
     "bs58": "^5.0.0",
     "cross-fetch": "^4.0.0",
@@ -125,7 +125,7 @@
     "vite-tsconfig-paths": "^4.2.1",
     "vitest": "^0.34.6"
   },
-  "packageManager": "yarn@4.0.0",
+  "packageManager": "yarn@4.0.1",
   "publishConfig": {
     "access": "public"
   },
