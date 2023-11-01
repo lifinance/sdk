@@ -1,9 +1,9 @@
-import { ChainId, CoinKey, findDefaultToken, Token } from '@lifi/types'
+import { ChainId, CoinKey, Token, findDefaultToken } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../test/fixtures'
+import { LiFi } from './LiFi'
 import * as balance from './balance'
 import { convertQuoteToRoute } from './helpers'
-import { LiFi } from './LiFi'
 
 vi.mock('./balance', () => ({
   getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
@@ -20,14 +20,13 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
 
 let lifi: LiFi
 
-describe('LIFI SDK', () => {
+describe('LI.FI SDK', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lifi = new LiFi({
       integrator: 'test-example',
     })
   })
-
   const SOME_TOKEN = {
     ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
     priceUSD: '',
