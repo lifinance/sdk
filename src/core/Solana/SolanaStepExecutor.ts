@@ -3,7 +3,7 @@ import type {
   FullStatusData,
   LiFiStep,
 } from '@lifi/types'
-import type { WalletAdapter } from '@solana/wallet-adapter-base'
+import type { Adapter } from '@solana/wallet-adapter-base'
 import {
   VersionedTransaction,
   type TransactionConfirmationStrategy,
@@ -26,11 +26,11 @@ import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  walletAdapter: WalletAdapter
+  walletAdapter: Adapter
 }
 
 export class SolanaStepExecutor extends BaseStepExecutor {
-  private walletAdapter: WalletAdapter
+  private walletAdapter: Adapter
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
