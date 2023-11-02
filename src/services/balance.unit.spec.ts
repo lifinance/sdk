@@ -11,11 +11,10 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   'getTokenBalancesByChain'
 )
 
-describe('balance service tests', () => {
+describe('Balance service tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
   const SOME_TOKEN = {
     ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
     priceUSD: '',

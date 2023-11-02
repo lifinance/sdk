@@ -29,35 +29,35 @@ export const request = async <T = Response>(
     if (!options.skipTrackingHeaders) {
       if (apiKey) {
         options.headers = {
-          ...options?.headers,
+          ...options.headers,
           'x-lifi-api-key': apiKey,
         }
       }
 
       if (userId) {
         options.headers = {
-          ...options?.headers,
+          ...options.headers,
           'x-lifi-userid': userId,
         }
       }
 
       if (widgetVersion) {
         options.headers = {
-          ...options?.headers,
+          ...options.headers,
           'x-lifi-widget': widgetVersion,
         }
       }
 
       if (version) {
         options.headers = {
-          ...options?.headers,
+          ...options.headers,
           'x-lifi-sdk': version,
         }
       }
 
       // integrator is mandatory during SDK initialization
       options.headers = {
-        ...options?.headers,
+        ...options.headers,
         'x-lifi-integrator': integrator,
       }
     }

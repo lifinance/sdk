@@ -21,13 +21,14 @@ import type {
   TokensResponse,
   ToolsRequest,
   ToolsResponse,
+  WalletAnalytics,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { ValidationError } from '../utils/errors.js'
 import { parseBackendError } from '../utils/parseBackendError.js'
-
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -465,6 +466,40 @@ export const getConnections = async (
   })
   try {
     const response = await request<ConnectionsResponse>(url.toString())
+    return response
+  } catch (e) {
+    throw await parseBackendError(e)
+  }
+}
+
+export const getTransactionHistory = async (
+  walletAnalyticsRequest: WalletAnalyticsRequest
+): Promise<WalletAnalytics> => {
+  const _config = config.get()
+
+  if (!walletAnalyticsRequest.fromTimestamp) {
+    throw new ValidationError('Required parameter "fromTimestamp" is missing.')
+  }
+
+  if (!walletAnalyticsRequest.toTimestamp) {
+    throw new ValidationError('Required parameter "toTimestamp" is missing.')
+  }
+
+  const url = new URL(
+    `${_config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.walletAddress}`
+  )
+
+  url.searchParams.append(
+    'fromTimestamp',
+    walletAnalyticsRequest.fromTimestamp.toString()
+  )
+
+  url.searchParams.append(
+    'toTimestamp',
+    walletAnalyticsRequest.toTimestamp.toString()
+  )
+  try {
+    const response = await request<WalletAnalytics>(url)
     return response
   } catch (e) {
     throw await parseBackendError(e)

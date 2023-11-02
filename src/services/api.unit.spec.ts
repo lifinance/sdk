@@ -6,9 +6,10 @@ import type {
   RoutesRequest,
   StepTool,
   Token,
+  WalletAnalyticsRequest,
 } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { rest } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -185,8 +186,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${_config.apiUrl}/token`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${_config.apiUrl}/token`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -303,8 +304,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${_config.apiUrl}/quote`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${_config.apiUrl}/quote`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -366,8 +367,8 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(`${_config.apiUrl}/status`, async (_, response, context) =>
-              response(context.status(500), context.json({ message: 'Oops' }))
+            http.get(`${_config.apiUrl}/status`, async () =>
+              HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -391,8 +392,8 @@ describe('ApiService', () => {
     describe('and the backend call fails', () => {
       it('throw an error', async () => {
         server.use(
-          rest.get(`${_config.apiUrl}/chains`, async (_, response, context) =>
-            response(context.status(500), context.json({ message: 'Oops' }))
+          http.get(`${_config.apiUrl}/chains`, async () =>
+            HttpResponse.json({ message: 'Oops' }, { status: 500 })
           )
         )
 
@@ -558,13 +559,10 @@ describe('ApiService', () => {
           it('throw a the error', async () => {
             const step = getStep({})
             server.use(
-              rest.post(
+              http.post(
                 `${_config.apiUrl}/advanced/stepTransaction`,
-                async (_, response, context) =>
-                  response(
-                    context.status(500),
-                    context.json({ message: 'Oops' })
-                  )
+                async () =>
+                  HttpResponse.json({ message: 'Oops' }, { status: 500 })
               )
             )
 
@@ -605,10 +603,10 @@ describe('ApiService', () => {
       describe('and the backend call fails', () => {
         it('throw an error', async () => {
           server.use(
-            rest.get(
+            http.get(
               `${_config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
-              async (_, response, context) =>
-                response(context.status(500), context.json({ message: 'Oops' }))
+              async () =>
+                HttpResponse.json({ message: 'Oops' }, { status: 500 })
             )
           )
 
@@ -635,10 +633,8 @@ describe('ApiService', () => {
   describe('getAvailableConnections', () => {
     it('returns empty array in response', async () => {
       server.use(
-        rest.get(
-          `${_config.apiUrl}/connections`,
-          async (_, response, context) =>
-            response(context.status(200), context.json({ connections: [] }))
+        http.get(`${_config.apiUrl}/connections`, async () =>
+          HttpResponse.json({ connections: [] })
         )
       )
 
@@ -666,6 +662,31 @@ describe('ApiService', () => {
       })
 
       expect(mockedFetch).toHaveBeenCalledWith(generatedURL)
+      expect(mockedFetch).toHaveBeenCalledOnce()
+    })
+  })
+  describe('getTransactionHistory', () => {
+    it('returns empty array in response', async () => {
+      server.use(
+        http.get(`${_config.apiUrl}/analytics/wallets/0x5520abcd`, async () =>
+          HttpResponse.json({})
+        )
+      )
+
+      const walletAnalyticsRequest: WalletAnalyticsRequest = {
+        fromTimestamp: 1696326609361,
+        toTimestamp: 1696326609362,
+        walletAddress: '0x5520abcd',
+      }
+
+      const generatedURL =
+        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362'
+
+      await expect(
+        ApiService.getTransactionHistory(walletAnalyticsRequest)
+      ).resolves.toEqual({})
+
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
