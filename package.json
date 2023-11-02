@@ -97,7 +97,7 @@
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.87.3",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.0.0-alpha.20"
+    "viem": "^2.0.0-beta.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.2.0",
