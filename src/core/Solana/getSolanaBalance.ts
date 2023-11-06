@@ -1,5 +1,6 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
+import { wrappedSolAddress } from '../../constants.js'
 import { getSolanaConnection } from './connection.js'
 import { TokenProgramAddress } from './types.js'
 
@@ -26,36 +27,45 @@ const getSolanaBalanceDefault = async (
   walletAddress: string
 ): Promise<TokenAmount[]> => {
   const connection = await getSolanaConnection()
-  const blockNumber = await connection.getSlot()
   const accountPublicKey = new PublicKey(walletAddress)
   const tokenProgramPublicKey = new PublicKey(TokenProgramAddress)
-  const response = await connection.getParsedTokenAccountsByOwner(
-    accountPublicKey,
-    {
+  const [slot, balance, tokenAccountsByOwner] = await Promise.allSettled([
+    connection.getSlot(),
+    connection.getBalance(accountPublicKey),
+    connection.getParsedTokenAccountsByOwner(accountPublicKey, {
       programId: tokenProgramPublicKey,
-    }
-  )
-  const walletTokenAmounts = response.value.reduce(
-    (tokenAmounts, value) => {
-      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
-      if (amount > 0n) {
-        tokenAmounts[value.account.data.parsed.info.mint] = amount
-      }
-      return tokenAmounts
-    },
-    {} as Record<string, bigint>
-  )
+    }),
+  ])
+  const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
+  const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
+  const walletTokenAmounts =
+    tokenAccountsByOwner.status === 'fulfilled'
+      ? tokenAccountsByOwner.value.value.reduce(
+          (tokenAmounts, value) => {
+            const amount = BigInt(
+              value.account.data.parsed.info.tokenAmount.amount
+            )
+            if (amount > 0n) {
+              tokenAmounts[value.account.data.parsed.info.mint] = amount
+            }
+            return tokenAmounts
+          },
+          {} as Record<string, bigint>
+        )
+      : {}
+  walletTokenAmounts[wrappedSolAddress] ??= 0n
+  walletTokenAmounts[wrappedSolAddress] += solBalance
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
     if (walletTokenAmounts[token.address]) {
       return {
         ...token,
         amount: walletTokenAmounts[token.address],
-        blockNumber: BigInt(blockNumber),
+        blockNumber,
       }
     }
     return {
       ...token,
-      blockNumber: BigInt(blockNumber),
+      blockNumber,
     }
   })
   return tokenAmounts

@@ -43,12 +43,13 @@ describe('Solana token balance', () => {
   }
 
   it(
-    'should work for ERC20 on POL',
+    'should work for stables on SOL',
     async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
         findDefaultToken(CoinKey.USDC, ChainId.SOL),
         findDefaultToken(CoinKey.USDT, ChainId.SOL),
+        findDefaultToken(CoinKey.SOL, ChainId.SOL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
