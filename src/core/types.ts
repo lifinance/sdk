@@ -1,5 +1,6 @@
 import type {
   ChainType,
+  Execution,
   LiFiStep,
   Route,
   Token,
@@ -29,7 +30,15 @@ export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
-  executeStep(step: LiFiStep): Promise<LiFiStep>
+  executeStep(step: LiFiStepExtended): Promise<LiFiStepExtended>
+}
+
+export interface RouteExtended extends Omit<Route, 'steps'> {
+  steps: LiFiStepExtended[]
+}
+
+export interface LiFiStepExtended extends LiFiStep {
+  execution?: Execution
 }
 
 export type TransactionParameters = {

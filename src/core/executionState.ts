@@ -1,20 +1,19 @@
-import type { Route } from '@lifi/types'
-import type { ExecutionOptions, StepExecutor } from './types.js'
+import type { ExecutionOptions, RouteExtended, StepExecutor } from './types.js'
 
 export interface ExecutionData {
-  route: Route
+  route: RouteExtended
   executors: StepExecutor[]
   executionOptions?: ExecutionOptions
-  promise?: Promise<Route>
+  promise?: Promise<RouteExtended>
 }
 
 export interface ExecutionState {
   state: Partial<Record<string, ExecutionData>>
   get(routeId: string): ExecutionData | undefined
   create(
-    route: Route,
+    route: RouteExtended,
     executionOptions?: ExecutionOptions,
-    promise?: Promise<Route>
+    promise?: Promise<RouteExtended>
   ): ExecutionData
   delete(routeId: string): void
 }

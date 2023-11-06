@@ -1,8 +1,4 @@
-import type {
-  ExtendedTransactionInfo,
-  FullStatusData,
-  LiFiStep,
-} from '@lifi/types'
+import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import type { Adapter } from '@solana/wallet-adapter-base'
 import {
   VersionedTransaction,
@@ -20,7 +16,11 @@ import {
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
-import type { StepExecutorOptions, TransactionParameters } from '../types.js'
+import type {
+  LiFiStepExtended,
+  StepExecutorOptions,
+  TransactionParameters,
+} from '../types.js'
 import { getSubstatusMessage } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
@@ -37,7 +37,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.walletAdapter = options.walletAdapter
   }
 
-  executeStep = async (step: LiFiStep): Promise<LiFiStep> => {
+  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await config.getChainById(step.action.fromChainId)

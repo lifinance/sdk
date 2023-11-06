@@ -8,6 +8,7 @@ import type {
 } from '@lifi/types'
 import { emptyExecution } from '@lifi/types'
 import { executionState } from './executionState.js'
+import type { LiFiStepExtended } from './types.js'
 import { getProcessMessage } from './utils.js'
 
 interface Receipt {
@@ -53,7 +54,7 @@ export class StatusManager {
    * @param step  The current step in execution
    * @returns The initialized execution object for this step and a function to update this step
    */
-  initExecutionObject = (step: LiFiStep): Execution => {
+  initExecutionObject = (step: LiFiStepExtended): Execution => {
     if (!step.execution) {
       step.execution = structuredClone<Execution>(emptyExecution)
       step.execution.status = 'PENDING'
@@ -76,7 +77,11 @@ export class StatusManager {
    * @param receipt Optional. Information about received tokens
    * @returns The step with the updated execution object
    */
-  updateExecution(step: LiFiStep, status: Status, receipt?: Receipt): LiFiStep {
+  updateExecution(
+    step: LiFiStepExtended,
+    status: Status,
+    receipt?: Receipt
+  ): LiFiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
@@ -99,7 +104,7 @@ export class StatusManager {
    * @returns Returns process.
    */
   findOrCreateProcess = (
-    step: LiFiStep,
+    step: LiFiStepExtended,
     type: ProcessType,
     status?: Status
   ): Process => {
@@ -138,7 +143,7 @@ export class StatusManager {
    * @returns The update process
    */
   updateProcess = (
-    step: LiFiStep,
+    step: LiFiStepExtended,
     type: ProcessType,
     status: Status,
     params?: OptionalParameters
@@ -199,7 +204,7 @@ export class StatusManager {
    * @param step The step where the process should be removed from
    * @param type  The process type to remove
    */
-  removeProcess = (step: LiFiStep, type: ProcessType): void => {
+  removeProcess = (step: LiFiStepExtended, type: ProcessType): void => {
     if (!step.execution) {
       throw new Error("Execution hasn't been initialized.")
     }

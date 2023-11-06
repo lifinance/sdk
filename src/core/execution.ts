@@ -3,7 +3,7 @@ import type { Route } from '@lifi/types'
 import { config } from '../config.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
-import type { ExecutionOptions } from './types.js'
+import type { ExecutionOptions, RouteExtended } from './types.js'
 
 /**
  * Execute a route.
@@ -15,7 +15,7 @@ import type { ExecutionOptions } from './types.js'
 export const executeRoute = async (
   route: Route,
   executionOptions?: ExecutionOptions
-): Promise<Route> => {
+): Promise<RouteExtended> => {
   // Deep clone to prevent side effects
   const clonedRoute = structuredClone<Route>(route)
 
@@ -42,7 +42,7 @@ export const executeRoute = async (
 export const resumeRoute = async (
   route: Route,
   executionOptions?: ExecutionOptions
-): Promise<Route> => {
+): Promise<RouteExtended> => {
   // Deep clone to prevent side effects
   const clonedRoute = structuredClone<Route>(route)
 
@@ -74,9 +74,9 @@ export const resumeRoute = async (
 }
 
 const executeSteps = async (
-  route: Route,
+  route: RouteExtended,
   executionOptions?: ExecutionOptions
-): Promise<Route> => {
+): Promise<RouteExtended> => {
   executionState.create(route, executionOptions)
 
   // Loop over steps and execute them
@@ -195,17 +195,17 @@ export const stopRouteExecution = (route: Route): Route => {
     })
   }
   executionState.delete(route.id)
-  return route
+  return execution.route
 }
 
 /**
  * Get the list of active routes.
  * @returns A list of routes.
  */
-export const getActiveRoutes = (): Route[] => {
+export const getActiveRoutes = (): RouteExtended[] => {
   return Object.values(executionState.state)
     .map((dict) => dict?.route)
-    .filter(Boolean) as Route[]
+    .filter(Boolean) as RouteExtended[]
 }
 
 /**
@@ -213,6 +213,6 @@ export const getActiveRoutes = (): Route[] => {
  * @param routeId - A route id.
  * @returns The updated route.
  */
-export const getActiveRoute = (routeId: string): Route | undefined => {
+export const getActiveRoute = (routeId: string): RouteExtended | undefined => {
   return executionState.get(routeId)?.route
 }

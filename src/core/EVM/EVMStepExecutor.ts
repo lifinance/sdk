@@ -1,8 +1,4 @@
-import type {
-  ExtendedTransactionInfo,
-  FullStatusData,
-  LiFiStep,
-} from '@lifi/types'
+import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import type {
   Address,
   Hash,
@@ -25,7 +21,11 @@ import {
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
-import type { StepExecutorOptions, TransactionParameters } from '../types.js'
+import type {
+  LiFiStepExtended,
+  StepExecutorOptions,
+  TransactionParameters,
+} from '../types.js'
 import { getSubstatusMessage } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
@@ -56,7 +56,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     throw new Error('checkChain is not implemented.')
   }
 
-  executeStep = async (step: LiFiStep): Promise<LiFiStep> => {
+  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
     // Make sure that the chain is still correct
 
     // Find if it's bridging and the step is waiting for a transaction on the receiving chain

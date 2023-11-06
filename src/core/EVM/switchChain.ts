@@ -1,8 +1,7 @@
-import type { LiFiStep } from '@lifi/types'
 import type { WalletClient } from 'viem'
 import { LiFiErrorCode, ProviderError } from '../../utils/errors.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { SwitchChainHook } from '../types.js'
+import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 
 /**
  * This method checks whether the wallet client is configured for the correct chain.
@@ -24,7 +23,7 @@ import type { SwitchChainHook } from '../types.js'
 export const switchChain = async (
   walletClient: WalletClient,
   statusManager: StatusManager,
-  step: LiFiStep,
+  step: LiFiStepExtended,
   allowUserInteraction: boolean,
   switchChainHook?: SwitchChainHook
 ): Promise<WalletClient | undefined> => {
