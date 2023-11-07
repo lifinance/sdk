@@ -3,6 +3,7 @@ import type {
   Execution,
   LiFiStep,
   Route,
+  Step,
   Token,
   TokenAmount,
 } from '@lifi/types'
@@ -38,6 +39,10 @@ export interface RouteExtended extends Omit<Route, 'steps'> {
 }
 
 export interface LiFiStepExtended extends LiFiStep {
+  execution?: Execution
+}
+
+export type StepExtended = Step & {
   execution?: Execution
 }
 
