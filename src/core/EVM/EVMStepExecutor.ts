@@ -308,6 +308,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
               to: transactionRequest.to as Address,
               account: this.walletClient.account!,
               data: transactionRequest.data,
+              value: transactionRequest.value,
               gas: transactionRequest.gas,
               gasPrice: transactionRequest.gasPrice,
               maxFeePerGas: transactionRequest.maxFeePerGas,

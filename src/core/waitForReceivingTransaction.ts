@@ -50,6 +50,7 @@ export async function waitForReceivingTransaction(
           return resolve(undefined)
         case 'NOT_FOUND':
           return resolve(undefined)
+        case 'INVALID':
         case 'FAILED':
         default:
           return reject()
