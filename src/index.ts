@@ -1,4 +1,5 @@
 export * from '@lifi/types'
+export { config } from './config.js'
 export { EVM } from './core/EVM/EVM.js'
 export { Solana } from './core/Solana/Solana.js'
 export * from './core/index.js'

@@ -1,4 +1,5 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
+import type { SDKProvider } from './core/types.js'
 import type { SDKConfig, SDKOptions } from './types/index.js'
 
 export const config = (() => {
@@ -36,12 +37,15 @@ export const config = (() => {
       }
       return chain
     },
+    get() {
+      return _config
+    },
     set(options: SDKOptions) {
       Object.assign(_config, options)
       return _config
     },
-    get() {
-      return _config
+    setProviders(providers: SDKProvider[]) {
+      _config.providers = providers
     },
   }
 })()

@@ -49,8 +49,5 @@ export async function createChainsConfig() {
 export function createConfig(options: SDKOptions) {
   createBaseConfig(options)
   createChainsConfig()
-  return {
-    set: config.set,
-    get: config.get,
-  }
+  return config
 }
