@@ -21,8 +21,8 @@ import type {
   TokensResponse,
   ToolsRequest,
   ToolsResponse,
-  WalletAnalytics,
-  WalletAnalyticsRequest,
+  TransactionAnalyticsRequest,
+  TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { config } from '../config.js'
 import { request } from '../request.js'
@@ -267,6 +267,7 @@ export const getRoutes = async (
   const _config = config.get()
   // apply defaults
   params.options = {
+    integrator: _config.integrator,
     ..._config.routeOptions,
     ...params.options,
   }
@@ -424,10 +425,12 @@ export const getGasRecommendation = async (
 /**
  * Get all the available connections for swap/bridging tokens
  * @param connectionRequest ConnectionsRequest
+ * @param options - Request options
  * @returns ConnectionsResponse
  */
 export const getConnections = async (
-  connectionRequest: ConnectionsRequest
+  connectionRequest: ConnectionsRequest,
+  options?: RequestOptions
 ): Promise<ConnectionsResponse> => {
   const url = new URL(`${config.get().apiUrl}/connections`)
 
@@ -465,7 +468,7 @@ export const getConnections = async (
     }
   })
   try {
-    const response = await request<ConnectionsResponse>(url.toString())
+    const response = await request<ConnectionsResponse>(url, options)
     return response
   } catch (e) {
     throw await parseBackendError(e)
@@ -473,33 +476,34 @@ export const getConnections = async (
 }
 
 export const getTransactionHistory = async (
-  walletAnalyticsRequest: WalletAnalyticsRequest
-): Promise<WalletAnalytics> => {
+  { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
+  options?: RequestOptions
+): Promise<TransactionAnalyticsResponse> => {
+  if (!wallet) {
+    throw new ValidationError('Required parameter "wallet" is missing.')
+  }
+
   const _config = config.get()
 
-  if (!walletAnalyticsRequest.fromTimestamp) {
-    throw new ValidationError('Required parameter "fromTimestamp" is missing.')
+  const url = new URL(`${_config.apiUrl}/analytics/transfers`)
+
+  url.searchParams.append('integrator', _config.integrator)
+  url.searchParams.append('wallet', wallet)
+
+  if (status) {
+    url.searchParams.append('status', status)
   }
 
-  if (!walletAnalyticsRequest.toTimestamp) {
-    throw new ValidationError('Required parameter "toTimestamp" is missing.')
+  if (fromTimestamp) {
+    url.searchParams.append('fromTimestamp', fromTimestamp.toString())
   }
 
-  const url = new URL(
-    `${_config.apiUrl}/analytics/wallets/${walletAnalyticsRequest.walletAddress}`
-  )
+  if (toTimestamp) {
+    url.searchParams.append('toTimestamp', toTimestamp.toString())
+  }
 
-  url.searchParams.append(
-    'fromTimestamp',
-    walletAnalyticsRequest.fromTimestamp.toString()
-  )
-
-  url.searchParams.append(
-    'toTimestamp',
-    walletAnalyticsRequest.toTimestamp.toString()
-  )
   try {
-    const response = await request<WalletAnalytics>(url)
+    const response = await request<TransactionAnalyticsResponse>(url, options)
     return response
   } catch (e) {
     throw await parseBackendError(e)

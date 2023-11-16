@@ -6,7 +6,7 @@ import type {
   RoutesRequest,
   StepTool,
   Token,
-  WalletAnalyticsRequest,
+  TransactionAnalyticsRequest,
 } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
@@ -652,7 +652,6 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        // eslint-disable-next-line max-len
         'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
       await expect(
@@ -661,26 +660,26 @@ describe('ApiService', () => {
         connections: [],
       })
 
-      expect(mockedFetch).toHaveBeenCalledWith(generatedURL)
+      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/analytics/wallets/0x5520abcd`, async () =>
+        http.get(`${_config.apiUrl}/analytics/transfers`, async () =>
           HttpResponse.json({})
         )
       )
 
-      const walletAnalyticsRequest: WalletAnalyticsRequest = {
+      const walletAnalyticsRequest: TransactionAnalyticsRequest = {
         fromTimestamp: 1696326609361,
         toTimestamp: 1696326609362,
-        walletAddress: '0x5520abcd',
+        wallet: '0x5520abcd',
       }
 
       const generatedURL =
-        'https://li.quest/v1/analytics/wallets/0x5520abcd?fromTimestamp=1696326609361&toTimestamp=1696326609362'
+        'https://li.quest/v1/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
         ApiService.getTransactionHistory(walletAnalyticsRequest)
