@@ -268,8 +268,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
               this.walletClient.account?.type === 'local'
                 ? await getMaxPriorityFeePerGas(client as PublicClient)
                 : step.transactionRequest.maxPriorityFeePerGas
-                ? BigInt(step.transactionRequest.maxPriorityFeePerGas as string)
-                : undefined,
+                  ? BigInt(
+                      step.transactionRequest.maxPriorityFeePerGas as string
+                    )
+                  : undefined,
           }
 
           if (this.executionOptions?.updateTransactionRequestHook) {
