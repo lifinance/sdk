@@ -11,9 +11,6 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     get type() {
       return ChainType.EVM
     },
-    get multicall() {
-      return _options.multicall
-    },
     get multisig() {
       return _options.multisig
     },

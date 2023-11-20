@@ -1,4 +1,4 @@
-import { ChainType, type ChainId, type Token } from '@lifi/types'
+import { ChainType, type Token } from '@lifi/types'
 import type { Hash, WalletClient } from 'viem'
 import type { SwitchChainHook } from '../types.js'
 import { type SDKProvider } from '../types.js'
@@ -6,13 +6,11 @@ import { type SDKProvider } from '../types.js'
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<WalletClient>
   switchChain?: SwitchChainHook
-  multicall?: Partial<Record<ChainId, string>>
   multisig?: MultisigConfig
 }
 
 export interface EVMProvider extends SDKProvider {
   setOptions(options: EVMProviderOptions): void
-  multicall?: Partial<Record<ChainId, string>>
   multisig?: MultisigConfig
 }
 

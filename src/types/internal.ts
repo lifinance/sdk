@@ -1,16 +1,18 @@
-import type { ChainId, RouteOptions } from '@lifi/types'
+import type { ChainId, ExtendedChain, RouteOptions } from '@lifi/types'
 import type { SDKProvider } from '../core/types.js'
 
 export interface SDKConfig {
-  integrator: string
-  apiUrl: string
   apiKey?: string
+  apiUrl: string
+  integrator: string
   userId?: string
+  providers?: SDKProvider[]
+  routeOptions?: RouteOptions
+  rpcUrls: Partial<Record<ChainId, string[]>>
+  chains: ExtendedChain[]
   disableVersionCheck?: boolean
   widgetVersion?: string
-  routeOptions?: RouteOptions
-  providers?: SDKProvider[]
-  rpcUrls: Partial<Record<ChainId, string[]>>
+  preloadChains: boolean
 }
 
 export interface SDKOptions extends Partial<Omit<SDKConfig, 'integrator'>> {

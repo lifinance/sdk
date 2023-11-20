@@ -1,9 +1,7 @@
-import { ChainType, type ChainId } from '@lifi/types'
+import { type ChainId } from '@lifi/types'
 import type { PublicClient, Transaction } from 'viem'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
-import { getProvider } from '../provider.js'
-import type { EVMProvider } from './types.js'
 
 export const getMaxPriorityFeePerGas = async (
   client: PublicClient
@@ -39,9 +37,6 @@ export const getMaxPriorityFeePerGas = async (
 export const getMulticallAddress = async (
   chainId: ChainId
 ): Promise<string | undefined> => {
-  const provider = getProvider<EVMProvider>(ChainType.EVM)
-  return (
-    provider.multicall?.[chainId] ??
-    config.chains.find((chain) => chain.id === chainId)?.multicallAddress
-  )
+  const chains = await config.getChains()
+  return chains.find((chain) => chain.id === chainId)?.multicallAddress
 }
