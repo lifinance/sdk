@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.38",
+  "version": "3.0.0-alpha.39",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -103,9 +103,9 @@
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
     "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "^6.13.2",
-    "@typescript-eslint/parser": "^6.13.2",
-    "@vitest/coverage-v8": "^1.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitest/coverage-v8": "^1.0.4",
     "bs58": "^5.0.0",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.1.0",
@@ -114,13 +114,13 @@
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
     "madge": "^6.1.0",
-    "msw": "^2.0.10",
+    "msw": "^2.0.11",
     "pinst": "^3.0.0",
-    "prettier": "^3.1.0",
+    "prettier": "^3.1.1",
     "standard-version": "^9.5.0",
-    "ts-node": "^10.9.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
-    "vitest": "^1.0.2"
+    "vitest": "^1.0.4"
   },
   "packageManager": "yarn@4.0.2",
   "publishConfig": {
