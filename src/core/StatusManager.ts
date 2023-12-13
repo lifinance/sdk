@@ -139,7 +139,7 @@ export class StatusManager {
    * @param step The step where the process should be updated
    * @param type  The process type to update
    * @param status The status the process gets.
-   * @param [params]   Additional parameters to append to the process.
+   * @param [params] Additional parameters to append to the process.
    * @returns The update process
    */
   updateProcess = (

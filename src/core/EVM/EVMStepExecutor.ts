@@ -52,8 +52,20 @@ export class EVMStepExecutor extends BaseStepExecutor {
   // TODO: add checkChain method and update wallet client inside executors
   // This can come in handy when we execute multiple routes simultaneously and
   // should be sure that we are on the right chain when waiting for transactions.
-  checkChain = () => {
-    throw new Error('checkChain is not implemented.')
+  checkChain = async (
+    step: LiFiStepExtended
+  ): Promise<WalletClient | undefined> => {
+    const updatedWalletClient = await switchChain(
+      this.walletClient,
+      this.statusManager,
+      step,
+      this.allowUserInteraction,
+      this.executionOptions?.switchChainHook
+    )
+    if (updatedWalletClient) {
+      this.walletClient = updatedWalletClient
+    }
+    return updatedWalletClient
   }
 
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
@@ -67,27 +79,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // If the step is waiting for a transaction on the receiving chain, we do not switch the chain
     // All changes are already done from the source chain
     // Return the step
-    if (
-      recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION' ||
-      !recievingChainProcess
-    ) {
-      const updatedWalletClient = await switchChain(
-        this.walletClient,
-        this.statusManager,
-        step,
-        this.allowUserInteraction,
-        this.executionOptions?.switchChainHook
-      )
-
+    if (recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
+      const updatedWalletClient = await this.checkChain(step)
       if (!updatedWalletClient) {
-        // Chain switch was not successful, stop execution here
         return step
       }
-
-      this.walletClient = updatedWalletClient
     }
-
-    const client = this.walletClient.extend(publicActions)
 
     const isMultisigWalletClient = !!this.multisig?.isMultisigWalletClient
     const multisigBatchTransactions: MultisigTransaction[] = []
@@ -110,7 +107,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     )
 
     // Check token approval only if fromToken is not the native token => no approval needed in that case
-
     const checkForAllowance =
       !existingProcess?.txHash &&
       !isZeroAddress(step.action.fromToken.address) &&
@@ -120,7 +116,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const data = await checkAllowance(
         fromChain,
         step,
-        client,
+        this.walletClient,
         this.statusManager,
         this.executionOptions,
         this.allowUserInteraction,
@@ -170,22 +166,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
         let txHash: Hash
         if (process.txHash) {
           // Make sure that the chain is still correct
-          const updatedWalletClient = await switchChain(
-            this.walletClient,
-            this.statusManager,
-            step,
-            this.allowUserInteraction,
-            this.executionOptions?.switchChainHook
-          )
-
+          const updatedWalletClient = await this.checkChain(step)
           if (!updatedWalletClient) {
-            // Chain switch was not successful, stop execution here
             return step
           }
 
-          this.walletClient = updatedWalletClient
-
-          // Load exiting transaction
+          // Wait for exiting transaction
           txHash = process.txHash as Hash
         } else {
           process = this.statusManager.updateProcess(
@@ -195,7 +181,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
 
           // Check balance
-          await checkBalance(client.account!.address, step)
+          await checkBalance(this.walletClient.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
@@ -223,20 +209,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
           // STEP 3: Send the transaction
           // Make sure that the chain is still correct
-          const updatedWalletClient = await switchChain(
-            this.walletClient,
-            this.statusManager,
-            step,
-            this.allowUserInteraction,
-            this.executionOptions?.switchChainHook
-          )
-
+          const updatedWalletClient = await this.checkChain(step)
           if (!updatedWalletClient) {
-            // Chain switch was not successful, stop execution here
             return step
           }
-
-          this.walletClient = updatedWalletClient
 
           process = this.statusManager.updateProcess(
             step,
@@ -266,7 +242,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
             //   : undefined,
             maxPriorityFeePerGas:
               this.walletClient.account?.type === 'local'
-                ? await getMaxPriorityFeePerGas(client as PublicClient)
+                ? await getMaxPriorityFeePerGas(
+                    this.walletClient.extend(publicActions) as PublicClient
+                  )
                 : step.transactionRequest.maxPriorityFeePerGas
                   ? BigInt(
                       step.transactionRequest.maxPriorityFeePerGas as string
@@ -343,16 +321,18 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
 
         let replacementReason: ReplacementReason | undefined
-        const transactionReceipt = await client.waitForTransactionReceipt({
-          hash: txHash,
-          onReplaced: (response) => {
-            replacementReason = response.reason
-            this.statusManager.updateProcess(step, process.type, 'PENDING', {
-              txHash: response.transaction.hash,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-            })
-          },
-        })
+        const transactionReceipt = await this.walletClient
+          .extend(publicActions)
+          .waitForTransactionReceipt({
+            hash: txHash,
+            onReplaced: (response) => {
+              replacementReason = response.reason
+              this.statusManager.updateProcess(step, process.type, 'PENDING', {
+                txHash: response.transaction.hash,
+                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+              })
+            },
+          })
 
         if (replacementReason === 'cancelled') {
           throw new TransactionError(

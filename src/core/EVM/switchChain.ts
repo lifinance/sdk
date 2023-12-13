@@ -28,7 +28,8 @@ export const switchChain = async (
   switchChainHook?: SwitchChainHook
 ): Promise<WalletClient | undefined> => {
   // if we are already on the correct chain we can proceed directly
-  if ((await walletClient.getChainId()) === step.action.fromChainId) {
+  const currentChainId = await walletClient.getChainId()
+  if (currentChainId === step.action.fromChainId) {
     return walletClient
   }
 
