@@ -223,11 +223,17 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         fromAmount: statusResponse.sending.amount,
         toAmount: statusReceiving?.amount,
         toToken: statusReceiving?.token,
-        gasAmount: statusResponse.sending.gasAmount,
-        gasAmountUSD: statusResponse.sending.gasAmountUSD,
-        gasPrice: statusResponse.sending.gasPrice,
-        gasToken: statusResponse.sending.gasToken,
-        gasUsed: statusResponse.sending.gasUsed,
+        gasCosts: [
+          {
+            amount: statusResponse.sending.gasAmount,
+            amountUSD: statusResponse.sending.gasAmountUSD,
+            token: statusResponse.sending.gasToken,
+            estimate: statusResponse.sending.gasUsed,
+            limit: statusResponse.sending.gasUsed,
+            price: statusResponse.sending.gasPrice,
+            type: 'SEND',
+          },
+        ],
       })
     } catch (e: unknown) {
       const htmlMessage = await getTransactionFailedMessage(

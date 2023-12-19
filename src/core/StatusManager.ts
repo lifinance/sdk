@@ -4,23 +4,11 @@ import type {
   Process,
   ProcessType,
   Status,
-  Token,
 } from '@lifi/types'
 import { emptyExecution } from '@lifi/types'
 import { executionState } from './executionState.js'
 import type { LiFiStepExtended } from './types.js'
 import { getProcessMessage } from './utils.js'
-
-interface Receipt {
-  fromAmount?: string
-  toAmount?: string
-  toToken?: Token
-  gasPrice?: string
-  gasUsed?: string
-  gasToken?: Token
-  gasAmount?: string
-  gasAmountUSD?: string
-}
 
 type OptionalParameters = Partial<
   Pick<
@@ -74,22 +62,22 @@ export class StatusManager {
    * Updates the execution object of a Step.
    * @param step  The current step in execution
    * @param status  The status for the execution
-   * @param receipt Optional. Information about received tokens
+   * @param execution Optional. Information about received tokens
    * @returns The step with the updated execution object
    */
   updateExecution(
     step: LiFiStepExtended,
     status: Status,
-    receipt?: Receipt
+    execution?: Partial<Execution>
   ): LiFiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
     step.execution.status = status
-    if (receipt) {
+    if (execution) {
       step.execution = {
         ...step.execution,
-        ...receipt,
+        ...execution,
       }
     }
     this.updateStepInRoute(step)
