@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0-alpha.41",
+  "version": "3.0.0-alpha.42",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -97,20 +97,20 @@
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.87.6",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.0.0-rc.0"
+    "viem": "^2.0.0-rc.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-conventional": "^18.4.3",
     "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
     "@vitest/coverage-v8": "^1.1.0",
     "bs58": "^5.0.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jsdoc": "^46.9.1",
-    "eslint-plugin-prettier": "^5.1.0",
+    "eslint-plugin-prettier": "^5.1.2",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
     "madge": "^6.1.0",
