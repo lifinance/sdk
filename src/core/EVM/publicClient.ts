@@ -2,7 +2,7 @@ import type { PublicClient } from 'viem'
 import { createPublicClient, fallback, http } from 'viem'
 import type { Chain } from 'viem/chains'
 import { config } from '../../config.js'
-import { getRpcUrls } from '../utils.js'
+import { getRpcUrls } from '../rpc.js'
 
 // cached providers
 const publicClients: Record<number, PublicClient> = {}

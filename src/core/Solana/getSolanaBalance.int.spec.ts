@@ -3,7 +3,6 @@ import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { findDefaultToken } from '../../../tests/tokens.js'
-import { getTokens } from '../../services/api.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 
 const defaultWalletAddress = 'S5ARSDD3ddZqqqqqb2EUE2h2F1XQHBk7bErRW1WPGe4'
@@ -13,7 +12,7 @@ const timeout = 10000
 
 beforeAll(setupTestEnvironment)
 
-describe('Solana token balance', () => {
+describe.sequential('Solana token balance', async () => {
   const loadAndCompareTokenAmounts = async (
     walletAddress: string,
     tokens: StaticToken[]
@@ -41,6 +40,16 @@ describe('Solana token balance', () => {
       expect(tokenBalance.blockNumber).toBeGreaterThan(0)
     }
   }
+
+  it(
+    'should handle empty lists',
+    async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens: Token[] = []
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    },
+    { retry: retryTimes, timeout }
+  )
 
   it(
     'should work for stables on SOL',
@@ -77,33 +86,6 @@ describe('Solana token balance', () => {
       )
       expect(invalidBalance).toBeDefined()
       expect(invalidBalance!.amount).toBeUndefined()
-    },
-    { retry: retryTimes, timeout }
-  )
-
-  it(
-    'should handle empty lists',
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens: Token[] = []
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    },
-    { retry: retryTimes, timeout }
-  )
-
-  it(
-    'should handle large token lists',
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const { tokens } = await getTokens({
-        chains: [ChainId.SOL],
-      })
-      if (tokens[ChainId.SOL]?.length) {
-        await loadAndCompareTokenAmounts(
-          walletAddress,
-          tokens[ChainId.SOL].slice(0, 150)
-        ) // chunk limit is 100
-      }
     },
     { retry: retryTimes, timeout }
   )

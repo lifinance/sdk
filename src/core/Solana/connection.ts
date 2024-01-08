@@ -1,8 +1,8 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import { getRpcUrl } from '../utils.js'
+import { getRpcUrl } from '../rpc.js'
 
-const solanaChainProvider: Connection | undefined = undefined
+let connection: Connection | undefined = undefined
 
 /**
  * getSolanaConnection is just a thin wrapper around getting the
@@ -10,10 +10,11 @@ const solanaChainProvider: Connection | undefined = undefined
  * @returns - Solana rpc connection
  */
 export const getSolanaConnection = async (): Promise<Connection> => {
-  if (!solanaChainProvider) {
+  if (!connection) {
     const rpcUrl = await getRpcUrl(ChainId.SOL)
-    return new Connection(rpcUrl)
+    connection = new Connection(rpcUrl)
+    return connection
   } else {
-    return solanaChainProvider
+    return connection
   }
 }
