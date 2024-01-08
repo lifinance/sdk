@@ -2,10 +2,14 @@ import {
   errorCodes as MetaMaskErrorCodes,
   getMessageFromCode,
 } from 'eth-rpc-errors'
-import { describe, expect, it } from 'vitest'
-import { buildStepObject } from '../../test/fixtures'
-import { LifiErrorCode } from './errors'
-import { parseBackendError, parseError } from './parseError'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { buildStepObject } from '../../tests/fixtures.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
+import { LiFiErrorCode } from './errors.js'
+import { parseBackendError } from './parseBackendError.js'
+import { parseError } from './parseError.js'
+
+beforeAll(setupTestEnvironment)
 
 describe('parseError', () => {
   describe('parseWalletError', () => {
@@ -14,7 +18,7 @@ describe('parseError', () => {
         const parsedError = await parseError('Oops')
 
         expect(parsedError.message).toEqual('Unknown error occurred.')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
 
       it('should return an UnknownError with the given message', async () => {
@@ -23,7 +27,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -35,7 +39,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Somethings fishy')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -59,7 +63,7 @@ describe('parseError', () => {
         })
 
         expect(parsedError.message).toEqual('Transaction is underpriced.')
-        expect(parsedError.code).toEqual(LifiErrorCode.TransactionUnderpriced)
+        expect(parsedError.code).toEqual(LiFiErrorCode.TransactionUnderpriced)
       })
     })
 
@@ -105,7 +109,7 @@ describe('parseError', () => {
 
         expect(parsedError.htmlMessage).toEqual(
           // eslint-disable-next-line max-len
-          "Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
+          "Transaction was not sent, your funds are still in your wallet (1.5 USDC on Polygon), please retry.<br/>If it still doesn't work, it is safe to delete this transfer and start a new one."
         )
       })
     })
@@ -124,7 +128,7 @@ describe('parseError', () => {
 
         expect(parsedError.htmlMessage).toEqual(
           // eslint-disable-next-line max-len
-          'Transaction was not sent, your funds are still in your wallet (1.0000 USDC on Polygon), please retry.<br/>If it still doesn\'t work, it is safe to delete this transfer and start a new one.<br>You can check the failed transaction&nbsp;<a href="https://example.com" target="_blank" rel="nofollow noreferrer">here</a>.'
+          'Transaction was not sent, your funds are still in your wallet (1.5 USDC on Polygon), please retry.<br/>If it still doesn\'t work, it is safe to delete this transfer and start a new one.<br>You can check the failed transaction&nbsp;<a href="https://example.com" target="_blank" rel="nofollow noreferrer">here</a>.'
         )
       })
     })
@@ -136,7 +140,7 @@ describe('parseError', () => {
         const parsedError = await parseBackendError('Oops')
 
         expect(parsedError.message).toEqual('Something went wrong.')
-        expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+        expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
       })
     })
 
@@ -151,7 +155,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.ValidationError)
         })
 
         it('should return the statusText if message not set', async () => {
@@ -165,7 +169,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 400'
           )
-          expect(parsedError.code).toEqual(LifiErrorCode.ValidationError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.ValidationError)
         })
       })
 
@@ -179,7 +183,7 @@ describe('parseError', () => {
           })
 
           expect(parsedError.message).toEqual('Oops')
-          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
         })
 
         it('should return the statusText if message not set', async () => {
@@ -193,7 +197,7 @@ describe('parseError', () => {
           expect(parsedError.message).toEqual(
             'Request failed with statusCode 500'
           )
-          expect(parsedError.code).toEqual(LifiErrorCode.InternalError)
+          expect(parsedError.code).toEqual(LiFiErrorCode.InternalError)
         })
       })
     })

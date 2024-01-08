@@ -1,7 +1,7 @@
-import ConfigService from './services/ConfigService'
-import { HTTPError } from './utils/errors'
-import { sleep } from './utils/utils'
-import { version } from './version'
+import { config } from './config.js'
+import { HTTPError } from './utils/errors.js'
+import { wait } from './utils/utils.js'
+import { version } from './version.js'
 
 export const requestSettings = {
   retries: 1,
@@ -18,9 +18,12 @@ export const request = async <T = Response>(
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion, apiKey } =
-    ConfigService.getInstance().getConfig()
-
+  const { userId, integrator, widgetVersion, apiKey } = config.get()
+  if (!integrator) {
+    throw new Error(
+      'Integrator not found. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
+    )
+  }
   options.retries = options.retries ?? requestSettings.retries
   try {
     if (!options.skipTrackingHeaders) {
@@ -68,7 +71,7 @@ export const request = async <T = Response>(
     return data
   } catch (error) {
     if (options.retries > 0 && (error as HTTPError)?.status === 500) {
-      await sleep(500)
+      await wait(500)
       return request<T>(url, { ...options, retries: options.retries - 1 })
     }
     throw error

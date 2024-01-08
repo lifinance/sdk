@@ -1,4 +1,5 @@
-import { ChainId, ContractCallQuoteRequest, LifiStep } from '@lifi/sdk'
+import type { ContractCallQuoteRequest, LiFiStep } from '@lifi/sdk'
+import { ChainId } from '@lifi/sdk'
 import { ethers } from 'ethers'
 import {
   executeCrossChainQuote,
@@ -12,7 +13,7 @@ const getPrePoQuote = async (
   fromToken: string,
   userAddress: string,
   amount: string
-): Promise<LifiStep> => {
+): Promise<LiFiStep> => {
   const DEPOSIT_TRADE_HELPER_ETHEREUM_CONTRACT_ARB =
     '0x2fa567576f9250666E3D81984Ad3b373028a881C'
   const DEPOSIT_TRADE_HELPER_ABI = [

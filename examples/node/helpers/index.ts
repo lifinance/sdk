@@ -1,14 +1,16 @@
-import { LiFi, ConfigUpdate, StatusResponse, LifiStep } from '@lifi/sdk'
-import { BigNumber, ethers, Signer } from 'ethers'
-import * as readline from 'readline'
+import type { LiFiStep, SDKOptions, StatusResponse } from '@lifi/sdk'
+import { LiFi } from '@lifi/sdk'
 import { config } from 'dotenv'
+import type { Signer } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
+import * as readline from 'readline'
 
 config({
   path: '../.env',
 })
 
 let lifi: LiFi
-export const getLifi = (config?: ConfigUpdate) => {
+export const getLifi = (config?: SDKOptions) => {
   if (!lifi) {
     lifi = new LiFi(
       config ?? {
@@ -53,12 +55,12 @@ export const executeTransaction = async (
 
 export const executeCrossChainQuote = async (
   signer: Signer,
-  quote: LifiStep
+  quote: LiFiStep
 ) => {
   // Approval
   if (quote.action.fromToken.address !== ethers.constants.AddressZero) {
     // check approval
-    const approval = await lifi.getTokenApproval(
+    const approval = await lifi.getTokenAllowance(
       signer,
       quote.action.fromToken,
       quote.estimate.approvalAddress
@@ -69,7 +71,7 @@ export const executeCrossChainQuote = async (
 
     // set approval
     if (BigNumber.from(approval).lt(quote.action.fromAmount)) {
-      await lifi.approveToken({
+      await lifi.setTokenApproval({
         signer,
         token: quote.action.fromToken,
         amount: quote.action.fromAmount,

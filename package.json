@@ -1,38 +1,90 @@
 {
   "name": "@lifi/sdk",
-  "version": "2.5.0",
+  "version": "3.0.0-alpha.44",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "keywords": [
+    "bridge",
+    "bridge-aggregation",
+    "cross-chain",
+    "cross-chain-applications",
+    "cross-chain-bridge",
+    "dapp",
+    "defi",
+    "ethereum",
+    "ethers",
+    "lifi",
+    "metamask",
+    "multi-chain",
+    "sdk",
+    "swap",
+    "viem",
+    "wagmi",
+    "web3",
+    "web3-react"
+  ],
+  "homepage": "https://github.com/lifinance/sdk",
+  "bugs": {
+    "url": "https://github.com/lifinance/sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/lifinance/sdk.git"
+  },
+  "license": "Apache-2.0",
+  "author": "LI.FI <github@li.finance>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/_types/index.d.ts",
+      "import": "./src/_esm/index.js",
+      "default": "./src/_cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./src/_cjs/index.js",
+  "module": "./src/_esm/index.js",
+  "types": "./src/_types/index.d.ts",
+  "typings": "./src/_types/index.d.ts",
+  "sideEffects": false,
+  "directories": {
+    "test": "tests"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo"
+  ],
   "scripts": {
-    "watch": "tsc -w -p ./tsconfig.json",
-    "build": "yarn clean && tsc --project ./tsconfig.json && tsc --project ./tsconfig.cjs.json",
-    "clean": "node tools/cleanup",
-    "package": "npm run build && npm pack",
-    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
-    "test:unit": "yarn test .unit.spec.ts",
-    "test:cov": "yarn test --coverage",
-    "test:e2e": "yarn test -c vitest.e2e.config.ts",
-    "addscope": "node tools/packagejson name @lifi/sdk",
-    "pre-commit": "lint-staged",
-    "pre-push": "yarn types:check && yarn build && yarn test:unit",
+    "build": "yarn clean && yarn build:cjs && yarn build:esm && yarn build:types",
+    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
+    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo src/tsconfig.build.tsbuildinfo src/_esm src/_cjs src/_types",
+    "coverage": "vitest run --coverage",
+    "postinstall": "husky install",
     "lint": "eslint --ext .tsx --ext .ts ./src",
     "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
-    "types:check": "tsc --noEmit",
+    "prepack": "pinst --disable",
+    "postpack": "pinst --enable",
+    "package": "npm run build && npm pack",
+    "pre-commit": "lint-staged",
+    "pre-push": "yarn check:types && yarn check:circular-deps && yarn test:unit",
+    "prepublishOnly": "yarn node scripts/prepublishOnly.js",
     "prettier:fix": "prettier --write ./src/.",
-    "use:npmReadme": "mv 'README.md' 'git.README.md' && mv 'npm.README.md' 'README.md'",
-    "use:gitReadme": "mv 'README.md' 'npm.README.md' && mv 'git.README.md' 'README.md'",
-    "prepublishOnly": "run-s build use:npmReadme && pinst --enable",
-    "postpublish": "npm run use:gitReadme && pinst --enable",
-    "prepare": "husky install",
     "release": "standard-version -a",
-    "release:beta": "standard-version -a --prerelease beta --skip.changelog"
-  },
-  "standard-version": {
-    "scripts": {
-      "postbump": "node scripts/version.js && git add ."
-    }
+    "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
+    "release:beta": "standard-version -a --prerelease beta --skip.changelog",
+    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test:cov": "yarn test --coverage",
+    "test:e2e": "yarn test -c vitest.e2e.config.ts",
+    "test:unit": "yarn test .unit.spec.ts",
+    "check:types": "tsc --noEmit",
+    "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
+    "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
+    "watch": "tsc -w -p ./tsconfig.json"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
@@ -40,70 +92,45 @@
       "yarn run prettier:fix"
     ]
   },
-  "files": [
-    "dist"
-  ],
+  "dependencies": {
+    "@lifi/types": "^11.0.0-beta.2",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/web3.js": "^1.88.0",
+    "eth-rpc-errors": "^4.0.3",
+    "viem": "^2.0.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.4",
+    "@commitlint/config-conventional": "^18.4.4",
+    "@types/fs-extra": "^11",
+    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^6.18.0",
+    "@typescript-eslint/parser": "^6.18.0",
+    "@vitest/coverage-v8": "^1.1.3",
+    "bs58": "^5.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsdoc": "^48.0.2",
+    "eslint-plugin-prettier": "^5.1.2",
+    "fs-extra": "^11.2.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "madge": "^6.1.0",
+    "msw": "^2.0.12",
+    "pinst": "^3.0.0",
+    "prettier": "^3.1.1",
+    "standard-version": "^9.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.3"
+  },
+  "packageManager": "yarn@4.0.2",
   "publishConfig": {
     "access": "public"
   },
-  "author": "Max Klenk <max@li.finance>",
-  "license": "Apache-2.0",
-  "keywords": [
-    "sdk",
-    "ethereum",
-    "dapp",
-    "bridge",
-    "swap",
-    "web3",
-    "lifi",
-    "ethers",
-    "cross-chain",
-    "defi",
-    "web3-react",
-    "cross-chain-applications",
-    "cross-chain-bridge",
-    "bridge-aggregation",
-    "multi-chain",
-    "metamask"
-  ],
-  "homepage": "https://github.com/lifinance/sdk",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/lifinance/sdk.git"
-  },
-  "bugs": {
-    "url": "https://github.com/lifinance/sdk/issues"
-  },
-  "dependencies": {
-    "@ethersproject/abi": "^5.7.0",
-    "@ethersproject/contracts": "^5.7.0",
-    "@lifi/types": "^9.3.0",
-    "bignumber.js": "^9.1.2",
-    "eth-rpc-errors": "^4.0.3",
-    "ethers": "^5.7.2"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^18.2.0",
-    "@commitlint/config-conventional": "^18.1.0",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
-    "@vitest/coverage-c8": "^0.33.0",
-    "cross-fetch": "^4.0.0",
-    "eslint": "^8.52.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.1",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.0.2",
-    "msw": "^2.0.1",
-    "npm-run-all": "^4.1.5",
-    "pinst": "^3.0.0",
-    "prettier": "^3.0.3",
-    "standard-version": "^9.5.0",
-    "typescript": "^5.2.2",
-    "vitest": "^0.34.6"
-  },
-  "directories": {
-    "test": "test"
-  },
-  "packageManager": "yarn@4.0.1"
+  "standard-version": {
+    "scripts": {
+      "postbump": "node scripts/version.js && git add ."
+    }
+  }
 }
