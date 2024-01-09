@@ -1,7 +1,7 @@
 import type { ChainId, ExtendedChain, RouteOptions } from '@lifi/types'
 import type { SDKProvider } from '../core/types.js'
 
-export interface SDKConfig {
+export interface SDKBaseConfig {
   apiKey?: string
   apiUrl: string
   integrator: string
@@ -15,7 +15,7 @@ export interface SDKConfig {
   preloadChains: boolean
 }
 
-export interface SDKOptions extends Partial<Omit<SDKConfig, 'integrator'>> {
+export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
   integrator: string
 }
 

@@ -3,10 +3,10 @@ import { ChainType } from '@lifi/types'
 import { config } from './config.js'
 import { checkPackageUpdates } from './helpers.js'
 import { getChains } from './services/api.js'
-import type { SDKOptions } from './types/index.js'
+import type { SDKConfig } from './types/index.js'
 import { name, version } from './version.js'
 
-function createBaseConfig(options: SDKOptions) {
+function createBaseConfig(options: SDKConfig) {
   if (!options.integrator) {
     throw new Error(
       'Integrator not found. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
@@ -24,7 +24,7 @@ export async function createChainsConfig() {
   await config.loading
 }
 
-export function createConfig(options: SDKOptions) {
+export function createConfig(options: SDKConfig) {
   const _config = createBaseConfig(options)
   if (_config.preloadChains) {
     createChainsConfig()

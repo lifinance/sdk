@@ -1,9 +1,9 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
 import type { SDKProvider } from './core/types.js'
-import type { SDKConfig, SDKOptions } from './types/index.js'
+import type { SDKBaseConfig, SDKConfig } from './types/index.js'
 
 export const config = (() => {
-  const _config: SDKConfig = {
+  const _config: SDKBaseConfig = {
     integrator: 'lifi-sdk',
     apiUrl: 'https://li.quest/v1',
     rpcUrls: {},
@@ -18,7 +18,7 @@ export const config = (() => {
     get() {
       return _config
     },
-    set(options: SDKOptions) {
+    set(options: SDKConfig) {
       Object.assign(_config, options)
       if (options.chains) {
         this.setChains(options.chains)
@@ -58,7 +58,10 @@ export const config = (() => {
   }
 })()
 
-export const hydrateRPCUrls = (config: SDKConfig, chains: ExtendedChain[]) => {
+export const hydrateRPCUrls = (
+  config: SDKBaseConfig,
+  chains: ExtendedChain[]
+) => {
   for (const chain of chains) {
     const chainId = chain.id as ChainId
     // set RPCs if they were not configured by the user before
