@@ -108,7 +108,7 @@ const executeSteps = async (
 
       const provider = config
         .get()
-        .providers?.find((provider) => provider.isAddress(fromAddress))
+        .providers.find((provider) => provider.isAddress(fromAddress))
 
       if (!provider) {
         throw new Error('SDK Execution Provider not found.')

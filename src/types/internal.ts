@@ -6,7 +6,7 @@ export interface SDKBaseConfig {
   apiUrl: string
   integrator: string
   userId?: string
-  providers?: SDKProvider[]
+  providers: SDKProvider[]
   routeOptions?: RouteOptions
   rpcUrls: Partial<Record<ChainId, string[]>>
   chains: ExtendedChain[]

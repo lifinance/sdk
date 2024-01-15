@@ -8,6 +8,7 @@ export const config = (() => {
     apiUrl: 'https://li.quest/v1',
     rpcUrls: {},
     chains: [],
+    providers: [],
     preloadChains: true,
   }
   let _loading: Promise<void> | undefined
@@ -19,14 +20,22 @@ export const config = (() => {
       return _config
     },
     set(options: SDKConfig) {
-      Object.assign(_config, options)
-      if (options.chains) {
-        this.setChains(options.chains)
+      const { chains, providers, ...otherOptions } = options
+      Object.assign(_config, otherOptions)
+      if (chains) {
+        this.setChains(chains)
+      }
+      if (providers) {
+        this.setProviders(providers)
       }
       return _config
     },
     setProviders(providers: SDKProvider[]) {
-      _config.providers = providers
+      const providerMap = new Map(
+        _config.providers.map((provider) => [provider.type, provider])
+      )
+      providers.forEach((provider) => providerMap.set(provider.type, provider))
+      _config.providers = Array.from(providerMap.values())
     },
     setChains(chains: ExtendedChain[]) {
       hydrateRPCUrls(this.get(), chains)

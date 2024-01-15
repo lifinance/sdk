@@ -78,7 +78,7 @@ export const getTokenBalancesByChain = async (
       const baseTokenAddress = tokensByChain[chainId][0].address
       const provider = config
         .get()
-        .providers?.find((provider) => provider.isAddress(baseTokenAddress))
+        .providers.find((provider) => provider.isAddress(baseTokenAddress))
       if (!provider) {
         throw new Error('SDK Token Provider not found.')
       }
