@@ -29,8 +29,11 @@ describe('StatusManager', () => {
     step = buildStepObject({ includingExecution })
     route = buildRouteObject({ step })
 
-    executionState.create(route, {
-      updateRouteHook: updateRouteHookMock,
+    executionState.create({
+      route,
+      executionOptions: {
+        updateRouteHook: updateRouteHookMock,
+      },
     })
 
     return new StatusManager(route.id)

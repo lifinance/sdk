@@ -7,14 +7,13 @@ export interface ExecutionData {
   promise?: Promise<RouteExtended>
 }
 
+export type ExecutionStateParams = Omit<ExecutionData, 'executors'>
+
 export interface ExecutionState {
   state: Partial<Record<string, ExecutionData>>
   get(routeId: string): ExecutionData | undefined
-  create(
-    route: RouteExtended,
-    executionOptions?: ExecutionOptions,
-    promise?: Promise<RouteExtended>
-  ): ExecutionData
+  create(params: ExecutionStateParams): ExecutionData
+  update(params: ExecutionStateParams): void
   delete(routeId: string): void
 }
 
@@ -23,15 +22,21 @@ export const executionState: ExecutionState = {
   get(routeId: string) {
     return this.state[routeId]
   },
-  create(route, executionOptions, promise) {
-    this.state[route.id] = {
-      ...this.state[route.id],
-      route,
-      executionOptions,
-      promise,
-      executors: [],
+  create(params) {
+    this.state[params.route.id] = {
+      ...this.state[params.route.id],
+      ...params,
+      executors: this.state[params.route.id]?.executors ?? [],
     }
-    return this.state[route.id]!
+    return this.state[params.route.id]!
+  },
+  update(state) {
+    if (this.state[state.route.id]) {
+      this.state[state.route.id] = {
+        ...this.state[state.route.id]!,
+        ...state,
+      }
+    }
   },
   delete(routeId) {
     delete this.state[routeId]

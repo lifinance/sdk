@@ -25,9 +25,12 @@ export const executeRoute = async (
     return executionPromise
   }
 
-  executionPromise = executeSteps(clonedRoute, executionOptions)
-
-  executionState.create(route, executionOptions, executionPromise)
+  executionState.create({ route: clonedRoute, executionOptions })
+  executionPromise = executeSteps(clonedRoute)
+  executionState.update({
+    route: clonedRoute,
+    promise: executionPromise,
+  })
 
   return executionPromise
 }
@@ -43,10 +46,7 @@ export const resumeRoute = async (
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
-  // Deep clone to prevent side effects
-  const clonedRoute = structuredClone<Route>(route)
-
-  const execution = executionState.get(clonedRoute.id)
+  const execution = executionState.get(route.id)
 
   if (execution) {
     const executionHalted = execution.executors.some(
@@ -65,20 +65,12 @@ export const resumeRoute = async (
     }
   }
 
-  await prepareRestart(clonedRoute)
+  await prepareRestart(route)
 
-  const executionPromise = executeSteps(clonedRoute, executionOptions)
-  executionState.create(route, executionOptions, executionPromise)
-
-  return executionPromise
+  return executeRoute(route, executionOptions)
 }
 
-const executeSteps = async (
-  route: RouteExtended,
-  executionOptions?: ExecutionOptions
-): Promise<RouteExtended> => {
-  executionState.create(route, executionOptions)
-
+const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
   // Loop over steps and execute them
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
@@ -133,7 +125,7 @@ const executeSteps = async (
       }
 
       // Execution stopped during the current step, we don't want to continue to the next step so we return already
-      if (stepExecutor.allowExecution) {
+      if (!stepExecutor.allowExecution) {
         return route
       }
     } catch (e) {
