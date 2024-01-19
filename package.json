@@ -93,11 +93,11 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^11.0.0-beta.3",
+    "@lifi/types": "^11.0.0-beta.4",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.89.1",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.1.1"
+    "viem": "^2.4.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.4",
@@ -106,7 +106,7 @@
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
-    "@vitest/coverage-v8": "^1.2.0",
+    "@vitest/coverage-v8": "^1.2.1",
     "bs58": "^5.0.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
@@ -116,13 +116,13 @@
     "husky": "^8.0.3",
     "lint-staged": "^15.2.0",
     "madge": "^6.1.0",
-    "msw": "^2.1.0",
+    "msw": "^2.1.2",
     "pinst": "^3.0.0",
-    "prettier": "^3.2.2",
+    "prettier": "^3.2.4",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.0"
+    "vitest": "^1.2.1"
   },
   "packageManager": "yarn@4.0.2",
   "publishConfig": {

@@ -66,7 +66,7 @@ export async function waitForReceivingTransaction(
     status = await TRANSACTION_HASH_OBSERVERS[txHash]
   }
 
-  if (!status.receiving) {
+  if (!('receiving' in status)) {
     throw new ServerError("Status doesn't contain receiving information.")
   }
 
