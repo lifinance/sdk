@@ -8,7 +8,7 @@ export interface SDKBaseConfig {
   userId?: string
   providers: SDKProvider[]
   routeOptions?: RouteOptions
-  rpcUrls: Partial<Record<ChainId, string[]>>
+  rpcUrls: RPCUrls
   chains: ExtendedChain[]
   disableVersionCheck?: boolean
   widgetVersion?: string
@@ -18,6 +18,8 @@ export interface SDKBaseConfig {
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
   integrator: string
 }
+
+export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface TenderlyResponse {
   hash: string

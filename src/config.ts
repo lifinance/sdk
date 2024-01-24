@@ -1,6 +1,6 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
 import type { SDKProvider } from './core/types.js'
-import type { SDKBaseConfig, SDKConfig } from './types/index.js'
+import type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 
 export const config = (() => {
   const _config: SDKBaseConfig = {
@@ -20,13 +20,16 @@ export const config = (() => {
       return _config
     },
     set(options: SDKConfig) {
-      const { chains, providers, ...otherOptions } = options
+      const { chains, providers, rpcUrls, ...otherOptions } = options
       Object.assign(_config, otherOptions)
       if (chains) {
         this.setChains(chains)
       }
       if (providers) {
         this.setProviders(providers)
+      }
+      if (rpcUrls) {
+        this.setRPCUrls(rpcUrls)
       }
       return _config
     },
@@ -38,7 +41,13 @@ export const config = (() => {
       _config.providers = Array.from(providerMap.values())
     },
     setChains(chains: ExtendedChain[]) {
-      hydrateRPCUrls(this.get(), chains)
+      const rpcUrls = chains.reduce((rpcUrls, chain) => {
+        if (chain.metamask?.rpcUrls?.length) {
+          rpcUrls[chain.id as ChainId] = chain.metamask.rpcUrls
+        }
+        return rpcUrls
+      }, {} as RPCUrls)
+      this.setRPCUrls(rpcUrls)
       _config.chains = chains
       _loading = undefined
     },
@@ -58,6 +67,20 @@ export const config = (() => {
       }
       return chain
     },
+    setRPCUrls(rpcUrls: RPCUrls) {
+      for (const rpcUrlsKey in rpcUrls) {
+        const chainId = rpcUrlsKey as unknown as ChainId
+        const urls = rpcUrls[chainId]
+        if (!urls?.length) {
+          continue
+        }
+        if (!_config.rpcUrls[chainId]?.length) {
+          _config.rpcUrls[chainId] = rpcUrls[chainId]
+        } else {
+          _config.rpcUrls[chainId]?.push(...urls)
+        }
+      }
+    },
     async getRPCUrls() {
       if (_loading) {
         await _loading
@@ -66,18 +89,3 @@ export const config = (() => {
     },
   }
 })()
-
-export const hydrateRPCUrls = (
-  config: SDKBaseConfig,
-  chains: ExtendedChain[]
-) => {
-  for (const chain of chains) {
-    const chainId = chain.id as ChainId
-    // set RPCs if they were not configured by the user before
-    if (!config.rpcUrls[chainId]?.length) {
-      config.rpcUrls[chainId] = chain.metamask.rpcUrls
-    } else {
-      config.rpcUrls[chainId]?.push(...chain.metamask.rpcUrls)
-    }
-  }
-}
