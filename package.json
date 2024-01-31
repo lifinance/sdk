@@ -64,7 +64,7 @@
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
     "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo src/tsconfig.build.tsbuildinfo src/_esm src/_cjs src/_types",
     "coverage": "vitest run --coverage",
-    "postinstall": "husky install",
+    "postinstall": "husky",
     "lint": "eslint --ext .tsx --ext .ts ./src",
     "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
     "prepack": "pinst --disable",
@@ -84,7 +84,8 @@
     "check:types": "tsc --noEmit",
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
-    "watch": "tsc -w -p ./tsconfig.json"
+    "watch": "tsc -w -p ./tsconfig.json",
+    "prepare": "husky"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
@@ -93,11 +94,11 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^11.0.0",
+    "@lifi/types": "^11.1.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.89.1",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.6.0"
+    "viem": "^2.7.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.6.0",
@@ -113,8 +114,8 @@
     "eslint-plugin-jsdoc": "^48.0.4",
     "eslint-plugin-prettier": "^5.1.3",
     "fs-extra": "^11.2.0",
-    "husky": "^8.0.3",
-    "lint-staged": "^15.2.0",
+    "husky": "^9.0.7",
+    "lint-staged": "^15.2.1",
     "madge": "^6.1.0",
     "msw": "^2.1.5",
     "pinst": "^3.0.0",
