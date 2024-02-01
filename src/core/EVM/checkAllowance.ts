@@ -7,6 +7,7 @@ import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
+import { retryCount, retryDelay } from './utils.js'
 
 export const checkAllowance = async (
   chain: Chain,
@@ -136,6 +137,8 @@ const waitForApprovalTransaction = async (
         txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
       })
     },
+    retryCount,
+    retryDelay,
   })
 
   if (replacementReason === 'cancelled') {

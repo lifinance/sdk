@@ -5,6 +5,7 @@ import { polygon } from 'viem/chains'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { revokeTokenApproval, setTokenAllowance } from './setAllowance.js'
+import { retryCount, retryDelay } from './utils.js'
 
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {
@@ -49,6 +50,8 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
       if (revokeTxHash) {
         const transactionReceipt = await client.waitForTransactionReceipt({
           hash: revokeTxHash!,
+          retryCount,
+          retryDelay,
         })
 
         expect(transactionReceipt.status).toBe('success')
@@ -70,6 +73,8 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
       if (approvalTxHash) {
         const transactionReceipt = await client.waitForTransactionReceipt({
           hash: approvalTxHash!,
+          retryCount,
+          retryDelay,
         })
 
         expect(transactionReceipt.status).toBe('success')
