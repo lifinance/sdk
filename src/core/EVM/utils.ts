@@ -41,8 +41,8 @@ export const getMulticallAddress = async (
   return chains.find((chain) => chain.id === chainId)?.multicallAddress
 }
 
-// Modified viem retryDelay exponential backoff function
-// together with adjusted retryCount gives us 25 seconds to wait for the transaction receipt
+// Modified viem retryDelay exponential backoff function.
+// Together with adjusted retryCount gives us 25 seconds to wait for the block or transaction.
 export const retryDelay = ({ count }: { count: number; error: Error }) =>
   Math.min(~~(1 << count) * 200, 2000)
 
