@@ -32,7 +32,7 @@ import { checkAllowance } from './checkAllowance.js'
 import { updateMultisigRouteProcess } from './multisig.js'
 import { switchChain } from './switchChain.js'
 import type { MultisigConfig, MultisigTransaction } from './types.js'
-import { getMaxPriorityFeePerGas } from './utils.js'
+import { getMaxPriorityFeePerGas, retryCount, retryDelay } from './utils.js'
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   walletClient: WalletClient
@@ -332,6 +332,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
               })
             },
+            retryCount,
+            retryDelay,
           })
 
         if (replacementReason === 'cancelled') {
