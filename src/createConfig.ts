@@ -18,7 +18,7 @@ function createBaseConfig(options: SDKConfig) {
 }
 
 export async function createChainsConfig() {
-  config.loading = getChains({ chainTypes: Object.values(ChainType) })
+  config.loading = getChains({ chainTypes: [ChainType.EVM, ChainType.SVM] })
     .then((chains) => config.setChains(chains))
     .catch()
   await config.loading
