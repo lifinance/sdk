@@ -75,7 +75,7 @@ export const config = (() => {
           continue
         }
         if (!_config.rpcUrls[chainId]?.length) {
-          _config.rpcUrls[chainId] = rpcUrls[chainId]
+          _config.rpcUrls[chainId] = Array.from(urls)
         } else {
           _config.rpcUrls[chainId]?.push(...urls)
         }
