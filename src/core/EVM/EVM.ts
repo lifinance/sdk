@@ -2,6 +2,7 @@ import { ChainType } from '@lifi/types'
 import { isAddress } from 'viem'
 import type { StepExecutorOptions } from '../types.js'
 import { EVMStepExecutor } from './EVMStepExecutor.js'
+import { getENSAddress } from './getENSAddress.js'
 import { getEVMBalance } from './getEVMBalance.js'
 import type { EVMProvider, EVMProviderOptions } from './types.js'
 
@@ -14,9 +15,8 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     get multisig() {
       return _options.multisig
     },
-    isAddress(address: string): boolean {
-      return isAddress(address)
-    },
+    isAddress,
+    resolveAddress: getENSAddress,
     getBalance: getEVMBalance,
     async getStepExecutor(
       options: StepExecutorOptions
