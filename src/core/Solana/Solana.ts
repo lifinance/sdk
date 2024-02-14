@@ -1,8 +1,9 @@
 import { ChainType } from '@lifi/types'
-import { PublicKey } from '@solana/web3.js'
 import type { StepExecutorOptions } from '../types.js'
 import { SolanaStepExecutor } from './SolanaStepExecutor.js'
+import { getSNSAddress } from './getSNSAddress.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
+import { isAddress } from './isAddress.js'
 import type { SolanaProvider, SolanaProviderOptions } from './types.js'
 
 export function Solana(options?: SolanaProviderOptions): SolanaProvider {
@@ -11,14 +12,8 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
     get type() {
       return ChainType.SVM
     },
-    isAddress(address: string): boolean {
-      try {
-        new PublicKey(address)
-        return true
-      } catch (error) {
-        return false
-      }
-    },
+    isAddress,
+    resolveAddress: getSNSAddress,
     getBalance: getSolanaBalance,
     async getStepExecutor(
       options: StepExecutorOptions

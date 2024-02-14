@@ -12,6 +12,7 @@ import type { WalletClient } from 'viem'
 export interface SDKProvider {
   readonly type: ChainType
   isAddress(address: string): boolean
+  resolveAddress(name: string): Promise<string | undefined>
   getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor>
   getBalance(walletAddress: string, tokens: Token[]): Promise<TokenAmount[]>
 }

@@ -1,6 +1,7 @@
+import { ChainId } from '@lifi/types'
 import type { PublicClient } from 'viem'
 import { createPublicClient, fallback, http } from 'viem'
-import type { Chain } from 'viem/chains'
+import { mainnet, type Chain } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
@@ -31,6 +32,13 @@ export const getPublicClient = async (
         default: { http: _chain.metamask.rpcUrls },
         public: { http: _chain.metamask.rpcUrls },
       },
+    }
+    // Add ENS contracts
+    if (chain.id === ChainId.ETH) {
+      chain.contracts = {
+        ...mainnet.contracts,
+        ...chain.contracts,
+      }
     }
     publicClients[chainId] = createPublicClient({
       chain: chain,
