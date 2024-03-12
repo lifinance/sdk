@@ -42,8 +42,7 @@ export const getMulticallAddress = async (
 }
 
 // Modified viem retryDelay exponential backoff function.
-// Together with adjusted retryCount gives us 25 seconds to wait for the block or transaction.
 export const retryDelay = ({ count }: { count: number; error: Error }) =>
-  Math.min(~~(1 << count) * 200, 2000)
+  Math.min(~~(1 << count) * 200, 3000)
 
-export const retryCount = 15
+export const retryCount = 20

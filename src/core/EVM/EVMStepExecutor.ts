@@ -336,6 +336,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
             retryDelay,
           })
 
+        if (transactionReceipt.status === 'reverted') {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Transaction was reverted.'
+          )
+        }
         if (replacementReason === 'cancelled') {
           throw new TransactionError(
             LiFiErrorCode.TransactionCanceled,
