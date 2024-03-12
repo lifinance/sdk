@@ -5,7 +5,7 @@ import type {
   ChainsResponse,
   ConnectionsRequest,
   ConnectionsResponse,
-  ContractCallQuoteRequest,
+  ContractCallsQuoteRequest,
   ExtendedChain,
   GasRecommendationRequest,
   GasRecommendationResponse,
@@ -132,21 +132,19 @@ export const getQuote = async (
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns - Returns step.
  */
-export const getContractCallQuote = async (
-  params: ContractCallQuoteRequest,
+export const getContractCallsQuote = async (
+  params: ContractCallsQuoteRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   // validation
-  const requiredParameters: Array<keyof ContractCallQuoteRequest> = [
+  const requiredParameters: Array<keyof ContractCallsQuoteRequest> = [
     'fromChain',
     'fromToken',
     'fromAddress',
     'toChain',
     'toToken',
     'toAmount',
-    'toContractAddress',
-    'toContractCallData',
-    'toContractGasLimit',
+    'contractCalls',
   ]
   requiredParameters.forEach((requiredParameter) => {
     if (!params[requiredParameter]) {
@@ -171,7 +169,7 @@ export const getContractCallQuote = async (
   // send request
   try {
     const response = await request<LiFiStep>(
-      `${_config.apiUrl}/quote/contractCall`,
+      `${_config.apiUrl}/quote/contractCalls`,
       {
         method: 'POST',
         headers: {

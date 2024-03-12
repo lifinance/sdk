@@ -23,10 +23,10 @@ export async function waitForReceivingTransaction(
       let statusResponse: StatusResponse
       try {
         statusResponse = await getStatus({
-          bridge: step.tool,
           fromChain: step.action.fromChainId,
           toChain: step.action.toChainId,
           txHash,
+          ...(step.tool !== 'custom' && { bridge: step.tool }),
         })
       } catch (e: any) {
         console.debug('Fetching status from backend failed.', e)
