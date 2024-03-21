@@ -38,7 +38,7 @@ import {
   getTokenApproval,
   revokeTokenApproval,
 } from './allowance'
-import * as balance from './balance'
+import balance from './balance'
 import { getRpcProvider } from './connectors'
 import { RouteExecutionManager } from './execution/RouteExecutionManager'
 import { checkPackageUpdates } from './helpers'
@@ -54,7 +54,6 @@ export class LiFi extends RouteExecutionManager {
 
   constructor(configUpdate: ConfigUpdate) {
     super(configUpdate)
-
     this.chainsService = ChainsService.getInstance()
 
     this.chainsService.getChains().then((chains) => {

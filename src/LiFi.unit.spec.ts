@@ -2,14 +2,19 @@ import { ChainId, CoinKey, Token, findDefaultToken } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../test/fixtures'
 import { LiFi } from './LiFi'
-import * as balance from './balance'
+import balance from './balance'
 import { convertQuoteToRoute } from './helpers'
 
-vi.mock('./balance', () => ({
-  getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
-  getTokenBalance: vi.fn(() => Promise.resolve([])),
-  getTokenBalances: vi.fn(() => Promise.resolve([])),
-}))
+vi.mock('./balance', async () => {
+  const actual = await vi.importActual<typeof import('./balance')>('./balance')
+  return {
+    ...actual,
+    getTokenBalancesForChains: vi.fn(() => Promise.resolve([])),
+    getTokenBalance: vi.fn(() => Promise.resolve([])),
+    getTokenBalances: vi.fn(() => Promise.resolve([])),
+    checkBalance: vi.fn(() => Promise.resolve([])),
+  }
+})
 
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
 const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
