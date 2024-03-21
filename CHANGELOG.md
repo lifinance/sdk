@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.1](https://github.com/lifinance/sdk/compare/v2.5.0...v2.5.1) (2024-03-21)
+
+
+### Bug Fixes
+
+* default imports for parcel bundler ([#182](https://github.com/lifinance/sdk/issues/182)) ([92f96c8](https://github.com/lifinance/sdk/commit/92f96c84ed69d3f37801d636b0d7e1fcbb4b5e98))
+
 ## [2.5.0](https://github.com/lifinance/sdk/compare/v2.4.3...v2.5.0) (2023-11-01)
 
 
