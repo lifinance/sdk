@@ -96,7 +96,7 @@ export function checkStepSlippageThreshold(
   const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)
   const newEstimatedToAmount = BigInt(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount - newEstimatedToAmount
-  // oldEstimatedToAmount can be 0 when we use conract calls
+  // oldEstimatedToAmount can be 0 when we use contract calls
   let actualSlippage = 0
   if (oldEstimatedToAmount > 0) {
     actualSlippage =
