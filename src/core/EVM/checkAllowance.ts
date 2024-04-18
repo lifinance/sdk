@@ -36,6 +36,12 @@ export const checkAllowance = async (
         statusManager
       )
     } else {
+      allowanceProcess = statusManager.updateProcess(
+        step,
+        allowanceProcess.type,
+        'STARTED'
+      )
+
       const approved = await getAllowance(
         chain.id,
         step.action.fromToken.address,
@@ -140,6 +146,13 @@ const waitForApprovalTransaction = async (
     retryCount,
     retryDelay,
   })
+
+  if (transactionReceipt.status === 'reverted') {
+    throw new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction was reverted.'
+    )
+  }
 
   if (replacementReason === 'cancelled') {
     throw new TransactionError(
