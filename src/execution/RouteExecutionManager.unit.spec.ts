@@ -15,7 +15,7 @@ import { requestSettings } from '../request'
 import { RouteExecutionManager } from './RouteExecutionManager'
 import { lifiHandlers } from './RouteExecutionManager.unit.handlers'
 
-vi.mock('../balance', () => ({
+vi.mock('../balance/checkBalance', () => ({
   checkBalance: vi.fn(() => Promise.resolve([])),
 }))
 
