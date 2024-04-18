@@ -6,7 +6,7 @@ import {
 import { Execution, ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { BigNumber } from 'ethers'
 import { checkAllowance } from '../allowance'
-import { checkBalance } from '../balance'
+import { checkBalance } from '../balance/checkBalance'
 import ApiService from '../services/ApiService'
 import ChainsService from '../services/ChainsService'
 import { BaseTransaction, ExecutionParams } from '../types'
