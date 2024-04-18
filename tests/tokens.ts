@@ -106,10 +106,6 @@ export const basicCoins: BasicCoin[] = [
         decimals: 18,
       },
       // Testnets
-      [ChainId.GOR]: {
-        address: '0x0000000000000000000000000000000000000000',
-        decimals: 18,
-      },
       [ChainId.ONET]: {
         address: '0x268d6ff391b41b36a13b1693bd25f87fb4e4b392',
         decimals: 18,
@@ -171,10 +167,6 @@ export const basicCoins: BasicCoin[] = [
       },
 
       // Testnet
-      [ChainId.MUM]: {
-        address: '0x0000000000000000000000000000000000000000',
-        decimals: 18,
-      },
       [ChainId.LNAT]: {
         address: '0xa55C7E1274bE5db2275a0BDd055f81e8263b7954',
         decimals: 18,
@@ -274,17 +266,6 @@ export const basicCoins: BasicCoin[] = [
         address: '0xe3f5a90f9cb311505cd691a46596599aa1a0ad7d',
         decimals: 18,
       },
-
-      // Testnets
-      [ChainId.GOR]: {
-        address: '0xdc31ee1784292379fbb2964b3b9c4124d8f89c60', // other: 0xc61ba16e864efbd06a9fe30aab39d18b8f63710a'
-        decimals: 18,
-      },
-      [ChainId.MUM]: {
-        address: '0xb224913ce3851b0a0d7c0fb461eef40f2e31ddb8',
-        decimals: 18,
-      },
-      // 42, 0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa, 18
     },
   },
   // OTHER STABLECOINS
@@ -384,12 +365,6 @@ export const basicCoins: BasicCoin[] = [
         address: '0x01445c31581c354b7338ac35693ab2001b50b9ae',
         decimals: 6,
         name: 'Multichain USDT',
-      },
-
-      // Testnets
-      [ChainId.GOR]: {
-        address: '0x509ee0d083ddf8ac028f2a56731412edd63223b9',
-        decimals: 6,
       },
     },
   },
@@ -498,14 +473,6 @@ export const basicCoins: BasicCoin[] = [
       },
 
       // Testnets
-      [ChainId.GOR]: {
-        address: '0xd87ba7a50b2e7e660f678a895e4b72e7cb4ccd9c',
-        decimals: 6,
-      },
-      [ChainId.MUM]: {
-        address: '0x6d4dd09982853f08d9966ac3ca4eb5885f16f2b2',
-        decimals: 6,
-      },
       [ChainId.LNAT]: {
         address: '0x964FF70695da981027c81020B1c58d833D49A640',
         decimals: 6,

@@ -41,8 +41,6 @@ const substatusMessages: Record<
   PENDING: {
     BRIDGE_NOT_AVAILABLE: 'Bridge communication is temporarily unavailable.',
     CHAIN_NOT_AVAILABLE: 'RPC communication is temporarily unavailable.',
-    NOT_PROCESSABLE_REFUND_NEEDED:
-      'The transfer cannot be completed successfully. A refund operation is required.',
     UNKNOWN_ERROR:
       'An unexpected error occurred. Please seek assistance in the LI.FI discord server.',
     WAIT_SOURCE_CONFIRMATIONS:
