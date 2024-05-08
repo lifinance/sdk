@@ -80,12 +80,6 @@ export const basicCoins: BasicCoin[] = [
         decimals: 18,
         name: 'Heco-Peg ETH Token',
       },
-      [ChainId.OKT]: {
-        address: '0xef71ca2ee68f45b9ad6f72fbdb33d707b872315c',
-        decimals: 18,
-        symbol: 'ETHK',
-        name: 'ETHK',
-      },
       [ChainId.BOB]: {
         address: '0x0000000000000000000000000000000000000000',
         decimals: 18,
@@ -231,11 +225,6 @@ export const basicCoins: BasicCoin[] = [
         address: '0xda10009cbd5d07dd0cecc66161fc93d7c9000da1',
         decimals: 18,
       },
-      [ChainId.OKT]: {
-        address: '0x21cde7e32a6caf4742d00d44b07279e7596d26b9',
-        decimals: 18,
-        symbol: 'DAIK',
-      },
       [ChainId.CRO]: {
         address: '0xf2001b145b43032aaf5ee2884e456ccd805f677d',
         decimals: 18,
@@ -323,10 +312,6 @@ export const basicCoins: BasicCoin[] = [
       [ChainId.MOR]: {
         address: '0xb44a9b6905af7c801311e8f4e76932ee959c663c',
         decimals: 6,
-      },
-      [ChainId.OKT]: {
-        address: '0x382bb369d343125bfb2117af9c149795c6c65c50',
-        decimals: 18,
       },
       [ChainId.CRO]: {
         address: '0x66e428c3f67a68878562e79a0234c1f83c208770',
@@ -432,10 +417,6 @@ export const basicCoins: BasicCoin[] = [
       [ChainId.HEC]: {
         address: '0x9362bbef4b8313a8aa9f0c9808b80577aa26b73b',
         decimals: 6,
-      },
-      [ChainId.OKT]: {
-        address: '0xc946daf81b08146b1c7a8da2a851ddf2b3eaaf85',
-        decimals: 18,
       },
       [ChainId.CRO]: {
         address: '0xc21223249ca28397b4b6541dffaecc539bff0c59',
