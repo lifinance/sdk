@@ -1,4 +1,8 @@
-import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
+import type {
+  ExtendedTransactionInfo,
+  FullStatusData,
+  Process,
+} from '@lifi/types'
 import type {
   Address,
   Hash,
@@ -49,11 +53,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
     this.multisig = options.multisig
   }
 
-  // TODO: add checkChain method and update wallet client inside executors
-  // This can come in handy when we execute multiple routes simultaneously and
-  // should be sure that we are on the right chain when waiting for transactions.
-  checkChain = async (
-    step: LiFiStepExtended
+  // Ensure that we are using the right chain and wallet when executing transactions.
+  checkWalletClient = async (
+    step: LiFiStepExtended,
+    process?: Process
   ): Promise<WalletClient | undefined> => {
     const updatedWalletClient = await switchChain(
       this.walletClient,
@@ -65,22 +68,48 @@ export class EVMStepExecutor extends BaseStepExecutor {
     if (updatedWalletClient) {
       this.walletClient = updatedWalletClient
     }
+
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (this.walletClient.account?.address !== step.action.fromAddress) {
+      let processToUpdate = process
+      if (!processToUpdate) {
+        // We need to create some process if we don't have one so we can show the error
+        processToUpdate = this.statusManager.findOrCreateProcess(
+          step,
+          'TRANSACTION'
+        )
+      }
+      const errorMessage =
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      this.statusManager.updateProcess(step, processToUpdate.type, 'FAILED', {
+        error: {
+          code: LiFiErrorCode.WalletChangedDuringExecution,
+          message: errorMessage,
+        },
+      })
+      this.statusManager.updateExecution(step, 'FAILED')
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        errorMessage
+      )
+    }
     return updatedWalletClient
   }
 
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
-    // Make sure that the chain is still correct
+    step.execution = this.statusManager.initExecutionObject(step)
 
     // Find if it's bridging and the step is waiting for a transaction on the receiving chain
     const recievingChainProcess = step.execution?.process.find(
       (process) => process.type === 'RECEIVING_CHAIN'
     )
 
+    // Make sure that the chain is still correct
     // If the step is waiting for a transaction on the receiving chain, we do not switch the chain
     // All changes are already done from the source chain
     // Return the step
     if (recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
-      const updatedWalletClient = await this.checkChain(step)
+      const updatedWalletClient = await this.checkWalletClient(step)
       if (!updatedWalletClient) {
         return step
       }
@@ -92,8 +121,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const shouldBatchTransactions =
       this.multisig?.shouldBatchTransactions &&
       !!this.multisig.sendBatchTransaction
-
-    step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await config.getChainById(step.action.fromChainId)
     const toChain = await config.getChainById(step.action.toChainId)
@@ -166,7 +193,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
         let txHash: Hash
         if (process.txHash) {
           // Make sure that the chain is still correct
-          const updatedWalletClient = await this.checkChain(step)
+          const updatedWalletClient = await this.checkWalletClient(
+            step,
+            process
+          )
           if (!updatedWalletClient) {
             return step
           }
@@ -209,7 +239,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
           // STEP 3: Send the transaction
           // Make sure that the chain is still correct
-          const updatedWalletClient = await this.checkChain(step)
+          const updatedWalletClient = await this.checkWalletClient(
+            step,
+            process
+          )
           if (!updatedWalletClient) {
             return step
           }
@@ -406,6 +439,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       )
     }
     let statusResponse: FullStatusData
+
     try {
       if (!processTxHash) {
         throw new Error('Transaction hash is undefined.')
