@@ -42,7 +42,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     if (this.walletAdapter.publicKey!.toString() !== step.action.fromAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet that requested the quote does not match the wallet attempting to sign the transaction.'
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
     }
   }
