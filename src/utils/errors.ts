@@ -27,6 +27,7 @@ export enum LiFiErrorCode {
   AllowanceRequired = 1014,
   InsufficientFunds = 1015,
   ExchangeRateUpdateCanceled = 1016,
+  WalletChangedDuringExecution = 1017,
 }
 
 export enum EthersErrorType {

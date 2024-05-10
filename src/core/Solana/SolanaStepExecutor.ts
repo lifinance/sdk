@@ -37,6 +37,16 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.walletAdapter = options.walletAdapter
   }
 
+  checkWalletAdapter = (step: LiFiStepExtended) => {
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (this.walletAdapter.publicKey!.toString() !== step.action.fromAddress) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+  }
+
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
@@ -130,6 +140,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
               c.charCodeAt(0)
             )
           )
+
+          this.checkWalletAdapter(step)
+
           txHash = await this.walletAdapter.sendTransaction(
             versionedTransaction,
             connection,

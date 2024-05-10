@@ -143,6 +143,12 @@ export const parseError = async (
         e.message,
         e.htmlMessage
       )
+    case LiFiErrorCode.WalletChangedDuringExecution:
+      return new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        e.message,
+        e.htmlMessage
+      )
     default: {
       if (errorCode && typeof errorCode === 'number') {
         if (Object.values(MetaMaskErrorCodes.rpc).includes(errorCode as any)) {
