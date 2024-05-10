@@ -87,9 +87,13 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
       continue
     }
 
-    // Update amount using output of previous execution. In the future this should be handled by calling `updateRoute`
+    // Update step fromAmount using output of the previous step execution. In the future this should be handled by calling `updateRoute`
     if (previousStep?.execution?.toAmount) {
       step.action.fromAmount = previousStep.execution.toAmount
+      if (step.includedSteps?.length) {
+        step.includedSteps[0].action.fromAmount =
+          previousStep.execution.toAmount
+      }
     }
 
     try {
