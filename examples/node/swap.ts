@@ -1,4 +1,4 @@
-import { findDefaultToken } from '@lifi/data-types'
+import * as lifiDataTypes from '@lifi/data-types'
 import type { Execution, ExecutionSettings, Route, SDKOptions } from '@lifi/sdk'
 import { ChainId, CoinKey } from '@lifi/sdk'
 import 'dotenv/config'
@@ -7,6 +7,8 @@ import { getLifi, getSigner, promptConfirm } from './helpers'
 
 console.log('>> Starting Demo')
 
+const dataTypes = (lifiDataTypes as any).default
+
 const mnemonic = process.env.MNEMONIC || ''
 
 async function demo() {
@@ -14,9 +16,11 @@ async function demo() {
   const routeRequest = {
     fromChainId: ChainId.AVA, // Avalanche
     fromAmount: '100000', // 1 USDT
-    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.AVA).address,
+    fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.AVA)
+      .address,
     toChainId: ChainId.AVA, // Avalanche
-    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.AVA).address,
+    toTokenAddress: dataTypes.findDefaultToken(CoinKey.USDT, ChainId.AVA)
+      .address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain
@@ -41,8 +45,6 @@ async function demo() {
 
   console.log('>> Initialize LiFi')
 
-  const wallet = await getSigner(ChainId.AVA)
-
   const lifi = getLifi(optionalConfigs)
 
   console.log('>> Initialized, Requesting route')
@@ -58,6 +60,8 @@ async function demo() {
   console.log('>> Start Execution')
 
   // These are optonal settings for execution ------------------------------------
+  const wallet = await getSigner(ChainId.AVA)
+
   const settings: ExecutionSettings = {
     updateRouteHook: (updatedRoute) => {
       let lastExecution: Execution | undefined = undefined

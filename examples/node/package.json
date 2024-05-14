@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Sample project to showcase the usage of @lifi/sdk",
-  "main": "index.js",
+  "main": "swap.ts",
   "author": "Max Klenk <max@li.finance>",
   "license": "MIT",
   "dependencies": {
@@ -14,11 +14,11 @@
     "dotenv": "^16.3.1"
   },
   "scripts": {
-    "run-ts": "ts-node swap.ts"
+    "start": "tsx ."
   },
   "devDependencies": {
     "@types/node": "^20.5.9",
-    "ts-node": "^10.9.1",
+    "tsx": "^4.10.2",
     "typescript": "^5.2.2"
   }
 }
