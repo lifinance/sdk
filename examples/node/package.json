@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Sample project to showcase the usage of @lifi/sdk",
-  "main": "example-evm.ts",
+  "main": "examples/swap.ts",
   "author": "Max Klenk <max@li.finance>",
   "license": "MIT",
   "dependencies": {
@@ -17,7 +17,7 @@
     "viem": "2.x"
   },
   "scripts": {
-    "start": "tsx ./example-evm.ts"
+    "example:swap": "tsx examples/swap.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
