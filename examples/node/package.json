@@ -17,7 +17,8 @@
     "viem": "2.x"
   },
   "scripts": {
-    "example:swap": "tsx examples/swap.ts"
+    "example:swap": "tsx examples/swap.ts",
+    "example:bridge": "tsx examples/bridge.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
