@@ -9,6 +9,7 @@ import {
   Execution,
 } from '@lifi/sdk'
 import { promptConfirm } from '../helpers/promptConfirm'
+import type { PrivateKeyAccount, Address } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet } from 'viem/chains'
@@ -17,7 +18,14 @@ import 'dotenv/config'
 const dataTypes = (lifiDataTypes as any).default
 
 console.info('>> Starting Demo')
-const getRequestRoute = () => ({
+
+// NOTE: we add the wallet address to the route request.
+// This means that any route responses will feature that address for
+// use in route execution.
+// In the example below we are exchanging USDC and USDT tokens on Ethereum
+const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
+  toAddress: address,
+  fromAddress: address,
   fromChainId: ChainId.ETH, // Ethereum
   fromAmount: '100000', // 1 USDT
   fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.ETH)
@@ -29,11 +37,7 @@ const getRequestRoute = () => ({
     allowSwitchChain: false, // execute all transaction on starting chain
   },
 })
-const setUpSDK = () => {
-  const privateKey = process.env.PRIVATE_KEY
-
-  const account = privateKeyToAccount(privateKey as `0x${string}`)
-
+const setUpSDK = (account: PrivateKeyAccount) => {
   const client = createWalletClient({
     account,
     chain: mainnet,
@@ -50,16 +54,22 @@ const setUpSDK = () => {
   })
 }
 async function run() {
+  const privateKey = process.env.PRIVATE_KEY as Address
+
+  // NOTE: Here we are using the private key to get the account,
+  // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
+  const account = privateKeyToAccount(privateKey)
+
   console.info('>> Initialize LiFi SDK')
-  setUpSDK()
+  setUpSDK(account)
 
   console.info('>> Initialized, Requesting route')
-  const routeRequest = getRequestRoute()
+  const routeRequest = getRequestRoute(account)
 
   const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
-  console.info('>> Got Route')
+  console.info('>> Got Route', JSON.stringify(route, null, 2))
 
   if (!(await promptConfirm('Execute Route?'))) {
     return
