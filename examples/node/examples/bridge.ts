@@ -17,8 +17,6 @@ import 'dotenv/config'
 
 const dataTypes = (lifiDataTypes as any).default
 
-console.info('>> Starting Demo')
-
 // NOTE: we add the wallet address to the route request.
 // This means that any route responses will feature that address for
 // use in route execution.
@@ -36,6 +34,8 @@ const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
     slippage: 0.03, // = 3%
   },
 })
+
+// TODO: look at code reuse when all example finshed
 const setUpSDK = (account: PrivateKeyAccount) => {
   const client = createWalletClient({
     account,
@@ -43,7 +43,7 @@ const setUpSDK = (account: PrivateKeyAccount) => {
     transport: http(),
   })
 
-  // When bridging it is common to have to perform operations on multiple chains
+  // We need to perform operations on multiple chains
   // The switch chain function below facilitates this
   const chains = [mainnet, arbitrum, optimism, polygon]
 
@@ -92,6 +92,7 @@ async function run() {
 
   console.info('>> Start Execution')
 
+  // TODO: clean up
   const executionOptions = {
     updateRouteHook: (updatedRoute) => {
       let lastExecution: Execution | undefined = undefined
@@ -107,5 +108,7 @@ async function run() {
 
   console.info('>> Done')
 }
+
+console.info('>> Starting Bridge Demo')
 
 run()

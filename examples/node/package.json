@@ -18,7 +18,8 @@
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
-    "example:bridge": "tsx examples/bridge.ts"
+    "example:bridge": "tsx examples/bridge.ts",
+    "example:multihop": "tsx --no-cache examples/multihop-new.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",

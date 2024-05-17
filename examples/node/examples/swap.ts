@@ -17,8 +17,6 @@ import 'dotenv/config'
 
 const dataTypes = (lifiDataTypes as any).default
 
-console.info('>> Starting Demo')
-
 // NOTE: we add the wallet address to the route request.
 // This means that any route responses will feature that address for
 // use in route execution.
@@ -37,6 +35,8 @@ const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
     allowSwitchChain: false, // execute all transaction on starting chain
   },
 })
+
+// TODO: look at code reuse when all example finshed
 const setUpSDK = (account: PrivateKeyAccount) => {
   const client = createWalletClient({
     account,
@@ -77,6 +77,7 @@ async function run() {
 
   console.info('>> Start Execution')
 
+  // TODO: clean up
   const executionOptions = {
     updateRouteHook: (updatedRoute) => {
       let lastExecution: Execution | undefined = undefined
@@ -92,5 +93,7 @@ async function run() {
 
   console.info('>> Done')
 }
+
+console.info('>> Starting Swap Demo')
 
 run()
