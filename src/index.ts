@@ -1,6 +1,8 @@
 export * from '@lifi/types'
 export { config } from './config.js'
 export { EVM } from './core/EVM/EVM.js'
+export { getTokenAllowance } from './core/EVM/getAllowance.js'
+export { setTokenAllowance } from './core/EVM/setAllowance.js'
 export type {
   MultisigConfig,
   MultisigTransaction,
