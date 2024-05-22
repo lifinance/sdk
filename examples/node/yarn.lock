@@ -700,24 +700,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lifi/sdk@npm:^3.0.0-alpha.61":
-  version: 3.0.0-alpha.61
-  resolution: "@lifi/sdk@npm:3.0.0-alpha.61"
+"@lifi/sdk@npm:^3.0.0-alpha.62":
+  version: 3.0.0-alpha.62
+  resolution: "@lifi/sdk@npm:3.0.0-alpha.62"
   dependencies:
-    "@lifi/types": "npm:^13.1.0"
+    "@lifi/types": "npm:^13.3.0"
     "@solana/wallet-adapter-base": "npm:^0.9.23"
     "@solana/web3.js": "npm:^1.91.8"
     eth-rpc-errors: "npm:^4.0.3"
-    viem: "npm:^2.10.3"
+    viem: "npm:^2.11.0"
   peerDependencies:
     "@solana/wallet-adapter-base": ^0.9.0
     "@solana/web3.js": ^1.91.0
     viem: ^2.10.0
-  checksum: 10/f8149c8d42b4217f487394b28e329158b0d1810dabae5f77604e4aa4cb5b50d68ee82458070a050543122b24db3c2eeace1dc1fe9beb155b8868c451e8f348fa
+  checksum: 10/d260664a1c9384cf83dc0f2959853782828eb30c0c8b7d5907cc6cbcfd4bfdb8a9aad818393356e5734f5149913515c649135a4e497f452a860d64a2ba4bee04
   languageName: node
   linkType: hard
 
-"@lifi/types@npm:^13.1.0, @lifi/types@npm:^13.3.0":
+"@lifi/types@npm:^13.3.0":
   version: 13.3.0
   resolution: "@lifi/types@npm:13.3.0"
   checksum: 10/8eb24a10716c46233c22b6beaacf1fd59b37a4d8edef0b01198169dabbfdb73d72db18445fa2d853bdb3d513c0a3ac9611fa9cf6c8b7ae1c600622a1fa5dddb0
@@ -4006,6 +4006,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"isows@npm:1.0.4":
+  version: 1.0.4
+  resolution: "isows@npm:1.0.4"
+  peerDependencies:
+    ws: "*"
+  checksum: 10/a3ee62e3d6216abb3adeeb2a551fe2e7835eac87b05a6ecc3e7739259bf5f8e83290501f49e26137390c8093f207fc3378d4a7653aab76ad7bbab4b2dba9c5b9
+  languageName: node
+  linkType: hard
+
 "jackspeak@npm:^2.0.3":
   version: 2.3.3
   resolution: "jackspeak@npm:2.3.3"
@@ -4127,7 +4136,7 @@ __metadata:
   dependencies:
     "@lifi/data-types": "npm:^4.2.1"
     "@lifi/rpc-wrapper": "npm:^0.0.27"
-    "@lifi/sdk": "npm:^3.0.0-alpha.61"
+    "@lifi/sdk": "npm:^3.0.0-alpha.62"
     "@types/dotenv": "npm:^8.2.0"
     "@types/node": "npm:^20.12.12"
     "@wagmi/connectors": "npm:^4.3.9"
@@ -4135,7 +4144,7 @@ __metadata:
     dotenv: "npm:^16.4.5"
     tsx: "npm:^4.10.2"
     typescript: "npm:^5.4.5"
-    viem: "npm:2.x"
+    viem: "npm:^2.10.0"
   languageName: unknown
   linkType: soft
 
@@ -5915,27 +5924,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:2.x, viem@npm:^2.10.3":
-  version: 2.10.5
-  resolution: "viem@npm:2.10.5"
-  dependencies:
-    "@adraffy/ens-normalize": "npm:1.10.0"
-    "@noble/curves": "npm:1.2.0"
-    "@noble/hashes": "npm:1.3.2"
-    "@scure/bip32": "npm:1.3.2"
-    "@scure/bip39": "npm:1.2.1"
-    abitype: "npm:1.0.0"
-    isows: "npm:1.0.3"
-    ws: "npm:8.13.0"
-  peerDependencies:
-    typescript: ">=5.0.4"
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-  checksum: 10/8ef40085caf77a2414c6d5d8b14c49d086534f8300d0a47645722a062deede12a0b22d8d9a18597a25f8892e4c479e7b9ebb3f7387f58aff9854fb0508e30a3b
-  languageName: node
-  linkType: hard
-
 "viem@npm:^1.0.0, viem@npm:^1.1.4":
   version: 1.21.4
   resolution: "viem@npm:1.21.4"
@@ -5954,6 +5942,27 @@ __metadata:
     typescript:
       optional: true
   checksum: 10/2007a8a674301d790b3172a0a84bd1659f76332ac13a78d695f7cee0602388103a07b2d6a3fc46b4f27582f8b506f7c1f90f13c5e21e464daffc6cccb14fbc3a
+  languageName: node
+  linkType: hard
+
+"viem@npm:^2.10.0, viem@npm:^2.11.0":
+  version: 2.11.1
+  resolution: "viem@npm:2.11.1"
+  dependencies:
+    "@adraffy/ens-normalize": "npm:1.10.0"
+    "@noble/curves": "npm:1.2.0"
+    "@noble/hashes": "npm:1.3.2"
+    "@scure/bip32": "npm:1.3.2"
+    "@scure/bip39": "npm:1.2.1"
+    abitype: "npm:1.0.0"
+    isows: "npm:1.0.4"
+    ws: "npm:8.13.0"
+  peerDependencies:
+    typescript: ">=5.0.4"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 10/1dc5d1455d006e5788e865e6e8a702e7dcf8cd2ca5cdfecc2dccf5886a579044fc8e0915f6a53e6a5db82e52f8660d6cf1d18dfcf75486fde6cea379d02cbb8b
   languageName: node
   linkType: hard
 

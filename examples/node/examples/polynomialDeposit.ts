@@ -23,7 +23,7 @@ const getPolynomialQuote = async (
   const POLYNOMIAL_GAS_LIMIT = '200000'
 
   // contract call
-  const contract = new ethers.Contract(
+  const contract = new ethers.Contract( // TODO: question: is there a viem equivalent? Also doing this in the klima example
     POLYNOMIAL_ETHEREUM_CONTRACT_OPT,
     POLYNOMIAL_ABI
   )
@@ -57,7 +57,7 @@ const run = async () => {
   const amount = ethers.utils.parseEther('0.04').toString()
 
   try {
-    const signer = await getSigner(fromChain)
+    const signer = await getSigner(fromChain) // TODO: set up SDK and use viem client here
     // get quote
     const quote = await getPolynomialQuote(
       fromChain,
@@ -73,7 +73,7 @@ const run = async () => {
     }
 
     // execute quote
-    await executeCrossChainQuote(signer, quote)
+    await executeCrossChainQuote(signer, quote) // TODO: use new version as with Multihop
   } catch (e) {
     console.error(e)
   }

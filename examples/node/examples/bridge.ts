@@ -9,7 +9,7 @@ import {
   Execution,
 } from '@lifi/sdk'
 import { promptConfirm } from '../helpers/promptConfirm'
-import type { PrivateKeyAccount, Address } from 'viem'
+import type { PrivateKeyAccount, Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
@@ -39,7 +39,7 @@ const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
 const setUpSDK = (account: PrivateKeyAccount) => {
   const client = createWalletClient({
     account,
-    chain: mainnet,
+    chain: optimism as Chain,
     transport: http(),
   })
 
@@ -60,7 +60,7 @@ const setUpSDK = (account: PrivateKeyAccount) => {
                 if (chain.id == chainId) {
                   return chain
                 }
-              }),
+              }) as Chain,
               transport: http(),
             })
           ),

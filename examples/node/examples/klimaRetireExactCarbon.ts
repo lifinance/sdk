@@ -27,8 +27,8 @@ const getKlimaQuote = async (
   const KLIMA_GAS_LIMIT = '1300000'
 
   // setup contract
-  const provider = await getLifi().getRpcProvider(ChainId.POL)
-  const contract = new ethers.Contract(
+  const provider = await getLifi().getRpcProvider(ChainId.POL) // TODO: question: what to replace this with
+  const contract = new ethers.Contract( // TODO: question: is there a viem equivalent?
     KLIMA_ETHEREUM_CONTRACT_OPT,
     KLIMA_ABI,
     provider
@@ -68,7 +68,7 @@ const getKlimaQuote = async (
     toContractGasLimit: KLIMA_GAS_LIMIT,
   }
 
-  return getLifi().getContractCallQuote(quoteRequest)
+  return getLifi().getContractCallQuote(quoteRequest) // TODO: move this to use getContractCallsQuote function as in Multihop
 }
 
 const run = async () => {
@@ -76,11 +76,11 @@ const run = async () => {
 
   // config
   const fromChain = ChainId.OPT
-  const fromToken = ethers.constants.AddressZero
-  const retireAmount = ethers.utils.parseEther('1').toString()
+  const fromToken = ethers.constants.AddressZero // TODO: remove ethers
+  const retireAmount = ethers.utils.parseEther('1').toString() // TODO: remove ethers
 
   try {
-    const signer = await getSigner(fromChain)
+    const signer = await getSigner(fromChain) // TODO: set up SDK with viem
     // get quote
     const quote = await getKlimaQuote(
       fromChain,
@@ -96,7 +96,7 @@ const run = async () => {
     }
 
     // execute quote
-    await executeCrossChainQuote(signer, quote)
+    await executeCrossChainQuote(signer, quote) // TODO: use new version as with Multihop
   } catch (e) {
     console.error(e)
   }
