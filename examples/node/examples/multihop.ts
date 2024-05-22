@@ -15,7 +15,6 @@ import {
 import { promptConfirm } from '../helpers/promptConfirm'
 import type { PrivateKeyAccount, Address, Chain } from 'viem'
 import { createWalletClient, http, fromHex, publicActions } from 'viem'
-
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
@@ -139,7 +138,7 @@ const run = async () => {
     // TODO: question: is there a clearer way to declare the start, intermediate and destination chain?
     const quoteConfig = {
       fromChain: ChainId.ARB,
-      fromToken: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.ARB).address, // USDC on avalanche
+      fromToken: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.ARB).address, // USDC on arbitrum
       toChain: ChainId.OPT,
       toToken: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
       amount: '100000', // 1 usd

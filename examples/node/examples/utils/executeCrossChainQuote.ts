@@ -2,8 +2,7 @@ import type { LiFiStep, StatusResponse } from '@lifi/sdk'
 import { getTokenAllowance, setTokenAllowance, getStatus } from '@lifi/sdk'
 import type { WalletClientWithPublicActions } from '../types'
 import { executeTransaction } from './executeTransaction'
-
-const AddressZero = '0x0000000000000000000000000000000000000000'
+import { AddressZero } from '../constants'
 
 export const retryCount = 20
 
@@ -37,14 +36,14 @@ export const executeCrossChainQuote = async (
       })
 
       if (txHash) {
-        const transcationReceipt = await client.waitForTransactionReceipt({
+        const transactionReceipt = await client.waitForTransactionReceipt({
           hash: txHash,
           retryCount,
           retryDelay,
         })
 
         console.info(
-          `>> Set Token Allowance - transaction complete: amount: ${quote.action.fromToken} txHash: ${transcationReceipt.transactionHash}.`
+          `>> Set Token Allowance - transaction complete: amount: ${quote.action.fromToken} txHash: ${transactionReceipt.transactionHash}.`
         )
       }
     }

@@ -15,7 +15,7 @@ export MNEMONIC="..."
 Either the TypeScript version:
 
 ```bash
-ts-node index.ts
+ts-node types.ts
 ```
 
 Or the Javascript version:

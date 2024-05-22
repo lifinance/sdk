@@ -20,8 +20,8 @@
     "example:swap": "tsx examples/swap.ts",
     "example:bridge": "tsx examples/bridge.ts",
     "example:multihop": "tsx examples/multihop.ts",
-    "example:kilma": "tsx examples/klimaRetireExactCarbon.ts",
-    "example:polynomial": "tsx examples/polynomialDeposit.ts"
+    "example:kilma": "tsx examples/klimaRetireExactCarbon-new.ts",
+    "example:polynomial": "tsx examples/polynomialDeposit-new.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
