@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.5.2](https://github.com/lifinance/sdk/compare/v2.5.1...v2.5.2) (2024-05-22)
+
+
+### Bug Fixes
+
+* update step fromAmount using output of the previous step execution ([#188](https://github.com/lifinance/sdk/issues/188)) ([28d28ae](https://github.com/lifinance/sdk/commit/28d28ae0c1c664f2b1e737f0ed874b803f802abf))
+
 ### [2.5.1](https://github.com/lifinance/sdk/compare/v2.5.0...v2.5.1) (2024-03-21)
 
 
