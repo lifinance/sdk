@@ -4,7 +4,6 @@ import type {
   Process,
 } from '@lifi/types'
 import type {
-  Address,
   Hash,
   PublicClient,
   ReplacementReason,
@@ -258,14 +257,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
           }
 
           let transactionRequest: TransactionParameters = {
-            to: step.transactionRequest.to as Hash,
-            from: step.transactionRequest.from as Hash,
-            data: step.transactionRequest.data as Hash,
+            to: step.transactionRequest.to,
+            from: step.transactionRequest.from,
+            data: step.transactionRequest.data,
             value: step.transactionRequest.value
-              ? BigInt(step.transactionRequest.value as string)
+              ? BigInt(step.transactionRequest.value)
               : undefined,
             gas: step.transactionRequest.gasLimit
-              ? BigInt(step.transactionRequest.gasLimit as string)
+              ? BigInt(step.transactionRequest.gasLimit)
               : undefined,
             // gasPrice: step.transactionRequest.gasPrice
             //   ? BigInt(step.transactionRequest.gasPrice as string)
@@ -279,9 +278,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
                     this.walletClient.extend(publicActions) as PublicClient
                   )
                 : step.transactionRequest.maxPriorityFeePerGas
-                  ? BigInt(
-                      step.transactionRequest.maxPriorityFeePerGas as string
-                    )
+                  ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
                   : undefined,
           }
 
@@ -318,7 +315,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
             }
           } else {
             txHash = await this.walletClient.sendTransaction({
-              to: transactionRequest.to as Address,
+              to: transactionRequest.to,
               account: this.walletClient.account!,
               data: transactionRequest.data,
               value: transactionRequest.value,

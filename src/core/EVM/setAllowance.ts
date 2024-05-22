@@ -1,5 +1,4 @@
 import type {
-  Address,
   Hash,
   PublicClient,
   SendTransactionParameters,
@@ -55,7 +54,7 @@ export const setAllowance = async (
   }
 
   return client.sendTransaction({
-    to: transactionRequest.to as Address,
+    to: transactionRequest.to,
     account: walletClient.account!,
     data: transactionRequest.data,
     gas: transactionRequest.gas,
