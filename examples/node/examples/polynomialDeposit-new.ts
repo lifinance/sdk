@@ -9,7 +9,7 @@ import {
 import { ethers } from 'ethers'
 import { promptConfirm } from '../helpers'
 import type { PrivateKeyAccount, Address, Chain } from 'viem'
-import { createWalletClient, fromHex, http, publicActions } from 'viem'
+import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { WalletClientWithPublicActions } from './types'
@@ -19,6 +19,7 @@ import { AddressZero } from './constants'
 const getPolynomialQuote = async (
   fromChain: ChainId,
   fromToken: string,
+  client: WalletClientWithPublicActions,
   userAddress: string,
   amount: string
 ): Promise<LiFiStep> => {
@@ -30,11 +31,13 @@ const getPolynomialQuote = async (
   ]
   const POLYNOMIAL_GAS_LIMIT = '200000'
 
-  // contract call
-  const contract = new ethers.Contract( // TODO: question: how do we do this without ethers?
+  // TODO: question: how do we do this without ethers?
+  // // contract call
+  const contract = new ethers.Contract(
     POLYNOMIAL_ETHEREUM_CONTRACT_OPT,
     POLYNOMIAL_ABI
   )
+  //
   const stakeTx = await contract.populateTransaction.initiateDeposit(
     userAddress,
     amount
@@ -53,7 +56,7 @@ const getPolynomialQuote = async (
     toContractGasLimit: POLYNOMIAL_GAS_LIMIT,
   }
 
-  // Should be ContractCallsQuoteRequest
+  // TODO: Should be ContractCallsQuoteRequest?
   // const quoteRequest: ContractCallsQuoteRequest = {
   //   fromChain,
   //   fromToken,
@@ -139,6 +142,7 @@ const run = async () => {
     const quote = await getPolynomialQuote(
       fromChain,
       fromToken,
+      client,
       account.address,
       amount
     )

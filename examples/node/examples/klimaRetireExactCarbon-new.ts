@@ -3,11 +3,12 @@ import { createConfig, ChainId, EVM, getContractCallsQuote } from '@lifi/sdk'
 import { ethers } from 'ethers'
 import { promptConfirm } from '../helpers'
 import type { PrivateKeyAccount, Address, Chain } from 'viem'
-import { createWalletClient, http, publicActions } from 'viem'
+import { createWalletClient, http, publicActions, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { WalletClientWithPublicActions } from './types'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
+import { AddressZero } from './constants'
 
 const getKlimaQuote = async (
   fromChain: ChainId,
@@ -30,6 +31,7 @@ const getKlimaQuote = async (
 
   // setup contract
   const provider = await getLifi().getRpcProvider(ChainId.POL) // TODO: question: what to replace this with
+
   const contract = new ethers.Contract( // TODO: question: how do we do this without ethers?
     KLIMA_ETHEREUM_CONTRACT_OPT,
     KLIMA_ABI,
@@ -42,8 +44,22 @@ const getKlimaQuote = async (
     BCT_POL, // address poolToken,
     retireAmount // uint256 retireAmount,
   )
+
+  // viem version?
+  // const getUsdcAmountResult = await client.readContract({
+  //   address: KLIMA_ETHEREUM_CONTRACT_OPT,
+  //   abi: KLIMA_ABI,
+  //   functionName: 'getSourceAmountDefaultRetirement',
+  //   args: [
+  //     USDC_POL, // address sourceToken,
+  //     BCT_POL, // address poolToken,
+  //     retireAmount, // uint256 retireAmount,
+  //   ],
+  // })
+
   const usdcAmount = getUsdcAmountResult.toString()
 
+  // TODO: how to do this with viem?
   // contract call
   const retireTx = await contract.populateTransaction.retireExactCarbonDefault(
     USDC_POL, // address sourceToken,
@@ -70,7 +86,7 @@ const getKlimaQuote = async (
     toContractGasLimit: KLIMA_GAS_LIMIT,
   }
 
-  // Should be ContractCallsQuoteRequest
+  // TODO: Should be ContractCallsQuoteRequest?
   // const quoteRequest: ContractCallsQuoteRequest = {
   //   fromChain,
   //   fromToken,
@@ -146,8 +162,8 @@ const run = async () => {
 
   // config
   const fromChain = ChainId.OPT
-  const fromToken = ethers.constants.AddressZero // TODO: remove ethers
-  const retireAmount = ethers.utils.parseEther('1').toString() // TODO: remove ethers
+  const fromToken = AddressZero
+  const retireAmount = parseEther('1').toString()
 
   try {
     // get quote
@@ -166,8 +182,8 @@ const run = async () => {
     }
 
     // execute quote
-    await executeCrossChainQuote(client, account.address, quote)
     // await executeCrossChainQuote(signer, quote) // TODO: use new version as with Multihop
+    await executeCrossChainQuote(client, account.address, quote)
   } catch (e) {
     console.error(e)
   }

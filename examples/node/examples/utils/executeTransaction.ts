@@ -26,12 +26,12 @@ export const executeTransaction = async (
       ? BigInt(transactionRequest.maxPriorityFeePerGas as string)
       : undefined,
     kzg: undefined,
-    chain: undefined,
+    chain: null,
   })
 
   console.info('>> Transaction sent', hash)
 
-  const transactionReceipt = await client.getTransactionReceipt({
+  const transactionReceipt = await client.waitForTransactionReceipt({
     hash,
   })
 
