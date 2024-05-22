@@ -23,7 +23,7 @@ const getPolynomialQuote = async (
   const POLYNOMIAL_GAS_LIMIT = '200000'
 
   // contract call
-  const contract = new ethers.Contract( // TODO: question: is there a viem equivalent? Also doing this in the klima example
+  const contract = new ethers.Contract( // TODO: question: how do we do this without ethers?
     POLYNOMIAL_ETHEREUM_CONTRACT_OPT,
     POLYNOMIAL_ABI
   )

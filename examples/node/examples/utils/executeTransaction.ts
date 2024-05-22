@@ -11,9 +11,7 @@ export const executeTransaction = async (
   const hash = await client.sendTransaction({
     to: transactionRequest.to as Address,
     account: client.account!,
-    value: transactionRequest.value
-      ? BigInt(transactionRequest.value as string)
-      : undefined,
+    value: transactionRequest.value ? transactionRequest.value : undefined,
     data: transactionRequest.data as Hash,
     gas: transactionRequest.gasLimit
       ? BigInt(transactionRequest.gasLimit as string)
@@ -28,7 +26,7 @@ export const executeTransaction = async (
       ? BigInt(transactionRequest.maxPriorityFeePerGas as string)
       : undefined,
     kzg: undefined,
-    chain: null,
+    chain: undefined,
   })
 
   console.info('>> Transaction sent', hash)

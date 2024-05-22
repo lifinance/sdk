@@ -28,7 +28,7 @@ const getKlimaQuote = async (
 
   // setup contract
   const provider = await getLifi().getRpcProvider(ChainId.POL) // TODO: question: what to replace this with
-  const contract = new ethers.Contract( // TODO: question: is there a viem equivalent?
+  const contract = new ethers.Contract( // TODO: question: how do we do this without ethers?
     KLIMA_ETHEREUM_CONTRACT_OPT,
     KLIMA_ABI,
     provider
