@@ -90,7 +90,7 @@ const getMultihopQuote = async ({
 const setUpSDK = (account: PrivateKeyAccount) => {
   const client = createWalletClient({
     account,
-    chain: mainnet,
+    chain: arbitrum,
     transport: http(),
   }).extend(publicActions)
 
