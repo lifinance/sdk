@@ -20,10 +20,11 @@
     "example:swap": "tsx examples/swap.ts",
     "example:bridge": "tsx examples/bridge.ts",
     "example:multihop": "tsx examples/multihop.ts",
-    "example:kilma": "tsx examples/klimaRetireExactCarbon-new.ts",
-    "example:polynomial": "tsx examples/polynomialDeposit-new.ts",
-    "test:kilma1": "tsx test-examples/read-contract-klima-example.ts",
-    "test:viem": "tsx test-examples/read-contract-viem-example.ts"
+    "example:klima": "tsx examples/klimaRetireExactCarbon.ts",
+    "example:polynomial": "tsx examples/polynomialDeposit.ts",
+    "test:klima": "tsx temp-test-examples/read-contract-klima-example.ts",
+    "test:polynomial": "tsx temp-test-examples/read-contract-polynomial-example.ts",
+    "test:viem": "tsx temp-test-examples/read-contract-viem-example.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
