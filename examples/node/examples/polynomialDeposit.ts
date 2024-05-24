@@ -58,7 +58,7 @@ const getPolynomialQuote = async (
 const run = async () => {
   console.info('>> Starting Polynomial Demo: Deposit sETH on Optimism')
   // configure the chain token and amount to be used
-  const fromChain = ChainId.ETH
+  const fromChain = ChainId.ETH // TODO: consider changing this to optimism?
   const fromToken = AddressZero
   const amount = parseEther('0.04').toString()
 

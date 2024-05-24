@@ -16,9 +16,6 @@ import 'dotenv/config'
 
 const dataTypes = (lifiDataTypes as any).default
 
-// NOTE: we add the wallet address to the route request.
-// This means that any route responses will feature that address for
-// use in route execution.
 // In the example below we are exchanging USDC and USDT tokens on Optimism
 const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
   toAddress: address,
@@ -82,7 +79,7 @@ async function run() {
           return step.execution
         }
       }, undefined)
-      console.log(lastExecution)
+      console.info(lastExecution)
     },
   }
   await executeRoute(route, executionOptions)

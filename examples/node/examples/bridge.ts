@@ -56,7 +56,7 @@ async function run() {
           return step.execution
         }
       }, undefined)
-      console.log(lastExecution)
+      console.info(lastExecution)
     },
   }
   await executeRoute(route, executionOptions)

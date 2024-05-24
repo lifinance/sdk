@@ -6,6 +6,7 @@ import {
   parseAbi,
   parseEther,
   encodeFunctionData,
+  Chain,
 } from 'viem'
 import { optimism } from 'viem/chains'
 import type { Address } from 'viem'
@@ -28,7 +29,7 @@ const run = async () => {
 
   const walletClient = createWalletClient({
     account,
-    chain: optimism,
+    chain: optimism as Chain,
     transport: http(),
   }).extend(publicActions)
 
