@@ -16,12 +16,8 @@ export const getRandomNumber = (min: number, max: number): number => {
 
 export const checkPackageUpdates = async (
   packageName?: string,
-  packageVersion?: string,
-  disableCheck?: boolean
+  packageVersion?: string
 ) => {
-  if (disableCheck || process.env.NODE_ENV !== 'development') {
-    return
-  }
   try {
     const pkgName = packageName ?? name
     const response = await request<{ version: string }>(

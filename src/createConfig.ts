@@ -13,7 +13,9 @@ function createBaseConfig(options: SDKConfig) {
     )
   }
   const _config = config.set(options)
-  checkPackageUpdates(name, version, options.disableVersionCheck)
+  if (!options.disableVersionCheck && process.env.NODE_ENV === 'development') {
+    checkPackageUpdates(name, version)
+  }
   return _config
 }
 
