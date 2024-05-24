@@ -1,16 +1,25 @@
+import * as lifiDataTypes from '@lifi/data-types'
 import type { ContractCallsQuoteRequest, LiFiStep } from '@lifi/sdk'
-import { ChainId, getContractCallsQuote } from '@lifi/sdk'
+import { ChainId, CoinKey, getContractCallsQuote } from '@lifi/sdk'
 import type { Chain } from 'viem'
-import { parseEther, parseAbi, getContract, encodeFunctionData } from 'viem'
+import {
+  parseAbi,
+  encodeFunctionData,
+  parseUnits,
+  createPublicClient,
+  http,
+} from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
 import { setUpSDK } from './utils/setUpSDK'
 import { WalletClientWithPublicActions } from './types'
-import { AddressZero } from './constants'
 
-const USDC_POL = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174'
-const BCT_POL = '0x2F800Db0fdb5223b3C3f354886d907A671414A7F'
+const dataTypes = (lifiDataTypes as any).default
+
+const USDCe_POL = dataTypes.findDefaultToken(CoinKey.USDCe, ChainId.POL)
+
+const Base_Carbon_Tonne_POL = '0x2F800Db0fdb5223b3C3f354886d907A671414A7F'
 
 // https://docs.klimadao.finance/developers/contracts/retirement/v2-diamond/generalized-retirement
 const KLIMA_ETHEREUM_CONTRACT_POL = '0x8cE54d9625371fb2a068986d32C85De8E6e995f8'
@@ -29,30 +38,35 @@ const getKlimaQuote = async (
 ): Promise<LiFiStep> => {
   const abi = parseAbi(KLIMA_ABI)
 
-  const contract = getContract({
-    address: KLIMA_ETHEREUM_CONTRACT_POL,
-    abi,
-    client: client as any,
+  const publicClient = createPublicClient({
+    chain: polygon,
+    transport: http(),
   })
 
-  console.info('>> got contract:', contract)
+  const sourceAmountDefaultRetirement = await publicClient.readContract({
+    address: KLIMA_ETHEREUM_CONTRACT_POL,
+    abi,
+    functionName: 'getSourceAmountDefaultRetirement',
+    args: [
+      USDCe_POL.address, // address sourceToken,
+      Base_Carbon_Tonne_POL, // address poolToken,
+      retireAmount, // uint256 retireAmount,
+    ],
+  })
 
-  const sourceAmountDefaultRetirement = await (
-    contract as any
-  ).read.getSourceAmountDefaultRetirement([
-    USDC_POL, // address sourceToken,
-    BCT_POL, // address poolToken,
-    retireAmount, // uint256 retireAmount,
-  ])
+  const usdcAmount = parseUnits(
+    sourceAmountDefaultRetirement.toString(),
+    USDCe_POL.decimals
+  ).toString()
 
-  const usdcAmount = sourceAmountDefaultRetirement.toString()
+  console.log('>> usdcAmount', usdcAmount)
 
   const retireTxData = encodeFunctionData({
     abi,
     functionName: 'retireExactCarbonDefault',
     args: [
-      USDC_POL, // address sourceToken,
-      BCT_POL, // address poolToken,
+      USDCe_POL.address, // address sourceToken,
+      Base_Carbon_Tonne_POL, // address poolToken,
       usdcAmount, // uint256 maxAmountIn,
       retireAmount, // uint256 retireAmount,
       'LI.FI', // string memory retiringEntityString,
@@ -69,12 +83,12 @@ const getKlimaQuote = async (
     fromToken,
     fromAddress: userAddress,
     toChain: ChainId.POL,
-    toToken: USDC_POL,
+    toToken: USDCe_POL.address,
     toAmount: usdcAmount,
     contractCalls: [
       {
-        fromAmount: usdcAmount, // TODO: is this the right value? not sure what it should be
-        fromTokenAddress: fromToken, // TODO: is this the right value? not sure what it should be
+        fromAmount: usdcAmount,
+        fromTokenAddress: USDCe_POL.address,
         toContractAddress: KLIMA_ETHEREUM_CONTRACT_POL,
         toContractCallData: retireTxData,
         toContractGasLimit: KLIMA_GAS_LIMIT,
@@ -92,15 +106,18 @@ const run = async () => {
   console.info('>> Initialize LiFi SDK')
 
   const { client, account } = setUpSDK({
-    initialChain: polygon as Chain,
+    initialChain: optimism as Chain,
     switchChains: [mainnet, arbitrum, optimism, polygon] as Chain[],
     usePublicActions: true,
   })
 
   // config
   const fromChain = ChainId.OPT
-  const fromToken = AddressZero
-  const retireAmount = parseEther('1').toString()
+  const fromToken = dataTypes.findDefaultToken(
+    CoinKey.USDC,
+    ChainId.OPT
+  ).address
+  const retireAmount = '100000' // 1 USDC
 
   try {
     // get quote

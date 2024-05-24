@@ -21,10 +21,6 @@ export const executeCrossChainQuote = async (
       address,
       quote.estimate.approvalAddress
     )
-    // check approval
-    if (!approval) {
-      throw 'Failed to load approval'
-    }
 
     // set approval if needed
     if (approval < BigInt(quote.action.fromAmount)) {
