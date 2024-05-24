@@ -1,24 +1,17 @@
+import * as lifiDataTypes from '@lifi/data-types'
 import type {
   ContractCallsQuoteRequest,
   LiFiStep,
   QuoteRequest,
 } from '@lifi/sdk'
-import * as lifiDataTypes from '@lifi/data-types'
-import {
-  createConfig,
-  EVM,
-  CoinKey,
-  ChainId,
-  getQuote,
-  getContractCallsQuote,
-} from '@lifi/sdk'
-import { promptConfirm } from '../helpers/promptConfirm'
-import type { PrivateKeyAccount, Address, Chain } from 'viem'
-import { createWalletClient, http, fromHex, publicActions } from 'viem'
+import { CoinKey, ChainId, getQuote, getContractCallsQuote } from '@lifi/sdk'
+import type { Address, Chain } from 'viem'
+import { fromHex } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
-import { privateKeyToAccount } from 'viem/accounts'
+import { promptConfirm } from '../helpers/promptConfirm'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
-import 'dotenv/config'
+import { setUpSDK } from './utils/setUpSDK'
+import type { WalletClientWithPublicActions } from './types'
 
 const dataTypes = (lifiDataTypes as any).default
 interface GetMultihopQuoteParams {
@@ -86,54 +79,16 @@ const getMultihopQuote = async ({
   return getContractCallsQuote(quoteRequest)
 }
 
-// TODO: look at code reuse when all examples finished
-const setUpSDK = (account: PrivateKeyAccount) => {
-  const client = createWalletClient({
-    account,
-    chain: arbitrum,
-    transport: http(),
-  }).extend(publicActions)
-
-  // We need to perform operations on multiple chains
-  // The switch chain function below facilitates this
-  const chains = [mainnet, arbitrum, optimism, polygon]
-
-  createConfig({
-    integrator: 'lifi-sdk-example',
-    providers: [
-      EVM({
-        getWalletClient: () => Promise.resolve(client),
-        switchChain: (chainId) =>
-          Promise.resolve(
-            createWalletClient({
-              account,
-              chain: chains.find((chain) => {
-                if (chain.id == chainId) {
-                  return chain
-                }
-              }) as Chain,
-              transport: http(),
-            })
-          ),
-      }),
-    ],
-  })
-
-  return client
-}
-
 const run = async () => {
   console.info('>> Starting Multihop demo - route USDC.ARB to USDC.OPT')
 
   try {
-    const privateKey = process.env.PRIVATE_KEY as Address
-
-    // NOTE: Here we are using the private key to get the account,
-    // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
-    const account = privateKeyToAccount(privateKey)
-
     console.info('>> Initialize LiFi SDK')
-    const client = setUpSDK(account)
+    const { client, account } = setUpSDK({
+      initialChain: arbitrum,
+      switchChains: [mainnet, arbitrum, optimism, polygon] as Chain[],
+      usePublicActions: true,
+    })
 
     // TODO: question: is there a clearer way to declare the start, intermediate and destination chain?
     const quoteConfig = {
@@ -145,17 +100,18 @@ const run = async () => {
       address: account.address,
     }
 
-    // get quote
     const multiHopQuote = await getMultihopQuote(quoteConfig)
     console.info('>> got multihop quote', multiHopQuote)
 
-    // continue?
     if (!(await promptConfirm('Execute Quote?'))) {
       return
     }
 
-    // execute quote
-    await executeCrossChainQuote(client, account.address, multiHopQuote)
+    await executeCrossChainQuote(
+      client as WalletClientWithPublicActions,
+      account.address,
+      multiHopQuote
+    )
   } catch (e) {
     console.error(e)
   }

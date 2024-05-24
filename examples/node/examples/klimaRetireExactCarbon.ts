@@ -1,23 +1,13 @@
 import type { ContractCallsQuoteRequest, LiFiStep } from '@lifi/sdk'
-import { createConfig, ChainId, EVM, getContractCallsQuote } from '@lifi/sdk'
-import { promptConfirm } from '../helpers/promptConfirm'
-import type { PrivateKeyAccount, Address, Chain } from 'viem'
-import {
-  createWalletClient,
-  http,
-  publicActions,
-  parseEther,
-  parseAbi,
-  getContract,
-  encodeFunctionData,
-  createPublicClient,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { ChainId, getContractCallsQuote } from '@lifi/sdk'
+import type { Chain } from 'viem'
+import { parseEther, parseAbi, getContract, encodeFunctionData } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
-import { WalletClientWithPublicActions } from './types'
+import { promptConfirm } from '../helpers/promptConfirm'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
+import { setUpSDK } from './utils/setUpSDK'
+import { WalletClientWithPublicActions } from './types'
 import { AddressZero } from './constants'
-import 'dotenv/config'
 
 const USDC_POL = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174'
 const BCT_POL = '0x2F800Db0fdb5223b3C3f354886d907A671414A7F'
@@ -39,15 +29,10 @@ const getKlimaQuote = async (
 ): Promise<LiFiStep> => {
   const abi = parseAbi(KLIMA_ABI)
 
-  const publicClient = createPublicClient({
-    chain: polygon,
-    transport: http(),
-  })
-
   const contract = getContract({
     address: KLIMA_ETHEREUM_CONTRACT_POL,
     abi,
-    client: publicClient as any,
+    client: client as any,
   })
 
   console.info('>> got contract:', contract)
@@ -102,53 +87,15 @@ const getKlimaQuote = async (
   return getContractCallsQuote(quoteRequest)
 }
 
-// TODO: look at code reuse when all examples finished
-const setUpSDK = (account: PrivateKeyAccount) => {
-  const client = createWalletClient({
-    account,
-    chain: optimism as Chain,
-    transport: http(),
-  }).extend(publicActions)
-
-  // We need to perform operations on multiple chains
-  // The switch chain function below facilitates this
-  const chains = [mainnet, arbitrum, optimism, polygon]
-
-  createConfig({
-    integrator: 'lifi-sdk-example',
-    providers: [
-      EVM({
-        getWalletClient: () => Promise.resolve(client),
-        switchChain: (chainId) =>
-          Promise.resolve(
-            createWalletClient({
-              account,
-              chain: chains.find((chain) => {
-                if (chain.id == chainId) {
-                  return chain
-                }
-              }) as Chain,
-              transport: http(),
-            })
-          ),
-      }),
-    ],
-  })
-
-  return client
-}
-
 const run = async () => {
   console.info('>> Klima Retire Demo: Retire(burn) Carbon tokens to offset CO2')
-
-  const privateKey = process.env.PRIVATE_KEY as Address
-
-  // NOTE: Here we are using the private key to get the account,
-  // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
-  const account = privateKeyToAccount(privateKey)
-
   console.info('>> Initialize LiFi SDK')
-  const client = setUpSDK(account)
+
+  const { client, account } = setUpSDK({
+    initialChain: polygon as Chain,
+    switchChains: [mainnet, arbitrum, optimism, polygon] as Chain[],
+    usePublicActions: true,
+  })
 
   // config
   const fromChain = ChainId.OPT
@@ -160,7 +107,7 @@ const run = async () => {
     const quote = await getKlimaQuote(
       fromChain,
       fromToken,
-      client,
+      client as WalletClientWithPublicActions,
       account.address,
       retireAmount
     )
@@ -172,7 +119,11 @@ const run = async () => {
     }
 
     // execute quote
-    await executeCrossChainQuote(client, account.address, quote)
+    await executeCrossChainQuote(
+      client as WalletClientWithPublicActions,
+      account.address,
+      quote
+    )
   } catch (e) {
     console.error(e)
   }

@@ -1,21 +1,13 @@
 import type { ContractCallsQuoteRequest, LiFiStep } from '@lifi/sdk'
-import { ChainId, createConfig, EVM, getContractCallsQuote } from '@lifi/sdk'
-import type { Address, Chain, PrivateKeyAccount } from 'viem'
-import {
-  createWalletClient,
-  encodeFunctionData,
-  http,
-  parseAbi,
-  parseEther,
-  publicActions,
-} from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { ChainId, getContractCallsQuote } from '@lifi/sdk'
+import type { Chain, WalletClient } from 'viem'
+import { encodeFunctionData, parseAbi, parseEther } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { executeCrossChainQuote } from './utils/executeCrossChainQuote'
+import { setUpSDK } from './utils/setUpSDK'
 import { WalletClientWithPublicActions } from './types'
 import { AddressZero } from './constants'
-import 'dotenv/config'
 
 const sETH_OPT = '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49'
 const POLYNOMIAL_ETHEREUM_CONTRACT_OPT =
@@ -28,7 +20,7 @@ const POLYNOMIAL_GAS_LIMIT = '200000'
 const getPolynomialQuote = async (
   fromChain: ChainId,
   fromToken: string,
-  client: WalletClientWithPublicActions,
+  client: WalletClient,
   userAddress: string,
   amount: string
 ): Promise<LiFiStep> => {
@@ -58,65 +50,27 @@ const getPolynomialQuote = async (
     ],
   }
 
-  console.info('>> get contract calls quote', quoteRequest)
+  console.info('>> create contract calls quote request', quoteRequest)
 
   return getContractCallsQuote(quoteRequest)
 }
 
-// TODO: look at code reuse when all examples finished
-const setUpSDK = (account: PrivateKeyAccount) => {
-  const client = createWalletClient({
-    account,
-    chain: mainnet,
-    transport: http(),
-  }).extend(publicActions)
-
-  // We need to perform operations on multiple chains
-  // The switch chain function below facilitates this
-  const chains = [mainnet, arbitrum, optimism, polygon]
-
-  createConfig({
-    integrator: 'lifi-sdk-example',
-    providers: [
-      EVM({
-        getWalletClient: () => Promise.resolve(client),
-        switchChain: (chainId) =>
-          Promise.resolve(
-            createWalletClient({
-              account,
-              chain: chains.find((chain) => {
-                if (chain.id == chainId) {
-                  return chain
-                }
-              }) as Chain,
-              transport: http(),
-            })
-          ),
-      }),
-    ],
-  })
-
-  return client
-}
-
 const run = async () => {
-  console.info('>> Polynomial Demo: Deposit sETH on Optimism')
-
-  // config
+  console.info('>> Starting Polynomial Demo: Deposit sETH on Optimism')
+  // configure the chain token and amount to be used
   const fromChain = ChainId.ETH
   const fromToken = AddressZero
-  const amount = parseEther('0.04').toString() // TODO: replace for this?
+  const amount = parseEther('0.04').toString()
+
+  console.info('>> Initialize LiFi SDK')
 
   try {
-    const privateKey = process.env.PRIVATE_KEY as Address
+    const { account, client } = setUpSDK({
+      initialChain: mainnet,
+      switchChains: [mainnet, arbitrum, optimism, polygon] as Chain[],
+      usePublicActions: true,
+    })
 
-    // NOTE: Here we are using the private key to get the account,
-    // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
-    const account = privateKeyToAccount(privateKey)
-
-    console.info('>> Initialize LiFi SDK')
-    const client = setUpSDK(account)
-    // get quote
     const quote = await getPolynomialQuote(
       fromChain,
       fromToken,
@@ -124,15 +78,18 @@ const run = async () => {
       account.address,
       amount
     )
-    console.log('Quote', quote)
 
-    // continue?
+    console.info('>> Contract Calls Quote', quote)
+
     if (!(await promptConfirm('Execute Quote?'))) {
       return
     }
 
-    // execute quote
-    await executeCrossChainQuote(client, account.address, quote)
+    await executeCrossChainQuote(
+      client as WalletClientWithPublicActions,
+      account.address,
+      quote
+    )
   } catch (e) {
     console.error(e)
   }

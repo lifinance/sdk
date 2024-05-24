@@ -6,13 +6,12 @@ import {
   getRoutes,
   ChainId,
   CoinKey,
-  Execution,
 } from '@lifi/sdk'
-import { promptConfirm } from '../helpers/promptConfirm'
 import type { PrivateKeyAccount, Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { optimism } from 'viem/chains'
+import { promptConfirm } from '../helpers/promptConfirm'
 import 'dotenv/config'
 
 const dataTypes = (lifiDataTypes as any).default
@@ -20,7 +19,7 @@ const dataTypes = (lifiDataTypes as any).default
 // NOTE: we add the wallet address to the route request.
 // This means that any route responses will feature that address for
 // use in route execution.
-// In the example below we are exchanging USDC and USDT tokens on Optimisim
+// In the example below we are exchanging USDC and USDT tokens on Optimism
 const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
   toAddress: address,
   fromAddress: address,
@@ -36,8 +35,17 @@ const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
   },
 })
 
-// TODO: look at code reuse when all example finshed
-const setUpSDK = (account: PrivateKeyAccount) => {
+async function run() {
+  console.info('>> Starting Swap Demo')
+
+  const privateKey = process.env.PRIVATE_KEY as Address
+
+  // NOTE: Here we are using the private key to get the account,
+  // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
+  const account = privateKeyToAccount(privateKey)
+
+  console.info('>> Initialize LiFi SDK')
+
   const client = createWalletClient({
     account,
     chain: optimism as Chain,
@@ -52,20 +60,9 @@ const setUpSDK = (account: PrivateKeyAccount) => {
       }),
     ],
   })
-}
-async function run() {
-  const privateKey = process.env.PRIVATE_KEY as Address
-
-  // NOTE: Here we are using the private key to get the account,
-  // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
-  const account = privateKeyToAccount(privateKey)
-
-  console.info('>> Initialize LiFi SDK')
-  setUpSDK(account)
 
   console.info('>> Initialized, Requesting route')
   const routeRequest = getRequestRoute(account)
-
   const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
@@ -77,15 +74,14 @@ async function run() {
 
   console.info('>> Start Execution')
 
-  // TODO: clean up
+  // here we are using the update route hook to report the execution steps to the terminal
   const executionOptions = {
     updateRouteHook: (updatedRoute) => {
-      let lastExecution: Execution | undefined = undefined
-      for (const step of updatedRoute.steps) {
+      const lastExecution = updatedRoute.steps.reduce((accum, step) => {
         if (step.execution) {
-          lastExecution = step.execution
+          return step.execution
         }
-      }
+      }, undefined)
       console.log(lastExecution)
     },
   }
@@ -93,7 +89,5 @@ async function run() {
 
   console.info('>> Done')
 }
-
-console.info('>> Starting Swap Demo')
 
 run()
