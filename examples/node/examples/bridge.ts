@@ -1,42 +1,74 @@
 import * as lifiDataTypes from '@lifi/data-types'
-import { executeRoute, getRoutes, ChainId, CoinKey, Execution } from '@lifi/sdk'
-import { promptConfirm } from '../helpers/promptConfirm'
-import type { PrivateKeyAccount, Chain } from 'viem'
+import {
+  executeRoute,
+  getRoutes,
+  ChainId,
+  CoinKey,
+  createConfig,
+  EVM,
+} from '@lifi/sdk'
+import type { Address, Chain } from 'viem'
+import { createWalletClient, http } from 'viem'
+import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
-import { setUpSDK } from './utils/setUpSDK'
+import 'dotenv/config'
+import { promptConfirm } from '../helpers/promptConfirm'
 
-const dataTypes = (lifiDataTypes as any).default
-
-// NOTE: we add the wallet address to the route request.
-// This means that any route responses will feature that address for
-// use in route execution.
-// In the example below we are bridging - exchanging USDC on Optimism and USDT tokens on Arbitrum
-const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
-  toAddress: address,
-  fromAddress: address,
-  fromChainId: ChainId.OPT, // Optimism
-  fromAmount: '100000', // 1 USDT
-  fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.OPT)
-    .address,
-  toChainId: ChainId.ARB, // Arbitrum
-  toTokenAddress: dataTypes.findDefaultToken(CoinKey.USDT, ChainId.ARB).address,
-  options: {
-    slippage: 0.03, // = 3%
-  },
-})
+const { findDefaultToken } = (lifiDataTypes as any).default
 
 async function run() {
   console.info('>> Starting Bridge Demo')
   console.info('>> Initialize LiFi SDK')
 
-  const { account } = setUpSDK({
-    initialChain: optimism as Chain,
-    switchChains: [mainnet, arbitrum, optimism, polygon] as Chain[],
+  const privateKey = process.env.PRIVATE_KEY as Address
+
+  // NOTE: Here we are using the private key to get the account,
+  // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
+  const account = privateKeyToAccount(privateKey)
+
+  const client = createWalletClient({
+    account,
+    chain: optimism as Chain,
+    transport: http(),
+  })
+
+  const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
+
+  createConfig({
+    integrator: 'lifi-sdk-example',
+    providers: [
+      EVM({
+        getWalletClient: () => Promise.resolve(client),
+        switchChain: (chainId) =>
+          Promise.resolve(
+            createWalletClient({
+              account,
+              chain: switchChains.find((chain) => {
+                if (chain.id == chainId) {
+                  return chain
+                }
+              }) as Chain,
+              transport: http(),
+            })
+          ),
+      }),
+    ],
   })
 
   console.info('>> Initialized, Requesting route')
 
-  const routeRequest = getRequestRoute(account)
+  const routeRequest = {
+    toAddress: account.address,
+    fromAddress: account.address,
+    fromChainId: ChainId.OPT, // Optimism
+    fromAmount: '100000', // 1 USDT
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
+    toChainId: ChainId.ARB, // Arbitrum
+    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.ARB).address,
+    options: {
+      slippage: 0.03, // = 3%
+    },
+  }
   const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
