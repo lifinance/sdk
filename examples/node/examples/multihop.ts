@@ -11,15 +11,12 @@ import {
   getContractCallsQuote,
   createConfig,
   EVM,
-  getTokenAllowance,
-  setTokenAllowance,
   getStatus,
 } from '@lifi/sdk'
-import type { Address, Chain, Hash } from 'viem'
+import type { Address, Chain } from 'viem'
 import { createWalletClient, fromHex, http, publicActions } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
-import { AddressZero } from './constants'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
@@ -131,9 +128,6 @@ const run = async () => {
     }
 
     await checkTokenAllowance(contactCallsQuoteResponse, account, client)
-
-    const transactionRequest =
-      contactCallsQuoteResponse.transactionRequest || {}
 
     console.info(
       '>> Execute transaction',
