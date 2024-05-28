@@ -22,7 +22,6 @@ import {
 } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
-import { publicActionsL2 } from 'viem/op-stack'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { AddressZero } from './constants'
@@ -91,7 +90,7 @@ const run = async () => {
       transport: http(),
     })
 
-    const sourceAmountDefaultRetirement = await publicClient.readContract({
+    const sourceAmountDefaultRetirement = (await publicClient.readContract({
       address: KLIMA_ETHEREUM_CONTRACT_POL,
       abi,
       functionName: 'getSourceAmountDefaultRetirement',
@@ -100,7 +99,7 @@ const run = async () => {
         Base_Carbon_Tonne_POL, // address poolToken,
         retireAmount, // uint256 retireAmount,
       ],
-    })
+    })) as bigint
 
     const usdcAmount = parseUnits(
       sourceAmountDefaultRetirement.toString(),
@@ -125,7 +124,6 @@ const run = async () => {
       ],
     })
 
-    // quote
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {
       fromChain,
       fromToken,
@@ -168,7 +166,10 @@ const run = async () => {
       )
 
       // set approval if needed
-      if (approval < BigInt(contactCallsQuoteResponse.action.fromAmount)) {
+      if (
+        approval &&
+        approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
+      ) {
         const txHash = await setTokenAllowance({
           walletClient: client,
           spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
@@ -191,17 +192,18 @@ const run = async () => {
       }
     }
 
-    const transactionRequest = contactCallsQuoteResponse.transactionRequest
+    const transactionRequest =
+      contactCallsQuoteResponse.transactionRequest || {}
 
     console.info('>> Execute transaction', transactionRequest)
 
     const hash = await client.sendTransaction({
       to: transactionRequest.to as Address,
       account: client.account!,
+      data: transactionRequest.data as Hash,
       value: transactionRequest.value
         ? BigInt(transactionRequest.value)
         : undefined,
-      data: transactionRequest.data as Hash,
       gas: transactionRequest.gasLimit
         ? BigInt(transactionRequest.gasLimit as string)
         : undefined,

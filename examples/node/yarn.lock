@@ -700,20 +700,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lifi/sdk@npm:^3.0.0-alpha.62":
-  version: 3.0.0-alpha.62
-  resolution: "@lifi/sdk@npm:3.0.0-alpha.62"
+"@lifi/sdk@npm:^3.0.0-alpha.63":
+  version: 3.0.0-alpha.63
+  resolution: "@lifi/sdk@npm:3.0.0-alpha.63"
   dependencies:
-    "@lifi/types": "npm:^13.3.0"
+    "@lifi/types": "npm:^13.7.1"
     "@solana/wallet-adapter-base": "npm:^0.9.23"
     "@solana/web3.js": "npm:^1.91.8"
     eth-rpc-errors: "npm:^4.0.3"
-    viem: "npm:^2.11.0"
+    viem: "npm:^2.12.1"
   peerDependencies:
     "@solana/wallet-adapter-base": ^0.9.0
     "@solana/web3.js": ^1.91.0
     viem: ^2.10.0
-  checksum: 10/d260664a1c9384cf83dc0f2959853782828eb30c0c8b7d5907cc6cbcfd4bfdb8a9aad818393356e5734f5149913515c649135a4e497f452a860d64a2ba4bee04
+  checksum: 10/c1cb9cab1ba8bb8fec1bd24ed0fa20a15d97516a1ebb283a38e9f06ef53022ef58afff65141f1c27368104d19239e8f58a585a02cb5a24b373ae1581e78f8e8b
   languageName: node
   linkType: hard
 
@@ -721,6 +721,13 @@ __metadata:
   version: 13.3.0
   resolution: "@lifi/types@npm:13.3.0"
   checksum: 10/8eb24a10716c46233c22b6beaacf1fd59b37a4d8edef0b01198169dabbfdb73d72db18445fa2d853bdb3d513c0a3ac9611fa9cf6c8b7ae1c600622a1fa5dddb0
+  languageName: node
+  linkType: hard
+
+"@lifi/types@npm:^13.7.1":
+  version: 13.7.1
+  resolution: "@lifi/types@npm:13.7.1"
+  checksum: 10/37d4dbb642342a0eb791f7657c19f46623cdf59396cbf7898602e25d5394735c8e8e2d71648d914a7b97e94ee552324f6826ab550407c319dabe653d3deec815
   languageName: node
   linkType: hard
 
@@ -4136,7 +4143,7 @@ __metadata:
   dependencies:
     "@lifi/data-types": "npm:^4.2.1"
     "@lifi/rpc-wrapper": "npm:^0.0.27"
-    "@lifi/sdk": "npm:^3.0.0-alpha.62"
+    "@lifi/sdk": "npm:^3.0.0-alpha.63"
     "@types/dotenv": "npm:^8.2.0"
     "@types/node": "npm:^20.12.12"
     "@wagmi/connectors": "npm:^4.3.9"
@@ -4144,7 +4151,7 @@ __metadata:
     dotenv: "npm:^16.4.5"
     tsx: "npm:^4.10.2"
     typescript: "npm:^5.4.5"
-    viem: "npm:^2.10.0"
+    viem: "npm:^2.12.1"
   languageName: unknown
   linkType: soft
 
@@ -5945,9 +5952,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.10.0, viem@npm:^2.11.0":
-  version: 2.11.1
-  resolution: "viem@npm:2.11.1"
+"viem@npm:^2.12.1":
+  version: 2.13.1
+  resolution: "viem@npm:2.13.1"
   dependencies:
     "@adraffy/ens-normalize": "npm:1.10.0"
     "@noble/curves": "npm:1.2.0"
@@ -5962,7 +5969,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10/1dc5d1455d006e5788e865e6e8a702e7dcf8cd2ca5cdfecc2dccf5886a579044fc8e0915f6a53e6a5db82e52f8660d6cf1d18dfcf75486fde6cea379d02cbb8b
+  checksum: 10/bfddca57e09d30810eaaa8ea01b281b8b1bcdb6da698404bc0f2b1d0a01a57051d70e911da0f480d9cdd8ec22c04ea88de0f09e29de5b4f1459e93c16d712952
   languageName: node
   linkType: hard
 

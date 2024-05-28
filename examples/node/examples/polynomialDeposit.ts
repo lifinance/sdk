@@ -21,7 +21,6 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
-import type { WalletClientWithPublicActions } from './types'
 import { AddressZero } from './constants'
 
 const run = async () => {
@@ -39,7 +38,7 @@ const run = async () => {
       account,
       chain: mainnet,
       transport: http(),
-    }).extend(publicActions) as WalletClientWithPublicActions
+    }).extend(publicActions)
 
     const switchChains = [mainnet, arbitrum, optimism, polygon]
 
@@ -124,7 +123,10 @@ const run = async () => {
       )
 
       // set approval if needed
-      if (approval < BigInt(contactCallsQuoteResponse.action.fromAmount)) {
+      if (
+        approval &&
+        approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
+      ) {
         const txHash = await setTokenAllowance({
           walletClient: client,
           spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
@@ -147,28 +149,26 @@ const run = async () => {
       }
     }
 
-    const transactionRequest = contactCallsQuoteResponse.transactionRequest
+    const transactionRequest =
+      contactCallsQuoteResponse.transactionRequest || {}
 
     console.info('>> Execute transaction', transactionRequest)
-
-    const { maxFeePerGas, maxPriorityFeePerGas } =
-      await client.estimateFeesPerGas()
 
     const hash = await client.sendTransaction({
       to: transactionRequest.to as Address,
       account: client.account!,
-      value: transactionRequest.value ? transactionRequest.value : undefined,
+      value: transactionRequest.value
+        ? BigInt(transactionRequest.value as string)
+        : undefined,
       data: transactionRequest.data as Hash,
       gas: transactionRequest.gasLimit
         ? BigInt(transactionRequest.gasLimit as string)
         : undefined,
-      // gasPrice: transactionRequest.gasPrice
-      //   ? BigInt(transactionRequest.gasPrice as string)
-      //   : undefined,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      gasPrice: transactionRequest.gasPrice
+        ? BigInt(transactionRequest.gasPrice as string)
+        : undefined,
       chain: null,
-    } as any)
+    })
 
     console.info('>> Transaction sent', hash)
 

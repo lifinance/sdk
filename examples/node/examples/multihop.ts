@@ -136,7 +136,10 @@ const run = async () => {
       )
 
       // set approval if needed
-      if (approval < BigInt(contactCallsQuoteResponse.action.fromAmount)) {
+      if (
+        approval &&
+        approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
+      ) {
         const txHash = await setTokenAllowance({
           walletClient: client,
           spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
@@ -159,7 +162,8 @@ const run = async () => {
       }
     }
 
-    const transactionRequest = contactCallsQuoteResponse.transactionRequest
+    const transactionRequest =
+      contactCallsQuoteResponse.transactionRequest || {}
 
     console.info('>> Execute transaction', transactionRequest)
 
@@ -177,7 +181,7 @@ const run = async () => {
         ? BigInt(transactionRequest.gasPrice as string)
         : undefined,
       chain: null,
-    } as any)
+    })
 
     console.info('>> Transaction sent', hash)
 
