@@ -1,5 +1,4 @@
 import * as lifiDataTypes from '@lifi/data-types'
-import type { RouteExtended, Execution } from '@lifi/sdk'
 import {
   executeRoute,
   getRoutes,
@@ -14,6 +13,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
+import { reportStepsExecutionToTerminal } from '../helpers/reportStepsExecutionToTerminal'
 
 const { findDefaultToken } = (lifiDataTypes as any).default
 
@@ -83,17 +83,7 @@ async function run() {
 
   // here we are using the update route hook to report the execution steps to the terminal
   const executionOptions = {
-    updateRouteHook: (updatedRoute: RouteExtended) => {
-      const lastExecution = updatedRoute.steps.reduce(
-        (accum, step) => {
-          if (step.execution) {
-            return step.execution
-          }
-        },
-        undefined as undefined | Execution
-      )
-      console.info(lastExecution)
-    },
+    updateRouteHook: reportStepsExecutionToTerminal,
   }
   await executeRoute(route, executionOptions)
 

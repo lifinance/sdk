@@ -7,10 +7,8 @@ import {
   EVM,
   getContractCallsQuote,
   getStatus,
-  getTokenAllowance,
-  setTokenAllowance,
 } from '@lifi/sdk'
-import type { Chain, Address, Hash } from 'viem'
+import type { Chain, Address } from 'viem'
 import {
   parseAbi,
   encodeFunctionData,
@@ -24,7 +22,8 @@ import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
-import { AddressZero } from './constants'
+import { checkTokenAllowance } from './utils/checkTokenAllowance'
+import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
 
 const { findDefaultToken } = (lifiDataTypes as any).default
 
@@ -33,7 +32,6 @@ const run = async () => {
 
   try {
     console.info('>> Initialize LiFi SDK')
-
     const privateKey = process.env.PRIVATE_KEY as Address
 
     // NOTE: Here we are using the private key to get the account,
@@ -89,7 +87,6 @@ const run = async () => {
       chain: polygon,
       transport: http(),
     })
-
     const sourceAmountDefaultRetirement = (await publicClient.readContract({
       address: KLIMA_ETHEREUM_CONTRACT_POL,
       abi,
@@ -100,14 +97,10 @@ const run = async () => {
         retireAmount, // uint256 retireAmount,
       ],
     })) as bigint
-
     const usdcAmount = parseUnits(
       sourceAmountDefaultRetirement.toString(),
       USDCe_POL.decimals
     ).toString()
-
-    console.log('>> usdcAmount', usdcAmount)
-
     const retireTxData = encodeFunctionData({
       abi,
       functionName: 'retireExactCarbonDefault',
@@ -142,7 +135,6 @@ const run = async () => {
         },
       ],
     }
-
     console.info(
       '>> create ContractCallsQuoteRequest',
       contractCallsQuoteRequest
@@ -151,74 +143,30 @@ const run = async () => {
     const contactCallsQuoteResponse = await getContractCallsQuote(
       contractCallsQuoteRequest
     )
-
     console.info('>> Quote received', contactCallsQuoteResponse)
 
     if (!(await promptConfirm('Execute Quote?'))) {
       return
     }
 
-    if (contactCallsQuoteResponse.action.fromToken.address !== AddressZero) {
-      const approval = await getTokenAllowance(
-        contactCallsQuoteResponse.action.fromToken,
-        account.address,
-        contactCallsQuoteResponse.estimate.approvalAddress
+    await checkTokenAllowance(contactCallsQuoteResponse, account, client)
+
+    console.info(
+      '>> Execute transaction',
+      contactCallsQuoteResponse.transactionRequest
+    )
+
+    const hash = await client.sendTransaction(
+      transformTxRequestToSendTxParams(
+        client.account,
+        contactCallsQuoteResponse.transactionRequest
       )
-
-      // set approval if needed
-      if (
-        approval &&
-        approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
-      ) {
-        const txHash = await setTokenAllowance({
-          walletClient: client,
-          spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
-          token: contactCallsQuoteResponse.action.fromToken,
-          amount: BigInt(contactCallsQuoteResponse.action.fromAmount),
-        })
-
-        if (txHash) {
-          const transactionReceipt = await client.waitForTransactionReceipt({
-            hash: txHash,
-            retryCount: 20,
-            retryDelay: ({ count }: { count: number; error: Error }) =>
-              Math.min(~~(1 << count) * 200, 3000),
-          })
-
-          console.info(
-            `>> Set Token Allowance - transaction complete: amount: ${contactCallsQuoteResponse.action.fromToken} txHash: ${transactionReceipt.transactionHash}.`
-          )
-        }
-      }
-    }
-
-    const transactionRequest =
-      contactCallsQuoteResponse.transactionRequest || {}
-
-    console.info('>> Execute transaction', transactionRequest)
-
-    const hash = await client.sendTransaction({
-      to: transactionRequest.to as Address,
-      account: client.account!,
-      data: transactionRequest.data as Hash,
-      value: transactionRequest.value
-        ? BigInt(transactionRequest.value)
-        : undefined,
-      gas: transactionRequest.gasLimit
-        ? BigInt(transactionRequest.gasLimit as string)
-        : undefined,
-      gasPrice: transactionRequest.gasPrice
-        ? BigInt(transactionRequest.gasPrice as string)
-        : undefined,
-      chain: null,
-    })
-
+    )
     console.info('>> Transaction sent', hash)
 
     const receipt = await client.waitForTransactionReceipt({
       hash,
     })
-
     console.info('>> Transaction receipt', receipt)
 
     // wait for execution

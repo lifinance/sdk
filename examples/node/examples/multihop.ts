@@ -22,6 +22,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { AddressZero } from './constants'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
+import { checkTokenAllowance } from './utils/checkTokenAllowance'
+import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
 
 const { findDefaultToken } = (lifiDataTypes as any).default
 
@@ -128,60 +130,22 @@ const run = async () => {
       return
     }
 
-    if (contactCallsQuoteResponse.action.fromToken.address !== AddressZero) {
-      const approval = await getTokenAllowance(
-        contactCallsQuoteResponse.action.fromToken,
-        account.address,
-        contactCallsQuoteResponse.estimate.approvalAddress
-      )
-
-      // set approval if needed
-      if (
-        approval &&
-        approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
-      ) {
-        const txHash = await setTokenAllowance({
-          walletClient: client,
-          spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
-          token: contactCallsQuoteResponse.action.fromToken,
-          amount: BigInt(contactCallsQuoteResponse.action.fromAmount),
-        })
-
-        if (txHash) {
-          const transactionReceipt = await client.waitForTransactionReceipt({
-            hash: txHash,
-            retryCount: 20,
-            retryDelay: ({ count }: { count: number; error: Error }) =>
-              Math.min(~~(1 << count) * 200, 3000),
-          })
-
-          console.info(
-            `>> Set Token Allowance - transaction complete: amount: ${contactCallsQuoteResponse.action.fromToken} txHash: ${transactionReceipt.transactionHash}.`
-          )
-        }
-      }
-    }
+    await checkTokenAllowance(contactCallsQuoteResponse, account, client)
 
     const transactionRequest =
       contactCallsQuoteResponse.transactionRequest || {}
 
-    console.info('>> Execute transaction', transactionRequest)
+    console.info(
+      '>> Execute transaction',
+      contactCallsQuoteResponse.transactionRequest
+    )
 
-    const hash = await client.sendTransaction({
-      to: transactionRequest.to as Address,
-      account: client.account!,
-      value: transactionRequest.value
-        ? BigInt(transactionRequest.value)
-        : undefined,
-      data: transactionRequest.data as Hash,
-      gas: transactionRequest.gasLimit
-        ? BigInt(transactionRequest.gasLimit as string)
-        : undefined,
-      gasPrice: transactionRequest.gasPrice
-        ? BigInt(transactionRequest.gasPrice as string)
-        : undefined,
-      chain: null,
-    })
+    const hash = await client.sendTransaction(
+      transformTxRequestToSendTxParams(
+        client.account,
+        contactCallsQuoteResponse.transactionRequest
+      )
+    )
 
     console.info('>> Transaction sent', hash)
 
