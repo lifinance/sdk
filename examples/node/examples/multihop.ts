@@ -79,7 +79,7 @@ const run = async () => {
       toChain,
       toToken,
       fromAddress: account.address, // will actually be a relayer
-      // allowBridges: ['hop', 'across', 'amarok'],
+      allowBridges: ['hop', 'across', 'amarok'],
       // denyBridges: ['stargate'],
       maxPriceImpact: 0.4,
     }
@@ -163,35 +163,19 @@ const run = async () => {
 
     console.info('>> Execute transaction', transactionRequest)
 
-    const { maxFeePerGas, maxPriorityFeePerGas } =
-      await client.estimateFeesPerGas()
-
-    console.log(
-      'viem maxFeePerGas, maxPriorityFeePerGas',
-      maxFeePerGas,
-      maxPriorityFeePerGas
-    )
-
-    console.log(
-      'out gasPrice',
-      transactionRequest.gasPrice
-        ? BigInt(transactionRequest.gasPrice as string)
-        : undefined
-    )
-
     const hash = await client.sendTransaction({
       to: transactionRequest.to as Address,
       account: client.account!,
-      value: transactionRequest.value ? transactionRequest.value : undefined,
+      value: transactionRequest.value
+        ? BigInt(transactionRequest.value)
+        : undefined,
       data: transactionRequest.data as Hash,
       gas: transactionRequest.gasLimit
         ? BigInt(transactionRequest.gasLimit as string)
         : undefined,
-      // gasPrice: transactionRequest.gasPrice
-      //   ? BigInt(transactionRequest.gasPrice as string)
-      //   : undefined,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      gasPrice: transactionRequest.gasPrice
+        ? BigInt(transactionRequest.gasPrice as string)
+        : undefined,
       chain: null,
     } as any)
 

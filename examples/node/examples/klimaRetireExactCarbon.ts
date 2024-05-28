@@ -22,9 +22,9 @@ import {
 } from 'viem'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import { privateKeyToAccount } from 'viem/accounts'
+import { publicActionsL2 } from 'viem/op-stack'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
-import type { WalletClientWithPublicActions } from './types'
 import { AddressZero } from './constants'
 
 const { findDefaultToken } = (lifiDataTypes as any).default
@@ -45,7 +45,7 @@ const run = async () => {
       account,
       chain: optimism as Chain,
       transport: http(),
-    }).extend(publicActions) as WalletClientWithPublicActions
+    }).extend(publicActions)
 
     const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
 
@@ -133,6 +133,7 @@ const run = async () => {
       toChain: ChainId.POL,
       toToken: USDCe_POL.address,
       toAmount: usdcAmount,
+      allowBridges: ['hop', 'across', 'amarok'],
       contractCalls: [
         {
           fromAmount: usdcAmount,
@@ -194,24 +195,21 @@ const run = async () => {
 
     console.info('>> Execute transaction', transactionRequest)
 
-    const { maxFeePerGas, maxPriorityFeePerGas } =
-      await client.estimateFeesPerGas()
-
     const hash = await client.sendTransaction({
       to: transactionRequest.to as Address,
       account: client.account!,
-      value: transactionRequest.value ? transactionRequest.value : undefined,
+      value: transactionRequest.value
+        ? BigInt(transactionRequest.value)
+        : undefined,
       data: transactionRequest.data as Hash,
       gas: transactionRequest.gasLimit
         ? BigInt(transactionRequest.gasLimit as string)
         : undefined,
-      // gasPrice: transactionRequest.gasPrice
-      //   ? BigInt(transactionRequest.gasPrice as string)
-      //   : undefined,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      gasPrice: transactionRequest.gasPrice
+        ? BigInt(transactionRequest.gasPrice as string)
+        : undefined,
       chain: null,
-    } as any)
+    })
 
     console.info('>> Transaction sent', hash)
 
