@@ -17,7 +17,7 @@ export const checkTokenAllowance = async (
 
     // set approval if needed
     if (
-      approval &&
+      approval !== undefined &&
       approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
     ) {
       const txHash = await setTokenAllowance({

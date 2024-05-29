@@ -1,10 +1,6 @@
 import { TransactionRequest } from '@lifi/sdk'
-import {
-  type Address,
-  type Hash,
-  PrivateKeyAccount,
-  SendTransactionParameters,
-} from 'viem'
+import { Address, Hash } from 'viem'
+import { PrivateKeyAccount, SendTransactionParameters } from 'viem'
 
 export const transformTxRequestToSendTxParams = (
   account: PrivateKeyAccount,

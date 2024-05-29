@@ -63,39 +63,41 @@ const run = async () => {
       ],
     })
 
-    // configure
-    const fromChain = ChainId.ETH
-    const fromToken = AddressZero
-    const amount = parseEther('0.04').toString()
-    const sETH_OPT = '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49'
-    const POLYNOMIAL_ETHEREUM_CONTRACT_OPT =
-      '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7'
-    const POLYNOMIAL_GAS_LIMIT = '200000'
-    const POLYNOMIAL_ABI = [
-      'function initiateDeposit(address user, uint amount) external',
-    ]
-    const abi = parseAbi(POLYNOMIAL_ABI)
+    // config for polynomial deposit run
+    const config = {
+      fromChain: ChainId.ETH,
+      fromToken: AddressZero,
+      amount: parseEther('0.04').toString(),
+      polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
+      polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism
+      polynomialContractGasLimit: '200000',
+      polynomialContractAbi: [
+        'function initiateDeposit(address user, uint amount) external',
+      ],
+    }
+
+    const abi = parseAbi(config.polynomialContractAbi)
 
     const stakeTxData = encodeFunctionData({
       abi,
       functionName: 'initiateDeposit',
-      args: [account.address, amount],
+      args: [account.address, config.amount],
     })
 
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {
-      fromChain,
-      fromToken,
+      fromChain: config.fromChain,
+      fromToken: config.fromToken,
       fromAddress: account.address,
       toChain: ChainId.OPT,
-      toToken: sETH_OPT,
-      toAmount: amount,
+      toToken: config.polynomialContractToken, // sETH on Optimism
+      toAmount: config.amount,
       contractCalls: [
         {
-          fromAmount: amount,
-          fromTokenAddress: sETH_OPT, // TODO: check if these are the correct values
-          toContractAddress: POLYNOMIAL_ETHEREUM_CONTRACT_OPT,
+          fromAmount: config.amount,
+          fromTokenAddress: config.polynomialContractToken, // sETH on Optimism TODO: check if these are the correct values
+          toContractAddress: config.polynomialContractAddress,
           toContractCallData: stakeTxData,
-          toContractGasLimit: POLYNOMIAL_GAS_LIMIT,
+          toContractGasLimit: config.polynomialContractGasLimit,
         },
       ],
     }

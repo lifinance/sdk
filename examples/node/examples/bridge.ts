@@ -7,7 +7,7 @@ import {
   createConfig,
   EVM,
 } from '@lifi/sdk'
-import type { Address, Chain } from 'viem'
+import { Address, Chain, parseUnits } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
@@ -62,10 +62,10 @@ async function run() {
     toAddress: account.address,
     fromAddress: account.address,
     fromChainId: ChainId.OPT, // Optimism
-    fromAmount: '100000', // 1 USDT
+    fromAmount: '1000000', // 1 USDC
     fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
     toChainId: ChainId.ARB, // Arbitrum
-    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.ARB).address,
+    toTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.ARB).address,
     options: {
       slippage: 0.03, // = 3%
     },

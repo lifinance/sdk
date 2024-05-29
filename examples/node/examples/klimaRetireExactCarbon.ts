@@ -67,48 +67,55 @@ const run = async () => {
       ],
     })
 
-    // config
-    const fromChain = ChainId.OPT
-    const fromToken = findDefaultToken(CoinKey.USDC, ChainId.OPT).address
-    const retireAmount = '100000' // 1 USDC
-    const USDCe_POL = findDefaultToken(CoinKey.USDCe, ChainId.POL)
-    const Base_Carbon_Tonne_POL = '0x2F800Db0fdb5223b3C3f354886d907A671414A7F'
-    // https://docs.klimadao.finance/developers/contracts/retirement/v2-diamond/generalized-retirement
-    const KLIMA_ETHEREUM_CONTRACT_POL =
-      '0x8cE54d9625371fb2a068986d32C85De8E6e995f8'
-    const KLIMA_GAS_LIMIT = '1300000'
-    const KLIMA_ABI = [
-      'function getSourceAmountDefaultRetirement(address,address,uint256) external view returns (uint256 amountIn)',
-      'function retireExactCarbonDefault(address, address, uint256, uint256, string, address, string, string, uint8)',
-    ]
-    const abi = parseAbi(KLIMA_ABI)
+    // config for klima contract run
+    const config = {
+      fromChain: ChainId.OPT,
+      fromToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
+      retireAmount: '100000', // 1 usdc
+      // https://docs.klimadao.finance/developers/contracts/retirement/v2-diamond/generalized-retirement
+      klimaContractAddress:
+        '0x8cE54d9625371fb2a068986d32C85De8E6e995f8' as Address, // Klima Ethereum Contract on Polygon
+      klimaContractSourceToken: findDefaultToken(CoinKey.USDCe, ChainId.POL), // USDCe POL
+      klimaContractPoolTokenAddress:
+        '0x2F800Db0fdb5223b3C3f354886d907A671414A7F', // Base Carbon Tonne Polygon
+      klimaContractGasLimit: '1300000',
+      klimaContractAbi: [
+        'function getSourceAmountDefaultRetirement(address,address,uint256) external view returns (uint256 amountIn)',
+        'function retireExactCarbonDefault(address, address, uint256, uint256, string, address, string, string, uint8)',
+      ],
+    }
+
+    const abi = parseAbi(config.klimaContractAbi)
 
     const publicClient = createPublicClient({
       chain: polygon,
       transport: http(),
     })
+
     const sourceAmountDefaultRetirement = (await publicClient.readContract({
-      address: KLIMA_ETHEREUM_CONTRACT_POL,
+      address: config.klimaContractAddress,
       abi,
       functionName: 'getSourceAmountDefaultRetirement',
       args: [
-        USDCe_POL.address, // address sourceToken,
-        Base_Carbon_Tonne_POL, // address poolToken,
-        retireAmount, // uint256 retireAmount,
+        config.klimaContractSourceToken.address, // USDCe POL - address sourceToken,
+        config.klimaContractPoolTokenAddress, // Base Carbon Tonne Polygon - address poolToken,
+        config.retireAmount, // uint256 retireAmount,
       ],
     })) as bigint
+
     const usdcAmount = parseUnits(
       sourceAmountDefaultRetirement.toString(),
-      USDCe_POL.decimals
+      config.klimaContractSourceToken.decimals // USDCe POL decimals
     ).toString()
+
     const retireTxData = encodeFunctionData({
       abi,
       functionName: 'retireExactCarbonDefault',
       args: [
-        USDCe_POL.address, // address sourceToken,
-        Base_Carbon_Tonne_POL, // address poolToken,
+        config.klimaContractSourceToken.address, // USDCe POL - address sourceToken,
+        config.klimaContractPoolTokenAddress, // Base Carbon Tonne Polygon - address poolToken,
         usdcAmount, // uint256 maxAmountIn,
-        retireAmount, // uint256 retireAmount,
+        config.retireAmount, // uint256 retireAmount,
         'LI.FI', // string memory retiringEntityString,
         '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0', // address beneficiaryAddress,
         'LI.FI', // string memory beneficiaryString,
@@ -118,20 +125,20 @@ const run = async () => {
     })
 
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {
-      fromChain,
-      fromToken,
+      fromChain: config.fromChain,
+      fromToken: config.fromToken,
       fromAddress: account.address,
       toChain: ChainId.POL,
-      toToken: USDCe_POL.address,
+      toToken: config.klimaContractSourceToken.address, // USDCe POL address
       toAmount: usdcAmount,
       allowBridges: ['hop', 'across', 'amarok'],
       contractCalls: [
         {
           fromAmount: usdcAmount,
-          fromTokenAddress: USDCe_POL.address,
-          toContractAddress: KLIMA_ETHEREUM_CONTRACT_POL,
+          fromTokenAddress: config.klimaContractSourceToken.address, // USDCe POL address
+          toContractAddress: config.klimaContractAddress,
           toContractCallData: retireTxData,
-          toContractGasLimit: KLIMA_GAS_LIMIT,
+          toContractGasLimit: config.klimaContractGasLimit,
         },
       ],
     }

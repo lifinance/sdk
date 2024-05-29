@@ -64,22 +64,25 @@ const run = async () => {
       ],
     })
 
-    // configure
-    const fromChain = ChainId.ARB
-    const fromToken = findDefaultToken(CoinKey.USDC, ChainId.ARB).address
-    const toChain = ChainId.OPT
-    const toToken = findDefaultToken(CoinKey.USDC, ChainId.OPT).address
-    const amount = '100000' // 1 usd
+    // config for multihop run
+    const config = {
+      fromChain: ChainId.ARB, // Arbitrum
+      fromToken: findDefaultToken(CoinKey.USDC, ChainId.ARB).address, // USDC ARB
+      intermediateChain: ChainId.POL, // Polygon
+      intermediateToken: findDefaultToken(CoinKey.USDC, ChainId.POL).address, // USDC POL
+      toChain: ChainId.OPT, // Optimism
+      toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address, // USDC OPT
+      amount: '100000', // 1 usdc
+    }
 
     const secondBridgeQuoteRequest: QuoteRequest = {
-      fromChain: ChainId.POL,
-      fromToken: findDefaultToken(CoinKey.USDC, ChainId.POL).address,
-      fromAmount: amount,
-      toChain,
-      toToken,
+      fromChain: config.intermediateChain, // Polygon
+      fromToken: config.intermediateToken, // USDC POL
+      fromAmount: config.amount,
+      toChain: config.toChain, // Optimism
+      toToken: config.toToken, // USDC OPT
       fromAddress: account.address, // will actually be a relayer
-      allowBridges: ['hop', 'across', 'amarok'],
-      // denyBridges: ['stargate'],
+      allowBridges: ['hop', 'stargate', 'across', 'amarok'],
       maxPriceImpact: 0.4,
     }
 
@@ -93,8 +96,8 @@ const run = async () => {
 
     // quote
     const quoteRequest: ContractCallsQuoteRequest = {
-      fromChain,
-      fromToken,
+      fromChain: config.fromChain, // Arbitrum
+      fromToken: config.fromToken, // USDC ARB
       fromAddress: account.address,
       toChain: secondBridgeQuote.action.fromChainId,
       toToken: secondBridgeQuote.action.fromToken.address,
