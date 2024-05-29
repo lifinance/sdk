@@ -39,7 +39,7 @@ export const checkTokenAllowance = async (
             Math.min(~~(1 << count) * 200, 3000),
         })
         console.info(
-          `>> Set Token Allowance - amount: ${contactCallsQuoteResponse.action.fromToken} txHash: ${transactionReceipt.transactionHash}.`
+          `>> Set Token Allowance - amount: ${contactCallsQuoteResponse.action.fromAmount} txHash: ${transactionReceipt.transactionHash}.`
         )
       }
     }

@@ -1,4 +1,5 @@
-import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
+import * as lifiDataTypes from '@lifi/data-types'
+import { CoinKey, ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   createConfig,
@@ -22,6 +23,8 @@ import { promptConfirm } from '../helpers/promptConfirm'
 import { AddressZero } from './constants'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
 import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
+
+const { findDefaultToken } = (lifiDataTypes as any).default
 
 const run = async () => {
   console.info('>> Starting Polynomial Demo: Deposit sETH on Optimism')
@@ -65,9 +68,9 @@ const run = async () => {
 
     // config for polynomial deposit run
     const config = {
-      fromChain: ChainId.ETH,
-      fromToken: AddressZero,
-      amount: parseEther('0.04').toString(),
+      fromChain: ChainId.ARB, // original value was ChainId.ETH,
+      fromToken: findDefaultToken(CoinKey.USDC, ChainId.ARB).address, // original value was AddressZero,
+      amount: '100000', // original value was parseEther('0.04').toString(),
       polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
       polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism
       polynomialContractGasLimit: '200000',
