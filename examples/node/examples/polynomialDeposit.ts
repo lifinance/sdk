@@ -1,6 +1,8 @@
-import { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
+import * as lifiDataTypes from '@lifi/data-types'
+import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
+  CoinKey,
   createConfig,
   EVM,
   getContractCallsQuote,
@@ -19,9 +21,10 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
-import { AddressZero } from './constants'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
 import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
+
+const { findDefaultToken } = (lifiDataTypes as any).default
 
 const run = async () => {
   console.info('>> Starting Polynomial Demo: Deposit sETH on Optimism')
@@ -66,7 +69,7 @@ const run = async () => {
     // config for polynomial deposit run
     const config = {
       fromChain: ChainId.ETH,
-      fromToken: AddressZero,
+      fromToken: findDefaultToken(CoinKey.ETH, ChainId.ETH).address,
       amount: parseEther('0.00001').toString(),
       polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
       polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism

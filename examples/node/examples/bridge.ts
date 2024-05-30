@@ -7,7 +7,7 @@ import {
   createConfig,
   EVM,
 } from '@lifi/sdk'
-import { Address, Chain, parseUnits } from 'viem'
+import type { Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'

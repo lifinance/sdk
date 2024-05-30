@@ -1,7 +1,8 @@
 import type { LiFiStep } from '@lifi/sdk'
 import { getTokenAllowance, setTokenAllowance } from '@lifi/sdk'
 import type { PrivateKeyAccount, PublicClient, WalletClient } from 'viem'
-import { AddressZero } from '../constants'
+
+const AddressZero = '0x0000000000000000000000000000000000000000'
 
 export const checkTokenAllowance = async (
   contactCallsQuoteResponse: LiFiStep,
