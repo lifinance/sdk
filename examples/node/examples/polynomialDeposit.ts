@@ -68,8 +68,8 @@ const run = async () => {
 
     // config for polynomial deposit run
     const config = {
-      fromChain: ChainId.ETH,
-      fromToken: findDefaultToken(CoinKey.ETH, ChainId.ETH).address,
+      fromChain: ChainId.ETH, // Etheruem
+      fromToken: findDefaultToken(CoinKey.ETH, ChainId.ETH).address, // ETH on Etheruem
       amount: parseEther('0.00001').toString(),
       polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
       polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism
