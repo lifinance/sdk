@@ -14,7 +14,6 @@ import {
   encodeFunctionData,
   http,
   parseAbi,
-  parseEther,
   publicActions,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -39,7 +38,7 @@ const run = async () => {
 
     const client = createWalletClient({
       account,
-      chain: mainnet,
+      chain: arbitrum,
       transport: http(),
     }).extend(publicActions)
 
@@ -66,11 +65,15 @@ const run = async () => {
       ],
     })
 
-    // config for polynomial deposit run
+    // config for polynomial deposit run - https://docs.earn.polynomial.fi/technical-implementation/deposit
     const config = {
-      fromChain: ChainId.ETH, // Etheruem
-      fromToken: findDefaultToken(CoinKey.ETH, ChainId.ETH).address, // ETH on Etheruem
-      amount: parseEther('0.00001').toString(),
+      // For polynomial deposit, quotes are available for optimism, ethereum, arbitrum or polygon
+      fromChain: ChainId.ARB,
+      // token can be either ETH or USDCe (the site says USDC but USDCe is the one only I can get a quote with)
+      fromToken: findDefaultToken(CoinKey.USDCe, ChainId.ARB).address, // ETH on Etheruem
+      // NOTE: anything less than '1000000000' results in a 400 response from the '/contractCalls' endpoint
+      // with the message "The from amount must be greater than zero.",
+      amount: '1000000000',
       polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
       polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism
       polynomialContractGasLimit: '200000',
@@ -87,6 +90,7 @@ const run = async () => {
       args: [account.address, config.amount],
     })
 
+    // TODO: check if these are the correct values
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {
       fromChain: config.fromChain,
       fromToken: config.fromToken,
@@ -97,7 +101,7 @@ const run = async () => {
       contractCalls: [
         {
           fromAmount: config.amount,
-          fromTokenAddress: config.polynomialContractToken, // sETH on Optimism TODO: check if these are the correct values
+          fromTokenAddress: config.polynomialContractToken, // sETH on Optimism
           toContractAddress: config.polynomialContractAddress,
           toContractCallData: stakeTxData,
           toContractGasLimit: config.polynomialContractGasLimit,
