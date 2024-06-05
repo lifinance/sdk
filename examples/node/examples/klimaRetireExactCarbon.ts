@@ -67,12 +67,13 @@ const run = async () => {
       ],
     })
 
-    // config for klima contract run
+    // config for klima contract run - https://docs.klimadao.finance/developers/contracts/retirement/v2-diamond/generalized-retirement
     const config = {
       fromChain: ChainId.OPT,
+      // the Klima Contract is on Polygon
+      toChain: ChainId.POL,
       fromToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
-      retireAmount: '100000', // 1 usdc
-      // https://docs.klimadao.finance/developers/contracts/retirement/v2-diamond/generalized-retirement
+      retireAmount: '100000', // USDC
       klimaContractAddress:
         '0x8cE54d9625371fb2a068986d32C85De8E6e995f8' as Address, // Klima Ethereum Contract on Polygon
       klimaContractSourceToken: findDefaultToken(CoinKey.USDCe, ChainId.POL), // USDCe POL
@@ -83,6 +84,12 @@ const run = async () => {
         'function getSourceAmountDefaultRetirement(address,address,uint256) external view returns (uint256 amountIn)',
         'function retireExactCarbonDefault(address, address, uint256, uint256, string, address, string, string, uint8)',
       ],
+      klimaContractRetiringEntityString: 'LI.FI',
+      klimaContractBeneficiaryAddress:
+        '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+      klimaContractBeneficiaryString: 'LI.FI',
+      klimaContractRetirementMessage: 'Cross Chain Contract Calls',
+      klimaContractFromMode: 0,
     }
 
     const abi = parseAbi(config.klimaContractAbi)
@@ -97,30 +104,30 @@ const run = async () => {
       abi,
       functionName: 'getSourceAmountDefaultRetirement',
       args: [
-        config.klimaContractSourceToken.address, // USDCe POL - address sourceToken,
-        config.klimaContractPoolTokenAddress, // Base Carbon Tonne Polygon - address poolToken,
+        config.klimaContractSourceToken.address,
+        config.klimaContractPoolTokenAddress,
         config.retireAmount, // uint256 retireAmount,
       ],
     })) as bigint
 
     const usdcAmount = parseUnits(
       sourceAmountDefaultRetirement.toString(),
-      config.klimaContractSourceToken.decimals // USDCe POL decimals
+      config.klimaContractSourceToken.decimals
     ).toString()
 
     const retireTxData = encodeFunctionData({
       abi,
       functionName: 'retireExactCarbonDefault',
       args: [
-        config.klimaContractSourceToken.address, // USDCe POL - address sourceToken,
-        config.klimaContractPoolTokenAddress, // Base Carbon Tonne Polygon - address poolToken,
+        config.klimaContractSourceToken.address, // address sourceToken,
+        config.klimaContractPoolTokenAddress, // address poolToken,
         usdcAmount, // uint256 maxAmountIn,
         config.retireAmount, // uint256 retireAmount,
-        'LI.FI', // string memory retiringEntityString,
-        '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0', // address beneficiaryAddress,
-        'LI.FI', // string memory beneficiaryString,
-        'Cross Chain Contract Calls', // string memory retirementMessage,
-        0, // LibTransfer.From fromMode],
+        config.klimaContractRetiringEntityString, // string memory retiringEntityString,
+        config.klimaContractBeneficiaryAddress, // address beneficiaryAddress,
+        config.klimaContractBeneficiaryString, // string memory beneficiaryString,
+        config.klimaContractRetirementMessage, // string memory retirementMessage,
+        config.klimaContractFromMode, // LibTransfer.From fromMode],
       ],
     })
 
@@ -128,14 +135,14 @@ const run = async () => {
       fromChain: config.fromChain,
       fromToken: config.fromToken,
       fromAddress: account.address,
-      toChain: ChainId.POL,
-      toToken: config.klimaContractSourceToken.address, // USDCe POL address
+      toChain: config.toChain,
+      toToken: config.klimaContractSourceToken.address,
       toAmount: usdcAmount,
       allowBridges: ['hop', 'across', 'amarok'],
       contractCalls: [
         {
           fromAmount: usdcAmount,
-          fromTokenAddress: config.klimaContractSourceToken.address, // USDCe POL address
+          fromTokenAddress: config.klimaContractSourceToken.address,
           toContractAddress: config.klimaContractAddress,
           toContractCallData: retireTxData,
           toContractGasLimit: config.klimaContractGasLimit,

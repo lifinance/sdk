@@ -69,11 +69,10 @@ const run = async () => {
     const config = {
       // For polynomial deposit, quotes are available for optimism, ethereum, arbitrum or polygon
       fromChain: ChainId.ARB,
-      // token can be either ETH or USDCe (the site says USDC but USDCe is the one only I can get a quote with)
-      fromToken: findDefaultToken(CoinKey.USDCe, ChainId.ARB).address, // ETH on Etheruem
-      // NOTE: anything less than '1000000000' results in a 400 response from the '/contractCalls' endpoint
-      // with the message "The from amount must be greater than zero.",
-      amount: '1000000000',
+      // Polynomial Ethereum Contract is on OPT
+      toChain: ChainId.OPT,
+      fromToken: findDefaultToken(CoinKey.USDCe, ChainId.ARB).address,
+      amount: '100000000000000', // sETH amount
       polynomialContractAddress: '0x2D46292cbB3C601c6e2c74C32df3A4FCe99b59C7', // Polynomial Ethereum Contract on Optimism
       polynomialContractToken: '0xE405de8F52ba7559f9df3C368500B6E6ae6Cee49', // sETH on Optimism
       polynomialContractGasLimit: '200000',
@@ -82,26 +81,23 @@ const run = async () => {
       ],
     }
 
-    const abi = parseAbi(config.polynomialContractAbi)
-
     const stakeTxData = encodeFunctionData({
-      abi,
+      abi: parseAbi(config.polynomialContractAbi),
       functionName: 'initiateDeposit',
       args: [account.address, config.amount],
     })
 
-    // TODO: check if these are the correct values
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {
       fromChain: config.fromChain,
       fromToken: config.fromToken,
       fromAddress: account.address,
-      toChain: ChainId.OPT,
-      toToken: config.polynomialContractToken, // sETH on Optimism
+      toChain: config.toChain,
+      toToken: config.polynomialContractToken,
       toAmount: config.amount,
       contractCalls: [
         {
           fromAmount: config.amount,
-          fromTokenAddress: config.polynomialContractToken, // sETH on Optimism
+          fromTokenAddress: config.polynomialContractToken,
           toContractAddress: config.polynomialContractAddress,
           toContractCallData: stakeTxData,
           toContractGasLimit: config.polynomialContractGasLimit,

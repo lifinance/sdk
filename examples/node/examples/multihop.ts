@@ -72,15 +72,15 @@ const run = async () => {
       intermediateToken: findDefaultToken(CoinKey.USDC, ChainId.POL).address, // USDC POL
       toChain: ChainId.OPT, // Optimism
       toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address, // USDC OPT
-      amount: '100000', // 1 usdc
+      amount: '100000', // USDC
     }
 
     const secondBridgeQuoteRequest: QuoteRequest = {
-      fromChain: config.intermediateChain, // Polygon
-      fromToken: config.intermediateToken, // USDC POL
+      fromChain: config.intermediateChain,
+      fromToken: config.intermediateToken,
       fromAmount: config.amount,
-      toChain: config.toChain, // Optimism
-      toToken: config.toToken, // USDC OPT
+      toChain: config.toChain,
+      toToken: config.toToken,
       fromAddress: account.address, // will actually be a relayer
       allowBridges: ['hop', 'stargate', 'across', 'amarok'],
       maxPriceImpact: 0.4,
@@ -94,10 +94,9 @@ const run = async () => {
     const secondBridgeQuote = await getQuote(secondBridgeQuoteRequest)
     console.info('>> got second quote', secondBridgeQuote)
 
-    // quote
     const quoteRequest: ContractCallsQuoteRequest = {
-      fromChain: config.fromChain, // Arbitrum
-      fromToken: config.fromToken, // USDC ARB
+      fromChain: config.fromChain,
+      fromToken: config.fromToken,
       fromAddress: account.address,
       toChain: secondBridgeQuote.action.fromChainId,
       toToken: secondBridgeQuote.action.fromToken.address,

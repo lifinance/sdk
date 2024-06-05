@@ -7,7 +7,7 @@ import {
   ChainId,
   CoinKey,
 } from '@lifi/sdk'
-import type { PrivateKeyAccount, Address, Chain } from 'viem'
+import type { Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { optimism } from 'viem/chains'
@@ -16,22 +16,6 @@ import 'dotenv/config'
 import { reportStepsExecutionToTerminal } from '../helpers/reportStepsExecutionToTerminal'
 
 const dataTypes = (lifiDataTypes as any).default
-
-// In the example below we are exchanging USDC and USDT tokens on Optimism
-const getRequestRoute = ({ address }: PrivateKeyAccount) => ({
-  toAddress: address,
-  fromAddress: address,
-  fromChainId: ChainId.OPT, // Optimisim
-  fromAmount: '100000', // 1 USDT
-  fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.OPT)
-    .address,
-  toChainId: ChainId.OPT, // Optimisim
-  toTokenAddress: dataTypes.findDefaultToken(CoinKey.USDT, ChainId.OPT).address,
-  options: {
-    slippage: 0.03, // = 3%
-    allowSwitchChain: false, // execute all transaction on starting chain
-  },
-})
 
 async function run() {
   console.info('>> Starting Swap Demo')
@@ -59,12 +43,27 @@ async function run() {
     ],
   })
 
-  console.info('>> Initialized, Requesting route')
-  const routeRequest = getRequestRoute(account)
+  const routeRequest = {
+    toAddress: account.address,
+    fromAddress: account.address,
+    fromChainId: ChainId.OPT, // Optimisim
+    fromAmount: '100000', // USDT
+    fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.OPT)
+      .address,
+    toChainId: ChainId.OPT, // Optimisim
+    toTokenAddress: dataTypes.findDefaultToken(CoinKey.USDT, ChainId.OPT)
+      .address,
+    options: {
+      slippage: 0.03, // = 3%
+      allowSwitchChain: false, // execute all transaction on starting chain
+    },
+  }
+  console.info('>> Requesting route', routeRequest)
+
   const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
-  console.info('>> Got Route')
+  console.info('>> Got Route', route)
 
   if (!(await promptConfirm('Execute Route?'))) {
     return

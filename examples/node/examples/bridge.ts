@@ -56,24 +56,25 @@ async function run() {
     ],
   })
 
-  console.info('>> Initialized, Requesting route')
-
   const routeRequest = {
     toAddress: account.address,
     fromAddress: account.address,
     fromChainId: ChainId.OPT, // Optimism
     fromAmount: '1000000', // 1 USDC
-    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address, // USDC on Optimism
     toChainId: ChainId.ARB, // Arbitrum
     toTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.ARB).address,
     options: {
       slippage: 0.03, // = 3%
     },
   }
+
+  console.info('>> Requesting route', routeRequest)
+
   const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
-  console.info('>> Got Route')
+  console.info('>> Got Route', routeResponse)
 
   if (!(await promptConfirm('Execute Route?'))) {
     return
