@@ -31,7 +31,7 @@ To run each example you can use the following commands
 
 - `yarn example:swap` will run `examples/swap.ts`
 - `yarn example:bridge` will run `examples/bridge.ts`
-- `yarn example:multihop` will run `examples/multihop`
+- `yarn example:multihop` will run `examples/multihop.ts`
 - `yarn example:klima` will run `examples/klimaRetireExactCarbon.ts`
 - `yarn example:polynomial` will run `examples/polynomialDeposit.ts`
 
