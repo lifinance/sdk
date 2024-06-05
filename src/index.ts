@@ -8,6 +8,10 @@ export type {
   MultisigTransaction,
   MultisigTxDetails,
 } from './core/EVM/types.js'
+export {
+  KeypairWalletAdapter,
+  KeypairWalletName,
+} from './core/Solana/KeypairWalletAdapter.js'
 export { Solana } from './core/Solana/Solana.js'
 export * from './core/index.js'
 export { createConfig } from './createConfig.js'
