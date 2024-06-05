@@ -2,7 +2,7 @@
   "compilerOptions": {
     "strict": true,
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "node"
   },
   "ts-node": {
     "esm": true,
