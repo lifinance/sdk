@@ -6,9 +6,9 @@ They use our SDK, along with [viem](https://viem.sh/), to execute common work fl
 
 These scripts need to be provided access to an actual wallet and will make real transactions on chains.
 
-To run these examples you will need a private key for your wallet and enough funds for the tokens and chains that these script use.
+To run these examples you will need a private key for your wallet and enough funds for the tokens and chains that these scripts use.
 
-Take look at the scrips in the `./examples` folder
+Take a look at the scripts in the `./examples` folder.
 
 ## Setting up the scripts to use your wallet
 
@@ -16,7 +16,7 @@ Take look at the scrips in the `./examples` folder
 - Then duplicate the `.env-template` file renaming it to `.env`
 - Add your private key to your `.env` file - replacing the text in quote marks with your private key
 
-NOTE: it's important to keep your private key safe and secure. Don't share it with anyone and make sure you never commit it to a git repo.
+NOTE: it's important to keep your private key safe and secure. Don't share it with anyone and make sure you never commit it to a git repository.
 
 ## Executing the scripts
 
@@ -26,7 +26,7 @@ First install the dependencies
 yarn install
 ```
 
-Each of the scripts are referenced in scripts section of the package.json file.
+Each of the scripts is referenced in the scripts section of the package.json file.
 To run each example you can use the following commands
 
 - `yarn example:swap` will run `examples/swap.ts`
@@ -35,7 +35,7 @@ To run each example you can use the following commands
 - `yarn example:klima` will run `examples/klimaRetireExactCarbon.ts`
 - `yarn example:polynomial` will run `examples/polynomialDeposit.ts`
 
-Be sure to take a look inside the scripts to find out what they do
+Be sure to take a look inside the scripts to find out what they do.
 
 
 
