@@ -1,13 +1,12 @@
-import { ChainType, type ChainId } from '@lifi/types'
-import type { Adapter } from '@solana/wallet-adapter-base'
+import { ChainType } from '@lifi/types'
+import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { type SDKProvider } from '../types.js'
 
 export interface SolanaProviderOptions {
-  getWalletAdapter?: () => Promise<Adapter>
+  getWalletAdapter?: () => Promise<SignerWalletAdapter>
 }
 
 export interface SolanaProvider extends SDKProvider {
-  rpcUrls?: Record<ChainId, string[]>
   setOptions(options: SolanaProviderOptions): void
 }
 
