@@ -99,27 +99,6 @@ export const basicCoins: BasicCoin[] = [
         address: '0x85219708c49aa701871ad330a94ea0f41dff24ca',
         decimals: 18,
       },
-      // Testnets
-      [ChainId.ONET]: {
-        address: '0x268d6ff391b41b36a13b1693bd25f87fb4e4b392',
-        decimals: 18,
-      },
-      [ChainId.BSCT]: {
-        address: '0xd66c6b4f0be8ce5b39d52e0fd1344c389929b378',
-        decimals: 18,
-      },
-      [ChainId.OPTG]: {
-        address: '0x0000000000000000000000000000000000000000',
-        decimals: 18,
-      },
-      [ChainId.ARBG]: {
-        address: '0x0000000000000000000000000000000000000000',
-        decimals: 18,
-      },
-      [ChainId.LNAT]: {
-        address: '0x0000000000000000000000000000000000000000',
-        decimals: 18,
-      },
     },
   },
   // > MATIC
@@ -157,12 +136,6 @@ export const basicCoins: BasicCoin[] = [
       // https://evmexplorer.velas.com/token/0x6ab0B8C1a35F9F4Ce107cCBd05049CB1Dbd99Ec5/
       [ChainId.VEL]: {
         address: '0x6ab0b8c1a35f9f4ce107ccbd05049cb1dbd99ec5',
-        decimals: 18,
-      },
-
-      // Testnet
-      [ChainId.LNAT]: {
-        address: '0xa55C7E1274bE5db2275a0BDd055f81e8263b7954',
         decimals: 18,
       },
     },
@@ -452,14 +425,6 @@ export const basicCoins: BasicCoin[] = [
         decimals: 6,
         name: 'Multichain USDC',
       },
-
-      // Testnets
-      [ChainId.LNAT]: {
-        address: '0x964FF70695da981027c81020B1c58d833D49A640',
-        decimals: 6,
-        name: 'Linea USD Coin',
-      },
-      // 42, 0xb7a4f3e9097c08da09517b5ab877f7a917224ede, 6
     },
   },
   // > Solana

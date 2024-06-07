@@ -4,16 +4,6 @@ import type { TenderlyResponse } from './types/index.js'
 import { ValidationError } from './utils/errors.js'
 import { name, version } from './version.js'
 
-/**
- * Returns a random number between min (inclusive) and max (inclusive)
- * @param min - minimum number.
- * @param max - maximum number.
- * @returns - random number.
- */
-export const getRandomNumber = (min: number, max: number): number => {
-  return Math.floor(Math.random() * (max - min + 1) + min)
-}
-
 export const checkPackageUpdates = async (
   packageName?: string,
   packageVersion?: string

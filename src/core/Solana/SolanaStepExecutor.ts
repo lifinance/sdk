@@ -1,12 +1,13 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
-import type { Adapter } from '@solana/wallet-adapter-base'
+import { type SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import {
   VersionedTransaction,
-  type TransactionConfirmationStrategy,
-  type TransactionSignature,
+  type SendOptions,
+  type SignatureResult,
 } from '@solana/web3.js'
 import { config } from '../../config.js'
 import { getStepTransaction } from '../../services/api.js'
+import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import {
   LiFiErrorCode,
   TransactionError,
@@ -26,11 +27,15 @@ import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  walletAdapter: Adapter
+  walletAdapter: SignerWalletAdapter
 }
 
+const TX_RETRY_INTERVAL = 500
+// https://solana.com/docs/advanced/confirmation
+const TIMEOUT_PERIOD = 60_000
+
 export class SolanaStepExecutor extends BaseStepExecutor {
-  private walletAdapter: Adapter
+  private walletAdapter: SignerWalletAdapter
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
@@ -65,117 +70,172 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     if (process.status !== 'DONE') {
       try {
         const connection = await getSolanaConnection()
-        let txHash: TransactionSignature
-        if (process.txHash) {
-          txHash = process.txHash as TransactionSignature
-        } else {
-          process = this.statusManager.updateProcess(
-            step,
-            process.type,
-            'STARTED'
-          )
 
-          // Check balance
-          await checkBalance(this.walletAdapter.publicKey!.toString(), step)
-
-          // Create new transaction
-          if (!step.transactionRequest) {
-            const updatedStep = await getStepTransaction(step)
-            const comparedStep = await stepComparison(
-              this.statusManager,
-              step,
-              updatedStep,
-              this.allowUserInteraction,
-              this.executionOptions
-            )
-            step = {
-              ...comparedStep,
-              execution: step.execution,
-            }
-          }
-
-          if (!step.transactionRequest?.data) {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionUnprepared,
-              'Unable to prepare transaction.'
-            )
-          }
-
-          process = this.statusManager.updateProcess(
-            step,
-            process.type,
-            'ACTION_REQUIRED'
-          )
-
-          if (!this.allowUserInteraction) {
-            return step
-          }
-
-          let transactionRequest: TransactionParameters = {
-            data: step.transactionRequest.data,
-          }
-
-          if (this.executionOptions?.updateTransactionRequestHook) {
-            const customizedTransactionRequest: TransactionParameters =
-              await this.executionOptions.updateTransactionRequestHook({
-                requestType: 'transaction',
-                ...transactionRequest,
-              })
-
-            transactionRequest = {
-              ...transactionRequest,
-              ...customizedTransactionRequest,
-            }
-          }
-
-          if (!transactionRequest.data) {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionUnprepared,
-              'Unable to prepare transaction.'
-            )
-          }
-
-          const versionedTransaction = VersionedTransaction.deserialize(
-            Uint8Array.from(atob(transactionRequest.data), (c) =>
-              c.charCodeAt(0)
-            )
-          )
-
-          this.checkWalletAdapter(step)
-
-          txHash = await this.walletAdapter.sendTransaction(
-            versionedTransaction,
-            connection,
-            {
-              maxRetries: 5,
-              skipPreflight: true,
-            }
-          )
-
-          process = this.statusManager.updateProcess(
-            step,
-            process.type,
-            'PENDING',
-            {
-              txHash: txHash,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
-            }
-          )
-        }
-
-        const signatureResult = await connection.confirmTransaction(
-          {
-            signature: txHash,
-          } as TransactionConfirmationStrategy,
-          'confirmed'
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'STARTED'
         )
 
-        if (signatureResult.value.err) {
+        // Check balance
+        await checkBalance(this.walletAdapter.publicKey!.toString(), step)
+
+        // Create new transaction
+        if (!step.transactionRequest) {
+          const updatedStep = await getStepTransaction(step)
+          const comparedStep = await stepComparison(
+            this.statusManager,
+            step,
+            updatedStep,
+            this.allowUserInteraction,
+            this.executionOptions
+          )
+          step = {
+            ...comparedStep,
+            execution: step.execution,
+          }
+        }
+
+        if (!step.transactionRequest?.data) {
           throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
-            `Transaction failed: ${signatureResult.value.err}`
+            LiFiErrorCode.TransactionUnprepared,
+            'Unable to prepare transaction.'
           )
         }
+
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'ACTION_REQUIRED'
+        )
+
+        if (!this.allowUserInteraction) {
+          return step
+        }
+
+        let transactionRequest: TransactionParameters = {
+          data: step.transactionRequest.data,
+        }
+
+        if (this.executionOptions?.updateTransactionRequestHook) {
+          const customizedTransactionRequest: TransactionParameters =
+            await this.executionOptions.updateTransactionRequestHook({
+              requestType: 'transaction',
+              ...transactionRequest,
+            })
+
+          transactionRequest = {
+            ...transactionRequest,
+            ...customizedTransactionRequest,
+          }
+        }
+
+        if (!transactionRequest.data) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionUnprepared,
+            'Unable to prepare transaction.'
+          )
+        }
+
+        const versionedTransaction = VersionedTransaction.deserialize(
+          base64ToUint8Array(transactionRequest.data)
+        )
+
+        const blockhashResult = await connection.getLatestBlockhashAndContext({
+          commitment: 'confirmed',
+        })
+
+        // Update transaction recent blockhash with the latest blockhash
+        versionedTransaction.message.recentBlockhash =
+          blockhashResult.value.blockhash
+
+        this.checkWalletAdapter(step)
+
+        const signedTx =
+          await this.walletAdapter.signTransaction(versionedTransaction)
+
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'PENDING'
+        )
+
+        const rawTransactionOptions: SendOptions = {
+          // Skipping preflight i.e. tx simulation by RPC as we simulated the tx above
+          skipPreflight: true,
+          // Setting max retries to 0 as we are handling retries manually
+          // Set this manually so that the default is skipped
+          maxRetries: 0,
+          // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
+          preflightCommitment: 'confirmed',
+          // minContextSlot: blockhashResult.context.slot,
+        }
+
+        const txSignature = await connection.sendRawTransaction(
+          signedTx.serialize(),
+          rawTransactionOptions
+        )
+
+        // In the following section, we wait and constantly check for the transaction to be confirmed
+        // and resend the transaction if it is not confirmed within a certain time interval
+        // thus handling tx retries on the client side rather than relying on the RPC
+        const confirmTransactionPromise = connection
+          .confirmTransaction(
+            {
+              signature: txSignature,
+              blockhash: blockhashResult.value.blockhash,
+              lastValidBlockHeight: blockhashResult.value.lastValidBlockHeight,
+            },
+            'confirmed'
+          )
+          .then((result) => result.value)
+
+        let confirmedTx: SignatureResult | null = null
+        const startTime = Date.now()
+
+        while (!confirmedTx && Date.now() - startTime <= TIMEOUT_PERIOD) {
+          confirmedTx = await Promise.race([
+            confirmTransactionPromise,
+            new Promise<null>((resolve) =>
+              setTimeout(() => {
+                resolve(null)
+              }, TX_RETRY_INTERVAL)
+            ),
+          ])
+          if (confirmedTx) {
+            break
+          }
+
+          await connection.sendRawTransaction(
+            signedTx.serialize(),
+            rawTransactionOptions
+          )
+        }
+
+        if (confirmedTx?.err) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            `Transaction failed: ${confirmedTx?.err}`
+          )
+        }
+
+        if (!confirmedTx) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Failed to land the transaction'
+          )
+        }
+
+        // Transaction has been confirmed and we can update the process
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'PENDING',
+          {
+            txHash: txSignature,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`,
+          }
+        )
 
         if (isBridgeExecution) {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
@@ -200,7 +260,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
 
     // STEP 5: Wait for the receiving chain
-    const processTxHash = process.txHash
     if (isBridgeExecution) {
       process = this.statusManager.findOrCreateProcess(
         step,
@@ -210,11 +269,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
     let statusResponse: FullStatusData
     try {
-      if (!processTxHash) {
+      if (!process.txHash) {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = (await waitForReceivingTransaction(
-        processTxHash,
+        process.txHash,
         this.statusManager,
         process.type,
         step

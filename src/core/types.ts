@@ -72,7 +72,7 @@ export type RouteExecutionDataDictionary = Partial<
 
 export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 
-export type UpdateRouteHook = (updatedRoute: Route) => void
+export type UpdateRouteHook = (updatedRoute: RouteExtended) => void
 
 export interface TransactionRequestParameters extends TransactionParameters {
   requestType: 'approve' | 'transaction'
