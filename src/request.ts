@@ -1,7 +1,8 @@
 import { config } from './config.js'
-import { HTTPError } from './utils/errors.js'
+import { HTTPError } from './utils/httpError.js'
 import { wait } from './utils/utils.js'
 import { version } from './version.js'
+import { ValidationError } from './utils/errors.js'
 
 export const requestSettings = {
   retries: 1,
@@ -20,8 +21,8 @@ export const request = async <T = Response>(
 ): Promise<T> => {
   const { userId, integrator, widgetVersion, apiKey } = config.get()
   if (!integrator) {
-    throw new Error(
-      'Integrator not found. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
+    throw new ValidationError(
+      'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
     )
   }
   options.retries = options.retries ?? requestSettings.retries
@@ -64,16 +65,18 @@ export const request = async <T = Response>(
 
     const response: Response = await fetch(url, options)
     if (!response.ok) {
-      throw new HTTPError(response)
+      throw new HTTPError(response, url, options)
     }
 
-    const data: T = await response.json()
-    return data
+    return await response.json()
   } catch (error) {
-    if (options.retries > 0 && (error as HTTPError)?.status === 500) {
+    if (options.retries > 0 && (error as HTTPError).status === 500) {
       await wait(500)
       return request<T>(url, { ...options, retries: options.retries - 1 })
     }
+
+    await (error as HTTPError).buildAdditionalDetails?.()
+
     throw error
   }
 }

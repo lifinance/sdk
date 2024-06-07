@@ -1,4 +1,4 @@
-import type { LiFiError } from './errors.js'
+import { type LiFiError } from './errors.js'
 import {
   ErrorMessage,
   NotFoundError,
@@ -14,6 +14,7 @@ export const parseBackendError = async (e: any): Promise<LiFiError> => {
   } catch (error) {
     // ignore
   }
+
   if (e.response?.status === 400) {
     return new ValidationError(
       data?.message || e.response?.statusText,

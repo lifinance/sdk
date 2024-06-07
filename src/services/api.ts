@@ -28,7 +28,6 @@ import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { ValidationError } from '../utils/errors.js'
-import { parseBackendError } from '../utils/parseBackendError.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -48,20 +47,15 @@ export const getToken = async (
   if (!token) {
     throw new ValidationError('Required parameter "token" is missing.')
   }
-  try {
-    const response = await request<Token>(
-      `${config.get().apiUrl}/token?${new URLSearchParams({
-        chain,
-        token,
-      } as Record<string, string>)}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<Token>(
+    `${config.get().apiUrl}/token?${new URLSearchParams({
+      chain,
+      token,
+    } as Record<string, string>)}`,
+    {
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -110,19 +104,14 @@ export const getQuote = async (
       delete params[key as keyof QuoteRequest]
   )
 
-  try {
-    const response = await request<LiFiStep>(
-      `${_config.apiUrl}/quote?${new URLSearchParams(
-        params as unknown as Record<string, string>
-      )}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<LiFiStep>(
+    `${_config.apiUrl}/quote?${new URLSearchParams(
+      params as unknown as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -167,22 +156,14 @@ export const getContractCallsQuote = async (
   params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
   params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
   // send request
-  try {
-    const response = await request<LiFiStep>(
-      `${_config.apiUrl}/quote/contractCalls`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<LiFiStep>(`${_config.apiUrl}/quote/contractCalls`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+    signal: options?.signal,
+  })
 }
 
 /**
@@ -202,17 +183,12 @@ export const getStatus = async (
   const queryParams = new URLSearchParams(
     params as unknown as Record<string, string>
   )
-  try {
-    const response = await request<StatusResponse>(
-      `${config.get().apiUrl}/status?${queryParams}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<StatusResponse>(
+    `${config.get().apiUrl}/status?${queryParams}`,
+    {
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -233,19 +209,16 @@ export const getChains = async (
         delete params[key as keyof ChainsRequest]
     )
   }
-  try {
-    const response = await request<ChainsResponse>(
-      `${config.get().apiUrl}/chains?${new URLSearchParams(
-        params as Record<string, string>
-      )}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response.chains
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+
+  const response = await request<ChainsResponse>(
+    `${config.get().apiUrl}/chains?${new URLSearchParams(
+      params as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
+  return response.chains
 }
 
 /**
@@ -269,23 +242,15 @@ export const getRoutes = async (
     ..._config.routeOptions,
     ...params.options,
   }
-  // send request
-  try {
-    const response = await request<RoutesResponse>(
-      `${_config.apiUrl}/advanced/routes`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+
+  return await request<RoutesResponse>(`${_config.apiUrl}/advanced/routes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+    signal: options?.signal,
+  })
 }
 
 /**
@@ -304,22 +269,18 @@ export const getStepTransaction = async (
     // eslint-disable-next-line no-console
     console.warn('SDK Validation: Invalid Step', step)
   }
-  try {
-    const response = await request<LiFiStep>(
-      `${config.get().apiUrl}/advanced/stepTransaction`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(step),
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+
+  return await request<LiFiStep>(
+    `${config.get().apiUrl}/advanced/stepTransaction`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(step),
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -339,19 +300,14 @@ export const getTools = async (
         delete params[key as keyof ToolsRequest]
     )
   }
-  try {
-    const response = await request<ToolsResponse>(
-      `${config.get().apiUrl}/tools?${new URLSearchParams(
-        params as Record<string, string>
-      )}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<ToolsResponse>(
+    `${config.get().apiUrl}/tools?${new URLSearchParams(
+      params as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -372,19 +328,14 @@ export const getTokens = async (
     )
   }
 
-  try {
-    const response = await request<TokensResponse>(
-      `${config.get().apiUrl}/tokens?${new URLSearchParams(
-        params as Record<string, string>
-      )}`,
-      {
-        signal: options?.signal,
-      }
-    )
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<TokensResponse>(
+    `${config.get().apiUrl}/tokens?${new URLSearchParams(
+      params as Record<string, string>
+    )}`,
+    {
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -410,14 +361,9 @@ export const getGasRecommendation = async (
     url.searchParams.append('fromToken', params.fromToken)
   }
 
-  try {
-    const response = await request<GasRecommendationResponse>(url.toString(), {
-      signal: options?.signal,
-    })
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<GasRecommendationResponse>(url.toString(), {
+    signal: options?.signal,
+  })
 }
 
 /**
@@ -465,12 +411,8 @@ export const getConnections = async (
       })
     }
   })
-  try {
-    const response = await request<ConnectionsResponse>(url, options)
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+
+  return await request<ConnectionsResponse>(url, options)
 }
 
 export const getTransactionHistory = async (
@@ -500,10 +442,5 @@ export const getTransactionHistory = async (
     url.searchParams.append('toTimestamp', toTimestamp.toString())
   }
 
-  try {
-    const response = await request<TransactionAnalyticsResponse>(url, options)
-    return response
-  } catch (e) {
-    throw await parseBackendError(e)
-  }
+  return await request<TransactionAnalyticsResponse>(url, options)
 }

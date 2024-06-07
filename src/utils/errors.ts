@@ -1,4 +1,4 @@
-enum ErrorType {
+export enum ErrorType {
   RPCError = 'RPCError',
   ProviderError = 'ProviderError',
   ServerError = 'ServerError',
@@ -79,7 +79,12 @@ export type ErrorCode =
   | MetaMaskRPCErrorCode
   | MetaMaskProviderErrorCode
 
-export class LiFiError extends Error {
+export interface LifiSDKError extends Error {
+  code: ErrorCode
+  htmlMessage?: string
+}
+
+export class LiFiError extends Error implements LifiSDKError {
   code: ErrorCode
   htmlMessage?: string
 
@@ -210,23 +215,5 @@ export class UnknownError extends LiFiError {
     stack?: string
   ) {
     super(ErrorType.UnknownError, code, message, htmlMessage, stack)
-  }
-}
-
-export class HTTPError extends Error {
-  public response: Response
-  public status: number
-
-  constructor(response: Response) {
-    const code = response.status || response.status === 0 ? response.status : ''
-    const title = response.statusText || ''
-    const status = `${code} ${title}`.trim()
-    const reason = status ? `status code ${status}` : 'an unknown error'
-
-    super(`Request failed with ${reason}`)
-
-    this.name = 'HTTPError'
-    this.response = response
-    this.status = response.status
   }
 }
