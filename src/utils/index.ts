@@ -1,4 +1,5 @@
 export * from './errors.js'
+export * from './httpErrors.js'
 export * from './getTransactionMessage.js'
 export * from './median.js'
 export * from './parseError.js'
