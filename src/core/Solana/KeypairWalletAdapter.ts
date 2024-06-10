@@ -16,7 +16,7 @@ import type {
   VersionedTransaction,
 } from '@solana/web3.js'
 import { Keypair } from '@solana/web3.js'
-import { decode } from 'bs58'
+import * as bs58 from 'bs58'
 
 export const KeypairWalletName =
   'Keypair Wallet' as WalletName<'Keypair Wallet'>
@@ -48,7 +48,7 @@ export class KeypairWalletAdapter
       throw new WalletConfigError()
     }
     super()
-    this._keypair = Keypair.fromSecretKey(decode(privateKey))
+    this._keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
   }
 
   get connecting() {
@@ -67,7 +67,7 @@ export class KeypairWalletAdapter
     if (!privateKey) {
       throw new WalletConfigError()
     }
-    this._keypair = Keypair.fromSecretKey(decode(privateKey))
+    this._keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
   }
 
   async disconnect(): Promise<void> {
