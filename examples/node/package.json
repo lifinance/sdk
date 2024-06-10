@@ -3,22 +3,29 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Sample project to showcase the usage of @lifi/sdk",
-  "main": "index.js",
+  "main": "examples/swap.ts",
   "author": "Max Klenk <max@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^1.0.0-alpha.0",
-    "@lifi/rpc-wrapper": "^0.0.25",
-    "@lifi/sdk": "^3.0.0-alpha.10",
+    "@lifi/data-types": "^4.2.1",
+    "@lifi/rpc-wrapper": "^0.0.27",
+    "@lifi/sdk": "^3.0.0-alpha.63",
     "@types/dotenv": "^8.2.0",
-    "dotenv": "^16.3.1"
+    "@wagmi/connectors": "^4.3.9",
+    "@wagmi/core": "^2.9.7",
+    "dotenv": "^16.4.5",
+    "viem": "^2.12.1"
   },
   "scripts": {
-    "run-ts": "ts-node swap.ts"
+    "example:swap": "tsx examples/swap.ts",
+    "example:bridge": "tsx examples/bridge.ts",
+    "example:multihop": "tsx examples/multihop.ts",
+    "example:klima": "tsx examples/klimaRetireExactCarbon.ts",
+    "example:polynomial": "tsx examples/polynomialDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.5.9",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "@types/node": "^20.12.12",
+    "tsx": "^4.10.2",
+    "typescript": "^5.4.5"
   }
 }
