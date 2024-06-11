@@ -10,6 +10,7 @@ describe('HTTPError', () => {
   it.each([
     [
       'when status code is 400',
+      options,
       400,
       'Bad Request',
       {
@@ -33,6 +34,7 @@ describe('HTTPError', () => {
     ],
     [
       'when status code is 404',
+      options,
       404,
       'Not Found',
       {
@@ -56,6 +58,7 @@ describe('HTTPError', () => {
     ],
     [
       'when status code is 409',
+      options,
       409,
       'Conflict',
       {
@@ -81,6 +84,7 @@ describe('HTTPError', () => {
     ],
     [
       'when status code is 500',
+      options,
       500,
       'Internal Server Error',
       {
@@ -105,6 +109,7 @@ describe('HTTPError', () => {
     ],
     [
       'when status code is undefined',
+      options,
       undefined,
       '',
       {
@@ -128,6 +133,7 @@ describe('HTTPError', () => {
     ],
     [
       'when there is a problem processing the body',
+      options,
       400,
       'Bad Request',
       {
@@ -145,21 +151,44 @@ describe('HTTPError', () => {
         }`,
       },
     ],
+    [
+      'when LiFi error codes are disabled',
+      { disableLiFiErrorCodes: true },
+      400,
+      'Bad Request',
+      {
+        initialMessage: 'Request failed with status code 400 Bad Request',
+        type: undefined,
+        code: undefined,
+        jsonFunc: () => Promise.resolve(responseBody),
+        responseBody,
+        htmlMessage: undefined,
+        builtMessage: `Request failed with status code 400 Bad Request
+        responseMessage: Oops
+        url: http://some.where
+        fetchOptions: {
+          "disableLiFiErrorCodes": true
+        }
+        responseBody: {
+          "message": "Oops"
+        }`,
+      },
+    ],
   ])(
     'should present correctly %s',
-    async (_, statusCode, statusText, expected) => {
+    async (_, requestOptions, statusCode, statusText, expected) => {
       const mockResponse = {
         status: statusCode,
         statusText,
         json: expected.jsonFunc,
       } as Response
 
-      const error = new HTTPError(mockResponse, url, options)
+      const error = new HTTPError(mockResponse, url, requestOptions)
 
       expect(error.status).toEqual(statusCode)
       expect(error.message).toEqual(expected.initialMessage)
       expect(error.url).toEqual(url)
-      expect(error.fetchOptions).toEqual(options)
+      expect(error.fetchOptions).toEqual(requestOptions)
 
       expect(error.type).toEqual(expected.type)
       expect(error.code).toEqual(expected.code)

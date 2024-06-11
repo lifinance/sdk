@@ -1,17 +1,22 @@
 import { config } from './config.js'
 import { HTTPError } from './utils/httpError.js'
 import { wait } from './utils/utils.js'
-import { version } from './version.js'
 import { ValidationError } from './utils/errors.js'
+import type { ExtendedRequestInit } from './types/request.js'
+import { version } from './version.js'
 
 export const requestSettings = {
   retries: 1,
 }
 
-interface ExtendedRequestInit extends RequestInit {
-  retries?: number
-  skipTrackingHeaders?: boolean
-}
+const stripExtendRequestInitProperties = ({
+  retries,
+  skipTrackingHeaders,
+  disableLiFiErrorCodes,
+  ...rest
+}: ExtendedRequestInit): RequestInit => ({
+  ...rest,
+})
 
 export const request = async <T = Response>(
   url: RequestInfo | URL,
@@ -63,7 +68,10 @@ export const request = async <T = Response>(
       }
     }
 
-    const response: Response = await fetch(url, options)
+    const response: Response = await fetch(
+      url,
+      stripExtendRequestInitProperties(options)
+    )
     if (!response.ok) {
       throw new HTTPError(response, url, options)
     }

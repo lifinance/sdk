@@ -1,6 +1,7 @@
 import type { UnavailableRoutes } from '@lifi/types'
 import type { LifiSDKError } from './errors.js'
 import { ErrorMessage, ErrorType, LiFiErrorCode } from './errors.js'
+import type { ExtendedRequestInit } from '../types/request.js'
 
 interface ServerErrorResponseBody {
   code: number
@@ -40,20 +41,20 @@ const createInitialMessage = (response: Response) => {
   return `Request failed with ${reason}`
 }
 
-export class HTTPError extends Error implements LifiSDKError {
+export class HTTPError extends Error implements Partial<LifiSDKError> {
   public response: Response
   public status: number
   public url: RequestInfo | URL
-  public fetchOptions: RequestInit
-  public code: LiFiErrorCode
-  public type: ErrorType
+  public fetchOptions: ExtendedRequestInit
+  public code?: LiFiErrorCode
+  public type?: ErrorType
   public htmlMessage?: string
   public responseBody?: ServerErrorResponseBody
 
   constructor(
     response: Response,
     url: RequestInfo | URL,
-    options: RequestInit
+    options: ExtendedRequestInit
   ) {
     const message = createInitialMessage(response)
 
@@ -66,6 +67,12 @@ export class HTTPError extends Error implements LifiSDKError {
     this.url = url
     this.fetchOptions = options
 
+    if (!options.disableLiFiErrorCodes) {
+      this.initLiFiErrorCodeInfo()
+    }
+  }
+
+  initLiFiErrorCodeInfo() {
     const errorClassification = getErrorClassificationFromStatusCode(
       this.status
     )

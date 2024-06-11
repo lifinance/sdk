@@ -13,6 +13,7 @@ import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
 import type { HTTPError } from './utils/index.js'
 import { ValidationError } from './utils/index.js'
+import type { ExtendedRequestInit } from './types/request.js'
 
 const mockUrl = 'https://some.endpoint.com'
 const mockSuccessMessage = { message: 'it worked!' }
@@ -55,6 +56,31 @@ describe('request', () => {
     const response = await request<{ message: string }>(mockUrl)
 
     expect(response).toEqual(mockSuccessMessage)
+  })
+
+  it('should remove the extended request init properties that fetch does not care about', async () => {
+    setUpMocks()
+
+    const options: ExtendedRequestInit = {
+      retries: 0,
+      skipTrackingHeaders: true,
+      disableLiFiErrorCodes: true,
+      headers: {
+        'x-lifi-integrator': 'mock-integrator',
+      },
+    }
+
+    const response = await request<{ message: string }>(mockUrl, options)
+
+    expect(response).toEqual(mockSuccessMessage)
+
+    const fetchOptions = (global.fetch as Mock).mock.calls[0][1]
+
+    expect(fetchOptions).toEqual({
+      headers: {
+        'x-lifi-integrator': 'mock-integrator',
+      },
+    })
   })
 
   it('should update the headers information available from config', async () => {
