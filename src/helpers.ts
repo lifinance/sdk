@@ -12,7 +12,7 @@ export const checkPackageUpdates = async (
     const pkgName = packageName ?? name
     const response = await request<{ version: string }>(
       `https://registry.npmjs.org/${pkgName}/latest`,
-      { skipTrackingHeaders: true }
+      { skipTrackingHeaders: true, disableLiFiErrorCodes: true }
     )
     const latestVersion = response.version
     const currentVersion = packageVersion ?? version
@@ -62,7 +62,8 @@ export const convertQuoteToRoute = (step: LiFiStep): Route => {
 
 export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
   const response = await request<TenderlyResponse>(
-    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
+    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
+    { disableLiFiErrorCodes: true }
   )
 
   return response
