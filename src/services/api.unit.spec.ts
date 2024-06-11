@@ -317,21 +317,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      // describe('and the backend call fails', () => {
-      //   it('throw an error', async () => {
-      //     server.use(
-      //       http.get(`${_config.apiUrl}/status`, async () =>
-      //         HttpResponse.json({ message: 'Oops' }, { status: 500 })
-      //       )
-      //     )
-      //
-      //     await expect(
-      //       ApiService.getStatus({ bridge, fromChain, toChain, txHash })
-      //     ).rejects.toThrowError(new ServerError('Oops'))
-      //     expect(mockedFetch).toHaveBeenCalledTimes(1)
-      //   })
-      // })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
