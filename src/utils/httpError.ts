@@ -75,21 +75,19 @@ export class HTTPError extends Error implements LifiSDKError {
   }
 
   // This method populates the error message
-  // with information that could be more helpful in debugging
+  // with information that could be more helpful in debugging in a browser
   async buildAdditionalDetails() {
-    this.message = `[${this.type}] ${this.message}`
+    if (this.type) {
+      this.message = `[${this.type}] ${this.message}`
+    }
 
     try {
       this.responseBody = await this.response.json()
-      if (this.responseBody?.message) {
-        this.appendMessage('responseMessage', this.responseBody?.message)
-      }
+      this.appendMessage('responseMessage', this.responseBody?.message)
     } catch {}
 
     this.appendMessage('code', this.code)
-    if (this.htmlMessage) {
-      this.appendMessage('htmlMessage', this.htmlMessage)
-    }
+    this.appendMessage('htmlMessage', this.htmlMessage)
     this.appendMessage('url', this.url)
     this.appendMessage(
       'fetchOptions',
@@ -109,6 +107,8 @@ export class HTTPError extends Error implements LifiSDKError {
   appendMessage(displayName: string, value: any) {
     const spacer = '\n        '
 
-    this.message += `${spacer}${displayName}: ${value.toString().replaceAll('\n', spacer)}`
+    if (value) {
+      this.message += `${spacer}${displayName}: ${value.toString().replaceAll('\n', spacer)}`
+    }
   }
 }

@@ -29,7 +29,6 @@ import { requestSettings } from '../request.js'
 import { ValidationError } from '../utils/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
-import type { HTTPError } from '../utils/httpError.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
@@ -144,34 +143,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        // TODO: once the HTTPObject itself is tested this test can less specific
-        //  it will only need to know an Error is thrown - the type of error will be tested
-        //  at the HTTPError level
-        it('throws a the error', async () => {
-          expect.assertions(4)
-
-          server.use(
-            http.post(`${_config.apiUrl}/advanced/routes`, async () => {
-              return HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            })
-          )
-
-          const request = getRoutesRequest({ fromAmount: 'failed' })
-
-          try {
-            await ApiService.getRoutes(request)
-          } catch (e) {
-            const httpError = e as HTTPError
-            expect(httpError.message).toMatch(/^\[ServerError]/)
-            expect(httpError.responseBody?.message).toEqual('Oops')
-            expect(httpError.status).toEqual(500)
-          }
-
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           const request = getRoutesRequest({})
@@ -202,22 +173,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      // TODO: re-evaluate once HTTPError tests are written
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(`${_config.apiUrl}/token`, async () =>
-              HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(ApiService.getToken(ChainId.DAI, 'DAI')).rejects.toThrow(
-            '[ServerError]'
-          )
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getToken(ChainId.DAI, 'DAI')
@@ -321,29 +276,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      // TODO: re-evaluate once HTTPError tests are written
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(`${_config.apiUrl}/quote`, async () =>
-              HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getQuote({
-              fromChain,
-              fromToken,
-              fromAddress,
-              fromAmount,
-              toChain,
-              toToken,
-            })
-          ).rejects.toThrow('[ServerError]')
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getQuote({
@@ -410,20 +342,6 @@ describe('ApiService', () => {
   })
 
   describe('getChains', () => {
-    // TODO: re-evaluate once HTTPError tests are written
-    describe('and the backend call fails', () => {
-      it('throw an error', async () => {
-        server.use(
-          http.get(`${_config.apiUrl}/chains`, async () =>
-            HttpResponse.json({ message: 'Oops' }, { status: 500 })
-          )
-        )
-
-        await expect(ApiService.getChains()).rejects.toThrow('[ServerError]')
-        expect(mockedFetch).toHaveBeenCalledTimes(1)
-      })
-    })
-
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
         const chains = await ApiService.getChains()
@@ -575,25 +493,6 @@ describe('ApiService', () => {
       })
 
       describe('user input is valid', () => {
-        // TODO: re-evaluate once HTTPError tests are written
-        describe('and the backend call fails', () => {
-          it('throw a the error', async () => {
-            const step = getStep({})
-            server.use(
-              http.post(
-                `${_config.apiUrl}/advanced/stepTransaction`,
-                async () =>
-                  HttpResponse.json({ message: 'Oops' }, { status: 500 })
-              )
-            )
-
-            await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-              '[ServerError]'
-            )
-            expect(mockedFetch).toHaveBeenCalledTimes(1)
-          })
-        })
-
         describe('and the backend call is successful', () => {
           it('call the server once', async () => {
             const step = getStep({})
@@ -621,26 +520,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      // TODO: re-evaluate once HTTPError tests are written
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(
-              `${_config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
-              async () =>
-                HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getGasRecommendation({
-              chainId: ChainId.OPT,
-            })
-          ).rejects.toThrow('[ServerError]')
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getGasRecommendation({
