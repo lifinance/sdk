@@ -21,15 +21,7 @@ describe('HTTPError', () => {
         responseBody,
         htmlMessage: undefined,
         builtMessage: `[ValidationError] Request failed with status code 400 Bad Request
-        responseMessage: Oops
-        code: 1001
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        responseMessage: Oops`,
       },
     ],
     [
@@ -45,15 +37,7 @@ describe('HTTPError', () => {
         responseBody,
         htmlMessage: undefined,
         builtMessage: `[NotFoundError] Request failed with status code 404 Not Found
-        responseMessage: Oops
-        code: 1006
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        responseMessage: Oops`,
       },
     ],
     [
@@ -70,16 +54,7 @@ describe('HTTPError', () => {
         htmlMessage:
           'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
         builtMessage: `[SlippageError] Request failed with status code 409 Conflict
-        responseMessage: Oops
-        code: 1011
-        htmlMessage: The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        responseMessage: Oops`,
       },
     ],
     [
@@ -96,15 +71,7 @@ describe('HTTPError', () => {
         responseBody,
         htmlMessage: undefined,
         builtMessage: `[ServerError] Request failed with status code 500 Internal Server Error
-        responseMessage: Oops
-        code: 1000
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        responseMessage: Oops`,
       },
     ],
     [
@@ -120,15 +87,7 @@ describe('HTTPError', () => {
         responseBody,
         htmlMessage: undefined,
         builtMessage: `[ServerError] Request failed with an unknown error
-        responseMessage: Oops
-        code: 1000
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        responseMessage: Oops`,
       },
     ],
     [
@@ -143,35 +102,7 @@ describe('HTTPError', () => {
         jsonFunc: () => Promise.reject(new Error('fail')),
         htmlMessage: undefined,
         responseBody: undefined,
-        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request
-        code: 1001
-        url: http://some.where
-        fetchOptions: {
-          "method": "POST"
-        }`,
-      },
-    ],
-    [
-      'when LiFi error codes are disabled',
-      { disableLiFiErrorCodes: true },
-      400,
-      'Bad Request',
-      {
-        initialMessage: 'Request failed with status code 400 Bad Request',
-        type: undefined,
-        code: undefined,
-        jsonFunc: () => Promise.resolve(responseBody),
-        responseBody,
-        htmlMessage: undefined,
-        builtMessage: `Request failed with status code 400 Bad Request
-        responseMessage: Oops
-        url: http://some.where
-        fetchOptions: {
-          "disableLiFiErrorCodes": true
-        }
-        responseBody: {
-          "message": "Oops"
-        }`,
+        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request`,
       },
     ],
   ])(

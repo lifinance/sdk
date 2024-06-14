@@ -1,5 +1,5 @@
 import type { UnavailableRoutes } from '@lifi/types'
-import type { LifiSDKError } from './errors.js'
+import { LiFiError } from './errors.js'
 import { ErrorMessage, ErrorType, LiFiErrorCode } from './errors.js'
 import type { ExtendedRequestInit } from '../types/request.js'
 
@@ -41,14 +41,12 @@ const createInitialMessage = (response: Response) => {
   return `Request failed with ${reason}`
 }
 
-export class HTTPError extends Error implements Partial<LifiSDKError> {
+export class HTTPError extends LiFiError {
   public response: Response
   public status: number
   public url: RequestInfo | URL
   public fetchOptions: ExtendedRequestInit
-  public code?: LiFiErrorCode
   public type?: ErrorType
-  public htmlMessage?: string
   public responseBody?: ServerErrorResponseBody
 
   constructor(
@@ -57,32 +55,25 @@ export class HTTPError extends Error implements Partial<LifiSDKError> {
     options: ExtendedRequestInit
   ) {
     const message = createInitialMessage(response)
+    const errorClassification = getErrorClassificationFromStatusCode(
+      response.status
+    )
 
-    super(message)
+    super(
+      ErrorType.HTTPError,
+      errorClassification.code,
+      message,
+      errorClassification?.htmlMessage
+    )
 
-    this.name = 'HTTPError'
+    this.type = errorClassification.type
     this.response = response
     this.status = response.status
     this.message = message
     this.url = url
     this.fetchOptions = options
-
-    if (!options.disableLiFiErrorCodes) {
-      this.initLiFiErrorCodeInfo()
-    }
   }
 
-  initLiFiErrorCodeInfo() {
-    const errorClassification = getErrorClassificationFromStatusCode(
-      this.status
-    )
-    this.type = errorClassification.type
-    this.code = errorClassification.code
-    this.htmlMessage = errorClassification?.htmlMessage
-  }
-
-  // This method populates the error message
-  // with information that could be more helpful in debugging in a browser
   async buildAdditionalDetails() {
     if (this.type) {
       this.message = `[${this.type}] ${this.message}`
@@ -90,32 +81,14 @@ export class HTTPError extends Error implements Partial<LifiSDKError> {
 
     try {
       this.responseBody = await this.response.json()
-      this.appendMessage('responseMessage', this.responseBody?.message)
+
+      const spacer = '\n        '
+
+      if (this.responseBody) {
+        this.message += `${spacer}responseMessage: ${this.responseBody?.message.toString().replaceAll('\n', spacer)}`
+      }
     } catch {}
 
-    this.appendMessage('code', this.code)
-    this.appendMessage('htmlMessage', this.htmlMessage)
-    this.appendMessage('url', this.url)
-    this.appendMessage(
-      'fetchOptions',
-      JSON.stringify(this.fetchOptions, null, 2)
-    )
-
-    if (this.responseBody) {
-      this.appendMessage(
-        'responseBody',
-        JSON.stringify(this.responseBody, null, 2)
-      )
-    }
-
     return this
-  }
-
-  appendMessage(displayName: string, value: any) {
-    const spacer = '\n        '
-
-    if (value) {
-      this.message += `${spacer}${displayName}: ${value.toString().replaceAll('\n', spacer)}`
-    }
   }
 }

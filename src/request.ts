@@ -11,8 +11,6 @@ export const requestSettings = {
 
 const stripExtendRequestInitProperties = ({
   retries,
-  skipTrackingHeaders,
-  disableLiFiErrorCodes,
   ...rest
 }: ExtendedRequestInit): RequestInit => ({
   ...rest,
@@ -25,53 +23,55 @@ export const request = async <T = Response>(
   }
 ): Promise<T> => {
   const { userId, integrator, widgetVersion, apiKey } = config.get()
+
   if (!integrator) {
     throw new ValidationError(
       'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
     )
   }
+
   options.retries = options.retries ?? requestSettings.retries
+
   try {
-    if (!options.skipTrackingHeaders) {
-      if (apiKey) {
-        options.headers = {
-          ...options.headers,
-          'x-lifi-api-key': apiKey,
-        }
-      }
-
-      if (userId) {
-        options.headers = {
-          ...options.headers,
-          'x-lifi-userid': userId,
-        }
-      }
-
-      if (widgetVersion) {
-        options.headers = {
-          ...options.headers,
-          'x-lifi-widget': widgetVersion,
-        }
-      }
-
-      if (version) {
-        options.headers = {
-          ...options.headers,
-          'x-lifi-sdk': version,
-        }
-      }
-
-      // integrator is mandatory during SDK initialization
+    if (apiKey) {
       options.headers = {
         ...options.headers,
-        'x-lifi-integrator': integrator,
+        'x-lifi-api-key': apiKey,
       }
+    }
+
+    if (userId) {
+      options.headers = {
+        ...options.headers,
+        'x-lifi-userid': userId,
+      }
+    }
+
+    if (widgetVersion) {
+      options.headers = {
+        ...options.headers,
+        'x-lifi-widget': widgetVersion,
+      }
+    }
+
+    if (version) {
+      options.headers = {
+        ...options.headers,
+        'x-lifi-sdk': version,
+      }
+    }
+
+    // integrator is mandatory during SDK initialization
+    options.headers = {
+      ...options.headers,
+      'x-lifi-integrator': integrator,
     }
 
     const response: Response = await fetch(
       url,
       stripExtendRequestInitProperties(options)
     )
+
     if (!response.ok) {
       throw new HTTPError(response, url, options)
     }
