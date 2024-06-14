@@ -63,10 +63,12 @@ describe('request', () => {
 
     const options: ExtendedRequestInit = {
       retries: 0,
-      skipTrackingHeaders: true,
-      disableLiFiErrorCodes: true,
       headers: {
+        'x-lifi-api-key': 'mock-apikey',
         'x-lifi-integrator': 'mock-integrator',
+        'x-lifi-sdk': '3.0.0-beta.0',
+        'x-lifi-userid': 'user-id',
+        'x-lifi-widget': 'mock-widget-version',
       },
     }
 
@@ -78,7 +80,11 @@ describe('request', () => {
 
     expect(fetchOptions).toEqual({
       headers: {
+        'x-lifi-api-key': 'mock-apikey',
         'x-lifi-integrator': 'mock-integrator',
+        'x-lifi-sdk': '3.0.0-beta.0',
+        'x-lifi-userid': 'user-id',
+        'x-lifi-widget': 'mock-widget-version',
       },
     })
   })
@@ -100,21 +106,6 @@ describe('request', () => {
     expect(headers['x-lifi-widget']).toEqual('mock-widget-version')
   })
 
-  it('should not add tracking headers when option is skipTrackingHeaders set to true', async () => {
-    setUpMocks()
-
-    await request<{ message: string }>('https://some.endpoint.com', {
-      skipTrackingHeaders: true,
-    })
-
-    const url = (global.fetch as Mock).mock.calls[0][0]
-    const headers = (global.fetch as Mock).mock.calls[0][1].headers
-
-    expect(url).toEqual(mockUrl)
-
-    expect(headers).toBeUndefined()
-  })
-
   describe('when dealing with errors', () => {
     it('should throw an error if the Integrator property is missing from the config', async () => {
       const mockConfig = {
@@ -125,9 +116,7 @@ describe('request', () => {
       setUpMocks(mockConfig)
 
       await expect(
-        request<{ message: string }>('https://some.endpoint.com', {
-          skipTrackingHeaders: true,
-        })
+        request<{ message: string }>('https://some.endpoint.com')
       ).rejects.toThrowError(
         new ValidationError(
           'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
@@ -146,9 +135,7 @@ describe('request', () => {
       setUpMocks(undefined, mockResponse)
 
       try {
-        await request<{ message: string }>('https://some.endpoint.com', {
-          skipTrackingHeaders: true,
-        })
+        await request<{ message: string }>('https://some.endpoint.com')
       } catch (e) {
         expect((e as HTTPError).name).toEqual('HTTPError')
         expect((e as HTTPError).status).toEqual(400)
@@ -167,7 +154,6 @@ describe('request', () => {
 
       try {
         await request<{ message: string }>('https://some.endpoint.com', {
-          skipTrackingHeaders: true,
           retries: 3,
         })
       } catch (e) {

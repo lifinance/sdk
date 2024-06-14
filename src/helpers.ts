@@ -1,6 +1,4 @@
 import type { LiFiStep, Route } from '@lifi/types'
-import { request } from './request.js'
-import type { TenderlyResponse } from './types/index.js'
 import { ValidationError } from './utils/errors.js'
 import { name, version } from './version.js'
 
@@ -10,12 +8,11 @@ export const checkPackageUpdates = async (
 ) => {
   try {
     const pkgName = packageName ?? name
-    const response = await request<{ version: string }>(
-      `https://registry.npmjs.org/${pkgName}/latest`,
-      { skipTrackingHeaders: true, disableLiFiErrorCodes: true }
-    )
-    const latestVersion = response.version
+    const response = await fetch(`https://registry.npmjs.org/${pkgName}/latest`)
+    const reponseBody = await response.json()
+    const latestVersion = reponseBody.version
     const currentVersion = packageVersion ?? version
+
     if (latestVersion > currentVersion) {
       console.warn(
         // eslint-disable-next-line max-len
@@ -61,10 +58,10 @@ export const convertQuoteToRoute = (step: LiFiStep): Route => {
 }
 
 export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
-  const response = await request<TenderlyResponse>(
-    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`,
-    { disableLiFiErrorCodes: true }
+  const response = await fetch(
+    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
   )
+  const reponseBody = await response.json()
 
-  return response
+  return reponseBody
 }
