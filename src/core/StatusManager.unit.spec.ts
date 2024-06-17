@@ -1,4 +1,4 @@
-import type { Route, Status } from '@lifi/types'
+import type { ExecutionStatus, ProcessStatus, Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
@@ -211,7 +211,7 @@ describe('StatusManager', () => {
             const process = statusManager.updateProcess(
               structuredClone(step),
               'SWAP',
-              status as Status
+              status as ProcessStatus
             )
 
             expect(process.type).toEqual('SWAP')
@@ -229,7 +229,7 @@ describe('StatusManager', () => {
               process: [step.execution!.process[0], process],
               status: notUpdateableStatus
                 ? step.execution!.status
-                : (status as Status),
+                : (status as ExecutionStatus),
             })
 
             const updatedStep = { ...step, execution: updatedExecution }

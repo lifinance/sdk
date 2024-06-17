@@ -1,11 +1,11 @@
 import type {
   Execution,
+  ExecutionStatus,
   LiFiStep,
   Process,
+  ProcessStatus,
   ProcessType,
-  Status,
 } from '@lifi/types'
-import { emptyExecution } from '@lifi/types'
 import { executionState } from './executionState.js'
 import type { LiFiStepExtended } from './types.js'
 import { getProcessMessage } from './utils.js'
@@ -44,8 +44,10 @@ export class StatusManager {
    */
   initExecutionObject = (step: LiFiStepExtended): Execution => {
     if (!step.execution) {
-      step.execution = structuredClone<Execution>(emptyExecution)
-      step.execution.status = 'PENDING'
+      step.execution = {
+        status: 'PENDING',
+        process: [],
+      }
       this.updateStepInRoute(step)
     }
 
@@ -67,7 +69,7 @@ export class StatusManager {
    */
   updateExecution(
     step: LiFiStepExtended,
-    status: Status,
+    status: ExecutionStatus,
     execution?: Partial<Execution>
   ): LiFiStep {
     if (!step.execution) {
@@ -94,7 +96,7 @@ export class StatusManager {
   findOrCreateProcess = (
     step: LiFiStepExtended,
     type: ProcessType,
-    status?: Status
+    status?: ProcessStatus
   ): Process => {
     if (!step.execution?.process) {
       throw new Error("Execution hasn't been initialized.")
@@ -133,7 +135,7 @@ export class StatusManager {
   updateProcess = (
     step: LiFiStepExtended,
     type: ProcessType,
-    status: Status,
+    status: ProcessStatus,
     params?: OptionalParameters
   ): Process => {
     if (!step.execution) {
