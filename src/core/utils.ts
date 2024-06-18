@@ -1,12 +1,15 @@
 import {
   type LiFiStep,
+  type ProcessStatus,
   type ProcessType,
-  type Status,
   type StatusMessage,
   type Substatus,
 } from '@lifi/types'
 
-const processMessages: Record<ProcessType, Partial<Record<Status, string>>> = {
+const processMessages: Record<
+  ProcessType,
+  Partial<Record<ProcessStatus, string>>
+> = {
   TOKEN_ALLOWANCE: {
     STARTED: 'Setting token allowance.',
     PENDING: 'Waiting for token allowance.',
@@ -61,7 +64,7 @@ const substatusMessages: Record<
 
 export function getProcessMessage(
   type: ProcessType,
-  status: Status
+  status: ProcessStatus
 ): string | undefined {
   const processMessage = processMessages[type][status]
   return processMessage
