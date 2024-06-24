@@ -13,7 +13,7 @@ export enum ErrorName {
   SlippageError = 'SlippageError',
   HTTPError = 'HTTPError',
 }
-
+// TODO: identify specific http error codes
 export enum LiFiErrorCode {
   InternalError = 1000,
   ValidationError = 1001,
@@ -88,6 +88,7 @@ const isLiFiErrorCode = (error: Error) =>
   error instanceof LiFiBaseError &&
   !!Object.values(LiFiErrorCode).find((value) => value === error.code)
 
+// TODO: what to do with the stack chain? Nice way to deal with that?
 // Note: LiFiSDKError is used to wrapper and present errors at the top level
 // Where oportunity allows we also add the step and the process relate to the error
 export class LiFiSDKError extends Error {
@@ -97,17 +98,16 @@ export class LiFiSDKError extends Error {
   override name = 'LiFiSDKError'
 
   constructor(cause: Error, message?: string) {
-    const errorMessage = `${message ? message : cause.message || 'Unknown error occured'}\nLiFi SDK verion: ${version}`
+    const errorMessage = `${message ? message : `[${cause.name}] ${cause.message}` || 'Unknown error occurred'}\nLiFi SDK version: ${version}`
     super(errorMessage)
     this.cause = cause
     this.code = isLiFiErrorCode(cause)
       ? (cause as LiFiBaseError).code
       : LiFiErrorCode.InternalError
-    this.stack = cause.stack
   }
 }
 
-// Note: we use the LiFiBaseErrors to capture errors at points in the code and
+// Note: we use the LiFiBaseErrors to capture errors at specific points in the code
 //  they can carry addition to help give those more context
 export class LiFiBaseError extends Error {
   code: ErrorCode
@@ -188,3 +188,6 @@ export const getValidationError = (message: string) =>
     LiFiErrorCode.ValidationError,
     message
   )
+
+export const getApiValidationError = (message: string) =>
+  new LiFiSDKError(getValidationError(message))

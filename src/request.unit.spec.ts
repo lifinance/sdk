@@ -11,7 +11,8 @@ import {
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
-import { getValidationError, type HTTPError } from './utils/index.js'
+import type { LiFiSDKError } from './utils/index.js'
+import { getApiValidationError, type HTTPError } from './utils/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 
 const mockUrl = 'https://some.endpoint.com'
@@ -117,7 +118,7 @@ describe('request', () => {
       await expect(
         request<{ message: string }>('https://some.endpoint.com')
       ).rejects.toThrowError(
-        getValidationError(
+        getApiValidationError(
           'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
         )
       )
@@ -136,8 +137,8 @@ describe('request', () => {
       try {
         await request<{ message: string }>('https://some.endpoint.com')
       } catch (e) {
-        expect((e as HTTPError).name).toEqual('HTTPError')
-        expect((e as HTTPError).status).toEqual(400)
+        expect((e as LiFiSDKError).name).toEqual('LiFiSDKError')
+        expect(((e as LiFiSDKError).cause as HTTPError).status).toEqual(400)
       }
     })
     it('should throw a error and attempt retries when the request fails with a 500', async () => {
@@ -156,8 +157,8 @@ describe('request', () => {
           retries: 3,
         })
       } catch (e) {
-        expect((e as HTTPError).name).toEqual('HTTPError')
-        expect((e as HTTPError).status).toEqual(500)
+        expect((e as LiFiSDKError).name).toEqual('LiFiSDKError')
+        expect(((e as LiFiSDKError).cause as HTTPError).status).toEqual(500)
         expect(global.fetch as Mock).toBeCalledTimes(4)
       }
     })
