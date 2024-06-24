@@ -10,10 +10,10 @@ import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import {
   LiFiErrorCode,
-  TransactionError,
+  getTransactionError,
   getTransactionFailedMessage,
-  parseError,
 } from '../../utils/index.js'
+import { parseError } from './parseError.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
@@ -45,7 +45,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   checkWalletAdapter = (step: LiFiStepExtended) => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
     if (this.walletAdapter.publicKey!.toString() !== step.action.fromAddress) {
-      throw new TransactionError(
+      throw getTransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
@@ -97,7 +97,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         if (!step.transactionRequest?.data) {
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction.'
           )
@@ -131,7 +131,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         if (!transactionRequest.data) {
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction.'
           )
@@ -217,14 +217,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
             typeof confirmedTx.err === 'object'
               ? JSON.stringify(confirmedTx.err)
               : confirmedTx.err
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionFailed,
             `Transaction failed: ${reason}`
           )
         }
 
         if (!confirmedTx) {
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionFailed,
             'Failed to land the transaction'
           )

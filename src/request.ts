@@ -1,7 +1,7 @@
 import { config } from './config.js'
 import { HTTPError } from './utils/httpError.js'
 import { wait } from './utils/utils.js'
-import { ValidationError } from './utils/errors.js'
+import { getValidationError } from './utils/errors.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
@@ -25,7 +25,7 @@ export const request = async <T = Response>(
   const { userId, integrator, widgetVersion, apiKey } = config.get()
 
   if (!integrator) {
-    throw new ValidationError(
+    throw getValidationError(
       'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
     )
   }

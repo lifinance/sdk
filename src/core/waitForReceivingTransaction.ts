@@ -5,7 +5,7 @@ import type {
   StatusResponse,
 } from '@lifi/types'
 import { getStatus } from '../services/api.js'
-import { ServerError } from '../utils/errors.js'
+import { getServerError } from '../utils/errors.js'
 import { repeatUntilDone } from '../utils/utils.js'
 import type { StatusManager } from './StatusManager.js'
 import { getSubstatusMessage } from './utils.js'
@@ -67,7 +67,7 @@ export async function waitForReceivingTransaction(
   }
 
   if (!('receiving' in status)) {
-    throw new ServerError("Status doesn't contain receiving information.")
+    throw getServerError("Status doesn't contain receiving information.")
   }
 
   return status

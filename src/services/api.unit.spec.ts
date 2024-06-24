@@ -26,7 +26,7 @@ import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { ValidationError } from '../utils/errors.js'
+import { getValidationError } from '../utils/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
@@ -159,14 +159,14 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "chain" is missing.')
+          getValidationError('Required parameter "chain" is missing.')
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "token" is missing.')
+          getValidationError('Required parameter "token" is missing.')
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
@@ -203,7 +203,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing.')
+          getValidationError('Required parameter "fromChain" is missing.')
         )
 
         await expect(
@@ -216,7 +216,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromToken" is missing.')
+          getValidationError('Required parameter "fromToken" is missing.')
         )
 
         await expect(
@@ -229,7 +229,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAddress" is missing.')
+          getValidationError('Required parameter "fromAddress" is missing.')
         )
 
         await expect(
@@ -242,7 +242,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAmount" is missing.')
+          getValidationError('Required parameter "fromAmount" is missing.')
         )
 
         await expect(
@@ -255,7 +255,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing.')
+          getValidationError('Required parameter "toChain" is missing.')
         )
 
         await expect(
@@ -268,7 +268,7 @@ describe('ApiService', () => {
             toToken: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toToken" is missing.')
+          getValidationError('Required parameter "toToken" is missing.')
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -309,7 +309,7 @@ describe('ApiService', () => {
             txHash: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "txHash" is missing.')
+          getValidationError('Required parameter "txHash" is missing.')
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -498,7 +498,7 @@ describe('ApiService', () => {
             chainId: undefined as unknown as number,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "chainId" is missing.')
+          getValidationError('Required parameter "chainId" is missing.')
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })

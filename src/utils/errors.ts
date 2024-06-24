@@ -1,9 +1,13 @@
-export enum ErrorType {
+import type { LiFiStep, Process } from '@lifi/types'
+import { version } from '../version.js'
+
+export enum ErrorName {
   RPCError = 'RPCError',
   ProviderError = 'ProviderError',
   ServerError = 'ServerError',
   TransactionError = 'TransactionError',
   ValidationError = 'ValidationError',
+  BalanceError = 'BalanceError',
   NotFoundError = 'NotFoundError',
   UnknownError = 'UnknownError',
   SlippageError = 'SlippageError',
@@ -80,129 +84,107 @@ export type ErrorCode =
   | MetaMaskRPCErrorCode
   | MetaMaskProviderErrorCode
 
-export class LiFiError extends Error {
+const isLiFiErrorCode = (error: Error) =>
+  error instanceof LiFiBaseError &&
+  !!Object.values(LiFiErrorCode).find((value) => value === error.code)
+
+// Note: LiFiSDKError is used to wrapper and present errors at the top level
+// Where oportunity allows we also add the step and the process relate to the error
+export class LiFiSDKError extends Error {
+  step?: LiFiStep
+  process?: Process
+  code: ErrorCode
+  override name = 'LiFiSDKError'
+
+  constructor(cause: Error, message?: string) {
+    const errorMessage = `${message ? message : cause.message || 'Unknown error occured'}\nLiFi SDK verion: ${version}`
+    super(errorMessage)
+    this.cause = cause
+    this.code = isLiFiErrorCode(cause)
+      ? (cause as LiFiBaseError).code
+      : LiFiErrorCode.InternalError
+    this.stack = cause.stack
+  }
+}
+
+// Note: we use the LiFiBaseErrors to capture errors at points in the code and
+//  they can carry addition to help give those more context
+export class LiFiBaseError extends Error {
   code: ErrorCode
   htmlMessage?: string
 
   constructor(
-    name: ErrorType,
+    name: ErrorName,
     code: number,
     message: string,
     htmlMessage?: string,
-    stack?: string
+    cause?: Error
   ) {
     super(message)
 
     this.name = name
     this.code = code
     this.htmlMessage = htmlMessage
-
-    if (stack) {
-      this.stack = stack
-    }
+    this.cause = cause
   }
 }
 
-export class RPCError extends LiFiError {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    htmlMessage?: string,
-    stack?: string
-  ) {
-    super(ErrorType.RPCError, code, message, htmlMessage, stack)
-  }
-}
+export const getRPCError = (
+  code: LiFiErrorCode,
+  message: string,
+  htmlMessage?: string,
+  cause?: Error
+) => new LiFiBaseError(ErrorName.RPCError, code, message, htmlMessage, cause)
 
-export class ProviderError extends LiFiError {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    htmlMessage?: string,
-    stack?: string
-  ) {
-    super(ErrorType.ProviderError, code, message, htmlMessage, stack)
-  }
-}
+export const getProviderError = (
+  code: LiFiErrorCode,
+  message: string,
+  htmlMessage?: string,
+  cause?: Error
+) =>
+  new LiFiBaseError(ErrorName.ProviderError, code, message, htmlMessage, cause)
 
-export class ServerError extends LiFiError {
-  constructor(message: string, htmlMessage?: string, stack?: string) {
-    super(
-      ErrorType.ServerError,
-      LiFiErrorCode.InternalError,
-      message,
-      htmlMessage,
-      stack
-    )
-  }
-}
+export const getTransactionError = (
+  code: LiFiErrorCode,
+  message: string,
+  htmlMessage?: string,
+  cause?: Error
+) =>
+  new LiFiBaseError(
+    ErrorName.TransactionError,
+    code,
+    message,
+    htmlMessage,
+    cause
+  )
 
-export class ValidationError extends LiFiError {
-  constructor(message: string, htmlMessage?: string, stack?: string) {
-    super(
-      ErrorType.ValidationError,
-      LiFiErrorCode.ValidationError,
-      message,
-      htmlMessage,
-      stack
-    )
-  }
-}
+export const getGenericUnknownError = (
+  message: string,
+  htmlMessage?: string,
+  cause?: Error
+) =>
+  new LiFiBaseError(
+    ErrorName.UnknownError,
+    LiFiErrorCode.InternalError,
+    message,
+    htmlMessage,
+    cause
+  )
 
-export class TransactionError extends LiFiError {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    htmlMessage?: string,
-    stack?: string
-  ) {
-    super(ErrorType.TransactionError, code, message, htmlMessage, stack)
-  }
-}
+export const getBalanceError = (message: string, htmlMessage?: string) =>
+  new LiFiBaseError(
+    ErrorName.BalanceError,
+    LiFiErrorCode.BalanceError,
+    message,
+    htmlMessage
+  )
 
-export class SlippageError extends LiFiError {
-  constructor(message: string, htmlMessage?: string, stack?: string) {
-    super(
-      ErrorType.SlippageError,
-      LiFiErrorCode.SlippageError,
-      message,
-      htmlMessage,
-      stack
-    )
-  }
-}
+export const getServerError = (message: string) =>
+  new LiFiBaseError(ErrorName.ServerError, LiFiErrorCode.InternalError, message)
 
-export class BalanceError extends LiFiError {
-  constructor(message: string, htmlMessage?: string, stack?: string) {
-    super(
-      ErrorType.ValidationError,
-      LiFiErrorCode.BalanceError,
-      message,
-      htmlMessage,
-      stack
-    )
-  }
-}
-
-export class NotFoundError extends LiFiError {
-  constructor(message: string, htmlMessage?: string, stack?: string) {
-    super(
-      ErrorType.NotFoundError,
-      LiFiErrorCode.NotFound,
-      message,
-      htmlMessage,
-      stack
-    )
-  }
-}
-
-export class UnknownError extends LiFiError {
-  constructor(
-    code: ErrorCode,
-    message: string,
-    htmlMessage?: string,
-    stack?: string
-  ) {
-    super(ErrorType.UnknownError, code, message, htmlMessage, stack)
-  }
-}
+export const getValidationError = (message: string) =>
+  new LiFiBaseError(
+    ErrorName.ValidationError,
+    LiFiErrorCode.ValidationError,
+    message
+  )

@@ -11,8 +11,7 @@ import {
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
-import type { HTTPError } from './utils/index.js'
-import { ValidationError } from './utils/index.js'
+import { getValidationError, type HTTPError } from './utils/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 
 const mockUrl = 'https://some.endpoint.com'
@@ -118,7 +117,7 @@ describe('request', () => {
       await expect(
         request<{ message: string }>('https://some.endpoint.com')
       ).rejects.toThrowError(
-        new ValidationError(
+        getValidationError(
           'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
         )
       )

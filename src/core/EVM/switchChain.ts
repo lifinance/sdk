@@ -1,5 +1,5 @@
 import type { WalletClient } from 'viem'
-import { LiFiErrorCode, ProviderError } from '../../utils/errors.js'
+import { getProviderError, LiFiErrorCode } from '../../utils/errors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 
@@ -51,7 +51,7 @@ export const switchChain = async (
     const updatedWalletClient = await switchChainHook?.(step.action.fromChainId)
     const updatedChainId = await updatedWalletClient?.getChainId()
     if (updatedChainId !== step.action.fromChainId) {
-      throw new ProviderError(
+      throw getProviderError(
         LiFiErrorCode.ChainSwitchError,
         'Chain switch required.'
       )

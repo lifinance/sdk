@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { HTTPError } from './httpError.js'
-import { ErrorType, LiFiErrorCode } from './errors.js'
+import { ErrorName, LiFiErrorCode } from './errors.js'
 
 const url = 'http://some.where'
 const options = { method: 'POST' }
@@ -15,7 +15,7 @@ describe('HTTPError', () => {
       'Bad Request',
       {
         initialMessage: 'Request failed with status code 400 Bad Request',
-        type: ErrorType.ValidationError,
+        type: ErrorName.ValidationError,
         code: LiFiErrorCode.ValidationError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
@@ -31,7 +31,7 @@ describe('HTTPError', () => {
       'Not Found',
       {
         initialMessage: 'Request failed with status code 404 Not Found',
-        type: ErrorType.NotFoundError,
+        type: ErrorName.NotFoundError,
         code: LiFiErrorCode.NotFound,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
@@ -47,7 +47,7 @@ describe('HTTPError', () => {
       'Conflict',
       {
         initialMessage: 'Request failed with status code 409 Conflict',
-        type: ErrorType.SlippageError,
+        type: ErrorName.SlippageError,
         code: LiFiErrorCode.SlippageError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
@@ -65,7 +65,7 @@ describe('HTTPError', () => {
       {
         initialMessage:
           'Request failed with status code 500 Internal Server Error',
-        type: ErrorType.ServerError,
+        type: ErrorName.ServerError,
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
@@ -81,7 +81,7 @@ describe('HTTPError', () => {
       '',
       {
         initialMessage: 'Request failed with an unknown error',
-        type: ErrorType.ServerError,
+        type: ErrorName.ServerError,
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
@@ -97,7 +97,7 @@ describe('HTTPError', () => {
       'Bad Request',
       {
         initialMessage: 'Request failed with status code 400 Bad Request',
-        type: ErrorType.ValidationError,
+        type: ErrorName.ValidationError,
         code: LiFiErrorCode.ValidationError,
         jsonFunc: () => Promise.reject(new Error('fail')),
         htmlMessage: undefined,

@@ -1,6 +1,6 @@
 import type { UnavailableRoutes } from '@lifi/types'
-import { LiFiError } from './errors.js'
-import { ErrorMessage, ErrorType, LiFiErrorCode } from './errors.js'
+import { LiFiBaseError } from './errors.js'
+import { ErrorMessage, ErrorName, LiFiErrorCode } from './errors.js'
 import type { ExtendedRequestInit } from '../types/request.js'
 
 interface ServerErrorResponseBody {
@@ -12,23 +12,23 @@ interface ServerErrorResponseBody {
 const statusCodeToErrorClassificationMap = new Map([
   [
     400,
-    { type: ErrorType.ValidationError, code: LiFiErrorCode.ValidationError },
+    { type: ErrorName.ValidationError, code: LiFiErrorCode.ValidationError },
   ],
-  [404, { type: ErrorType.NotFoundError, code: LiFiErrorCode.NotFound }],
+  [404, { type: ErrorName.NotFoundError, code: LiFiErrorCode.NotFound }],
   [
     409,
     {
-      type: ErrorType.SlippageError,
+      type: ErrorName.SlippageError,
       code: LiFiErrorCode.SlippageError,
       htmlMessage: ErrorMessage.SlippageError,
     },
   ],
-  [500, { type: ErrorType.ServerError, code: LiFiErrorCode.InternalError }],
+  [500, { type: ErrorName.ServerError, code: LiFiErrorCode.InternalError }],
 ])
 
 const getErrorClassificationFromStatusCode = (code: number) =>
   statusCodeToErrorClassificationMap.get(code) ?? {
-    type: ErrorType.ServerError,
+    type: ErrorName.ServerError,
     code: LiFiErrorCode.InternalError,
   }
 
@@ -41,12 +41,12 @@ const createInitialMessage = (response: Response) => {
   return `Request failed with ${reason}`
 }
 
-export class HTTPError extends LiFiError {
+export class HTTPError extends LiFiBaseError {
   public response: Response
   public status: number
   public url: RequestInfo | URL
   public fetchOptions: ExtendedRequestInit
-  public type?: ErrorType
+  public type?: ErrorName
   public responseBody?: ServerErrorResponseBody
 
   constructor(
@@ -60,7 +60,7 @@ export class HTTPError extends LiFiError {
     )
 
     super(
-      ErrorType.HTTPError,
+      ErrorName.HTTPError,
       errorClassification.code,
       message,
       errorClassification?.htmlMessage

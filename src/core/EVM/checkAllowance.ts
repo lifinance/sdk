@@ -1,8 +1,8 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
 import type { Address, Hash, ReplacementReason, WalletClient } from 'viem'
 import { maxUint256, publicActions } from 'viem'
-import { LiFiErrorCode, TransactionError } from '../../utils/index.js'
-import { parseError } from '../../utils/parseError.js'
+import { getTransactionError, LiFiErrorCode } from '../../utils/index.js'
+import { parseError } from './parseError.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
@@ -148,14 +148,14 @@ const waitForApprovalTransaction = async (
   })
 
   if (transactionReceipt.status === 'reverted') {
-    throw new TransactionError(
+    throw getTransactionError(
       LiFiErrorCode.TransactionFailed,
       'Transaction was reverted.'
     )
   }
 
   if (replacementReason === 'cancelled') {
-    throw new TransactionError(
+    throw getTransactionError(
       LiFiErrorCode.TransactionCanceled,
       'User canceled transaction.'
     )

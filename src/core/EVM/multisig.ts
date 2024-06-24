@@ -1,6 +1,6 @@
 import type { ExtendedChain, LiFiStep, ProcessType } from '@lifi/types'
 import type { Hash } from 'viem'
-import { LiFiErrorCode, TransactionError } from '../../utils/errors.js'
+import { getTransactionError, LiFiErrorCode } from '../../utils/errors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { MultisigConfig, MultisigTxDetails } from './types.js'
 
@@ -38,14 +38,14 @@ export const updateMultisigRouteProcess = async (
   }
 
   if (multisigStatusResponse.status === 'FAILED') {
-    throw new TransactionError(
+    throw getTransactionError(
       LiFiErrorCode.TransactionFailed,
       'Multisig transaction failed.'
     )
   }
 
   if (multisigStatusResponse.status === 'CANCELLED') {
-    throw new TransactionError(
+    throw getTransactionError(
       LiFiErrorCode.SignatureRejected,
       'Transaction was rejected by user.'
     )

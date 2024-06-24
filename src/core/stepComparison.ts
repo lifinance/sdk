@@ -1,5 +1,5 @@
 import type { LiFiStep } from '@lifi/types'
-import { LiFiErrorCode, TransactionError } from '../utils/errors.js'
+import { getTransactionError, LiFiErrorCode } from '../utils/errors.js'
 import type { StatusManager } from './StatusManager.js'
 import type { ExecutionOptions } from './types.js'
 import { checkStepSlippageThreshold } from './utils.js'
@@ -39,7 +39,7 @@ export const stepComparison = async (
 
   if (!allowStepUpdate) {
     // The user declined the new exchange rate, so we are not going to proceed
-    throw new TransactionError(
+    throw getTransactionError(
       LiFiErrorCode.ExchangeRateUpdateCanceled,
       'Exchange rate has changed!',
       `Transaction was not sent, your funds are still in your wallet.

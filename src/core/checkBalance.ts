@@ -1,7 +1,7 @@
 import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
 import { getTokenBalance } from '../services/balance.js'
-import { BalanceError } from '../utils/errors.js'
+import { getBalanceError } from '../utils/errors.js'
 
 export const checkBalance = async (
   walletAddress: string,
@@ -41,7 +41,7 @@ export const checkBalance = async (
             `start a new one with a maximum of ${current} ${token.symbol}.`
         }
 
-        throw new BalanceError('The balance is too low.', errorMessage)
+        throw getBalanceError('The balance is too low.', errorMessage)
       }
     }
   }

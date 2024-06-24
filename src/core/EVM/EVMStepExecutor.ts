@@ -9,18 +9,19 @@ import type {
   ReplacementReason,
   SendTransactionParameters,
   WalletClient,
+  BaseError,
 } from 'viem'
 import { publicActions } from 'viem'
 import { config } from '../../config.js'
 import { getStepTransaction } from '../../services/api.js'
 import {
   LiFiErrorCode,
-  TransactionError,
-  ValidationError,
   getTransactionFailedMessage,
   isZeroAddress,
-  parseError,
+  getTransactionError,
+  getValidationError,
 } from '../../utils/index.js'
+import { parseError } from './parseError.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
@@ -36,6 +37,10 @@ import { updateMultisigRouteProcess } from './multisig.js'
 import { switchChain } from './switchChain.js'
 import type { MultisigConfig, MultisigTransaction } from './types.js'
 import { getMaxPriorityFeePerGas, retryCount, retryDelay } from './utils.js'
+
+interface ViemError extends BaseError {
+  cause?: ViemError
+}
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   walletClient: WalletClient
@@ -87,7 +92,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      throw new TransactionError(
+      throw getTransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         errorMessage
       )
@@ -175,7 +180,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (isMultisigWalletClient && multisigProcess) {
           const multisigTxHash = multisigProcess.multisigTxHash as Hash
           if (!multisigTxHash) {
-            throw new ValidationError(
+            throw getValidationError(
               'Multisig internal transaction hash is undefined.'
             )
           }
@@ -230,7 +235,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           }
 
           if (!step.transactionRequest) {
-            throw new TransactionError(
+            throw getTransactionError(
               LiFiErrorCode.TransactionUnprepared,
               'Unable to prepare transaction.'
             )
@@ -308,23 +313,49 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 multisigBatchTransactions
               )
             } else {
-              throw new TransactionError(
+              throw getTransactionError(
                 LiFiErrorCode.TransactionUnprepared,
                 'Unable to prepare transaction.'
               )
             }
           } else {
-            txHash = await this.walletClient.sendTransaction({
-              to: transactionRequest.to,
-              account: this.walletClient.account!,
-              data: transactionRequest.data,
-              value: transactionRequest.value,
-              gas: transactionRequest.gas,
-              gasPrice: transactionRequest.gasPrice,
-              maxFeePerGas: transactionRequest.maxFeePerGas,
-              maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-              chain: null,
-            } as SendTransactionParameters)
+            try {
+              txHash = await this.walletClient.sendTransaction({
+                to: transactionRequest.to,
+                account: this.walletClient.account!,
+                data: transactionRequest.data,
+                value: transactionRequest.value,
+                gas: transactionRequest.gas,
+                gasPrice: transactionRequest.gasPrice,
+                maxFeePerGas: transactionRequest.maxFeePerGas,
+                maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+                chain: null,
+              } as SendTransactionParameters)
+            } catch (e) {
+              // TODO: we will need to do this where ever we use viems sendTransaction
+              const viemError: ViemError = e as ViemError
+
+              if (viemError.cause?.name === 'UserRejectedRequestError') {
+                throw getTransactionError(
+                  LiFiErrorCode.SignatureRejected,
+                  viemError.message,
+                  undefined,
+                  viemError
+                )
+              }
+
+              // TODO: manually test this?
+              if (viemError.cause?.name === 'InsufficientFundsError') {
+                throw getTransactionError(
+                  LiFiErrorCode.InsufficientFunds,
+                  viemError.message,
+                  undefined,
+                  viemError
+                )
+              }
+
+              throw viemError
+            }
           }
 
           // STEP 4: Wait for the transaction
@@ -367,13 +398,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
           })
 
         if (transactionReceipt.status === 'reverted') {
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionFailed,
             'Transaction was reverted.'
           )
         }
         if (replacementReason === 'cancelled') {
-          throw new TransactionError(
+          throw getTransactionError(
             LiFiErrorCode.TransactionCanceled,
             'User canceled transaction.'
           )
