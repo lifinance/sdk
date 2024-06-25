@@ -35,9 +35,7 @@ describe('Balance service tests', () => {
             address: 'some wrong stuff',
             chainId: 'not a chain Id',
           } as unknown as Token)
-        ).rejects.toThrow(
-          'Invalid token passed: address "some wrong stuff" on chainId "not a chain Id"'
-        )
+        ).rejects.toThrow('Invalid tokens passed.')
       })
     })
 
@@ -76,9 +74,7 @@ describe('Balance service tests', () => {
             SOME_TOKEN,
             { not: 'a token' } as unknown as Token,
           ])
-        ).rejects.toThrow(
-          'Invalid token passed: address "undefined" on chainId "undefined"'
-        )
+        ).rejects.toThrow('Invalid tokens passed.')
       })
 
       it('should return empty token list as it is', async () => {
@@ -124,9 +120,7 @@ describe('Balance service tests', () => {
           balance.getTokenBalancesByChain(SOME_WALLET_ADDRESS, {
             [ChainId.DAI]: [{ not: 'a token' } as unknown as Token],
           })
-        ).rejects.toThrow(
-          'Invalid token passed: address "undefined" on chainId "undefined"'
-        )
+        ).rejects.toThrow('Invalid tokens passed.')
       })
 
       it('should return empty token list as it is', async () => {

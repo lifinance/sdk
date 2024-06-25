@@ -66,9 +66,7 @@ export const getTokenBalancesByChain = async (
   const tokenList = Object.values(tokensByChain).flat()
   const invalidTokens = tokenList.filter((token) => !isToken(token))
   if (invalidTokens.length) {
-    throw new ValidationError(
-      `Invalid token passed: address "${invalidTokens[0].address}" on chainId "${invalidTokens[0].chainId}"`
-    )
+    throw new ValidationError(`Invalid tokens passed.`)
   }
 
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
