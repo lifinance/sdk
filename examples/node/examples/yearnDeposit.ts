@@ -1,11 +1,12 @@
 import * as lifiDataTypes from '@lifi/data-types'
-import type { ContractCallsQuoteRequest } from '@lifi/sdk'
+import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
   createConfig,
   EVM,
   getContractCallsQuote,
+  getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
 import {
@@ -37,7 +38,7 @@ const run = async () => {
 
     const client = createWalletClient({
       account,
-      chain: polygon,
+      chain: arbitrum,
       transport: http(),
     }).extend(publicActions)
 
@@ -65,9 +66,9 @@ const run = async () => {
     })
 
     const config = {
-      fromChain: ChainId.POL,
+      fromChain: ChainId.ARB,
       toChain: ChainId.POL,
-      fromToken: findDefaultToken(CoinKey.MATIC, ChainId.POL).address,
+      fromToken: findDefaultToken(CoinKey.ETH, ChainId.ARB).address,
       amount: '100000000000000', // WETH amount
       vaultAddress: '0x305F25377d0a39091e99B975558b1bdfC3975654',
       vaultAsset: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619',
@@ -135,23 +136,25 @@ const run = async () => {
     console.info('>> Transaction receipt', receipt)
 
     // wait for execution (not needed as same chain call)
-    // let result: StatusResponse
-    // do {
-    //   await new Promise((res) => {
-    //     setTimeout(() => {
-    //       res(null)
-    //     }, 5000)
-    //   })
+    if (config.fromChain !== config.toChain) {
+      let result: StatusResponse
+      do {
+        await new Promise((res) => {
+          setTimeout(() => {
+            res(null)
+          }, 5000)
+        })
 
-    //   result = await getStatus({
-    //     txHash: receipt.transactionHash,
-    //     bridge: contactCallsQuoteResponse.tool,
-    //     fromChain: contactCallsQuoteResponse.action.fromChainId,
-    //     toChain: contactCallsQuoteResponse.action.toChainId,
-    //   })
+        result = await getStatus({
+          txHash: receipt.transactionHash,
+          bridge: contactCallsQuoteResponse.tool,
+          fromChain: contactCallsQuoteResponse.action.fromChainId,
+          toChain: contactCallsQuoteResponse.action.toChainId,
+        })
 
-    //   console.info('>> Status update', result)
-    // } while (result.status !== 'DONE' && result.status !== 'FAILED')
+        console.info('>> Status update', result)
+      } while (result.status !== 'DONE' && result.status !== 'FAILED')
+    }
 
     console.info('>> DONE')
   } catch (e) {
@@ -160,3 +163,7 @@ const run = async () => {
 }
 
 run()
+
+// Sample transactions
+// Same chain: https://polygonscan.com/tx/0x0d28817fcec3b56cf9f3d73b5476d4256b40cb64fd95528e52060a302b7cae3f
+// Cross chain: https://explorer.li.fi/tx/0xad331b9bf4cc8c953f5227b41bfcddcfb11de6da5e0462cc20c1f4591b1a9e4e
