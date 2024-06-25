@@ -21,7 +21,8 @@
     "example:bridge": "tsx examples/bridge.ts",
     "example:multihop": "tsx examples/multihop.ts",
     "example:klima": "tsx examples/klimaRetireExactCarbon.ts",
-    "example:polynomial": "tsx examples/polynomialDeposit.ts"
+    "example:polynomial": "tsx examples/polynomialDeposit.ts",
+    "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
