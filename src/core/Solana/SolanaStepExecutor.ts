@@ -213,9 +213,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         if (confirmedTx?.err) {
+          const reason =
+            typeof confirmedTx.err === 'object'
+              ? JSON.stringify(confirmedTx.err)
+              : confirmedTx.err
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
-            `Transaction failed: ${confirmedTx?.err}`
+            `Transaction failed: ${reason}`
           )
         }
 
@@ -260,6 +264,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
 
     // STEP 5: Wait for the receiving chain
+    const processTxHash = process.txHash
     if (isBridgeExecution) {
       process = this.statusManager.findOrCreateProcess(
         step,
@@ -269,11 +274,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
     let statusResponse: FullStatusData
     try {
-      if (!process.txHash) {
+      if (!processTxHash) {
         throw new Error('Transaction hash is undefined.')
       }
       statusResponse = (await waitForReceivingTransaction(
-        process.txHash,
+        processTxHash,
         this.statusManager,
         process.type,
         step
