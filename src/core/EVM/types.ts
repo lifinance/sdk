@@ -1,4 +1,4 @@
-import { ChainType, type Token } from '@lifi/types'
+import { ChainType, type BaseToken } from '@lifi/types'
 import type { Hash, WalletClient } from 'viem'
 import type { SwitchChainHook } from '../types.js'
 import { type SDKProvider } from '../types.js'
@@ -19,24 +19,24 @@ export function isEVM(provider: SDKProvider): provider is EVMProvider {
 }
 
 export type TokenSpender = {
-  token: Token
+  token: BaseToken
   spenderAddress: string
 }
 
 export type TokenAllowance = {
-  token: Token
+  token: BaseToken
   allowance?: bigint
 }
 
 export type TokenSpenderAllowance = {
-  token: Token
+  token: BaseToken
   spenderAddress: string
   allowance?: bigint
 }
 
 export interface ApproveTokenRequest {
   walletClient: WalletClient
-  token: Token
+  token: BaseToken
   spenderAddress: string
   amount: bigint
   infiniteApproval?: boolean
@@ -44,7 +44,7 @@ export interface ApproveTokenRequest {
 
 export interface RevokeApprovalRequest {
   walletClient: WalletClient
-  token: Token
+  token: BaseToken
   spenderAddress: string
 }
 

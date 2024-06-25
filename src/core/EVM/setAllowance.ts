@@ -68,11 +68,11 @@ export const setAllowance = async (
 /**
  * Set approval for a certain token and amount.
  * @param request - The approval request
- * @param request.walletClient
- * @param request.token
- * @param request.spenderAddress
- * @param request.amount
- * @param request.infiniteApproval
+ * @param request.walletClient - The Viem wallet client used to send the transaction
+ * @param request.token - The token for which to set the allowance
+ * @param request.spenderAddress - The address of the spender
+ * @param request.amount - The amount of tokens to approve
+ * @param request.infiniteApproval - If true, sets the approval to the maximum uint256 value
  * @returns Returns Hash or nothing
  */
 export const setTokenAllowance = async ({
@@ -110,9 +110,9 @@ export const setTokenAllowance = async ({
 /**
  * Revoke approval for a certain token.
  * @param request - The revoke request
- * @param request.walletClient
- * @param request.token
- * @param request.spenderAddress
+ * @param request.walletClient - The Viem wallet client used to send the transaction
+ * @param request.token - The token for which to revoke the allowance
+ * @param request.spenderAddress - The address of the spender
  * @returns Returns Hash or nothing
  */
 export const revokeTokenApproval = async ({

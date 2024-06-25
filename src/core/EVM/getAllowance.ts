@@ -1,4 +1,4 @@
-import type { ChainId, Token } from '@lifi/types'
+import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address } from 'viem'
 import { getContract } from 'viem'
 import { isNativeTokenAddress } from '../../utils/utils.js'
@@ -83,7 +83,7 @@ export const getAllowanceMulticall = async (
  * @returns Returns allowance
  */
 export const getTokenAllowance = async (
-  token: Token,
+  token: BaseToken,
   ownerAddress: string,
   spenderAddress: string
 ): Promise<bigint | undefined> => {
