@@ -20,6 +20,7 @@
     "example:swap": "tsx examples/swap.ts",
     "example:bridge": "tsx examples/bridge.ts",
     "example:multihop": "tsx examples/multihop.ts",
+    "example:toAmount": "tsx examples/toAmount.ts",
     "example:klima": "tsx examples/klimaRetireExactCarbon.ts",
     "example:polynomial": "tsx examples/polynomialDeposit.ts"
   },
