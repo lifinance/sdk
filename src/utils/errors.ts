@@ -1,4 +1,4 @@
-enum ErrorType {
+export enum ErrorType {
   RPCError = 'RPCError',
   ProviderError = 'ProviderError',
   ServerError = 'ServerError',
@@ -7,6 +7,7 @@ enum ErrorType {
   NotFoundError = 'NotFoundError',
   UnknownError = 'UnknownError',
   SlippageError = 'SlippageError',
+  HTTPError = 'HTTPError',
 }
 
 export enum LiFiErrorCode {
@@ -84,7 +85,7 @@ export class LiFiError extends Error {
   htmlMessage?: string
 
   constructor(
-    type: ErrorType,
+    name: ErrorType,
     code: number,
     message: string,
     htmlMessage?: string,
@@ -92,17 +93,10 @@ export class LiFiError extends Error {
   ) {
     super(message)
 
-    // Set the prototype explicitly: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-    Object.setPrototypeOf(this, LiFiError.prototype)
-
+    this.name = name
     this.code = code
-
-    // the name property is used by toString(). It is a string and we can't use our custom ErrorTypes, that's why we have to cast
-    this.name = type.toString()
-
     this.htmlMessage = htmlMessage
 
-    // passing a stack allows us to preserve the stack from errors that we caught and just want to transform in one of our custom errors
     if (stack) {
       this.stack = stack
     }
@@ -210,23 +204,5 @@ export class UnknownError extends LiFiError {
     stack?: string
   ) {
     super(ErrorType.UnknownError, code, message, htmlMessage, stack)
-  }
-}
-
-export class HTTPError extends Error {
-  public response: Response
-  public status: number
-
-  constructor(response: Response) {
-    const code = response.status || response.status === 0 ? response.status : ''
-    const title = response.statusText || ''
-    const status = `${code} ${title}`.trim()
-    const reason = status ? `status code ${status}` : 'an unknown error'
-
-    super(`Request failed with ${reason}`)
-
-    this.name = 'HTTPError'
-    this.response = response
-    this.status = response.status
   }
 }

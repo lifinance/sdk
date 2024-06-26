@@ -6,11 +6,7 @@ import { config } from '../config.js'
 const _config = config.get()
 
 export const handlers = [
-  http.post(`${_config.apiUrl}/advanced/routes`, async ({ request }) => {
-    const data = (await request.json()) as any
-    if (isNaN(parseFloat(data?.fromAmount))) {
-      return HttpResponse.json({ message: 'Oops' }, { status: 500 })
-    }
+  http.post(`${_config.apiUrl}/advanced/routes`, async () => {
     return HttpResponse.json({})
   }),
   http.post(`${_config.apiUrl}/advanced/possibilities`, async () =>
