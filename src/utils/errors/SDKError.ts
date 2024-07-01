@@ -23,6 +23,7 @@ export class LiFiSDKError extends Error {
     this.step = step
     this.process = process
     this.cause = cause
+    this.stack = this.cause.stack
     this.code = isLiFiErrorCode(cause)
       ? (cause as LiFiBaseError).code
       : LiFiErrorCode.InternalError

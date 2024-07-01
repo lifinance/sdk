@@ -20,5 +20,8 @@ export class LiFiBaseError extends Error {
     this.code = code
     this.htmlMessage = htmlMessage
     this.cause = cause
+    if (this.cause) {
+      this.stack = this.cause.stack
+    }
   }
 }
