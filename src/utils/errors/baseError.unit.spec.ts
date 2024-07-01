@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest'
+import { ErrorName, LiFiErrorCode } from './constants.js'
+import { LiFiBaseError } from './baseError.js'
+
+describe('baseError', () => {
+  it('should set the stack to the same as the deep rooted cause', () => {
+    const rootError = new Error()
+    rootError.stack = 'root stack trace'
+
+    const intermediateError = new Error()
+    intermediateError.cause = rootError
+
+    const errorChain = new LiFiBaseError(
+      ErrorName.UnknownError,
+      LiFiErrorCode.InternalError,
+      'There was an error',
+      undefined,
+      intermediateError
+    )
+
+    expect(errorChain.stack).toBe(rootError.stack)
+  })
+})

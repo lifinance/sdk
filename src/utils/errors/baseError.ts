@@ -1,4 +1,5 @@
 import type { ErrorCode, ErrorName } from './constants.js'
+import { getRootCause } from './utils/rootCause.js'
 
 // Note: we use the LiFiBaseErrors to capture errors at specific points in the code
 //  they can carry addition to help give more context
@@ -20,8 +21,10 @@ export class LiFiBaseError extends Error {
     this.code = code
     this.htmlMessage = htmlMessage
     this.cause = cause
-    if (this.cause) {
-      this.stack = this.cause.stack
+
+    const rootCause = getRootCause(this.cause)
+    if (rootCause && rootCause.stack) {
+      this.stack = rootCause.stack
     }
   }
 }
