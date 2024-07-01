@@ -1,7 +1,8 @@
 import { config } from './config.js'
-import { HTTPError } from './utils/httpError.js'
+import { HTTPError } from './utils/errors/httpError.js'
 import { wait } from './utils/utils.js'
-import { getApiValidationError, LiFiSDKError } from './utils/errors.js'
+import { getApiValidationError } from './utils/errors/create.js'
+import { LiFiSDKError } from './utils/errors/SDKError.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
@@ -85,6 +86,6 @@ export const request = async <T = Response>(
 
     await (error as HTTPError).buildAdditionalDetails?.()
 
-    throw new LiFiSDKError(error as Error)
+    throw new LiFiSDKError(error as HTTPError)
   }
 }

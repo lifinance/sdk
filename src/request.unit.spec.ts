@@ -11,7 +11,7 @@ import {
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
-import type { LiFiSDKError } from './utils/index.js'
+import type { LiFiSDKError } from './utils/errors/SDKError.js'
 import { getApiValidationError, type HTTPError } from './utils/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 

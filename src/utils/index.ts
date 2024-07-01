@@ -1,5 +1,4 @@
-export * from './errors.js'
-export * from './httpError.js'
+export * from './errors/index.js'
 export * from './getTransactionMessage.js'
 export * from './median.js'
 export * from './utils.js'

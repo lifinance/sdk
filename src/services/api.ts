@@ -27,7 +27,7 @@ import type {
 import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
-import { getApiValidationError } from '../utils/errors.js'
+import { getApiValidationError } from '../utils/errors/create.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token

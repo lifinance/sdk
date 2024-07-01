@@ -15,13 +15,13 @@ import { publicActions } from 'viem'
 import { config } from '../../config.js'
 import { getStepTransaction } from '../../services/api.js'
 import {
-  LiFiErrorCode,
   getTransactionFailedMessage,
   isZeroAddress,
   getTransactionError,
   getValidationError,
 } from '../../utils/index.js'
-import { parseError } from './parseError.js'
+import { LiFiErrorCode } from '../../utils/errors/constants.js'
+import { parseEVMStepErrors } from './parseEVMStepErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
@@ -439,15 +439,15 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseError(e, step, process)
+        const error = await parseEVMStepErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'FAILED',
           {
             error: {
-              message: error.message,
-              htmlMessage: error.htmlMessage,
+              message: error.cause.message,
+              htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
           }

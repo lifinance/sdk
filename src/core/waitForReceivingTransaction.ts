@@ -5,7 +5,7 @@ import type {
   StatusResponse,
 } from '@lifi/types'
 import { getStatus } from '../services/api.js'
-import { getServerError } from '../utils/errors.js'
+import { getServerError } from '../utils/errors/create.js'
 import { repeatUntilDone } from '../utils/utils.js'
 import type { StatusManager } from './StatusManager.js'
 import { getSubstatusMessage } from './utils.js'

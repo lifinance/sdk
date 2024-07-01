@@ -1,8 +1,9 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
 import type { Address, Hash, ReplacementReason, WalletClient } from 'viem'
 import { maxUint256, publicActions } from 'viem'
-import { getTransactionError, LiFiErrorCode } from '../../utils/index.js'
-import { parseError } from './parseError.js'
+import { getTransactionError } from '../../utils/errors/create.js'
+import { LiFiErrorCode } from '../../utils/errors/constants.js'
+import { parseEVMStepErrors } from './parseEVMStepErrors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
@@ -101,15 +102,15 @@ export const checkAllowance = async (
       }
     }
   } catch (e: any) {
-    const error = await parseError(e, step, allowanceProcess)
+    const error = await parseEVMStepErrors(e, step, allowanceProcess)
     allowanceProcess = statusManager.updateProcess(
       step,
       allowanceProcess.type,
       'FAILED',
       {
         error: {
-          message: error.message,
-          htmlMessage: error.htmlMessage,
+          message: error.cause.message,
+          htmlMessage: error.cause.htmlMessage,
           code: error.code,
         },
       }

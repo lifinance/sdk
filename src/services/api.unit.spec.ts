@@ -26,7 +26,7 @@ import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { getApiValidationError } from '../utils/errors.js'
+import { getApiValidationError } from '../utils/errors/create.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
