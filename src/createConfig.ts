@@ -27,7 +27,6 @@ export async function createChainsConfig() {
 }
 
 export function createConfig(options: SDKConfig) {
-  console.log('using local SDK')
   const _config = createBaseConfig(options)
   if (_config.preloadChains) {
     createChainsConfig()

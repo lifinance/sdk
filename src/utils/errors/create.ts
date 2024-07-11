@@ -2,8 +2,7 @@ import { ErrorName, LiFiErrorCode } from './constants.js'
 import { LiFiBaseError } from './baseError.js'
 import { LiFiSDKError } from './SDKError.js'
 
-// TODO: consider reverting this to classes
-
+// TODO: consider reverting this to classes - classes will give better stack traces
 export const getRPCError = (
   code: LiFiErrorCode,
   message: string,
