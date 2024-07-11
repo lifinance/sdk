@@ -65,7 +65,13 @@ const interceptLiFiBaseErrors = async (
     process?.txHash &&
     step?.action.fromChainId
   ) {
+    console.log(
+      'e.code === LiFiErrorCode.TransactionFailed',
+      process?.txHash,
+      step?.action.fromChainId
+    )
     try {
+      // TODO: remove this as it doesn't work
       const response = await fetchTxErrorDetails(
         process.txHash,
         step.action.fromChainId
@@ -74,6 +80,9 @@ const interceptLiFiBaseErrors = async (
       if (
         response?.error_message?.includes(EthersErrorMessage.ERC20Allowance)
       ) {
+        console.log(
+          ' response?.error_message?.includes(EthersErrorMessage.ERC20Allowance)'
+        )
         // TODO: manually test this error
         error = getTransactionError(
           LiFiErrorCode.AllowanceRequired,
@@ -84,6 +93,7 @@ const interceptLiFiBaseErrors = async (
       }
     } catch {}
   }
+
   return error
 }
 

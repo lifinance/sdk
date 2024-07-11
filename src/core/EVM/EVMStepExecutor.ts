@@ -144,6 +144,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       (shouldBatchTransactions || !isMultisigWalletClient)
 
     if (checkForAllowance) {
+      // TODO: this can throw errors that are currently uncaught by parseErrors function - need to ensure it is caught by the large try catch
       const data = await checkAllowance(
         fromChain,
         step,
@@ -439,6 +440,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
+        // TODO: compare with the other try catch statements
         const error = await parseEVMStepErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
@@ -450,7 +452,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
               htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
-          }
+          } // TODO: consider adding the cause here
         )
         this.statusManager.updateExecution(step, 'FAILED')
         throw error
@@ -508,6 +510,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         ],
       })
     } catch (e: unknown) {
+      // TODO: wrap with parseErrors function - compare with the above try catch statements
       const htmlMessage = await getTransactionFailedMessage(
         step,
         process.txLink
