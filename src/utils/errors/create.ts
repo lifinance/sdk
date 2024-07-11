@@ -1,67 +1,71 @@
 import { ErrorName, LiFiErrorCode } from './constants.js'
 import { LiFiBaseError } from './baseError.js'
-import { LiFiSDKError } from './SDKError.js'
 
-// TODO: consider reverting this to classes - classes will give better stack traces
-export const getRPCError = (
-  code: LiFiErrorCode,
-  message: string,
-  htmlMessage?: string,
-  cause?: Error
-) => new LiFiBaseError(ErrorName.RPCError, code, message, htmlMessage, cause)
+export class RPCError extends LiFiBaseError {
+  constructor(
+    code: LiFiErrorCode,
+    message: string,
+    htmlMessage?: string,
+    cause?: Error
+  ) {
+    super(ErrorName.RPCError, code, message, htmlMessage, cause)
+  }
+}
 
-export const getProviderError = (
-  code: LiFiErrorCode,
-  message: string,
-  htmlMessage?: string,
-  cause?: Error
-) =>
-  new LiFiBaseError(ErrorName.ProviderError, code, message, htmlMessage, cause)
+export class ProviderError extends LiFiBaseError {
+  constructor(
+    code: LiFiErrorCode,
+    message: string,
+    htmlMessage?: string,
+    cause?: Error
+  ) {
+    super(ErrorName.ProviderError, code, message, htmlMessage, cause)
+  }
+}
 
-export const getTransactionError = (
-  code: LiFiErrorCode,
-  message: string,
-  htmlMessage?: string,
-  cause?: Error
-) =>
-  new LiFiBaseError(
-    ErrorName.TransactionError,
-    code,
-    message,
-    htmlMessage,
-    cause
-  )
+export class TransactionError extends LiFiBaseError {
+  constructor(
+    code: LiFiErrorCode,
+    message: string,
+    htmlMessage?: string,
+    cause?: Error
+  ) {
+    super(ErrorName.ProviderError, code, message, htmlMessage, cause)
+  }
+}
 
-export const getGenericUnknownError = (
-  message: string,
-  htmlMessage?: string,
-  cause?: Error
-) =>
-  new LiFiBaseError(
-    ErrorName.UnknownError,
-    LiFiErrorCode.InternalError,
-    message,
-    htmlMessage,
-    cause
-  )
+export class UnknownError extends LiFiBaseError {
+  constructor(message: string, htmlMessage?: string, cause?: Error) {
+    super(
+      ErrorName.UnknownError,
+      LiFiErrorCode.InternalError,
+      message,
+      htmlMessage,
+      cause
+    )
+  }
+}
 
-export const getBalanceError = (message: string, htmlMessage?: string) =>
-  new LiFiBaseError(
-    ErrorName.BalanceError,
-    LiFiErrorCode.BalanceError,
-    message,
-    htmlMessage
-  )
+export class BalanceError extends LiFiBaseError {
+  constructor(message: string, htmlMessage?: string, cause?: Error) {
+    super(
+      ErrorName.BalanceError,
+      LiFiErrorCode.BalanceError,
+      message,
+      htmlMessage,
+      cause
+    )
+  }
+}
 
-export const getServerError = (message: string) =>
-  new LiFiBaseError(ErrorName.ServerError, LiFiErrorCode.InternalError, message)
+export class ServerError extends LiFiBaseError {
+  constructor(message: string) {
+    super(ErrorName.ServerError, LiFiErrorCode.InternalError, message)
+  }
+}
 
-export const getValidationError = (message: string) =>
-  new LiFiBaseError(
-    ErrorName.ValidationError,
-    LiFiErrorCode.ValidationError,
-    message
-  )
-
-export const getApiValidationError = (message: string) =>
-  new LiFiSDKError(getValidationError(message))
+export class ValidationError extends LiFiBaseError {
+  constructor(message: string) {
+    super(ErrorName.ValidationError, LiFiErrorCode.ValidationError, message)
+  }
+}

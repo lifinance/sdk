@@ -27,7 +27,8 @@ import type {
 import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
-import { getApiValidationError } from '../utils/errors/create.js'
+import { ValidationError } from '../utils/errors/create.js'
+import { LiFiSDKError } from '../utils/errors/SDKError.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -42,10 +43,14 @@ export const getToken = async (
   options?: RequestOptions
 ): Promise<Token> => {
   if (!chain) {
-    throw getApiValidationError('Required parameter "chain" is missing.')
+    throw new LiFiSDKError(
+      new ValidationError('Required parameter "chain" is missing.')
+    )
   }
   if (!token) {
-    throw getApiValidationError('Required parameter "token" is missing.')
+    throw new LiFiSDKError(
+      new ValidationError('Required parameter "token" is missing.')
+    )
   }
   return await request<Token>(
     `${config.get().apiUrl}/token?${new URLSearchParams({
@@ -79,8 +84,10 @@ export const getQuote = async (
   ]
   requiredParameters.forEach((requiredParameter) => {
     if (!params[requiredParameter]) {
-      throw getApiValidationError(
-        `Required parameter "${requiredParameter}" is missing.`
+      throw new LiFiSDKError(
+        new ValidationError(
+          `Required parameter "${requiredParameter}" is missing.`
+        )
       )
     }
   })
@@ -137,8 +144,10 @@ export const getContractCallsQuote = async (
   ]
   requiredParameters.forEach((requiredParameter) => {
     if (!params[requiredParameter]) {
-      throw getApiValidationError(
-        `Required parameter "${requiredParameter}" is missing.`
+      throw new LiFiSDKError(
+        new ValidationError(
+          `Required parameter "${requiredParameter}" is missing.`
+        )
       )
     }
   })
@@ -178,7 +187,9 @@ export const getStatus = async (
   options?: RequestOptions
 ): Promise<StatusResponse> => {
   if (!params.txHash) {
-    throw getApiValidationError('Required parameter "txHash" is missing.')
+    throw new LiFiSDKError(
+      new ValidationError('Required parameter "txHash" is missing.')
+    )
   }
   const queryParams = new URLSearchParams(
     params as unknown as Record<string, string>
@@ -233,7 +244,7 @@ export const getRoutes = async (
   options?: RequestOptions
 ): Promise<RoutesResponse> => {
   if (!isRoutesRequest(params)) {
-    throw getApiValidationError('Invalid routes request.')
+    throw new LiFiSDKError(new ValidationError('Invalid routes request.'))
   }
   const _config = config.get()
   // apply defaults
@@ -350,7 +361,9 @@ export const getGasRecommendation = async (
   options?: RequestOptions
 ): Promise<GasRecommendationResponse> => {
   if (!params.chainId) {
-    throw getApiValidationError('Required parameter "chainId" is missing.')
+    throw new LiFiSDKError(
+      new ValidationError('Required parameter "chainId" is missing.')
+    )
   }
 
   const url = new URL(`${config.get().apiUrl}/gas/suggestion/${params.chainId}`)
@@ -420,7 +433,9 @@ export const getTransactionHistory = async (
   options?: RequestOptions
 ): Promise<TransactionAnalyticsResponse> => {
   if (!wallet) {
-    throw getApiValidationError('Required parameter "wallet" is missing.')
+    throw new LiFiSDKError(
+      new ValidationError('Required parameter "wallet" is missing.')
+    )
   }
 
   const _config = config.get()

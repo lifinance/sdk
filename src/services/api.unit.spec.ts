@@ -26,9 +26,10 @@ import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { getApiValidationError } from '../utils/errors/create.js'
+import { ValidationError } from '../utils/errors/create.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
+import { LiFiSDKError } from '../utils/index.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
@@ -159,14 +160,18 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "chain" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "chain" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "token" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "token" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
@@ -203,7 +208,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "fromChain" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "fromChain" is missing.')
+          )
         )
 
         await expect(
@@ -216,7 +223,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "fromToken" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "fromToken" is missing.')
+          )
         )
 
         await expect(
@@ -229,7 +238,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "fromAddress" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "fromAddress" is missing.')
+          )
         )
 
         await expect(
@@ -242,7 +253,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "fromAmount" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "fromAmount" is missing.')
+          )
         )
 
         await expect(
@@ -255,7 +268,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "toChain" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "toChain" is missing.')
+          )
         )
 
         await expect(
@@ -268,7 +283,9 @@ describe('ApiService', () => {
             toToken: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "toToken" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "toToken" is missing.')
+          )
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -309,7 +326,9 @@ describe('ApiService', () => {
             txHash: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "txHash" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "txHash" is missing.')
+          )
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -498,7 +517,9 @@ describe('ApiService', () => {
             chainId: undefined as unknown as number,
           })
         ).rejects.toThrowError(
-          getApiValidationError('Required parameter "chainId" is missing.')
+          new LiFiSDKError(
+            new ValidationError('Required parameter "chainId" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })

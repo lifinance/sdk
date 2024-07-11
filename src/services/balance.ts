@@ -1,7 +1,7 @@
 import type { Token, TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
 import { isToken } from '../typeguards.js'
-import { getValidationError } from '../utils/errors/create.js'
+import { ValidationError } from '../utils/errors/create.js'
 
 /**
  * Returns the balances of a specific token a wallet holds across all aggregated chains.
@@ -60,13 +60,13 @@ export const getTokenBalancesByChain = async (
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }> => {
   if (!walletAddress) {
-    throw getValidationError('Missing walletAddress.')
+    throw new ValidationError('Missing walletAddress.')
   }
 
   const tokenList = Object.values(tokensByChain).flat()
   const invalidTokens = tokenList.filter((token) => !isToken(token))
   if (invalidTokens.length) {
-    throw getValidationError(`Invalid tokens passed.`)
+    throw new ValidationError(`Invalid tokens passed.`)
   }
 
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}

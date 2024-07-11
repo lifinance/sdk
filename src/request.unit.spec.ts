@@ -11,8 +11,8 @@ import {
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
-import type { LiFiSDKError } from './utils/errors/SDKError.js'
-import { getApiValidationError, type HTTPError } from './utils/index.js'
+import { LiFiSDKError } from './utils/errors/SDKError.js'
+import { type HTTPError, ValidationError } from './utils/index.js'
 // import type { ExtendedRequestInit } from './types/request.js'
 
 const mockUrl = 'https://some.endpoint.com'
@@ -119,8 +119,10 @@ describe('request', () => {
       await expect(
         request<{ message: string }>('https://some.endpoint.com')
       ).rejects.toThrowError(
-        getApiValidationError(
-          'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
+        new LiFiSDKError(
+          new ValidationError(
+            'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
+          )
         )
       )
     })
