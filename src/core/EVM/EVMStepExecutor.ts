@@ -398,6 +398,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
             retryDelay,
           })
 
+        // TODO: question: consider if we would like a transaction reverted error code?
         if (transactionReceipt.status === 'reverted') {
           throw getTransactionError(
             LiFiErrorCode.TransactionFailed,

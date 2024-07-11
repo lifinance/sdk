@@ -1,7 +1,5 @@
 import type { LiFiStep, Process } from '@lifi/types'
 import { errorCodes as MetaMaskErrorCodes } from 'eth-rpc-errors'
-import { fetchTxErrorDetails } from '../../helpers.js'
-import { LiFiBaseError } from '../../utils/errors/baseError.js'
 import {
   getGenericUnknownError,
   getRPCError,
@@ -12,7 +10,6 @@ import { LiFiErrorCode, ErrorMessage } from '../../utils/errors/constants.js'
 import { getTransactionNotSentMessage } from '../../utils/getTransactionMessage.js'
 
 enum EthersErrorMessage {
-  ERC20Allowance = 'ERC20: transfer amount exceeds allowance',
   LowGas = 'intrinsic gas too low',
   OutOfGas = 'out of gas',
   Underpriced = 'underpriced',
@@ -30,13 +27,7 @@ export const parseEVMStepErrors = async (
     return e
   }
 
-  let baseError
-
-  if (e instanceof LiFiBaseError) {
-    baseError = await interceptLiFiBaseErrors(e, step, process)
-  } else {
-    baseError = await parseLegacyMetaMaskErrors(e, step, process)
-  }
+  const baseError = await parseLegacyMetaMaskErrors(e, step, process)
 
   return new LiFiSDKError(
     baseError ??
@@ -48,53 +39,6 @@ export const parseEVMStepErrors = async (
     step,
     process
   )
-}
-
-// TODO: look to see if this can be used on the Solana parser as well
-// We want to be able to respond to some of the LiFiBaseErrors
-//  occasionally seeing if we can get more information to decorate them.
-const interceptLiFiBaseErrors = async (
-  e: LiFiBaseError,
-  step: LiFiStep | undefined,
-  process: Process | undefined
-) => {
-  let error = e
-
-  if (
-    e.code === LiFiErrorCode.TransactionFailed &&
-    process?.txHash &&
-    step?.action.fromChainId
-  ) {
-    console.log(
-      'e.code === LiFiErrorCode.TransactionFailed',
-      process?.txHash,
-      step?.action.fromChainId
-    )
-    try {
-      // TODO: remove this as it doesn't work
-      const response = await fetchTxErrorDetails(
-        process.txHash,
-        step.action.fromChainId
-      )
-
-      if (
-        response?.error_message?.includes(EthersErrorMessage.ERC20Allowance)
-      ) {
-        console.log(
-          ' response?.error_message?.includes(EthersErrorMessage.ERC20Allowance)'
-        )
-        // TODO: manually test this error
-        error = getTransactionError(
-          LiFiErrorCode.AllowanceRequired,
-          response.error_message,
-          undefined,
-          e
-        )
-      }
-    } catch {}
-  }
-
-  return error
 }
 
 // NOTE: No additions should be made to this function
@@ -138,5 +82,5 @@ const parseLegacyMetaMaskErrors = async (
       }
     }
   }
-  return
+  return e
 }
