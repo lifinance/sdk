@@ -375,7 +375,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
         }
 
-        if (!isMultisigWalletClient && transactionReceipt?.transactionHash) {
+        // Update pending process if the transaction hash from the receipt is different.
+        // This might happen if the transaction was replaced.
+        if (
+          !isMultisigWalletClient &&
+          transactionReceipt?.transactionHash &&
+          transactionReceipt.transactionHash !== txHash
+        ) {
           process = this.statusManager.updateProcess(
             step,
             process.type,
