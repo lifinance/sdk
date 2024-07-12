@@ -1,9 +1,9 @@
 import type { ErrorCode, ErrorName } from './constants.js'
 import { getRootCause } from './utils/rootCause.js'
 
-// Note: we use the LiFiBaseErrors to capture errors at specific points in the code
+// Note: we use the BaseErrors to capture errors at specific points in the code
 //  they can carry addition to help give more context
-export class LiFiBaseError extends Error {
+export class BaseError extends Error {
   code: ErrorCode
   htmlMessage?: string
   override cause?: Error

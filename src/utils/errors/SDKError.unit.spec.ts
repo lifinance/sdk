@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ErrorName, LiFiErrorCode } from './constants.js'
-import { LiFiBaseError } from './baseError.js'
-import { LiFiSDKError } from './SDKError.js'
+import { BaseError } from './baseError.js'
+import { SDKError } from './SDKError.js'
 import { version } from '../../version.js'
 import { HTTPError } from './httpError.js'
 
@@ -28,14 +28,14 @@ describe('LiFiSDKError', () => {
 
           throw httpError
         } catch (e: any) {
-          throw new LiFiSDKError(e)
+          throw new SDKError(e)
         }
       }
 
       try {
         await testFunction()
       } catch (e: any) {
-        expect((e as LiFiSDKError).stack).toBe((e as LiFiSDKError).cause.stack)
+        expect((e as SDKError).stack).toBe((e as SDKError).cause.stack)
       }
     })
 
@@ -51,7 +51,7 @@ describe('LiFiSDKError', () => {
       await httpError.buildAdditionalDetails()
 
       const testFunction = () => {
-        throw new LiFiSDKError(httpError)
+        throw new SDKError(httpError)
       }
 
       expect(() => testFunction()).toThrowError(
@@ -66,7 +66,7 @@ describe('LiFiSDKError', () => {
 
       const testFunction = () => {
         try {
-          const baseError = new LiFiBaseError(
+          const baseError = new BaseError(
             ErrorName.ValidationError,
             LiFiErrorCode.ValidationError,
             'problem validating'
@@ -74,14 +74,14 @@ describe('LiFiSDKError', () => {
 
           throw baseError
         } catch (e: any) {
-          throw new LiFiSDKError(e)
+          throw new SDKError(e)
         }
       }
 
       try {
         testFunction()
       } catch (e: any) {
-        expect((e as LiFiSDKError).stack).toBe((e as LiFiSDKError).cause.stack)
+        expect((e as SDKError).stack).toBe((e as SDKError).cause.stack)
       }
     })
 
@@ -92,7 +92,7 @@ describe('LiFiSDKError', () => {
         try {
           throw new Error('this was the root cause')
         } catch (e: any) {
-          throw new LiFiBaseError(
+          throw new BaseError(
             ErrorName.ValidationError,
             LiFiErrorCode.ValidationError,
             'problem validating',
@@ -106,23 +106,23 @@ describe('LiFiSDKError', () => {
         try {
           causingError()
         } catch (e: any) {
-          throw new LiFiSDKError(e)
+          throw new SDKError(e)
         }
       }
 
       try {
         testFunction()
       } catch (e: any) {
-        expect((e as LiFiSDKError).stack).toBe(
-          ((e as LiFiSDKError).cause as LiFiSDKError).cause.stack
+        expect((e as SDKError).stack).toBe(
+          ((e as SDKError).cause as SDKError).cause.stack
         )
       }
     })
 
     it('should feature the causing base error message as part of its own message', () => {
       const testFunction = () => {
-        throw new LiFiSDKError(
-          new LiFiBaseError(
+        throw new SDKError(
+          new BaseError(
             ErrorName.UnknownError,
             LiFiErrorCode.InternalError,
             'There was an error'
@@ -137,12 +137,8 @@ describe('LiFiSDKError', () => {
 
     it('should use a fail back error message if one is not defined on the base error', () => {
       const testFunction = () => {
-        throw new LiFiSDKError(
-          new LiFiBaseError(
-            ErrorName.BalanceError,
-            LiFiErrorCode.BalanceError,
-            ''
-          )
+        throw new SDKError(
+          new BaseError(ErrorName.BalanceError, LiFiErrorCode.BalanceError, '')
         )
       }
 
@@ -152,12 +148,12 @@ describe('LiFiSDKError', () => {
     })
 
     it('should present the passed base error as the cause', () => {
-      const baseError = new LiFiBaseError(
+      const baseError = new BaseError(
         ErrorName.UnknownError,
         LiFiErrorCode.InternalError,
         'There was an error'
       )
-      const sdkError = new LiFiSDKError(baseError)
+      const sdkError = new SDKError(baseError)
 
       expect(sdkError.cause).toBe(baseError)
     })

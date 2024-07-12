@@ -1,12 +1,12 @@
-import { LiFiBaseError } from '../baseError.js'
+import { BaseError } from '../baseError.js'
 import { HTTPError } from '../httpError.js'
 
 export const getLiFiRootCause = (e: Error) => {
   let rootCause = e
-  while (rootCause.cause && rootCause.cause instanceof LiFiBaseError) {
-    rootCause = rootCause.cause as LiFiBaseError
+  while (rootCause.cause && rootCause.cause instanceof BaseError) {
+    rootCause = rootCause.cause as BaseError
   }
-  return rootCause as LiFiBaseError
+  return rootCause as BaseError
 }
 
 export const getLiFiRootCauseMessage = (e: Error) => {

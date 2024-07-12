@@ -1,15 +1,15 @@
 import type { LiFiStep, Process } from '@lifi/types'
-import { LiFiBaseError } from '../../utils/errors/baseError.js'
+import { BaseError } from '../../utils/errors/baseError.js'
 import { ErrorMessage } from '../../utils/errors/constants.js'
-import { UnknownError } from '../../utils/errors/create.js'
-import { LiFiSDKError } from '../../utils/errors/SDKError.js'
+import { UnknownError } from '../../utils/errors/errors.js'
+import { SDKError } from '../../utils/errors/SDKError.js'
 
 export const parseSolanaStepErrors = async (
   e: Error,
   step?: LiFiStep,
   process?: Process
-): Promise<LiFiSDKError> => {
-  if (e instanceof LiFiSDKError) {
+): Promise<SDKError> => {
+  if (e instanceof SDKError) {
     e.step = e.step ?? step
     e.process = e.process ?? process
     return e
@@ -17,11 +17,11 @@ export const parseSolanaStepErrors = async (
 
   let baseError
 
-  if (e instanceof LiFiBaseError) {
+  if (e instanceof BaseError) {
     baseError = e
   }
 
-  return new LiFiSDKError(
+  return new SDKError(
     baseError ??
       new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e),
     step,

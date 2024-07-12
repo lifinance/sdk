@@ -1,8 +1,8 @@
 import { config } from './config.js'
 import { HTTPError } from './utils/errors/httpError.js'
 import { wait } from './utils/utils.js'
-import { ValidationError } from './utils/errors/create.js'
-import { LiFiSDKError } from './utils/errors/SDKError.js'
+import { ValidationError } from './utils/errors/errors.js'
+import { SDKError } from './utils/errors/SDKError.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
@@ -26,7 +26,7 @@ export const request = async <T = Response>(
   const { userId, integrator, widgetVersion, apiKey } = config.get()
 
   if (!integrator) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError(
         'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
       )
@@ -88,6 +88,6 @@ export const request = async <T = Response>(
 
     await (error as HTTPError).buildAdditionalDetails?.()
 
-    throw new LiFiSDKError(error as HTTPError)
+    throw new SDKError(error as HTTPError)
   }
 }

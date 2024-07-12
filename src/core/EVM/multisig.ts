@@ -1,7 +1,7 @@
 import type { ExtendedChain, LiFiStep, ProcessType } from '@lifi/types'
 import type { Hash } from 'viem'
 import { LiFiErrorCode } from '../../utils/errors/constants.js'
-import { TransactionError } from '../../utils/errors/create.js'
+import { TransactionError } from '../../utils/errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { MultisigConfig, MultisigTxDetails } from './types.js'
 

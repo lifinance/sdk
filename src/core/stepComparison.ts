@@ -1,6 +1,6 @@
 import type { LiFiStep } from '@lifi/types'
 import { LiFiErrorCode } from '../utils/errors/constants.js'
-import { TransactionError } from '../utils/errors/create.js'
+import { TransactionError } from '../utils/errors/errors.js'
 import type { StatusManager } from './StatusManager.js'
 import type { ExecutionOptions } from './types.js'
 import { checkStepSlippageThreshold } from './utils.js'

@@ -9,7 +9,6 @@ import type {
   ReplacementReason,
   SendTransactionParameters,
   WalletClient,
-  BaseError,
 } from 'viem'
 import { publicActions } from 'viem'
 import { config } from '../../config.js'
@@ -18,7 +17,7 @@ import {
   getTransactionFailedMessage,
   isZeroAddress,
 } from '../../utils/index.js'
-import { ValidationError, TransactionError } from '../../utils/errors/create.js'
+import { ValidationError, TransactionError } from '../../utils/errors/errors.js'
 import { LiFiErrorCode } from '../../utils/errors/constants.js'
 import { parseEVMStepErrors } from './parseEVMStepErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
@@ -36,10 +35,6 @@ import { updateMultisigRouteProcess } from './multisig.js'
 import { switchChain } from './switchChain.js'
 import type { MultisigConfig, MultisigTransaction } from './types.js'
 import { getMaxPriorityFeePerGas, retryCount, retryDelay } from './utils.js'
-
-interface ViemError extends BaseError {
-  cause?: ViemError
-}
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   walletClient: WalletClient
@@ -319,43 +314,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
               )
             }
           } else {
-            try {
-              txHash = await this.walletClient.sendTransaction({
-                to: transactionRequest.to,
-                account: this.walletClient.account!,
-                data: transactionRequest.data,
-                value: transactionRequest.value,
-                gas: transactionRequest.gas,
-                gasPrice: transactionRequest.gasPrice,
-                maxFeePerGas: transactionRequest.maxFeePerGas,
-                maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-                chain: null,
-              } as SendTransactionParameters)
-            } catch (e) {
-              // TODO: we will need to do this where ever we use viems sendTransaction
-              const viemError: ViemError = e as ViemError
-
-              if (viemError.cause?.name === 'UserRejectedRequestError') {
-                throw new TransactionError(
-                  LiFiErrorCode.SignatureRejected,
-                  viemError.message,
-                  undefined,
-                  viemError
-                )
-              }
-
-              // TODO: manually test this?
-              if (viemError.cause?.name === 'InsufficientFundsError') {
-                throw new TransactionError(
-                  LiFiErrorCode.InsufficientFunds,
-                  viemError.message,
-                  undefined,
-                  viemError
-                )
-              }
-
-              throw viemError
-            }
+            txHash = await this.walletClient.sendTransaction({
+              to: transactionRequest.to,
+              account: this.walletClient.account!,
+              data: transactionRequest.data,
+              value: transactionRequest.value,
+              gas: transactionRequest.gas,
+              gasPrice: transactionRequest.gasPrice,
+              maxFeePerGas: transactionRequest.maxFeePerGas,
+              maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+              chain: null,
+            } as SendTransactionParameters)
           }
 
           // STEP 4: Wait for the transaction
@@ -439,7 +408,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        // TODO: compare with the other try catch statements
         const error = await parseEVMStepErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
@@ -451,9 +419,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
               htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
-          } // TODO: consider adding the cause here
+          }
         )
         this.statusManager.updateExecution(step, 'FAILED')
+
         throw error
       }
     }

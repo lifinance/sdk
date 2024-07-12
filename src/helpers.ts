@@ -1,6 +1,9 @@
 // import type { LiFiStep, Route } from '@lifi/types'
 // import { getValidationError } from './utils/errors.js'
 import { name, version } from './version.js'
+import { ValidationError } from './utils/errors/errors.js'
+import { SDKError } from './utils/errors/SDKError.js'
+import type { Route, LiFiStep } from '@lifi/types'
 
 export const checkPackageUpdates = async (
   packageName?: string,
@@ -30,34 +33,38 @@ export const checkPackageUpdates = async (
  * @param txHash
  * @param chainId
  * @returns - The route to be executed.
- * @throws {LiFiBaseError} Throws a ValidationError if the step has missing values.
+ * @throws {BaseError} Throws a ValidationError if the step has missing values.
  */
-// export const convertQuoteToRoute = (step: LiFiStep): Route => {
-//   if (!step.estimate.fromAmountUSD) {
-//     throw getValidationError("Missing 'fromAmountUSD' in step estimate.")
-//   }
-//
-//   if (!step.estimate.toAmountUSD) {
-//     throw getValidationError("Missing 'toAmountUSD' in step estimate.")
-//   }
-//
-//   const route: Route = {
-//     fromToken: step.action.fromToken,
-//     toToken: step.action.toToken,
-//     fromAmount: step.action.fromAmount,
-//     toAmount: step.estimate.toAmount,
-//     id: step.id,
-//     fromChainId: step.action.fromToken.chainId,
-//     toChainId: step.action.toToken.chainId,
-//     fromAmountUSD: step.estimate.fromAmountUSD,
-//     toAmountUSD: step.estimate.toAmountUSD,
-//     steps: [step],
-//     toAmountMin: step.estimate.toAmountMin,
-//     insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
-//   }
-//
-//   return route
-// }
+export const convertQuoteToRoute = (step: LiFiStep): Route => {
+  if (!step.estimate.fromAmountUSD) {
+    throw new SDKError(
+      new ValidationError("Missing 'fromAmountUSD' in step estimate.")
+    )
+  }
+
+  if (!step.estimate.toAmountUSD) {
+    throw new SDKError(
+      new ValidationError("Missing 'toAmountUSD' in step estimate.")
+    )
+  }
+
+  const route: Route = {
+    fromToken: step.action.fromToken,
+    toToken: step.action.toToken,
+    fromAmount: step.action.fromAmount,
+    toAmount: step.estimate.toAmount,
+    id: step.id,
+    fromChainId: step.action.fromToken.chainId,
+    toChainId: step.action.toToken.chainId,
+    fromAmountUSD: step.estimate.fromAmountUSD,
+    toAmountUSD: step.estimate.toAmountUSD,
+    steps: [step],
+    toAmountMin: step.estimate.toAmountMin,
+    insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
+  }
+
+  return route
+}
 
 export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
   const response = await fetch(

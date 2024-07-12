@@ -26,10 +26,10 @@ import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { ValidationError } from '../utils/errors/create.js'
+import { ValidationError } from '../utils/errors/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
-import { LiFiSDKError } from '../utils/index.js'
+import { SDKError } from '../utils/index.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
@@ -160,7 +160,7 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "chain" is missing.')
           )
         )
@@ -169,7 +169,7 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "token" is missing.')
           )
         )
@@ -208,7 +208,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "fromChain" is missing.')
           )
         )
@@ -223,7 +223,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "fromToken" is missing.')
           )
         )
@@ -238,7 +238,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "fromAddress" is missing.')
           )
         )
@@ -253,7 +253,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "fromAmount" is missing.')
           )
         )
@@ -268,7 +268,7 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "toChain" is missing.')
           )
         )
@@ -283,7 +283,7 @@ describe('ApiService', () => {
             toToken: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "toToken" is missing.')
           )
         )
@@ -326,7 +326,7 @@ describe('ApiService', () => {
             txHash: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "txHash" is missing.')
           )
         )
@@ -517,7 +517,7 @@ describe('ApiService', () => {
             chainId: undefined as unknown as number,
           })
         ).rejects.toThrowError(
-          new LiFiSDKError(
+          new SDKError(
             new ValidationError('Required parameter "chainId" is missing.')
           )
         )

@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { LiFiSDKError } from '../../utils/errors/SDKError.js'
-import { LiFiBaseError } from '../../utils/errors/baseError.js'
+import { SDKError } from '../../utils/errors/SDKError.js'
+import { BaseError } from '../../utils/errors/baseError.js'
 import { LiFiErrorCode } from '../../utils/errors/constants.js'
 import { parseSolanaStepErrors } from './parseSolanaStepErrors.js'
 import { ErrorName } from '../../utils/errors/constants.js'
@@ -11,8 +11,8 @@ beforeAll(setupTestEnvironment)
 describe('parseSolanaStepError', () => {
   describe('when a LiFiSDKError is passed', () => {
     it('should return the original error', async () => {
-      const error = new LiFiSDKError(
-        new LiFiBaseError(
+      const error = new SDKError(
+        new BaseError(
           ErrorName.UnknownError,
           LiFiErrorCode.InternalError,
           'there was an error'
@@ -29,8 +29,8 @@ describe('parseSolanaStepError', () => {
 
     describe('when step and process is passed', () => {
       it('should return the original error with step and process added', async () => {
-        const error = new LiFiSDKError(
-          new LiFiBaseError(
+        const error = new SDKError(
+          new BaseError(
             ErrorName.UnknownError,
             LiFiErrorCode.InternalError,
             'there was an error'
@@ -53,8 +53,8 @@ describe('parseSolanaStepError', () => {
           const expectedStep = buildStepObject({ includingExecution: true })
           const expectedProcess = expectedStep.execution!.process[0]
 
-          const error = new LiFiSDKError(
-            new LiFiBaseError(
+          const error = new SDKError(
+            new BaseError(
               ErrorName.UnknownError,
               LiFiErrorCode.InternalError,
               'there was an error'
@@ -79,7 +79,7 @@ describe('parseSolanaStepError', () => {
 
   describe('when a LiFBaseError is passed', () => {
     it('should return the LiFBaseError as the cause on a LiFiSDKError', async () => {
-      const error = new LiFiBaseError(
+      const error = new BaseError(
         ErrorName.BalanceError,
         LiFiErrorCode.BalanceError,
         'there was an error'
@@ -87,7 +87,7 @@ describe('parseSolanaStepError', () => {
 
       const parsedError = await parseSolanaStepErrors(error)
 
-      expect(parsedError).toBeInstanceOf(LiFiSDKError)
+      expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
       expect(parsedError.process).toBeUndefined()
       expect(parsedError.cause).toBe(error)
@@ -95,7 +95,7 @@ describe('parseSolanaStepError', () => {
 
     describe('when step and process is passed', () => {
       it('should return the LiFiSDKError with step and process added', async () => {
-        const error = new LiFiBaseError(
+        const error = new BaseError(
           ErrorName.BalanceError,
           LiFiErrorCode.BalanceError,
           'there was an error'
@@ -106,7 +106,7 @@ describe('parseSolanaStepError', () => {
 
         const parsedError = await parseSolanaStepErrors(error, step, process)
 
-        expect(parsedError).toBeInstanceOf(LiFiSDKError)
+        expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
         expect(parsedError.process).toBe(process)
         expect(parsedError.cause).toBe(error)
@@ -119,12 +119,12 @@ describe('parseSolanaStepError', () => {
       const error = new Error('Somethings fishy')
 
       const parsedError = await parseSolanaStepErrors(error)
-      expect(parsedError).toBeInstanceOf(LiFiSDKError)
+      expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
       expect(parsedError.process).toBeUndefined()
 
       const baseError = parsedError.cause
-      expect(baseError).toBeInstanceOf(LiFiBaseError)
+      expect(baseError).toBeInstanceOf(BaseError)
 
       const causeError = baseError.cause
       expect(causeError).toBe(error)
@@ -138,7 +138,7 @@ describe('parseSolanaStepError', () => {
         const process = step.execution?.process[0]
 
         const parsedError = await parseSolanaStepErrors(error, step, process)
-        expect(parsedError).toBeInstanceOf(LiFiSDKError)
+        expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
         expect(parsedError.process).toBe(process)
       })

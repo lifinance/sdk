@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LiFiSDKError } from '../SDKError.js'
-import { LiFiBaseError } from '../baseError.js'
+import { SDKError } from '../SDKError.js'
+import { BaseError } from '../baseError.js'
 import { ErrorName, LiFiErrorCode } from '../constants.js'
 import { getLiFiRootCause, getLiFiRootCauseMessage } from './lifiRootCause.js'
 import { HTTPError } from '../httpError.js'
@@ -8,8 +8,8 @@ import { HTTPError } from '../httpError.js'
 const getErrorChain = () => {
   const NonLiFiErrorChain = new Error('non lifi error')
   NonLiFiErrorChain.cause = new Error('root cause')
-  return new LiFiSDKError(
-    new LiFiBaseError(
+  return new SDKError(
+    new BaseError(
       ErrorName.ValidationError,
       LiFiErrorCode.ValidationError,
       'something happened',
@@ -47,7 +47,7 @@ describe('getLiFiRootCauseMessage', () => {
 
       await httpError.buildAdditionalDetails()
 
-      const errorChain = new LiFiSDKError(httpError)
+      const errorChain = new SDKError(httpError)
 
       expect(getLiFiRootCauseMessage(errorChain)).toEqual(
         'something went wrong on the server'
@@ -65,7 +65,7 @@ describe('getLiFiRootCauseMessage', () => {
 
       await httpError.buildAdditionalDetails()
 
-      const errorChain = new LiFiSDKError(httpError)
+      const errorChain = new SDKError(httpError)
 
       expect(getLiFiRootCauseMessage(errorChain)).toEqual(
         '[ValidationError] Request failed with status code 400 Bad Request'

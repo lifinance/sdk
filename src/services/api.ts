@@ -27,8 +27,8 @@ import type {
 import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
-import { ValidationError } from '../utils/errors/create.js'
-import { LiFiSDKError } from '../utils/errors/SDKError.js'
+import { ValidationError } from '../utils/errors/errors.js'
+import { SDKError } from '../utils/errors/SDKError.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -43,12 +43,12 @@ export const getToken = async (
   options?: RequestOptions
 ): Promise<Token> => {
   if (!chain) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError('Required parameter "chain" is missing.')
     )
   }
   if (!token) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError('Required parameter "token" is missing.')
     )
   }
@@ -84,7 +84,7 @@ export const getQuote = async (
   ]
   requiredParameters.forEach((requiredParameter) => {
     if (!params[requiredParameter]) {
-      throw new LiFiSDKError(
+      throw new SDKError(
         new ValidationError(
           `Required parameter "${requiredParameter}" is missing.`
         )
@@ -144,7 +144,7 @@ export const getContractCallsQuote = async (
   ]
   requiredParameters.forEach((requiredParameter) => {
     if (!params[requiredParameter]) {
-      throw new LiFiSDKError(
+      throw new SDKError(
         new ValidationError(
           `Required parameter "${requiredParameter}" is missing.`
         )
@@ -187,7 +187,7 @@ export const getStatus = async (
   options?: RequestOptions
 ): Promise<StatusResponse> => {
   if (!params.txHash) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError('Required parameter "txHash" is missing.')
     )
   }
@@ -244,7 +244,7 @@ export const getRoutes = async (
   options?: RequestOptions
 ): Promise<RoutesResponse> => {
   if (!isRoutesRequest(params)) {
-    throw new LiFiSDKError(new ValidationError('Invalid routes request.'))
+    throw new SDKError(new ValidationError('Invalid routes request.'))
   }
   const _config = config.get()
   // apply defaults
@@ -361,7 +361,7 @@ export const getGasRecommendation = async (
   options?: RequestOptions
 ): Promise<GasRecommendationResponse> => {
   if (!params.chainId) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError('Required parameter "chainId" is missing.')
     )
   }
@@ -433,7 +433,7 @@ export const getTransactionHistory = async (
   options?: RequestOptions
 ): Promise<TransactionAnalyticsResponse> => {
   if (!wallet) {
-    throw new LiFiSDKError(
+    throw new SDKError(
       new ValidationError('Required parameter "wallet" is missing.')
     )
   }

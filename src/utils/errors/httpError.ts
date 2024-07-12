@@ -1,6 +1,6 @@
 import type { UnavailableRoutes } from '@lifi/types'
 import { LiFiErrorCode } from './constants.js'
-import { LiFiBaseError } from './baseError.js'
+import { BaseError } from './baseError.js'
 import type { ExtendedRequestInit } from '../../types/request.js'
 import { ErrorName, ErrorMessage } from './constants.js'
 
@@ -42,7 +42,7 @@ const createInitialMessage = (response: Response) => {
   return `Request failed with ${reason}`
 }
 
-export class HTTPError extends LiFiBaseError {
+export class HTTPError extends BaseError {
   public response: Response
   public status: number
   public url: RequestInfo | URL

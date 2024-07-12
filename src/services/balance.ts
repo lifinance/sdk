@@ -1,14 +1,14 @@
 import type { Token, TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
 import { isToken } from '../typeguards.js'
-import { ValidationError } from '../utils/errors/create.js'
+import { ValidationError } from '../utils/errors/errors.js'
 
 /**
  * Returns the balances of a specific token a wallet holds across all aggregated chains.
  * @param walletAddress - A wallet address.
  * @param token - A Token object.
  * @returns An object containing the token and the amounts on different chains.
- * @throws {LiFiBaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getTokenBalance = async (
   walletAddress: string,
@@ -23,7 +23,7 @@ export const getTokenBalance = async (
  * @param walletAddress - A wallet address.
  * @param tokens - A list of Token objects.
  * @returns A list of objects containing the tokens and the amounts on different chains.
- * @throws {LiFiBaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getTokenBalances = async (
   walletAddress: string,
@@ -53,7 +53,7 @@ export const getTokenBalances = async (
  * @param walletAddress - A walletaddress.
  * @param tokensByChain - A list of Token objects organized by chain ids.
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
- * @throws {LiFiBaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getTokenBalancesByChain = async (
   walletAddress: string,
