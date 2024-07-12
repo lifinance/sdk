@@ -8,8 +8,6 @@ import { parseSolanaStepErrors } from './parseSolanaStepErrors.js'
 import { ErrorName } from '../../utils/errors/constants.js'
 beforeAll(setupTestEnvironment)
 
-// TODO: tests here should test the branching statements in the parse function
-//  but we will try to test the specific errors from the stepExecutor steps
 describe('parseSolanaStepError', () => {
   describe('when a LiFiSDKError is passed', () => {
     it('should return the original error', async () => {

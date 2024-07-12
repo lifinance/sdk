@@ -96,13 +96,6 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.cause).toBe(error)
     })
 
-    describe('when a LiFBaseError is passed uses Transaction failed code and step and process values are present', () => {
-      it.todo(
-        'should return a transaction error with the allowance required error code',
-        () => {}
-      )
-    })
-
     describe('when step and process is passed', () => {
       it('should return the LiFiSDKError with step and process added', async () => {
         const error = new LiFiBaseError(

@@ -13,7 +13,7 @@ export enum ErrorName {
 
 export type ErrorCode = LiFiErrorCode
 
-// TODO: identify specific http error codes
+// TODO: identify specific http error codes?
 export enum LiFiErrorCode {
   InternalError = 1000,
   ValidationError = 1001,
