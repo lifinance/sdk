@@ -1,13 +1,12 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
-import type { Address, Hash, ReplacementReason, WalletClient } from 'viem'
-import { maxUint256, publicActions } from 'viem'
-import { LiFiErrorCode, TransactionError } from '../../utils/index.js'
+import type { Address, Hash, WalletClient } from 'viem'
+import { maxUint256 } from 'viem'
 import { parseError } from '../../utils/parseError.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
-import { retryCount, retryDelay } from './utils.js'
+import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export const checkAllowance = async (
   chain: Chain,
@@ -127,42 +126,26 @@ const waitForApprovalTransaction = async (
   chain: Chain,
   statusManager: StatusManager
 ) => {
-  const client = walletClient.extend(publicActions)
   statusManager.updateProcess(step, processType, 'PENDING', {
     txHash,
     txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
   })
 
-  let replacementReason: ReplacementReason | undefined
-  const transactionReceipt = await client.waitForTransactionReceipt({
-    hash: txHash,
+  const transactionReceipt = await waitForTransactionReceipt({
+    walletClient,
+    chainId: chain.id,
+    txHash: txHash,
     onReplaced(response) {
-      replacementReason = response.reason
       statusManager.updateProcess(step, processType, 'PENDING', {
         txHash: response.transaction.hash,
         txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
       })
     },
-    retryCount,
-    retryDelay,
   })
 
-  if (transactionReceipt.status === 'reverted') {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      'Transaction was reverted.'
-    )
-  }
-
-  if (replacementReason === 'cancelled') {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionCanceled,
-      'User canceled transaction.'
-    )
-  }
-
+  const transactionHash = transactionReceipt?.transactionHash || txHash
   statusManager.updateProcess(step, processType, 'DONE', {
-    txHash: transactionReceipt.transactionHash,
-    txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
+    txHash: transactionHash,
+    txLink: `${chain.metamask.blockExplorerUrls[0]}tx/${transactionHash}`,
   })
 }
