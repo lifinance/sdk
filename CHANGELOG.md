@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.1](https://github.com/lifinance/sdk/compare/v3.0.0...v3.0.1) (2024-07-15)
+
+
+### Bug Fixes
+
+* filter existing RPC urls ([#196](https://github.com/lifinance/sdk/issues/196)) ([1432f87](https://github.com/lifinance/sdk/commit/1432f8770524b63ee88fc73521a1986082b267e4))
+* improve transaction receipt polling ([#195](https://github.com/lifinance/sdk/issues/195)) ([90c23da](https://github.com/lifinance/sdk/commit/90c23da661d20853b261cf4e301d40975662b0b6))
+
 ## [3.0.0](https://github.com/lifinance/sdk/compare/v3.0.0-beta.2...v3.0.0) (2024-06-26)
 
 ## [2.5.0](https://github.com/lifinance/sdk/compare/v2.4.3...v2.5.0) (2023-11-01)
