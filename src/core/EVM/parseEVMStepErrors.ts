@@ -1,8 +1,9 @@
-import type { LiFiStep, Process } from '@lifi/types'
+import { type LiFiStep, type Process } from '@lifi/types'
 import { TransactionError, UnknownError } from '../../utils/errors/errors.js'
 import { SDKError } from '../../utils/errors/SDKError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../utils/errors/constants.js'
 import { BaseError } from '../../utils/index.js'
+import { fetchTxErrorDetails } from '../../helpers.js'
 
 export const parseEVMStepErrors = async (
   e: Error,
@@ -15,23 +16,16 @@ export const parseEVMStepErrors = async (
     return e
   }
 
-  let baseError
+  const baseError = await handleSpecificErrors(e, step, process)
 
-  baseError = handleViemErrors(e)
-
-  if (e instanceof BaseError) {
-    baseError = e
-  }
-
-  return new SDKError(
-    baseError ??
-      new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e),
-    step,
-    process
-  )
+  return new SDKError(baseError, step, process)
 }
 
-const handleViemErrors = (e: any) => {
+const handleSpecificErrors = async (
+  e: any,
+  step?: LiFiStep,
+  process?: Process
+) => {
   if (e.cause?.name === 'UserRejectedRequestError') {
     return new TransactionError(
       LiFiErrorCode.SignatureRejected,
@@ -40,5 +34,33 @@ const handleViemErrors = (e: any) => {
       e
     )
   }
-  return
+
+  if (
+    step &&
+    process?.txHash &&
+    e.code === LiFiErrorCode.TransactionFailed &&
+    e.message === ErrorMessage.TransactionReverted
+  ) {
+    const response = await fetchTxErrorDetails(
+      process.txHash,
+      step.action.fromChainId
+    )
+
+    const errorMessage = response?.error_message
+
+    if (errorMessage.toLowerCase().includes('out of gas')) {
+      return new TransactionError(
+        LiFiErrorCode.GasLimitError,
+        ErrorMessage.GasLimitLow,
+        undefined,
+        e
+      )
+    }
+  }
+
+  if (e instanceof BaseError) {
+    return e
+  }
+
+  return new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e)
 }

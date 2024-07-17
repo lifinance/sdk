@@ -15,25 +15,12 @@ export const parseSolanaStepErrors = async (
     return e
   }
 
-  console.log('parseSolanaStepErrors', e.name, e.message, e)
+  const baseError = handleSpecificErrors(e)
 
-  let baseError
-
-  baseError = handleSolanaErrors(e)
-
-  if (e instanceof BaseError) {
-    baseError = e
-  }
-
-  return new SDKError(
-    baseError ??
-      new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e),
-    step,
-    process
-  )
+  return new SDKError(baseError, step, process)
 }
 
-const handleSolanaErrors = (e: any) => {
+const handleSpecificErrors = (e: any) => {
   if (e.name === 'WalletSignTransactionError') {
     return new TransactionError(
       LiFiErrorCode.SignatureRejected,
@@ -42,5 +29,10 @@ const handleSolanaErrors = (e: any) => {
       e
     )
   }
-  return
+
+  if (e instanceof BaseError) {
+    return e
+  }
+
+  return new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e)
 }

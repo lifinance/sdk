@@ -38,7 +38,7 @@ export enum LiFiErrorCode {
 export enum ErrorMessage {
   UnknownError = 'Unknown error occurred.',
   SlippageError = 'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
-  // TODO: future ticket may look to re-implement this error
   GasLimitLow = 'Gas limit is too low.',
   TransactionUnderpriced = 'Transaction is underpriced.',
+  TransactionReverted = 'Transaction was reverted.',
 }

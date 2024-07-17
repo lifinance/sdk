@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { parseEVMStepErrors } from './parseEVMStepErrors.js'
 import {
@@ -7,8 +7,11 @@ import {
   LiFiErrorCode,
   SDKError,
   TransactionError,
+  ErrorMessage,
 } from '../../utils/index.js'
 import { buildStepObject } from '../../../tests/fixtures.js'
+import type { LiFiStep, Process } from '@lifi/types'
+import * as helpers from '../../helpers.js'
 
 beforeAll(setupTestEnvironment)
 
@@ -149,8 +152,8 @@ describe('parseEVMStepErrors', () => {
     })
   })
 
-  describe('when Viem Errors are passed', () => {
-    describe('when the error is UserRejectedRequestError', () => {
+  describe('when specific Errors are passed', () => {
+    describe('when the error is the viem UserRejectedRequestError error', () => {
       it('should return the BaseError with the SignatureRejected code as the cause on a SDKError', async () => {
         const MockViemError = new Error()
         const UserRejectedRequestError = new Error()
@@ -167,6 +170,46 @@ describe('parseEVMStepErrors', () => {
 
         expect(baseError.cause?.cause).toBe(UserRejectedRequestError)
       })
+    })
+  })
+
+  describe('when the error is a Transaction reverted error caused by low gas', () => {
+    it('should return the TransactionError with the GasLimitError code and GasLimitLow message', async () => {
+      vi.spyOn(helpers, 'fetchTxErrorDetails').mockResolvedValue({
+        error_message: 'out of gas',
+      })
+
+      const MockTransactionError = new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        ErrorMessage.TransactionReverted
+      )
+
+      const mockStep = {
+        action: {
+          fromChainId: 10,
+        },
+      } as LiFiStep
+
+      const mockProcess = {
+        txHash:
+          '0x5c73f72a72a75d8b716ed42cd620042f53b958f028d0c9ad772908b7791c017b',
+      } as Process
+
+      const parsedError = await parseEVMStepErrors(
+        MockTransactionError,
+        mockStep,
+        mockProcess
+      )
+
+      expect(parsedError).toBeInstanceOf(SDKError)
+
+      const baseError = parsedError.cause
+      expect(baseError).toBeInstanceOf(TransactionError)
+      expect(baseError.code).toEqual(LiFiErrorCode.GasLimitError)
+      expect(baseError.message).toEqual(ErrorMessage.GasLimitLow)
+      expect(baseError.cause).toBe(MockTransactionError)
+
+      vi.clearAllMocks()
     })
   })
 })
