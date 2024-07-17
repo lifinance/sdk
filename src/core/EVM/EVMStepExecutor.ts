@@ -6,7 +6,6 @@ import type {
 import type {
   Hash,
   PublicClient,
-  ReplacementReason,
   SendTransactionParameters,
   WalletClient,
 } from 'viem'
@@ -22,19 +21,20 @@ import { LiFiErrorCode } from '../../utils/errors/constants.js'
 import { parseEVMStepErrors } from './parseEVMStepErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getSubstatusMessage } from '../processMessages.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { getSubstatusMessage } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { updateMultisigRouteProcess } from './multisig.js'
 import { switchChain } from './switchChain.js'
 import type { MultisigConfig, MultisigTransaction } from './types.js'
-import { getMaxPriorityFeePerGas, retryCount, retryDelay } from './utils.js'
+import { getMaxPriorityFeePerGas } from './utils.js'
+import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   walletClient: WalletClient
@@ -353,40 +353,23 @@ export class EVMStepExecutor extends BaseStepExecutor {
           }
         }
 
-        let replacementReason: ReplacementReason | undefined
-        const transactionReceipt = await this.walletClient
-          .extend(publicActions)
-          .waitForTransactionReceipt({
-            hash: txHash,
-            onReplaced: (response) => {
-              replacementReason = response.reason
-              this.statusManager.updateProcess(step, process.type, 'PENDING', {
-                txHash: response.transaction.hash,
-                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-              })
-            },
-            retryCount,
-            retryDelay,
-          })
-
-        if (transactionReceipt.status === 'reverted') {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
-            'Transaction was reverted.'
-          )
-        }
-        if (replacementReason === 'cancelled') {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionCanceled,
-            'User canceled transaction.'
-          )
-        }
+        const transactionReceipt = await waitForTransactionReceipt({
+          walletClient: this.walletClient,
+          chainId: fromChain.id,
+          txHash,
+          onReplaced: (response) => {
+            this.statusManager.updateProcess(step, process.type, 'PENDING', {
+              txHash: response.transaction.hash,
+              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+            })
+          },
+        })
 
         // if it's multisig wallet client and the process is in ACTION_REQUIRED
         // then signatures are still needed
         if (isMultisigWalletClient && process.status === 'ACTION_REQUIRED') {
           await updateMultisigRouteProcess(
-            transactionReceipt.transactionHash,
+            transactionReceipt?.transactionHash || txHash,
             step,
             process.type,
             fromChain,
@@ -395,7 +378,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
         }
 
-        if (!isMultisigWalletClient) {
+        // Update pending process if the transaction hash from the receipt is different.
+        // This might happen if the transaction was replaced.
+        if (
+          !isMultisigWalletClient &&
+          transactionReceipt?.transactionHash &&
+          transactionReceipt.transactionHash !== txHash
+        ) {
           process = this.statusManager.updateProcess(
             step,
             process.type,

@@ -45,4 +45,4 @@ export const getMulticallAddress = async (
 export const retryDelay = ({ count }: { count: number; error: Error }) =>
   Math.min(~~(1 << count) * 200, 3000)
 
-export const retryCount = 20
+export const retryCount = 30

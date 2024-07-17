@@ -1,6 +1,6 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
-import { wrappedSolAddress } from '../../constants.js'
+import { SolSystemProgram } from '../../constants.js'
 import { getSolanaConnection } from './connection.js'
 import { TokenProgramAddress } from './types.js'
 
@@ -53,8 +53,7 @@ const getSolanaBalanceDefault = async (
           {} as Record<string, bigint>
         )
       : {}
-  walletTokenAmounts[wrappedSolAddress] ??= 0n
-  walletTokenAmounts[wrappedSolAddress] += solBalance
+  walletTokenAmounts[SolSystemProgram] = solBalance
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
     if (walletTokenAmounts[token.address]) {
       return {

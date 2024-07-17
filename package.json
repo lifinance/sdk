@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.0.0",
+  "version": "3.0.2-beta.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -94,24 +94,24 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^13.17.0",
+    "@lifi/types": "^13.18.2",
     "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/web3.js": "^1.93.2",
+    "@solana/web3.js": "^1.95.0",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.16.2"
+    "viem": "^2.17.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
     "@types/fs-extra": "^11.0.4",
-    "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "^7.14.1",
-    "@typescript-eslint/parser": "^7.14.1",
+    "@types/ws": "^8.5.11",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
     "@vitest/coverage-v8": "^1.6.0",
-    "bs58": "^5.0.0",
+    "bs58": "^6.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jsdoc": "^48.5.0",
+    "eslint-plugin-jsdoc": "^48.7.0",
     "eslint-plugin-prettier": "^5.1.3",
     "fs-extra": "^11.2.0",
     "husky": "^9.0.11",
@@ -119,10 +119,10 @@
     "madge": "^7.0.0",
     "msw": "^2.3.1",
     "pinst": "^3.0.0",
-    "prettier": "^3.3.2",
+    "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.2",
+    "typescript": "^5.5.3",
     "vitest": "^1.6.0"
   },
   "peerDependencies": {

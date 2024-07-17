@@ -32,12 +32,13 @@ export enum LiFiErrorCode {
   InsufficientFunds = 1015,
   ExchangeRateUpdateCanceled = 1016,
   WalletChangedDuringExecution = 1017,
+  TransactionExpired = 1018,
 }
 
 export enum ErrorMessage {
   UnknownError = 'Unknown error occurred.',
   SlippageError = 'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
+  // TODO: future ticket may look to re-implement errors
   GasLimitLow = 'Gas limit is too low.',
   TransactionUnderpriced = 'Transaction is underpriced.',
-  Default = 'Something went wrong.',
 }

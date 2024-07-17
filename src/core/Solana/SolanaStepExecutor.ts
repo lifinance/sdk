@@ -1,6 +1,7 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { type SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import {
+  TransactionExpiredBlockheightExceededError,
   VersionedTransaction,
   type SendOptions,
   type SignatureResult,
@@ -14,13 +15,14 @@ import { LiFiErrorCode } from '../../utils/errors/constants.js'
 import { parseSolanaStepErrors } from './parseSolanaStepErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getSubstatusMessage } from '../processMessages.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { getSubstatusMessage } from '../utils.js'
+import { sleep } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
 
@@ -28,7 +30,7 @@ export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
 }
 
-const TX_RETRY_INTERVAL = 500
+const TX_RETRY_INTERVAL = 1000
 // https://solana.com/docs/advanced/confirmation
 const TIMEOUT_PERIOD = 60_000
 
@@ -115,6 +117,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           data: step.transactionRequest.data,
         }
 
+        const blockhashResult = await connection.getLatestBlockhash({
+          commitment: 'confirmed',
+        })
+
         if (this.executionOptions?.updateTransactionRequestHook) {
           const customizedTransactionRequest: TransactionParameters =
             await this.executionOptions.updateTransactionRequestHook({
@@ -138,14 +144,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         const versionedTransaction = VersionedTransaction.deserialize(
           base64ToUint8Array(transactionRequest.data)
         )
-
-        const blockhashResult = await connection.getLatestBlockhashAndContext({
-          commitment: 'confirmed',
-        })
-
-        // Update transaction recent blockhash with the latest blockhash
-        versionedTransaction.message.recentBlockhash =
-          blockhashResult.value.blockhash
 
         this.checkWalletAdapter(step)
 
@@ -177,12 +175,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         // In the following section, we wait and constantly check for the transaction to be confirmed
         // and resend the transaction if it is not confirmed within a certain time interval
         // thus handling tx retries on the client side rather than relying on the RPC
+        const abortController = new AbortController()
         const confirmTransactionPromise = connection
           .confirmTransaction(
             {
               signature: txSignature,
-              blockhash: blockhashResult.value.blockhash,
-              lastValidBlockHeight: blockhashResult.value.lastValidBlockHeight,
+              blockhash: blockhashResult.blockhash,
+              lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
+              abortSignal: abortController.signal,
             },
             'confirmed'
           )
@@ -192,29 +192,36 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         const startTime = Date.now()
 
         while (!confirmedTx && Date.now() - startTime <= TIMEOUT_PERIOD) {
-          confirmedTx = await Promise.race([
-            confirmTransactionPromise,
-            new Promise<null>((resolve) =>
-              setTimeout(() => {
-                resolve(null)
-              }, TX_RETRY_INTERVAL)
-            ),
-          ])
-          if (confirmedTx) {
-            break
-          }
-
           await connection.sendRawTransaction(
             signedTx.serialize(),
             rawTransactionOptions
           )
+          confirmedTx = await Promise.race([
+            confirmTransactionPromise,
+            sleep(TX_RETRY_INTERVAL),
+          ])
+          if (confirmedTx) {
+            break
+          }
         }
+
+        // Stop waiting for tx confirmation
+        abortController.abort()
 
         if (confirmedTx?.err) {
           const reason =
             typeof confirmedTx.err === 'object'
               ? JSON.stringify(confirmedTx.err)
               : confirmedTx.err
+          if (
+            confirmedTx.err instanceof
+            TransactionExpiredBlockheightExceededError
+          ) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionExpired,
+              `${reason}`
+            )
+          }
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             `Transaction failed: ${reason}`
@@ -223,7 +230,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         if (!confirmedTx) {
           throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
+            LiFiErrorCode.TransactionExpired,
             'Failed to land the transaction'
           )
         }

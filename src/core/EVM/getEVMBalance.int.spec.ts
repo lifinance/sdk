@@ -116,13 +116,13 @@ describe('getBalances integration tests', () => {
     async () => {
       const walletAddress = defaultWalletAddress
       const { tokens } = await getTokens({
-        chains: [ChainId.ETH],
+        chains: [ChainId.OPT],
       })
-      expect(tokens[ChainId.ETH]?.length).toBeGreaterThan(100)
-      if (tokens[ChainId.ETH]?.length) {
+      expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)
+      if (tokens[ChainId.OPT]?.length) {
         await loadAndCompareTokenAmounts(
           walletAddress,
-          tokens[ChainId.ETH].slice(0, 150)
+          tokens[ChainId.OPT].slice(0, 150)
         ) // chunk limit is 100
       }
     },

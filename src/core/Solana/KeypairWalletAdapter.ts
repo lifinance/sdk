@@ -16,7 +16,7 @@ import type {
   VersionedTransaction,
 } from '@solana/web3.js'
 import { Keypair } from '@solana/web3.js'
-import * as bs58 from 'bs58'
+import bs58 from 'bs58'
 
 export const KeypairWalletName =
   'Keypair Wallet' as WalletName<'Keypair Wallet'>

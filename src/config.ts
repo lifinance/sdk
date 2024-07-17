@@ -77,7 +77,10 @@ export const config = (() => {
         if (!_config.rpcUrls[chainId]?.length) {
           _config.rpcUrls[chainId] = Array.from(urls)
         } else {
-          _config.rpcUrls[chainId]?.push(...urls)
+          const filteredUrls = urls.filter(
+            (url) => !_config.rpcUrls[chainId]?.includes(url)
+          )
+          _config.rpcUrls[chainId]?.push(...filteredUrls)
         }
       }
     },
