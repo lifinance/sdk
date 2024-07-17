@@ -8,7 +8,7 @@ import { getStatus } from '../services/api.js'
 import { ServerError } from '../utils/errors.js'
 import { repeatUntilDone } from '../utils/utils.js'
 import type { StatusManager } from './StatusManager.js'
-import { getSubstatusMessage } from './utils.js'
+import { getSubstatusMessage } from './processMessages.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 

@@ -7,8 +7,8 @@ import type {
   ProcessType,
 } from '@lifi/types'
 import { executionState } from './executionState.js'
+import { getProcessMessage } from './processMessages.js'
 import type { LiFiStepExtended } from './types.js'
-import { getProcessMessage } from './utils.js'
 
 type OptionalParameters = Partial<
   Pick<
