@@ -22,13 +22,13 @@ import {
 } from '../../utils/index.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getSubstatusMessage } from '../processMessages.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { getSubstatusMessage } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { updateMultisigRouteProcess } from './multisig.js'

@@ -2,6 +2,7 @@ import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
 import { getTokenBalance } from '../services/balance.js'
 import { BalanceError } from '../utils/errors.js'
+import { sleep } from './utils.js'
 
 export const checkBalance = async (
   walletAddress: string,
@@ -15,9 +16,7 @@ export const checkBalance = async (
 
     if (currentBalance < neededBalance) {
       if (depth <= 3) {
-        await new Promise((resolve) => {
-          setTimeout(resolve, 200)
-        })
+        await sleep(200)
         await checkBalance(walletAddress, step, depth + 1)
       } else if (
         (neededBalance * BigInt((1 - step.action.slippage) * 1_000_000_000)) /
