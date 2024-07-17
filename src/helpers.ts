@@ -1,5 +1,3 @@
-// import type { LiFiStep, Route } from '@lifi/types'
-// import { getValidationError } from './utils/errors.js'
 import { name, version } from './version.js'
 import { ValidationError } from './utils/errors/errors.js'
 import { SDKError } from './utils/errors/SDKError.js'
