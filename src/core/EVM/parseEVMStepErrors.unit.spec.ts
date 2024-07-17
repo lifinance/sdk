@@ -151,7 +151,7 @@ describe('parseEVMStepErrors', () => {
 
   describe('when Viem Errors are passed', () => {
     describe('when the error is UserRejectedRequestError', () => {
-      it('should return the BaseError as the cause on a SDKError', async () => {
+      it('should return the BaseError with the SignatureRejected code as the cause on a SDKError', async () => {
         const MockViemError = new Error()
         const UserRejectedRequestError = new Error()
         UserRejectedRequestError.name = 'UserRejectedRequestError'

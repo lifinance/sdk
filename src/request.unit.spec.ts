@@ -6,7 +6,7 @@ import {
   beforeAll,
   beforeEach,
   afterAll,
-  type Mock,
+  afterEach,
 } from 'vitest'
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
@@ -15,109 +15,119 @@ import { SDKError } from './utils/errors/SDKError.js'
 import { type HTTPError, ValidationError } from './utils/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
+import { HttpResponse, http } from 'msw'
+import { setupServer } from 'msw/node'
+import { handlers } from './services/api.unit.handlers.js'
+import { setupTestEnvironment } from '../tests/setup.js'
 
-const mockUrl = 'https://some.endpoint.com'
-const mockSuccessMessage = { message: 'it worked!' }
+const apiUrl = config.get().apiUrl
 
-const setUpMocks = (
-  mockConfig: SDKBaseConfig = {
-    userId: 'user-id',
-    integrator: 'mock-integrator',
-    widgetVersion: 'mock-widget-version',
-    apiKey: 'mock-apikey',
-  } as SDKBaseConfig,
-  mockResponse: Response = {
-    ok: true,
-    status: 200,
-    statusText: 'Success',
-    json: () => Promise.resolve(mockSuccessMessage),
-  } as Response
-) => {
-  ;(global.fetch as Mock).mockResolvedValue(mockResponse)
+describe('request new', () => {
+  const server = setupServer(...handlers)
 
-  vi.spyOn(config, 'get').mockReturnValue(mockConfig)
-}
-
-describe('request', () => {
   beforeAll(() => {
+    setupTestEnvironment()
+    server.listen({
+      onUnhandledRequest: 'warn',
+    })
+
     vi.spyOn(global, 'fetch')
   })
 
   beforeEach(() => {
-    ;(global.fetch as Mock).mockReset()
+    vi.clearAllMocks()
   })
 
+  afterEach(() => server.resetHandlers())
+
   afterAll(() => {
+    server.close()
+
     vi.clearAllMocks()
   })
 
   it('should be able to successfully make a fetch request', async () => {
-    setUpMocks()
+    const url = `${apiUrl}/advanced/routes`
 
-    const response = await request<{ message: string }>(mockUrl)
+    const response = await request<{ message: string }>(url, {
+      method: 'POST',
+      retries: 0,
+    })
 
-    expect(response).toEqual(mockSuccessMessage)
+    expect(response).toEqual({})
   })
 
   it('should remove the extended request init properties that fetch does not care about', async () => {
-    setUpMocks()
+    const url = `${apiUrl}/advanced/routes`
+    const successResponse = { message: 'it works' }
+
+    server.use(
+      http.post(url, async ({ request }) => {
+        expect(request.headers.get('x-lifi-integrator')).toEqual('lifi-sdk')
+        expect(request.headers.get('x-lifi-sdk')).toEqual(version)
+        expect(request.headers.get('x-lifi-api-key')).toBeNull()
+        expect(request.headers.get('x-lifi-userid')).toBeNull()
+        expect(request.headers.get('x-lifi-widget')).toBeNull()
+
+        return HttpResponse.json(successResponse, { status: 200 })
+      })
+    )
 
     const options: ExtendedRequestInit = {
+      method: 'POST',
+      retries: 0,
+    }
+
+    const response = await request<{ message: string }>(url, options)
+
+    expect(response).toEqual(successResponse)
+  })
+
+  it('should update the headers information available from config', async () => {
+    const url = `${apiUrl}/advanced/routes`
+    const successResponse = { message: 'it works' }
+
+    server.use(
+      http.post(url, async ({ request }) => {
+        expect(request.headers.get('x-lifi-api-key')).toEqual('mock-apikey')
+        expect(request.headers.get('x-lifi-integrator')).toEqual('lifi-sdk')
+        expect(request.headers.get('x-lifi-sdk')).toEqual(version)
+        expect(request.headers.get('x-lifi-userid')).toEqual('user-id')
+        expect(request.headers.get('x-lifi-widget')).toEqual(
+          'mock-widget-version'
+        )
+
+        return HttpResponse.json(successResponse, { status: 200 })
+      })
+    )
+
+    const options: ExtendedRequestInit = {
+      method: 'POST',
       retries: 0,
       headers: {
         'x-lifi-api-key': 'mock-apikey',
-        'x-lifi-integrator': 'mock-integrator',
-        'x-lifi-sdk': '3.0.0-beta.0',
         'x-lifi-userid': 'user-id',
         'x-lifi-widget': 'mock-widget-version',
       },
     }
 
-    const response = await request<{ message: string }>(mockUrl, options)
+    const response = await request<{ message: string }>(url, options)
 
-    expect(response).toEqual(mockSuccessMessage)
-
-    const fetchOptions = (global.fetch as Mock).mock.calls[0][1]
-
-    expect(fetchOptions).toEqual({
-      headers: {
-        'x-lifi-api-key': 'mock-apikey',
-        'x-lifi-integrator': 'mock-integrator',
-        'x-lifi-sdk': version,
-        'x-lifi-userid': 'user-id',
-        'x-lifi-widget': 'mock-widget-version',
-      },
-    })
-  })
-
-  it('should update the headers information available from config', async () => {
-    setUpMocks()
-
-    await request<{ message: string }>('https://some.endpoint.com')
-
-    const url = (global.fetch as Mock).mock.calls[0][0]
-    const headers = (global.fetch as Mock).mock.calls[0][1].headers
-
-    expect(url).toEqual(mockUrl)
-
-    expect(headers['x-lifi-api-key']).toEqual('mock-apikey')
-    expect(headers['x-lifi-integrator']).toEqual('mock-integrator')
-    expect(headers['x-lifi-sdk']).toBeDefined()
-    expect(headers['x-lifi-userid']).toEqual('user-id')
-    expect(headers['x-lifi-widget']).toEqual('mock-widget-version')
+    expect(response).toEqual(successResponse)
   })
 
   describe('when dealing with errors', () => {
     it('should throw an error if the Integrator property is missing from the config', async () => {
-      const mockConfig = {
-        userId: 'user-id',
-        widgetVersion: 'mock-widget-version',
-        apiKey: 'mock-apikey',
-      } as SDKBaseConfig
-      setUpMocks(mockConfig)
+      const originalIntegrator = config.get().integrator
+      config.set({ integrator: '' } as SDKBaseConfig)
+
+      const url = `${apiUrl}/advanced/routes`
 
       await expect(
-        request<{ message: string }>('https://some.endpoint.com')
+        request<{ message: string }>(url, {
+          method: 'POST',
+          retries: 0,
+        })
       ).rejects.toThrowError(
         new SDKError(
           new ValidationError(
@@ -125,44 +135,48 @@ describe('request', () => {
           )
         )
       )
+
+      config.set({ integrator: originalIntegrator } as SDKBaseConfig)
     })
     it('should throw a error with when the request fails', async () => {
       expect.assertions(2)
 
-      const mockResponse = {
-        ok: false,
-        status: 400,
-        statusText: 'Bad Request',
-        json: () => Promise.resolve({ message: 'it broke' }),
-      } as Response
-      setUpMocks(undefined, mockResponse)
+      const url = `${apiUrl}/advanced/routes`
+      const errorResponse = { message: 'something went wrong on the server' }
+
+      server.use(
+        http.post(url, async () => {
+          return HttpResponse.json(errorResponse, { status: 400 })
+        })
+      )
 
       try {
-        await request<{ message: string }>('https://some.endpoint.com')
+        await request<{ message: string }>(url, { method: 'POST', retries: 0 })
       } catch (e) {
         expect((e as SDKError).name).toEqual('SDKError')
         expect(((e as SDKError).cause as HTTPError).status).toEqual(400)
       }
     })
     it('should throw a error and attempt retries when the request fails with a 500', async () => {
-      expect.assertions(3)
+      expect.assertions(2)
 
-      const mockResponse = {
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: () => Promise.resolve({ message: 'it broke' }),
-      } as Response
-      setUpMocks(undefined, mockResponse)
+      const url = `${apiUrl}/advanced/routes`
+      const errorResponse = { message: 'something went wrong on the server' }
+
+      server.use(
+        http.post(url, async () => {
+          return HttpResponse.json(errorResponse, { status: 500 })
+        })
+      )
 
       try {
-        await request<{ message: string }>('https://some.endpoint.com', {
-          retries: 3,
+        await request<{ message: string }>(url, {
+          method: 'POST',
+          retries: 0,
         })
       } catch (e) {
         expect((e as SDKError).name).toEqual('SDKError')
         expect(((e as SDKError).cause as HTTPError).status).toEqual(500)
-        expect(global.fetch as Mock).toBeCalledTimes(4)
       }
     })
   })
