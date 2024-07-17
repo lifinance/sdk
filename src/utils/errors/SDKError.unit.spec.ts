@@ -9,7 +9,7 @@ const url = 'http://some.where'
 const options = { method: 'POST' }
 const responseBody = { message: 'Oops' }
 
-describe('LiFiSDKError', () => {
+describe('SDKError', () => {
   describe('when the cause is a http error', () => {
     it('should present the causing errors stack trace for http errors', async () => {
       expect.assertions(1)
