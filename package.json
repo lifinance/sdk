@@ -94,7 +94,7 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^13.18.0",
+    "@lifi/types": "^13.18.2",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.0",
     "eth-rpc-errors": "^4.0.3",
@@ -105,8 +105,8 @@
     "@commitlint/config-conventional": "^19.2.2",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.5.11",
-    "@typescript-eslint/eslint-plugin": "^7.16.0",
-    "@typescript-eslint/parser": "^7.16.0",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
     "@vitest/coverage-v8": "^1.6.0",
     "bs58": "^6.0.0",
     "eslint": "^8.57.0",
