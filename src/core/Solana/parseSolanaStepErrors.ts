@@ -1,7 +1,7 @@
 import type { LiFiStep, Process } from '@lifi/types'
 import { BaseError } from '../../utils/errors/baseError.js'
-import { ErrorMessage } from '../../utils/errors/constants.js'
-import { UnknownError } from '../../utils/errors/errors.js'
+import { ErrorMessage, LiFiErrorCode } from '../../utils/errors/constants.js'
+import { TransactionError, UnknownError } from '../../utils/errors/errors.js'
 import { SDKError } from '../../utils/errors/SDKError.js'
 
 export const parseSolanaStepErrors = async (
@@ -15,7 +15,11 @@ export const parseSolanaStepErrors = async (
     return e
   }
 
+  console.log('parseSolanaStepErrors', e.name, e.message, e)
+
   let baseError
+
+  baseError = handleSolanaErrors(e)
 
   if (e instanceof BaseError) {
     baseError = e
@@ -27,4 +31,16 @@ export const parseSolanaStepErrors = async (
     step,
     process
   )
+}
+
+const handleSolanaErrors = (e: any) => {
+  if (e.name === 'WalletSignTransactionError') {
+    return new TransactionError(
+      LiFiErrorCode.SignatureRejected,
+      e.message,
+      undefined,
+      e
+    )
+  }
+  return
 }

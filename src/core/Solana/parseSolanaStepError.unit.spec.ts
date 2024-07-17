@@ -3,9 +3,9 @@ import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { SDKError } from '../../utils/errors/SDKError.js'
 import { BaseError } from '../../utils/errors/baseError.js'
-import { LiFiErrorCode } from '../../utils/errors/constants.js'
+import { LiFiErrorCode, ErrorName } from '../../utils/errors/constants.js'
+import { TransactionError } from '../../utils/errors/errors.js'
 import { parseSolanaStepErrors } from './parseSolanaStepErrors.js'
-import { ErrorName } from '../../utils/errors/constants.js'
 beforeAll(setupTestEnvironment)
 
 describe('parseSolanaStepError', () => {
@@ -77,8 +77,8 @@ describe('parseSolanaStepError', () => {
     })
   })
 
-  describe('when a LiFBaseError is passed', () => {
-    it('should return the LiFBaseError as the cause on a SDKError', async () => {
+  describe('when a BaseError is passed', () => {
+    it('should return the BaseError as the cause on a SDKError', async () => {
       const error = new BaseError(
         ErrorName.BalanceError,
         LiFiErrorCode.BalanceError,
@@ -115,7 +115,7 @@ describe('parseSolanaStepError', () => {
   })
 
   describe('when a generic Error is passed', () => {
-    it('should return the Error as he cause on a LiFBaseError which is wrapped in an SDKError', async () => {
+    it('should return the Error as he cause on a BaseError which is wrapped in an SDKError', async () => {
       const error = new Error('Somethings fishy')
 
       const parsedError = await parseSolanaStepErrors(error)
@@ -141,6 +141,25 @@ describe('parseSolanaStepError', () => {
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
         expect(parsedError.process).toBe(process)
+      })
+    })
+  })
+
+  describe('when Solana Errors are passed', () => {
+    describe('when the error is a WalletSignTransactionError', () => {
+      it('should return the BaseError with the SignatureRejected code as the cause on a SDKError', async () => {
+        const MockSolanaError = new Error()
+        MockSolanaError.name = 'WalletSignTransactionError'
+
+        const parsedError = await parseSolanaStepErrors(MockSolanaError)
+
+        expect(parsedError).toBeInstanceOf(SDKError)
+
+        const baseError = parsedError.cause
+        expect(baseError).toBeInstanceOf(TransactionError)
+        expect(baseError.code).toEqual(LiFiErrorCode.SignatureRejected)
+
+        expect(baseError.cause).toBe(MockSolanaError)
       })
     })
   })
