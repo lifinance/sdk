@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { SDKError } from '../SDKError.js'
 import { BaseError } from '../baseError.js'
 import { ErrorName, LiFiErrorCode } from '../constants.js'
-import { getLiFiRootCause, getLiFiRootCauseMessage } from './lifiRootCause.js'
+import {
+  getRootCauseBaseError,
+  getRootCauseBaseErrorMessage,
+} from './baseErrorRootCause.js'
 import { HTTPError } from '../httpError.js'
 
 const getErrorChain = () => {
@@ -19,21 +22,23 @@ const getErrorChain = () => {
   )
 }
 
-describe('getLiFiRootCause', () => {
+describe('getRootCauseBaseError', () => {
   it('should return the top level error when there is no root cause', () => {
     const error = new Error('top level')
 
-    expect(getLiFiRootCause(error).message).toEqual('top level')
+    expect(getRootCauseBaseError(error).message).toEqual('top level')
   })
 
-  it('should return the lowest LiFi error in the cause chain', () => {
+  it('should return the lowest BaseError in the cause chain', () => {
     const errorChain = getErrorChain()
 
-    expect(getLiFiRootCause(errorChain).message).toEqual('something happened')
+    expect(getRootCauseBaseError(errorChain).message).toEqual(
+      'something happened'
+    )
   })
 })
 
-describe('getLiFiRootCauseMessage', () => {
+describe('getRootCauseBaseErrorMessage', () => {
   describe('when root cause is HTTP Error', () => {
     it('should return the HTTP response message if present', async () => {
       const mockResponse = {
@@ -49,7 +54,7 @@ describe('getLiFiRootCauseMessage', () => {
 
       const errorChain = new SDKError(httpError)
 
-      expect(getLiFiRootCauseMessage(errorChain)).toEqual(
+      expect(getRootCauseBaseErrorMessage(errorChain)).toEqual(
         'something went wrong on the server'
       )
     })
@@ -67,17 +72,19 @@ describe('getLiFiRootCauseMessage', () => {
 
       const errorChain = new SDKError(httpError)
 
-      expect(getLiFiRootCauseMessage(errorChain)).toEqual(
+      expect(getRootCauseBaseErrorMessage(errorChain)).toEqual(
         '[ValidationError] Request failed with status code 400 Bad Request'
       )
     })
   })
 
   describe('when root cause is base Error', () => {
-    it('should return the LiFi error message', () => {
+    it('should return the BaseError message', () => {
       const errorChain = getErrorChain()
 
-      expect(getLiFiRootCauseMessage(errorChain)).toEqual('something happened')
+      expect(getRootCauseBaseErrorMessage(errorChain)).toEqual(
+        'something happened'
+      )
     })
   })
 })
