@@ -86,9 +86,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        errorMessage
+      throw await parseEVMStepErrors(
+        new TransactionError(
+          LiFiErrorCode.WalletChangedDuringExecution,
+          errorMessage
+        ),
+        step,
+        process
       )
     }
     return updatedWalletClient
@@ -138,7 +142,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
       (shouldBatchTransactions || !isMultisigWalletClient)
 
     if (checkForAllowance) {
-      // TODO: this can throw errors that are currently uncaught by parseErrors function - need to ensure it is caught by the large try catch
       const data = await checkAllowance(
         fromChain,
         step,
@@ -478,7 +481,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
         ],
       })
     } catch (e: unknown) {
-      // TODO: wrap with parseErrors function - compare with the above try catch statements
       const htmlMessage = await getTransactionFailedMessage(
         step,
         process.txLink
@@ -493,7 +495,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       })
       this.statusManager.updateExecution(step, 'FAILED')
       console.warn(e)
-      throw e
+      throw await parseEVMStepErrors(e as Error, step, process)
     }
 
     // DONE
