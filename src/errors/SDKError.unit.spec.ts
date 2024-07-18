@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ErrorName, LiFiErrorCode } from './constants.js'
 import { BaseError } from './baseError.js'
 import { SDKError } from './SDKError.js'
-import { version } from '../../version.js'
+import { version } from '../version.js'
 import { HTTPError } from './httpError.js'
 
 const url = 'http://some.where'

@@ -1,6 +1,6 @@
 import { name, version } from './version.js'
-import { ValidationError } from './utils/errors/errors.js'
-import { SDKError } from './utils/errors/SDKError.js'
+import { ValidationError } from './errors/errors.js'
+import { SDKError } from './errors/SDKError.js'
 import type { Route, LiFiStep } from '@lifi/types'
 
 export const checkPackageUpdates = async (

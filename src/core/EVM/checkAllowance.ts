@@ -1,7 +1,7 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
 import type { Address, Hash, WalletClient } from 'viem'
 import { maxUint256 } from 'viem'
-import { parseEVMStepErrors } from './parseEVMStepErrors.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
@@ -100,7 +100,7 @@ export const checkAllowance = async (
       }
     }
   } catch (e: any) {
-    const error = await parseEVMStepErrors(e, step, allowanceProcess)
+    const error = await parseEVMErrors(e, step, allowanceProcess)
     allowanceProcess = statusManager.updateProcess(
       step,
       allowanceProcess.type,

@@ -16,9 +16,9 @@ import {
   getTransactionFailedMessage,
   isZeroAddress,
 } from '../../utils/index.js'
-import { ValidationError, TransactionError } from '../../utils/errors/errors.js'
-import { LiFiErrorCode } from '../../utils/errors/constants.js'
-import { parseEVMStepErrors } from './parseEVMStepErrors.js'
+import { ValidationError, TransactionError } from '../../errors/errors.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -86,7 +86,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      throw await parseEVMStepErrors(
+      throw await parseEVMErrors(
         new TransactionError(
           LiFiErrorCode.WalletChangedDuringExecution,
           errorMessage
@@ -400,7 +400,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseEVMStepErrors(e, step, process)
+        const error = await parseEVMErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
           process.type,
@@ -483,8 +483,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      console.warn(e)
-      throw await parseEVMStepErrors(e as Error, step, process)
+      throw await parseEVMErrors(e as Error, step, process)
     }
 
     // DONE

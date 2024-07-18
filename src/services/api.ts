@@ -27,8 +27,8 @@ import type {
 import { config } from '../config.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
-import { ValidationError } from '../utils/errors/errors.js'
-import { SDKError } from '../utils/errors/SDKError.js'
+import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token

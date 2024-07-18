@@ -11,7 +11,7 @@ import {
 import { config } from './config.js'
 import type { SDKBaseConfig } from './types/index.js'
 import { request } from './request.js'
-import { SDKError } from './utils/errors/SDKError.js'
+import { SDKError } from './errors/SDKError.js'
 import { type HTTPError, ValidationError } from './utils/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'

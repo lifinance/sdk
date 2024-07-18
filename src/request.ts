@@ -1,8 +1,8 @@
 import { config } from './config.js'
-import { HTTPError } from './utils/errors/httpError.js'
+import { HTTPError } from './errors/httpError.js'
 import { wait } from './utils/utils.js'
-import { ValidationError } from './utils/errors/errors.js'
-import { SDKError } from './utils/errors/SDKError.js'
+import { ValidationError } from './errors/errors.js'
+import { SDKError } from './errors/SDKError.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 

@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { SDKError } from '../../utils/errors/SDKError.js'
-import { BaseError } from '../../utils/errors/baseError.js'
-import { LiFiErrorCode, ErrorName } from '../../utils/errors/constants.js'
-import { TransactionError } from '../../utils/errors/errors.js'
-import { parseSolanaStepErrors } from './parseSolanaStepErrors.js'
+import { SDKError } from '../../errors/SDKError.js'
+import { BaseError } from '../../errors/baseError.js'
+import { LiFiErrorCode, ErrorName } from '../../errors/constants.js'
+import { TransactionError } from '../../errors/errors.js'
+import { parseSolanaErrors } from './parseSolanaErrors.js'
 beforeAll(setupTestEnvironment)
 
 describe('parseSolanaStepError', () => {
@@ -19,7 +19,7 @@ describe('parseSolanaStepError', () => {
         )
       )
 
-      const parsedError = await parseSolanaStepErrors(error)
+      const parsedError = await parseSolanaErrors(error)
 
       expect(parsedError).toBe(error)
 
@@ -40,7 +40,7 @@ describe('parseSolanaStepError', () => {
         const step = buildStepObject({ includingExecution: true })
         const process = step.execution!.process[0]
 
-        const parsedError = await parseSolanaStepErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step, process)
 
         expect(parsedError).toBe(error)
 
@@ -66,7 +66,7 @@ describe('parseSolanaStepError', () => {
           const step = buildStepObject({ includingExecution: true })
           const process = step.execution!.process[0]
 
-          const parsedError = await parseSolanaStepErrors(error, step, process)
+          const parsedError = await parseSolanaErrors(error, step, process)
 
           expect(parsedError).toBe(error)
 
@@ -85,7 +85,7 @@ describe('parseSolanaStepError', () => {
         'there was an error'
       )
 
-      const parsedError = await parseSolanaStepErrors(error)
+      const parsedError = await parseSolanaErrors(error)
 
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
@@ -104,7 +104,7 @@ describe('parseSolanaStepError', () => {
         const step = buildStepObject({ includingExecution: true })
         const process = step.execution!.process[0]
 
-        const parsedError = await parseSolanaStepErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step, process)
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
@@ -118,7 +118,7 @@ describe('parseSolanaStepError', () => {
     it('should return the Error as he cause on a BaseError which is wrapped in an SDKError', async () => {
       const error = new Error('Somethings fishy')
 
-      const parsedError = await parseSolanaStepErrors(error)
+      const parsedError = await parseSolanaErrors(error)
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
       expect(parsedError.process).toBeUndefined()
@@ -137,7 +137,7 @@ describe('parseSolanaStepError', () => {
         const step = buildStepObject({ includingExecution: true })
         const process = step.execution?.process[0]
 
-        const parsedError = await parseSolanaStepErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step, process)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
         expect(parsedError.process).toBe(process)
@@ -151,7 +151,7 @@ describe('parseSolanaStepError', () => {
         const MockSolanaError = new Error()
         MockSolanaError.name = 'WalletSignTransactionError'
 
-        const parsedError = await parseSolanaStepErrors(MockSolanaError)
+        const parsedError = await parseSolanaErrors(MockSolanaError)
 
         expect(parsedError).toBeInstanceOf(SDKError)
 

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { parseEVMStepErrors } from './parseEVMStepErrors.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import {
   ErrorName,
   BaseError,
@@ -26,7 +26,7 @@ describe('parseEVMStepErrors', () => {
         )
       )
 
-      const parsedError = await parseEVMStepErrors(error)
+      const parsedError = await parseEVMErrors(error)
 
       expect(parsedError).toBe(error)
 
@@ -48,7 +48,7 @@ describe('parseEVMStepErrors', () => {
       const step = buildStepObject({ includingExecution: true })
       const process = step.execution!.process[0]
 
-      const parsedError = await parseEVMStepErrors(error, step, process)
+      const parsedError = await parseEVMErrors(error, step, process)
 
       expect(parsedError).toBe(error)
 
@@ -75,7 +75,7 @@ describe('parseEVMStepErrors', () => {
       const step = buildStepObject({ includingExecution: true })
       const process = step.execution!.process[0]
 
-      const parsedError = await parseEVMStepErrors(error, step, process)
+      const parsedError = await parseEVMErrors(error, step, process)
 
       expect(parsedError).toBe(error)
 
@@ -92,7 +92,7 @@ describe('parseEVMStepErrors', () => {
         'there was an error'
       )
 
-      const parsedError = await parseEVMStepErrors(error)
+      const parsedError = await parseEVMErrors(error)
 
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
@@ -111,7 +111,7 @@ describe('parseEVMStepErrors', () => {
         const step = buildStepObject({ includingExecution: true })
         const process = step.execution!.process[0]
 
-        const parsedError = await parseEVMStepErrors(error, step, process)
+        const parsedError = await parseEVMErrors(error, step, process)
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
@@ -125,7 +125,7 @@ describe('parseEVMStepErrors', () => {
     it('should return the Error as he cause on a BaseError which is wrapped in an SDKError', async () => {
       const error = new Error('Somethings fishy')
 
-      const parsedError = await parseEVMStepErrors(error)
+      const parsedError = await parseEVMErrors(error)
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
       expect(parsedError.process).toBeUndefined()
@@ -144,7 +144,7 @@ describe('parseEVMStepErrors', () => {
         const step = buildStepObject({ includingExecution: true })
         const process = step.execution?.process[0]
 
-        const parsedError = await parseEVMStepErrors(error, step, process)
+        const parsedError = await parseEVMErrors(error, step, process)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
         expect(parsedError.process).toBe(process)
@@ -160,7 +160,7 @@ describe('parseEVMStepErrors', () => {
         UserRejectedRequestError.name = 'UserRejectedRequestError'
         mockViemError.cause = UserRejectedRequestError
 
-        const parsedError = await parseEVMStepErrors(mockViemError)
+        const parsedError = await parseEVMErrors(mockViemError)
 
         expect(parsedError).toBeInstanceOf(SDKError)
 
@@ -195,7 +195,7 @@ describe('parseEVMStepErrors', () => {
           '0x5c73f72a72a75d8b716ed42cd620042f53b958f028d0c9ad772908b7791c017b',
       } as Process
 
-      const parsedError = await parseEVMStepErrors(
+      const parsedError = await parseEVMErrors(
         mockTransactionError,
         mockStep,
         mockProcess
