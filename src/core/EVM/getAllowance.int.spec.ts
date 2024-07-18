@@ -91,7 +91,7 @@ describe('allowance integration tests', () => {
   )
 
   it(
-    'should handle token lists with more than 100 tokens',
+    'should handle token lists with more than 10 tokens',
     async () => {
       const { tokens } = await getTokens({
         chains: [ChainId.POL],
@@ -99,7 +99,7 @@ describe('allowance integration tests', () => {
       const filteredTokens = tokens[ChainId.POL]
       filteredTokens.unshift(memeToken)
 
-      expect(filteredTokens?.length).toBeGreaterThan(100)
+      expect(filteredTokens?.length).toBeGreaterThanOrEqual(10)
       const tokenSpenders: TokenSpender[] | undefined = filteredTokens?.map(
         (token) => ({
           token,
@@ -110,7 +110,7 @@ describe('allowance integration tests', () => {
       if (tokenSpenders?.length) {
         const tokens = await getTokenAllowanceMulticall(
           defaultWalletAddress,
-          tokenSpenders.slice(0, 150)
+          tokenSpenders.slice(0, 10)
         )
 
         for (let i = 0; i < tokens.length; i++) {

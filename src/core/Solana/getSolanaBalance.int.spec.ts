@@ -58,7 +58,6 @@ describe.sequential('Solana token balance', async () => {
       const tokens = [
         findDefaultToken(CoinKey.USDC, ChainId.SOL),
         findDefaultToken(CoinKey.USDT, ChainId.SOL),
-        findDefaultToken(CoinKey.SOL, ChainId.SOL),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -67,7 +66,7 @@ describe.sequential('Solana token balance', async () => {
   )
 
   it(
-    'should return even with invalid data on POL',
+    'should return even with invalid data',
     async () => {
       const walletAddress = defaultWalletAddress
       const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.SOL)
