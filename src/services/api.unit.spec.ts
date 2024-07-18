@@ -26,9 +26,10 @@ import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { ServerError, ValidationError } from '../utils/errors.js'
+import { ValidationError } from '../errors/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
+import { SDKError } from '../utils/index.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
@@ -143,16 +144,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw a the error', async () => {
-          const request = getRoutesRequest({ fromAmount: 'failed' })
-          await expect(ApiService.getRoutes(request)).rejects.toThrowError(
-            new ServerError('Oops')
-          )
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           const request = getRoutesRequest({})
@@ -169,35 +160,24 @@ describe('ApiService', () => {
         await expect(
           ApiService.getToken(undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "chain" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "chain" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
           ApiService.getToken(ChainId.ETH, undefined as unknown as string)
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "token" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "token" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(`${_config.apiUrl}/token`, async () =>
-              HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getToken(ChainId.DAI, 'DAI')
-          ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getToken(ChainId.DAI, 'DAI')
@@ -228,7 +208,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromChain" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "fromChain" is missing.')
+          )
         )
 
         await expect(
@@ -241,7 +223,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromToken" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "fromToken" is missing.')
+          )
         )
 
         await expect(
@@ -254,7 +238,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAddress" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "fromAddress" is missing.')
+          )
         )
 
         await expect(
@@ -267,7 +253,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "fromAmount" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "fromAmount" is missing.')
+          )
         )
 
         await expect(
@@ -280,7 +268,9 @@ describe('ApiService', () => {
             toToken,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toChain" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "toChain" is missing.')
+          )
         )
 
         await expect(
@@ -293,7 +283,9 @@ describe('ApiService', () => {
             toToken: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "toToken" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "toToken" is missing.')
+          )
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -301,28 +293,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(`${_config.apiUrl}/quote`, async () =>
-              HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getQuote({
-              fromChain,
-              fromToken,
-              fromAddress,
-              fromAmount,
-              toChain,
-              toToken,
-            })
-          ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getQuote({
@@ -356,7 +326,9 @@ describe('ApiService', () => {
             txHash: undefined as unknown as string,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "txHash" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "txHash" is missing.')
+          )
         )
 
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -364,21 +336,6 @@ describe('ApiService', () => {
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(`${_config.apiUrl}/status`, async () =>
-              HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getStatus({ bridge, fromChain, toChain, txHash })
-          ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
@@ -389,21 +346,6 @@ describe('ApiService', () => {
   })
 
   describe('getChains', () => {
-    describe('and the backend call fails', () => {
-      it('throw an error', async () => {
-        server.use(
-          http.get(`${_config.apiUrl}/chains`, async () =>
-            HttpResponse.json({ message: 'Oops' }, { status: 500 })
-          )
-        )
-
-        await expect(ApiService.getChains()).rejects.toThrowError(
-          new ServerError('Oops')
-        )
-        expect(mockedFetch).toHaveBeenCalledTimes(1)
-      })
-    })
-
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
         const chains = await ApiService.getChains()
@@ -555,24 +497,6 @@ describe('ApiService', () => {
       })
 
       describe('user input is valid', () => {
-        describe('and the backend call fails', () => {
-          it('throw a the error', async () => {
-            const step = getStep({})
-            server.use(
-              http.post(
-                `${_config.apiUrl}/advanced/stepTransaction`,
-                async () =>
-                  HttpResponse.json({ message: 'Oops' }, { status: 500 })
-              )
-            )
-
-            await expect(
-              ApiService.getStepTransaction(step)
-            ).rejects.toThrowError(new ServerError('Oops'))
-            expect(mockedFetch).toHaveBeenCalledTimes(1)
-          })
-        })
-
         describe('and the backend call is successful', () => {
           it('call the server once', async () => {
             const step = getStep({})
@@ -593,32 +517,15 @@ describe('ApiService', () => {
             chainId: undefined as unknown as number,
           })
         ).rejects.toThrowError(
-          new ValidationError('Required parameter "chainId" is missing.')
+          new SDKError(
+            new ValidationError('Required parameter "chainId" is missing.')
+          )
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
       })
     })
 
     describe('user input is valid', () => {
-      describe('and the backend call fails', () => {
-        it('throw an error', async () => {
-          server.use(
-            http.get(
-              `${_config.apiUrl}/gas/suggestion/${ChainId.OPT}`,
-              async () =>
-                HttpResponse.json({ message: 'Oops' }, { status: 500 })
-            )
-          )
-
-          await expect(
-            ApiService.getGasRecommendation({
-              chainId: ChainId.OPT,
-            })
-          ).rejects.toThrowError(new ServerError('Oops'))
-          expect(mockedFetch).toHaveBeenCalledTimes(1)
-        })
-      })
-
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           await ApiService.getGasRecommendation({

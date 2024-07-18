@@ -1,5 +1,6 @@
 import type { WalletClient } from 'viem'
-import { LiFiErrorCode, ProviderError } from '../../utils/errors.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { ProviderError } from '../../errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 

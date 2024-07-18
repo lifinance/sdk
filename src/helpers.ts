@@ -1,8 +1,7 @@
-import type { LiFiStep, Route } from '@lifi/types'
-import { request } from './request.js'
-import type { TenderlyResponse } from './types/index.js'
-import { ValidationError } from './utils/errors.js'
 import { name, version } from './version.js'
+import { ValidationError } from './errors/errors.js'
+import { SDKError } from './errors/SDKError.js'
+import type { Route, LiFiStep } from '@lifi/types'
 
 export const checkPackageUpdates = async (
   packageName?: string,
@@ -10,12 +9,11 @@ export const checkPackageUpdates = async (
 ) => {
   try {
     const pkgName = packageName ?? name
-    const response = await request<{ version: string }>(
-      `https://registry.npmjs.org/${pkgName}/latest`,
-      { skipTrackingHeaders: true }
-    )
-    const latestVersion = response.version
+    const response = await fetch(`https://registry.npmjs.org/${pkgName}/latest`)
+    const reponseBody = await response.json()
+    const latestVersion = reponseBody.version
     const currentVersion = packageVersion ?? version
+
     if (latestVersion > currentVersion) {
       console.warn(
         // eslint-disable-next-line max-len
@@ -30,16 +28,22 @@ export const checkPackageUpdates = async (
 /**
  * Converts a quote to Route
  * @param step - Step returned from the quote endpoint.
+ * @param txHash
+ * @param chainId
  * @returns - The route to be executed.
- * @throws {ValidationError} Throws a ValidationError if the step has missing values.
+ * @throws {BaseError} Throws a ValidationError if the step has missing values.
  */
 export const convertQuoteToRoute = (step: LiFiStep): Route => {
   if (!step.estimate.fromAmountUSD) {
-    throw new ValidationError("Missing 'fromAmountUSD' in step estimate.")
+    throw new SDKError(
+      new ValidationError("Missing 'fromAmountUSD' in step estimate.")
+    )
   }
 
   if (!step.estimate.toAmountUSD) {
-    throw new ValidationError("Missing 'toAmountUSD' in step estimate.")
+    throw new SDKError(
+      new ValidationError("Missing 'toAmountUSD' in step estimate.")
+    )
   }
 
   const route: Route = {
@@ -61,9 +65,12 @@ export const convertQuoteToRoute = (step: LiFiStep): Route => {
 }
 
 export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
-  const response = await request<TenderlyResponse>(
-    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
-  )
+  try {
+    const response = await fetch(
+      `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
+    )
+    const reponseBody = await response.json()
 
-  return response
+    return reponseBody
+  } catch (_) {}
 }

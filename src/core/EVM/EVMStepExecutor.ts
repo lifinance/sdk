@@ -13,13 +13,12 @@ import { publicActions } from 'viem'
 import { config } from '../../config.js'
 import { getStepTransaction } from '../../services/api.js'
 import {
-  LiFiErrorCode,
-  TransactionError,
-  ValidationError,
   getTransactionFailedMessage,
   isZeroAddress,
-  parseError,
 } from '../../utils/index.js'
+import { ValidationError, TransactionError } from '../../errors/errors.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -87,9 +86,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        errorMessage
+      throw await parseEVMErrors(
+        new TransactionError(
+          LiFiErrorCode.WalletChangedDuringExecution,
+          errorMessage
+        ),
+        step,
+        process
       )
     }
     return updatedWalletClient
@@ -397,20 +400,21 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseError(e, step, process)
+        const error = await parseEVMErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'FAILED',
           {
             error: {
-              message: error.message,
-              htmlMessage: error.htmlMessage,
+              message: error.cause.message,
+              htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
           }
         )
         this.statusManager.updateExecution(step, 'FAILED')
+
         throw error
       }
     }
@@ -479,8 +483,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         },
       })
       this.statusManager.updateExecution(step, 'FAILED')
-      console.warn(e)
-      throw e
+      throw await parseEVMErrors(e as Error, step, process)
     }
 
     // DONE

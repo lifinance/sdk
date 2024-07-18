@@ -9,12 +9,10 @@ import {
 import { config } from '../../config.js'
 import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
-import {
-  LiFiErrorCode,
-  TransactionError,
-  getTransactionFailedMessage,
-  parseError,
-} from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/index.js'
+import { TransactionError } from '../../errors/errors.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -260,15 +258,15 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseError(e, step, process)
+        const error = await parseSolanaErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'FAILED',
           {
             error: {
-              message: error.message,
-              htmlMessage: error.htmlMessage,
+              message: error.cause.message,
+              htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
           }
