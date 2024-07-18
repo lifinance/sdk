@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import type { PublicClient } from 'viem'
-import { createPublicClient, fallback, http } from 'viem'
+import { createPublicClient, fallback, http, webSocket } from 'viem'
 import { mainnet, type Chain } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
@@ -19,9 +19,11 @@ export const getPublicClient = async (
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
     const fallbackTransports = urls.map((url) =>
-      http(url, {
-        batch: true,
-      })
+      url.startsWith('wss')
+        ? webSocket(url)
+        : http(url, {
+            batch: true,
+          })
     )
     const _chain = await config.getChainById(chainId)
     const chain: Chain = {
@@ -43,6 +45,9 @@ export const getPublicClient = async (
     publicClients[chainId] = createPublicClient({
       chain: chain,
       transport: fallback(fallbackTransports),
+      batch: {
+        multicall: true,
+      },
     })
   }
 
