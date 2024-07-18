@@ -32,10 +32,6 @@ export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
 }
 
-const TX_RETRY_INTERVAL = 1000
-// https://solana.com/docs/advanced/confirmation
-const TIMEOUT_PERIOD = 60_000
-
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter
 
@@ -159,8 +155,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         const rawTransactionOptions: SendOptions = {
-          // Skipping preflight i.e. tx simulation by RPC as we simulated the tx above
-          skipPreflight: true,
           // Setting max retries to 0 as we are handling retries manually
           // Set this manually so that the default is skipped
           maxRetries: 0,
@@ -169,10 +163,22 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           // minContextSlot: blockhashResult.context.slot,
         }
 
+        const signedTxSerialized = signedTx.serialize()
         const txSignature = await connection.sendRawTransaction(
-          signedTx.serialize(),
+          signedTxSerialized,
           rawTransactionOptions
         )
+
+        // We can skip preflight check after the first transaction has been sent
+        // https://solana.com/docs/advanced/retry#the-cost-of-skipping-preflight
+        rawTransactionOptions.skipPreflight = true
+
+        // A known weirdness - MAX_RECENT_BLOCKHASHES is 300
+        // https://github.com/solana-labs/solana/blob/master/sdk/program/src/clock.rs#L123
+        // but MAX_PROCESSING_AGE is 150
+        // https://github.com/solana-labs/solana/blob/master/sdk/program/src/clock.rs#L129
+        // the blockhash queue in the bank tells you 300 + current slot, but it won't be accepted 150 blocks later.
+        const lastValidBlockHeight = blockhashResult.lastValidBlockHeight - 150
 
         // In the following section, we wait and constantly check for the transaction to be confirmed
         // and resend the transaction if it is not confirmed within a certain time interval
@@ -183,7 +189,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
             {
               signature: txSignature,
               blockhash: blockhashResult.blockhash,
-              lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
+              lastValidBlockHeight: lastValidBlockHeight,
               abortSignal: abortController.signal,
             },
             'confirmed'
@@ -191,20 +197,22 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           .then((result) => result.value)
 
         let confirmedTx: SignatureResult | null = null
-        const startTime = Date.now()
+        let blockHeight = await connection.getBlockHeight()
 
-        while (!confirmedTx && Date.now() - startTime <= TIMEOUT_PERIOD) {
+        // https://solana.com/docs/advanced/retry#customizing-rebroadcast-logic
+        while (!confirmedTx && blockHeight < lastValidBlockHeight) {
           await connection.sendRawTransaction(
-            signedTx.serialize(),
+            signedTxSerialized,
             rawTransactionOptions
           )
           confirmedTx = await Promise.race([
             confirmTransactionPromise,
-            sleep(TX_RETRY_INTERVAL),
+            sleep(1000),
           ])
           if (confirmedTx) {
             break
           }
+          blockHeight = await connection.getBlockHeight()
         }
 
         // Stop waiting for tx confirmation
