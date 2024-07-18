@@ -48,7 +48,7 @@ const handleSpecificErrors = async (
 
     const errorMessage = response?.error_message
 
-    if (errorMessage.toLowerCase().includes('out of gas')) {
+    if (errorMessage?.toLowerCase().includes('out of gas')) {
       return new TransactionError(
         LiFiErrorCode.GasLimitError,
         ErrorMessage.GasLimitLow,

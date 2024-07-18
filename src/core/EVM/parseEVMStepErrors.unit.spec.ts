@@ -155,12 +155,12 @@ describe('parseEVMStepErrors', () => {
   describe('when specific Errors are passed', () => {
     describe('when the error is the viem UserRejectedRequestError error', () => {
       it('should return the BaseError with the SignatureRejected code as the cause on a SDKError', async () => {
-        const MockViemError = new Error()
+        const mockViemError = new Error()
         const UserRejectedRequestError = new Error()
         UserRejectedRequestError.name = 'UserRejectedRequestError'
-        MockViemError.cause = UserRejectedRequestError
+        mockViemError.cause = UserRejectedRequestError
 
-        const parsedError = await parseEVMStepErrors(MockViemError)
+        const parsedError = await parseEVMStepErrors(mockViemError)
 
         expect(parsedError).toBeInstanceOf(SDKError)
 
@@ -179,7 +179,7 @@ describe('parseEVMStepErrors', () => {
         error_message: 'out of gas',
       })
 
-      const MockTransactionError = new TransactionError(
+      const mockTransactionError = new TransactionError(
         LiFiErrorCode.TransactionFailed,
         ErrorMessage.TransactionReverted
       )
@@ -196,7 +196,7 @@ describe('parseEVMStepErrors', () => {
       } as Process
 
       const parsedError = await parseEVMStepErrors(
-        MockTransactionError,
+        mockTransactionError,
         mockStep,
         mockProcess
       )
@@ -207,7 +207,7 @@ describe('parseEVMStepErrors', () => {
       expect(baseError).toBeInstanceOf(TransactionError)
       expect(baseError.code).toEqual(LiFiErrorCode.GasLimitError)
       expect(baseError.message).toEqual(ErrorMessage.GasLimitLow)
-      expect(baseError.cause).toBe(MockTransactionError)
+      expect(baseError.cause).toBe(mockTransactionError)
 
       vi.clearAllMocks()
     })

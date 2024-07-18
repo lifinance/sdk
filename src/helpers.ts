@@ -65,10 +65,12 @@ export const convertQuoteToRoute = (step: LiFiStep): Route => {
 }
 
 export const fetchTxErrorDetails = async (txHash: string, chainId: number) => {
-  const response = await fetch(
-    `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
-  )
-  const reponseBody = await response.json()
+  try {
+    const response = await fetch(
+      `https://api.tenderly.co/api/v1/public-contract/${chainId}/tx/${txHash}`
+    )
+    const reponseBody = await response.json()
 
-  return reponseBody
+    return reponseBody
+  } catch (_) {}
 }
