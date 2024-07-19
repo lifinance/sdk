@@ -21,7 +21,7 @@ const statusCodeToErrorClassificationMap = new Map([
     {
       type: ErrorName.SlippageError,
       code: LiFiErrorCode.SlippageError,
-      additionalMessage: ErrorMessage.SlippageError,
+      message: ErrorMessage.SlippageError,
     },
   ],
   [500, { type: ErrorName.ServerError, code: LiFiErrorCode.InternalError }],
@@ -58,8 +58,8 @@ export class HTTPError extends BaseError {
     const errorClassification = getErrorClassificationFromStatusCode(
       response.status
     )
-    const additionalMessage = errorClassification?.additionalMessage
-      ? `\n${errorClassification.additionalMessage}`
+    const additionalMessage = errorClassification?.message
+      ? `\n${errorClassification.message}`
       : ''
     const message = createInitialMessage(response) + additionalMessage
 
