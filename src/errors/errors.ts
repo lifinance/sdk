@@ -2,59 +2,32 @@ import { ErrorName, LiFiErrorCode } from './constants.js'
 import { BaseError } from './baseError.js'
 
 export class RPCError extends BaseError {
-  constructor(
-    code: LiFiErrorCode,
-    message: string,
-    htmlMessage?: string,
-    cause?: Error
-  ) {
-    super(ErrorName.RPCError, code, message, htmlMessage, cause)
+  constructor(code: LiFiErrorCode, message: string, cause?: Error) {
+    super(ErrorName.RPCError, code, message, cause)
   }
 }
 
 export class ProviderError extends BaseError {
-  constructor(
-    code: LiFiErrorCode,
-    message: string,
-    htmlMessage?: string,
-    cause?: Error
-  ) {
-    super(ErrorName.ProviderError, code, message, htmlMessage, cause)
+  constructor(code: LiFiErrorCode, message: string, cause?: Error) {
+    super(ErrorName.ProviderError, code, message, cause)
   }
 }
 
 export class TransactionError extends BaseError {
-  constructor(
-    code: LiFiErrorCode,
-    message: string,
-    htmlMessage?: string,
-    cause?: Error
-  ) {
-    super(ErrorName.TransactionError, code, message, htmlMessage, cause)
+  constructor(code: LiFiErrorCode, message: string, cause?: Error) {
+    super(ErrorName.TransactionError, code, message, cause)
   }
 }
 
 export class UnknownError extends BaseError {
-  constructor(message: string, htmlMessage?: string, cause?: Error) {
-    super(
-      ErrorName.UnknownError,
-      LiFiErrorCode.InternalError,
-      message,
-      htmlMessage,
-      cause
-    )
+  constructor(message: string, cause?: Error) {
+    super(ErrorName.UnknownError, LiFiErrorCode.InternalError, message, cause)
   }
 }
 
 export class BalanceError extends BaseError {
-  constructor(message: string, htmlMessage?: string, cause?: Error) {
-    super(
-      ErrorName.BalanceError,
-      LiFiErrorCode.BalanceError,
-      message,
-      htmlMessage,
-      cause
-    )
+  constructor(message: string, cause?: Error) {
+    super(ErrorName.BalanceError, LiFiErrorCode.BalanceError, message, cause)
   }
 }
 

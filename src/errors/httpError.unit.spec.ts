@@ -46,14 +46,15 @@ describe('HTTPError', () => {
       409,
       'Conflict',
       {
-        initialMessage: 'Request failed with status code 409 Conflict',
+        initialMessage:
+          'Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
         type: ErrorName.SlippageError,
         code: LiFiErrorCode.SlippageError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
         htmlMessage:
           'The slippage is larger than the defined threshold. Please request a new route to get a fresh quote.',
-        builtMessage: `[SlippageError] Request failed with status code 409 Conflict
+        builtMessage: `[SlippageError] Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote.
         responseMessage: Oops`,
       },
     ],
@@ -123,9 +124,6 @@ describe('HTTPError', () => {
 
       expect(error.type).toEqual(expected.type)
       expect(error.code).toEqual(expected.code)
-      if (expected.htmlMessage) {
-        expect(error.htmlMessage).toEqual(expected.htmlMessage)
-      }
 
       await error.buildAdditionalDetails()
 

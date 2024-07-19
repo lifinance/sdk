@@ -40,7 +40,7 @@ export const checkBalance = async (
             `start a new one with a maximum of ${current} ${token.symbol}.`
         }
 
-        throw new BalanceError('The balance is too low.', errorMessage)
+        throw new BalanceError('The balance is too low.')
       }
     }
   }

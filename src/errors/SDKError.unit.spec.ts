@@ -96,7 +96,6 @@ describe('SDKError', () => {
             ErrorName.ValidationError,
             LiFiErrorCode.ValidationError,
             'problem validating',
-            undefined,
             e
           )
         }

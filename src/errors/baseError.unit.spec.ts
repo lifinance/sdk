@@ -14,7 +14,6 @@ describe('baseError', () => {
       ErrorName.UnknownError,
       LiFiErrorCode.InternalError,
       'There was an error',
-      undefined,
       intermediateError
     )
 

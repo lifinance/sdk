@@ -22,17 +22,12 @@ export const parseSolanaErrors = async (
 
 const handleSpecificErrors = (e: any) => {
   if (e.name === 'WalletSignTransactionError') {
-    return new TransactionError(
-      LiFiErrorCode.SignatureRejected,
-      e.message,
-      undefined,
-      e
-    )
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
   if (e instanceof BaseError) {
     return e
   }
 
-  return new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e)
+  return new UnknownError(e.message || ErrorMessage.UnknownError, e)
 }

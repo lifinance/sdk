@@ -16,7 +16,6 @@ const getErrorChain = () => {
       ErrorName.ValidationError,
       LiFiErrorCode.ValidationError,
       'something happened',
-      undefined,
       NonLiFiErrorChain
     )
   )

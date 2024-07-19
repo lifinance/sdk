@@ -42,9 +42,7 @@ export const stepComparison = async (
     // The user declined the new exchange rate, so we are not going to proceed
     throw new TransactionError(
       LiFiErrorCode.ExchangeRateUpdateCanceled,
-      'Exchange rate has changed!',
-      `Transaction was not sent, your funds are still in your wallet.
-      The exchange rate has changed and the previous estimation can not be fulfilled due to value loss.`
+      `Exchange rate has changed!\nTransaction was not sent, your funds are still in your wallet.\nThe exchange rate has changed and the previous estimation can not be fulfilled due to value loss.`
     )
   }
 
