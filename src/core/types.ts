@@ -114,5 +114,8 @@ export interface ExecutionOptions {
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
   executeInBackground?: boolean
+  /**
+   * @deprecated
+   */
   infiniteApproval?: boolean
 }

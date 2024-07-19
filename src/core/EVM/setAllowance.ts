@@ -4,7 +4,7 @@ import type {
   SendTransactionParameters,
   WalletClient,
 } from 'viem'
-import { encodeFunctionData, maxUint256, publicActions } from 'viem'
+import { encodeFunctionData, publicActions } from 'viem'
 import { isNativeTokenAddress } from '../../utils/utils.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
@@ -72,7 +72,6 @@ export const setAllowance = async (
  * @param request.token - The token for which to set the allowance
  * @param request.spenderAddress - The address of the spender
  * @param request.amount - The amount of tokens to approve
- * @param request.infiniteApproval - If true, sets the approval to the maximum uint256 value
  * @returns Returns Hash or nothing
  */
 export const setTokenAllowance = async ({
@@ -80,7 +79,6 @@ export const setTokenAllowance = async ({
   token,
   spenderAddress,
   amount,
-  infiniteApproval = false,
 }: ApproveTokenRequest): Promise<Hash | void> => {
   // native token don't need approval
   if (isNativeTokenAddress(token.address)) {
@@ -94,13 +92,11 @@ export const setTokenAllowance = async ({
   )
 
   if (amount > approvedAmount) {
-    const approvalAmount = infiniteApproval ? maxUint256 : amount
-
     const approveTx = await setAllowance(
       walletClient,
       token.address,
       spenderAddress,
-      approvalAmount
+      amount
     )
 
     return approveTx

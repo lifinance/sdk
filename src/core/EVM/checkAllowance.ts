@@ -1,10 +1,9 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
 import type { Address, Hash, WalletClient } from 'viem'
-import { maxUint256 } from 'viem'
-import { parseEVMErrors } from './parseEVMErrors.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import { setAllowance } from './setAllowance.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
@@ -54,16 +53,13 @@ export const checkAllowance = async (
         if (!allowUserInteraction) {
           return
         }
-        const approvalAmount = settings?.infiniteApproval
-          ? maxUint256
-          : fromAmount
 
         if (shouldBatchTransactions) {
           const approveTxHash = await setAllowance(
             walletClient,
             step.action.fromToken.address,
             step.estimate.approvalAddress,
-            approvalAmount,
+            fromAmount,
             settings,
             true
           )
@@ -81,7 +77,7 @@ export const checkAllowance = async (
           walletClient,
           step.action.fromToken.address,
           step.estimate.approvalAddress,
-          approvalAmount
+          fromAmount
         )
         await waitForApprovalTransaction(
           walletClient,

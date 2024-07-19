@@ -39,6 +39,9 @@ export interface ApproveTokenRequest {
   token: BaseToken
   spenderAddress: string
   amount: bigint
+  /**
+   * @deprecated
+   */
   infiniteApproval?: boolean
 }
 
