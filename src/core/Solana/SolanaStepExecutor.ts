@@ -6,13 +6,13 @@ import {
   type SendOptions,
   type SignatureResult,
 } from '@solana/web3.js'
+import bs58 from 'bs58'
 import { config } from '../../config.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { getTransactionFailedMessage } from '../../utils/index.js'
-import { TransactionError } from '../../errors/errors.js'
-import { LiFiErrorCode } from '../../errors/constants.js'
-import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -25,6 +25,7 @@ import type {
 import { sleep } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
+import { parseSolanaErrors } from './parseSolanaErrors.js'
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
@@ -143,8 +144,23 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         this.checkWalletAdapter(step)
 
-        const signedTx =
-          await this.walletAdapter.signTransaction(versionedTransaction)
+        const signedTxPromise =
+          this.walletAdapter.signTransaction(versionedTransaction)
+
+        // We give users 2 minutes to sign the transaction or it should be considered expired
+        const signedTx = await Promise.race([
+          signedTxPromise,
+          // https://solana.com/docs/advanced/confirmation#transaction-expiration
+          // Use 2 minutes to account for fluctuations
+          sleep(120_000),
+        ])
+
+        if (!signedTx) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionExpired,
+            'Transaction has expired: blockhash is no longer recent enough.'
+          )
+        }
 
         process = this.statusManager.updateProcess(
           step,
@@ -152,30 +168,30 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const rawTransactionOptions: SendOptions = {
-          // Setting max retries to 0 as we are handling retries manually
-          // Set this manually so that the default is skipped
-          maxRetries: 0,
-          // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
-          preflightCommitment: 'confirmed',
-          // minContextSlot: blockhashResult.context.slot,
-        }
-
-        const signedTxSerialized = signedTx.serialize()
-        const txSignature = await connection.sendRawTransaction(
-          signedTxSerialized,
-          rawTransactionOptions
+        const simulationResult = await connection.simulateTransaction(
+          signedTx,
+          {
+            commitment: 'processed',
+            replaceRecentBlockhash: true,
+          }
         )
 
-        // We can skip preflight check after the first transaction has been sent
-        // https://solana.com/docs/advanced/retry#the-cost-of-skipping-preflight
-        rawTransactionOptions.skipPreflight = true
+        if (simulationResult.value.err) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionSimulationFailed,
+            'Transaction simulation failed'
+          )
+        }
+
+        // Create transaction hash (signature)
+        const txSignature = bs58.encode(signedTx.signatures[0])
 
         // A known weirdness - MAX_RECENT_BLOCKHASHES is 300
         // https://github.com/solana-labs/solana/blob/master/sdk/program/src/clock.rs#L123
         // but MAX_PROCESSING_AGE is 150
         // https://github.com/solana-labs/solana/blob/master/sdk/program/src/clock.rs#L129
         // the blockhash queue in the bank tells you 300 + current slot, but it won't be accepted 150 blocks later.
+        // https://solana.com/docs/advanced/confirmation#transaction-expiration
         const lastValidBlockHeight = blockhashResult.lastValidBlockHeight - 150
 
         // In the following section, we wait and constantly check for the transaction to be confirmed
@@ -196,6 +212,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         let confirmedTx: SignatureResult | null = null
         let blockHeight = await connection.getBlockHeight()
+
+        const rawTransactionOptions: SendOptions = {
+          // We can skip preflight check after the first transaction has been sent
+          // https://solana.com/docs/advanced/retry#the-cost-of-skipping-preflight
+          skipPreflight: true,
+          // Setting max retries to 0 as we are handling retries manually
+          maxRetries: 0,
+          // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
+          preflightCommitment: 'confirmed',
+        }
+
+        const signedTxSerialized = signedTx.serialize()
 
         // https://solana.com/docs/advanced/retry#customizing-rebroadcast-logic
         while (!confirmedTx && blockHeight < lastValidBlockHeight) {
@@ -239,7 +267,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         if (!confirmedTx) {
           throw new TransactionError(
             LiFiErrorCode.TransactionExpired,
-            'Failed to land the transaction'
+            'Transaction has expired: The block height has exceeded the maximum allowed limit.'
           )
         }
 

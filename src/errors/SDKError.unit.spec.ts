@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { ErrorName, LiFiErrorCode } from './constants.js'
-import { BaseError } from './baseError.js'
-import { SDKError } from './SDKError.js'
 import { version } from '../version.js'
+import { BaseError } from './baseError.js'
+import { ErrorName, LiFiErrorCode } from './constants.js'
 import { HTTPError } from './httpError.js'
+import { SDKError } from './SDKError.js'
 
 const url = 'http://some.where'
 const options = { method: 'POST' }
@@ -55,7 +55,7 @@ describe('SDKError', () => {
       }
 
       expect(() => testFunction()).toThrowError(
-        `[HTTPError] [ValidationError] Request failed with status code 400 Bad Request\n        responseMessage: Oops\nLiFi SDK version: ${version}`
+        `[HTTPError] [ValidationError] Request failed with status code 400 Bad Request\n        responseMessage: Oops\nLI.FI SDK version: ${version}`
       )
     })
   })
@@ -130,7 +130,7 @@ describe('SDKError', () => {
       }
 
       expect(() => testFunction()).toThrowError(
-        `[UnknownError] There was an error\nLiFi SDK version: ${version}`
+        `[UnknownError] There was an error\nLI.FI SDK version: ${version}`
       )
     })
 
@@ -142,7 +142,7 @@ describe('SDKError', () => {
       }
 
       expect(() => testFunction()).toThrowError(
-        `Unknown error occurred\nLiFi SDK version: ${version}`
+        `Unknown error occurred\nLI.FI SDK version: ${version}`
       )
     })
 

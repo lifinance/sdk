@@ -25,6 +25,18 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
+  if (e.name === 'SendTransactionError') {
+    return new TransactionError(LiFiErrorCode.TransactionFailed, e.message, e)
+  }
+
+  if (e.message?.includes('simulate')) {
+    return new TransactionError(
+      LiFiErrorCode.TransactionSimulationFailed,
+      e.message,
+      e
+    )
+  }
+
   if (e instanceof BaseError) {
     return e
   }
