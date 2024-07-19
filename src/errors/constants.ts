@@ -33,6 +33,7 @@ export enum LiFiErrorCode {
   ExchangeRateUpdateCanceled = 1016,
   WalletChangedDuringExecution = 1017,
   TransactionExpired = 1018,
+  TransactionSimulationFailed = 1019,
 }
 
 export enum ErrorMessage {
