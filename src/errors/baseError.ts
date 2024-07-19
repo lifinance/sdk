@@ -5,21 +5,13 @@ import { getRootCause } from './utils/rootCause.js'
 //  they can carry addition to help give more context
 export class BaseError extends Error {
   code: ErrorCode
-  htmlMessage?: string
   override cause?: Error
 
-  constructor(
-    name: ErrorName,
-    code: number,
-    message: string,
-    htmlMessage?: string,
-    cause?: Error
-  ) {
+  constructor(name: ErrorName, code: number, message: string, cause?: Error) {
     super(message)
 
     this.name = name
     this.code = code
-    this.htmlMessage = htmlMessage
     this.cause = cause
 
     const rootCause = getRootCause(this.cause)

@@ -27,12 +27,7 @@ const handleSpecificErrors = async (
   process?: Process
 ) => {
   if (e.cause?.name === 'UserRejectedRequestError') {
-    return new TransactionError(
-      LiFiErrorCode.SignatureRejected,
-      e.message,
-      undefined,
-      e
-    )
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
   if (
@@ -52,7 +47,6 @@ const handleSpecificErrors = async (
       return new TransactionError(
         LiFiErrorCode.GasLimitError,
         ErrorMessage.GasLimitLow,
-        undefined,
         e
       )
     }
@@ -62,5 +56,5 @@ const handleSpecificErrors = async (
     return e
   }
 
-  return new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e)
+  return new UnknownError(e.message || ErrorMessage.UnknownError, e)
 }

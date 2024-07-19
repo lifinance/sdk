@@ -108,7 +108,6 @@ export const checkAllowance = async (
       {
         error: {
           message: error.cause.message,
-          htmlMessage: error.cause.htmlMessage,
           code: error.code,
         },
       }

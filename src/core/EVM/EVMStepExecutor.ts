@@ -408,7 +408,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
           {
             error: {
               message: error.cause.message,
-              htmlMessage: error.cause.htmlMessage,
               code: error.code,
             },
           }

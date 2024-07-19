@@ -22,28 +22,17 @@ export const parseSolanaErrors = async (
 
 const handleSpecificErrors = (e: any) => {
   if (e.name === 'WalletSignTransactionError') {
-    return new TransactionError(
-      LiFiErrorCode.SignatureRejected,
-      e.message,
-      undefined,
-      e
-    )
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
   if (e.name === 'SendTransactionError') {
-    return new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      e.message,
-      undefined,
-      e
-    )
+    return new TransactionError(LiFiErrorCode.TransactionFailed, e.message, e)
   }
 
   if (e.message?.includes('simulate')) {
     return new TransactionError(
       LiFiErrorCode.TransactionSimulationFailed,
       e.message,
-      undefined,
       e
     )
   }
@@ -52,5 +41,5 @@ const handleSpecificErrors = (e: any) => {
     return e
   }
 
-  return new UnknownError(e.message || ErrorMessage.UnknownError, undefined, e)
+  return new UnknownError(e.message || ErrorMessage.UnknownError, e)
 }
