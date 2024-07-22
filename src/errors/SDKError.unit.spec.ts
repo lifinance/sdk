@@ -55,7 +55,7 @@ describe('SDKError', () => {
       }
 
       expect(() => testFunction()).toThrowError(
-        `[HTTPError] [ValidationError] Request failed with status code 400 Bad Request\n        responseMessage: Oops\nLI.FI SDK version: ${version}`
+        `[HTTPError] [ValidationError] Request failed with status code 400 Bad Request. Oops\nLI.FI SDK version: ${version}`
       )
     })
   })
