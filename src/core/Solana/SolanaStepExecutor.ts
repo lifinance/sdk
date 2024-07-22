@@ -1,7 +1,6 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { type SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import {
-  TransactionExpiredBlockheightExceededError,
   VersionedTransaction,
   type SendOptions,
   type SignatureResult,
@@ -244,30 +243,21 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         // Stop waiting for tx confirmation
         abortController.abort()
 
+        if (!confirmedTx) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionExpired,
+            'Transaction has expired: The block height has exceeded the maximum allowed limit.'
+          )
+        }
+
         if (confirmedTx?.err) {
           const reason =
             typeof confirmedTx.err === 'object'
               ? JSON.stringify(confirmedTx.err)
               : confirmedTx.err
-          if (
-            confirmedTx.err instanceof
-            TransactionExpiredBlockheightExceededError
-          ) {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionExpired,
-              `${reason}`
-            )
-          }
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             `Transaction failed: ${reason}`
-          )
-        }
-
-        if (!confirmedTx) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionExpired,
-            'Transaction has expired: The block height has exceeded the maximum allowed limit.'
           )
         }
 

@@ -29,6 +29,10 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(LiFiErrorCode.TransactionFailed, e.message, e)
   }
 
+  if (e.name === 'TransactionExpiredBlockheightExceededError') {
+    return new TransactionError(LiFiErrorCode.TransactionExpired, e.message, e)
+  }
+
   if (e.message?.includes('simulate')) {
     return new TransactionError(
       LiFiErrorCode.TransactionSimulationFailed,
