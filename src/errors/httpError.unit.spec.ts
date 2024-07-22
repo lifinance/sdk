@@ -19,8 +19,7 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.ValidationError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request
-        responseMessage: Oops`,
+        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request. Oops`,
       },
     ],
     [
@@ -34,8 +33,7 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.NotFound,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[NotFoundError] Request failed with status code 404 Not Found
-        responseMessage: Oops`,
+        builtMessage: `[NotFoundError] Request failed with status code 404 Not Found. Oops`,
       },
     ],
     [
@@ -50,8 +48,7 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.SlippageError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[SlippageError] Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote.
-        responseMessage: Oops`,
+        builtMessage: `[SlippageError] Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote. Oops`,
       },
     ],
     [
@@ -66,8 +63,7 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ServerError] Request failed with status code 500 Internal Server Error
-        responseMessage: Oops`,
+        builtMessage: `[ServerError] Request failed with status code 500 Internal Server Error. Oops`,
       },
     ],
     [
@@ -81,8 +77,7 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ServerError] Request failed with an unknown error
-        responseMessage: Oops`,
+        builtMessage: `[ServerError] Request failed with an unknown error. Oops`,
       },
     ],
     [
