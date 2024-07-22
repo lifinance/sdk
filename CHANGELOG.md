@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.2](https://github.com/lifinance/sdk/compare/v3.1.1...v3.1.2) (2024-07-22)
+
+
+### Bug Fixes
+
+* remove response message prop name from http error message ([#202](https://github.com/lifinance/sdk/issues/202)) ([6ddd1ad](https://github.com/lifinance/sdk/commit/6ddd1ad150ea5209d52d1dca52666e8ec1ed4ef4))
+
 ### [3.1.1](https://github.com/lifinance/sdk/compare/v3.1.0...v3.1.1) (2024-07-22)
 
 
