@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.1](https://github.com/lifinance/sdk/compare/v3.1.0...v3.1.1) (2024-07-22)
+
+
+### Bug Fixes
+
+* better handle blockheight exceeded error ([2eb6158](https://github.com/lifinance/sdk/commit/2eb61587bf9453c85c22e5650a1b6ffed8f772c0))
+* reduce http transport batch size ([b89343a](https://github.com/lifinance/sdk/commit/b89343ab332bd9a549890820281e91a7fa144bc8))
+
 ## [3.1.0](https://github.com/lifinance/sdk/compare/v3.1.0-beta.0...v3.1.0) (2024-07-19)
 
 
