@@ -22,7 +22,9 @@ export const getPublicClient = async (
       url.startsWith('wss')
         ? webSocket(url)
         : http(url, {
-            batch: true,
+            batch: {
+              batchSize: 64,
+            },
           })
     )
     const _chain = await config.getChainById(chainId)
