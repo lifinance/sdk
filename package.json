@@ -93,19 +93,19 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^13.18.2",
+    "@lifi/types": "^14.0.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.1",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.17.9"
+    "viem": "^2.17.11"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.5.11",
-    "@typescript-eslint/eslint-plugin": "^7.16.1",
-    "@typescript-eslint/parser": "^7.16.1",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
     "@vitest/coverage-v8": "^2.0.4",
     "bs58": "^6.0.0",
     "eslint": "^8.57.0",
@@ -116,12 +116,12 @@
     "husky": "^9.1.1",
     "lint-staged": "^15.2.7",
     "madge": "^7.0.0",
-    "msw": "^2.3.2",
+    "msw": "^2.3.4",
     "pinst": "^3.0.0",
     "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.3",
+    "typescript": "^5.5.4",
     "vitest": "^2.0.4"
   },
   "peerDependencies": {
