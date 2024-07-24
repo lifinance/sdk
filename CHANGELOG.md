@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.3](https://github.com/lifinance/sdk/compare/v3.1.2...v3.1.3) (2024-07-24)
+
+
+### Bug Fixes
+
+* should not send execution object to the API ([714a128](https://github.com/lifinance/sdk/commit/714a12851ff5845b394fbae4656168a817f3fdcc))
+
 ### [3.1.2](https://github.com/lifinance/sdk/compare/v3.1.1...v3.1.2) (2024-07-22)
 
 
