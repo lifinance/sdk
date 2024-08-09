@@ -11,14 +11,13 @@ import type {
 } from 'viem'
 import { publicActions } from 'viem'
 import { config } from '../../config.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { TransactionError, ValidationError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import {
   getTransactionFailedMessage,
   isZeroAddress,
 } from '../../utils/index.js'
-import { ValidationError, TransactionError } from '../../errors/errors.js'
-import { LiFiErrorCode } from '../../errors/constants.js'
-import { parseEVMErrors } from './parseEVMErrors.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -31,6 +30,7 @@ import type {
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { updateMultisigRouteProcess } from './multisig.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 import { switchChain } from './switchChain.js'
 import type { MultisigConfig, MultisigTransaction } from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
@@ -68,7 +68,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (this.walletClient.account?.address !== step.action.fromAddress) {
+    let accountAddress = this.walletClient.account?.address
+    if (!accountAddress) {
+      const accountAddresses = await this.walletClient.getAddresses()
+      accountAddress = accountAddresses?.[0]
+    }
+    if (accountAddress !== step.action.fromAddress) {
       let processToUpdate = process
       if (!processToUpdate) {
         // We need to create some process if we don't have one so we can show the error
