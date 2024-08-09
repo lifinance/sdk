@@ -93,43 +93,43 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^14.0.0",
+    "@lifi/types": "^15.2.0",
     "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/web3.js": "^1.95.1",
+    "@solana/web3.js": "^1.95.2",
     "eth-rpc-errors": "^4.0.3",
-    "viem": "^2.17.11"
+    "viem": "^2.19.3"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.3.0",
+    "@commitlint/cli": "^19.4.0",
     "@commitlint/config-conventional": "^19.2.2",
     "@types/fs-extra": "^11.0.4",
-    "@types/ws": "^8.5.11",
-    "@typescript-eslint/eslint-plugin": "^7.17.0",
-    "@typescript-eslint/parser": "^7.17.0",
-    "@vitest/coverage-v8": "^2.0.4",
+    "@types/ws": "^8.5.12",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^2.0.5",
     "bs58": "^6.0.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jsdoc": "^48.8.3",
+    "eslint-plugin-jsdoc": "^48.11.0",
     "eslint-plugin-prettier": "^5.2.1",
     "fs-extra": "^11.2.0",
-    "husky": "^9.1.1",
-    "lint-staged": "^15.2.7",
-    "madge": "^7.0.0",
-    "msw": "^2.3.4",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.8",
+    "madge": "^8.0.0",
+    "msw": "^2.3.5",
     "pinst": "^3.0.0",
     "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.4"
+    "vitest": "^2.0.5"
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",
     "@solana/web3.js": "^1.93.0",
     "viem": "^2.16.0"
   },
-  "packageManager": "yarn@4.3.1",
+  "packageManager": "yarn@4.4.0",
   "publishConfig": {
     "access": "public"
   },
