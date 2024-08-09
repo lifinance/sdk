@@ -28,6 +28,9 @@ jobs:
           prerelease: false
 
   publish:
+    permissions:
+      contents: write
+      id-token: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -41,3 +44,4 @@ jobs:
           ${{ contains(github.ref_name, 'alpha') && '--tag alpha' || contains(github.ref_name, 'beta') && '--tag beta' || '' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
