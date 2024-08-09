@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.5](https://github.com/lifinance/sdk/compare/v3.1.3...v3.1.5) (2024-08-09)
+
+
+### Bug Fixes
+
+* add fallback for wallet client account address ([#213](https://github.com/lifinance/sdk/issues/213)) ([a1ea259](https://github.com/lifinance/sdk/commit/a1ea259b95a79fbce56e36bc077e87c53a2e4766))
+
 ### [3.1.4](https://github.com/lifinance/sdk/compare/v3.1.3...v3.1.4) (2024-08-09)
 
 ### [3.1.3](https://github.com/lifinance/sdk/compare/v3.1.2...v3.1.3) (2024-07-24)
