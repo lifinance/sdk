@@ -1,14 +1,10 @@
 import { ChainType, type BaseToken } from '@lifi/types'
-import type { Client, Hash, WalletClient } from 'viem'
+import type { Client, Hash } from 'viem'
 import type { SwitchChainHook } from '../types.js'
 import { type SDKProvider } from '../types.js'
 
 export interface EVMProviderOptions {
-  /**
-   * @deprecated Please replace with getConnectorClient, which serves as a direct drop-in replacement.
-   */
-  getWalletClient?: () => Promise<WalletClient>
-  getConnectorClient?: () => Promise<Client>
+  getWalletClient?: () => Promise<Client>
   switchChain?: SwitchChainHook
   multisig?: MultisigConfig
 }
