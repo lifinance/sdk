@@ -1,7 +1,6 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address } from 'viem'
-import { getContract } from 'viem'
-import { multicall } from 'viem/actions'
+import { multicall, readContract } from 'viem/actions'
 import { isNativeTokenAddress } from '../../utils/utils.js'
 import { allowanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
@@ -19,17 +18,13 @@ export const getAllowance = async (
   spenderAddress: string
 ): Promise<bigint> => {
   const client = await getPublicClient(chainId)
-  const contract = getContract({
-    address: tokenAddress as Address,
-    abi: allowanceAbi,
-    client: client,
-  })
-
   try {
-    const approved = (await contract.read.allowance([
-      ownerAddress,
-      spenderAddress,
-    ])) as bigint
+    const approved = (await readContract(client, {
+      address: tokenAddress as Address,
+      abi: allowanceAbi,
+      functionName: 'allowance',
+      args: [ownerAddress, spenderAddress],
+    })) as bigint
     return approved
   } catch (e) {
     return 0n
