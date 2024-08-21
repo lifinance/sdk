@@ -1,5 +1,11 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import type { Address } from 'viem'
+import {
+  getBalance,
+  getBlockNumber,
+  multicall,
+  readContract,
+} from 'viem/actions'
 import { isZeroAddress } from '../../utils/utils.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
@@ -57,8 +63,8 @@ const getEVMBalanceMulticall = async (
       args: [walletAddress],
     }
   })
-  const blockNumber = await client.getBlockNumber()
-  const results = await client.multicall({
+  const blockNumber = await getBlockNumber(client)
+  const results = await multicall(client, {
     contracts,
     multicallAddress: multicallAddress as Address,
     blockNumber,
@@ -83,14 +89,14 @@ const getEVMBalanceDefault = async (
   walletAddress: string
 ): Promise<TokenAmount[]> => {
   const client = await getPublicClient(chainId)
-  const blockNumber = await client.getBlockNumber()
+  const blockNumber = await getBlockNumber(client)
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
-      return client.getBalance({
+      return getBalance(client, {
         address: walletAddress as Address,
       })
     }
-    return client.readContract({
+    return readContract(client, {
       address: token.address as Address,
       abi: balanceOfAbi,
       functionName: 'balanceOf',

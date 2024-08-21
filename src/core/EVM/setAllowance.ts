@@ -1,10 +1,6 @@
-import type {
-  Hash,
-  PublicClient,
-  SendTransactionParameters,
-  WalletClient,
-} from 'viem'
-import { encodeFunctionData, publicActions } from 'viem'
+import type { Client, Hash, SendTransactionParameters } from 'viem'
+import { encodeFunctionData } from 'viem'
+import { sendTransaction } from 'viem/actions'
 import { isNativeTokenAddress } from '../../utils/utils.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
@@ -13,7 +9,7 @@ import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
-  walletClient: WalletClient,
+  client: Client,
   tokenAddress: string,
   contractAddress: string,
   amount: bigint,
@@ -29,14 +25,13 @@ export const setAllowance = async (
   if (returnPopulatedTransaction) {
     return data
   }
-  const client = walletClient.extend(publicActions)
 
   let transactionRequest: TransactionParameters = {
     to: tokenAddress,
     data,
     maxPriorityFeePerGas:
-      walletClient.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(client as PublicClient)
+      client.account?.type === 'local'
+        ? await getMaxPriorityFeePerGas(client)
         : undefined,
   }
 
@@ -53,9 +48,9 @@ export const setAllowance = async (
     }
   }
 
-  return client.sendTransaction({
+  return sendTransaction(client, {
     to: transactionRequest.to,
-    account: walletClient.account!,
+    account: client.account!,
     data: transactionRequest.data,
     gas: transactionRequest.gas,
     gasPrice: transactionRequest.gasPrice,

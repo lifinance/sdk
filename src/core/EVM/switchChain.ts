@@ -1,4 +1,5 @@
-import type { WalletClient } from 'viem'
+import type { Client } from 'viem'
+import { getChainId } from 'viem/actions'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
@@ -10,28 +11,28 @@ import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
  * If no and if user interaction is allowed it triggers the switchChainHook. If no user interaction is allowed it aborts.
  *
  * Account Type: local -
- * We need to create and return a new WalletClient from the switchChainHook in order to continue execution on a new chain.
+ * We need to create and return a new connector client from the switchChainHook in order to continue execution on a new chain.
  *
  * Account Type: json-rpc -
- * We can switch chain and return existing WalletClient from the switchChainHook in order to continue execution on a new chain.
- * @param walletClient
+ * We can switch chain and return existing connector client from the switchChainHook in order to continue execution on a new chain.
+ * @param client
  * @param statusManager
  * @param step
  * @param switchChainHook
  * @param allowUserInteraction
- * @returns New WalletClient
+ * @returns New connector client
  */
 export const switchChain = async (
-  walletClient: WalletClient,
+  client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
   allowUserInteraction: boolean,
   switchChainHook?: SwitchChainHook
-): Promise<WalletClient | undefined> => {
+): Promise<Client | undefined> => {
   // if we are already on the correct chain we can proceed directly
-  const currentChainId = await walletClient.getChainId()
+  const currentChainId = await getChainId(client)
   if (currentChainId === step.action.fromChainId) {
-    return walletClient
+    return client
   }
 
   // -> set status message
@@ -49,8 +50,11 @@ export const switchChain = async (
   }
 
   try {
-    const updatedWalletClient = await switchChainHook?.(step.action.fromChainId)
-    const updatedChainId = await updatedWalletClient?.getChainId()
+    const updatedClient = await switchChainHook?.(step.action.fromChainId)
+    let updatedChainId
+    if (updatedClient) {
+      updatedChainId = await getChainId(updatedClient)
+    }
     if (updatedChainId !== step.action.fromChainId) {
       throw new ProviderError(
         LiFiErrorCode.ChainSwitchError,
@@ -64,7 +68,7 @@ export const switchChain = async (
       'DONE'
     )
     statusManager.updateExecution(step, 'PENDING')
-    return updatedWalletClient
+    return updatedClient
   } catch (error: any) {
     statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
       error: {

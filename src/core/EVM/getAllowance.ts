@@ -1,6 +1,7 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address } from 'viem'
 import { getContract } from 'viem'
+import { multicall } from 'viem/actions'
 import { isNativeTokenAddress } from '../../utils/utils.js'
 import { allowanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
@@ -57,7 +58,7 @@ export const getAllowanceMulticall = async (
     args: [ownerAddress, token.spenderAddress],
   }))
 
-  const results = await client.multicall({
+  const results = await multicall(client, {
     contracts,
     multicallAddress: multicallAddress as Address,
   })

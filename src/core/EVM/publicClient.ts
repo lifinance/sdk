@@ -1,21 +1,19 @@
 import { ChainId } from '@lifi/types'
-import type { PublicClient } from 'viem'
-import { createPublicClient, fallback, http, webSocket } from 'viem'
+import type { Client } from 'viem'
+import { createClient, fallback, http, webSocket } from 'viem'
 import { mainnet, type Chain } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
 // cached providers
-const publicClients: Record<number, PublicClient> = {}
+const publicClients: Record<number, Client> = {}
 
 /**
  * Get an instance of a provider for a specific chain
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getPublicClient = async (
-  chainId: number
-): Promise<PublicClient> => {
+export const getPublicClient = async (chainId: number): Promise<Client> => {
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
     const fallbackTransports = urls.map((url) =>
@@ -44,7 +42,7 @@ export const getPublicClient = async (
         ...chain.contracts,
       }
     }
-    publicClients[chainId] = createPublicClient({
+    publicClients[chainId] = createClient({
       chain: chain,
       transport: fallback(fallbackTransports),
       batch: {

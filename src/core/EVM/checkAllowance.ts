@@ -1,5 +1,5 @@
 import type { Chain, LiFiStep, Process, ProcessType } from '@lifi/types'
-import type { Address, Hash, WalletClient } from 'viem'
+import type { Address, Client, Hash } from 'viem'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { getAllowance } from './getAllowance.js'
@@ -8,9 +8,9 @@ import { setAllowance } from './setAllowance.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export const checkAllowance = async (
+  client: Client,
   chain: Chain,
   step: LiFiStep,
-  walletClient: WalletClient,
   statusManager: StatusManager,
   settings?: ExecutionOptions,
   allowUserInteraction = false,
@@ -26,7 +26,7 @@ export const checkAllowance = async (
   try {
     if (allowanceProcess.txHash && allowanceProcess.status !== 'DONE') {
       await waitForApprovalTransaction(
-        walletClient,
+        client,
         allowanceProcess.txHash! as Address,
         allowanceProcess.type,
         step,
@@ -43,7 +43,7 @@ export const checkAllowance = async (
       const approved = await getAllowance(
         chain.id,
         step.action.fromToken.address,
-        walletClient.account!.address,
+        client.account!.address,
         step.estimate.approvalAddress
       )
 
@@ -56,7 +56,7 @@ export const checkAllowance = async (
 
         if (shouldBatchTransactions) {
           const approveTxHash = await setAllowance(
-            walletClient,
+            client,
             step.action.fromToken.address,
             step.estimate.approvalAddress,
             fromAmount,
@@ -74,13 +74,13 @@ export const checkAllowance = async (
         }
 
         const approveTxHash = await setAllowance(
-          walletClient,
+          client,
           step.action.fromToken.address,
           step.estimate.approvalAddress,
           fromAmount
         )
         await waitForApprovalTransaction(
-          walletClient,
+          client,
           approveTxHash,
           allowanceProcess.type,
           step,
@@ -114,7 +114,7 @@ export const checkAllowance = async (
 }
 
 const waitForApprovalTransaction = async (
-  walletClient: WalletClient,
+  client: Client,
   txHash: Hash,
   processType: ProcessType,
   step: LiFiStep,
@@ -127,7 +127,7 @@ const waitForApprovalTransaction = async (
   })
 
   const transactionReceipt = await waitForTransactionReceipt({
-    walletClient,
+    client: client,
     chainId: chain.id,
     txHash: txHash,
     onReplaced(response) {

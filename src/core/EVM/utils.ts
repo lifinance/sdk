@@ -1,12 +1,13 @@
 import { type ChainId } from '@lifi/types'
-import type { PublicClient, Transaction } from 'viem'
+import type { Client, Transaction } from 'viem'
+import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
 
 export const getMaxPriorityFeePerGas = async (
-  client: PublicClient
+  client: Client
 ): Promise<bigint | undefined> => {
-  const block = await client.getBlock({
+  const block = await getBlock(client, {
     includeTransactions: true,
   })
 
