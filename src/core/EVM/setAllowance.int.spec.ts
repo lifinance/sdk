@@ -1,6 +1,7 @@
-import type { Address, WalletClient } from 'viem'
-import { createWalletClient, http, publicActions } from 'viem'
+import type { Address, Client } from 'viem'
+import { createClient, http } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts'
+import { waitForTransactionReceipt } from 'viem/actions'
 import { polygon } from 'viem/chains'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
@@ -28,13 +29,11 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
   }
 
   const account = mnemonicToAccount(MNEMONIC as Address)
-  const walletClient: WalletClient = createWalletClient({
+  const client: Client = createClient({
     account,
     chain: polygon,
     transport: http(),
   })
-
-  const client = walletClient.extend(publicActions)
 
   beforeAll(setupTestEnvironment)
 
@@ -42,13 +41,13 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     'should revoke allowance for ERC20 on POL',
     async () => {
       const revokeTxHash = await revokeTokenApproval({
-        walletClient,
+        walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,
       })
 
       if (revokeTxHash) {
-        const transactionReceipt = await client.waitForTransactionReceipt({
+        const transactionReceipt = await waitForTransactionReceipt(client, {
           hash: revokeTxHash!,
           retryCount,
           retryDelay,
@@ -64,14 +63,14 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     'should set allowance ERC20 on POL',
     async () => {
       const approvalTxHash = await setTokenAllowance({
-        walletClient,
+        walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,
         amount: defaultAllowance,
       })
 
       if (approvalTxHash) {
-        const transactionReceipt = await client.waitForTransactionReceipt({
+        const transactionReceipt = await waitForTransactionReceipt(client, {
           hash: approvalTxHash!,
           retryCount,
           retryDelay,

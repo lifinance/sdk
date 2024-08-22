@@ -1,33 +1,32 @@
 import type { ChainId } from '@lifi/types'
 import type {
   Chain,
+  Client,
   Hash,
-  PublicClient,
   ReplacementReason,
   ReplacementReturnType,
   TransactionReceipt,
-  WalletClient,
 } from 'viem'
-import { publicActions } from 'viem'
+import { waitForTransactionReceipt as waitForTransactionReceiptInternal } from 'viem/actions'
 import { LiFiErrorCode, TransactionError } from '../../utils/index.js'
 import { getPublicClient } from './publicClient.js'
 import { retryCount, retryDelay } from './utils.js'
 
 interface WaitForTransactionReceiptProps {
-  walletClient: WalletClient
+  client: Client
   chainId: ChainId
   txHash: Hash
   onReplaced?: (response: ReplacementReturnType<Chain | undefined>) => void
 }
 
 export async function waitForTransactionReceipt({
-  walletClient,
+  client,
   chainId,
   txHash,
   onReplaced,
 }: WaitForTransactionReceiptProps): Promise<TransactionReceipt | undefined> {
   let { transactionReceipt, replacementReason } = await waitForReceipt(
-    walletClient.extend(publicActions),
+    client,
     txHash,
     onReplaced
   )
@@ -56,7 +55,7 @@ export async function waitForTransactionReceipt({
 }
 
 async function waitForReceipt(
-  client: PublicClient | WalletClient,
+  client: Client,
   txHash: Hash,
   onReplaced?: (response: ReplacementReturnType<Chain | undefined>) => void
 ): Promise<{
@@ -67,9 +66,7 @@ async function waitForReceipt(
   let transactionReceipt: TransactionReceipt | undefined
 
   try {
-    transactionReceipt = await (
-      client as PublicClient
-    ).waitForTransactionReceipt({
+    transactionReceipt = await waitForTransactionReceiptInternal(client, {
       hash: txHash,
       onReplaced: (response) => {
         replacementReason = response.reason

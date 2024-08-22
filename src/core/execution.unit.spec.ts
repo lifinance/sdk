@@ -1,5 +1,6 @@
 import { setupServer } from 'msw/node'
-import type { WalletClient } from 'viem'
+import type { Client } from 'viem'
+import { sendTransaction } from 'viem/actions'
 import {
   afterAll,
   afterEach,
@@ -15,14 +16,14 @@ import { requestSettings } from '../request.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
 
-let walletClient: Partial<WalletClient>
+let client: Partial<Client>
 
 vi.mock('../balance', () => ({
   checkBalance: vi.fn(() => Promise.resolve([])),
 }))
 
 vi.mock('../execution/switchChain', () => ({
-  switchChain: vi.fn(() => Promise.resolve(walletClient)),
+  switchChain: vi.fn(() => Promise.resolve(client)),
 }))
 
 vi.mock('../allowance/getAllowance', () => ({
@@ -42,12 +43,12 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
     requestSettings.retries = 0
     vi.clearAllMocks()
 
-    walletClient = {
+    client = {
       sendTransaction: () => Promise.resolve('0xabc'),
       getChainId: () => Promise.resolve(137),
       getAddresses: () =>
         Promise.resolve(['0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0']),
-    } as Partial<WalletClient>
+    } as Partial<Client>
   })
 
   afterEach(() => server.resetHandlers())
@@ -62,7 +63,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
 
     await executeRoute(route)
 
-    expect(walletClient.sendTransaction).toHaveBeenCalledWith({
+    expect(sendTransaction).toHaveBeenCalledWith(client, {
       gasLimit: 125000n,
       gasPrice: 100000n,
       // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget

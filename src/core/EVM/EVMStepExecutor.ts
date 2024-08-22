@@ -3,13 +3,8 @@ import type {
   FullStatusData,
   Process,
 } from '@lifi/types'
-import type {
-  Hash,
-  PublicClient,
-  SendTransactionParameters,
-  WalletClient,
-} from 'viem'
-import { publicActions } from 'viem'
+import type { Client, Hash, SendTransactionParameters } from 'viem'
+import { getAddresses, sendTransaction } from 'viem/actions'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, ValidationError } from '../../errors/errors.js'
@@ -37,40 +32,40 @@ import { getMaxPriorityFeePerGas } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
-  walletClient: WalletClient
+  client: Client
   multisig?: MultisigConfig
 }
 
 export class EVMStepExecutor extends BaseStepExecutor {
-  private walletClient: WalletClient
+  private client: Client
   private multisig?: MultisigConfig
 
   constructor(options: EVMStepExecutorOptions) {
     super(options)
-    this.walletClient = options.walletClient
+    this.client = options.client
     this.multisig = options.multisig
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
-  checkWalletClient = async (
+  checkClient = async (
     step: LiFiStepExtended,
     process?: Process
-  ): Promise<WalletClient | undefined> => {
-    const updatedWalletClient = await switchChain(
-      this.walletClient,
+  ): Promise<Client | undefined> => {
+    const updatedClient = await switchChain(
+      this.client,
       this.statusManager,
       step,
       this.allowUserInteraction,
       this.executionOptions?.switchChainHook
     )
-    if (updatedWalletClient) {
-      this.walletClient = updatedWalletClient
+    if (updatedClient) {
+      this.client = updatedClient
     }
 
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    let accountAddress = this.walletClient.account?.address
+    let accountAddress = this.client.account?.address
     if (!accountAddress) {
-      const accountAddresses = await this.walletClient.getAddresses()
+      const accountAddresses = await getAddresses(this.client)
       accountAddress = accountAddresses?.[0]
     }
     if (accountAddress !== step.action.fromAddress) {
@@ -100,7 +95,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         process
       )
     }
-    return updatedWalletClient
+    return updatedClient
   }
 
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
@@ -116,13 +111,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // All changes are already done from the source chain
     // Return the step
     if (recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
-      const updatedWalletClient = await this.checkWalletClient(step)
-      if (!updatedWalletClient) {
+      const updatedClient = await this.checkClient(step)
+      if (!updatedClient) {
         return step
       }
     }
 
-    const isMultisigWalletClient = !!this.multisig?.isMultisigWalletClient
+    const isMultisigClient = !!this.multisig?.isMultisigClient
     const multisigBatchTransactions: MultisigTransaction[] = []
 
     const shouldBatchTransactions =
@@ -144,13 +139,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const checkForAllowance =
       !existingProcess?.txHash &&
       !isZeroAddress(step.action.fromToken.address) &&
-      (shouldBatchTransactions || !isMultisigWalletClient)
+      (shouldBatchTransactions || !isMultisigClient)
 
     if (checkForAllowance) {
       const data = await checkAllowance(
+        this.client,
         fromChain,
         step,
-        this.walletClient,
         this.statusManager,
         this.executionOptions,
         this.allowUserInteraction,
@@ -180,7 +175,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       )
 
       try {
-        if (isMultisigWalletClient && multisigProcess) {
+        if (isMultisigClient && multisigProcess) {
           const multisigTxHash = multisigProcess.multisigTxHash as Hash
           if (!multisigTxHash) {
             throw new ValidationError(
@@ -200,11 +195,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
         let txHash: Hash
         if (process.txHash) {
           // Make sure that the chain is still correct
-          const updatedWalletClient = await this.checkWalletClient(
-            step,
-            process
-          )
-          if (!updatedWalletClient) {
+          const updatedClient = await this.checkClient(step, process)
+          if (!updatedClient) {
             return step
           }
 
@@ -218,7 +210,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
 
           // Check balance
-          await checkBalance(this.walletClient.account!.address, step)
+          await checkBalance(this.client.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
@@ -246,11 +238,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
           // STEP 3: Send the transaction
           // Make sure that the chain is still correct
-          const updatedWalletClient = await this.checkWalletClient(
-            step,
-            process
-          )
-          if (!updatedWalletClient) {
+          const updatedClient = await this.checkClient(step, process)
+          if (!updatedClient) {
             return step
           }
 
@@ -281,10 +270,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
             //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
             //   : undefined,
             maxPriorityFeePerGas:
-              this.walletClient.account?.type === 'local'
-                ? await getMaxPriorityFeePerGas(
-                    this.walletClient.extend(publicActions) as PublicClient
-                  )
+              this.client.account?.type === 'local'
+                ? await getMaxPriorityFeePerGas(this.client)
                 : step.transactionRequest.maxPriorityFeePerGas
                   ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
                   : undefined,
@@ -322,9 +309,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
               )
             }
           } else {
-            txHash = await this.walletClient.sendTransaction({
+            txHash = await sendTransaction(this.client, {
               to: transactionRequest.to,
-              account: this.walletClient.account!,
+              account: this.client.account!,
               data: transactionRequest.data,
               value: transactionRequest.value,
               gas: transactionRequest.gas,
@@ -336,7 +323,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           }
 
           // STEP 4: Wait for the transaction
-          if (isMultisigWalletClient) {
+          if (isMultisigClient) {
             process = this.statusManager.updateProcess(
               step,
               process.type,
@@ -359,7 +346,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
 
         const transactionReceipt = await waitForTransactionReceipt({
-          walletClient: this.walletClient,
+          client: this.client,
           chainId: fromChain.id,
           txHash,
           onReplaced: (response) => {
@@ -372,7 +359,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         // if it's multisig wallet client and the process is in ACTION_REQUIRED
         // then signatures are still needed
-        if (isMultisigWalletClient && process.status === 'ACTION_REQUIRED') {
+        if (isMultisigClient && process.status === 'ACTION_REQUIRED') {
           await updateMultisigRouteProcess(
             transactionReceipt?.transactionHash || txHash,
             step,
@@ -386,7 +373,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         // Update pending process if the transaction hash from the receipt is different.
         // This might happen if the transaction was replaced.
         if (
-          !isMultisigWalletClient &&
+          !isMultisigClient &&
           transactionReceipt?.transactionHash &&
           transactionReceipt.transactionHash !== txHash
         ) {

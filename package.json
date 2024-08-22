@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.1.5",
+  "version": "3.2.0-alpha.1",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",

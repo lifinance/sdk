@@ -1,10 +1,10 @@
 import { ChainType, type BaseToken } from '@lifi/types'
-import type { Hash, WalletClient } from 'viem'
+import type { Client, Hash } from 'viem'
 import type { SwitchChainHook } from '../types.js'
 import { type SDKProvider } from '../types.js'
 
 export interface EVMProviderOptions {
-  getWalletClient?: () => Promise<WalletClient>
+  getWalletClient?: () => Promise<Client>
   switchChain?: SwitchChainHook
   multisig?: MultisigConfig
 }
@@ -35,7 +35,7 @@ export type TokenSpenderAllowance = {
 }
 
 export interface ApproveTokenRequest {
-  walletClient: WalletClient
+  walletClient: Client
   token: BaseToken
   spenderAddress: string
   amount: bigint
@@ -46,7 +46,7 @@ export interface ApproveTokenRequest {
 }
 
 export interface RevokeApprovalRequest {
-  walletClient: WalletClient
+  walletClient: Client
   token: BaseToken
   spenderAddress: string
 }
@@ -63,7 +63,7 @@ export interface MultisigTransaction {
 }
 
 export interface MultisigConfig {
-  isMultisigWalletClient: boolean
+  isMultisigClient: boolean
   getMultisigTransactionDetails: (
     txHash: Hash,
     fromChainId: number,

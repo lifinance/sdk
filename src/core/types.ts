@@ -7,7 +7,7 @@ import type {
   Token,
   TokenAmount,
 } from '@lifi/types'
-import type { WalletClient } from 'viem'
+import type { Client } from 'viem'
 
 export interface SDKProvider {
   readonly type: ChainType
@@ -82,9 +82,7 @@ export type TransactionRequestUpdateHook = (
   updatedTxRequest: TransactionRequestParameters
 ) => Promise<TransactionParameters>
 
-export type SwitchChainHook = (
-  chainId: number
-) => Promise<WalletClient | undefined>
+export type SwitchChainHook = (chainId: number) => Promise<Client | undefined>
 
 export interface AcceptSlippageUpdateHookParams {
   toToken: Token
