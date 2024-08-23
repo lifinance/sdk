@@ -63,7 +63,7 @@ export interface MultisigTransaction {
 }
 
 export interface MultisigConfig {
-  isMultisigClient: boolean
+  isMultisigWalletClient: boolean
   getMultisigTransactionDetails: (
     txHash: Hash,
     fromChainId: number,

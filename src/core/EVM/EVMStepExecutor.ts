@@ -117,7 +117,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    const isMultisigClient = !!this.multisig?.isMultisigClient
+    const isMultisigClient = !!this.multisig?.isMultisigWalletClient
     const multisigBatchTransactions: MultisigTransaction[] = []
 
     const shouldBatchTransactions =
