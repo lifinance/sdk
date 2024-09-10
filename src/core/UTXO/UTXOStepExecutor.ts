@@ -3,7 +3,6 @@ import {
   type ExtendedTransactionInfo,
   type FullStatusData,
 } from '@lifi/types'
-import { getToolboxByChain } from '@swapkit/toolbox-utxo'
 import { address, networks, Psbt } from 'bitcoinjs-lib'
 import { withRetry, withTimeout, type Client } from 'viem'
 import { config } from '../../config.js'
@@ -24,8 +23,6 @@ import type {
   TransactionParameters,
 } from '../types.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
-import { blockchairApi } from './blockchairApi.js'
-import { Chain } from './blockchairApiTypes.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
 import { signPsbt } from './utxo-stack/actions/signPsbt.js'
@@ -149,24 +146,24 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           this.checkClient(step)
 
-          const toolbox = getToolboxByChain('BTC')({})
+          // const toolbox = getToolboxByChain('BTC')({})
 
-          const apiClient = blockchairApi({ chain: Chain.Bitcoin })
-          const txFeeRate = await apiClient.getSuggestedTxFee()
+          // const apiClient = blockchairApi({ chain: Chain.Bitcoin })
+          // const txFeeRate = await apiClient.getSuggestedTxFee()
 
-          const tx = await toolbox.buildTx({
-            assetValue: {
-              bigIntValue: step.transactionRequest.value,
-            },
-            recipient: step.transactionRequest.to,
-            memo: step.transactionRequest.data,
-            sender: this.client.account?.address,
-            chain: 'BTC',
-            apiClient: blockchairApi({ chain: Chain.Bitcoin }),
-            feeRate: txFeeRate,
-          })
+          // const tx = await toolbox.buildTx({
+          //   assetValue: {
+          //     bigIntValue: step.transactionRequest.value,
+          //   },
+          //   recipient: step.transactionRequest.to,
+          //   memo: step.transactionRequest.data,
+          //   sender: this.client.account?.address,
+          //   chain: 'BTC',
+          //   apiClient: blockchairApi({ chain: Chain.Bitcoin }),
+          //   feeRate: txFeeRate,
+          // })
 
-          let psbtHex = tx.psbt.toHex()
+          let psbtHex = transactionRequest.data // tx.psbt.toHex()
 
           const psbt = Psbt.fromHex(psbtHex, { network: networks.bitcoin })
 
