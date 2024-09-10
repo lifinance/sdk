@@ -25,10 +25,11 @@ import type {
   TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { config } from '../config.js'
-import { request } from '../request.js'
-import { isRoutesRequest, isStep } from '../typeguards.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import { request } from '../request.js'
+import { isRoutesRequest, isStep } from '../typeguards.js'
+import { withDedupe } from '../utils/withDedupe.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -220,14 +221,18 @@ export const getChains = async (
         delete params[key as keyof ChainsRequest]
     )
   }
-
-  const response = await request<ChainsResponse>(
-    `${config.get().apiUrl}/chains?${new URLSearchParams(
-      params as Record<string, string>
-    )}`,
-    {
-      signal: options?.signal,
-    }
+  const urlSearchParams = new URLSearchParams(
+    params as Record<string, string>
+  ).toString()
+  const response = await withDedupe(
+    () =>
+      request<ChainsResponse>(
+        `${config.get().apiUrl}/chains?${urlSearchParams}`,
+        {
+          signal: options?.signal,
+        }
+      ),
+    { id: `${getChains.name}.${urlSearchParams}` }
   )
   return response.chains
 }
@@ -338,15 +343,20 @@ export const getTokens = async (
         delete params[key as keyof TokensRequest]
     )
   }
-
-  return await request<TokensResponse>(
-    `${config.get().apiUrl}/tokens?${new URLSearchParams(
-      params as Record<string, string>
-    )}`,
-    {
-      signal: options?.signal,
-    }
+  const urlSearchParams = new URLSearchParams(
+    params as Record<string, string>
+  ).toString()
+  const response = await withDedupe(
+    () =>
+      request<TokensResponse>(
+        `${config.get().apiUrl}/tokens?${urlSearchParams}`,
+        {
+          signal: options?.signal,
+        }
+      ),
+    { id: `${getTokens.name}.${urlSearchParams}` }
   )
+  return response
 }
 
 /**

@@ -25,9 +25,3 @@ export function checkStepSlippageThreshold(
   }
   return actualSlippage <= setSlippage
 }
-
-export function sleep(ms: number): Promise<null> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(null), ms)
-  })
-}

@@ -4,9 +4,9 @@ import type {
   ProcessType,
   StatusResponse,
 } from '@lifi/types'
-import { getStatus } from '../services/api.js'
 import { ServerError } from '../errors/errors.js'
-import { repeatUntilDone } from '../utils/utils.js'
+import { getStatus } from '../services/api.js'
+import { waitForResult } from '../utils/waitForResult.js'
 import type { StatusManager } from './StatusManager.js'
 import { getSubstatusMessage } from './processMessages.js'
 
@@ -16,7 +16,8 @@ export async function waitForReceivingTransaction(
   txHash: string,
   statusManager: StatusManager,
   processType: ProcessType,
-  step: LiFiStep
+  step: LiFiStep,
+  interval: number = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> =>
     new Promise(async (resolve, reject) => {
@@ -62,7 +63,7 @@ export async function waitForReceivingTransaction(
   if (txHash in TRANSACTION_HASH_OBSERVERS) {
     status = await TRANSACTION_HASH_OBSERVERS[txHash]
   } else {
-    TRANSACTION_HASH_OBSERVERS[txHash] = repeatUntilDone(_getStatus, 5_000)
+    TRANSACTION_HASH_OBSERVERS[txHash] = waitForResult(_getStatus, interval)
     status = await TRANSACTION_HASH_OBSERVERS[txHash]
   }
 

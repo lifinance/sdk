@@ -1,7 +1,7 @@
 import type { LiFiStep, Process } from '@lifi/types'
 import { BaseError } from '../../errors/baseError.js'
-import { ErrorMessage } from '../../errors/constants.js'
-import { UnknownError } from '../../errors/errors.js'
+import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
+import { TransactionError, UnknownError } from '../../errors/errors.js'
 import { SDKError } from '../../errors/SDKError.js'
 
 export const parseUTXOErrors = async (
@@ -21,6 +21,13 @@ export const parseUTXOErrors = async (
 }
 
 const handleSpecificErrors = (e: any) => {
+  if (e.code === 4001 || e.code === -32000) {
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
+  if (e.code === -5 || e.code === -32700 || e.code === -32064) {
+    return new TransactionError(LiFiErrorCode.NotFound, e.message, e)
+  }
+
   if (e instanceof BaseError) {
     return e
   }

@@ -1,4 +1,4 @@
-import { isAddress } from './isAddress.js'
+import { isSVMAddress } from './isSVMAddress.js'
 
 interface SNSResult {
   s: 'ok' | 'error'
@@ -21,7 +21,7 @@ export const getSNSAddress = async (name: string) => {
 
     const data: SNSResult = await response.json()
 
-    if (!isAddress(data.result)) {
+    if (!isSVMAddress(data.result)) {
       return
     }
 

@@ -6,7 +6,7 @@ import {
   multicall,
   readContract,
 } from 'viem/actions'
-import { isZeroAddress } from '../../utils/utils.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'

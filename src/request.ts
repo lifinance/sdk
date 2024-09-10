@@ -1,9 +1,9 @@
 import { config } from './config.js'
-import { HTTPError } from './errors/httpError.js'
-import { wait } from './utils/utils.js'
 import { ValidationError } from './errors/errors.js'
+import { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
 import type { ExtendedRequestInit } from './types/request.js'
+import { sleep } from './utils/sleep.js'
 import { version } from './version.js'
 
 export const requestSettings = {
@@ -82,7 +82,7 @@ export const request = async <T = Response>(
     return await response.json()
   } catch (error) {
     if (options.retries > 0 && (error as HTTPError).status === 500) {
-      await wait(500)
+      await sleep(500)
       return request<T>(url, { ...options, retries: options.retries - 1 })
     }
 

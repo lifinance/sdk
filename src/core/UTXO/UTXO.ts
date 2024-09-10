@@ -1,8 +1,8 @@
 import { ChainType } from '@lifi/types'
-import { isAddress } from 'viem'
 import type { StepExecutorOptions } from '../types.js'
 import { UTXOStepExecutor } from './UTXOStepExecutor.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
+import { isUTXOAddress } from './isUTXOAddress.js'
 import type { UTXOProvider, UTXOProviderOptions } from './types.js'
 
 export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
@@ -11,7 +11,7 @@ export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
     get type() {
       return ChainType.UTXO
     },
-    isAddress,
+    isAddress: isUTXOAddress,
     async resolveAddress(name) {
       // Not supported on UTXO yet
       return name

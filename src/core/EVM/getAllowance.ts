@@ -1,7 +1,7 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address } from 'viem'
 import { multicall, readContract } from 'viem/actions'
-import { isNativeTokenAddress } from '../../utils/utils.js'
+import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
 import { allowanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import type {

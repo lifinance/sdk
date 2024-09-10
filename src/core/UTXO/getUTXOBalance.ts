@@ -1,4 +1,6 @@
-import type { ChainId, Token, TokenAmount } from '@lifi/types'
+import { ChainId, type Token, type TokenAmount } from '@lifi/types'
+import { getUTXOAPIPublicClient } from './getUTXOAPIPublicClient.js'
+import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 
 export const getUTXOBalance = async (
   walletAddress: string,
@@ -14,13 +16,16 @@ export const getUTXOBalance = async (
     }
   })
 
-  return getUTXOBalanceDefault(chainId, tokens, walletAddress)
-}
+  const apiClient = await getUTXOAPIPublicClient(ChainId.BTC)
+  const client = await getUTXOPublicClient(ChainId.BTC)
+  const [balance, blockCount] = await Promise.all([
+    apiClient.getBalance({ address: walletAddress }),
+    client.getBlockCount(),
+  ])
 
-const getUTXOBalanceDefault = async (
-  _chainId: ChainId,
-  tokens: Token[],
-  walletAddress: string
-): Promise<TokenAmount[]> => {
-  return []
+  return tokens.map((token) => ({
+    ...token,
+    amount: balance,
+    blockNumber: BigInt(blockCount),
+  }))
 }

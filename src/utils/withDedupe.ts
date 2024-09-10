@@ -1,0 +1,46 @@
+/**
+ * Map with a LRU (Least recently used) policy.
+ *
+ * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
+ */
+export class LruMap<value = unknown> extends Map<string, value> {
+  maxSize: number
+
+  constructor(size: number) {
+    super()
+    this.maxSize = size
+  }
+
+  override set(key: string, value: value) {
+    super.set(key, value)
+    if (this.maxSize && this.size > this.maxSize) {
+      this.delete(this.keys().next().value)
+    }
+    return this
+  }
+}
+
+/** @internal */
+export const promiseCache = /*#__PURE__*/ new LruMap<Promise<any>>(8192)
+
+type WithDedupeOptions = {
+  enabled?: boolean | undefined
+  id?: string | undefined
+}
+
+// eslint-disable-next-line jsdoc/require-param, jsdoc/require-returns
+/** Deduplicates in-flight promises. */
+export function withDedupe<data>(
+  fn: () => Promise<data>,
+  { enabled = true, id }: WithDedupeOptions
+): Promise<data> {
+  if (!enabled || !id) {
+    return fn()
+  }
+  if (promiseCache.get(id)) {
+    return promiseCache.get(id)!
+  }
+  const promise = fn().finally(() => promiseCache.delete(id))
+  promiseCache.set(id, promise)
+  return promise
+}

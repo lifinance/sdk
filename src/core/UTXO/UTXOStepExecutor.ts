@@ -1,11 +1,34 @@
-import type { Process } from '@lifi/types'
-import type { Client } from 'viem'
-import { getAddresses } from 'viem/actions'
+import {
+  ChainId,
+  type ExtendedTransactionInfo,
+  type FullStatusData,
+} from '@lifi/types'
+import { getToolboxByChain } from '@swapkit/toolbox-utxo'
+import { address, networks, Psbt } from 'bitcoinjs-lib'
+import { withRetry, withTimeout, type Client } from 'viem'
+import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import { getStepTransaction } from '../../services/api.js'
+import {
+  getTransactionFailedMessage,
+  waitForResult,
+} from '../../utils/index.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import type { LiFiStepExtended, StepExecutorOptions } from '../types.js'
+import { checkBalance } from '../checkBalance.js'
+import { getSubstatusMessage } from '../processMessages.js'
+import { stepComparison } from '../stepComparison.js'
+import type {
+  LiFiStepExtended,
+  StepExecutorOptions,
+  TransactionParameters,
+} from '../types.js'
+import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
+import { blockchairApi } from './blockchairApi.js'
+import { Chain } from './blockchairApiTypes.js'
+import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
+import { signPsbt } from './utxo-stack/actions/signPsbt.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -19,44 +42,313 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     this.client = options.client
   }
 
-  // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (step: LiFiStepExtended, process?: Process) => {
+  checkClient = (step: LiFiStepExtended) => {
+    // TODO: check chain and possibly implement chain switch?
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    let accountAddress = this.client.account?.address
-    if (!accountAddress) {
-      const accountAddresses = await getAddresses(this.client)
-      accountAddress = accountAddresses?.[0]
-    }
-    if (accountAddress !== step.action.fromAddress) {
-      let processToUpdate = process
-      if (!processToUpdate) {
-        // We need to create some process if we don't have one so we can show the error
-        processToUpdate = this.statusManager.findOrCreateProcess(
-          step,
-          'TRANSACTION'
-        )
-      }
-      const errorMessage =
+    if (this.client.account?.address !== step.action.fromAddress) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      this.statusManager.updateProcess(step, processToUpdate.type, 'FAILED', {
-        error: {
-          code: LiFiErrorCode.WalletChangedDuringExecution,
-          message: errorMessage,
-        },
-      })
-      this.statusManager.updateExecution(step, 'FAILED')
-      throw await parseUTXOErrors(
-        new TransactionError(
-          LiFiErrorCode.WalletChangedDuringExecution,
-          errorMessage
-        ),
-        step,
-        process
       )
     }
   }
 
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
+    step.execution = this.statusManager.initExecutionObject(step)
+
+    const fromChain = await config.getChainById(step.action.fromChainId)
+    const toChain = await config.getChainById(step.action.toChainId)
+
+    const isBridgeExecution = fromChain.id !== toChain.id
+    const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+
+    // STEP 2: Get transaction
+    let process = this.statusManager.findOrCreateProcess(
+      step,
+      currentProcessType
+    )
+
+    const publicClient = await getUTXOPublicClient(ChainId.BTC)
+
+    if (process.status !== 'DONE') {
+      try {
+        let txHash: string
+        if (process.txHash) {
+          // Make sure that the chain is still correct
+          this.checkClient(step)
+
+          // Wait for exiting transaction
+          txHash = process.txHash
+        } else {
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'STARTED'
+          )
+
+          // Check balance
+          await checkBalance(this.client.account!.address, step)
+
+          // Create new transaction
+          if (!step.transactionRequest) {
+            const { execution, ...stepBase } = step
+            const updatedStep = await getStepTransaction(stepBase)
+            const comparedStep = await stepComparison(
+              this.statusManager,
+              step,
+              updatedStep,
+              this.allowUserInteraction,
+              this.executionOptions
+            )
+            step = {
+              ...comparedStep,
+              execution: step.execution,
+            }
+          }
+
+          if (!step.transactionRequest?.data) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionUnprepared,
+              'Unable to prepare transaction.'
+            )
+          }
+
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'ACTION_REQUIRED'
+          )
+
+          if (!this.allowUserInteraction) {
+            return step
+          }
+
+          let transactionRequest: TransactionParameters = {
+            data: step.transactionRequest.data,
+          }
+
+          if (this.executionOptions?.updateTransactionRequestHook) {
+            const customizedTransactionRequest: TransactionParameters =
+              await this.executionOptions.updateTransactionRequestHook({
+                requestType: 'transaction',
+                ...transactionRequest,
+              })
+
+            transactionRequest = {
+              ...transactionRequest,
+              ...customizedTransactionRequest,
+            }
+          }
+
+          if (!transactionRequest.data) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionUnprepared,
+              'Unable to prepare transaction.'
+            )
+          }
+
+          this.checkClient(step)
+
+          const toolbox = getToolboxByChain('BTC')({})
+
+          const apiClient = blockchairApi({ chain: Chain.Bitcoin })
+          const txFeeRate = await apiClient.getSuggestedTxFee()
+
+          const tx = await toolbox.buildTx({
+            assetValue: {
+              bigIntValue: step.transactionRequest.value,
+            },
+            recipient: step.transactionRequest.to,
+            memo: step.transactionRequest.data,
+            sender: this.client.account?.address,
+            chain: 'BTC',
+            apiClient: blockchairApi({ chain: Chain.Bitcoin }),
+            feeRate: txFeeRate,
+          })
+
+          let psbtHex = tx.psbt.toHex()
+
+          const psbt = Psbt.fromHex(psbtHex, { network: networks.bitcoin })
+
+          const inputsToSign = Array.from(
+            psbt.data.inputs
+              .reduce((map, input, index) => {
+                const accountAddress = input.witnessUtxo
+                  ? address.fromOutputScript(
+                      input.witnessUtxo.script,
+                      networks.bitcoin
+                    )
+                  : (this.client.account?.address as string)
+                if (map.has(accountAddress)) {
+                  map.get(accountAddress).signingIndexes.push(index)
+                } else {
+                  map.set(accountAddress, {
+                    address: accountAddress,
+                    sigHash: 1, // Default to Transaction.SIGHASH_ALL - 1
+                    signingIndexes: [index],
+                  })
+                }
+                return map
+              }, new Map())
+              .values()
+          )
+
+          // Modify the input sequence number to enable RBF
+          psbt.txInputs.forEach((_, index) => {
+            // Set sequence number to less than 0xfffffffe, e.g., 0xfffffffd
+            psbt.setInputSequence(index, 0xfffffffd)
+          })
+
+          psbtHex = psbt.toHex()
+
+          // We give users 10 minutes to sign the transaction or it should be considered expired
+          const signedPsbtHex = await withTimeout(
+            () =>
+              signPsbt(this.client, {
+                psbt: psbtHex,
+                inputsToSign: inputsToSign,
+                finalize: false,
+              }),
+            {
+              timeout: 600_000,
+              errorInstance: new TransactionError(
+                LiFiErrorCode.TransactionExpired,
+                'Transaction has expired.'
+              ),
+            }
+          )
+
+          const signedPsbt = Psbt.fromHex(signedPsbtHex).finalizeAllInputs()
+
+          const transactionHex = signedPsbt.extractTransaction().toHex()
+
+          txHash = await publicClient.sendUTXOTransaction({
+            hex: transactionHex,
+          })
+
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'PENDING',
+            {
+              txHash: txHash,
+              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+            }
+          )
+        }
+
+        // TODO: improve logic to detect RBF transactions
+        await waitForResult(
+          () =>
+            withRetry(
+              async () => {
+                const tx = await publicClient.getUTXOTransaction({
+                  txId: txHash,
+                })
+                // If there are no confirmations, it means the transaction is still in the mempool
+                if (!tx.confirmations) {
+                  return
+                }
+                return tx
+              },
+              {
+                retryCount: 10,
+                delay: 1000,
+              }
+            ),
+          10_000
+        )
+
+        if (isBridgeExecution) {
+          process = this.statusManager.updateProcess(step, process.type, 'DONE')
+        }
+      } catch (e: any) {
+        const error = await parseUTXOErrors(e, step, process)
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'FAILED',
+          {
+            error: {
+              message: error.cause.message,
+              code: error.code,
+            },
+          }
+        )
+        this.statusManager.updateExecution(step, 'FAILED')
+        throw error
+      }
+    }
+
+    // STEP 5: Wait for the receiving chain
+    const processTxHash = process.txHash
+    if (isBridgeExecution) {
+      process = this.statusManager.findOrCreateProcess(
+        step,
+        'RECEIVING_CHAIN',
+        'PENDING'
+      )
+    }
+    let statusResponse: FullStatusData
+    try {
+      if (!processTxHash) {
+        throw new Error('Transaction hash is undefined.')
+      }
+      statusResponse = (await waitForReceivingTransaction(
+        processTxHash,
+        this.statusManager,
+        process.type,
+        step,
+        10_000
+      )) as FullStatusData
+
+      const statusReceiving =
+        statusResponse.receiving as ExtendedTransactionInfo
+
+      process = this.statusManager.updateProcess(step, process.type, 'DONE', {
+        substatus: statusResponse.substatus,
+        substatusMessage:
+          statusResponse.substatusMessage ||
+          getSubstatusMessage(statusResponse.status, statusResponse.substatus),
+        txHash: statusReceiving?.txHash,
+        txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
+      })
+
+      this.statusManager.updateExecution(step, 'DONE', {
+        fromAmount: statusResponse.sending.amount,
+        toAmount: statusReceiving?.amount,
+        toToken: statusReceiving?.token,
+        gasCosts: [
+          {
+            amount: statusResponse.sending.gasAmount,
+            amountUSD: statusResponse.sending.gasAmountUSD,
+            token: statusResponse.sending.gasToken,
+            estimate: statusResponse.sending.gasUsed,
+            limit: statusResponse.sending.gasUsed,
+            price: statusResponse.sending.gasPrice,
+            type: 'SEND',
+          },
+        ],
+      })
+    } catch (e: unknown) {
+      const htmlMessage = await getTransactionFailedMessage(
+        step,
+        process.txLink
+      )
+
+      process = this.statusManager.updateProcess(step, process.type, 'FAILED', {
+        error: {
+          code: LiFiErrorCode.TransactionFailed,
+          message: 'Failed while waiting for receiving chain.',
+          htmlMessage,
+        },
+      })
+      this.statusManager.updateExecution(step, 'FAILED')
+      console.warn(e)
+      throw e
+    }
+
+    // DONE
     return step
   }
 }

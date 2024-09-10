@@ -9,10 +9,8 @@ import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, ValidationError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import {
-  getTransactionFailedMessage,
-  isZeroAddress,
-} from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/index.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
