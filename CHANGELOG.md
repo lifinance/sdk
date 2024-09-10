@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.2.0](https://github.com/lifinance/sdk/compare/v3.1.5...v3.2.0) (2024-09-10)
+
+
+### Features
+
+* replace wallet and public clients with base client ([#215](https://github.com/lifinance/sdk/issues/215)) ([76122c6](https://github.com/lifinance/sdk/commit/76122c6993130a8d2273ff37bda3ee2344fd965a))
+
 ### [3.1.5](https://github.com/lifinance/sdk/compare/v3.1.3...v3.1.5) (2024-08-09)
 
 
