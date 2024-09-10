@@ -1,34 +1,36 @@
-import type {
-  ChainId,
-  ChainKey,
-  ChainsRequest,
-  ChainsResponse,
-  ConnectionsRequest,
-  ConnectionsResponse,
-  ContractCallsQuoteRequest,
-  ExtendedChain,
-  GasRecommendationRequest,
-  GasRecommendationResponse,
-  GetStatusRequest,
-  LiFiStep,
-  QuoteRequest,
-  RequestOptions,
-  RoutesRequest,
-  RoutesResponse,
-  StatusResponse,
-  Token,
-  TokensRequest,
-  TokensResponse,
-  ToolsRequest,
-  ToolsResponse,
-  TransactionAnalyticsRequest,
-  TransactionAnalyticsResponse,
+import {
+  isContractCallsRequestWithFromAmount,
+  isContractCallsRequestWithToAmount,
+  type ChainId,
+  type ChainKey,
+  type ChainsRequest,
+  type ChainsResponse,
+  type ConnectionsRequest,
+  type ConnectionsResponse,
+  type ContractCallsQuoteRequest,
+  type ExtendedChain,
+  type GasRecommendationRequest,
+  type GasRecommendationResponse,
+  type GetStatusRequest,
+  type LiFiStep,
+  type QuoteRequest,
+  type RequestOptions,
+  type RoutesRequest,
+  type RoutesResponse,
+  type StatusResponse,
+  type Token,
+  type TokensRequest,
+  type TokensResponse,
+  type ToolsRequest,
+  type ToolsResponse,
+  type TransactionAnalyticsRequest,
+  type TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { config } from '../config.js'
-import { request } from '../request.js'
-import { isRoutesRequest, isStep } from '../typeguards.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import { request } from '../request.js'
+import { isRoutesRequest, isStep } from '../typeguards.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -139,7 +141,6 @@ export const getContractCallsQuote = async (
     'fromAddress',
     'toChain',
     'toToken',
-    'toAmount',
     'contractCalls',
   ]
   requiredParameters.forEach((requiredParameter) => {
@@ -151,6 +152,16 @@ export const getContractCallsQuote = async (
       )
     }
   })
+  if (
+    !isContractCallsRequestWithFromAmount(params) ||
+    !isContractCallsRequestWithToAmount(params)
+  ) {
+    throw new SDKError(
+      new ValidationError(
+        `Required parameter "fromAmount" or "toAmount" is missing.`
+      )
+    )
+  }
   const _config = config.get()
   // apply defaults
   // option.order is not used in this endpoint
