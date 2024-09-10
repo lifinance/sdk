@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.2.0-alpha.1",
+  "version": "3.2.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -93,22 +93,22 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^15.3.0",
-    "@noble/hashes": "^1.4.0",
+    "@lifi/types": "^15.10.2",
+    "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.3",
-    "@swapkit/helpers": "1.0.0-rc.83",
-    "@swapkit/tokens": "1.0.0-rc.34",
-    "@swapkit/toolbox-utxo": "1.0.0-rc.91",
-    "@swapkit/types": "1.0.0-rc.47",
+    "@swapkit/helpers": "1.8.0",
+    "@swapkit/tokens": "1.5.0",
+    "@swapkit/toolbox-utxo": "1.1.11",
+    "@swapkit/types": "1.0.0-rc.46",
     "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^6.1.6",
+    "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.20.0"
+    "viem": "^2.21.4"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.4.0",
-    "@commitlint/config-conventional": "^19.2.2",
+    "@commitlint/cli": "^19.4.1",
+    "@commitlint/config-conventional": "^19.4.1",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.5.12",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -120,14 +120,14 @@
     "eslint-plugin-prettier": "^5.2.1",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.5",
-    "lint-staged": "^15.2.9",
+    "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
-    "msw": "^2.3.5",
+    "msw": "^2.4.4",
     "pinst": "^3.0.0",
     "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
+    "typescript": "^5.6.2",
     "vitest": "^2.0.5"
   },
   "peerDependencies": {
