@@ -21,7 +21,7 @@ export const parseUTXOErrors = async (
 }
 
 const handleSpecificErrors = (e: any) => {
-  if (e.code === 4001 || e.code === -32000) {
+  if (e.code === 4001 || e.code === -32000 || e.cause?.includes?.('rejected')) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
   if (e.code === -5 || e.code === -32700 || e.code === -32064) {
