@@ -190,12 +190,6 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               .values()
           )
 
-          // Modify the input sequence number to enable RBF
-          psbt.txInputs.forEach((_, index) => {
-            // Set sequence number to less than 0xfffffffe, e.g., 0xfffffffd
-            psbt.setInputSequence(index, 0xfffffffd)
-          })
-
           psbtHex = psbt.toHex()
 
           // We give users 10 minutes to sign the transaction or it should be considered expired
