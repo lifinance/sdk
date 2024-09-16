@@ -154,7 +154,7 @@ export const getContractCallsQuote = async (
     }
   })
   if (
-    !isContractCallsRequestWithFromAmount(params) ||
+    !isContractCallsRequestWithFromAmount(params) &&
     !isContractCallsRequestWithToAmount(params)
   ) {
     throw new SDKError(
