@@ -122,7 +122,7 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
-    "msw": "^2.4.7",
+    "msw": "^2.4.8",
     "pinst": "^3.0.0",
     "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
