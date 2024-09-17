@@ -39,11 +39,11 @@ export const switchChain = async (
   step.execution = statusManager.initExecutionObject(step)
   statusManager.updateExecution(step, 'ACTION_REQUIRED')
 
-  let switchProcess = statusManager.findOrCreateProcess(
+  let switchProcess = statusManager.findOrCreateProcess({
     step,
-    'SWITCH_CHAIN',
-    'ACTION_REQUIRED'
-  )
+    type: 'SWITCH_CHAIN',
+    status: 'ACTION_REQUIRED',
+  })
 
   if (!allowUserInteraction) {
     return
