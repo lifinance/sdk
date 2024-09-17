@@ -1,4 +1,5 @@
 import type {
+  ChainId,
   Execution,
   ExecutionStatus,
   LiFiStep,
@@ -10,19 +11,12 @@ import { executionState } from './executionState.js'
 import { getProcessMessage } from './processMessages.js'
 import type { LiFiStepExtended } from './types.js'
 
-type OptionalParameters = Partial<
-  Pick<
-    Process,
-    | 'doneAt'
-    | 'failedAt'
-    | 'txHash'
-    | 'txLink'
-    | 'error'
-    | 'substatus'
-    | 'substatusMessage'
-    | 'multisigTxHash'
-  >
->
+export type FindOrCreateProcessProps = {
+  step: LiFiStepExtended
+  type: ProcessType
+  chainId?: ChainId
+  status?: ProcessStatus
+}
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
@@ -88,16 +82,23 @@ export class StatusManager {
 
   /**
    * Create and push a new process into the execution.
-   * @param step The step that should contain the new process.
-   * @param type Type of the process. Used to identify already existing processes.
-   * @param status By default created procces is set to the STARTED status. We can override new process with the needed status.
+   * @param step.step The step that should contain the new process.
+   * @param step.type Type of the process. Used to identify already existing processes.
+   * @param step.chainId Chain Id of the process.
+   * @param step.status By default created procces is set to the STARTED status. We can override new process with the needed status.
+   * @param root0
+   * @param root0.step
+   * @param root0.type
+   * @param root0.chainId
+   * @param root0.status
    * @returns Returns process.
    */
-  findOrCreateProcess = (
-    step: LiFiStepExtended,
-    type: ProcessType,
-    status?: ProcessStatus
-  ): Process => {
+  findOrCreateProcess = ({
+    step,
+    type,
+    chainId,
+    status,
+  }: FindOrCreateProcessProps): Process => {
     if (!step.execution?.process) {
       throw new Error("Execution hasn't been initialized.")
     }
@@ -117,6 +118,7 @@ export class StatusManager {
       startedAt: Date.now(),
       message: getProcessMessage(type, status ?? 'STARTED'),
       status: status ?? 'STARTED',
+      chainId: chainId,
     }
 
     step.execution.process.push(newProcess)
@@ -136,7 +138,7 @@ export class StatusManager {
     step: LiFiStepExtended,
     type: ProcessType,
     status: ProcessStatus,
-    params?: OptionalParameters
+    params?: Partial<Process>
   ): Process => {
     if (!step.execution) {
       throw new Error("Can't update an empty step execution.")

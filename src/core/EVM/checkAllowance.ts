@@ -17,10 +17,11 @@ export const checkAllowance = async (
   shouldBatchTransactions = false
 ): Promise<Hash | void> => {
   // Ask the user to set an allowance
-  let allowanceProcess: Process = statusManager.findOrCreateProcess(
+  let allowanceProcess: Process = statusManager.findOrCreateProcess({
     step,
-    'TOKEN_ALLOWANCE'
-  )
+    type: 'TOKEN_ALLOWANCE',
+    chainId: step.action.fromChainId,
+  })
 
   // Check allowance
   try {

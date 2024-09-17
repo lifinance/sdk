@@ -72,10 +72,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
       let processToUpdate = process
       if (!processToUpdate) {
         // We need to create some process if we don't have one so we can show the error
-        processToUpdate = this.statusManager.findOrCreateProcess(
+        processToUpdate = this.statusManager.findOrCreateProcess({
           step,
-          'TRANSACTION'
-        )
+          type: 'TRANSACTION',
+        })
       }
       const errorMessage =
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -164,10 +164,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     // STEP 2: Get transaction
-    let process = this.statusManager.findOrCreateProcess(
+    let process = this.statusManager.findOrCreateProcess({
       step,
-      currentProcessType
-    )
+      type: currentProcessType,
+      chainId: fromChain.id,
+    })
 
     if (process.status !== 'DONE') {
       const multisigProcess = step.execution.process.find(
@@ -413,11 +414,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // STEP 5: Wait for the receiving chain
     const processTxHash = process.txHash
     if (isBridgeExecution) {
-      process = this.statusManager.findOrCreateProcess(
+      process = this.statusManager.findOrCreateProcess({
         step,
-        'RECEIVING_CHAIN',
-        'PENDING'
-      )
+        type: 'RECEIVING_CHAIN',
+        status: 'PENDING',
+        chainId: toChain.id,
+      })
     }
     let statusResponse: FullStatusData
 

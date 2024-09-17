@@ -129,7 +129,10 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess(structuredClone(step), 'SWAP')
+          statusManager.findOrCreateProcess({
+            step: structuredClone(step),
+            type: 'SWAP',
+          })
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -141,10 +144,10 @@ describe('StatusManager', () => {
 
       describe('and the process already exists', () => {
         it('should return the process and not call the callbacks', () => {
-          const process = statusManager.findOrCreateProcess(
-            structuredClone(step),
-            'TOKEN_ALLOWANCE'
-          )
+          const process = statusManager.findOrCreateProcess({
+            step: structuredClone(step),
+            type: 'TOKEN_ALLOWANCE',
+          })
 
           expect(process).toEqual(step.execution?.process[0])
 
@@ -154,10 +157,10 @@ describe('StatusManager', () => {
 
       describe("and the process doesn't exist", () => {
         it('should create a process and call the callbacks with the updated route', () => {
-          const process = statusManager.findOrCreateProcess(
-            structuredClone(step),
-            'CROSS_CHAIN'
-          )
+          const process = statusManager.findOrCreateProcess({
+            step: structuredClone(step),
+            type: 'CROSS_CHAIN',
+          })
 
           expect(process.type).toEqual('CROSS_CHAIN')
           expect(process.status).toEqual('STARTED')
