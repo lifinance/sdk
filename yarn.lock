@@ -724,7 +724,7 @@ __metadata:
   dependencies:
     "@commitlint/cli": "npm:^19.5.0"
     "@commitlint/config-conventional": "npm:^19.5.0"
-    "@lifi/types": "npm:^15.11.0"
+    "@lifi/types": "npm:^15.13.0"
     "@noble/hashes": "npm:^1.5.0"
     "@solana/wallet-adapter-base": "npm:^0.9.23"
     "@solana/web3.js": "npm:^1.95.3"
@@ -740,7 +740,7 @@ __metadata:
     bech32: "npm:^2.0.0"
     bitcoinjs-lib: "npm:^7.0.0-rc.0"
     bs58: "npm:^6.0.0"
-    eslint: "npm:^8.57.0"
+    eslint: "npm:^8.57.1"
     eslint-config-prettier: "npm:^9.1.0"
     eslint-plugin-jsdoc: "npm:^48.11.0"
     eslint-plugin-prettier: "npm:^5.2.1"
@@ -754,7 +754,7 @@ __metadata:
     standard-version: "npm:^9.5.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.6.2"
-    viem: "npm:^2.21.7"
+    viem: "npm:^2.21.8"
     vitest: "npm:^2.1.1"
   peerDependencies:
     "@solana/wallet-adapter-base": ^0.9.0
@@ -763,7 +763,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lifi/types@npm:^15.11.0":
+"@lifi/types@npm:^15.13.0":
   version: 15.13.0
   resolution: "@lifi/types@npm:15.13.0"
   checksum: 10/32bea41ec4c3ee75b5fabb40045b5af529de336712b72c0158870d12024d6e006cb17507a26c7b15466a18436e11290f11699c973bc16fcbf055d1e4649ab070
@@ -3535,7 +3535,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^8.57.0":
+"eslint@npm:^8.57.1":
   version: 8.57.1
   resolution: "eslint@npm:8.57.1"
   dependencies:
@@ -7514,7 +7514,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:^2.21.7":
+"viem@npm:^2.21.8":
   version: 2.21.8
   resolution: "viem@npm:2.21.8"
   dependencies:
