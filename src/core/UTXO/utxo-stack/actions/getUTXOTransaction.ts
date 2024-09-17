@@ -6,7 +6,7 @@ export type GetUTXOTransactionParameters = {
   /** The Id of the transaction */
   txId: string
   /** The block in which to look for the transaction */
-  blockhash?: string
+  blockHash?: string
 }
 
 export type GetUTXOTransactionReturnType = UTXOTransaction
@@ -16,11 +16,11 @@ export async function getUTXOTransaction<
   A extends Account | undefined = Account | undefined,
 >(
   client: Client<Transport, C, A, UTXOSchema>,
-  { txId, blockhash }: GetUTXOTransactionParameters
+  { txId, blockHash }: GetUTXOTransactionParameters
 ): Promise<GetUTXOTransactionReturnType> {
   const params: [string, boolean, string?] = [txId, true]
-  if (blockhash) {
-    params.push(blockhash)
+  if (blockHash) {
+    params.push(blockHash)
   }
   const data = await client.request({
     method: 'getrawtransaction',

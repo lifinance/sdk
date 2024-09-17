@@ -48,6 +48,7 @@ export const getUTXOPublicClient = async (chainId: number) => {
       chain,
       rpcSchema: rpcSchema<UTXOSchema>(),
       transport: fallback(fallbackTransports),
+      pollingInterval: 10_000,
     }).extend(UTXOActions)
     publicClients[chainId] = client
   }

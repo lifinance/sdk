@@ -1,3 +1,4 @@
+import type { BlockStats, BlockStatsKeys } from '../../types/blockStats.js'
 import type { UTXOTransaction } from '../../types/transaction.js'
 import type { HttpRpcClient } from './getHttpRpcClient.js'
 
@@ -6,6 +7,21 @@ export type UTXOSchema = [
     Method: 'getblockcount'
     Parameters: []
     ReturnType: number
+  },
+  {
+    Method: 'getblockhash'
+    Parameters: [number]
+    ReturnType: string
+  },
+  {
+    Method: 'getblock'
+    Parameters: [string, number]
+    ReturnType: string
+  },
+  {
+    Method: 'getblockstats'
+    Parameters: [string | number, Array<BlockStatsKeys>?]
+    ReturnType: BlockStats
   },
   {
     Method: 'sendrawtransaction'

@@ -26,6 +26,10 @@ import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
 import { signPsbt } from './utxo-stack/actions/signPsbt.js'
+import {
+  waitForTransaction,
+  type ReplacementReason,
+} from './utxo-stack/actions/waitForTransaction.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -148,7 +152,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           // const toolbox = getToolboxByChain('BTC')({})
 
-          // const apiClient = blockchairApi({ chain: Chain.Bitcoin })
+          // const apiClient = blockchairApi({ chain: 'BTC' as UTXOChain })
           // const txFeeRate = await apiClient.getSuggestedTxFee()
 
           // const tx = await toolbox.buildTx({
@@ -159,8 +163,20 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           //   memo: step.transactionRequest.data,
           //   sender: this.client.account?.address,
           //   chain: 'BTC',
-          //   apiClient: blockchairApi({ chain: Chain.Bitcoin }),
-          //   feeRate: txFeeRate,
+          //   apiClient: blockchairApi({ chain: 'BTC' as UTXOChain }),
+          //   feeRate: txFeeRate * 0.75,
+          // })
+
+          // const tx2 = await toolbox.buildTx({
+          //   assetValue: {
+          //     bigIntValue: step.transactionRequest.value,
+          //   },
+          //   recipient: step.transactionRequest.to,
+          //   memo: step.transactionRequest.data,
+          //   sender: this.client.account?.address,
+          //   chain: 'BTC',
+          //   apiClient: blockchairApi({ chain: 'BTC' as UTXOChain }),
+          //   feeRate: txFeeRate * 1.25,
           // })
 
           let psbtHex = transactionRequest.data // tx.psbt.toHex()
@@ -228,6 +244,31 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           )
         }
 
+        let replacementReason: ReplacementReason | undefined
+        const transaction = await waitForTransaction(publicClient, {
+          txId: txHash,
+          senderAddress: this.client.account?.address,
+          onReplaced: (response) => {
+            replacementReason = response.reason
+            process = this.statusManager.updateProcess(
+              step,
+              process.type,
+              'PENDING',
+              {
+                txHash: response.transaction.txid,
+                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
+              }
+            )
+          },
+        })
+
+        if (replacementReason === 'cancelled') {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionCanceled,
+            'User canceled transaction.'
+          )
+        }
+
         // TODO: improve logic to detect RBF transactions
         await waitForResult(
           () =>
@@ -249,6 +290,18 @@ export class UTXOStepExecutor extends BaseStepExecutor {
             ),
           10_000
         )
+
+        if (transaction.txid !== txHash) {
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            'PENDING',
+            {
+              txHash: transaction.txid,
+              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
+            }
+          )
+        }
 
         if (isBridgeExecution) {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
