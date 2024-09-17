@@ -64,10 +64,11 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     // STEP 2: Get transaction
-    let process = this.statusManager.findOrCreateProcess(
+    let process = this.statusManager.findOrCreateProcess({
       step,
-      currentProcessType
-    )
+      type: currentProcessType,
+      chainId: fromChain.id,
+    })
 
     const publicClient = await getUTXOPublicClient(ChainId.BTC)
 
@@ -327,11 +328,12 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     // STEP 5: Wait for the receiving chain
     const processTxHash = process.txHash
     if (isBridgeExecution) {
-      process = this.statusManager.findOrCreateProcess(
+      process = this.statusManager.findOrCreateProcess({
         step,
-        'RECEIVING_CHAIN',
-        'PENDING'
-      )
+        type: 'RECEIVING_CHAIN',
+        status: 'PENDING',
+        chainId: toChain.id,
+      })
     }
     let statusResponse: FullStatusData
     try {
