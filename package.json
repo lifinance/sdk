@@ -93,18 +93,14 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^15.13.0",
+    "@lifi/types": "^15.14.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.3",
-    "@swapkit/helpers": "1.0.0-rc.83",
-    "@swapkit/tokens": "1.0.0-rc.34",
-    "@swapkit/toolbox-utxo": "1.0.0-rc.91",
-    "@swapkit/types": "1.0.0-rc.47",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.8"
+    "viem": "^2.21.12"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
@@ -122,7 +118,7 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
-    "msw": "^2.4.8",
+    "msw": "^2.4.9",
     "pinst": "^3.0.0",
     "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
@@ -135,7 +131,7 @@
     "@solana/web3.js": "^1.93.0",
     "viem": "^2.16.0"
   },
-  "packageManager": "yarn@4.4.0",
+  "packageManager": "yarn@4.5.0",
   "publishConfig": {
     "access": "public"
   },
