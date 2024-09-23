@@ -1,4 +1,10 @@
-import { type Account, type Chain, type Client, type Transport } from 'viem'
+import {
+  TransactionNotFoundError,
+  type Account,
+  type Chain,
+  type Client,
+  type Transport,
+} from 'viem'
 import type { UTXOSchema } from '../transports/utxo/types.js'
 import type { UTXOTransaction } from '../types/transaction.js'
 
@@ -18,13 +24,20 @@ export async function getUTXOTransaction<
   client: Client<Transport, C, A, UTXOSchema>,
   { txId, blockHash }: GetUTXOTransactionParameters
 ): Promise<GetUTXOTransactionReturnType> {
-  const params: [string, boolean, string?] = [txId, true]
-  if (blockHash) {
-    params.push(blockHash)
+  try {
+    const params: [string, boolean, string?] = [txId, true]
+    if (blockHash) {
+      params.push(blockHash)
+    }
+    const data = await client.request({
+      method: 'getrawtransaction',
+      params: params,
+    })
+    return data
+  } catch (error) {
+    throw new TransactionNotFoundError({
+      blockHash: blockHash as never,
+      hash: txId as never,
+    })
   }
-  const data = await client.request({
-    method: 'getrawtransaction',
-    params: params,
-  })
-  return data
 }

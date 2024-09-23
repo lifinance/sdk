@@ -8,7 +8,7 @@ export type OnBlockNumberParameter = GetBlockCountReturnType
 export type OnBlockNumberFn = (
   blockNumber: OnBlockNumberParameter,
   prevBlockNumber: OnBlockNumberParameter | undefined
-) => void
+) => Promise<void>
 
 export type WatchBlockNumberParameters = {
   /** The callback to call when a new block number is received. */
@@ -55,6 +55,10 @@ export function watchBlockNumber<
     pollingInterval,
   ])
 
+  // TODO (edge cases):
+  // 1) Stop iterating block numbers if we are happy with the result of one onBlockNumber execution but there is more in the queue.
+  // 2) If we missed some time - user closed the page and came back when the block is already mined.
+  // In this case we probably want to save the block when we send the transaction and track the currently checked blocks until we find the relevant one.
   return observe(observerId, { onBlockNumber, onError }, (emit) =>
     poll(
       async () => {
@@ -76,7 +80,7 @@ export function watchBlockNumber<
             // `emitMissed` flag is truthy, let's emit those blocks.
             if (blockNumber - prevBlockNumber > 1 && emitMissed) {
               for (let i = prevBlockNumber + 1; i < blockNumber; i++) {
-                emit.onBlockNumber(i, prevBlockNumber)
+                await emit.onBlockNumber(i, prevBlockNumber)
                 prevBlockNumber = i
               }
             }
@@ -85,7 +89,7 @@ export function watchBlockNumber<
           // If the next block number is greater than the previous,
           // it is not in the past, and we can emit the new block number.
           if (!prevBlockNumber || blockNumber > prevBlockNumber) {
-            emit.onBlockNumber(blockNumber, prevBlockNumber)
+            await emit.onBlockNumber(blockNumber, prevBlockNumber)
             prevBlockNumber = blockNumber
           }
         } catch (err) {

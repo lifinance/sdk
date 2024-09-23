@@ -34,16 +34,22 @@ export async function getBlockStats<
   if (!blockHashOrNumber) {
     throw new BlockNotFoundError({ blockHash, blockNumber } as never)
   }
-  const params: [string | number, Array<BlockStatsKeys>?] = [blockHashOrNumber]
-  if (stats) {
-    params.push(stats)
+  try {
+    const params: [string | number, Array<BlockStatsKeys>?] = [
+      blockHashOrNumber,
+    ]
+    if (stats) {
+      params.push(stats)
+    }
+    const data = await client.request(
+      {
+        method: 'getblockstats',
+        params: params,
+      },
+      { dedupe: true }
+    )
+    return data
+  } catch (error) {
+    throw new BlockNotFoundError({ blockHash, blockNumber } as never)
   }
-  const data = await client.request(
-    {
-      method: 'getblockstats',
-      params: params,
-    },
-    { dedupe: true }
-  )
-  return data
 }

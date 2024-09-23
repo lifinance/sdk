@@ -21,6 +21,17 @@ export const parseUTXOErrors = async (
 }
 
 const handleSpecificErrors = (e: any) => {
+  // txn-mempool-conflict
+  if (
+    e.details?.includes?.('conflict') ||
+    e.cause?.message?.includes?.('conflict')
+  ) {
+    return new TransactionError(
+      LiFiErrorCode.TransactionConflict,
+      'Your transaction conflicts with another transaction already in the mempool. One or more inputs have been spent by another transaction.',
+      e
+    )
+  }
   if (e.code === 4001 || e.code === -32000 || e.cause?.includes?.('rejected')) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }

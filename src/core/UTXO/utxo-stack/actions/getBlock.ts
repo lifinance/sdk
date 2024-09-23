@@ -28,24 +28,28 @@ export async function getBlock<
   { blockHash, blockNumber }: GetBlockParameters
 ): Promise<GetBlockReturnType> {
   let blockHex: string | undefined
-  let _blockHash = blockHash
-  if (!_blockHash && blockNumber) {
-    _blockHash = await client.request(
-      {
-        method: 'getblockhash',
-        params: [blockNumber],
-      },
-      { dedupe: true }
-    )
-  }
-  if (_blockHash) {
-    blockHex = await client.request(
-      {
-        method: 'getblock',
-        params: [_blockHash, 0],
-      },
-      { dedupe: true }
-    )
+  try {
+    let _blockHash = blockHash
+    if (!_blockHash && blockNumber) {
+      _blockHash = await client.request(
+        {
+          method: 'getblockhash',
+          params: [blockNumber],
+        },
+        { dedupe: true }
+      )
+    }
+    if (_blockHash) {
+      blockHex = await client.request(
+        {
+          method: 'getblock',
+          params: [_blockHash, 0],
+        },
+        { dedupe: true }
+      )
+    }
+  } catch (error) {
+    throw new BlockNotFoundError({ blockHash, blockNumber } as never)
   }
   if (!blockHex) {
     throw new BlockNotFoundError({ blockHash, blockNumber } as never)

@@ -13,6 +13,7 @@ export interface SDKBaseConfig {
   disableVersionCheck?: boolean
   widgetVersion?: string
   preloadChains: boolean
+  debug: boolean
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

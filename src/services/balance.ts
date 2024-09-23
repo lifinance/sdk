@@ -70,7 +70,7 @@ export const getTokenBalancesByChain = async (
   }
 
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
-  await Promise.allSettled(
+  const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = parseInt(chainIdStr)
       const chain = await config.getChainById(chainId)
@@ -83,7 +83,9 @@ export const getTokenBalancesByChain = async (
             : provider.isAddress(tokenAddress)
         )
       if (!provider) {
-        throw new Error('SDK Token Provider not found.')
+        throw new Error(
+          `SDK Token Provider for ${chain.chainType} is not found.`
+        )
       }
       const tokenAmounts = await provider.getBalance(
         walletAddress,
@@ -92,5 +94,12 @@ export const getTokenBalancesByChain = async (
       tokenAmountsByChain[chainId] = tokenAmounts
     })
   )
+  if (config.get().debug) {
+    tokenAmountsSettled.forEach((promise) => {
+      if (promise.status === 'rejected') {
+        console.log("Couldn't fetch token balance.", promise.reason)
+      }
+    })
+  }
   return tokenAmountsByChain
 }

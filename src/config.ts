@@ -10,6 +10,7 @@ export const config = (() => {
     chains: [],
     providers: [],
     preloadChains: true,
+    debug: false,
   }
   let _loading: Promise<void> | undefined
   return {

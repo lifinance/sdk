@@ -4,15 +4,12 @@ import {
   type FullStatusData,
 } from '@lifi/types'
 import { address, networks, Psbt } from 'bitcoinjs-lib'
-import { withRetry, withTimeout, type Client } from 'viem'
+import { withTimeout, type Client } from 'viem'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import {
-  getTransactionFailedMessage,
-  waitForResult,
-} from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/index.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -75,12 +72,14 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     if (process.status !== 'DONE') {
       try {
         let txHash: string
+        let txHex: string
         if (process.txHash) {
           // Make sure that the chain is still correct
           this.checkClient(step)
 
           // Wait for exiting transaction
           txHash = process.txHash
+          txHex = process.txHex
         } else {
           process = this.statusManager.updateProcess(
             step,
@@ -151,36 +150,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           this.checkClient(step)
 
-          // const toolbox = getToolboxByChain('BTC')({})
-
-          // const apiClient = blockchairApi({ chain: 'BTC' as UTXOChain })
-          // const txFeeRate = await apiClient.getSuggestedTxFee()
-
-          // const tx = await toolbox.buildTx({
-          //   assetValue: {
-          //     bigIntValue: step.transactionRequest.value,
-          //   },
-          //   recipient: step.transactionRequest.to,
-          //   memo: step.transactionRequest.data,
-          //   sender: this.client.account?.address,
-          //   chain: 'BTC',
-          //   apiClient: blockchairApi({ chain: 'BTC' as UTXOChain }),
-          //   feeRate: txFeeRate * 0.75,
-          // })
-
-          // const tx2 = await toolbox.buildTx({
-          //   assetValue: {
-          //     bigIntValue: step.transactionRequest.value,
-          //   },
-          //   recipient: step.transactionRequest.to,
-          //   memo: step.transactionRequest.data,
-          //   sender: this.client.account?.address,
-          //   chain: 'BTC',
-          //   apiClient: blockchairApi({ chain: 'BTC' as UTXOChain }),
-          //   feeRate: txFeeRate * 1.25,
-          // })
-
-          let psbtHex = transactionRequest.data // tx.psbt.toHex()
+          const psbtHex = transactionRequest.data
 
           const psbt = Psbt.fromHex(psbtHex, { network: networks.bitcoin })
 
@@ -207,8 +177,6 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               .values()
           )
 
-          psbtHex = psbt.toHex()
-
           // We give users 10 minutes to sign the transaction or it should be considered expired
           const signedPsbtHex = await withTimeout(
             () =>
@@ -228,10 +196,10 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           const signedPsbt = Psbt.fromHex(signedPsbtHex).finalizeAllInputs()
 
-          const transactionHex = signedPsbt.extractTransaction().toHex()
+          txHex = signedPsbt.extractTransaction().toHex()
 
           txHash = await publicClient.sendUTXOTransaction({
-            hex: transactionHex,
+            hex: txHex,
           })
 
           process = this.statusManager.updateProcess(
@@ -241,6 +209,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
             {
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+              txHex,
             }
           )
         }
@@ -248,6 +217,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
         let replacementReason: ReplacementReason | undefined
         const transaction = await waitForTransaction(publicClient, {
           txId: txHash,
+          txHex,
           senderAddress: this.client.account?.address,
           onReplaced: (response) => {
             replacementReason = response.reason
@@ -269,28 +239,6 @@ export class UTXOStepExecutor extends BaseStepExecutor {
             'User canceled transaction.'
           )
         }
-
-        // TODO: improve logic to detect RBF transactions
-        await waitForResult(
-          () =>
-            withRetry(
-              async () => {
-                const tx = await publicClient.getUTXOTransaction({
-                  txId: txHash,
-                })
-                // If there are no confirmations, it means the transaction is still in the mempool
-                if (!tx.confirmations) {
-                  return
-                }
-                return tx
-              },
-              {
-                retryCount: 10,
-                delay: 1000,
-              }
-            ),
-          10_000
-        )
 
         if (transaction.txid !== txHash) {
           process = this.statusManager.updateProcess(

@@ -2,7 +2,7 @@ import { type Account, type Chain, type Client, type Transport } from 'viem'
 import type { UTXOSchema } from '../transports/utxo/types.js'
 
 export type SendUTXOTransactionParameters = {
-  /** The hex string of the raw transaction */
+  /** The hex string of the raw transaction. */
   hex: string
   /** Rejects transactions whose fee rate is higher than the specified value, expressed in BTC/kB. Set to 0 to accept any fee rate. Default = 0.10 */
   maxFeeRate?: number

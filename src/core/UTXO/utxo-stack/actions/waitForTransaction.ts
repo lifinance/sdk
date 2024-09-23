@@ -20,7 +20,7 @@ import { watchBlockNumber } from './watchBlockNumber.js'
 export type ReplacementReason = 'cancelled' | 'replaced' | 'repriced'
 export type ReplacementReturnType = {
   reason: ReplacementReason
-  replacedTransaction: UTXOTransaction
+  replacedTransaction: Transaction
   transaction: UTXOTransaction
 }
 
@@ -39,6 +39,8 @@ export type WithRetryParameters = {
 export type WaitForTransactionReceiptParameters = {
   /** The Id of the transaction. */
   txId: string
+  /** The hex string of the raw transaction. */
+  txHex: string
   /** The sender address of the transaction. */
   senderAddress?: string
   /**
@@ -94,11 +96,12 @@ export async function waitForTransaction<chain extends Chain | undefined>(
   {
     confirmations = 1,
     txId,
+    txHex,
     senderAddress,
     onReplaced,
     pollingInterval = client.pollingInterval,
     retryCount = 10,
-    retryDelay = 10_000,
+    retryDelay = 3_000,
     timeout,
   }: WaitForTransactionReceiptParameters
 ): Promise<WaitForTransactionReceiptReturnType> {
@@ -106,7 +109,7 @@ export async function waitForTransaction<chain extends Chain | undefined>(
 
   let count = 0
   let transaction: UTXOTransaction | undefined
-  let replacedTransaction: UTXOTransaction | undefined
+  let replacedTransaction: Transaction | undefined
   let retrying = false
 
   return new Promise((resolve, reject) => {
@@ -229,13 +232,10 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                 err instanceof TransactionNotFoundError ||
                 err instanceof TransactionReceiptNotFoundError
               ) {
-                if (!transaction) {
-                  retrying = false
-                  return
-                }
-
                 try {
-                  replacedTransaction = transaction
+                  replacedTransaction = Transaction.fromHex(
+                    transaction?.hex || txHex
+                  )
 
                   // Let's retrieve the transactions from the current block.
                   // We need to retry as some RPC Providers may be slow to sync
@@ -259,21 +259,17 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                   )
                   retrying = false
 
-                  const mempoolTransaction = Transaction.fromHex(
-                    transaction.hex
-                  )
-
                   // Create a set of input identifiers for mempool transaction
-                  const mempoolTransactionInputs = new Set<string>()
+                  const replacedTransactionInputs = new Set<string>()
 
-                  mempoolTransaction.ins.forEach((input) => {
+                  replacedTransaction.ins.forEach((input) => {
                     const txid = Array.from(input.hash)
                       .reverse()
                       .map((byte) => ('00' + byte.toString(16)).slice(-2))
                       .join('')
                     const vout = input.index
                     const inputId = `${txid}:${vout}`
-                    mempoolTransactionInputs.add(inputId)
+                    replacedTransactionInputs.add(inputId)
                   })
 
                   let replacementTransaction: Transaction | undefined
@@ -291,7 +287,7 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                         .join('')
                       const vout = input.index
                       const inputId = `${txid}:${vout}`
-                      if (mempoolTransactionInputs.has(inputId)) {
+                      if (replacedTransactionInputs.has(inputId)) {
                         replacementTransaction = tx
                         break
                       }
@@ -343,7 +339,7 @@ export async function waitForTransaction<chain extends Chain | undefined>(
 
                   // Get the recipient addresses from the original transaction
                   const originalOutputAddresses =
-                    getOutputAddresses(mempoolTransaction)
+                    getOutputAddresses(replacedTransaction)
 
                   // Get the recipient addresses from the replacement transaction
                   const replacementOutputAddresses = getOutputAddresses(
