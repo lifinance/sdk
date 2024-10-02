@@ -93,14 +93,14 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^15.14.0",
+    "@lifi/types": "^15.15.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.3",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.12"
+    "viem": "^2.21.16"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
