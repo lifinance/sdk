@@ -1,7 +1,7 @@
 import type { LiFiStep, Process } from '@lifi/types'
 import { version } from '../version.js'
 import type { BaseError } from './baseError.js'
-import { type ErrorCode } from './constants.js'
+import type { ErrorCode } from './constants.js'
 
 // Note: SDKError is used to wrapper and present errors at the top level
 // Where opportunity allows we also add the step and the process related to the error

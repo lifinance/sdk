@@ -66,13 +66,13 @@ export const getTokenBalancesByChain = async (
   const tokenList = Object.values(tokensByChain).flat()
   const invalidTokens = tokenList.filter((token) => !isToken(token))
   if (invalidTokens.length) {
-    throw new ValidationError(`Invalid tokens passed.`)
+    throw new ValidationError('Invalid tokens passed.')
   }
 
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
-      const chainId = parseInt(chainIdStr)
+      const chainId = Number.parseInt(chainIdStr)
       const chain = await config.getChainById(chainId)
       const tokenAddress = tokensByChain[chainId][0].address
       const provider = config
@@ -95,11 +95,11 @@ export const getTokenBalancesByChain = async (
     })
   )
   if (config.get().debug) {
-    tokenAmountsSettled.forEach((promise) => {
-      if (promise.status === 'rejected') {
-        console.log("Couldn't fetch token balance.", promise.reason)
+    for (const result of tokenAmountsSettled) {
+      if (result.status === 'rejected') {
+        console.warn("Couldn't fetch token balance.", result.reason)
       }
-    })
+    }
   }
   return tokenAmountsByChain
 }

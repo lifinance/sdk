@@ -26,7 +26,7 @@ export const getAllowance = async (
       args: [ownerAddress, spenderAddress],
     })) as bigint
     return approved
-  } catch (e) {
+  } catch (_e) {
     return 0n
   }
 }
@@ -114,12 +114,12 @@ export const getTokenAllowanceMulticall = async (
 
   // group by chain
   const tokenDataByChain: { [chainId: number]: TokenSpender[] } = {}
-  filteredTokens.forEach((data) => {
+  for (const data of filteredTokens) {
     if (!tokenDataByChain[data.token.chainId]) {
       tokenDataByChain[data.token.chainId] = []
     }
     tokenDataByChain[data.token.chainId].push(data)
-  })
+  }
 
   const chainKeys = Object.keys(tokenDataByChain).map(Number.parseInt)
 

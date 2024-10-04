@@ -477,7 +477,7 @@ export const defaultCoins: Array<Coin> = basicCoins.map((coin) => {
       address: token.address,
       decimals: token.decimals,
       symbol: token.symbol ?? coin.key,
-      chainId: parseInt(chainId), // Object.entries, Object.keys etc. only return keys as strings. Therefore, we have to parse them here
+      chainId: Number.parseInt(chainId), // Object.entries, Object.keys etc. only return keys as strings. Therefore, we have to parse them here
       coinKey: coin.key,
       name: token.name ?? coin.name ?? coin.key,
       logoURI: coin.logoURI,

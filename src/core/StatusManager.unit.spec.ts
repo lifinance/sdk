@@ -202,13 +202,14 @@ describe('StatusManager', () => {
     })
 
     describe('when a process is found', () => {
-      ;[
+      const statuses = [
         { status: 'ACTION_REQUIRED' },
         { status: 'PENDING' },
         { status: 'FAILED', doneAt: true },
         { status: 'DONE', doneAt: true },
         { status: 'CANCELLED', doneAt: true },
-      ].forEach(({ status, doneAt }) => {
+      ]
+      for (const { status, doneAt } of statuses) {
         describe(`and the status is ${status}`, () => {
           it('should update the process and call the callbacks', () => {
             const process = statusManager.updateProcess(
@@ -244,7 +245,7 @@ describe('StatusManager', () => {
             expectCallbacksToHaveBeenCalledWith(updatedRoute)
           })
         })
-      })
+      }
     })
   })
 

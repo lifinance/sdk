@@ -4,7 +4,7 @@ export function isSVMAddress(address: string): boolean {
   try {
     new PublicKey(address)
     return true
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }

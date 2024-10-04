@@ -1,24 +1,25 @@
+import { http, HttpResponse } from 'msw'
+import { setupServer } from 'msw/node'
 import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeAll,
-  beforeEach,
   afterAll,
   afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
 } from 'vitest'
+import { setupTestEnvironment } from '../tests/setup.js'
 import { config } from './config.js'
-import type { SDKBaseConfig } from './types/index.js'
-import { request } from './request.js'
 import { SDKError } from './errors/SDKError.js'
-import { type HTTPError, ValidationError } from './utils/index.js'
+import { ValidationError } from './errors/errors.js'
+import type { HTTPError } from './errors/httpError.js'
+import { request } from './request.js'
+import { handlers } from './services/api.unit.handlers.js'
+import type { SDKBaseConfig } from './types/index.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
-import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
-import { handlers } from './services/api.unit.handlers.js'
-import { setupTestEnvironment } from '../tests/setup.js'
 
 const apiUrl = config.get().apiUrl
 

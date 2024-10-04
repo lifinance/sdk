@@ -1,17 +1,17 @@
 import type { Account, Chain, Client, Transport } from 'viem'
 import {
-  getBlockCount,
   type GetBlockCountReturnType,
+  getBlockCount,
 } from '../actions/getBlockCount.js'
 import {
-  getUTXOTransaction,
   type GetUTXOTransactionParameters,
   type GetUTXOTransactionReturnType,
+  getUTXOTransaction,
 } from '../actions/getUTXOTransaction.js'
 import {
-  sendUTXOTransaction,
   type SendUTXOTransactionParameters,
   type SendUTXOTransactionReturnType,
+  sendUTXOTransaction,
 } from '../actions/sendUTXOTransaction.js'
 
 export type UTXOActions = {

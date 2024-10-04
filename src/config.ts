@@ -38,7 +38,9 @@ export const config = (() => {
       const providerMap = new Map(
         _config.providers.map((provider) => [provider.type, provider])
       )
-      providers.forEach((provider) => providerMap.set(provider.type, provider))
+      for (const provider of providers) {
+        providerMap.set(provider.type, provider)
+      }
       _config.providers = Array.from(providerMap.values())
     },
     setChains(chains: ExtendedChain[]) {

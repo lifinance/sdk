@@ -21,7 +21,7 @@ export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
       options: StepExecutorOptions
     ): Promise<UTXOStepExecutor> {
       if (!_options.getWalletClient) {
-        throw new Error(`Client is not provided.`)
+        throw new Error('Client is not provided.')
       }
 
       const walletClient = await _options.getWalletClient()

@@ -1,7 +1,7 @@
-import { ChainType, type BaseToken } from '@lifi/types'
+import { type BaseToken, ChainType } from '@lifi/types'
 import type { Client, Hash } from 'viem'
 import type { SwitchChainHook } from '../types.js'
-import { type SDKProvider } from '../types.js'
+import type { SDKProvider } from '../types.js'
 
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>

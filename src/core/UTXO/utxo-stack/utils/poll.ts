@@ -4,7 +4,7 @@ type PollOptions<T> = {
   // Whether or not to emit when the polling starts.
   emitOnBegin?: boolean | undefined
   // The initial wait time (in ms) before polling.
-  initialWaitTime?: ((data: T | void) => Promise<number>) | undefined
+  initialWaitTime?: ((data: T | undefined) => Promise<number>) | undefined
   // The interval (in ms).
   interval: number
 }
@@ -13,15 +13,17 @@ type PollOptions<T> = {
  * @description Polls a function at a specified interval.
  */
 export function poll<T>(
-  fn: ({ unpoll }: { unpoll: () => void }) => Promise<T | void>,
+  fn: ({ unpoll }: { unpoll: () => void }) => Promise<T | undefined>,
   { emitOnBegin, initialWaitTime, interval }: PollOptions<T>
 ) {
   let active = true
 
-  const unwatch = () => (active = false)
+  const unwatch = () => {
+    active = false
+  }
 
   const watch = async () => {
-    let data: T | void = undefined
+    let data: T | undefined = undefined
     if (emitOnBegin) {
       data = await fn({ unpoll: unwatch })
     }

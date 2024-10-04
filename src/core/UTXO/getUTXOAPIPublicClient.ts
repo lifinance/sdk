@@ -1,11 +1,11 @@
 import {
-  createClient,
-  fallback,
-  rpcSchema,
   type Chain,
   type Client,
   type FallbackTransport,
   type HttpTransport,
+  createClient,
+  fallback,
+  rpcSchema,
 } from 'viem'
 import { config } from '../../config.js'
 import { UTXOAPIActions } from './utxo-stack/decorators/UTXOAPIActions.js'

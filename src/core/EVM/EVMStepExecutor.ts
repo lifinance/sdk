@@ -9,7 +9,7 @@ import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, ValidationError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import { getTransactionFailedMessage } from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
@@ -222,10 +222,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
               this.allowUserInteraction,
               this.executionOptions
             )
-            step = {
+            Object.assign(step, {
               ...comparedStep,
               execution: step.execution,
-            }
+            })
           }
 
           if (!step.transactionRequest) {

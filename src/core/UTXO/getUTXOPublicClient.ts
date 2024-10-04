@@ -1,12 +1,12 @@
 import {
-  createClient,
-  fallback,
   http,
-  rpcSchema,
   type Chain,
   type Client,
   type FallbackTransport,
   type HttpTransport,
+  createClient,
+  fallback,
+  rpcSchema,
 } from 'viem'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'

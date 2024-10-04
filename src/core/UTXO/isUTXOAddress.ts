@@ -1,5 +1,5 @@
 import { sha256 } from '@noble/hashes/sha256'
-import { bech32, bech32m } from 'bech32'
+import { type Decoded, bech32, bech32m } from 'bech32'
 import bs58 from 'bs58'
 
 export enum UTXONetwork {
@@ -26,26 +26,26 @@ export type UTXOAddress = {
 const addressTypes: {
   [key: number]: { type: UTXOAddressType; network: UTXONetwork }
 } = {
-  0x00: {
+  0: {
     type: UTXOAddressType.p2pkh,
     network: UTXONetwork.Mainnet,
   },
-  0x6f: {
+  111: {
     type: UTXOAddressType.p2pkh,
     network: UTXONetwork.Testnet,
   },
-  0x05: {
+  5: {
     type: UTXOAddressType.p2sh,
     network: UTXONetwork.Mainnet,
   },
-  0xc4: {
+  196: {
     type: UTXOAddressType.p2sh,
     network: UTXONetwork.Testnet,
   },
 }
 
 const parseBech32 = (address: string): UTXOAddress => {
-  let decoded
+  let decoded: Decoded
 
   try {
     if (
@@ -57,7 +57,7 @@ const parseBech32 = (address: string): UTXOAddress => {
     } else {
       decoded = bech32.decode(address)
     }
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Invalid address')
   }
 
@@ -80,8 +80,7 @@ const parseBech32 = (address: string): UTXOAddress => {
   }
   const data = bech32.fromWords(decoded.words.slice(1))
 
-  let type
-
+  let type: UTXOAddressType
   if (data.length === 20) {
     type = UTXOAddressType.p2wpkh
   } else if (witnessVersion === 1) {
@@ -108,7 +107,7 @@ export const getUTXOAddress = (address: string): UTXOAddress => {
 
   try {
     decoded = bs58.decode(address)
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Invalid address')
   }
 
@@ -160,7 +159,7 @@ export const isUTXOAddress = (
     }
 
     return true
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }

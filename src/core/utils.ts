@@ -1,4 +1,4 @@
-import { type LiFiStep } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 
 /**
  * Used to check if changed exchange rate is in the range of slippage threshold.

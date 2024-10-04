@@ -10,12 +10,11 @@ export const getUTXOBalance = async (
     return []
   }
   const { chainId } = tokens[0]
-  tokens.forEach((token) => {
+  for (const token of tokens) {
     if (token.chainId !== chainId) {
-      console.warn(`Requested tokens have to be on the same chain.`)
+      console.warn('Requested tokens have to be on the same chain.')
     }
-  })
-
+  }
   const apiClient = await getUTXOAPIPublicClient(ChainId.BTC)
   const client = await getUTXOPublicClient(ChainId.BTC)
   const [balance, blockCount] = await Promise.all([

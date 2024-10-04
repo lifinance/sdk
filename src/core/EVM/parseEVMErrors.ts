@@ -1,8 +1,8 @@
-import { type LiFiStep, type Process } from '@lifi/types'
-import { TransactionError, UnknownError } from '../../errors/errors.js'
+import type { LiFiStep, Process } from '@lifi/types'
 import { SDKError } from '../../errors/SDKError.js'
+import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
-import { BaseError } from '../../utils/index.js'
+import { TransactionError, UnknownError } from '../../errors/errors.js'
 import { fetchTxErrorDetails } from '../../helpers.js'
 
 export const parseEVMErrors = async (

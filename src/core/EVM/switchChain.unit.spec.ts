@@ -7,15 +7,15 @@ import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions } from '../types.js'
 import { switchChain } from './switchChain.js'
 
-let client: Client,
-  step: LiFiStep,
-  statusManager: StatusManager,
-  hooks: ExecutionOptions,
-  requestMock: Mock,
-  switchChainHookMock: Mock,
-  findOrCreateProcessMock: Mock,
-  updateExecutionMock: Mock,
-  updateProcessMock: Mock
+let client: Client
+let step: LiFiStep
+let statusManager: StatusManager
+let hooks: ExecutionOptions
+let requestMock: Mock
+let switchChainHookMock: Mock
+let findOrCreateProcessMock: Mock
+let updateExecutionMock: Mock
+let updateProcessMock: Mock
 
 describe('switchChain', () => {
   beforeEach(() => {

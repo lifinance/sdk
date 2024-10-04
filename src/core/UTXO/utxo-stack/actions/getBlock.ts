@@ -1,7 +1,7 @@
 import { Block } from 'bitcoinjs-lib'
 import {
-  BlockNotFoundError,
   type Account,
+  BlockNotFoundError,
   type Chain,
   type Client,
   type Transport,
@@ -48,7 +48,7 @@ export async function getBlock<
         { dedupe: true }
       )
     }
-  } catch (error) {
+  } catch (_error) {
     throw new BlockNotFoundError({ blockHash, blockNumber } as never)
   }
   if (!blockHex) {

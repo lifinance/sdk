@@ -1,8 +1,8 @@
 import {
-  TransactionNotFoundError,
   type Account,
   type Chain,
   type Client,
+  TransactionNotFoundError,
   type Transport,
 } from 'viem'
 import type { UTXOSchema } from '../transports/utxo/types.js'
@@ -34,7 +34,7 @@ export async function getUTXOTransaction<
       params: params,
     })
     return data
-  } catch (error) {
+  } catch (_error) {
     throw new TransactionNotFoundError({
       blockHash: blockHash as never,
       hash: txId as never,

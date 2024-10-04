@@ -1,14 +1,14 @@
 import * as lifiDataTypes from '@lifi/data-types'
 import {
-  createConfig,
-  EVM,
-  executeRoute,
-  getRoutes,
   ChainId,
   CoinKey,
+  EVM,
+  createConfig,
+  executeRoute,
+  getRoutes,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { createWalletClient, http } from 'viem'
+import { http, createWalletClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { optimism } from 'viem/chains'
 import { promptConfirm } from '../helpers/promptConfirm'

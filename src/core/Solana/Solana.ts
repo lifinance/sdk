@@ -19,7 +19,7 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
       options: StepExecutorOptions
     ): Promise<SolanaStepExecutor> {
       if (!_options.getWalletAdapter) {
-        throw new Error(`getWalletAdapter is not provided.`)
+        throw new Error('getWalletAdapter is not provided.')
       }
 
       const walletAdapter = await _options.getWalletAdapter()

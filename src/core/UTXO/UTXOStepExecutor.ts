@@ -3,13 +3,13 @@ import {
   type ExtendedTransactionInfo,
   type FullStatusData,
 } from '@lifi/types'
-import { address, networks, Psbt } from 'bitcoinjs-lib'
-import { withTimeout, type Client } from 'viem'
+import { Psbt, address, networks } from 'bitcoinjs-lib'
+import { type Client, withTimeout } from 'viem'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import { getTransactionFailedMessage } from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -24,8 +24,8 @@ import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
 import { signPsbt } from './utxo-stack/actions/signPsbt.js'
 import {
-  waitForTransaction,
   type ReplacementReason,
+  waitForTransaction,
 } from './utxo-stack/actions/waitForTransaction.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
@@ -101,10 +101,10 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               this.allowUserInteraction,
               this.executionOptions
             )
-            step = {
+            Object.assign(step, {
               ...comparedStep,
               execution: step.execution,
-            }
+            })
           }
 
           if (!step.transactionRequest?.data) {

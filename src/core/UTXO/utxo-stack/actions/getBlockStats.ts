@@ -1,6 +1,6 @@
 import {
-  BlockNotFoundError,
   type Account,
+  BlockNotFoundError,
   type Chain,
   type Client,
   type Transport,
@@ -49,7 +49,7 @@ export async function getBlockStats<
       { dedupe: true }
     )
     return data
-  } catch (error) {
+  } catch (_error) {
     throw new BlockNotFoundError({ blockHash, blockNumber } as never)
   }
 }

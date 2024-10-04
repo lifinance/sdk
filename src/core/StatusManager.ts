@@ -180,12 +180,8 @@ export class StatusManager {
     }
     // Sort processes, the ones with DONE status go first
     step.execution.process = [
-      ...step?.execution?.process.filter(
-        (process) => process.status === 'DONE'
-      ),
-      ...step?.execution?.process.filter(
-        (process) => process.status !== 'DONE'
-      ),
+      ...step.execution.process.filter((process) => process.status === 'DONE'),
+      ...step.execution.process.filter((process) => process.status !== 'DONE'),
     ]
     this.updateStepInRoute(step) // updates the step in the route
     return currentProcess

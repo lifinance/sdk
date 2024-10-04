@@ -1,9 +1,9 @@
 import {
-  createTransport,
-  RpcRequestError,
-  UrlRequiredError,
   type HttpTransport,
   type HttpTransportConfig,
+  RpcRequestError,
+  UrlRequiredError,
+  createTransport,
 } from 'viem'
 import { getHttpRpcClient } from './getHttpRpcClient.js'
 import { getRpcProviderMethods } from './getRpcProviderMethods.js'

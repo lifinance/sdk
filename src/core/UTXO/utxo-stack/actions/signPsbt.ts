@@ -1,4 +1,4 @@
-import { type Account, type Chain, type Client, type Transport } from 'viem'
+import type { Account, Chain, Client, Transport } from 'viem'
 import type {
   SignPsbtParameters,
   SignPsbtReturnType,

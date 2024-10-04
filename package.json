@@ -65,21 +65,21 @@
     "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo src/tsconfig.build.tsbuildinfo src/_esm src/_cjs src/_types",
     "coverage": "vitest run --coverage",
     "postinstall": "husky",
-    "lint": "eslint --ext .tsx --ext .ts ./src",
-    "lint:fix": "eslint --ext .tsx --ext .ts ./src --fix",
     "prepack": "pinst --disable",
     "postpack": "pinst --enable",
     "package": "npm run build && npm pack",
     "pre-commit": "lint-staged",
     "pre-push": "yarn check:types && yarn check:circular-deps && yarn test:unit",
     "prepublishOnly": "yarn node scripts/prepublishOnly.js",
-    "prettier:fix": "prettier --write ./src/.",
     "release": "standard-version -a",
     "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
     "release:beta": "standard-version -a --prerelease beta --skip.changelog",
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
     "test:cov": "yarn test --coverage",
     "test:unit": "yarn test .unit.spec.ts",
+    "check": "yarn biome check ./src",
+    "check:write": "yarn biome check --write ./src",
+    "check:write:unsafe": "yarn biome check --write --unsafe ./src",
     "check:types": "tsc --noEmit",
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
@@ -88,8 +88,7 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "yarn run lint:fix",
-      "yarn run prettier:fix"
+      "yarn check:write"
     ]
   },
   "dependencies": {
@@ -100,31 +99,25 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.16"
+    "viem": "^2.21.18"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.3",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.5.12",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "@typescript-eslint/parser": "^7.18.0",
-    "@vitest/coverage-v8": "^2.1.1",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-jsdoc": "^48.11.0",
-    "eslint-plugin-prettier": "^5.2.1",
+    "@vitest/coverage-v8": "^2.1.2",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
     "msw": "^2.4.9",
     "pinst": "^3.0.0",
-    "prettier": "^3.3.3",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.1"
+    "vitest": "^2.1.2"
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",

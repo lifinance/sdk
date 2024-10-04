@@ -1,13 +1,13 @@
-import { address, Transaction } from 'bitcoinjs-lib'
+import { Transaction, address } from 'bitcoinjs-lib'
 import {
-  stringify,
-  TransactionNotFoundError,
-  TransactionReceiptNotFoundError,
-  WaitForTransactionReceiptTimeoutError,
-  withRetry,
   type Chain,
   type Client,
+  TransactionNotFoundError,
+  TransactionReceiptNotFoundError,
   type Transport,
+  WaitForTransactionReceiptTimeoutError,
+  stringify,
+  withRetry,
 } from 'viem'
 import { getAction } from 'viem/utils'
 import type { UTXOTransaction } from '../types/transaction.js'
@@ -262,15 +262,15 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                   // Create a set of input identifiers for mempool transaction
                   const replacedTransactionInputs = new Set<string>()
 
-                  replacedTransaction.ins.forEach((input) => {
+                  for (const input of replacedTransaction.ins) {
                     const txid = Array.from(input.hash)
                       .reverse()
-                      .map((byte) => ('00' + byte.toString(16)).slice(-2))
+                      .map((byte) => `00${byte.toString(16)}`.slice(-2))
                       .join('')
                     const vout = input.index
                     const inputId = `${txid}:${vout}`
                     replacedTransactionInputs.add(inputId)
-                  })
+                  }
 
                   let replacementTransaction: Transaction | undefined
 
@@ -283,7 +283,7 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                     for (const input of tx.ins) {
                       const txid = Array.from(input.hash)
                         .reverse()
-                        .map((byte) => ('00' + byte.toString(16)).slice(-2))
+                        .map((byte) => `00${byte.toString(16)}`.slice(-2))
                         .join('')
                       const vout = input.index
                       const inputId = `${txid}:${vout}`
@@ -330,7 +330,7 @@ export async function waitForTransaction<chain extends Chain | undefined>(
                           output.script
                         )
                         addresses.push(outputAddress)
-                      } catch (e) {
+                      } catch (_e) {
                         // Handle non-standard scripts (e.g., OP_RETURN)
                       }
                     }

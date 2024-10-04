@@ -28,7 +28,6 @@ type WithDedupeOptions = {
   id?: string | undefined
 }
 
-// eslint-disable-next-line jsdoc/require-param, jsdoc/require-returns
 /** Deduplicates in-flight promises. */
 export function withDedupe<data>(
   fn: () => Promise<data>,

@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { Account, Chain, Client, Transport } from 'viem'
 import {
-  getBalance,
   type GetBalanceParameters,
   type GetBalanceReturnType,
+  getBalance,
 } from '../actions/getBalance.js'
 
 export type UTXOAPIActions = {

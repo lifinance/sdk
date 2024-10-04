@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import { ChainType } from '@lifi/types'
 import { config } from './config.js'
 import { checkPackageUpdates } from './helpers.js'

@@ -1,8 +1,8 @@
-import { stringify, type Chain, type Client, type Transport } from 'viem'
+import { type Chain, type Client, type Transport, stringify } from 'viem'
 import { getAction } from 'viem/utils'
 import { observe } from '../utils/observe.js'
 import { poll } from '../utils/poll.js'
-import { getBlockCount, type GetBlockCountReturnType } from './getBlockCount.js'
+import { type GetBlockCountReturnType, getBlockCount } from './getBlockCount.js'
 
 export type OnBlockNumberParameter = GetBlockCountReturnType
 export type OnBlockNumberFn = (

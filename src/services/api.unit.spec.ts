@@ -9,7 +9,7 @@ import type {
   TransactionAnalyticsRequest,
 } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -24,12 +24,12 @@ import {
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
+import { SDKError } from '../errors/SDKError.js'
+import { ValidationError } from '../errors/errors.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { ValidationError } from '../errors/errors.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
-import { SDKError } from '../utils/index.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 

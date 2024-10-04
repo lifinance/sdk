@@ -1,4 +1,4 @@
-import { address, Psbt } from 'bitcoinjs-lib'
+import { Psbt, address } from 'bitcoinjs-lib'
 
 interface InputData {
   hash: Uint8Array

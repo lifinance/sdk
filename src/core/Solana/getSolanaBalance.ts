@@ -12,11 +12,11 @@ export const getSolanaBalance = async (
     return []
   }
   const { chainId } = tokens[0]
-  tokens.forEach((token) => {
+  for (const token of tokens) {
     if (token.chainId !== chainId) {
-      console.warn(`Requested tokens have to be on the same chain.`)
+      console.warn('Requested tokens have to be on the same chain.')
     }
-  })
+  }
 
   return getSolanaBalanceDefault(chainId, tokens, walletAddress)
 }

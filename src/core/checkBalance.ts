@@ -28,16 +28,10 @@ export const checkBalance = async (
       } else {
         const neeeded = formatUnits(neededBalance, token.decimals)
         const current = formatUnits(currentBalance, token.decimals)
-        let errorMessage =
-          `Your ${token.symbol} balance is too low, ` +
-          `you try to transfer ${neeeded} ${token.symbol}, ` +
-          `but your wallet only holds ${current} ${token.symbol}. ` +
-          `No funds have been sent.`
+        let _errorMessage = `Your ${token.symbol} balance is too low, you try to transfer ${neeeded} ${token.symbol}, but your wallet only holds ${current} ${token.symbol}. No funds have been sent.`
 
         if (currentBalance !== 0n) {
-          errorMessage +=
-            `If the problem consists, please delete this transfer and ` +
-            `start a new one with a maximum of ${current} ${token.symbol}.`
+          _errorMessage += `If the problem consists, please delete this transfer and start a new one with a maximum of ${current} ${token.symbol}.`
         }
 
         throw new BalanceError('The balance is too low.')

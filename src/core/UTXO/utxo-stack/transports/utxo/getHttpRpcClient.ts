@@ -1,4 +1,4 @@
-import { HttpRequestError, stringify, TimeoutError, withTimeout } from 'viem'
+import { HttpRequestError, TimeoutError, stringify, withTimeout } from 'viem'
 import type { HttpRequestReturnType, HttpRpcClientOptions } from 'viem/utils'
 
 export type RpcRequest = {

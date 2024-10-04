@@ -1,17 +1,17 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
-import { parseEVMErrors } from './parseEVMErrors.js'
-import {
-  ErrorName,
-  BaseError,
-  LiFiErrorCode,
-  SDKError,
-  TransactionError,
-  ErrorMessage,
-} from '../../utils/index.js'
-import { buildStepObject } from '../../../tests/fixtures.js'
 import type { LiFiStep, Process } from '@lifi/types'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { buildStepObject } from '../../../tests/fixtures.js'
+import { setupTestEnvironment } from '../../../tests/setup.js'
+import { SDKError } from '../../errors/SDKError.js'
+import { BaseError } from '../../errors/baseError.js'
+import {
+  ErrorMessage,
+  ErrorName,
+  LiFiErrorCode,
+} from '../../errors/constants.js'
+import { TransactionError } from '../../errors/errors.js'
 import * as helpers from '../../helpers.js'
+import { parseEVMErrors } from './parseEVMErrors.js'
 
 beforeAll(setupTestEnvironment)
 

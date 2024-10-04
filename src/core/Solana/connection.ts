@@ -13,7 +13,6 @@ export const getSolanaConnection = async (): Promise<Connection> => {
     const rpcUrl = await getRpcUrl(ChainId.SOL)
     connection = new Connection(rpcUrl)
     return connection
-  } else {
-    return connection
   }
+  return connection
 }
