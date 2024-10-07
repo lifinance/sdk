@@ -22,7 +22,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           generate_release_notes: true
-          name: 'v${{ github.ref_name }}'
+          name: ${{ github.ref_name }}
           draft: false
           prerelease: false
 
