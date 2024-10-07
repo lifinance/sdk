@@ -17,7 +17,7 @@ import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { request } from './request.js'
 import { handlers } from './services/api.unit.handlers.js'
-import type { SDKBaseConfig } from './types/index.js'
+import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 

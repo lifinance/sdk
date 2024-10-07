@@ -58,7 +58,7 @@
     "!src/**/*.tsbuildinfo"
   ],
   "scripts": {
-    "build": "yarn clean && yarn build:cjs && yarn build:esm && yarn build:types",
+    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
     "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
     "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
@@ -69,17 +69,17 @@
     "postpack": "pinst --enable",
     "package": "npm run build && npm pack",
     "pre-commit": "lint-staged",
-    "pre-push": "yarn check:types && yarn check:circular-deps && yarn test:unit",
-    "prepublishOnly": "yarn node scripts/prepublishOnly.js",
+    "pre-push": "pnpm check:types && pnpm check:circular-deps && pnpm test:unit",
+    "prepublishOnly": "pnpm node scripts/prepublishOnly.js",
     "release": "standard-version -a",
     "release:alpha": "standard-version -a --prerelease alpha --skip.changelog",
     "release:beta": "standard-version -a --prerelease beta --skip.changelog",
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
-    "test:cov": "yarn test --coverage",
-    "test:unit": "yarn test .unit.spec.ts",
-    "check": "yarn biome check ./src",
-    "check:write": "yarn biome check --write ./src",
-    "check:write:unsafe": "yarn biome check --write --unsafe ./src",
+    "test:cov": "pnpm test --coverage",
+    "test:unit": "pnpm test .unit.spec.ts",
+    "check": "pnpm biome check ./src",
+    "check:write": "pnpm biome check --write ./src",
+    "check:write:unsafe": "pnpm biome check --write --unsafe ./src",
     "check:types": "tsc --noEmit",
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
@@ -88,18 +88,19 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "yarn check:write"
+      "pnpm check:write"
     ]
   },
   "dependencies": {
     "@lifi/types": "^15.15.0",
+    "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.95.3",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.18"
+    "viem": "^2.21.19"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.3",
@@ -124,7 +125,6 @@
     "@solana/web3.js": "^1.93.0",
     "viem": "^2.16.0"
   },
-  "packageManager": "yarn@4.5.0",
   "publishConfig": {
     "access": "public"
   },
@@ -132,5 +132,6 @@
     "scripts": {
       "postbump": "node scripts/version.js && git add ."
     }
-  }
+  },
+  "packageManager": "pnpm@9.12.0"
 }

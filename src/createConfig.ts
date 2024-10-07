@@ -2,7 +2,7 @@ import { ChainType } from '@lifi/types'
 import { config } from './config.js'
 import { checkPackageUpdates } from './helpers.js'
 import { getChains } from './services/api.js'
-import type { SDKConfig } from './types/index.js'
+import type { SDKConfig } from './types/internal.js'
 import { name, version } from './version.js'
 
 function createBaseConfig(options: SDKConfig) {

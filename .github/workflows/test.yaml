@@ -27,10 +27,10 @@ jobs:
           - ubuntu-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install dependencies
-        uses: ./.github/actions/yarn-install
+        uses: ./.github/actions/pnpm-install
       - name: Run tests
-        run: yarn test
+        run: pnpm test
       - name: Test build
-        run: yarn build
+        run: pnpm build
