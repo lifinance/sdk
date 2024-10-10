@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.3/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,11 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": [
-      "*.md",
-      "*.lock",
-      "*.json"
-    ]
+    "ignore": ["*.md", "*.lock", "*.json"]
   },
   "formatter": {
     "enabled": true,
@@ -31,13 +27,7 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "complexity": {
-        "noBannedTypes": "error",
-        "noUselessThisAlias": "error",
-        "noUselessTypeConstraint": "error"
-      },
       "correctness": {
-        "noPrecisionLoss": "error",
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
         "useArrayLiterals": "off"
@@ -47,35 +37,27 @@
         "noReExportAll": "error"
       },
       "style": {
-        "noNamespace": "error",
         "noNonNullAssertion": "off",
-        "useAsConstAssertion": "error",
-        "useBlockStatements": "error",
-        "useImportType": "warn"
+        "useBlockStatements": "error"
       },
       "suspicious": {
-        "noExtraNonNullAssertion": "error",
-        "noMisleadingInstantiator": "error",
-        "noUnsafeDeclarationMerging": "error",
         "noConfusingVoidType": "off",
         "noExplicitAny": "off"
       }
     },
-    "ignore": [
-      "**/*.json"
-    ]
+    "ignore": ["**/*.json"]
   },
   "javascript": {
     "formatter": {
+      "arrowParentheses": "always",
+      "attributePosition": "auto",
+      "bracketSameLine": false,
+      "bracketSpacing": true,
       "jsxQuoteStyle": "double",
       "quoteProperties": "asNeeded",
-      "trailingCommas": "es5",
-      "semicolons": "asNeeded",
-      "arrowParentheses": "always",
-      "bracketSameLine": false,
       "quoteStyle": "single",
-      "attributePosition": "auto",
-      "bracketSpacing": true
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
     }
   }
 }

@@ -77,9 +77,9 @@
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
     "test:cov": "pnpm test --coverage",
     "test:unit": "pnpm test .unit.spec.ts",
-    "check": "pnpm biome check ./src",
-    "check:write": "pnpm biome check --write ./src",
-    "check:write:unsafe": "pnpm biome check --write --unsafe ./src",
+    "check": "biome check ./src",
+    "check:write": "biome check --write ./src",
+    "check:write:unsafe": "biome check --write --unsafe ./src",
     "check:types": "tsc --noEmit",
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
@@ -92,7 +92,7 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^15.15.0",
+    "@lifi/types": "^15.16.0",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
@@ -100,7 +100,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.19"
+    "viem": "^2.21.21"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.3",
@@ -117,7 +117,7 @@
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.2",
+    "typescript": "^5.6.3",
     "vitest": "^2.1.2"
   },
   "peerDependencies": {
