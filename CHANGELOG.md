@@ -11,6 +11,29 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### [3.2.2](https://github.com/lifinance/sdk/compare/v3.2.1...v3.2.2) (2024-09-16)
 
+
+### Bug Fixes
+
+* getContractCallsQuote validation ([#216](https://github.com/lifinance/sdk/issues/216)) ([7cf5027](https://github.com/lifinance/sdk/commit/7cf5027dc4b2f107278009e08181fa3fef6bc1d2))
+
+### [3.2.1](https://github.com/lifinance/sdk/compare/v3.2.0...v3.2.1) (2024-09-12)
+
+## [3.2.0](https://github.com/lifinance/sdk/compare/v3.1.5...v3.2.0) (2024-09-10)
+
+
+### Features
+
+* replace wallet and public clients with base client ([#215](https://github.com/lifinance/sdk/issues/215)) ([76122c6](https://github.com/lifinance/sdk/commit/76122c6993130a8d2273ff37bda3ee2344fd965a))
+
+### [3.1.5](https://github.com/lifinance/sdk/compare/v3.1.3...v3.1.5) (2024-08-09)
+
+
+### Bug Fixes
+
+* add process chain id ([#217](https://github.com/lifinance/sdk/issues/217)) ([16c95dc](https://github.com/lifinance/sdk/commit/16c95dcb9323d5eeae707090412200f5eb9b80e5))
+
+### [3.2.2](https://github.com/lifinance/sdk/compare/v3.2.1...v3.2.2) (2024-09-16)
+
 ### Bug Fixes
 
 - getContractCallsQuote validation ([#216](https://github.com/lifinance/sdk/issues/216)) ([7cf5027](https://github.com/lifinance/sdk/commit/7cf5027dc4b2f107278009e08181fa3fef6bc1d2))
