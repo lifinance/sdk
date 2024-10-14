@@ -92,7 +92,7 @@
     ]
   },
   "dependencies": {
-    "@lifi/types": "^15.16.0",
+    "@lifi/types": "^15.16.1",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
@@ -100,7 +100,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.21"
+    "viem": "^2.21.25"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.3",
@@ -113,7 +113,7 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
-    "msw": "^2.4.9",
+    "msw": "^2.4.11",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",

@@ -10,10 +10,10 @@
     "@lifi/data-types": "^5.13.1",
     "@lifi/rpc-wrapper": "^0.0.27",
     "@lifi/sdk": "^3.0.0-alpha.63",
-    "@wagmi/connectors": "^4.3.9",
+    "@wagmi/connectors": "^5.1.15",
     "@wagmi/core": "^2.9.7",
     "dotenv": "^16.4.5",
-    "viem": "^2.12.1"
+    "viem": "^2.21.25"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -25,8 +25,8 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.7.4",
+    "@types/node": "^22.7.5",
     "tsx": "^4.10.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.6.3"
   }
 }
