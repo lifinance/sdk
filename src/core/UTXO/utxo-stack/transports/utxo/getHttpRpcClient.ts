@@ -67,7 +67,7 @@ export function getHttpRpcClient(
             }
             const request = new Request(params.url ?? url, init)
             if (onRequest) {
-              await onRequest(request)
+              await onRequest(request, init)
             }
             const response = await fetch(params.url ?? url, init)
             return response
