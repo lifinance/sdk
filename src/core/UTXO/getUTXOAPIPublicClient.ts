@@ -1,3 +1,6 @@
+import { UTXOAPIActions } from '@bigmi/core'
+import type { UTXOAPISchema } from '@bigmi/core'
+import { utxo } from '@bigmi/core'
 import {
   type Chain,
   type Client,
@@ -8,9 +11,6 @@ import {
   rpcSchema,
 } from 'viem'
 import { config } from '../../config.js'
-import { UTXOAPIActions } from './utxo-stack/decorators/UTXOAPIActions.js'
-import type { UTXOAPISchema } from './utxo-stack/transports/utxo/types.js'
-import { utxo } from './utxo-stack/transports/utxo/utxo.js'
 
 // cached providers
 const publicAPIClients: Record<

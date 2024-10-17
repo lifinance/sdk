@@ -53,14 +53,6 @@ export {
   KeypairWalletName,
 } from './core/Solana/KeypairWalletAdapter.js'
 export { Solana } from './core/Solana/Solana.js'
-export { isUTXOAddress } from './core/UTXO/isUTXOAddress.js'
-export type {
-  BtcAccount,
-  SignPsbtParameters,
-  SignPsbtReturnType,
-  UTXOWalletProvider,
-  UTXOWalletSchema,
-} from './core/UTXO/utxo-stack/clients/types.js'
 export { UTXO } from './core/UTXO/UTXO.js'
 export { createConfig } from './createConfig.js'
 export {

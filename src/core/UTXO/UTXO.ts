@@ -1,8 +1,8 @@
+import { isUTXOAddress } from '@bigmi/core'
 import { ChainType } from '@lifi/types'
 import type { StepExecutorOptions } from '../types.js'
 import { UTXOStepExecutor } from './UTXOStepExecutor.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
-import { isUTXOAddress } from './isUTXOAddress.js'
 import type { UTXOProvider, UTXOProviderOptions } from './types.js'
 
 export function UTXO(options?: UTXOProviderOptions): UTXOProvider {

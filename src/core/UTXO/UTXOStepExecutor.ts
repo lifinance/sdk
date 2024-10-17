@@ -1,3 +1,5 @@
+import { signPsbt, waitForTransaction } from '@bigmi/core'
+import type { ReplacementReason } from '@bigmi/core'
 import {
   ChainId,
   type ExtendedTransactionInfo,
@@ -22,11 +24,6 @@ import type {
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
-import { signPsbt } from './utxo-stack/actions/signPsbt.js'
-import {
-  type ReplacementReason,
-  waitForTransaction,
-} from './utxo-stack/actions/waitForTransaction.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client

@@ -159,6 +159,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         )
 
+        async function bufferToBase64(buffer: any) {
+          const base64url = (await new Promise((r) => {
+            const reader = new FileReader()
+            reader.onload = () => r(reader.result)
+            reader.readAsDataURL(new Blob([buffer]))
+          })) as any
+          return base64url.slice(base64url.indexOf(',') + 1)
+        }
+
+        const _s = await bufferToBase64(signedTx.serialize())
+        console.log(_s)
+
         process = this.statusManager.updateProcess(
           step,
           process.type,
