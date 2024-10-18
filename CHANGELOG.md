@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.3.0](https://github.com/lifinance/sdk/compare/v3.2.3...v3.3.0) (2024-10-18)
+
+
+### Features
+
+* add Bitcoin/UTXO support ([#218](https://github.com/lifinance/sdk/issues/218)) ([379c342](https://github.com/lifinance/sdk/commit/379c342eb4e5a2f65ae02fa2a2037e31a92a1e6e))
+
 ### [3.2.3](https://github.com/lifinance/sdk/compare/v3.2.2...v3.2.3) (2024-09-17)
 
 
