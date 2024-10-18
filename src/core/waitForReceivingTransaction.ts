@@ -4,9 +4,9 @@ import type {
   ProcessType,
   StatusResponse,
 } from '@lifi/types'
-import { getStatus } from '../services/api.js'
 import { ServerError } from '../errors/errors.js'
-import { repeatUntilDone } from '../utils/utils.js'
+import { getStatus } from '../services/api.js'
+import { waitForResult } from '../utils/waitForResult.js'
 import type { StatusManager } from './StatusManager.js'
 import { getSubstatusMessage } from './processMessages.js'
 
@@ -16,59 +16,56 @@ export async function waitForReceivingTransaction(
   txHash: string,
   statusManager: StatusManager,
   processType: ProcessType,
-  step: LiFiStep
+  step: LiFiStep,
+  interval = 5_000
 ): Promise<StatusResponse> {
-  const _getStatus = (): Promise<StatusResponse | undefined> =>
-    new Promise(async (resolve, reject) => {
-      let statusResponse: StatusResponse
-      try {
-        statusResponse = await getStatus({
-          fromChain: step.action.fromChainId,
-          toChain: step.action.toChainId,
-          txHash,
-          ...(step.tool !== 'custom' && { bridge: step.tool }),
-        })
-      } catch (e: any) {
-        console.debug('Fetching status from backend failed.', e)
-        return resolve(undefined)
-      }
-
-      switch (statusResponse.status) {
-        case 'DONE':
-          return resolve(statusResponse)
-        case 'PENDING':
-          statusManager?.updateProcess(step, processType, 'PENDING', {
-            substatus: statusResponse.substatus,
-            substatusMessage:
-              statusResponse.substatusMessage ||
-              getSubstatusMessage(
-                statusResponse.status,
-                statusResponse.substatus
-              ),
-            txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
-          })
-          return resolve(undefined)
-        case 'NOT_FOUND':
-          return resolve(undefined)
-        case 'INVALID':
-        case 'FAILED':
-        default:
-          return reject()
-      }
+  const _getStatus = (): Promise<StatusResponse | undefined> => {
+    return getStatus({
+      fromChain: step.action.fromChainId,
+      toChain: step.action.toChainId,
+      txHash,
+      ...(step.tool !== 'custom' && { bridge: step.tool }),
     })
-
-  let status
-
-  if (txHash in TRANSACTION_HASH_OBSERVERS) {
-    status = await TRANSACTION_HASH_OBSERVERS[txHash]
-  } else {
-    TRANSACTION_HASH_OBSERVERS[txHash] = repeatUntilDone(_getStatus, 5_000)
-    status = await TRANSACTION_HASH_OBSERVERS[txHash]
+      .then((statusResponse) => {
+        switch (statusResponse.status) {
+          case 'DONE':
+            return statusResponse
+          case 'PENDING':
+            statusManager?.updateProcess(step, processType, 'PENDING', {
+              substatus: statusResponse.substatus,
+              substatusMessage:
+                statusResponse.substatusMessage ||
+                getSubstatusMessage(
+                  statusResponse.status,
+                  statusResponse.substatus
+                ),
+              txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
+            })
+            return undefined
+          case 'NOT_FOUND':
+            return undefined
+          default:
+            return Promise.reject()
+        }
+      })
+      .catch((e) => {
+        console.debug('Fetching status from backend failed.', e)
+        return undefined
+      })
   }
 
-  if (!('receiving' in status)) {
+  let status = TRANSACTION_HASH_OBSERVERS[txHash]
+
+  if (!status) {
+    status = waitForResult(_getStatus, interval)
+    TRANSACTION_HASH_OBSERVERS[txHash] = status
+  }
+
+  const resolvedStatus = await status
+
+  if (!('receiving' in resolvedStatus)) {
     throw new ServerError("Status doesn't contain receiving information.")
   }
 
-  return status
+  return resolvedStatus
 }

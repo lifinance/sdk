@@ -1,4 +1,4 @@
-import { type LiFiStep } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 
 /**
  * Used to check if changed exchange rate is in the range of slippage threshold.
@@ -24,10 +24,4 @@ export function checkStepSlippageThreshold(
       1_000_000_000
   }
   return actualSlippage <= setSlippage
-}
-
-export function sleep(ms: number): Promise<null> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(null), ms)
-  })
 }

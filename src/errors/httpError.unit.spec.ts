@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { HTTPError } from './httpError.js'
+import { describe, expect, it } from 'vitest'
 import { ErrorName, LiFiErrorCode } from './constants.js'
+import { HTTPError } from './httpError.js'
 
 const url = 'http://some.where'
 const options = { method: 'POST' }
@@ -19,7 +19,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.ValidationError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request. Oops`,
+        builtMessage:
+          '[ValidationError] Request failed with status code 400 Bad Request. Oops',
       },
     ],
     [
@@ -33,7 +34,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.NotFound,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[NotFoundError] Request failed with status code 404 Not Found. Oops`,
+        builtMessage:
+          '[NotFoundError] Request failed with status code 404 Not Found. Oops',
       },
     ],
     [
@@ -48,7 +50,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.SlippageError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[SlippageError] Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote. Oops`,
+        builtMessage:
+          '[SlippageError] Request failed with status code 409 Conflict\nThe slippage is larger than the defined threshold. Please request a new route to get a fresh quote. Oops',
       },
     ],
     [
@@ -63,7 +66,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ServerError] Request failed with status code 500 Internal Server Error. Oops`,
+        builtMessage:
+          '[ServerError] Request failed with status code 500 Internal Server Error. Oops',
       },
     ],
     [
@@ -77,7 +81,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.InternalError,
         jsonFunc: () => Promise.resolve(responseBody),
         responseBody,
-        builtMessage: `[ServerError] Request failed with an unknown error. Oops`,
+        builtMessage:
+          '[ServerError] Request failed with an unknown error. Oops',
       },
     ],
     [
@@ -91,7 +96,8 @@ describe('HTTPError', () => {
         code: LiFiErrorCode.ValidationError,
         jsonFunc: () => Promise.reject(new Error('fail')),
         responseBody: undefined,
-        builtMessage: `[ValidationError] Request failed with status code 400 Bad Request`,
+        builtMessage:
+          '[ValidationError] Request failed with status code 400 Bad Request',
       },
     ],
   ])(

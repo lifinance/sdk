@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-import { readFile, writeFileSync } from 'fs'
-import { join } from 'path'
+import { readFile, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 async function run() {
   const packagePath = join(process.cwd(), './package.json')
 
-  readFile(packagePath, 'utf8', (err, data) => {
+  readFile(packagePath, 'utf8', (_err, data) => {
     const { version, name } = JSON.parse(data)
 
     const file = `export const name = '${name}'\nexport const version = '${version}'\n`

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ErrorName, LiFiErrorCode } from './constants.js'
 import { BaseError } from './baseError.js'
+import { ErrorName, LiFiErrorCode } from './constants.js'
 
 describe('baseError', () => {
   it('should set the stack to the same as the deep rooted cause', () => {

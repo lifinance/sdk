@@ -1,8 +1,8 @@
-import {
-  type ProcessStatus,
-  type ProcessType,
-  type StatusMessage,
-  type Substatus,
+import type {
+  ProcessStatus,
+  ProcessType,
+  StatusMessage,
+  Substatus,
 } from '@lifi/types'
 
 const processMessages: Record<

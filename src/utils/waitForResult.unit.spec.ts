@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { repeatUntilDone } from './utils.js'
+import { waitForResult } from './waitForResult.js'
 
 describe('utils', () => {
-  describe('repeatUntilDone', () => {
+  describe('waitForResult', () => {
     let mockedFunction: any
 
     beforeEach(() => {
@@ -13,9 +13,7 @@ describe('utils', () => {
     it('should throw an error if repeat function fails', async () => {
       mockedFunction.mockRejectedValue(new Error('some error'))
 
-      await expect(repeatUntilDone(mockedFunction)).rejects.toThrow(
-        'some error'
-      )
+      await expect(waitForResult(mockedFunction)).rejects.toThrow('some error')
     })
 
     it('should try until repeat function succeeds', async () => {
@@ -25,7 +23,7 @@ describe('utils', () => {
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce('success!')
 
-      const result = await repeatUntilDone(mockedFunction, 10)
+      const result = await waitForResult(mockedFunction, 10)
       expect(result).toEqual('success!')
     })
   })

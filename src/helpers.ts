@@ -1,7 +1,7 @@
-import { name, version } from './version.js'
-import { ValidationError } from './errors/errors.js'
+import type { LiFiStep, Route } from '@lifi/types'
 import { SDKError } from './errors/SDKError.js'
-import type { Route, LiFiStep } from '@lifi/types'
+import { ValidationError } from './errors/errors.js'
+import { name, version } from './version.js'
 
 export const checkPackageUpdates = async (
   packageName?: string,
@@ -16,11 +16,10 @@ export const checkPackageUpdates = async (
 
     if (latestVersion > currentVersion) {
       console.warn(
-        // eslint-disable-next-line max-len
         `${pkgName}: new package version is available. Please update as soon as possible to enjoy the newest features. Current version: ${currentVersion}. Latest version: ${latestVersion}.`
       )
     }
-  } catch (error) {
+  } catch (_error) {
     // Cannot verify version, might be network error etc. We don't bother showing anything in that case
   }
 }

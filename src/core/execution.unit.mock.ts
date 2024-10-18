@@ -48,7 +48,6 @@ export const mockChainsResponse = [
 
 export const mockTransactionRequest = {
   transactionRequest: {
-    // eslint-disable-next-line max-len
     data: '0xdata',
     to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
     value: '0x0600830dbc7f5bf7',

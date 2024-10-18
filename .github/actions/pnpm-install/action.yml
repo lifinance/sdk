@@ -1,0 +1,19 @@
+name: 'PNPM install'
+description: 'Run pnpm install with node_modules and cache enabled'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        registry-url: 'https://registry.npmjs.org'
+        cache: 'pnpm' # https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-dependencies
+    - name: Install dependencies
+      env:
+        HUSKY: '0' # By default do not run HUSKY install
+      shell: bash
+      run: pnpm install --frozen-lockfile

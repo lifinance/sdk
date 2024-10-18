@@ -1,4 +1,4 @@
-import { type ChainId } from '@lifi/types'
+import type { ChainId } from '@lifi/types'
 import type { Client, Transaction } from 'viem'
 import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
@@ -19,10 +19,10 @@ export const getMaxPriorityFeePerGas = async (
     return
   }
 
-  const maxPriorityFeePerGasSum = maxPriorityFeePerGasList.reduce(
-    (acc, value) => (acc += value),
-    0n
-  )
+  let maxPriorityFeePerGasSum = 0n
+  for (const value of maxPriorityFeePerGasList) {
+    maxPriorityFeePerGasSum += value
+  }
 
   const maxPriorityFeePerGasMedian = median(maxPriorityFeePerGasList) ?? 0n
 

@@ -1,6 +1,6 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import pkg from 'fs-extra'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
 const { outputFileSync, readJsonSync, writeJsonSync } = pkg
 const __filename = fileURLToPath(import.meta.url)

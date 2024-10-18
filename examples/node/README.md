@@ -23,20 +23,16 @@ NOTE: it's important to keep your private key safe and secure. Don't share it wi
 First install the dependencies
 
 ```
-yarn install
+pnpm i
 ```
 
 Each of the scripts is referenced in the scripts section of the package.json file.
 To run each example you can use the following commands
 
-- `yarn example:swap` will run `examples/swap.ts`
-- `yarn example:bridge` will run `examples/bridge.ts`
-- `yarn example:multihop` will run `examples/multihop.ts`
-- `yarn example:klima` will run `examples/klimaRetireExactCarbon.ts`
-- `yarn example:polynomial` will run `examples/polynomialDeposit.ts`
+- `pnpm example:swap` will run `examples/swap.ts`
+- `pnpm example:bridge` will run `examples/bridge.ts`
+- `pnpm example:multihop` will run `examples/multihop.ts`
+- `pnpm example:klima` will run `examples/klimaRetireExactCarbon.ts`
+- `pnpm example:polynomial` will run `examples/polynomialDeposit.ts`
 
 Be sure to take a look inside the scripts to find out what they do.
-
-
-
-

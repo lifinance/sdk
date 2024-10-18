@@ -51,7 +51,7 @@ export const switchChain = async (
 
   try {
     const updatedClient = await switchChainHook?.(step.action.fromChainId)
-    let updatedChainId
+    let updatedChainId: number | undefined
     if (updatedClient) {
       updatedChainId = await getChainId(updatedClient)
     }

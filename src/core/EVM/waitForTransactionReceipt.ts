@@ -8,7 +8,8 @@ import type {
   TransactionReceipt,
 } from 'viem'
 import { waitForTransactionReceipt as waitForTransactionReceiptInternal } from 'viem/actions'
-import { LiFiErrorCode, TransactionError } from '../../utils/index.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import { TransactionError } from '../../errors/errors.js'
 import { getPublicClient } from './publicClient.js'
 import { retryCount, retryDelay } from './utils.js'
 
@@ -75,7 +76,7 @@ async function waitForReceipt(
       retryCount,
       retryDelay,
     })
-  } catch (error) {
+  } catch {
     // We can ignore errors from waitForTransactionReceipt as we have a status check fallback
   }
 

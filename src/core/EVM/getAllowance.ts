@@ -1,7 +1,7 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address } from 'viem'
 import { multicall, readContract } from 'viem/actions'
-import { isNativeTokenAddress } from '../../utils/utils.js'
+import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
 import { allowanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import type {
@@ -26,7 +26,7 @@ export const getAllowance = async (
       args: [ownerAddress, spenderAddress],
     })) as bigint
     return approved
-  } catch (e) {
+  } catch (_e) {
     return 0n
   }
 }
@@ -114,12 +114,12 @@ export const getTokenAllowanceMulticall = async (
 
   // group by chain
   const tokenDataByChain: { [chainId: number]: TokenSpender[] } = {}
-  filteredTokens.forEach((data) => {
+  for (const data of filteredTokens) {
     if (!tokenDataByChain[data.token.chainId]) {
       tokenDataByChain[data.token.chainId] = []
     }
     tokenDataByChain[data.token.chainId].push(data)
-  })
+  }
 
   const chainKeys = Object.keys(tokenDataByChain).map(Number.parseInt)
 

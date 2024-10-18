@@ -5,18 +5,18 @@ import type {
   StatusResponse,
 } from '@lifi/sdk'
 import {
-  CoinKey,
   ChainId,
-  getQuote,
-  getContractCallsQuote,
-  createConfig,
+  CoinKey,
   EVM,
+  createConfig,
+  getContractCallsQuote,
+  getQuote,
   getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { createWalletClient, fromHex, http, publicActions } from 'viem'
-import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
+import { http, createWalletClient, fromHex, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
+import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
@@ -53,7 +53,7 @@ const run = async () => {
               createWalletClient({
                 account,
                 chain: switchChains.find((chain) => {
-                  if (chain.id == chainId) {
+                  if (chain.id === chainId) {
                     return chain
                   }
                 }) as Chain,

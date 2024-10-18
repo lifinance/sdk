@@ -3,7 +3,7 @@ import type { StepExecutorOptions } from '../types.js'
 import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import { getSNSAddress } from './getSNSAddress.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
-import { isAddress } from './isAddress.js'
+import { isSVMAddress } from './isSVMAddress.js'
 import type { SolanaProvider, SolanaProviderOptions } from './types.js'
 
 export function Solana(options?: SolanaProviderOptions): SolanaProvider {
@@ -12,14 +12,14 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
     get type() {
       return ChainType.SVM
     },
-    isAddress,
+    isAddress: isSVMAddress,
     resolveAddress: getSNSAddress,
     getBalance: getSolanaBalance,
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SolanaStepExecutor> {
       if (!_options.getWalletAdapter) {
-        throw new Error(`getWalletAdapter is not provided.`)
+        throw new Error('getWalletAdapter is not provided.')
       }
 
       const walletAdapter = await _options.getWalletAdapter()

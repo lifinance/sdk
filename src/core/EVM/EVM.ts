@@ -22,7 +22,7 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
       options: StepExecutorOptions
     ): Promise<EVMStepExecutor> {
       if (!_options.getWalletClient) {
-        throw new Error(`Client is not provided.`)
+        throw new Error('Client is not provided.')
       }
 
       const walletClient = await _options.getWalletClient()

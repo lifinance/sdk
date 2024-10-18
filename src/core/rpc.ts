@@ -1,4 +1,4 @@
-import { type ChainId } from '@lifi/types'
+import type { ChainId } from '@lifi/types'
 import { config } from '../config.js'
 
 export const getRpcUrl = async (chainId: ChainId): Promise<string> => {

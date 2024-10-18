@@ -1,17 +1,19 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
-import { type SignerWalletAdapter } from '@solana/wallet-adapter-base'
+import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import {
-  VersionedTransaction,
   type SendOptions,
   type SignatureResult,
+  VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
+import { withTimeout } from 'viem'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
-import { getTransactionFailedMessage } from '../../utils/index.js'
+import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
+import { sleep } from '../../utils/sleep.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getSubstatusMessage } from '../processMessages.js'
@@ -21,7 +23,6 @@ import type {
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { sleep } from '../utils.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { getSolanaConnection } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
@@ -87,10 +88,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
             this.allowUserInteraction,
             this.executionOptions
           )
-          step = {
+          Object.assign(step, {
             ...comparedStep,
             execution: step.execution,
-          }
+          })
         }
 
         if (!step.transactionRequest?.data) {
@@ -144,23 +145,31 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         this.checkWalletAdapter(step)
 
-        const signedTxPromise =
-          this.walletAdapter.signTransaction(versionedTransaction)
-
         // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTx = await Promise.race([
-          signedTxPromise,
-          // https://solana.com/docs/advanced/confirmation#transaction-expiration
-          // Use 2 minutes to account for fluctuations
-          sleep(120_000),
-        ])
+        const signedTx = await withTimeout<VersionedTransaction>(
+          () => this.walletAdapter.signTransaction(versionedTransaction),
+          {
+            // https://solana.com/docs/advanced/confirmation#transaction-expiration
+            // Use 2 minutes to account for fluctuations
+            timeout: 120_000,
+            errorInstance: new TransactionError(
+              LiFiErrorCode.TransactionExpired,
+              'Transaction has expired: blockhash is no longer recent enough.'
+            ),
+          }
+        )
 
-        if (!signedTx) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionExpired,
-            'Transaction has expired: blockhash is no longer recent enough.'
-          )
+        async function bufferToBase64(buffer: any) {
+          const base64url = (await new Promise((r) => {
+            const reader = new FileReader()
+            reader.onload = () => r(reader.result)
+            reader.readAsDataURL(new Blob([buffer]))
+          })) as any
+          return base64url.slice(base64url.indexOf(',') + 1)
         }
+
+        const _s = await bufferToBase64(signedTx.serialize())
+        console.log(_s)
 
         process = this.statusManager.updateProcess(
           step,

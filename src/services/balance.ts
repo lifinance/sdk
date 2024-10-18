@@ -1,7 +1,7 @@
-import type { Token, TokenAmount } from '@lifi/types'
+import { ChainType, type Token, type TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
-import { isToken } from '../typeguards.js'
 import { ValidationError } from '../errors/errors.js'
+import { isToken } from '../typeguards.js'
 
 /**
  * Returns the balances of a specific token a wallet holds across all aggregated chains.
@@ -50,8 +50,8 @@ export const getTokenBalances = async (
 
 /**
  * This method queries the balances of tokens for a specific list of chains for a given wallet.
- * @param walletAddress - A walletaddress.
- * @param tokensByChain - A list of Token objects organized by chain ids.
+ * @param walletAddress - A wallet address.
+ * @param tokensByChain - A list of token objects organized by chain ids.
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
@@ -66,19 +66,26 @@ export const getTokenBalancesByChain = async (
   const tokenList = Object.values(tokensByChain).flat()
   const invalidTokens = tokenList.filter((token) => !isToken(token))
   if (invalidTokens.length) {
-    throw new ValidationError(`Invalid tokens passed.`)
+    throw new ValidationError('Invalid tokens passed.')
   }
 
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
-  await Promise.allSettled(
+  const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
-      const chainId = parseInt(chainIdStr)
-      const baseTokenAddress = tokensByChain[chainId][0].address
+      const chainId = Number.parseInt(chainIdStr)
+      const chain = await config.getChainById(chainId)
+      const tokenAddress = tokensByChain[chainId][0].address
       const provider = config
         .get()
-        .providers.find((provider) => provider.isAddress(baseTokenAddress))
+        .providers.find((provider) =>
+          chain.chainType === ChainType.UTXO
+            ? provider.isAddress(walletAddress)
+            : provider.isAddress(tokenAddress)
+        )
       if (!provider) {
-        throw new Error('SDK Token Provider not found.')
+        throw new Error(
+          `SDK Token Provider for ${chain.chainType} is not found.`
+        )
       }
       const tokenAmounts = await provider.getBalance(
         walletAddress,
@@ -87,5 +94,12 @@ export const getTokenBalancesByChain = async (
       tokenAmountsByChain[chainId] = tokenAmounts
     })
   )
+  if (config.get().debug) {
+    for (const result of tokenAmountsSettled) {
+      if (result.status === 'rejected') {
+        console.warn("Couldn't fetch token balance.", result.reason)
+      }
+    }
+  }
   return tokenAmountsByChain
 }

@@ -3,21 +3,21 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  createConfig,
   EVM,
+  createConfig,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
 import {
+  http,
   createWalletClient,
   encodeFunctionData,
-  http,
   parseAbi,
   publicActions,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
+import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
@@ -54,7 +54,7 @@ const run = async () => {
               createWalletClient({
                 account,
                 chain: switchChains.find((chain) => {
-                  if (chain.id == chainId) {
+                  if (chain.id === chainId) {
                     return chain
                   }
                 }) as Chain,
@@ -81,7 +81,7 @@ const run = async () => {
     const depositTxData = encodeFunctionData({
       abi: parseAbi(config.depositContractAbi),
       functionName: 'deposit',
-      args: [config.amount, account.address,],
+      args: [config.amount, account.address],
     })
 
     const contractCallsQuoteRequest: ContractCallsQuoteRequest = {

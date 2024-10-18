@@ -1,5 +1,5 @@
-import { ErrorName, LiFiErrorCode } from './constants.js'
 import { BaseError } from './baseError.js'
+import { ErrorName, LiFiErrorCode } from './constants.js'
 
 export class RPCError extends BaseError {
   constructor(code: LiFiErrorCode, message: string, cause?: Error) {

@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import { ChainType } from '@lifi/types'
 import { config } from './config.js'
 import { checkPackageUpdates } from './helpers.js'
 import { getChains } from './services/api.js'
-import type { SDKConfig } from './types/index.js'
+import type { SDKConfig } from './types/internal.js'
 import { name, version } from './version.js'
 
 function createBaseConfig(options: SDKConfig) {
@@ -20,7 +19,9 @@ function createBaseConfig(options: SDKConfig) {
 }
 
 export async function createChainsConfig() {
-  config.loading = getChains({ chainTypes: [ChainType.EVM, ChainType.SVM] })
+  config.loading = getChains({
+    chainTypes: [ChainType.EVM, ChainType.SVM, ChainType.UTXO],
+  })
     .then((chains) => config.setChains(chains))
     .catch()
   await config.loading

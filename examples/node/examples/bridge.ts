@@ -1,16 +1,16 @@
 import * as lifiDataTypes from '@lifi/data-types'
 import {
-  executeRoute,
-  getRoutes,
   ChainId,
   CoinKey,
-  createConfig,
   EVM,
+  createConfig,
+  executeRoute,
+  getRoutes,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { createWalletClient, http } from 'viem'
+import { http, createWalletClient } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { mainnet, arbitrum, optimism, polygon } from 'viem/chains'
+import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { reportStepsExecutionToTerminal } from '../helpers/reportStepsExecutionToTerminal'
@@ -45,7 +45,7 @@ async function run() {
             createWalletClient({
               account,
               chain: switchChains.find((chain) => {
-                if (chain.id == chainId) {
+                if (chain.id === chainId) {
                   return chain
                 }
               }) as Chain,

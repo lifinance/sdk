@@ -1,6 +1,4 @@
 import {
-  isContractCallsRequestWithFromAmount,
-  isContractCallsRequestWithToAmount,
   type ChainId,
   type ChainKey,
   type ChainsRequest,
@@ -25,12 +23,15 @@ import {
   type ToolsResponse,
   type TransactionAnalyticsRequest,
   type TransactionAnalyticsResponse,
+  isContractCallsRequestWithFromAmount,
+  isContractCallsRequestWithToAmount,
 } from '@lifi/types'
 import { config } from '../config.js'
-import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
+import { withDedupe } from '../utils/withDedupe.js'
 /**
  * Fetch information about a Token
  * @param chain - Id or key of the chain that contains the token
@@ -84,7 +85,7 @@ export const getQuote = async (
     'toChain',
     'toToken',
   ]
-  requiredParameters.forEach((requiredParameter) => {
+  for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
       throw new SDKError(
         new ValidationError(
@@ -92,7 +93,7 @@ export const getQuote = async (
         )
       )
     }
-  })
+  }
   const _config = config.get()
   // apply defaults
   params.integrator ??= _config.integrator
@@ -107,11 +108,11 @@ export const getQuote = async (
   params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
   params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
 
-  Object.keys(params).forEach(
-    (key) =>
-      !params[key as keyof QuoteRequest] &&
+  for (const key of Object.keys(params)) {
+    if (!params[key as keyof QuoteRequest]) {
       delete params[key as keyof QuoteRequest]
-  )
+    }
+  }
 
   return await request<LiFiStep>(
     `${_config.apiUrl}/quote?${new URLSearchParams(
@@ -143,7 +144,7 @@ export const getContractCallsQuote = async (
     'toToken',
     'contractCalls',
   ]
-  requiredParameters.forEach((requiredParameter) => {
+  for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
       throw new SDKError(
         new ValidationError(
@@ -151,7 +152,7 @@ export const getContractCallsQuote = async (
         )
       )
     }
-  })
+  }
   if (
     !isContractCallsRequestWithFromAmount(params) &&
     !isContractCallsRequestWithToAmount(params)
@@ -225,20 +226,24 @@ export const getChains = async (
   options?: RequestOptions
 ): Promise<ExtendedChain[]> => {
   if (params) {
-    Object.keys(params).forEach(
-      (key) =>
-        !params[key as keyof ChainsRequest] &&
+    for (const key of Object.keys(params)) {
+      if (!params[key as keyof ChainsRequest]) {
         delete params[key as keyof ChainsRequest]
-    )
-  }
-
-  const response = await request<ChainsResponse>(
-    `${config.get().apiUrl}/chains?${new URLSearchParams(
-      params as Record<string, string>
-    )}`,
-    {
-      signal: options?.signal,
+      }
     }
+  }
+  const urlSearchParams = new URLSearchParams(
+    params as Record<string, string>
+  ).toString()
+  const response = await withDedupe(
+    () =>
+      request<ChainsResponse>(
+        `${config.get().apiUrl}/chains?${urlSearchParams}`,
+        {
+          signal: options?.signal,
+        }
+      ),
+    { id: `${getChains.name}.${urlSearchParams}` }
   )
   return response.chains
 }
@@ -288,7 +293,6 @@ export const getStepTransaction = async (
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {
     // While the validation fails for some users we should not enforce it
-    // eslint-disable-next-line no-console
     console.warn('SDK Validation: Invalid Step', step)
   }
 
@@ -316,11 +320,11 @@ export const getTools = async (
   options?: RequestOptions
 ): Promise<ToolsResponse> => {
   if (params) {
-    Object.keys(params).forEach(
-      (key) =>
-        !params[key as keyof ToolsRequest] &&
+    for (const key of Object.keys(params)) {
+      if (!params[key as keyof ToolsRequest]) {
         delete params[key as keyof ToolsRequest]
-    )
+      }
+    }
   }
   return await request<ToolsResponse>(
     `${config.get().apiUrl}/tools?${new URLSearchParams(
@@ -343,21 +347,26 @@ export const getTokens = async (
   options?: RequestOptions
 ): Promise<TokensResponse> => {
   if (params) {
-    Object.keys(params).forEach(
-      (key) =>
-        !params[key as keyof TokensRequest] &&
+    for (const key of Object.keys(params)) {
+      if (!params[key as keyof TokensRequest]) {
         delete params[key as keyof TokensRequest]
-    )
-  }
-
-  return await request<TokensResponse>(
-    `${config.get().apiUrl}/tokens?${new URLSearchParams(
-      params as Record<string, string>
-    )}`,
-    {
-      signal: options?.signal,
+      }
     }
+  }
+  const urlSearchParams = new URLSearchParams(
+    params as Record<string, string>
+  ).toString()
+  const response = await withDedupe(
+    () =>
+      request<TokensResponse>(
+        `${config.get().apiUrl}/tokens?${urlSearchParams}`,
+        {
+          signal: options?.signal,
+        }
+      ),
+    { id: `${getTokens.name}.${urlSearchParams}` }
   )
+  return response
 }
 
 /**
@@ -424,18 +433,15 @@ export const getConnections = async (
     'denyExchanges',
     'preferExchanges',
   ]
-  connectionRequestArrayParams.forEach((parameter) => {
-    const connectionRequestArrayParam: string[] = connectionRequest[
-      parameter
-    ] as string[]
+  for (const parameter of connectionRequestArrayParams) {
+    const connectionRequestArrayParam = connectionRequest[parameter] as string[]
 
     if (connectionRequestArrayParam?.length) {
-      connectionRequestArrayParam?.forEach((value) => {
+      for (const value of connectionRequestArrayParam) {
         url.searchParams.append(parameter, value)
-      })
+      }
     }
-  })
-
+  }
   return await request<ConnectionsResponse>(url, options)
 }
 

@@ -1,7 +1,7 @@
 import type { Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
-import { isNativeTokenAddress } from '../../utils/utils.js'
+import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'

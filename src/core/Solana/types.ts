@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
-import { type SDKProvider } from '../types.js'
+import type { SDKProvider } from '../types.js'
 
 export interface SolanaProviderOptions {
   getWalletAdapter?: () => Promise<SignerWalletAdapter>

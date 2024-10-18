@@ -6,7 +6,7 @@ import {
   multicall,
   readContract,
 } from 'viem/actions'
-import { isZeroAddress } from '../../utils/utils.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
@@ -19,11 +19,11 @@ export const getEVMBalance = async (
     return []
   }
   const { chainId } = tokens[0]
-  tokens.forEach((token) => {
+  for (const token of tokens) {
     if (token.chainId !== chainId) {
-      console.warn(`Requested tokens have to be on the same chain.`)
+      console.warn('Requested tokens have to be on the same chain.')
     }
-  })
+  }
 
   const multicallAddress = await getMulticallAddress(chainId)
 
@@ -34,9 +34,8 @@ export const getEVMBalance = async (
       walletAddress,
       multicallAddress
     )
-  } else {
-    return getEVMBalanceDefault(chainId, tokens, walletAddress)
   }
+  return getEVMBalanceDefault(chainId, tokens, walletAddress)
 }
 
 const getEVMBalanceMulticall = async (

@@ -3,7 +3,7 @@ import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
-import { LiFiErrorCode, ErrorName } from '../../errors/constants.js'
+import { ErrorName, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 beforeAll(setupTestEnvironment)

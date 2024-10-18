@@ -25,7 +25,7 @@
 ## Installation
 
 ```bash
-yarn add @lifi/sdk
+pnpm add @lifi/sdk
 ```
 
 or
@@ -38,7 +38,7 @@ npm install --save @lifi/sdk
 
 ### Set up the SDK
 
-Firstly, create SDK config with your integrator string. 
+Firstly, create SDK config with your integrator string.
 
 ```ts
 import { createConfig } from '@lifi/sdk'
