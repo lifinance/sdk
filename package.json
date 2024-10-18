@@ -93,18 +93,18 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.0.2",
-    "@lifi/types": "^15.16.1",
+    "@lifi/types": "^16.0.0",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.5.0",
     "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/web3.js": "^1.95.3",
+    "@solana/web3.js": "^1.95.4",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.28"
+    "viem": "^2.21.29"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.3",
+    "@biomejs/biome": "^1.9.4",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@types/fs-extra": "^11.0.4",
