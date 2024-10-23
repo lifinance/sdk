@@ -41,6 +41,10 @@
         "useBlockStatements": "error"
       },
       "suspicious": {
+        "noConsole": {
+          "level": "error",
+          "options": { "allow": ["warn", "error"] }
+        },
         "noConfusingVoidType": "off",
         "noExplicitAny": "off"
       }

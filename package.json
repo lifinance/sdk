@@ -101,7 +101,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.29"
+    "viem": "^2.21.33"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -114,7 +114,7 @@
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
     "madge": "^8.0.0",
-    "msw": "^2.4.11",
+    "msw": "^2.5.0",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
