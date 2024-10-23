@@ -43,7 +43,7 @@
       "suspicious": {
         "noConsole": {
           "level": "error",
-          "options": { "allow": ["warn", "error"] }
+          "options": { "allow": ["warn", "error", "debug"] }
         },
         "noConfusingVoidType": "off",
         "noExplicitAny": "off"
