@@ -29,10 +29,10 @@ type WithDedupeOptions = {
 }
 
 /** Deduplicates in-flight promises. */
-export function withDedupe<data>(
-  fn: () => Promise<data>,
+export function withDedupe<T>(
+  fn: () => Promise<T>,
   { enabled = true, id }: WithDedupeOptions
-): Promise<data> {
+): Promise<T> {
   if (!enabled || !id) {
     return fn()
   }

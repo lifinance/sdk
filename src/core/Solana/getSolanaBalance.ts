@@ -1,7 +1,8 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
 import { SolSystemProgram } from '../../constants.js'
-import { getSolanaConnection } from './connection.js'
+import { withDedupe } from '../../utils/withDedupe.js'
+import { callSolanaWithRetry } from './connection.js'
 import { TokenProgramAddress } from './types.js'
 
 export const getSolanaBalance = async (
@@ -26,15 +27,34 @@ const getSolanaBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
-  const connection = await getSolanaConnection()
   const accountPublicKey = new PublicKey(walletAddress)
   const tokenProgramPublicKey = new PublicKey(TokenProgramAddress)
   const [slot, balance, tokenAccountsByOwner] = await Promise.allSettled([
-    connection.getSlot(),
-    connection.getBalance(accountPublicKey),
-    connection.getParsedTokenAccountsByOwner(accountPublicKey, {
-      programId: tokenProgramPublicKey,
-    }),
+    withDedupe(
+      () =>
+        callSolanaWithRetry((connection) => connection.getSlot('confirmed')),
+      { id: `${getSolanaBalanceDefault.name}.getSlot` }
+    ),
+    withDedupe(
+      () =>
+        callSolanaWithRetry((connection) =>
+          connection.getBalance(accountPublicKey, 'confirmed')
+        ),
+      { id: `${getSolanaBalanceDefault.name}.getBalance` }
+    ),
+    withDedupe(
+      () =>
+        callSolanaWithRetry((connection) =>
+          connection.getParsedTokenAccountsByOwner(
+            accountPublicKey,
+            {
+              programId: tokenProgramPublicKey,
+            },
+            'confirmed'
+          )
+        ),
+      { id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner` }
+    ),
   ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
   const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
