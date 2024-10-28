@@ -156,7 +156,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         const simulationResult = await callSolanaWithRetry((connection) =>
           connection.simulateTransaction(signedTx, {
-            commitment: 'processed',
+            commitment: 'confirmed',
             replaceRecentBlockhash: true,
           })
         )

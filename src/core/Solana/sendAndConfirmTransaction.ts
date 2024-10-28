@@ -38,7 +38,7 @@ export async function sendAndConfirmTransaction(
     // Setting max retries to 0 as we are handling retries manually
     maxRetries: 0,
     // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
-    preflightCommitment: 'processed',
+    preflightCommitment: 'confirmed',
   }
 
   for (const connection of connections) {
@@ -47,16 +47,13 @@ export async function sendAndConfirmTransaction(
       .catch()
   }
 
-  // Wait for all send attempts to complete
-  // await Promise.all(sendPromises)
-
   const abortControllers: AbortController[] = []
 
   const confirmPromises = connections.map(async (connection) => {
     const abortController = new AbortController()
     abortControllers.push(abortController)
     try {
-      const blockhashResult = await connection.getLatestBlockhash('processed')
+      const blockhashResult = await connection.getLatestBlockhash('confirmed')
 
       const confirmTransactionPromise = connection
         .confirmTransaction(
@@ -66,19 +63,12 @@ export async function sendAndConfirmTransaction(
             lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
             abortSignal: abortController.signal,
           },
-          'processed'
+          'confirmed'
         )
         .then((result) => result.value)
 
       let signatureResult: SignatureResult | null = null
-      let blockHeight = await connection.getBlockHeight('processed')
-
-      // biome-ignore lint/suspicious/noConsole: <explanation>
-      console.log(
-        'BlockHeight',
-        blockhashResult.lastValidBlockHeight,
-        blockHeight
-      )
+      let blockHeight = await connection.getBlockHeight('confirmed')
 
       while (
         !signatureResult &&
@@ -97,7 +87,7 @@ export async function sendAndConfirmTransaction(
           break
         }
 
-        blockHeight = await connection.getBlockHeight('processed')
+        blockHeight = await connection.getBlockHeight('confirmed')
       }
 
       abortController.abort()
