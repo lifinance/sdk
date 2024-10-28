@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/lifinance/sdk/compare/v3.3.1...v3.4.0) (2024-10-28)
+
+
+### Features
+
+* add support for multiple Solana RPCs ([#220](https://github.com/lifinance/sdk/issues/220)) ([08b7faa](https://github.com/lifinance/sdk/commit/08b7faa5733b818cdfdc5693580f6018300e5c22))
+
 ### [3.3.1](https://github.com/lifinance/sdk/compare/v3.3.0...v3.3.1) (2024-10-23)
 
 
