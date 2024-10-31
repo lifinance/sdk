@@ -11,7 +11,10 @@ export {
   revokeTokenApproval,
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
+export { isEVM } from './core/EVM/types.js'
 export type {
+  EVMProvider,
+  EVMProviderOptions,
   MultisigConfig,
   MultisigTransaction,
   MultisigTxDetails,
@@ -53,7 +56,14 @@ export {
   KeypairWalletName,
 } from './core/Solana/KeypairWalletAdapter.js'
 export { Solana } from './core/Solana/Solana.js'
+export { isSolana } from './core/Solana/types.js'
+export type {
+  SolanaProvider,
+  SolanaProviderOptions,
+} from './core/Solana/types.js'
 export { UTXO } from './core/UTXO/UTXO.js'
+export { isUTXO } from './core/UTXO/types.js'
+export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
 export { createConfig } from './createConfig.js'
 export {
   checkPackageUpdates,
