@@ -7,13 +7,12 @@
   "author": "LI.FI <github@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^5.13.2",
-    "@lifi/rpc-wrapper": "^0.0.27",
-    "@lifi/sdk": "^3.3.1",
+    "@lifi/data-types": "^5.14.0",
+    "@lifi/sdk": "^3.4.0",
     "@wagmi/connectors": "^5.3.3",
     "@wagmi/core": "^2.14.1",
     "dotenv": "^16.4.5",
-    "viem": "^2.21.35"
+    "viem": "^2.21.37"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -25,7 +24,7 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.8.1",
+    "@types/node": "^22.8.5",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
