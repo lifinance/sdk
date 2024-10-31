@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.4.1](https://github.com/lifinance/sdk/compare/v3.4.0...v3.4.1) (2024-10-31)
+
+
+### Bug Fixes
+
+* export more provider types ([24a0e80](https://github.com/lifinance/sdk/commit/24a0e8008fc05a74b6ad613e01d919e7cd768494))
+
 ## [3.4.0](https://github.com/lifinance/sdk/compare/v3.3.1...v3.4.0) (2024-10-28)
 
 
