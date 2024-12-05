@@ -1,4 +1,4 @@
-import type { Client, Hash, SendTransactionParameters } from 'viem'
+import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
@@ -10,8 +10,8 @@ import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
   client: Client,
-  tokenAddress: string,
-  contractAddress: string,
+  tokenAddress: Address,
+  contractAddress: Address,
   amount: bigint,
   settings?: ExecutionOptions,
   returnPopulatedTransaction?: boolean
@@ -56,7 +56,6 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-    chain: null,
   } as SendTransactionParameters)
 }
 
@@ -81,16 +80,16 @@ export const setTokenAllowance = async ({
   }
   const approvedAmount = await getAllowance(
     token.chainId,
-    token.address,
+    token.address as Address,
     walletClient.account!.address,
-    spenderAddress
+    spenderAddress as Address
   )
 
   if (amount > approvedAmount) {
     const approveTx = await setAllowance(
       walletClient,
-      token.address,
-      spenderAddress,
+      token.address as Address,
+      spenderAddress as Address,
       amount
     )
 
@@ -117,15 +116,15 @@ export const revokeTokenApproval = async ({
   }
   const approvedAmount = await getAllowance(
     token.chainId,
-    token.address,
+    token.address as Address,
     walletClient.account!.address,
-    spenderAddress
+    spenderAddress as Address
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
       walletClient,
-      token.address,
-      spenderAddress,
+      token.address as Address,
+      spenderAddress as Address,
       0n
     )
 

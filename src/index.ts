@@ -15,9 +15,6 @@ export { isEVM } from './core/EVM/types.js'
 export type {
   EVMProvider,
   EVMProviderOptions,
-  MultisigConfig,
-  MultisigTransaction,
-  MultisigTxDetails,
 } from './core/EVM/types.js'
 export { StatusManager } from './core/StatusManager.js'
 export {

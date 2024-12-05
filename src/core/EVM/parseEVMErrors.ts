@@ -29,6 +29,14 @@ const handleSpecificErrors = async (
   if (e.cause?.name === 'UserRejectedRequestError') {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
+  // Safe Wallet via WalletConnect returns -32000 code when user rejects the signature
+  // {
+  //   code: -32000,
+  //   message: 'User rejected transaction',
+  // }
+  if (e.cause?.code === -32000) {
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
 
   if (
     step &&
