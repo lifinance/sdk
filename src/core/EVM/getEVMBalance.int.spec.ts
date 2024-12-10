@@ -1,5 +1,6 @@
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
+import type { Address } from 'viem'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { findDefaultToken } from '../../../tests/tokens.js'
@@ -18,7 +19,10 @@ describe('getBalances integration tests', () => {
     walletAddress: string,
     tokens: StaticToken[]
   ) => {
-    const tokenBalances = await getEVMBalance(walletAddress, tokens as Token[])
+    const tokenBalances = await getEVMBalance(
+      walletAddress as Address,
+      tokens as Token[]
+    )
 
     expect(tokenBalances.length).toEqual(tokens.length)
 

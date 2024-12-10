@@ -1,5 +1,5 @@
 import type { ChainId } from '@lifi/types'
-import type { Client, Transaction } from 'viem'
+import type { Address, Client, Transaction } from 'viem'
 import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
@@ -37,9 +37,10 @@ export const getMaxPriorityFeePerGas = async (
 // Multicall
 export const getMulticallAddress = async (
   chainId: ChainId
-): Promise<string | undefined> => {
+): Promise<Address | undefined> => {
   const chains = await config.getChains()
-  return chains.find((chain) => chain.id === chainId)?.multicallAddress
+  return chains.find((chain) => chain.id === chainId)
+    ?.multicallAddress as Address
 }
 
 // Modified viem retryDelay exponential backoff function.
