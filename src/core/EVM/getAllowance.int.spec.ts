@@ -1,4 +1,5 @@
 import { ChainId, CoinKey } from '@lifi/types'
+import type { Address } from 'viem'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
 import { findDefaultToken } from '../../../tests/tokens.js'
@@ -33,7 +34,7 @@ describe('allowance integration tests', () => {
     async () => {
       const allowance = await getAllowance(
         memeToken.chainId,
-        memeToken.address,
+        memeToken.address as Address,
         defaultWalletAddress,
         defaultSpenderAddress
       )
@@ -50,7 +51,7 @@ describe('allowance integration tests', () => {
 
       const allowance = await getAllowance(
         token.chainId,
-        token.address,
+        token.address as Address,
         defaultWalletAddress,
         defaultSpenderAddress
       )
@@ -68,7 +69,7 @@ describe('allowance integration tests', () => {
 
       const allowance = await getAllowance(
         invalidToken.chainId,
-        invalidToken.address,
+        invalidToken.address as Address,
         defaultWalletAddress,
         defaultSpenderAddress
       )
