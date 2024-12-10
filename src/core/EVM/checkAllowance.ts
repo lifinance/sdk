@@ -8,16 +8,27 @@ import { parseEVMErrors } from './parseEVMErrors.js'
 import { setAllowance } from './setAllowance.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
-export const checkAllowance = async (
-  client: Client,
-  chain: ExtendedChain,
-  step: LiFiStep,
-  statusManager: StatusManager,
-  settings?: ExecutionOptions,
+export type CheckAllowanceParams = {
+  client: Client
+  chain: ExtendedChain
+  step: LiFiStep
+  statusManager: StatusManager
+  executionOptions?: ExecutionOptions
+  allowUserInteraction?: boolean
+  atomicBatchSupported?: boolean
+  permit2Supported?: boolean
+}
+
+export const checkAllowance = async ({
+  client,
+  chain,
+  step,
+  statusManager,
+  executionOptions,
   allowUserInteraction = false,
   atomicBatchSupported = false,
-  permit2Supported = false
-): Promise<Hash | void> => {
+  permit2Supported = false,
+}: CheckAllowanceParams): Promise<Hash | void> => {
   // Find existing or create new allowance process
   const allowanceProcess: Process = statusManager.findOrCreateProcess({
     step,
@@ -64,6 +75,8 @@ export const checkAllowance = async (
       return
     }
 
+    statusManager.updateProcess(step, allowanceProcess.type, 'ACTION_REQUIRED')
+
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
     const approveTxHash = await setAllowance(
@@ -71,7 +84,7 @@ export const checkAllowance = async (
       step.action.fromToken.address as Address,
       spenderAddress as Address,
       approveAmount,
-      settings,
+      executionOptions,
       atomicBatchSupported
     )
 

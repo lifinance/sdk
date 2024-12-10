@@ -13,7 +13,7 @@ export const setAllowance = async (
   tokenAddress: Address,
   contractAddress: Address,
   amount: bigint,
-  settings?: ExecutionOptions,
+  executionOptions?: ExecutionOptions,
   returnPopulatedTransaction?: boolean
 ): Promise<Hash> => {
   const data = encodeFunctionData({
@@ -35,9 +35,9 @@ export const setAllowance = async (
         : undefined,
   }
 
-  if (settings?.updateTransactionRequestHook) {
+  if (executionOptions?.updateTransactionRequestHook) {
     const customizedTransactionRequest: TransactionParameters =
-      await settings.updateTransactionRequestHook({
+      await executionOptions.updateTransactionRequestHook({
         requestType: 'approve',
         ...transactionRequest,
       })

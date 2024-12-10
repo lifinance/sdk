@@ -150,7 +150,7 @@ export const signPermit2WitnessMessage = async (
     deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
   }
 
-  // Create witness data for the LIFI call
+  // Create witness data for the LI.FI call
   const witness = {
     witness: {
       tokenReceiver: chain.permit2Proxy as Address,

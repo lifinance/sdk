@@ -11,7 +11,6 @@ import type {
   SendTransactionParameters,
   TransactionReceipt,
 } from 'viem'
-import { encodeFunctionData, multicall3Abi } from 'viem'
 import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
 import { getCapabilities, sendCalls } from 'viem/experimental'
 import { config } from '../../config.js'
@@ -35,7 +34,7 @@ import { getNativePermit } from './getNativePermit.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { signPermitMessage } from './signPermitMessage.js'
 import { switchChain } from './switchChain.js'
-import { getMaxPriorityFeePerGas, getMulticallAddress } from './utils.js'
+import { getMaxPriorityFeePerGas } from './utils.js'
 import {
   type WalletCallReceipt,
   waitForBatchTransactionReceipt,
@@ -47,12 +46,6 @@ export type Call = {
   to?: Address
   value?: bigint
   chainId?: number
-}
-
-export type Aggregate3Call = {
-  allowFailure: boolean
-  callData: Hex
-  target: Address
 }
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
@@ -138,9 +131,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const fromChain = await config.getChainById(step.action.fromChainId)
     const toChain = await config.getChainById(step.action.toChainId)
 
-    const multicallAddress = await getMulticallAddress(fromChain.id)
-    const multicallSupported = !!multicallAddress
-
     let atomicBatchSupported = false
     try {
       const capabilities = await getCapabilities(this.client)
@@ -150,12 +140,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     const calls: Call[] = []
-    const multicallCalls: Aggregate3Call[] = []
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     // STEP 1: Check allowance
+    // Find existing swap/bridge process
     const existingProcess = step.execution.process.find(
       (p) => p.type === currentProcessType
     )
@@ -176,44 +166,37 @@ export class EVMStepExecutor extends BaseStepExecutor {
       !!fromChain.permit2Proxy &&
       nativePermit.supported &&
       !atomicBatchSupported
-    // Check if chain has Permit2 contract deployed, not available for atomic batch
+    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
       !!fromChain.permit2 && !!fromChain.permit2Proxy && !atomicBatchSupported
     // Token supports either native permits or Permit2
     const permitSupported = permit2Supported || nativePermitSupported
 
-    // We need to check allowance only if:
-    // 1. No existing transaction is pending
-    // 2. Token is not native (address is not zero)
-    // 3. Token doesn't support native permits (we'll use permit instead of approve)
     const checkForAllowance =
+      // No existing swap/bridgetransaction is pending
       !existingProcess?.txHash &&
+      // Token is not native (address is not zero)
       !isZeroAddress(step.action.fromToken.address) &&
+      // Token doesn't support native permits
       !nativePermitSupported
-    // TODO: wait for existing approval tx hash?
+
     if (checkForAllowance) {
-      // Check if token needs approval and get approval transaction data if atomic batch is supported
-      const data = await checkAllowance(
-        this.client,
-        fromChain,
+      // Check if token needs approval and get approval transaction or message data when available
+      const data = await checkAllowance({
+        client: this.client,
+        chain: fromChain,
         step,
-        this.statusManager,
-        this.executionOptions,
-        this.allowUserInteraction,
-        atomicBatchSupported || multicallSupported,
-        permit2Supported
-      )
+        statusManager: this.statusManager,
+        executionOptions: this.executionOptions,
+        allowUserInteraction: this.allowUserInteraction,
+        atomicBatchSupported,
+        permit2Supported,
+      })
 
       if (data) {
         // Create approval transaction call
         // No value needed since we're only approving ERC20 tokens
-        if (multicallSupported) {
-          multicallCalls.push({
-            target: step.action.fromToken.address as Address,
-            callData: data,
-            allowFailure: true,
-          })
-        } else if (atomicBatchSupported) {
+        if (atomicBatchSupported) {
           calls.push({
             chainId: step.action.fromToken.chainId,
             to: step.action.fromToken.address as Address,
@@ -323,7 +306,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(
             step,
             process.type,
-            'ACTION_REQUIRED'
+            permitSupported ? 'PERMIT_REQUIRED' : 'ACTION_REQUIRED'
           )
 
           if (!this.allowUserInteraction) {
@@ -352,28 +335,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 fromChain,
                 step.action.fromToken.address as Address,
                 BigInt(step.action.fromAmount),
-                nativePermit,
-                multicallSupported
+                nativePermit
               )
 
-              multicallCalls.push({
-                target: fromChain.permit2Proxy as Address,
-                callData: data,
-                allowFailure: true,
-              })
-
-              const multicallData = encodeFunctionData({
-                abi: multicall3Abi,
-                functionName: 'aggregate3',
-                args: [multicallCalls],
-              })
-
-              // Update transaction request to call permit2 proxy
-              transactionRequest.to = multicallAddress
-              transactionRequest.data = multicallData
-
-              // transactionRequest.to = fromChain.permit2Proxy
-              // transactionRequest.data = data
+              transactionRequest.to = fromChain.permit2Proxy
+              transactionRequest.data = data
 
               try {
                 // Try to re-estimate the gas due to additional Permit data
@@ -387,6 +353,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 // Let the wallet estimate the gas in case of failure
                 transactionRequest.gas = undefined
               }
+
+              process = this.statusManager.updateProcess(
+                step,
+                process.type,
+                'ACTION_REQUIRED'
+              )
             }
 
             txHash = await sendTransaction(this.client, {
