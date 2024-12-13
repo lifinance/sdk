@@ -92,8 +92,8 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.0.5",
-    "@lifi/types": "^16.3.1",
+    "@bigmi/core": "^0.0.6",
+    "@lifi/types": "^16.4.1",
     "@noble/curves": "^1.7.0",
     "@noble/hashes": "^1.6.1",
     "@solana/wallet-adapter-base": "^0.9.23",
@@ -101,7 +101,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.54"
+    "viem": "^2.21.55"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -112,9 +112,9 @@
     "@vitest/coverage-v8": "^2.1.8",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^15.2.11",
     "madge": "^8.0.0",
-    "msw": "^2.6.6",
+    "msw": "^2.6.8",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
@@ -134,5 +134,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@9.12.0"
+  "packageManager": "pnpm@9.15.0"
 }
