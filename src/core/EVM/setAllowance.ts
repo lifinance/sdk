@@ -1,6 +1,7 @@
 import type { Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
@@ -48,7 +49,11 @@ export const setAllowance = async (
     }
   }
 
-  return sendTransaction(client, {
+  return getAction(
+    client,
+    sendTransaction,
+    'sendTransaction'
+  )({
     to: transactionRequest.to,
     account: client.account!,
     data: transactionRequest.data,

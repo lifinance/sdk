@@ -5,6 +5,7 @@ import type {
 } from '@lifi/types'
 import type { Client, Hash, SendTransactionParameters } from 'viem'
 import { getAddresses, sendTransaction } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, ValidationError } from '../../errors/errors.js'
@@ -308,7 +309,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
               )
             }
           } else {
-            txHash = await sendTransaction(this.client, {
+            txHash = await getAction(
+              this.client,
+              sendTransaction,
+              'sendTransaction'
+            )({
               to: transactionRequest.to,
               account: this.client.account!,
               data: transactionRequest.data,
