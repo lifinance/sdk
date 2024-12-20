@@ -153,7 +153,6 @@ export const signPermit2WitnessMessage = async (
   // Create witness data for the LI.FI call
   const witness = {
     witness: {
-      tokenReceiver: chain.permit2Proxy as Address,
       diamondAddress: chain.diamondAddress as Address,
       diamondCalldataHash: keccak256(transactionRequest.data as Hex),
     },
