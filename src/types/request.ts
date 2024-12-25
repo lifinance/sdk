@@ -1,3 +1,4 @@
 export interface ExtendedRequestInit extends RequestInit {
-  retries?: number
+  retries?: number;
+  agent?: any;
 }

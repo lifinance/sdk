@@ -1,3 +1,4 @@
+import { SocksProxyAgent } from 'socks-proxy-agent'
 import { config } from './config.js'
 import { SDKError } from './errors/SDKError.js'
 import { ValidationError } from './errors/errors.js'
@@ -31,6 +32,12 @@ export const request = async <T = Response>(
         'You need to provide the Integrator property. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
       )
     )
+  }
+
+  const { socksProxy } = config.get()
+  if (socksProxy) {
+    const agent = new SocksProxyAgent(socksProxy)
+    options.agent = agent
   }
 
   options.retries = options.retries ?? requestSettings.retries

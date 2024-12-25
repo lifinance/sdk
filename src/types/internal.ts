@@ -14,6 +14,7 @@ export interface SDKBaseConfig {
   widgetVersion?: string
   preloadChains: boolean
   debug: boolean
+  socksProxy?: string
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

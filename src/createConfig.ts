@@ -28,6 +28,7 @@ export async function createChainsConfig() {
 }
 
 export function createConfig(options: SDKConfig) {
+  console.log('--- LIFI.SDK patched 🔓 ---')
   const _config = createBaseConfig(options)
   if (_config.preloadChains) {
     createChainsConfig()
