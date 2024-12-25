@@ -36,6 +36,7 @@ export const request = async <T = Response>(
 
   const { socksProxy } = config.get()
   if (socksProxy) {
+    console.log('[@lifi/sdk] 🧨 socks proxy enabled')
     const agent = new SocksProxyAgent(socksProxy)
     options.agent = agent
   }

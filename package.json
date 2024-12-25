@@ -100,7 +100,7 @@
     "viem": "^2.21.0"
   },
   "publishConfig": {
-    "access": "public"
+    "provenance": false
   },
   "standard-version": {
     "scripts": {
