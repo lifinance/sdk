@@ -1,6 +1,6 @@
 {
   "name": "lifi-sdk-update",
-  "version": "3.4.5",
+  "version": "3.4.6",
   "description": "LI.FI SDK modified",
   "license": "Apache-2.0",
   "author": "LI.FI <github@li.finance>",
@@ -73,6 +73,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
+    "node-fetch": "^3.3.2",
     "socks-proxy-agent": "^8.0.5",
     "viem": "^2.21.55"
   },

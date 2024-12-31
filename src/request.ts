@@ -1,4 +1,5 @@
 import { SocksProxyAgent } from 'socks-proxy-agent'
+import fetch from 'node-fetch'
 import { config } from './config.js'
 import { SDKError } from './errors/SDKError.js'
 import { ValidationError } from './errors/errors.js'
@@ -78,7 +79,9 @@ export const request = async <T = Response>(
       'x-lifi-integrator': integrator,
     }
 
+    // @ts-ignore
     const response: Response = await fetch(
+      // @ts-ignore
       url,
       stripExtendRequestInitProperties(options)
     )
