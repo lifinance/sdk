@@ -3,7 +3,7 @@ import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, UnknownError } from '../../errors/errors.js'
-import { fetchTxErrorDetails } from '../../helpers.js'
+import { fetchTxErrorDetails } from '../../utils/fetchTxErrorDetails.js'
 
 export const parseEVMErrors = async (
   e: Error,

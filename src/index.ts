@@ -62,17 +62,16 @@ export { UTXO } from './core/UTXO/UTXO.js'
 export { isUTXO } from './core/UTXO/types.js'
 export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
 export { createConfig } from './createConfig.js'
-export {
-  checkPackageUpdates,
-  convertQuoteToRoute,
-  fetchTxErrorDetails,
-} from './helpers.js'
+export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
+export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
+export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export {
   getChains,
   getConnections,
   getContractCallsQuote,
   getGasRecommendation,
   getQuote,
+  getRelayerQuote,
   getRoutes,
   getStatus,
   getStepTransaction,

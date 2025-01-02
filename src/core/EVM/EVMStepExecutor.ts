@@ -1,6 +1,7 @@
 import type {
   ExtendedTransactionInfo,
   FullStatusData,
+  LiFiStep,
   Process,
 } from '@lifi/types'
 import type {
@@ -16,7 +17,11 @@ import { getCapabilities, sendCalls } from 'viem/experimental'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { getStepTransaction } from '../../services/api.js'
+import {
+  getRelayerQuote,
+  getStepTransaction,
+  relayTransaction,
+} from '../../services/api.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
@@ -32,13 +37,15 @@ import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { getNativePermit } from './getNativePermit.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
-import { signPermitMessage } from './signPermitMessage.js'
+import { type PermitSignature, signPermitMessage } from './signPermitMessage.js'
 import { switchChain } from './switchChain.js'
+import { isEVMPermitStep } from './typeguards.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 import {
   type WalletCallReceipt,
   waitForBatchTransactionReceipt,
 } from './waitForBatchTransactionReceipt.js'
+import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export type Call = {
@@ -150,6 +157,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
       (p) => p.type === currentProcessType
     )
 
+    // Check if step requires permit signature and will be used with relayer service
+    const isPermitStep = isEVMPermitStep(step)
+
     // Check if token requires approval
     // Native tokens (like ETH) don't need approval since they're not ERC20 tokens
     // We should support different permit types:
@@ -165,7 +175,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const nativePermitSupported =
       !!fromChain.permit2Proxy &&
       nativePermit.supported &&
-      !atomicBatchSupported
+      !atomicBatchSupported &&
+      !isPermitStep
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
       !!fromChain.permit2 && !!fromChain.permit2Proxy && !atomicBatchSupported
@@ -238,7 +249,26 @@ export class EVMStepExecutor extends BaseStepExecutor {
           // Create new transaction request
           if (!step.transactionRequest) {
             const { execution, ...stepBase } = step
-            const updatedStep = await getStepTransaction(stepBase)
+            let updatedStep: LiFiStep
+            if (isPermitStep) {
+              const updatedRelayedStep = await getRelayerQuote({
+                fromChain: stepBase.action.fromChainId,
+                fromToken: stepBase.action.fromToken.address,
+                fromAddress: stepBase.action.fromAddress!,
+                fromAmount: stepBase.action.fromAmount,
+                toChain: stepBase.action.toChainId,
+                toToken: stepBase.action.toToken.address,
+                slippage: stepBase.action.slippage,
+                toAddress: stepBase.action.toAddress,
+                allowBridges: [stepBase.tool],
+              })
+              updatedStep = {
+                ...updatedRelayedStep.data.quote.step,
+                id: stepBase.id,
+              }
+            } else {
+              updatedStep = await getStepTransaction(stepBase)
+            }
             const comparedStep = await stepComparison(
               this.statusManager,
               step,
@@ -328,18 +358,20 @@ export class EVMStepExecutor extends BaseStepExecutor {
               calls,
             })) as Address
           } else {
+            let permitSignature: PermitSignature | undefined
             if (permitSupported) {
-              const { data } = await signPermitMessage(
-                this.client,
+              permitSignature = await signPermitMessage(this.client, {
                 transactionRequest,
-                fromChain,
-                step.action.fromToken.address as Address,
-                BigInt(step.action.fromAmount),
-                nativePermit
-              )
+                chain: fromChain,
+                tokenAddress: step.action.fromToken.address as Address,
+                amount: BigInt(step.action.fromAmount),
+                nativePermit,
+                permitData: isPermitStep ? step.permitData : undefined,
+                useWitness: isPermitStep,
+              })
 
               transactionRequest.to = fromChain.permit2Proxy
-              transactionRequest.data = data
+              transactionRequest.data = permitSignature.data
 
               try {
                 // Try to re-estimate the gas due to additional Permit data
@@ -360,17 +392,28 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 'ACTION_REQUIRED'
               )
             }
-
-            txHash = await sendTransaction(this.client, {
-              to: transactionRequest.to,
-              account: this.client.account!,
-              data: transactionRequest.data,
-              value: transactionRequest.value,
-              gas: transactionRequest.gas,
-              gasPrice: transactionRequest.gasPrice,
-              maxFeePerGas: transactionRequest.maxFeePerGas,
-              maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-            } as SendTransactionParameters)
+            if (isPermitStep && permitSignature) {
+              const relayedTransaction = await relayTransaction({
+                tokenOwner: this.client.account!.address,
+                chainId: fromChain.id,
+                permit: step.permit,
+                witness: step.witness,
+                signedPermitData: permitSignature.signature,
+                callData: transactionRequest.data!,
+              })
+              txHash = relayedTransaction.data.taskId
+            } else {
+              txHash = await sendTransaction(this.client, {
+                to: transactionRequest.to,
+                account: this.client.account!,
+                data: transactionRequest.data,
+                value: transactionRequest.value,
+                gas: transactionRequest.gas,
+                gasPrice: transactionRequest.gasPrice,
+                maxFeePerGas: transactionRequest.maxFeePerGas,
+                maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+              } as SendTransactionParameters)
+            }
           }
 
           // STEP 4: Wait for the transaction
@@ -400,6 +443,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
             this.client,
             txHash
           )
+        } else if (isPermitStep) {
+          transactionReceipt = await waitForRelayedTransactionReceipt(txHash)
         } else {
           transactionReceipt = await waitForTransactionReceipt({
             client: this.client,

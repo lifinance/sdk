@@ -9,9 +9,16 @@ import type { TransactionParameters } from '../types.js'
 import { eip2612Types, permit2ProxyAbi } from './abi.js'
 import { type NativePermitData, getNativePermit } from './getNativePermit.js'
 import {
+  type PermitBatchTransferFromData,
   type PermitTransferFrom,
+  type PermitTransferFromData,
   getPermitData,
 } from './permit2/signatureTransfer.js'
+
+export interface PermitSignature {
+  signature: Hex
+  data: Hex
+}
 
 export const signNativePermitMessage = async (
   client: Client,
@@ -20,7 +27,7 @@ export const signNativePermitMessage = async (
   tokenAddress: Address,
   amount: bigint,
   nativePermit: NativePermitData
-) => {
+): Promise<PermitSignature> => {
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60) // 30 minutes
 
   const domain = {
@@ -131,53 +138,57 @@ export const signPermit2WitnessMessage = async (
   transactionRequest: TransactionParameters,
   chain: ExtendedChain,
   tokenAddress: Address,
-  amount: bigint
-) => {
-  const nonce = await readContract(client, {
-    address: chain.permit2Proxy as Address,
-    abi: permit2ProxyAbi,
-    functionName: 'nextNonce',
-    args: [client.account!.address],
-  })
+  amount: bigint,
+  permitData?: PermitTransferFromData | PermitBatchTransferFromData
+): Promise<PermitSignature> => {
+  let _permitData = permitData
+  if (!_permitData) {
+    const nonce = await readContract(client, {
+      address: chain.permit2Proxy as Address,
+      abi: permit2ProxyAbi,
+      functionName: 'nextNonce',
+      args: [client.account!.address],
+    })
 
-  const permitTransferFrom: PermitTransferFrom = {
-    permitted: {
-      token: tokenAddress,
-      amount: amount,
-    },
-    spender: chain.permit2Proxy as Address,
-    nonce: nonce,
-    deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+    const permitTransferFrom: PermitTransferFrom = {
+      permitted: {
+        token: tokenAddress,
+        amount: amount,
+      },
+      spender: chain.permit2Proxy as Address,
+      nonce: nonce,
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+    }
+
+    // Create witness data for the LI.FI call
+    const witness = {
+      witness: {
+        diamondAddress: chain.diamondAddress as Address,
+        diamondCalldataHash: keccak256(transactionRequest.data as Hex),
+      },
+      witnessTypeName: 'LiFiCall',
+      witnessType: {
+        LiFiCall: [
+          { name: 'diamondAddress', type: 'address' },
+          { name: 'diamondCalldataHash', type: 'bytes32' },
+        ],
+      },
+    }
+
+    _permitData = getPermitData(
+      permitTransferFrom,
+      chain.permit2 as Address,
+      chain.id,
+      witness
+    )
   }
-
-  // Create witness data for the LI.FI call
-  const witness = {
-    witness: {
-      diamondAddress: chain.diamondAddress as Address,
-      diamondCalldataHash: keccak256(transactionRequest.data as Hex),
-    },
-    witnessTypeName: 'LiFiCall',
-    witnessType: {
-      LiFiCall: [
-        { name: 'diamondAddress', type: 'address' },
-        { name: 'diamondCalldataHash', type: 'bytes32' },
-      ],
-    },
-  }
-
-  const { domain, types, values } = getPermitData(
-    permitTransferFrom,
-    chain.permit2 as Address,
-    chain.id,
-    witness
-  )
 
   const signature = await signTypedData(client, {
     account: client.account!,
     primaryType: 'PermitWitnessTransferFrom',
-    domain,
-    types,
-    message: { ...values },
+    domain: _permitData.domain,
+    types: _permitData.types,
+    message: { ..._permitData.values },
   })
 
   const data = encodeFunctionData({
@@ -188,8 +199,8 @@ export const signPermit2WitnessMessage = async (
       client.account!.address,
       [
         [tokenAddress, amount],
-        permitTransferFrom.nonce,
-        permitTransferFrom.deadline,
+        _permitData.values.nonce,
+        _permitData.values.deadline,
       ],
       signature as Hex,
     ],
@@ -203,13 +214,24 @@ export const signPermit2WitnessMessage = async (
 
 export const signPermitMessage = async (
   client: Client,
-  transactionRequest: TransactionParameters,
-  chain: ExtendedChain,
-  tokenAddress: Address,
-  amount: bigint,
-  nativePermit?: NativePermitData,
-  useWitness = false
-) => {
+  {
+    transactionRequest,
+    chain,
+    tokenAddress,
+    amount,
+    nativePermit,
+    permitData,
+    useWitness = false,
+  }: {
+    transactionRequest: TransactionParameters
+    chain: ExtendedChain
+    tokenAddress: Address
+    amount: bigint
+    nativePermit?: NativePermitData
+    permitData?: PermitTransferFromData | PermitBatchTransferFromData
+    useWitness?: boolean
+  }
+): Promise<PermitSignature> => {
   let _nativePermit = nativePermit
 
   if (!_nativePermit) {
@@ -233,7 +255,8 @@ export const signPermitMessage = async (
       transactionRequest,
       chain,
       tokenAddress,
-      amount
+      amount,
+      permitData
     )
   }
 
