@@ -1,20 +1,30 @@
 import type {
   ExtendedTransactionInfo,
   FullStatusData,
+  LiFiStep,
   Process,
 } from '@lifi/types'
 import type {
+  Address,
   Client,
   GetAddressesReturnType,
   Hash,
+  Hex,
   SendTransactionParameters,
+  TransactionReceipt,
 } from 'viem'
-import { getAddresses, sendTransaction } from 'viem/actions'
+import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
+import type { GetCapabilitiesReturnType } from 'viem/experimental'
+import { getCapabilities, sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
-import { TransactionError, ValidationError } from '../../errors/errors.js'
-import { getStepTransaction } from '../../services/api.js'
+import { TransactionError } from '../../errors/errors.js'
+import {
+  getRelayerQuote,
+  getStepTransaction,
+  relayTransaction,
+} from '../../services/api.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
@@ -28,33 +38,40 @@ import type {
 } from '../types.js'
 import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
-import { updateMultisigRouteProcess } from './multisig.js'
+import { getNativePermit } from './getNativePermit.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
+import { type PermitSignature, signPermitMessage } from './signPermitMessage.js'
 import { switchChain } from './switchChain.js'
-import type { MultisigConfig, MultisigTransaction } from './types.js'
+import { isEVMPermitStep } from './typeguards.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
+import {
+  type WalletCallReceipt,
+  waitForBatchTransactionReceipt,
+} from './waitForBatchTransactionReceipt.js'
+import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
+
+export type Call = {
+  data?: Hex
+  to?: Address
+  value?: bigint
+  chainId?: number
+}
 
 export interface EVMStepExecutorOptions extends StepExecutorOptions {
   client: Client
-  multisig?: MultisigConfig
 }
 
 export class EVMStepExecutor extends BaseStepExecutor {
   private client: Client
-  private multisig?: MultisigConfig
 
   constructor(options: EVMStepExecutorOptions) {
     super(options)
     this.client = options.client
-    this.multisig = options.multisig
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (
-    step: LiFiStepExtended,
-    process?: Process
-  ): Promise<Client | undefined> => {
+  checkClient = async (step: LiFiStepExtended, process?: Process) => {
     const updatedClient = await switchChain(
       this.client,
       this.statusManager,
@@ -125,49 +142,89 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    const isMultisigClient = !!this.multisig?.isMultisigWalletClient
-    const multisigBatchTransactions: MultisigTransaction[] = []
-
-    const shouldBatchTransactions =
-      this.multisig?.shouldBatchTransactions &&
-      !!this.multisig.sendBatchTransaction
-
     const fromChain = await config.getChainById(step.action.fromChainId)
     const toChain = await config.getChainById(step.action.toChainId)
+
+    let atomicBatchSupported = false
+    try {
+      const capabilities = (await getAction(
+        this.client,
+        getCapabilities,
+        'getCapabilities'
+      )(undefined)) as GetCapabilitiesReturnType
+      atomicBatchSupported = capabilities[fromChain.id]?.atomicBatch?.supported
+    } catch {
+      // If the wallet does not support getCapabilities, we assume that atomic batch is not supported
+    }
+
+    const calls: Call[] = []
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     // STEP 1: Check allowance
+    // Find existing swap/bridge process
     const existingProcess = step.execution.process.find(
       (p) => p.type === currentProcessType
     )
 
-    // Check token approval only if fromToken is not the native token => no approval needed in that case
+    // Check if step requires permit signature and will be used with relayer service
+    const isPermitStep = isEVMPermitStep(step)
+
+    // Check if token requires approval
+    // Native tokens (like ETH) don't need approval since they're not ERC20 tokens
+    // We should support different permit types:
+    // 1. Native permits (EIP-2612)
+    // 2. Permit2 - Universal permit implementation by Uniswap (limited to certain chains)
+    // 3. Standard ERC20 approval
+    const nativePermit = await getNativePermit(
+      this.client,
+      fromChain,
+      step.action.fromToken.address as Address
+    )
+    // Check if proxy contract is available and token supports native permits, not available for atomic batch
+    const nativePermitSupported =
+      !!fromChain.permit2Proxy &&
+      nativePermit.supported &&
+      !atomicBatchSupported &&
+      !isPermitStep
+    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
+    const permit2Supported =
+      !!fromChain.permit2 && !!fromChain.permit2Proxy && !atomicBatchSupported
+    // Token supports either native permits or Permit2
+    const permitSupported = permit2Supported || nativePermitSupported
+
     const checkForAllowance =
+      // No existing swap/bridgetransaction is pending
       !existingProcess?.txHash &&
+      // Token is not native (address is not zero)
       !isZeroAddress(step.action.fromToken.address) &&
-      (shouldBatchTransactions || !isMultisigClient)
+      // Token doesn't support native permits
+      !nativePermitSupported
 
     if (checkForAllowance) {
-      const data = await checkAllowance(
-        this.client,
-        fromChain,
+      // Check if token needs approval and get approval transaction or message data when available
+      const data = await checkAllowance({
+        client: this.client,
+        chain: fromChain,
         step,
-        this.statusManager,
-        this.executionOptions,
-        this.allowUserInteraction,
-        shouldBatchTransactions
-      )
+        statusManager: this.statusManager,
+        executionOptions: this.executionOptions,
+        allowUserInteraction: this.allowUserInteraction,
+        atomicBatchSupported,
+        permit2Supported,
+      })
 
       if (data) {
-        // allowance doesn't need value
-        const baseTransaction: MultisigTransaction = {
-          to: step.action.fromToken.address,
-          data,
+        // Create approval transaction call
+        // No value needed since we're only approving ERC20 tokens
+        if (atomicBatchSupported) {
+          calls.push({
+            chainId: step.action.fromToken.chainId,
+            to: step.action.fromToken.address as Address,
+            data,
+          })
         }
-
-        multisigBatchTransactions.push(baseTransaction)
       }
     }
 
@@ -179,28 +236,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     })
 
     if (process.status !== 'DONE') {
-      const multisigProcess = step.execution.process.find(
-        (p) => !!p.multisigTxHash
-      )
-
       try {
-        if (isMultisigClient && multisigProcess) {
-          const multisigTxHash = multisigProcess.multisigTxHash as Hash
-          if (!multisigTxHash) {
-            throw new ValidationError(
-              'Multisig internal transaction hash is undefined.'
-            )
-          }
-          await updateMultisigRouteProcess(
-            multisigTxHash,
-            step,
-            process.type,
-            fromChain,
-            this.statusManager,
-            this.multisig
-          )
-        }
-
         let txHash: Hash
         if (process.txHash) {
           // Make sure that the chain is still correct
@@ -221,10 +257,29 @@ export class EVMStepExecutor extends BaseStepExecutor {
           // Check balance
           await checkBalance(this.client.account!.address, step)
 
-          // Create new transaction
+          // Create new transaction request
           if (!step.transactionRequest) {
             const { execution, ...stepBase } = step
-            const updatedStep = await getStepTransaction(stepBase)
+            let updatedStep: LiFiStep
+            if (isPermitStep) {
+              const updatedRelayedStep = await getRelayerQuote({
+                fromChain: stepBase.action.fromChainId,
+                fromToken: stepBase.action.fromToken.address,
+                fromAddress: stepBase.action.fromAddress!,
+                fromAmount: stepBase.action.fromAmount,
+                toChain: stepBase.action.toChainId,
+                toToken: stepBase.action.toToken.address,
+                slippage: stepBase.action.slippage,
+                toAddress: stepBase.action.toAddress,
+                allowBridges: [stepBase.tool],
+              })
+              updatedStep = {
+                ...updatedRelayedStep.data.quote.step,
+                id: stepBase.id,
+              }
+            } else {
+              updatedStep = await getStepTransaction(stepBase)
+            }
             const comparedStep = await stepComparison(
               this.statusManager,
               step,
@@ -243,23 +298,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
               LiFiErrorCode.TransactionUnprepared,
               'Unable to prepare transaction.'
             )
-          }
-
-          // STEP 3: Send the transaction
-          // Make sure that the chain is still correct
-          const updatedClient = await this.checkClient(step, process)
-          if (!updatedClient) {
-            return step
-          }
-
-          process = this.statusManager.updateProcess(
-            step,
-            process.type,
-            'ACTION_REQUIRED'
-          )
-
-          if (!this.allowUserInteraction) {
-            return step
           }
 
           let transactionRequest: TransactionParameters = {
@@ -299,94 +337,150 @@ export class EVMStepExecutor extends BaseStepExecutor {
             }
           }
 
-          if (shouldBatchTransactions && this.multisig?.sendBatchTransaction) {
-            if (transactionRequest.to && transactionRequest.data) {
-              const populatedTransaction: MultisigTransaction = {
-                value: transactionRequest.value,
-                to: transactionRequest.to,
-                data: transactionRequest.data,
-              }
-              multisigBatchTransactions.push(populatedTransaction)
+          // STEP 3: Send the transaction
+          // Make sure that the chain is still correct
+          const updatedClient = await this.checkClient(step, process)
+          if (!updatedClient) {
+            return step
+          }
 
-              txHash = await this.multisig?.sendBatchTransaction(
-                multisigBatchTransactions
-              )
-            } else {
-              throw new TransactionError(
-                LiFiErrorCode.TransactionUnprepared,
-                'Unable to prepare transaction.'
+          process = this.statusManager.updateProcess(
+            step,
+            process.type,
+            permitSupported ? 'PERMIT_REQUIRED' : 'ACTION_REQUIRED'
+          )
+
+          if (!this.allowUserInteraction) {
+            return step
+          }
+
+          if (atomicBatchSupported) {
+            const transferCall: Call = {
+              chainId: fromChain.id,
+              data: transactionRequest.data as Hex,
+              to: transactionRequest.to as Address,
+              value: transactionRequest.value,
+            }
+
+            calls.push(transferCall)
+
+            txHash = (await getAction(
+              this.client,
+              sendCalls,
+              'sendCalls'
+            )({
+              account: this.client.account!,
+              calls,
+            })) as Address
+          } else {
+            let permitSignature: PermitSignature | undefined
+            if (permitSupported) {
+              permitSignature = await signPermitMessage(this.client, {
+                transactionRequest,
+                chain: fromChain,
+                tokenAddress: step.action.fromToken.address as Address,
+                amount: BigInt(step.action.fromAmount),
+                nativePermit,
+                permitData: isPermitStep ? step.permitData : undefined,
+                useWitness: isPermitStep,
+              })
+
+              transactionRequest.to = fromChain.permit2Proxy
+              transactionRequest.data = permitSignature.data
+
+              try {
+                // Try to re-estimate the gas due to additional Permit data
+                transactionRequest.gas = await estimateGas(this.client, {
+                  account: this.client.account!,
+                  to: transactionRequest.to as Address,
+                  data: transactionRequest.data as Hex,
+                  value: transactionRequest.value,
+                })
+              } catch {
+                // Let the wallet estimate the gas in case of failure
+                transactionRequest.gas = undefined
+              }
+
+              process = this.statusManager.updateProcess(
+                step,
+                process.type,
+                'ACTION_REQUIRED'
               )
             }
-          } else {
-            txHash = await getAction(
-              this.client,
-              sendTransaction,
-              'sendTransaction'
-            )({
-              to: transactionRequest.to,
-              account: this.client.account!,
-              data: transactionRequest.data,
-              value: transactionRequest.value,
-              gas: transactionRequest.gas,
-              gasPrice: transactionRequest.gasPrice,
-              maxFeePerGas: transactionRequest.maxFeePerGas,
-              maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-              chain: null,
-            } as SendTransactionParameters)
+            if (isPermitStep && permitSignature) {
+              const relayedTransaction = await relayTransaction({
+                tokenOwner: this.client.account!.address,
+                chainId: fromChain.id,
+                permit: step.permit,
+                witness: step.witness,
+                signedPermitData: permitSignature.signature,
+                callData: transactionRequest.data!,
+              })
+              txHash = relayedTransaction.data.taskId
+            } else {
+              txHash = await getAction(
+                this.client,
+                sendTransaction,
+                'sendTransaction'
+              )({
+                to: transactionRequest.to,
+                account: this.client.account!,
+                data: transactionRequest.data,
+                value: transactionRequest.value,
+                gas: transactionRequest.gas,
+                gasPrice: transactionRequest.gasPrice,
+                maxFeePerGas: transactionRequest.maxFeePerGas,
+                maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+              } as SendTransactionParameters)
+            }
           }
 
           // STEP 4: Wait for the transaction
-          if (isMultisigClient) {
-            process = this.statusManager.updateProcess(
-              step,
-              process.type,
-              'ACTION_REQUIRED',
-              {
-                multisigTxHash: txHash,
-              }
-            )
-          } else {
-            process = this.statusManager.updateProcess(
-              step,
-              process.type,
-              'PENDING',
-              {
-                txHash: txHash,
-                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
-              }
-            )
-          }
-        }
-
-        const transactionReceipt = await waitForTransactionReceipt({
-          client: this.client,
-          chainId: fromChain.id,
-          txHash,
-          onReplaced: (response) => {
-            this.statusManager.updateProcess(step, process.type, 'PENDING', {
-              txHash: response.transaction.hash,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-            })
-          },
-        })
-
-        // if it's multisig wallet client and the process is in ACTION_REQUIRED
-        // then signatures are still needed
-        if (isMultisigClient && process.status === 'ACTION_REQUIRED') {
-          await updateMultisigRouteProcess(
-            transactionReceipt?.transactionHash || txHash,
+          process = this.statusManager.updateProcess(
             step,
             process.type,
-            fromChain,
-            this.statusManager,
-            this.multisig
+            'PENDING',
+            // When atomic batch is supported, txHash represents the batch hash rather than an individual transaction hash at this point
+            atomicBatchSupported
+              ? {
+                  atomicBatchSupported,
+                }
+              : {
+                  txHash: txHash,
+                  txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+                }
           )
+        }
+
+        let transactionReceipt:
+          | TransactionReceipt
+          | WalletCallReceipt
+          | undefined
+
+        if (atomicBatchSupported) {
+          transactionReceipt = await waitForBatchTransactionReceipt(
+            this.client,
+            txHash
+          )
+        } else if (isPermitStep) {
+          transactionReceipt = await waitForRelayedTransactionReceipt(txHash)
+        } else {
+          transactionReceipt = await waitForTransactionReceipt({
+            client: this.client,
+            chainId: fromChain.id,
+            txHash,
+            onReplaced: (response) => {
+              this.statusManager.updateProcess(step, process.type, 'PENDING', {
+                txHash: response.transaction.hash,
+                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+              })
+            },
+          })
         }
 
         // Update pending process if the transaction hash from the receipt is different.
         // This might happen if the transaction was replaced.
         if (
-          !isMultisigClient &&
           transactionReceipt?.transactionHash &&
           transactionReceipt.transactionHash !== txHash
         ) {
@@ -433,13 +527,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
         chainId: toChain.id,
       })
     }
-    let statusResponse: FullStatusData
 
     try {
       if (!processTxHash) {
         throw new Error('Transaction hash is undefined.')
       }
-      statusResponse = (await waitForReceivingTransaction(
+      const statusResponse = (await waitForReceivingTransaction(
         processTxHash,
         this.statusManager,
         process.type,

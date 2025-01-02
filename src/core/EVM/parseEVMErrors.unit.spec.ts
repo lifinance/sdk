@@ -10,7 +10,7 @@ import {
   LiFiErrorCode,
 } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import * as helpers from '../../helpers.js'
+import * as helpers from '../../utils/fetchTxErrorDetails.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 
 beforeAll(setupTestEnvironment)
