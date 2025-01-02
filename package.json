@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.4.2",
+  "version": "3.4.4",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -92,29 +92,29 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.0.5",
-    "@lifi/types": "^16.3.1",
+    "@bigmi/core": "^0.0.7",
+    "@lifi/types": "^16.5.0",
     "@noble/curves": "^1.7.0",
     "@noble/hashes": "^1.6.1",
     "@solana/wallet-adapter-base": "^0.9.23",
-    "@solana/web3.js": "^1.95.8",
+    "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.21.54"
+    "viem": "^2.21.55"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@commitlint/cli": "^19.6.0",
+    "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.5.13",
     "@vitest/coverage-v8": "^2.1.8",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^15.2.11",
     "madge": "^8.0.0",
-    "msw": "^2.6.6",
+    "msw": "^2.7.0",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
@@ -123,8 +123,8 @@
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",
-    "@solana/web3.js": "^1.93.0",
-    "viem": "^2.16.0"
+    "@solana/web3.js": "^1.98.0",
+    "viem": "^2.21.0"
   },
   "publishConfig": {
     "access": "public"
@@ -134,5 +134,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@9.12.0"
+  "packageManager": "pnpm@9.15.0"
 }
