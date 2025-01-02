@@ -3,7 +3,12 @@ import type {
   FullStatusData,
   Process,
 } from '@lifi/types'
-import type { Client, Hash, SendTransactionParameters } from 'viem'
+import type {
+  Client,
+  GetAddressesReturnType,
+  Hash,
+  SendTransactionParameters,
+} from 'viem'
 import { getAddresses, sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
@@ -64,7 +69,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Prevent execution of the quote by wallet different from the one which requested the quote
     let accountAddress = this.client.account?.address
     if (!accountAddress) {
-      const accountAddresses = await getAddresses(this.client)
+      const accountAddresses = (await getAction(
+        this.client,
+        getAddresses,
+        'getAddresses'
+      )(undefined)) as GetAddressesReturnType
       accountAddress = accountAddresses?.[0]
     }
     if (accountAddress !== step.action.fromAddress) {
