@@ -14,6 +14,7 @@ import type {
   TransactionReceipt,
 } from 'viem'
 import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
+import type { GetCapabilitiesReturnType } from 'viem/experimental'
 import { getCapabilities, sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
@@ -146,7 +147,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
     let atomicBatchSupported = false
     try {
-      const capabilities = await getCapabilities(this.client)
+      const capabilities = (await getAction(
+        this.client,
+        getCapabilities,
+        'getCapabilities'
+      )(undefined)) as GetCapabilitiesReturnType
       atomicBatchSupported = capabilities[fromChain.id]?.atomicBatch?.supported
     } catch {
       // If the wallet does not support getCapabilities, we assume that atomic batch is not supported
@@ -359,7 +364,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
             calls.push(transferCall)
 
-            txHash = (await sendCalls(this.client, {
+            txHash = (await getAction(
+              this.client,
+              sendCalls,
+              'sendCalls'
+            )({
               account: this.client.account!,
               calls,
             })) as Address

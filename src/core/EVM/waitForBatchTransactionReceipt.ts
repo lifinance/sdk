@@ -4,6 +4,7 @@ import type {
   WalletCallReceipt as _WalletCallReceipt,
 } from 'viem'
 import { getCallsStatus } from 'viem/experimental'
+import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { waitForResult } from '../../utils/waitForResult.js'
@@ -18,7 +19,11 @@ export const waitForBatchTransactionReceipt = async (
   batchHash: Hash
 ): Promise<WalletCallReceipt> => {
   return waitForResult(async () => {
-    const callsDetails = await getCallsStatus(client, {
+    const callsDetails = await getAction(
+      client,
+      getCallsStatus,
+      'getCallsStatus'
+    )({
       id: batchHash,
     })
 
