@@ -1,5 +1,6 @@
-import type { Client } from 'viem'
+import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
@@ -30,7 +31,11 @@ export const switchChain = async (
   switchChainHook?: SwitchChainHook
 ): Promise<Client | undefined> => {
   // if we are already on the correct chain we can proceed directly
-  const currentChainId = await getChainId(client)
+  const currentChainId = (await getAction(
+    client,
+    getChainId,
+    'getChainId'
+  )(undefined)) as GetChainIdReturnType
   if (currentChainId === step.action.fromChainId) {
     return client
   }
@@ -53,7 +58,11 @@ export const switchChain = async (
     const updatedClient = await switchChainHook?.(step.action.fromChainId)
     let updatedChainId: number | undefined
     if (updatedClient) {
-      updatedChainId = await getChainId(updatedClient)
+      updatedChainId = (await getAction(
+        updatedClient,
+        getChainId,
+        'getChainId'
+      )(undefined)) as GetChainIdReturnType
     }
     if (updatedChainId !== step.action.fromChainId) {
       throw new ProviderError(
