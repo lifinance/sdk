@@ -10,6 +10,7 @@ export type NativePermitData = {
   nonce: bigint
   supported: boolean
 }
+
 /**
  * Retrieves native permit data (EIP-2612) for a token on a specific chain
  * @link https://eips.ethereum.org/EIPS/eip-2612

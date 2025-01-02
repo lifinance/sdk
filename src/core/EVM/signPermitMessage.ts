@@ -1,10 +1,8 @@
 import type { ExtendedChain } from '@lifi/types'
-import type { Client, Hex } from 'viem'
-import { encodeFunctionData } from 'viem'
-import { parseSignature } from 'viem'
-import type { Address } from 'viem'
-import { keccak256 } from 'viem'
+import type { Address, Client, Hex } from 'viem'
+import { encodeFunctionData, keccak256, parseSignature } from 'viem'
 import { readContract, signTypedData } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import type { TransactionParameters } from '../types.js'
 import { eip2612Types, permit2ProxyAbi } from './abi.js'
 import { type NativePermitData, getNativePermit } from './getNativePermit.js'
@@ -45,7 +43,11 @@ export const signNativePermitMessage = async (
     deadline,
   }
 
-  const signature = await signTypedData(client, {
+  const signature = await getAction(
+    client,
+    signTypedData,
+    'signTypedData'
+  )({
     account: client.account!,
     domain,
     types: eip2612Types,
@@ -105,7 +107,11 @@ export const signPermit2Message = async (
     chain.id
   )
 
-  const signature = await signTypedData(client, {
+  const signature = await getAction(
+    client,
+    signTypedData,
+    'signTypedData'
+  )({
     account: client.account!,
     primaryType: 'PermitTransferFrom',
     domain,
@@ -183,7 +189,11 @@ export const signPermit2WitnessMessage = async (
     )
   }
 
-  const signature = await signTypedData(client, {
+  const signature = await getAction(
+    client,
+    signTypedData,
+    'signTypedData'
+  )({
     account: client.account!,
     primaryType: 'PermitWitnessTransferFrom',
     domain: _permitData.domain,

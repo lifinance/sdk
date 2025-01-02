@@ -7,6 +7,7 @@ import type {
 import type {
   Address,
   Client,
+  GetAddressesReturnType,
   Hash,
   Hex,
   SendTransactionParameters,
@@ -14,6 +15,7 @@ import type {
 } from 'viem'
 import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
 import { getCapabilities, sendCalls } from 'viem/experimental'
+import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -83,7 +85,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Prevent execution of the quote by wallet different from the one which requested the quote
     let accountAddress = this.client.account?.address
     if (!accountAddress) {
-      const accountAddresses = await getAddresses(this.client)
+      const accountAddresses = (await getAction(
+        this.client,
+        getAddresses,
+        'getAddresses'
+      )(undefined)) as GetAddressesReturnType
       accountAddress = accountAddresses?.[0]
     }
     if (accountAddress !== step.action.fromAddress) {
@@ -403,7 +409,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
               })
               txHash = relayedTransaction.data.taskId
             } else {
-              txHash = await sendTransaction(this.client, {
+              txHash = await getAction(
+                this.client,
+                sendTransaction,
+                'sendTransaction'
+              )({
                 to: transactionRequest.to,
                 account: this.client.account!,
                 data: transactionRequest.data,
