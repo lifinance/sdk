@@ -62,7 +62,7 @@
     "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
     "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
     "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
-    "clean": "rm -rf dist tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo src/tsconfig.build.tsbuildinfo src/_esm src/_cjs src/_types",
+    "clean": "rm -rf dist src/_esm src/_cjs src/_types",
     "coverage": "vitest run --coverage",
     "postinstall": "husky",
     "prepack": "pinst --disable",
@@ -94,14 +94,13 @@
   "dependencies": {
     "@bigmi/core": "^0.1.0",
     "@lifi/types": "^16.5.0",
-    "@noble/curves": "^1.7.0",
-    "@noble/hashes": "^1.6.1",
+    "@noble/curves": "^1.8.0",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.22.1"
+    "viem": "^2.22.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
