@@ -12,7 +12,7 @@ import { getSubstatusMessage } from './processMessages.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
-export async function waitForReceivingTransaction(
+export async function waitForTransactionStatus(
   txHash: string,
   statusManager: StatusManager,
   processType: ProcessType,
