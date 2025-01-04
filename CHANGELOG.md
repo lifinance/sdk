@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.5.0](https://github.com/lifinance/sdk/compare/v3.4.4...v3.5.0) (2025-01-02)
+
+
+### Features
+
+* improve transaction execution for smart account clients ([#222](https://github.com/lifinance/sdk/issues/222)) ([2580dbe](https://github.com/lifinance/sdk/commit/2580dbe6ce6e8a9634c22c84dd75de27b4a23f2f))
+
 ### [3.4.4](https://github.com/lifinance/sdk/compare/v3.4.3...v3.4.4) (2024-12-20)
 
 ### [3.4.3](https://github.com/lifinance/sdk/compare/v3.4.2...v3.4.3) (2024-12-13)

@@ -1,6 +1,6 @@
 {
   "name": "lifi-sdk-update",
-  "version": "3.4.7",
+  "version": "3.5.0",
   "description": "LI.FI SDK modified",
   "license": "Apache-2.0",
   "author": "LI.FI <github@li.finance>",
@@ -64,7 +64,7 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.0.7",
+    "@bigmi/core": "^0.1.0",
     "@lifi/types": "^16.5.0",
     "@noble/curves": "^1.7.0",
     "@noble/hashes": "^1.6.1",
@@ -76,6 +76,7 @@
     "node-fetch": "^3.3.2",
     "socks-proxy-agent": "^8.0.5",
     "viem": "^2.21.55"
+    "viem": "^2.22.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -86,7 +87,7 @@
     "@vitest/coverage-v8": "^2.1.8",
     "fs-extra": "^11.2.0",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.11",
+    "lint-staged": "^15.3.0",
     "madge": "^8.0.0",
     "msw": "^2.7.0",
     "pinst": "^3.0.0",
