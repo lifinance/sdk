@@ -1,4 +1,4 @@
-import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
+import type {} from '@lifi/types'
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { VersionedTransaction } from '@solana/web3.js'
 import { withTimeout } from 'viem'
@@ -7,17 +7,15 @@ import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
-import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getSubstatusMessage } from '../processMessages.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
+import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
@@ -53,7 +51,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    // STEP 2: Get transaction
     let process = this.statusManager.findOrCreateProcess({
       step,
       type: currentProcessType,
@@ -220,8 +217,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // STEP 5: Wait for the receiving chain
-    const processTxHash = process.txHash
+    // Wait for the transaction status on the destination chain
     if (isBridgeExecution) {
       process = this.statusManager.findOrCreateProcess({
         step,
@@ -230,63 +226,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         chainId: toChain.id,
       })
     }
-    let statusResponse: FullStatusData
-    try {
-      if (!processTxHash) {
-        throw new Error('Transaction hash is undefined.')
-      }
-      statusResponse = (await waitForReceivingTransaction(
-        processTxHash,
-        this.statusManager,
-        process.type,
-        step
-      )) as FullStatusData
 
-      const statusReceiving =
-        statusResponse.receiving as ExtendedTransactionInfo
-
-      process = this.statusManager.updateProcess(step, process.type, 'DONE', {
-        substatus: statusResponse.substatus,
-        substatusMessage:
-          statusResponse.substatusMessage ||
-          getSubstatusMessage(statusResponse.status, statusResponse.substatus),
-        txHash: statusReceiving?.txHash,
-        txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
-      })
-
-      this.statusManager.updateExecution(step, 'DONE', {
-        fromAmount: statusResponse.sending.amount,
-        toAmount: statusReceiving?.amount,
-        toToken: statusReceiving?.token,
-        gasCosts: [
-          {
-            amount: statusResponse.sending.gasAmount,
-            amountUSD: statusResponse.sending.gasAmountUSD,
-            token: statusResponse.sending.gasToken,
-            estimate: statusResponse.sending.gasUsed,
-            limit: statusResponse.sending.gasUsed,
-            price: statusResponse.sending.gasPrice,
-            type: 'SEND',
-          },
-        ],
-      })
-    } catch (e: unknown) {
-      const htmlMessage = await getTransactionFailedMessage(
-        step,
-        process.txLink
-      )
-
-      process = this.statusManager.updateProcess(step, process.type, 'FAILED', {
-        error: {
-          code: LiFiErrorCode.TransactionFailed,
-          message: 'Failed while waiting for receiving chain.',
-          htmlMessage,
-        },
-      })
-      this.statusManager.updateExecution(step, 'FAILED')
-      console.warn(e)
-      throw e
-    }
+    await waitForDestinationChainTransaction(
+      step,
+      process,
+      this.statusManager,
+      toChain
+    )
 
     // DONE
     return step
