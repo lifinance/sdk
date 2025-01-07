@@ -31,6 +31,7 @@
       "DOM" // We are adding `DOM` here to get the `fetch`, etc. types. This should be removed once these types are available via DefinitelyTyped.
     ],
     // Skip type checking for node modules
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.base.tsbuildinfo"
   }
 }
