@@ -266,6 +266,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
               })
               updatedStep = {
                 ...updatedRelayedStep.data.quote.step,
+                ...updatedRelayedStep.data.quote,
                 id: stepBase.id,
               }
             } else {
@@ -328,7 +329,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
             }
           }
 
-          // STEP 3: Send the transaction
           // Make sure that the chain is still correct
           const updatedClient = await this.checkClient(step, process)
           if (!updatedClient) {
@@ -426,7 +426,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
             }
           }
 
-          // STEP 4: Wait for the transaction
           process = this.statusManager.updateProcess(
             step,
             process.type,
