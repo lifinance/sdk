@@ -1,9 +1,4 @@
-import type {
-  ExtendedTransactionInfo,
-  FullStatusData,
-  LiFiStep,
-  Process,
-} from '@lifi/types'
+import type { LiFiStep, Process } from '@lifi/types'
 import type {
   Address,
   Client,
@@ -25,18 +20,16 @@ import {
   getStepTransaction,
   relayTransaction,
 } from '../../services/api.js'
-import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getSubstatusMessage } from '../processMessages.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
-import { waitForReceivingTransaction } from '../waitForReceivingTransaction.js'
+import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { getNativePermit } from './getNativePermit.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
@@ -126,16 +119,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    // Find if it's bridging and the step is waiting for a transaction on the receiving chain
-    const recievingChainProcess = step.execution?.process.find(
+    // Find if it's bridging and the step is waiting for a transaction on the destination chain
+    const destinationChainProcess = step.execution?.process.find(
       (process) => process.type === 'RECEIVING_CHAIN'
     )
 
     // Make sure that the chain is still correct
-    // If the step is waiting for a transaction on the receiving chain, we do not switch the chain
+    // If the step is waiting for a transaction on the destination chain, we do not switch the chain
     // All changes are already done from the source chain
     // Return the step
-    if (recievingChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
+    if (destinationChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
       const updatedClient = await this.checkClient(step)
       if (!updatedClient) {
         return step
@@ -162,7 +155,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    // STEP 1: Check allowance
     // Find existing swap/bridge process
     const existingProcess = step.execution.process.find(
       (p) => p.type === currentProcessType
@@ -228,7 +220,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // STEP 2: Get transaction
     let process = this.statusManager.findOrCreateProcess({
       step,
       type: currentProcessType,
@@ -517,8 +508,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // STEP 5: Wait for the receiving chain
-    const processTxHash = process.txHash
+    // Wait for the transaction status on the destination chain
     if (isBridgeExecution) {
       process = this.statusManager.findOrCreateProcess({
         step,
@@ -528,61 +518,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
       })
     }
 
-    try {
-      if (!processTxHash) {
-        throw new Error('Transaction hash is undefined.')
-      }
-      const statusResponse = (await waitForReceivingTransaction(
-        processTxHash,
-        this.statusManager,
-        process.type,
-        step
-      )) as FullStatusData
-
-      const statusReceiving =
-        statusResponse.receiving as ExtendedTransactionInfo
-
-      process = this.statusManager.updateProcess(step, process.type, 'DONE', {
-        substatus: statusResponse.substatus,
-        substatusMessage:
-          statusResponse.substatusMessage ||
-          getSubstatusMessage(statusResponse.status, statusResponse.substatus),
-        txHash: statusReceiving?.txHash,
-        txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
-      })
-
-      this.statusManager.updateExecution(step, 'DONE', {
-        fromAmount: statusResponse.sending.amount,
-        toAmount: statusReceiving?.amount,
-        toToken: statusReceiving?.token,
-        gasCosts: [
-          {
-            amount: statusResponse.sending.gasAmount,
-            amountUSD: statusResponse.sending.gasAmountUSD,
-            token: statusResponse.sending.gasToken,
-            estimate: statusResponse.sending.gasUsed,
-            limit: statusResponse.sending.gasUsed,
-            price: statusResponse.sending.gasPrice,
-            type: 'SEND',
-          },
-        ],
-      })
-    } catch (e: unknown) {
-      const htmlMessage = await getTransactionFailedMessage(
-        step,
-        process.txLink
-      )
-
-      process = this.statusManager.updateProcess(step, process.type, 'FAILED', {
-        error: {
-          code: LiFiErrorCode.TransactionFailed,
-          message: 'Failed while waiting for receiving chain.',
-          htmlMessage,
-        },
-      })
-      this.statusManager.updateExecution(step, 'FAILED')
-      throw await parseEVMErrors(e as Error, step, process)
-    }
+    await waitForDestinationChainTransaction(
+      step,
+      process,
+      this.statusManager,
+      toChain
+    )
 
     // DONE
     return step
