@@ -19,6 +19,7 @@ function generatePackageJson() {
     // NOTE: We explicitly don't want to publish the type field. We create a separate package.json for `src/_cjs` and `src/_esm` that has the type field.
     // type,
     authors,
+    bugs,
     dependencies,
     description,
     exports: exports_,
@@ -82,6 +83,7 @@ function generatePackageJson() {
     {
       // type,
       authors,
+      bugs,
       dependencies,
       description,
       exports: exports_,

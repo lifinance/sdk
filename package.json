@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.5.1-beta.0",
+  "version": "3.5.1",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -28,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/lifinance/sdk.git"
+    "url": "https://github.com/lifinance/sdk.git"
   },
   "license": "Apache-2.0",
   "author": "LI.FI <github@li.finance>",
