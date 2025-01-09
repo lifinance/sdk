@@ -40,9 +40,12 @@ import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
 
 interface TaskStatus {
-  status: 'pending' | 'processing' | 'success' | 'failed'
-  transactionHash?: Hash
-  error?: string
+  data: {
+    status: 'DONE' | 'PENDING' | 'FAILED'
+    message?: string
+    metadata: { chainId: number; txHash?: Hash }
+    transactionStatus?: StatusResponse
+  }
 }
 
 interface RelayStatusRequest {

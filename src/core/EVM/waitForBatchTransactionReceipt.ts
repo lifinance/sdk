@@ -18,37 +18,44 @@ export const waitForBatchTransactionReceipt = async (
   client: Client,
   batchHash: Hash
 ): Promise<WalletCallReceipt> => {
-  return waitForResult(async () => {
-    const callsDetails = await getAction(
-      client,
-      getCallsStatus,
-      'getCallsStatus'
-    )({
-      id: batchHash,
-    })
+  return waitForResult(
+    async () => {
+      const callsDetails = await getAction(
+        client,
+        getCallsStatus,
+        'getCallsStatus'
+      )({
+        id: batchHash,
+      })
 
-    if (callsDetails.status === 'PENDING') {
-      return undefined
-    }
-
-    if (callsDetails.status === 'CONFIRMED') {
-      if (
-        !callsDetails.receipts?.length ||
-        !callsDetails.receipts.every((receipt) => receipt.transactionHash) ||
-        callsDetails.receipts.some((receipt) => receipt.status === 'reverted')
-      ) {
-        throw new TransactionError(
-          LiFiErrorCode.TransactionFailed,
-          'Transaction was reverted.'
-        )
+      if (callsDetails.status === 'PENDING') {
+        return undefined
       }
-      const transactionReceipt = callsDetails.receipts.at(-1)!
-      return transactionReceipt
-    }
 
-    throw new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      'Transaction not found.'
-    )
-  }, 3000)
+      if (callsDetails.status === 'CONFIRMED') {
+        if (
+          !callsDetails.receipts?.length ||
+          !callsDetails.receipts.every((receipt) => receipt.transactionHash) ||
+          callsDetails.receipts.some((receipt) => receipt.status === 'reverted')
+        ) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Transaction was reverted.'
+          )
+        }
+        const transactionReceipt = callsDetails.receipts.at(-1)!
+        return transactionReceipt
+      }
+
+      throw new TransactionError(
+        LiFiErrorCode.TransactionNotFound,
+        'Transaction not found.'
+      )
+    },
+    5000,
+    3,
+    (_, error) => {
+      return !(error instanceof TransactionError)
+    }
+  )
 }

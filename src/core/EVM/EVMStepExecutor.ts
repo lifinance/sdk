@@ -377,7 +377,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
               })
 
               transactionRequest.to = fromChain.permit2Proxy
-              transactionRequest.data = permitSignature.data
+              // If it's a permit step, we already have everything encoded in the data field
+              transactionRequest.data = isPermitStep
+                ? transactionRequest.data
+                : permitSignature.data
 
               try {
                 // Try to re-estimate the gas due to additional Permit data

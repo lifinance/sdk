@@ -49,7 +49,9 @@ export async function waitForTransactionStatus(
         }
       })
       .catch((e) => {
-        console.debug('Fetching status from backend failed.', e)
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Fetching status from backend failed.', e)
+        }
         return undefined
       })
   }
@@ -64,7 +66,9 @@ export async function waitForTransactionStatus(
   const resolvedStatus = await status
 
   if (!('receiving' in resolvedStatus)) {
-    throw new ServerError("Status doesn't contain receiving information.")
+    throw new ServerError(
+      "Status doesn't contain destination chain information."
+    )
   }
 
   return resolvedStatus
