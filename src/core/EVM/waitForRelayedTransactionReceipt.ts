@@ -13,38 +13,45 @@ export type WalletCallReceipt = _WalletCallReceipt<
 export const waitForRelayedTransactionReceipt = async (
   taskId: Hash
 ): Promise<WalletCallReceipt> => {
-  return waitForResult(async () => {
-    const result = await getRelayedTransactionStatus({
-      taskId,
-    }).catch((e) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('Fetching status from relayer failed.', e)
-      }
-      return undefined
-    })
-
-    switch (result?.data.status) {
-      case 'PENDING':
+  return waitForResult(
+    async () => {
+      const result = await getRelayedTransactionStatus({
+        taskId,
+      }).catch((e) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Fetching status from relayer failed.', e)
+        }
         return undefined
-      case 'DONE': {
-        const sending: ExtendedTransactionInfo | undefined = result?.data
-          .transactionStatus?.sending as ExtendedTransactionInfo
-        return {
-          status: 'success',
-          gasUsed: sending?.gasUsed,
-          transactionHash: result?.data.metadata.txHash,
-        } as unknown as WalletCallReceipt
+      })
+
+      switch (result?.data.status) {
+        case 'PENDING':
+          return undefined
+        case 'DONE': {
+          const sending: ExtendedTransactionInfo | undefined = result?.data
+            .transactionStatus?.sending as ExtendedTransactionInfo
+          return {
+            status: 'success',
+            gasUsed: sending?.gasUsed,
+            transactionHash: result?.data.metadata.txHash,
+          } as unknown as WalletCallReceipt
+        }
+        case 'FAILED':
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Transaction was reverted.'
+          )
+        default:
+          throw new TransactionError(
+            LiFiErrorCode.TransactionNotFound,
+            'Transaction not found.'
+          )
       }
-      case 'FAILED':
-        throw new TransactionError(
-          LiFiErrorCode.TransactionFailed,
-          'Transaction was reverted.'
-        )
-      default:
-        throw new TransactionError(
-          LiFiErrorCode.TransactionNotFound,
-          'Transaction not found.'
-        )
+    },
+    5000,
+    3,
+    (_, error) => {
+      return !(error instanceof TransactionError)
     }
-  }, 5000)
+  )
 }

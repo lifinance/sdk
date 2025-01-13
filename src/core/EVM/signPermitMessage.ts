@@ -242,6 +242,17 @@ export const signPermitMessage = async (
     useWitness?: boolean
   }
 ): Promise<PermitSignature> => {
+  if (useWitness) {
+    return signPermit2WitnessMessage(
+      client,
+      transactionRequest,
+      chain,
+      tokenAddress,
+      amount,
+      permitData
+    )
+  }
+
   let _nativePermit = nativePermit
 
   if (!_nativePermit) {
@@ -256,17 +267,6 @@ export const signPermitMessage = async (
       tokenAddress,
       amount,
       _nativePermit
-    )
-  }
-
-  if (useWitness) {
-    return signPermit2WitnessMessage(
-      client,
-      transactionRequest,
-      chain,
-      tokenAddress,
-      amount,
-      permitData
     )
   }
 

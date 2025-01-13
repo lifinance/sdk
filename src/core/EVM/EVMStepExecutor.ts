@@ -375,31 +375,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 permitData: isPermitStep ? step.permitData : undefined,
                 useWitness: isPermitStep,
               })
-
               transactionRequest.to = fromChain.permit2Proxy
-              // If it's a permit step, we already have everything encoded in the data field
-              transactionRequest.data = isPermitStep
-                ? transactionRequest.data
-                : permitSignature.data
-
-              try {
-                // Try to re-estimate the gas due to additional Permit data
-                transactionRequest.gas = await estimateGas(this.client, {
-                  account: this.client.account!,
-                  to: transactionRequest.to as Address,
-                  data: transactionRequest.data as Hex,
-                  value: transactionRequest.value,
-                })
-              } catch {
-                // Let the wallet estimate the gas in case of failure
-                transactionRequest.gas = undefined
-              }
-
-              process = this.statusManager.updateProcess(
-                step,
-                process.type,
-                'ACTION_REQUIRED'
-              )
             }
             if (isPermitStep && permitSignature) {
               const relayedTransaction = await relayTransaction({
@@ -412,6 +388,27 @@ export class EVMStepExecutor extends BaseStepExecutor {
               })
               txHash = relayedTransaction.data.taskId
             } else {
+              if (permitSignature) {
+                // If we have a permit signature, we need to use updated data
+                transactionRequest.data = permitSignature.data
+                try {
+                  // Try to re-estimate the gas due to additional Permit data
+                  transactionRequest.gas = await estimateGas(this.client, {
+                    account: this.client.account!,
+                    to: transactionRequest.to as Address,
+                    data: transactionRequest.data as Hex,
+                    value: transactionRequest.value,
+                  })
+                } catch {
+                  // Let the wallet estimate the gas in case of failure
+                  transactionRequest.gas = undefined
+                }
+              }
+              process = this.statusManager.updateProcess(
+                step,
+                process.type,
+                'ACTION_REQUIRED'
+              )
               txHash = await getAction(
                 this.client,
                 sendTransaction,
