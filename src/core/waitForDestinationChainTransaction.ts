@@ -2,7 +2,7 @@ import type {
   ExtendedChain,
   ExtendedTransactionInfo,
   FullStatusData,
-  Process,
+  ProcessType,
 } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
@@ -12,20 +12,17 @@ import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 
 export async function waitForDestinationChainTransaction(
   step: LiFiStepExtended,
-  process: Process,
-  statusManager: StatusManager,
+  processType: ProcessType,
+  transactionHash: string,
   toChain: ExtendedChain,
+  statusManager: StatusManager,
   pollingInterval?: number
 ): Promise<LiFiStepExtended> {
-  if (!process.txHash) {
-    throw new Error('Transaction hash is undefined.')
-  }
-
   try {
     const statusResponse = (await waitForTransactionStatus(
-      process.txHash,
+      transactionHash,
       statusManager,
-      process.type,
+      processType,
       step,
       pollingInterval
     )) as FullStatusData
@@ -33,7 +30,7 @@ export async function waitForDestinationChainTransaction(
     const statusReceiving = statusResponse.receiving as ExtendedTransactionInfo
 
     // Update process status
-    statusManager.updateProcess(step, process.type, 'DONE', {
+    statusManager.updateProcess(step, processType, 'DONE', {
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       txHash: statusReceiving?.txHash,
@@ -62,9 +59,12 @@ export async function waitForDestinationChainTransaction(
 
     return step
   } catch (e: unknown) {
-    const htmlMessage = await getTransactionFailedMessage(step, process.txLink)
+    const htmlMessage = await getTransactionFailedMessage(
+      step,
+      `${toChain.metamask.blockExplorerUrls[0]}tx/${transactionHash}`
+    )
 
-    statusManager.updateProcess(step, process.type, 'FAILED', {
+    statusManager.updateProcess(step, processType, 'FAILED', {
       error: {
         code: LiFiErrorCode.TransactionFailed,
         message:
