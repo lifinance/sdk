@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.5.2](https://github.com/lifinance/sdk/compare/v3.5.1...v3.5.2) (2025-01-14)
+
+
+### Bug Fixes
+
+* preserve transaction hash when creating new process ([#232](https://github.com/lifinance/sdk/issues/232)) ([7e8c829](https://github.com/lifinance/sdk/commit/7e8c829af53ba9e9333333df54b3a67e44702c4c))
+
 ### [3.5.1](https://github.com/lifinance/sdk/compare/v3.5.0...v3.5.1) (2025-01-09)
 
 
