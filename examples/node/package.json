@@ -12,7 +12,7 @@
     "@wagmi/connectors": "^5.7.3",
     "@wagmi/core": "^2.16.3",
     "dotenv": "^16.4.7",
-    "viem": "^2.22.5"
+    "viem": "^2.22.8"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -24,7 +24,7 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.10.5",
+    "@types/node": "^22.10.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

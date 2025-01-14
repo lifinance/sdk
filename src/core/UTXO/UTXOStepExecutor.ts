@@ -264,6 +264,10 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     }
 
     // Wait for the transaction status on the destination chain
+    const transactionHash = process.txHash
+    if (!transactionHash) {
+      throw new Error('Transaction hash is undefined.')
+    }
     if (isBridgeExecution) {
       process = this.statusManager.findOrCreateProcess({
         step,
@@ -275,9 +279,10 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
     await waitForDestinationChainTransaction(
       step,
-      process,
-      this.statusManager,
+      process.type,
+      transactionHash,
       toChain,
+      this.statusManager,
       10_000
     )
 
