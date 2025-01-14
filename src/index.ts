@@ -12,6 +12,7 @@ export {
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
 export { isEVM } from './core/EVM/types.js'
+export { isEVMPermitStep } from './core/EVM/typeguards.js'
 export type {
   EVMProvider,
   EVMProviderOptions,
