@@ -1,5 +1,14 @@
 import type { ExtendedChain } from '@lifi/types'
-import type { Address, Client } from 'viem'
+import {
+  encodeAbiParameters,
+  keccak256,
+  pad,
+  parseAbiParameters,
+  toBytes,
+  toHex,
+} from 'viem'
+import type { Address, Client, Hex } from 'viem'
+import type { TypedDataDomain } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { eip2612Abi } from './abi.js'
 import { getMulticallAddress } from './utils.js'
@@ -9,6 +18,136 @@ export type NativePermitData = {
   version: string
   nonce: bigint
   supported: boolean
+  domain: TypedDataDomain
+}
+
+/**
+ * EIP-712 domain typehash with chainId
+ * @link https://eips.ethereum.org/EIPS/eip-712#specification
+ *
+ * keccak256(toBytes(
+ *   'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'
+ * ))
+ */
+const EIP712_DOMAIN_TYPEHASH =
+  '0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f' as Hex
+
+/**
+ * EIP-712 domain typehash with salt (e.g. USDC.e on Polygon)
+ * @link https://eips.ethereum.org/EIPS/eip-712#specification
+ *
+ * keccak256(toBytes(
+ *   'EIP712Domain(string name,string version,address verifyingContract,bytes32 salt)'
+ * ))
+ */
+const EIP712_DOMAIN_TYPEHASH_WITH_SALT =
+  '0x36c25de3e541d5d970f66e4210d728721220fff5c077cc6cd008b3a0c62adab7' as Hex
+
+function makeDomainSeparator({
+  name,
+  version,
+  chainId,
+  verifyingContract,
+  withSalt = false,
+}: {
+  name: string
+  version: string
+  chainId: bigint
+  verifyingContract: Address
+  withSalt?: boolean
+}): Hex {
+  const nameHash = keccak256(toBytes(name))
+  const versionHash = keccak256(toBytes(version))
+
+  const encoded = withSalt
+    ? encodeAbiParameters(
+        parseAbiParameters('bytes32, bytes32, bytes32, address, bytes32'),
+        [
+          EIP712_DOMAIN_TYPEHASH_WITH_SALT,
+          nameHash,
+          versionHash,
+          verifyingContract,
+          pad(toHex(chainId), { size: 32 }),
+        ]
+      )
+    : encodeAbiParameters(
+        parseAbiParameters('bytes32, bytes32, bytes32, uint256, address'),
+        [
+          EIP712_DOMAIN_TYPEHASH,
+          nameHash,
+          versionHash,
+          chainId,
+          verifyingContract,
+        ]
+      )
+
+  return keccak256(encoded)
+}
+
+// TODO: Add support for EIP-5267 when adoption increases
+// This EIP provides a standard way to query domain separator and permit type hash
+// via eip712Domain() function, which would simplify permit validation
+// https://eips.ethereum.org/EIPS/eip-5267
+function validateDomainSeparator({
+  name,
+  version,
+  chainId,
+  verifyingContract,
+  domainSeparator,
+}: {
+  name: string
+  version: string
+  chainId: bigint
+  verifyingContract: Address
+  domainSeparator: Hex
+}): { isValid: boolean; domain: TypedDataDomain } {
+  if (!name || !domainSeparator) {
+    return {
+      isValid: false,
+      domain: {},
+    }
+  }
+
+  for (const withSalt of [false, true]) {
+    const computedDS = makeDomainSeparator({
+      name,
+      version,
+      chainId,
+      verifyingContract,
+      withSalt,
+    })
+    if (domainSeparator.toLowerCase() === computedDS.toLowerCase()) {
+      return {
+        isValid: true,
+        domain: withSalt
+          ? {
+              name,
+              version,
+              verifyingContract,
+              salt: pad(toHex(chainId), { size: 32 }),
+            }
+          : {
+              name,
+              version,
+              chainId,
+              verifyingContract,
+            },
+      }
+    }
+  }
+
+  return {
+    isValid: false,
+    domain: {},
+  }
+}
+
+const defaultPermit: NativePermitData = {
+  name: '',
+  version: '1',
+  nonce: 0n,
+  supported: false,
+  domain: {},
 }
 
 /**
@@ -27,88 +166,102 @@ export const getNativePermit = async (
   try {
     const multicallAddress = await getMulticallAddress(chain.id)
 
-    if (multicallAddress) {
-      const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
-        await multicall(client, {
-          contracts: [
-            {
-              address: tokenAddress,
-              abi: eip2612Abi,
-              functionName: 'name',
-            },
-            {
-              address: tokenAddress,
-              abi: eip2612Abi,
-              functionName: 'DOMAIN_SEPARATOR',
-            },
-            {
-              address: tokenAddress,
-              abi: eip2612Abi,
-              functionName: 'nonces',
-              args: [client.account!.address],
-            },
-            {
-              address: tokenAddress,
-              abi: eip2612Abi,
-              functionName: 'version',
-            },
-          ],
-          multicallAddress,
-        })
-
-      const supported =
-        nameResult.status === 'success' &&
-        domainSeparatorResult.status === 'success' &&
-        noncesResult.status === 'success' &&
-        !!nameResult.result &&
-        !!domainSeparatorResult.result &&
-        noncesResult.result !== undefined
-
-      return {
-        name: nameResult.result!,
-        version: versionResult.result ?? '1',
-        nonce: noncesResult.result!,
-        supported,
-      }
-    }
-
-    // Fallback to individual calls
-    const [name, domainSeparator, nonce, version] = await Promise.all([
-      readContract(client, {
+    const contractCalls = [
+      {
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'name',
-      }),
-      readContract(client, {
+      },
+      {
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'DOMAIN_SEPARATOR',
-      }),
-      readContract(client, {
+      },
+      {
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'nonces',
         args: [client.account!.address],
-      }),
-      readContract(client, {
+      },
+      {
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'version',
-      }),
-    ])
+      },
+    ] as const
+
+    if (multicallAddress) {
+      const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
+        await multicall(client, {
+          contracts: contractCalls,
+          multicallAddress,
+        })
+
+      if (
+        nameResult.status !== 'success' ||
+        domainSeparatorResult.status !== 'success' ||
+        noncesResult.status !== 'success' ||
+        !nameResult.result ||
+        !domainSeparatorResult.result ||
+        noncesResult.result === undefined
+      ) {
+        return defaultPermit
+      }
+
+      const { isValid, domain } = validateDomainSeparator({
+        name: nameResult.result,
+        version: versionResult.result ?? '1',
+        chainId: BigInt(chain.id),
+        verifyingContract: tokenAddress,
+        domainSeparator: domainSeparatorResult.result,
+      })
+
+      return {
+        name: nameResult.result,
+        version: versionResult.result ?? '1',
+        nonce: noncesResult.result,
+        supported: isValid,
+        domain,
+      }
+    }
+
+    const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
+      (await Promise.allSettled(
+        contractCalls.map((call) => readContract(client, call))
+      )) as [
+        PromiseSettledResult<string>,
+        PromiseSettledResult<Hex>,
+        PromiseSettledResult<bigint>,
+        PromiseSettledResult<string>,
+      ]
+
+    if (
+      nameResult.status !== 'fulfilled' ||
+      domainSeparatorResult.status !== 'fulfilled' ||
+      noncesResult.status !== 'fulfilled'
+    ) {
+      return defaultPermit
+    }
+
+    const name = nameResult.value
+    const version =
+      versionResult.status === 'fulfilled' ? versionResult.value : '1'
+    const { isValid, domain } = validateDomainSeparator({
+      name,
+      version,
+      chainId: BigInt(chain.id),
+      verifyingContract: tokenAddress,
+      domainSeparator: domainSeparatorResult.value,
+    })
 
     return {
       name,
-      version: version ?? '1',
-      nonce,
-      supported: !!name && !!domainSeparator && nonce !== undefined,
+      version,
+      nonce: noncesResult.value,
+      supported: isValid,
+      domain,
     }
   } catch {
-    return {
-      name: '',
-      version: '1',
-      nonce: 0n,
-      supported: false,
-    }
+    return defaultPermit
   }
 }

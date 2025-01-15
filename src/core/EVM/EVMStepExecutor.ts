@@ -345,6 +345,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
             return step
           }
 
+          let isTransactionRelayed = false
+
           if (atomicBatchSupported) {
             const transferCall: Call = {
               chainId: fromChain.id,
@@ -387,18 +389,24 @@ export class EVMStepExecutor extends BaseStepExecutor {
                 callData: transactionRequest.data!,
               })
               txHash = relayedTransaction.data.taskId
+              isTransactionRelayed = true
             } else {
               if (permitSignature) {
                 // If we have a permit signature, we need to use updated data
                 transactionRequest.data = permitSignature.data
                 try {
                   // Try to re-estimate the gas due to additional Permit data
-                  transactionRequest.gas = await estimateGas(this.client, {
+                  const estimatedGas = await estimateGas(this.client, {
                     account: this.client.account!,
                     to: transactionRequest.to as Address,
                     data: transactionRequest.data as Hex,
                     value: transactionRequest.value,
                   })
+                  transactionRequest.gas =
+                    transactionRequest.gas &&
+                    transactionRequest.gas > estimatedGas
+                      ? transactionRequest.gas
+                      : estimatedGas
                 } catch {
                   // Let the wallet estimate the gas in case of failure
                   transactionRequest.gas = undefined
@@ -425,7 +433,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
               } as SendTransactionParameters)
             }
           }
-
           process = this.statusManager.updateProcess(
             step,
             process.type,
@@ -435,10 +442,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
               ? {
                   atomicBatchSupported,
                 }
-              : {
-                  txHash: txHash,
-                  txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
-                }
+              : isTransactionRelayed
+                ? undefined
+                : {
+                    txHash: txHash,
+                    txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+                  }
           )
         }
 

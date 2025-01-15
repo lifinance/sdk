@@ -28,13 +28,6 @@ export const signNativePermitMessage = async (
 ): Promise<PermitSignature> => {
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60) // 30 minutes
 
-  const domain = {
-    name: nativePermit.name,
-    version: nativePermit.version,
-    chainId: chain.id,
-    verifyingContract: tokenAddress,
-  }
-
   const message = {
     owner: client.account!.address,
     spender: chain.permit2Proxy as Address,
@@ -49,7 +42,7 @@ export const signNativePermitMessage = async (
     'signTypedData'
   )({
     account: client.account!,
-    domain,
+    domain: nativePermit.domain,
     types: eip2612Types,
     primaryType: 'Permit',
     message,
