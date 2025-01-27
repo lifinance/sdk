@@ -28,24 +28,21 @@ const timeout = 10000
 
 beforeAll(setupTestEnvironment)
 
-describe('allowance integration tests', () => {
-  it(
-    'should work for ERC20 on POL',
-    async () => {
-      const allowance = await getAllowance(
-        memeToken.chainId,
-        memeToken.address as Address,
-        defaultWalletAddress,
-        defaultSpenderAddress
-      )
+describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
+  it('should work for ERC20 on POL', async () => {
+    const allowance = await getAllowance(
+      memeToken.chainId,
+      memeToken.address as Address,
+      defaultWalletAddress,
+      defaultSpenderAddress
+    )
 
-      expect(allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
-    },
-    { retry: retryTimes, timeout }
-  )
+    expect(allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
+  })
 
   it(
     'should work for MATIC on POL',
+    { retry: retryTimes, timeout },
     async () => {
       const token = findDefaultToken(CoinKey.MATIC, ChainId.POL)
 
@@ -57,12 +54,12 @@ describe('allowance integration tests', () => {
       )
 
       expect(allowance).toBe(0n)
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   it(
     'should return even with invalid data on POL',
+    { retry: retryTimes, timeout },
     async () => {
       const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
@@ -74,12 +71,12 @@ describe('allowance integration tests', () => {
         defaultSpenderAddress
       )
       expect(allowance).toBe(0n)
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   it(
     'should handle empty lists with multicall',
+    { retry: retryTimes, timeout },
     async () => {
       const allowances = await getAllowanceMulticall(
         137,
@@ -87,12 +84,12 @@ describe('allowance integration tests', () => {
         defaultWalletAddress
       )
       expect(allowances.length).toBe(0)
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   it(
     'should handle token lists with more than 10 tokens',
+    { retry: retryTimes, timeout },
     async () => {
       const { tokens } = await getTokens({
         chains: [ChainId.POL],
@@ -123,7 +120,6 @@ describe('allowance integration tests', () => {
 
         expect(token?.allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
       }
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 })
