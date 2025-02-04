@@ -70,7 +70,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
       )(undefined)) as GetAddressesReturnType
       accountAddress = accountAddresses?.[0]
     }
-    if (accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()) {
+    if (
+      accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
+    ) {
       let processToUpdate = process
       if (!processToUpdate) {
         // We need to create some process if we don't have one so we can show the error
