@@ -36,7 +36,7 @@ import { parseEVMErrors } from './parseEVMErrors.js'
 import { type PermitSignature, signPermitMessage } from './signPermitMessage.js'
 import { switchChain } from './switchChain.js'
 import { isRelayerStep } from './typeguards.js'
-import { getMaxPriorityFeePerGas } from './utils.js'
+import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
 import {
   type WalletCallReceipt,
   waitForBatchTransactionReceipt,
@@ -86,7 +86,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
       )(undefined)) as GetAddressesReturnType
       accountAddress = accountAddresses?.[0]
     }
-    if (accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()) {
+    if (
+      accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
+    ) {
       let processToUpdate = process
       if (!processToUpdate) {
         // We need to create some process if we don't have one so we can show the error
@@ -533,14 +535,15 @@ export class EVMStepExecutor extends BaseStepExecutor {
             sendTransaction,
             'sendTransaction'
           )({
-            to: transactionRequest.to,
+            to: transactionRequest.to as Address,
             account: this.client.account!,
-            data: transactionRequest.data,
+            data: transactionRequest.data as Hex,
             value: transactionRequest.value,
             gas: transactionRequest.gas,
             gasPrice: transactionRequest.gasPrice,
             maxFeePerGas: transactionRequest.maxFeePerGas,
             maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+            chain: convertExtendedChain(fromChain),
           } as SendTransactionParameters)
         }
       }
