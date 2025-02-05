@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.5.3](https://github.com/lifinance/sdk/compare/v3.5.2...v3.5.3) (2025-02-04)
+
+
+### Bug Fixes
+
+* fixed evm address compare check ([#234](https://github.com/lifinance/sdk/issues/234)) ([6cccf2d](https://github.com/lifinance/sdk/commit/6cccf2d3b60c66e426f0469336a6c461a3c5e69e))
+
 ### [3.5.2](https://github.com/lifinance/sdk/compare/v3.5.1...v3.5.2) (2025-01-14)
 
 
