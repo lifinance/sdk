@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.6.0-beta.4",
+  "version": "3.6.0-beta.5",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -93,14 +93,14 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.1.1",
-    "@lifi/types": "^16.7.0",
+    "@lifi/types": "^16.8.0",
     "@noble/curves": "^1.8.1",
     "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.22.21"
+    "viem": "^2.22.22"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

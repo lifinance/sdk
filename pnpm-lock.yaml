@@ -12,8 +12,8 @@ importers:
         specifier: ^0.1.1
         version: 0.1.1(bs58@6.0.0)(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10)
       '@lifi/types':
-        specifier: ^16.7.0
-        version: 16.7.0
+        specifier: ^16.8.0
+        version: 16.8.0
       '@noble/curves':
         specifier: ^1.8.1
         version: 1.8.1
@@ -33,8 +33,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       viem:
-        specifier: ^2.22.21
-        version: 2.22.21(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10)
+        specifier: ^2.22.22
+        version: 2.22.22(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10)
     devDependencies:
       '@biomejs/biome':
         specifier: ^1.9.4
@@ -487,8 +487,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@lifi/types@16.7.0':
-    resolution: {integrity: sha512-t5By15YOMAndL8VKa0mE51nI5F1O5KEx5mS4yRjnipq+lfJi8XjkkktacLJOXZv7cnIubtBvCeq1TatqZ8QTlQ==}
+  '@lifi/types@16.8.0':
+    resolution: {integrity: sha512-PBu5TDo1hFJEjBgnSZfQq/2g2BJo9Z181EVoKCgWLQxB/r7AuDjF5xTFyX776fsosaQNGPwooSGYEWJzeqUmew==}
 
   '@mswjs/interceptors@0.37.3':
     resolution: {integrity: sha512-USvgCL/uOGFtVa6SVyRrC8kIAedzRohxIXN5LISlg5C5vLZCn7dgMFVSNhSF9cuBEFrm/O2spDWEZeMnw4ZXYg==}
@@ -2742,8 +2742,8 @@ packages:
   varuint-bitcoin@2.0.0:
     resolution: {integrity: sha512-6QZbU/rHO2ZQYpWFDALCDSRsXbAs1VOEmXAxtbtjLtKuMJ/FQ8YbhfxlaiKv5nklci0M6lZtlZyxo9Q+qNnyog==}
 
-  viem@2.22.21:
-    resolution: {integrity: sha512-CujapStF+F3VP+bKBQOGFk5YHyJKZOY2TGvD1e04CAm8VrtLo3sfTydYW2Rri6LMktqp6ilGB9GvSiZczxvOBQ==}
+  viem@2.22.22:
+    resolution: {integrity: sha512-0z7EFheP+paC/KRlVpu7zXYiqkTX6GR86G0p84LnYr5NgaVxGz0mGsiERy41ThERX1ahkTdEWGGiNgfi6wVqBQ==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -2997,7 +2997,7 @@ snapshots:
       bech32: 2.0.0
       bitcoinjs-lib: 7.0.0-rc.0(typescript@5.7.3)
       bs58: 6.0.0
-      viem: 2.22.21(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10)
+      viem: 2.22.22(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -3307,7 +3307,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@lifi/types@16.7.0': {}
+  '@lifi/types@16.8.0': {}
 
   '@mswjs/interceptors@0.37.3':
     dependencies:
@@ -5594,7 +5594,7 @@ snapshots:
     dependencies:
       uint8array-tools: 0.0.8
 
-  viem@2.22.21(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10):
+  viem@2.22.22(bufferutil@4.0.8)(typescript@5.7.3)(utf-8-validate@5.0.10):
     dependencies:
       '@noble/curves': 1.8.1
       '@noble/hashes': 1.7.1
