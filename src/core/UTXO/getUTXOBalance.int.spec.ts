@@ -40,6 +40,7 @@ describe('getBalances integration tests', () => {
 
   it(
     'should work for ERC20 on POL',
+    { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
@@ -48,8 +49,7 @@ describe('getBalances integration tests', () => {
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   // it(
