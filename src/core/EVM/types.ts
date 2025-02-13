@@ -1,5 +1,5 @@
 import { type BaseToken, ChainType } from '@lifi/types'
-import type { Client } from 'viem'
+import type { Client, FallbackTransportConfig } from 'viem'
 import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 import type { SDKProvider } from '../types.js'
 import type { PermitData } from './permit2/domain.js'
@@ -11,10 +11,13 @@ import type {
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>
   switchChain?: SwitchChainHook
+  fallbackTransportConfig?: FallbackTransportConfig
 }
 
 export interface EVMProvider extends SDKProvider {
+  options: EVMProviderOptions
   setOptions(options: EVMProviderOptions): void
+  getWalletClient?(): Promise<Client>
 }
 
 export function isEVM(provider: SDKProvider): provider is EVMProvider {

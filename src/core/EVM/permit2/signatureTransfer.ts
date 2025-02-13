@@ -11,7 +11,7 @@ import { permit2Domain } from './domain.js'
 export interface Witness {
   witness: any
   witnessTypeName: string
-  witnessType: { [key: string]: { name: string; type: string }[] }
+  witnessType: Record<string, { name: string; type: string }[]>
 }
 
 export interface TokenPermissions {

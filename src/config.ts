@@ -1,4 +1,4 @@
-import { ChainId, type ExtendedChain } from '@lifi/types'
+import { ChainId, type ChainType, type ExtendedChain } from '@lifi/types'
 import type { SDKProvider } from './core/types.js'
 import type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 
@@ -33,6 +33,9 @@ export const config = (() => {
         this.setRPCUrls(rpcUrls)
       }
       return _config
+    },
+    getProvider(type: ChainType) {
+      return _config.providers.find((provider) => provider.type === type)
     },
     setProviders(providers: SDKProvider[]) {
       const providerMap = new Map(

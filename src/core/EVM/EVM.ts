@@ -12,9 +12,13 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     get type() {
       return ChainType.EVM
     },
+    get options() {
+      return _options
+    },
     isAddress,
     resolveAddress: getENSAddress,
     getBalance: getEVMBalance,
+    getWalletClient: _options.getWalletClient,
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<EVMStepExecutor> {
