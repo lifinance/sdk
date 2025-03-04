@@ -24,16 +24,16 @@ export const waitForRelayedTransactionReceipt = async (
         return undefined
       })
 
-      switch (result?.data.status) {
+      switch (result?.status) {
         case 'PENDING':
           return undefined
         case 'DONE': {
-          const sending: ExtendedTransactionInfo | undefined = result?.data
-            .transactionStatus?.sending as ExtendedTransactionInfo
+          const sending: ExtendedTransactionInfo | undefined = result
+            ?.transactionStatus?.sending as ExtendedTransactionInfo
           return {
             status: 'success',
             gasUsed: sending?.gasUsed,
-            transactionHash: result?.data.metadata.txHash,
+            transactionHash: result?.metadata.txHash,
           } as unknown as WalletCallReceipt
         }
         case 'FAILED':

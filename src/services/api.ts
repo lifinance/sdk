@@ -12,6 +12,14 @@ import {
   type GetStatusRequest,
   type LiFiStep,
   type QuoteRequest,
+  type RelayRequest,
+  type RelayResponse,
+  type RelayResponseData,
+  type RelayStatusRequest,
+  type RelayStatusResponse,
+  type RelayStatusResponseData,
+  type RelayerQuoteResponse,
+  type RelayerQuoteResponseData,
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
@@ -26,57 +34,14 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
 } from '@lifi/types'
-import type { Address, Hash, Hex } from 'viem'
 import { config } from '../config.js'
-import type { PermitData } from '../core/EVM/permit2/domain.js'
-import type {
-  PermitTransferFrom,
-  Witness,
-} from '../core/EVM/permit2/signatureTransfer.js'
 import { SDKError } from '../errors/SDKError.js'
+import { BaseError } from '../errors/baseError.js'
+import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
-
-interface TaskStatus {
-  data: {
-    status: 'DONE' | 'PENDING' | 'FAILED'
-    message?: string
-    metadata: { chainId: number; txHash?: Hash }
-    transactionStatus?: StatusResponse
-  }
-}
-
-interface RelayStatusRequest {
-  taskId: Hash
-}
-
-interface RelayRequest {
-  tokenOwner: Address
-  chainId: number
-  permit: PermitTransferFrom
-  witness: Witness
-  signedPermitData: Hex
-  callData: string
-}
-
-interface RelayResponse {
-  data: { taskId: Hash }
-}
-
-interface RelayerQuoteResponse {
-  data: {
-    quote: {
-      step: LiFiStep
-      permit: PermitTransferFrom
-      witness: Witness
-      permitData: PermitData
-      tokenOwner: Address
-      chainId: number
-    }
-  }
-}
 
 /**
  * Get a quote for a token transfer
@@ -297,7 +262,7 @@ export const getStatus = async (
 export const getRelayerQuote = async (
   params: QuoteRequest,
   options?: RequestOptions
-): Promise<RelayerQuoteResponse> => {
+): Promise<RelayerQuoteResponseData> => {
   const requiredParameters: Array<keyof QuoteRequest> = [
     'fromChain',
     'fromToken',
@@ -335,7 +300,7 @@ export const getRelayerQuote = async (
     }
   }
 
-  return await request<RelayerQuoteResponse>(
+  const result = await request<RelayerQuoteResponse>(
     `${config.get().apiUrl}/relayer/quote?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
@@ -343,6 +308,16 @@ export const getRelayerQuote = async (
       signal: options?.signal,
     }
   )
+
+  if (result.status === 'error') {
+    throw new BaseError(
+      ErrorName.ServerError,
+      result.data.code,
+      result.data.message
+    )
+  }
+
+  return result.data
 }
 
 /**
@@ -355,13 +330,11 @@ export const getRelayerQuote = async (
 export const relayTransaction = async (
   params: RelayRequest,
   options?: RequestOptions
-): Promise<RelayResponse> => {
+): Promise<RelayResponseData> => {
   const requiredParameters: Array<keyof RelayRequest> = [
     'tokenOwner',
     'chainId',
-    'permit',
-    'witness',
-    'signedPermitData',
+    'permits',
     'callData',
   ]
 
@@ -375,19 +348,32 @@ export const relayTransaction = async (
     }
   }
 
-  return await request<RelayResponse>(`${config.get().apiUrl}/relayer/relay`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params, (_, value) => {
-      if (typeof value === 'bigint') {
-        return value.toString()
-      }
-      return value
-    }),
-    signal: options?.signal,
-  })
+  const result = await request<RelayResponse>(
+    `${config.get().apiUrl}/relayer/relay`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params, (_, value) => {
+        if (typeof value === 'bigint') {
+          return value.toString()
+        }
+        return value
+      }),
+      signal: options?.signal,
+    }
+  )
+
+  if (result.status === 'error') {
+    throw new BaseError(
+      ErrorName.ServerError,
+      result.data.code,
+      result.data.message
+    )
+  }
+
+  return result.data
 }
 
 /**
@@ -400,19 +386,29 @@ export const relayTransaction = async (
 export const getRelayedTransactionStatus = async (
   params: RelayStatusRequest,
   options?: RequestOptions
-): Promise<TaskStatus> => {
+): Promise<RelayStatusResponseData> => {
   if (!params.taskId) {
     throw new SDKError(
       new ValidationError('Required parameter "taskId" is missing.')
     )
   }
 
-  return await request<TaskStatus>(
+  const result = await request<RelayStatusResponse>(
     `${config.get().apiUrl}/relayer/status/${params.taskId}`,
     {
       signal: options?.signal,
     }
   )
+
+  if (result.status === 'error') {
+    throw new BaseError(
+      ErrorName.ServerError,
+      result.data.code,
+      result.data.message
+    )
+  }
+
+  return result.data
 }
 
 /**

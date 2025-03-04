@@ -3,7 +3,8 @@ import { ChainType } from '@lifi/types'
 import type { Address } from 'viem'
 import { config } from '../../config.js'
 import { getAllowance } from './getAllowance.js'
-import { type NativePermitData, getNativePermit } from './getNativePermit.js'
+import { getNativePermit } from './permits/getNativePermit.js'
+import type { NativePermitData } from './permits/types.js'
 import { getPublicClient } from './publicClient.js'
 import type { EVMProvider } from './types.js'
 
@@ -45,13 +46,13 @@ export const checkPermitSupport = async ({
     client = await getPublicClient(chain.id)
   }
 
-  let nativePermit: NativePermitData
+  let nativePermit: NativePermitData | undefined
   // Try with wallet client first, fallback to public client
   try {
-    nativePermit = await getNativePermit(client, chain, tokenAddress)
+    nativePermit = await getNativePermit(client, chain, tokenAddress, amount)
   } catch {
     client = await getPublicClient(chain.id)
-    nativePermit = await getNativePermit(client, chain, tokenAddress)
+    nativePermit = await getNativePermit(client, chain, tokenAddress, amount)
   }
 
   let permit2Allowance: bigint | undefined
@@ -66,7 +67,7 @@ export const checkPermitSupport = async ({
   }
 
   return {
-    nativePermitSupported: nativePermit.supported,
+    nativePermitSupported: !!nativePermit,
     permit2AllowanceSufficient:
       !!permit2Allowance && permit2Allowance >= amount,
   }

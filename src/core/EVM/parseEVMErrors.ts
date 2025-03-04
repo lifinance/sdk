@@ -41,6 +41,15 @@ const handleSpecificErrors = async (
   if (e.cause?.code === -32000) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
+  // Some wallets reject transactions sometimes with this code because of internal and JSON-RPC errors, e.g.:
+  // {
+  //     "code": -32603,
+  //     "message": "Pop up window failed to open",
+  //     "docUrl": "https://docs.cloud.coinbase.com/wallet-sdk/docs/errors"
+  // }
+  if (e.cause?.code === -32603) {
+    return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
+  }
 
   if (
     step &&

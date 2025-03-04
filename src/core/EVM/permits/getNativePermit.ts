@@ -10,16 +10,9 @@ import {
 import type { Address, Client, Hex } from 'viem'
 import type { TypedDataDomain } from 'viem'
 import { multicall, readContract } from 'viem/actions'
-import { eip2612Abi } from './abi.js'
-import { getMulticallAddress } from './utils.js'
-
-export type NativePermitData = {
-  name: string
-  version: string
-  nonce: bigint
-  supported: boolean
-  domain: TypedDataDomain
-}
+import { eip2612Abi, eip2612Types } from '../abi.js'
+import { getMulticallAddress } from '../utils.js'
+import type { NativePermitData } from './types.js'
 
 /**
  * EIP-712 domain typehash with chainId
@@ -142,14 +135,6 @@ function validateDomainSeparator({
   }
 }
 
-const defaultPermit: NativePermitData = {
-  name: '',
-  version: '1',
-  nonce: 0n,
-  supported: false,
-  domain: {},
-}
-
 /**
  * Retrieves native permit data (EIP-2612) for a token on a specific chain
  * @link https://eips.ethereum.org/EIPS/eip-2612
@@ -161,8 +146,9 @@ const defaultPermit: NativePermitData = {
 export const getNativePermit = async (
   client: Client,
   chain: ExtendedChain,
-  tokenAddress: Address
-): Promise<NativePermitData> => {
+  tokenAddress: Address,
+  amount: bigint
+): Promise<NativePermitData | undefined> => {
   try {
     const multicallAddress = await getMulticallAddress(chain.id)
 
@@ -205,7 +191,7 @@ export const getNativePermit = async (
         !domainSeparatorResult.result ||
         noncesResult.result === undefined
       ) {
-        return defaultPermit
+        return undefined
       }
 
       const { isValid, domain } = validateDomainSeparator({
@@ -216,12 +202,22 @@ export const getNativePermit = async (
         domainSeparator: domainSeparatorResult.result,
       })
 
-      return {
-        name: nameResult.result,
-        version: versionResult.result ?? '1',
+      if (!isValid) {
+        return undefined
+      }
+
+      const values = {
+        owner: client.account!.address,
+        spender: chain.permit2Proxy as Address,
+        value: amount,
         nonce: noncesResult.result,
-        supported: isValid,
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+      }
+
+      return {
         domain,
+        types: eip2612Types,
+        values,
       }
     }
 
@@ -240,7 +236,7 @@ export const getNativePermit = async (
       domainSeparatorResult.status !== 'fulfilled' ||
       noncesResult.status !== 'fulfilled'
     ) {
-      return defaultPermit
+      return undefined
     }
 
     const name = nameResult.value
@@ -254,14 +250,24 @@ export const getNativePermit = async (
       domainSeparator: domainSeparatorResult.value,
     })
 
-    return {
-      name,
-      version,
+    if (!isValid) {
+      return undefined
+    }
+
+    const values = {
+      owner: client.account!.address,
+      spender: chain.permit2Proxy as Address,
+      value: amount,
       nonce: noncesResult.value,
-      supported: isValid,
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+    }
+
+    return {
       domain,
+      types: eip2612Types,
+      values,
     }
   } catch {
-    return defaultPermit
+    return undefined
   }
 }

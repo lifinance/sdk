@@ -8,25 +8,25 @@ import {
 } from './constants.js'
 import { permit2Domain } from './domain.js'
 
-export interface Witness {
+export type Witness = {
   witness: any
   witnessTypeName: string
   witnessType: Record<string, { name: string; type: string }[]>
 }
 
-export interface TokenPermissions {
+export type TokenPermissions = {
   token: Address
   amount: bigint
 }
 
-export interface PermitTransferFrom {
+export type PermitTransferFrom = {
   permitted: TokenPermissions
   spender: Address
   nonce: bigint
   deadline: bigint
 }
 
-export interface PermitBatchTransferFrom {
+export type PermitBatchTransferFrom = {
   permitted: TokenPermissions[]
   spender: Address
   nonce: bigint
@@ -154,6 +154,18 @@ export function getPermitBatchTransferData(
 
 // return the data to be sent in a eth_signTypedData RPC call
 // for signing the given permit data
+export function getPermitData<T extends PermitTransferFrom>(
+  permit: T,
+  permit2Address: Address,
+  chainId: number,
+  witness?: Witness
+): PermitTransferFromData
+export function getPermitData<T extends PermitBatchTransferFrom>(
+  permit: T,
+  permit2Address: Address,
+  chainId: number,
+  witness?: Witness
+): PermitBatchTransferFromData
 export function getPermitData(
   permit: PermitTransferFrom | PermitBatchTransferFrom,
   permit2Address: Address,
@@ -166,8 +178,8 @@ export function getPermitData(
   return getPermitBatchTransferData(permit, permit2Address, chainId, witness)
 }
 
-export function hash(
-  permit: PermitTransferFrom | PermitBatchTransferFrom,
+export function hash<T extends PermitTransferFrom | PermitBatchTransferFrom>(
+  permit: T,
   permit2Address: Address,
   chainId: number,
   witness?: Witness

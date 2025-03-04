@@ -6,5 +6,5 @@ export function isRelayerStep(
   step: LiFiStepExtended | LiFiStep
 ): step is EVMPermitStep {
   const evmStep = step as EVMPermitStep
-  return 'permit' in evmStep && 'permitData' in evmStep && 'witness' in evmStep
+  return 'permits' in evmStep && evmStep.permits?.length > 0
 }

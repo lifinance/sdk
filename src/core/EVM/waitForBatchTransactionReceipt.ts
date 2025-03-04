@@ -28,11 +28,16 @@ export const waitForBatchTransactionReceipt = async (
         id: batchHash,
       })
 
-      if (callsDetails.status === 'PENDING') {
+      // EIP-5792 specs was updated to return 100 for pending transactions https://eips.ethereum.org/EIPS/eip-5792
+      if (
+        callsDetails.status === 'PENDING' ||
+        callsDetails.status === (100 as any)
+      ) {
         return undefined
       }
 
-      if (callsDetails.status === 'CONFIRMED') {
+      // EIP-5792 specs was updated to return 200 for confirmed transactions https://eips.ethereum.org/EIPS/eip-5792
+      if (callsDetails.status === 'CONFIRMED' || callsDetails.status === 200) {
         if (
           !callsDetails.receipts?.length ||
           !callsDetails.receipts.every((receipt) => receipt.transactionHash) ||

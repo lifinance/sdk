@@ -1,12 +1,7 @@
-import { type BaseToken, ChainType } from '@lifi/types'
-import type { Client, FallbackTransportConfig } from 'viem'
+import { type BaseToken, ChainType, type Permit } from '@lifi/types'
+import type { Address, Client, FallbackTransportConfig, Hex } from 'viem'
 import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 import type { SDKProvider } from '../types.js'
-import type { PermitData } from './permit2/domain.js'
-import type {
-  PermitTransferFrom,
-  Witness,
-} from './permit2/signatureTransfer.js'
 
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>
@@ -58,7 +53,14 @@ export interface RevokeApprovalRequest {
 }
 
 export interface EVMPermitStep extends LiFiStepExtended {
-  permit: PermitTransferFrom
-  permitData: PermitData
-  witness: Witness
+  permits: Permit[]
 }
+
+export type Call = {
+  to: Address
+  data?: Hex
+  value?: bigint
+  chainId?: number
+}
+
+export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

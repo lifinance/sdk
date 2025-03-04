@@ -5,7 +5,16 @@ import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions, Process, ProcessType } from '../types.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
+import { getNativePermit } from './permits/getNativePermit.js'
+import { signNativePermitMessage } from './permits/signNativePermitMessage.js'
+import type {
+  NativePermitData,
+  NativePermitSignature,
+} from './permits/types.js'
+import { prettifyNativePermitData } from './permits/utils.js'
 import { setAllowance } from './setAllowance.js'
+import { isRelayerStep } from './typeguards.js'
+import type { Call } from './types.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export type CheckAllowanceParams = {
@@ -19,6 +28,19 @@ export type CheckAllowanceParams = {
   permit2Supported?: boolean
 }
 
+export type AllowanceResult =
+  | {
+      status: 'ACTION_REQUIRED' | 'DONE'
+    }
+  | {
+      status: 'BATCH_APPROVAL'
+      data: Call
+    }
+  | {
+      status: 'NATIVE_PERMIT'
+      data: NativePermitSignature
+    }
+
 export const checkAllowance = async ({
   client,
   chain,
@@ -28,7 +50,7 @@ export const checkAllowance = async ({
   allowUserInteraction = false,
   atomicBatchSupported = false,
   permit2Supported = false,
-}: CheckAllowanceParams): Promise<Hash | void> => {
+}: CheckAllowanceParams): Promise<AllowanceResult> => {
   // Find existing or create new allowance process
   const allowanceProcess: Process = statusManager.findOrCreateProcess({
     step,
@@ -47,7 +69,7 @@ export const checkAllowance = async ({
         chain,
         statusManager
       )
-      return
+      return { status: 'DONE' }
     }
 
     // Start new allowance check
@@ -68,14 +90,46 @@ export const checkAllowance = async ({
     // Return early if already approved
     if (fromAmount <= approved) {
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return
+      return { status: 'DONE' }
     }
 
-    if (!allowUserInteraction) {
-      return
+    const isRelayerTransaction = isRelayerStep(step)
+
+    let nativePermitData: NativePermitData | undefined
+    if (isRelayerTransaction) {
+      const permitData = step.permits.find(
+        (p) => p.permitType === 'Permit'
+      )?.permitData
+      if (permitData) {
+        nativePermitData = prettifyNativePermitData(permitData)
+      }
+    } else {
+      nativePermitData = await getNativePermit(
+        client,
+        chain,
+        step.action.fromToken.address as Address,
+        fromAmount
+      )
     }
 
     statusManager.updateProcess(step, allowanceProcess.type, 'ACTION_REQUIRED')
+
+    if (!allowUserInteraction) {
+      return { status: 'ACTION_REQUIRED' }
+    }
+
+    // Check if proxy contract is available and token supports native permits, not available for atomic batch
+    const nativePermitSupported =
+      !!nativePermitData && !!chain.permit2Proxy && !atomicBatchSupported
+
+    if (nativePermitSupported && nativePermitData) {
+      const nativePermitSignature = await signNativePermitMessage(
+        client,
+        nativePermitData
+      )
+      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      return { status: 'NATIVE_PERMIT', data: nativePermitSignature }
+    }
 
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
@@ -90,7 +144,14 @@ export const checkAllowance = async ({
 
     if (atomicBatchSupported) {
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return approveTxHash
+      return {
+        status: 'BATCH_APPROVAL',
+        data: {
+          to: step.action.fromToken.address as Address,
+          data: approveTxHash,
+          chainId: step.action.fromToken.chainId,
+        },
+      }
     }
 
     await waitForApprovalTransaction(
@@ -101,6 +162,8 @@ export const checkAllowance = async ({
       chain,
       statusManager
     )
+
+    return { status: 'DONE' }
   } catch (e: any) {
     const error = await parseEVMErrors(e, step, allowanceProcess)
     statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {

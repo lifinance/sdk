@@ -23,5 +23,5 @@ export function checkStepSlippageThreshold(
       Number((amountDifference * 1_000_000_000n) / oldEstimatedToAmount) /
       1_000_000_000
   }
-  return actualSlippage <= setSlippage
+  return actualSlippage <= (setSlippage ?? 0)
 }

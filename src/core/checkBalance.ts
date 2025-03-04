@@ -19,7 +19,8 @@ export const checkBalance = async (
         await sleep(200)
         await checkBalance(walletAddress, step, depth + 1)
       } else if (
-        (neededBalance * BigInt((1 - step.action.slippage) * 1_000_000_000)) /
+        (neededBalance *
+          BigInt((1 - (step.action.slippage ?? 0)) * 1_000_000_000)) /
           1_000_000_000n <=
         currentBalance
       ) {
