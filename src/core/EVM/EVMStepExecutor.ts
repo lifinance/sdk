@@ -329,6 +329,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         step,
         type: permitRequired ? 'PERMIT' : currentProcessType,
         status: 'STARTED',
+        chainId: fromChain.id,
       })
 
       // Check balance
@@ -483,6 +484,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           step,
           type: currentProcessType,
           status: 'PENDING',
+          chainId: fromChain.id,
         })
 
         const signedPermits: SignedPermit[] = [
@@ -532,6 +534,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
             step,
             type: currentProcessType,
             status: 'PENDING',
+            chainId: fromChain.id,
           })
           transactionRequest.data = encodePermit2Data(
             step.action.fromToken.address as Address,

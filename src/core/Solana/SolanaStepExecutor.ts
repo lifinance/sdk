@@ -54,6 +54,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     let process = this.statusManager.findOrCreateProcess({
       step,
       type: currentProcessType,
+      chainId: fromChain.id,
     })
 
     if (process.status !== 'DONE') {
