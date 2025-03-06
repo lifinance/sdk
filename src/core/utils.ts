@@ -1,5 +1,7 @@
 import type { LiFiStep } from '@lifi/types'
 
+const standardThreshold = 0.005
+
 /**
  * Used to check if changed exchange rate is in the range of slippage threshold.
  * We use a slippage value as a threshold to trigger the rate change hook.
@@ -12,7 +14,7 @@ export function checkStepSlippageThreshold(
   oldStep: LiFiStep,
   newStep: LiFiStep
 ): boolean {
-  const setSlippage = oldStep.action.slippage
+  const setSlippage = oldStep.action.slippage || standardThreshold
   const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)
   const newEstimatedToAmount = BigInt(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount - newEstimatedToAmount
@@ -23,5 +25,5 @@ export function checkStepSlippageThreshold(
       Number((amountDifference * 1_000_000_000n) / oldEstimatedToAmount) /
       1_000_000_000
   }
-  return actualSlippage <= (setSlippage ?? 0)
+  return actualSlippage <= setSlippage
 }
