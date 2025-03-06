@@ -1,5 +1,6 @@
 import type { LiFiStep } from '@lifi/types'
 
+// Standard threshold for destination amount difference (0.5%)
 const standardThreshold = 0.005
 
 /**
