@@ -16,7 +16,7 @@ export const prepareRestart = async (route: RouteExtended) => {
 const deleteFailedProcesses = (step: LiFiStepExtended) => {
   if (step.execution) {
     step.execution.process = step.execution.process.filter(
-      (process) => process.status === 'DONE'
+      (process) => process.status === 'DONE' && process.txHash
     )
   }
 }
