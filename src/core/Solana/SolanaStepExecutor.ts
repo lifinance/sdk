@@ -54,6 +54,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     let process = this.statusManager.findOrCreateProcess({
       step,
       type: currentProcessType,
+      chainId: fromChain.id,
     })
 
     if (process.status !== 'DONE') {
@@ -217,24 +218,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // Wait for the transaction status on the destination chain
-    const transactionHash = process.txHash
-    if (!transactionHash) {
-      throw new Error('Transaction hash is undefined.')
-    }
-    if (isBridgeExecution) {
-      process = this.statusManager.findOrCreateProcess({
-        step,
-        type: 'RECEIVING_CHAIN',
-        status: 'PENDING',
-        chainId: toChain.id,
-      })
-    }
-
     await waitForDestinationChainTransaction(
       step,
-      process.type,
-      transactionHash,
+      process,
+      fromChain,
       toChain,
       this.statusManager
     )

@@ -1,14 +1,10 @@
-import type {
-  FullStatusData,
-  LiFiStep,
-  ProcessType,
-  StatusResponse,
-} from '@lifi/types'
+import type { FullStatusData, LiFiStep, StatusResponse } from '@lifi/types'
 import { ServerError } from '../errors/errors.js'
 import { getStatus } from '../services/api.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import type { StatusManager } from './StatusManager.js'
 import { getSubstatusMessage } from './processMessages.js'
+import type { ProcessType } from './types.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
@@ -49,7 +45,9 @@ export async function waitForTransactionStatus(
         }
       })
       .catch((e) => {
-        console.debug('Fetching status from backend failed.', e)
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Fetching status from backend failed.', e)
+        }
         return undefined
       })
   }
@@ -64,7 +62,9 @@ export async function waitForTransactionStatus(
   const resolvedStatus = await status
 
   if (!('receiving' in resolvedStatus)) {
-    throw new ServerError("Status doesn't contain receiving information.")
+    throw new ServerError(
+      "Status doesn't contain destination chain information."
+    )
   }
 
   return resolvedStatus

@@ -52,14 +52,14 @@ export const getUTXOPublicClient = async (chainId: number) => {
           key: 'blockchair',
           includeChainToURL: true,
         }),
-        utxo('https://rpc.ankr.com/http/btc_blockbook/api/v2', {
-          key: 'ankr',
-        }),
         utxo('https://api.blockcypher.com/v1/btc/main', {
           key: 'blockcypher',
         }),
         utxo('https://mempool.space/api', {
           key: 'mempool',
+        }),
+        utxo('https://rpc.ankr.com/http/btc_blockbook/api/v2', {
+          key: 'ankr',
         }),
         ...fallbackTransports,
       ]),

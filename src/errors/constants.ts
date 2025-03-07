@@ -35,6 +35,8 @@ export enum LiFiErrorCode {
   TransactionExpired = 1018,
   TransactionSimulationFailed = 1019,
   TransactionConflict = 1020,
+  TransactionNotFound = 1021,
+  TransactionRejected = 1022,
 }
 
 export enum ErrorMessage {

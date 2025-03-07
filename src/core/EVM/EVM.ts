@@ -12,12 +12,13 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     get type() {
       return ChainType.EVM
     },
-    get multisig() {
-      return _options.multisig
+    get options() {
+      return _options
     },
     isAddress,
     resolveAddress: getENSAddress,
     getBalance: getEVMBalance,
+    getWalletClient: _options.getWalletClient,
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<EVMStepExecutor> {
@@ -29,7 +30,6 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
 
       const executor = new EVMStepExecutor({
         client: walletClient,
-        multisig: _options.multisig,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,

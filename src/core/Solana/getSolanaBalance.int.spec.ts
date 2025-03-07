@@ -41,18 +41,15 @@ describe.sequential('Solana token balance', async () => {
     }
   }
 
-  it(
-    'should handle empty lists',
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens: Token[] = []
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    },
-    { retry: retryTimes, timeout }
-  )
+  it('should handle empty lists', { retry: retryTimes, timeout }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens: Token[] = []
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
   it(
     'should work for stables on SOL',
+    { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
@@ -61,12 +58,12 @@ describe.sequential('Solana token balance', async () => {
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   it(
     'should return even with invalid data',
+    { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
       const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.SOL)
@@ -85,8 +82,7 @@ describe.sequential('Solana token balance', async () => {
       )
       expect(invalidBalance).toBeDefined()
       expect(invalidBalance!.amount).toBeUndefined()
-    },
-    { retry: retryTimes, timeout }
+    }
   )
 
   // it(
