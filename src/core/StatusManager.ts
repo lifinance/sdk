@@ -162,6 +162,9 @@ export class StatusManager {
     }
 
     switch (status) {
+      case 'STARTED':
+        currentProcess.startedAt = Date.now()
+        break
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
         break
