@@ -2,20 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { getQuote } from './api.js'
 
 describe('ApiService Integration Tests', () => {
-  it(
-    'should successfully request a quote',
-    async () => {
-      const quote = await getQuote({
-        fromChain: '1',
-        fromToken: '0x0000000000000000000000000000000000000000',
-        fromAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-        fromAmount: '1000000000000000000',
-        toChain: '137',
-        toToken: '0x0000000000000000000000000000000000000000',
-        // allowBridges: ['hop', 'multichain'],
-      })
-      expect(quote).toBeDefined()
-    },
-    { timeout: 100000 }
-  )
+  it('should successfully request a quote', async () => {
+    const quote = await getQuote({
+      fromChain: '1',
+      fromToken: '0x0000000000000000000000000000000000000000',
+      fromAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+      fromAmount: '1000000000000000000',
+      toChain: '137',
+      toToken: '0x0000000000000000000000000000000000000000',
+      // allowBridges: ['hop', 'multichain'],
+    })
+    expect(quote).toBeDefined()
+  }, 100000)
 })

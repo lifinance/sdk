@@ -12,7 +12,7 @@ import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
 
 export const getEVMBalance = async (
-  walletAddress: string,
+  walletAddress: Address,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
   if (tokens.length === 0) {
@@ -85,7 +85,7 @@ const getEVMBalanceMulticall = async (
 const getEVMBalanceDefault = async (
   chainId: ChainId,
   tokens: Token[],
-  walletAddress: string
+  walletAddress: Address
 ): Promise<TokenAmount[]> => {
   const client = await getPublicClient(chainId)
   const blockNumber = await getBlockNumber(client)

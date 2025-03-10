@@ -1,11 +1,15 @@
-import type { ExecutionStatus, ProcessStatus, Route } from '@lifi/types'
+import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { StatusManager } from './StatusManager.js'
 import { executionState } from './executionState.js'
-import type { LiFiStepExtended } from './types.js'
+import type {
+  ExecutionStatus,
+  LiFiStepExtended,
+  ProcessStatus,
+} from './types.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
@@ -164,7 +168,7 @@ describe('StatusManager', () => {
 
           expect(process.type).toEqual('CROSS_CHAIN')
           expect(process.status).toEqual('STARTED')
-          expect(process.message).toEqual('Preparing bridge transaction.')
+          expect(process.message).toEqual('Preparing bridge transaction')
 
           const updatedExecution = Object.assign({}, step.execution, {
             process: [...step.execution!.process, process],

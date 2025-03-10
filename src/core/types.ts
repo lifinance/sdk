@@ -1,9 +1,11 @@
 import type {
   ChainType,
-  Execution,
+  FeeCost,
+  GasCost,
   LiFiStep,
   Route,
   Step,
+  Substatus,
   Token,
   TokenAmount,
 } from '@lifi/types'
@@ -116,4 +118,55 @@ export interface ExecutionOptions {
    * @deprecated
    */
   infiniteApproval?: boolean
+}
+
+export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
+
+export type ProcessStatus =
+  | 'STARTED'
+  | 'ACTION_REQUIRED'
+  | 'PENDING'
+  | 'FAILED'
+  | 'DONE'
+  | 'CANCELLED'
+
+export type ProcessType =
+  | 'TOKEN_ALLOWANCE'
+  | 'PERMIT'
+  | 'SWITCH_CHAIN'
+  | 'SWAP'
+  | 'CROSS_CHAIN'
+  | 'RECEIVING_CHAIN'
+  | 'TRANSACTION'
+
+export type Process = {
+  type: ProcessType
+  status: ProcessStatus
+  substatus?: Substatus
+  chainId?: number
+  txHash?: string
+  multisigTxHash?: string
+  txLink?: string
+  startedAt: number
+  doneAt?: number
+  failedAt?: number
+  message?: string
+  error?: {
+    code: string | number
+    message: string
+    htmlMessage?: string
+  }
+
+  // additional information
+  [key: string]: any
+}
+
+export interface Execution {
+  status: ExecutionStatus
+  process: Array<Process>
+  fromAmount?: string
+  toAmount?: string
+  toToken?: Token
+  feeCosts?: FeeCost[]
+  gasCosts?: GasCost[]
 }

@@ -1,38 +1,42 @@
-import type {
-  ProcessStatus,
-  ProcessType,
-  StatusMessage,
-  Substatus,
-} from '@lifi/types'
+import type { StatusMessage, Substatus } from '@lifi/types'
+import type { ProcessStatus } from './types.js'
+import type { ProcessType } from './types.js'
 
 const processMessages: Record<
   ProcessType,
   Partial<Record<ProcessStatus, string>>
 > = {
   TOKEN_ALLOWANCE: {
-    STARTED: 'Setting token allowance.',
-    PENDING: 'Waiting for token allowance.',
-    DONE: 'Token allowance set.',
+    STARTED: 'Setting token allowance',
+    PENDING: 'Waiting for token allowance',
+    DONE: 'Token allowance set',
   },
   SWITCH_CHAIN: {
-    PENDING: 'Chain switch required.',
-    DONE: 'Chain switched successfully.',
+    ACTION_REQUIRED: 'Chain switch required',
+    PENDING: 'Waiting for chain switch',
+    DONE: 'Chain switched',
   },
   SWAP: {
-    STARTED: 'Preparing swap transaction.',
-    ACTION_REQUIRED: 'Please sign the transaction.',
-    PENDING: 'Waiting for swap transaction.',
-    DONE: 'Swap completed.',
+    STARTED: 'Preparing swap transaction',
+    ACTION_REQUIRED: 'Please sign the transaction',
+    PENDING: 'Waiting for swap transaction',
+    DONE: 'Swap completed',
   },
   CROSS_CHAIN: {
-    STARTED: 'Preparing bridge transaction.',
-    ACTION_REQUIRED: 'Please sign the transaction.',
-    PENDING: 'Waiting for bridge transaction.',
-    DONE: 'Bridge transaction confirmed.',
+    STARTED: 'Preparing bridge transaction',
+    ACTION_REQUIRED: 'Please sign the transaction',
+    PENDING: 'Waiting for bridge transaction',
+    DONE: 'Bridge transaction confirmed',
   },
   RECEIVING_CHAIN: {
-    PENDING: 'Waiting for destination chain.',
-    DONE: 'Bridge completed.',
+    PENDING: 'Waiting for destination chain',
+    DONE: 'Bridge completed',
+  },
+  PERMIT: {
+    STARTED: 'Preparing transaction',
+    ACTION_REQUIRED: 'Sign permit message',
+    PENDING: 'Waiting for permit message',
+    DONE: 'Permit message signed',
   },
   TRANSACTION: {},
 }

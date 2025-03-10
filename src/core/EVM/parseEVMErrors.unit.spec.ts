@@ -1,4 +1,4 @@
-import type { LiFiStep, Process } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
@@ -10,7 +10,8 @@ import {
   LiFiErrorCode,
 } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import * as helpers from '../../helpers.js'
+import * as helpers from '../../utils/fetchTxErrorDetails.js'
+import type { Process } from '../types.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 
 beforeAll(setupTestEnvironment)

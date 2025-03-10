@@ -1,15 +1,14 @@
+import type { ChainId, LiFiStep } from '@lifi/types'
+import { executionState } from './executionState.js'
+import { getProcessMessage } from './processMessages.js'
 import type {
-  ChainId,
   Execution,
   ExecutionStatus,
-  LiFiStep,
+  LiFiStepExtended,
   Process,
   ProcessStatus,
   ProcessType,
-} from '@lifi/types'
-import { executionState } from './executionState.js'
-import { getProcessMessage } from './processMessages.js'
-import type { LiFiStepExtended } from './types.js'
+} from './types.js'
 
 export type FindOrCreateProcessProps = {
   step: LiFiStepExtended
@@ -81,16 +80,37 @@ export class StatusManager {
   }
 
   /**
+   * Finds a process of the specified type in the step's execution
+   * @param step The step to search in
+   * @param type The process type to find
+   * @param status Optional status to update the process with if found
+   * @returns The found process or undefined if not found
+   */
+  findProcess(
+    step: LiFiStepExtended,
+    type: ProcessType,
+    status?: ProcessStatus
+  ): Process | undefined {
+    if (!step.execution?.process) {
+      throw new Error("Execution hasn't been initialized.")
+    }
+
+    const process = step.execution.process.find((p) => p.type === type)
+
+    if (process && status && process.status !== status) {
+      process.status = status
+      this.updateStepInRoute(step)
+    }
+
+    return process
+  }
+
+  /**
    * Create and push a new process into the execution.
-   * @param step.step The step that should contain the new process.
-   * @param step.type Type of the process. Used to identify already existing processes.
-   * @param step.chainId Chain Id of the process.
-   * @param step.status By default created procces is set to the STARTED status. We can override new process with the needed status.
-   * @param root0
-   * @param root0.step
-   * @param root0.type
-   * @param root0.chainId
-   * @param root0.status
+   * @param step The step that should contain the new process.
+   * @param type Type of the process. Used to identify already existing processes.
+   * @param chainId Chain Id of the process.
+   * @param status By default created procces is set to the STARTED status. We can override new process with the needed status.
    * @returns Returns process.
    */
   findOrCreateProcess = ({
@@ -99,17 +119,9 @@ export class StatusManager {
     chainId,
     status,
   }: FindOrCreateProcessProps): Process => {
-    if (!step.execution?.process) {
-      throw new Error("Execution hasn't been initialized.")
-    }
-
-    const process = step.execution.process.find((p) => p.type === type)
+    const process = this.findProcess(step, type, status)
 
     if (process) {
-      if (status && process.status !== status) {
-        process.status = status
-        this.updateStepInRoute(step)
-      }
       return process
     }
 
@@ -121,7 +133,7 @@ export class StatusManager {
       chainId: chainId,
     }
 
-    step.execution.process.push(newProcess)
+    step.execution!.process.push(newProcess)
     this.updateStepInRoute(step)
     return newProcess
   }
@@ -143,7 +155,7 @@ export class StatusManager {
     if (!step.execution) {
       throw new Error("Can't update an empty step execution.")
     }
-    const currentProcess = step?.execution?.process.find((p) => p.type === type)
+    const currentProcess = this.findProcess(step, type)
 
     if (!currentProcess) {
       throw new Error("Can't find a process for the given type.")

@@ -13,9 +13,9 @@ import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
   chainId: ChainId,
-  tokenAddress: string,
-  ownerAddress: string,
-  spenderAddress: string
+  tokenAddress: Address,
+  ownerAddress: Address,
+  spenderAddress: Address
 ): Promise<bigint> => {
   const client = await getPublicClient(chainId)
   try {
@@ -34,7 +34,7 @@ export const getAllowance = async (
 export const getAllowanceMulticall = async (
   chainId: ChainId,
   tokens: TokenSpender[],
-  ownerAddress: string
+  ownerAddress: Address
 ): Promise<TokenSpenderAllowance[]> => {
   if (!tokens.length) {
     return []
@@ -80,8 +80,8 @@ export const getAllowanceMulticall = async (
  */
 export const getTokenAllowance = async (
   token: BaseToken,
-  ownerAddress: string,
-  spenderAddress: string
+  ownerAddress: Address,
+  spenderAddress: Address
 ): Promise<bigint | undefined> => {
   // native token don't need approval
   if (isNativeTokenAddress(token.address)) {
@@ -90,7 +90,7 @@ export const getTokenAllowance = async (
 
   const approved = await getAllowance(
     token.chainId,
-    token.address,
+    token.address as Address,
     ownerAddress,
     spenderAddress
   )
@@ -104,7 +104,7 @@ export const getTokenAllowance = async (
  * @returns Returns array of tokens and their allowance
  */
 export const getTokenAllowanceMulticall = async (
-  ownerAddress: string,
+  ownerAddress: Address,
   tokens: TokenSpender[]
 ): Promise<TokenAllowance[]> => {
   // filter out native tokens
