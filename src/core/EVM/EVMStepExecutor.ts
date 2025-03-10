@@ -9,8 +9,7 @@ import type {
   TransactionReceipt,
 } from 'viem'
 import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
-import type { GetCapabilitiesReturnType } from 'viem/experimental'
-import { getCapabilities, sendCalls } from 'viem/experimental'
+import { sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
@@ -31,6 +30,7 @@ import type {
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
+import { isBatchingSupported } from './isBatchingSupported.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
@@ -212,18 +212,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
-    let atomicBatchSupported = false
-    try {
-      const capabilities = (await getAction(
-        this.client,
-        getCapabilities,
-        'getCapabilities'
-      )(undefined)) as GetCapabilitiesReturnType
-      atomicBatchSupported = capabilities[fromChain.id]?.atomicBatch?.supported
-    } catch {
-      // If the wallet does not support getCapabilities or the call fails,
-      // we assume that atomic batch is not supported
-    }
+    const batchingSupported = await isBatchingSupported({
+      client: this.client,
+      chainId: fromChain.id,
+    })
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -243,7 +235,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const permit2Supported =
       !!fromChain.permit2 &&
       !!fromChain.permit2Proxy &&
-      !atomicBatchSupported &&
+      !batchingSupported &&
       !isFromNativeToken
 
     const checkForAllowance =
@@ -262,14 +254,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
         statusManager: this.statusManager,
         executionOptions: this.executionOptions,
         allowUserInteraction: this.allowUserInteraction,
-        atomicBatchSupported,
+        batchingSupported,
         permit2Supported,
       })
 
       if (allowanceResult.status === 'BATCH_APPROVAL') {
         // Create approval transaction call
         // No value needed since we're only approving ERC20 tokens
-        if (atomicBatchSupported) {
+        if (batchingSupported) {
           calls.push(allowanceResult.data)
         }
       }
@@ -324,7 +316,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
 
       const permitRequired =
-        !atomicBatchSupported && !nativePermitSignature && permit2Supported
+        !batchingSupported && !nativePermitSignature && permit2Supported
       process = this.statusManager.findOrCreateProcess({
         step,
         type: permitRequired ? 'PERMIT' : currentProcessType,
@@ -435,7 +427,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       let txHash: Hash
       let txType: TransactionMethodType = 'standard'
 
-      if (atomicBatchSupported) {
+      if (batchingSupported) {
         const transferCall: Call = {
           chainId: fromChain.id,
           data: transactionRequest.data as Hex,

@@ -24,7 +24,7 @@ export type CheckAllowanceParams = {
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   allowUserInteraction?: boolean
-  atomicBatchSupported?: boolean
+  batchingSupported?: boolean
   permit2Supported?: boolean
 }
 
@@ -48,7 +48,7 @@ export const checkAllowance = async ({
   statusManager,
   executionOptions,
   allowUserInteraction = false,
-  atomicBatchSupported = false,
+  batchingSupported = false,
   permit2Supported = false,
 }: CheckAllowanceParams): Promise<AllowanceResult> => {
   // Find existing or create new allowance process
@@ -120,7 +120,7 @@ export const checkAllowance = async ({
 
     // Check if proxy contract is available and token supports native permits, not available for atomic batch
     const nativePermitSupported =
-      !!nativePermitData && !!chain.permit2Proxy && !atomicBatchSupported
+      !!nativePermitData && !!chain.permit2Proxy && !batchingSupported
 
     if (nativePermitSupported && nativePermitData) {
       const nativePermitSignature = await signNativePermitMessage(
@@ -139,10 +139,10 @@ export const checkAllowance = async ({
       spenderAddress as Address,
       approveAmount,
       executionOptions,
-      atomicBatchSupported
+      batchingSupported
     )
 
-    if (atomicBatchSupported) {
+    if (batchingSupported) {
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
       return {
         status: 'BATCH_APPROVAL',
