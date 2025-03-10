@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.6.0](https://github.com/lifinance/sdk/compare/v3.5.4...v3.6.0) (2025-03-10)
+
+
+### Features
+
+* add Permit (ERC-2612), Permit2 and Wallet Call API (EIP-5792) support ([#224](https://github.com/lifinance/sdk/issues/224)) ([3278265](https://github.com/lifinance/sdk/commit/32782656dbc92bb0891e96fad3e426ed2294cac9))
+
+
+### Bug Fixes
+
+* improve bitcoin public client handling ([#235](https://github.com/lifinance/sdk/issues/235)) ([06a2d80](https://github.com/lifinance/sdk/commit/06a2d804cce77de171bd4da08dda793516e4ef51))
+* **status-manager:** set startedAt for started processes ([#236](https://github.com/lifinance/sdk/issues/236)) ([edac285](https://github.com/lifinance/sdk/commit/edac285a22692092fc35c3778cc2243e19fbf186))
+
 ### [3.5.4](https://github.com/lifinance/sdk/compare/v3.5.3...v3.5.4) (2025-02-16)
 
 ### [3.5.3](https://github.com/lifinance/sdk/compare/v3.5.2...v3.5.3) (2025-02-04)
