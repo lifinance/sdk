@@ -1,9 +1,10 @@
-import type { LiFiStep, Process } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, UnknownError } from '../../errors/errors.js'
-import { fetchTxErrorDetails } from '../../helpers.js'
+import { fetchTxErrorDetails } from '../../utils/fetchTxErrorDetails.js'
+import type { Process } from '../types.js'
 
 export const parseEVMErrors = async (
   e: Error,
@@ -26,8 +27,28 @@ const handleSpecificErrors = async (
   step?: LiFiStep,
   process?: Process
 ) => {
-  if (e.cause?.name === 'UserRejectedRequestError') {
+  if (
+    e.name === 'UserRejectedRequestError' ||
+    e.cause?.name === 'UserRejectedRequestError'
+  ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
+  // Safe Wallet via WalletConnect returns -32000 code when user rejects the signature
+  // {
+  //   code: -32000,
+  //   message: 'User rejected transaction',
+  // }
+  if (e.cause?.code === -32000) {
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
+  // Some wallets reject transactions sometimes with this code because of internal and JSON-RPC errors, e.g.:
+  // {
+  //     "code": -32603,
+  //     "message": "Pop up window failed to open",
+  //     "docUrl": "https://docs.cloud.coinbase.com/wallet-sdk/docs/errors"
+  // }
+  if (e.cause?.code === -32603) {
+    return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
   }
 
   if (

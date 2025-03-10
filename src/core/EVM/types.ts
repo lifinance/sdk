@@ -1,17 +1,18 @@
-import { type BaseToken, ChainType } from '@lifi/types'
-import type { Client, Hash } from 'viem'
-import type { SwitchChainHook } from '../types.js'
+import { type BaseToken, ChainType, type Permit } from '@lifi/types'
+import type { Address, Client, FallbackTransportConfig, Hex } from 'viem'
+import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
 import type { SDKProvider } from '../types.js'
 
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>
   switchChain?: SwitchChainHook
-  multisig?: MultisigConfig
+  fallbackTransportConfig?: FallbackTransportConfig
 }
 
 export interface EVMProvider extends SDKProvider {
+  options: EVMProviderOptions
   setOptions(options: EVMProviderOptions): void
-  multisig?: MultisigConfig
+  getWalletClient?(): Promise<Client>
 }
 
 export function isEVM(provider: SDKProvider): provider is EVMProvider {
@@ -51,26 +52,15 @@ export interface RevokeApprovalRequest {
   spenderAddress: string
 }
 
-export interface MultisigTxDetails {
-  status: 'DONE' | 'FAILED' | 'PENDING' | 'CANCELLED'
-  txHash?: Hash
+export interface EVMPermitStep extends LiFiStepExtended {
+  permits: Permit[]
 }
 
-export interface MultisigTransaction {
-  to: string
+export type Call = {
+  to: Address
+  data?: Hex
   value?: bigint
-  data: string
+  chainId?: number
 }
 
-export interface MultisigConfig {
-  isMultisigWalletClient: boolean
-  getMultisigTransactionDetails: (
-    txHash: Hash,
-    fromChainId: number,
-    updateIntermediateStatus?: () => void
-  ) => Promise<MultisigTxDetails>
-  sendBatchTransaction?: (
-    batchTransactions: MultisigTransaction[]
-  ) => Promise<Hash>
-  shouldBatchTransactions?: boolean
-}
+export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

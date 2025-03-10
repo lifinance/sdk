@@ -12,12 +12,12 @@ export {
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
 export { isEVM } from './core/EVM/types.js'
+export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
+export { isExtendedChain, convertExtendedChain } from './core/EVM/utils.js'
+export { isRelayerStep } from './core/EVM/typeguards.js'
 export type {
   EVMProvider,
   EVMProviderOptions,
-  MultisigConfig,
-  MultisigTransaction,
-  MultisigTxDetails,
 } from './core/EVM/types.js'
 export { StatusManager } from './core/StatusManager.js'
 export {
@@ -33,9 +33,14 @@ export type {
   AcceptSlippageUpdateHook,
   AcceptSlippageUpdateHookParams,
   ExchangeRateUpdateParams,
+  Execution,
   ExecutionOptions,
+  ExecutionStatus,
   InteractionSettings,
   LiFiStepExtended,
+  Process,
+  ProcessStatus,
+  ProcessType,
   RouteExecutionData,
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
@@ -65,17 +70,16 @@ export { UTXO } from './core/UTXO/UTXO.js'
 export { isUTXO } from './core/UTXO/types.js'
 export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
 export { createConfig } from './createConfig.js'
-export {
-  checkPackageUpdates,
-  convertQuoteToRoute,
-  fetchTxErrorDetails,
-} from './helpers.js'
+export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
+export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
+export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export {
   getChains,
   getConnections,
   getContractCallsQuote,
   getGasRecommendation,
   getQuote,
+  getRelayerQuote,
   getRoutes,
   getStatus,
   getStepTransaction,

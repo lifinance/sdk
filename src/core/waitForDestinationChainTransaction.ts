@@ -2,23 +2,40 @@ import type {
   ExtendedChain,
   ExtendedTransactionInfo,
   FullStatusData,
-  ProcessType,
 } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
-import type { LiFiStepExtended } from './types.js'
+import type { LiFiStepExtended, Process } from './types.js'
 import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 
 export async function waitForDestinationChainTransaction(
   step: LiFiStepExtended,
-  processType: ProcessType,
-  transactionHash: string,
+  process: Process,
+  fromChain: ExtendedChain,
   toChain: ExtendedChain,
   statusManager: StatusManager,
   pollingInterval?: number
 ): Promise<LiFiStepExtended> {
+  const transactionHash = process.txHash
+  let processType = process.type
   try {
+    // Wait for the transaction status on the destination chain
+    if (!transactionHash) {
+      throw new Error('Transaction hash is undefined.')
+    }
+
+    const isBridgeExecution = fromChain.id !== toChain.id
+    if (isBridgeExecution) {
+      const receivingChainProcess = statusManager.findOrCreateProcess({
+        step,
+        type: 'RECEIVING_CHAIN',
+        status: 'PENDING',
+        chainId: toChain.id,
+      })
+      processType = receivingChainProcess.type
+    }
+
     const statusResponse = (await waitForTransactionStatus(
       transactionHash,
       statusManager,

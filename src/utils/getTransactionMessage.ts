@@ -1,6 +1,7 @@
-import type { LiFiStep, Process } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
 import { config } from '../config.js'
+import type { Process } from '../core/types.js'
 
 export const getTransactionNotSentMessage = async (
   step?: LiFiStep,
