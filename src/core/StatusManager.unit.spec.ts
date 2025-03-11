@@ -1,7 +1,11 @@
 import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
+import {
+  SOME_DATE,
+  buildRouteObject,
+  buildStepObject,
+} from '../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { StatusManager } from './StatusManager.js'
 import { executionState } from './executionState.js'
@@ -45,6 +49,7 @@ describe('StatusManager', () => {
 
   beforeEach(() => {
     updateRouteHookMock = vi.fn()
+    vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE)
   })
 
   describe('initExecutionObject', () => {
@@ -59,6 +64,7 @@ describe('StatusManager', () => {
           execution: {
             status: 'PENDING',
             process: [],
+            startedAt: SOME_DATE,
           },
         })
 
@@ -83,6 +89,9 @@ describe('StatusManager', () => {
   })
 
   describe('updateExecution', () => {
+    beforeEach(() => {
+      vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE + 10)
+    })
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })

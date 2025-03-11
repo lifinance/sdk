@@ -14,7 +14,7 @@ const SOME_OTHER_TOKEN: Token = {
   priceUSD: '',
 }
 
-const SOME_DATE = new Date('2021-04-10').getTime()
+export const SOME_DATE = new Date('2021-04-10').getTime()
 
 export const buildStepObject = ({
   includingExecution = true,
@@ -124,6 +124,8 @@ export const buildStepObject = ({
   execution: includingExecution
     ? {
         status: 'PENDING',
+        startedAt: SOME_DATE,
+        doneAt: SOME_DATE + 10,
         process: [
           {
             type: 'TOKEN_ALLOWANCE',
