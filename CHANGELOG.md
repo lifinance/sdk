@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.1](https://github.com/lifinance/sdk/compare/v3.6.0...v3.6.1) (2025-03-11)
+
+
+### Bug Fixes
+
+* **execution:** add started and done timestamps ([#237](https://github.com/lifinance/sdk/issues/237)) ([4b28dc7](https://github.com/lifinance/sdk/commit/4b28dc7fb939cc12b5c9f67a5e6e63c15ade9429))
+
 ## [3.6.0](https://github.com/lifinance/sdk/compare/v3.5.4...v3.6.0) (2025-03-10)
 
 
