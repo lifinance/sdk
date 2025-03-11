@@ -89,6 +89,9 @@ describe('StatusManager', () => {
   })
 
   describe('updateExecution', () => {
+    beforeEach(() => {
+      vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE + 10)
+    })
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })

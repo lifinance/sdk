@@ -125,7 +125,7 @@ export const buildStepObject = ({
     ? {
         status: 'PENDING',
         startedAt: SOME_DATE,
-        doneAt: SOME_DATE,
+        doneAt: SOME_DATE + 10,
         process: [
           {
             type: 'TOKEN_ALLOWANCE',
