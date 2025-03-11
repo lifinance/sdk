@@ -40,12 +40,14 @@ export class StatusManager {
       step.execution = {
         status: 'PENDING',
         process: [],
+        startedAt: Date.now(),
       }
       this.updateStepInRoute(step)
     }
 
     // Change status to PENDING after resuming from FAILED
     if (step.execution.status === 'FAILED') {
+      step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
       this.updateStepInRoute(step)
     }
@@ -69,6 +71,9 @@ export class StatusManager {
       throw Error("Can't update empty execution.")
     }
     step.execution.status = status
+    if (status === 'DONE') {
+      step.execution.doneAt = Date.now()
+    }
     if (execution) {
       step.execution = {
         ...step.execution,
@@ -162,9 +167,6 @@ export class StatusManager {
     }
 
     switch (status) {
-      case 'STARTED':
-        currentProcess.startedAt = Date.now()
-        break
       case 'CANCELLED':
         currentProcess.doneAt = Date.now()
         break

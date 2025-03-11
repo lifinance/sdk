@@ -162,6 +162,8 @@ export type Process = {
 }
 
 export interface Execution {
+  startedAt: number
+  doneAt?: number
   status: ExecutionStatus
   process: Array<Process>
   fromAmount?: string
