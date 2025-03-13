@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.2](https://github.com/lifinance/sdk/compare/v3.6.1...v3.6.2) (2025-03-13)
+
+
+### Bug Fixes
+
+* update permit handling with standardized EIP-712 typed data ([#238](https://github.com/lifinance/sdk/issues/238)) ([57bbd8e](https://github.com/lifinance/sdk/commit/57bbd8e9bcdbd620ae509867beac9f2dff764a2e))
+
 ### [3.6.1](https://github.com/lifinance/sdk/compare/v3.6.0...v3.6.1) (2025-03-11)
 
 
