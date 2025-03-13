@@ -35,13 +35,13 @@ export interface PermitBatch {
 export type PermitSingleData = {
   domain: TypedDataDomain
   types: TypedData
-  values: PermitSingle
+  message: PermitSingle
 }
 
 export type PermitBatchData = {
   domain: TypedDataDomain
   types: TypedData
-  values: PermitBatch
+  message: PermitBatch
 }
 
 const PERMIT_DETAILS = [
@@ -85,7 +85,7 @@ export function getPermitSingleData(
 
   return {
     domain,
-    values: permit,
+    message: permit,
   }
 }
 
@@ -101,7 +101,7 @@ export function getPermitBatchData(
 
   return {
     domain,
-    values: permit,
+    message: permit,
   }
 }
 
@@ -118,14 +118,14 @@ export function getPermitData(
     return {
       domain,
       types: PERMIT_TYPES,
-      values: permit,
+      message: permit,
     }
   }
   permit.details.forEach(validatePermitDetails)
   return {
     domain,
     types: PERMIT_BATCH_TYPES,
-    values: permit,
+    message: permit,
   }
 }
 
@@ -135,7 +135,7 @@ export function hash(
   chainId: number
 ): string {
   if (isPermit(permit)) {
-    const { domain, values } = getPermitSingleData(
+    const { domain, message } = getPermitSingleData(
       permit,
       permit2Address,
       chainId
@@ -145,16 +145,20 @@ export function hash(
       domain,
       types: PERMIT_TYPES,
       primaryType: 'PermitSingle',
-      message: values,
+      message: message,
     })
   }
-  const { domain, values } = getPermitBatchData(permit, permit2Address, chainId)
+  const { domain, message } = getPermitBatchData(
+    permit,
+    permit2Address,
+    chainId
+  )
 
   return hashTypedData({
     domain,
     types: PERMIT_BATCH_TYPES,
     primaryType: 'PermitBatch',
-    message: values,
+    message: message,
   })
 }
 

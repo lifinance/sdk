@@ -1,4 +1,4 @@
-import type { ExtendedChain, LiFiStep, SignedPermit } from '@lifi/types'
+import type { ExtendedChain, LiFiStep, SignedTypedData } from '@lifi/types'
 import type {
   Address,
   Client,
@@ -8,7 +8,12 @@ import type {
   SendTransactionParameters,
   TransactionReceipt,
 } from 'viem'
-import { estimateGas, getAddresses, sendTransaction } from 'viem/actions'
+import {
+  estimateGas,
+  getAddresses,
+  sendTransaction,
+  signTypedData,
+} from 'viem/actions'
 import { sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
@@ -35,11 +40,9 @@ import { parseEVMErrors } from './parseEVMErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
-import type { NativePermitSignature } from './permits/types.js'
-import { prettifyPermit2Data } from './permits/utils.js'
 import { switchChain } from './switchChain.js'
 import { isRelayerStep } from './typeguards.js'
-import type { Call, EVMPermitStep, TransactionMethodType } from './types.js'
+import type { Call, TransactionMethodType } from './types.js'
 import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
 import {
   type WalletCallReceipt,
@@ -244,7 +247,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Token is not native (address is not zero)
       !isFromNativeToken
 
-    let nativePermitSignature: NativePermitSignature | undefined
+    let signedNativePermitTypedData: SignedTypedData | undefined
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
@@ -266,7 +269,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
       }
       if (allowanceResult.status === 'NATIVE_PERMIT') {
-        nativePermitSignature = allowanceResult.data
+        signedNativePermitTypedData = allowanceResult.data
       }
       if (
         allowanceResult.status === 'ACTION_REQUIRED' &&
@@ -316,7 +319,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
 
       const permitRequired =
-        !batchingSupported && !nativePermitSignature && permit2Supported
+        !batchingSupported && !signedNativePermitTypedData && permit2Supported
       process = this.statusManager.findOrCreateProcess({
         step,
         type: permitRequired ? 'PERMIT' : currentProcessType,
@@ -330,7 +333,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Create new transaction request
       if (!step.transactionRequest) {
         const { execution, ...stepBase } = step
-        let updatedStep: LiFiStep | EVMPermitStep
+        let updatedStep: LiFiStep
         if (isRelayerTransaction) {
           const updatedRelayedStep = await getRelayerQuote({
             fromChain: stepBase.action.fromChainId,
@@ -344,8 +347,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
             allowBridges: [stepBase.tool],
           })
           updatedStep = {
-            ...updatedRelayedStep.quote,
-            permits: updatedRelayedStep.permits,
+            ...updatedRelayedStep,
             id: stepBase.id,
           }
         } else {
@@ -447,8 +449,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
         })) as Address
         txType = 'batched'
       } else if (isRelayerTransaction) {
-        const permitWitnessTransferFromData = step.permits.find(
-          (p) => p.permitType === 'PermitWitnessTransferFrom'
+        const permitWitnessTransferFromData = step.typedData.find(
+          (p) => p.primaryType === 'PermitWitnessTransferFrom'
         )
 
         if (!permitWitnessTransferFromData) {
@@ -458,16 +460,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const permit2Signature = await signPermit2Message({
-          client: this.client,
-          chain: fromChain,
-          tokenAddress: step.action.fromToken.address as Address,
-          amount: BigInt(step.action.fromAmount),
-          data: transactionRequest.data as Hex,
-          permitData: prettifyPermit2Data(
-            permitWitnessTransferFromData.permitData
-          ),
-          witness: true,
+        const signature = await getAction(
+          this.client,
+          signTypedData,
+          'signTypedData'
+        )({
+          account: this.client.account!,
+          primaryType: permitWitnessTransferFromData.primaryType,
+          domain: permitWitnessTransferFromData.domain,
+          types: permitWitnessTransferFromData.types,
+          message: permitWitnessTransferFromData.message,
         })
 
         this.statusManager.updateProcess(step, process.type, 'DONE')
@@ -479,37 +481,30 @@ export class EVMStepExecutor extends BaseStepExecutor {
           chainId: fromChain.id,
         })
 
-        const signedPermits: SignedPermit[] = [
+        const signedTypedData: SignedTypedData[] = [
           {
-            permitType: 'PermitWitnessTransferFrom',
-            permit: permit2Signature.values,
-            signature: permit2Signature.signature,
+            ...permitWitnessTransferFromData,
+            signature: signature,
           },
         ]
         // Add native permit if available as first element, order is important
-        if (nativePermitSignature) {
-          signedPermits.unshift({
-            permitType: 'Permit',
-            permit: nativePermitSignature.values,
-            signature: nativePermitSignature.signature,
-          })
+        if (signedNativePermitTypedData) {
+          signedTypedData.unshift(signedNativePermitTypedData)
         }
-
+        const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
-          tokenOwner: this.client.account!.address,
-          chainId: fromChain.id,
-          permits: signedPermits,
-          callData: transactionRequest.data! as Hex,
+          ...stepBase,
+          typedData: signedTypedData,
         })
         txHash = relayedTransaction.taskId as Hash
         txType = 'relayed'
       } else {
-        if (nativePermitSignature) {
+        if (signedNativePermitTypedData) {
           transactionRequest.data = encodeNativePermitData(
             step.action.fromToken.address as Address,
             BigInt(step.action.fromAmount),
-            nativePermitSignature.values.deadline,
-            nativePermitSignature.signature,
+            signedNativePermitTypedData.message.deadline,
+            signedNativePermitTypedData.signature,
             transactionRequest.data as Hex
           )
         } else if (permit2Supported) {
@@ -531,14 +526,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
           transactionRequest.data = encodePermit2Data(
             step.action.fromToken.address as Address,
             BigInt(step.action.fromAmount),
-            permit2Signature.values.nonce,
-            permit2Signature.values.deadline,
+            permit2Signature.message.nonce,
+            permit2Signature.message.deadline,
             transactionRequest.data as Hex,
             permit2Signature.signature
           )
         }
 
-        if (nativePermitSignature || permit2Supported) {
+        if (signedNativePermitTypedData || permit2Supported) {
           try {
             // Target address should be the Permit2 proxy contract in case of native permit or Permit2
             transactionRequest.to = fromChain.permit2Proxy

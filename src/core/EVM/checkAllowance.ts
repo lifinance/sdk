@@ -1,17 +1,14 @@
-import type { ExtendedChain, LiFiStep } from '@lifi/types'
+import type { ExtendedChain, LiFiStep, SignedTypedData } from '@lifi/types'
 import type { Address, Client, Hash } from 'viem'
+import { signTypedData } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions, Process, ProcessType } from '../types.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { getNativePermit } from './permits/getNativePermit.js'
-import { signNativePermitMessage } from './permits/signNativePermitMessage.js'
-import type {
-  NativePermitData,
-  NativePermitSignature,
-} from './permits/types.js'
-import { prettifyNativePermitData } from './permits/utils.js'
+import type { NativePermitData } from './permits/types.js'
 import { setAllowance } from './setAllowance.js'
 import { isRelayerStep } from './typeguards.js'
 import type { Call } from './types.js'
@@ -38,7 +35,7 @@ export type AllowanceResult =
     }
   | {
       status: 'NATIVE_PERMIT'
-      data: NativePermitSignature
+      data: SignedTypedData
     }
 
 export const checkAllowance = async ({
@@ -78,6 +75,7 @@ export const checkAllowance = async ({
     const spenderAddress = permit2Supported
       ? chain.permit2
       : step.estimate.approvalAddress
+
     const fromAmount = BigInt(step.action.fromAmount)
 
     const approved = await getAllowance(
@@ -97,17 +95,15 @@ export const checkAllowance = async ({
 
     let nativePermitData: NativePermitData | undefined
     if (isRelayerTransaction) {
-      const permitData = step.permits.find(
-        (p) => p.permitType === 'Permit'
-      )?.permitData
-      if (permitData) {
-        nativePermitData = prettifyNativePermitData(permitData)
-      }
+      nativePermitData = step.typedData.find(
+        (p) => p.primaryType === 'Permit'
+      ) as NativePermitData
     } else {
       nativePermitData = await getNativePermit(
         client,
-        chain,
+        chain.id,
         step.action.fromToken.address as Address,
+        chain.permit2Proxy as Address,
         fromAmount
       )
     }
@@ -123,12 +119,25 @@ export const checkAllowance = async ({
       !!nativePermitData && !!chain.permit2Proxy && !batchingSupported
 
     if (nativePermitSupported && nativePermitData) {
-      const nativePermitSignature = await signNativePermitMessage(
+      const signature = await getAction(
         client,
-        nativePermitData
-      )
+        signTypedData,
+        'signTypedData'
+      )({
+        account: client.account!,
+        domain: nativePermitData.domain,
+        types: nativePermitData.types,
+        primaryType: 'Permit',
+        message: nativePermitData.message,
+      })
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return { status: 'NATIVE_PERMIT', data: nativePermitSignature }
+      return {
+        status: 'NATIVE_PERMIT',
+        data: {
+          ...nativePermitData,
+          signature,
+        },
+      }
     }
 
     // Set new allowance

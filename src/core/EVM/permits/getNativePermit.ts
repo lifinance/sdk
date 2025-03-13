@@ -1,4 +1,3 @@
-import type { ExtendedChain } from '@lifi/types'
 import {
   encodeAbiParameters,
   keccak256,
@@ -145,12 +144,13 @@ function validateDomainSeparator({
  */
 export const getNativePermit = async (
   client: Client,
-  chain: ExtendedChain,
+  chainId: number,
   tokenAddress: Address,
+  spenderAddress: Address,
   amount: bigint
 ): Promise<NativePermitData | undefined> => {
   try {
-    const multicallAddress = await getMulticallAddress(chain.id)
+    const multicallAddress = await getMulticallAddress(chainId)
 
     const contractCalls = [
       {
@@ -197,7 +197,7 @@ export const getNativePermit = async (
       const { isValid, domain } = validateDomainSeparator({
         name: nameResult.result,
         version: versionResult.result ?? '1',
-        chainId: BigInt(chain.id),
+        chainId: BigInt(chainId),
         verifyingContract: tokenAddress,
         domainSeparator: domainSeparatorResult.result,
       })
@@ -206,18 +206,19 @@ export const getNativePermit = async (
         return undefined
       }
 
-      const values = {
+      const message = {
         owner: client.account!.address,
-        spender: chain.permit2Proxy as Address,
+        spender: spenderAddress,
         value: amount,
         nonce: noncesResult.result,
         deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
       }
 
       return {
+        primaryType: 'Permit',
         domain,
         types: eip2612Types,
-        values,
+        message,
       }
     }
 
@@ -245,7 +246,7 @@ export const getNativePermit = async (
     const { isValid, domain } = validateDomainSeparator({
       name,
       version,
-      chainId: BigInt(chain.id),
+      chainId: BigInt(chainId),
       verifyingContract: tokenAddress,
       domainSeparator: domainSeparatorResult.value,
     })
@@ -254,18 +255,19 @@ export const getNativePermit = async (
       return undefined
     }
 
-    const values = {
+    const message = {
       owner: client.account!.address,
-      spender: chain.permit2Proxy as Address,
+      spender: spenderAddress,
       value: amount,
       nonce: noncesResult.value,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
     }
 
     return {
+      primaryType: 'Permit',
       domain,
       types: eip2612Types,
-      values,
+      message,
     }
   } catch {
     return undefined
