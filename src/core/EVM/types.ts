@@ -1,6 +1,6 @@
-import { type BaseToken, ChainType, type Permit } from '@lifi/types'
+import { type BaseToken, ChainType } from '@lifi/types'
 import type { Address, Client, FallbackTransportConfig, Hex } from 'viem'
-import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
+import type { SwitchChainHook } from '../types.js'
 import type { SDKProvider } from '../types.js'
 
 export interface EVMProviderOptions {
@@ -50,10 +50,6 @@ export interface RevokeApprovalRequest {
   walletClient: Client
   token: BaseToken
   spenderAddress: string
-}
-
-export interface EVMPermitStep extends LiFiStepExtended {
-  permits: Permit[]
 }
 
 export type Call = {

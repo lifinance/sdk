@@ -49,10 +49,22 @@ export const checkPermitSupport = async ({
   let nativePermit: NativePermitData | undefined
   // Try with wallet client first, fallback to public client
   try {
-    nativePermit = await getNativePermit(client, chain, tokenAddress, amount)
+    nativePermit = await getNativePermit(
+      client,
+      chain.id,
+      tokenAddress,
+      chain.permit2Proxy as Address,
+      amount
+    )
   } catch {
     client = await getPublicClient(chain.id)
-    nativePermit = await getNativePermit(client, chain, tokenAddress, amount)
+    nativePermit = await getNativePermit(
+      client,
+      chain.id,
+      tokenAddress,
+      chain.permit2Proxy as Address,
+      amount
+    )
   }
 
   let permit2Allowance: bigint | undefined

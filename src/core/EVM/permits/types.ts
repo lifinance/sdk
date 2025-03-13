@@ -1,14 +1,10 @@
 import type { Address, Hash, TypedData, TypedDataDomain } from 'viem'
-import type {
-  PermitBatchTransferFrom,
-  PermitTransferFrom,
-} from './signatureTransfer.js'
 
 export type PermitSignature = {
   signature: Hash
 }
 
-export type NativePermitValues = {
+export type NativePermitMessage = {
   owner: Address
   spender: Address
   nonce: bigint
@@ -17,17 +13,8 @@ export type NativePermitValues = {
 }
 
 export type NativePermitData = {
+  primaryType: 'Permit'
   domain: TypedDataDomain
   types: TypedData
-  values: NativePermitValues
-}
-
-export type NativePermitSignature = PermitSignature & {
-  values: NativePermitValues
-}
-
-export type Permit2Signature<
-  T extends PermitTransferFrom | PermitBatchTransferFrom,
-> = PermitSignature & {
-  values: T
+  message: NativePermitMessage
 }

@@ -19,7 +19,6 @@ import {
   type RelayStatusResponse,
   type RelayStatusResponseData,
   type RelayerQuoteResponse,
-  type RelayerQuoteResponseData,
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
@@ -262,7 +261,7 @@ export const getStatus = async (
 export const getRelayerQuote = async (
   params: QuoteRequest,
   options?: RequestOptions
-): Promise<RelayerQuoteResponseData> => {
+): Promise<LiFiStep> => {
   const requiredParameters: Array<keyof QuoteRequest> = [
     'fromChain',
     'fromToken',
@@ -332,10 +331,8 @@ export const relayTransaction = async (
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
   const requiredParameters: Array<keyof RelayRequest> = [
-    'tokenOwner',
-    'chainId',
-    'permits',
-    'callData',
+    'typedData',
+    'transactionRequest',
   ]
 
   for (const requiredParameter of requiredParameters) {

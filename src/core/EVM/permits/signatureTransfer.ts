@@ -36,13 +36,13 @@ export type PermitBatchTransferFrom = {
 export type PermitTransferFromData = {
   domain: TypedDataDomain
   types: TypedData
-  values: PermitTransferFrom
+  message: PermitTransferFrom
 }
 
 export type PermitBatchTransferFromData = {
   domain: TypedDataDomain
   types: TypedData
-  values: PermitBatchTransferFrom
+  message: PermitBatchTransferFrom
 }
 
 const TOKEN_PERMISSIONS = [
@@ -103,14 +103,14 @@ export function getPermitTransferData(
       } as const)
     : PERMIT_TRANSFER_FROM_TYPES
 
-  const values = witness
+  const message = witness
     ? Object.assign(permit, { witness: witness.witness })
     : permit
 
   return {
     domain,
     types,
-    values,
+    message,
   }
 }
 
@@ -141,14 +141,14 @@ export function getPermitBatchTransferData(
       }
     : PERMIT_BATCH_TRANSFER_FROM_TYPES
 
-  const values = witness
+  const message = witness
     ? Object.assign(permit, { witness: witness.witness })
     : permit
 
   return {
     domain,
     types,
-    values,
+    message,
   }
 }
 
@@ -185,7 +185,7 @@ export function hash<T extends PermitTransferFrom | PermitBatchTransferFrom>(
   witness?: Witness
 ) {
   if (isPermitTransferFrom(permit)) {
-    const { domain, types, values } = getPermitTransferData(
+    const { domain, types, message } = getPermitTransferData(
       permit,
       permit2Address,
       chainId,
@@ -197,11 +197,11 @@ export function hash<T extends PermitTransferFrom | PermitBatchTransferFrom>(
       types,
       primaryType: witness ? 'PermitWitnessTransferFrom' : 'PermitTransferFrom',
       message: {
-        ...values,
+        ...message,
       },
     })
   }
-  const { domain, types, values } = getPermitBatchTransferData(
+  const { domain, types, message } = getPermitBatchTransferData(
     permit,
     permit2Address,
     chainId,
@@ -214,7 +214,7 @@ export function hash<T extends PermitTransferFrom | PermitBatchTransferFrom>(
     primaryType: witness
       ? 'PermitBatchWitnessTransferFrom'
       : 'PermitBatchTransferFrom',
-    message: { ...values },
+    message: { ...message },
   })
 }
 
