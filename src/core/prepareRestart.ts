@@ -6,7 +6,7 @@ export const prepareRestart = async (route: RouteExtended) => {
     if (step.execution) {
       // Find the index of the last process that has tx hash
       const lastValidIndex = step.execution.process.findLastIndex(
-        (process) => !!process.txHash
+        (process) => !!process.txHash && process.status !== 'FAILED'
       )
 
       // Keep all processes up to the one with tx hash
