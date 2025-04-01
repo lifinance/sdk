@@ -52,6 +52,19 @@ export const waitForBatchTransactionReceipt = async (
         return transactionReceipt
       }
 
+      if (callsDetails.status === 400) {
+        throw new TransactionError(
+          LiFiErrorCode.TransactionCanceled,
+          'Transaction was canceled.'
+        )
+      }
+      if (callsDetails.status === 500) {
+        throw new TransactionError(
+          LiFiErrorCode.TransactionFailed,
+          'Transaction failed.'
+        )
+      }
+
       throw new TransactionError(
         LiFiErrorCode.TransactionNotFound,
         'Transaction not found.'

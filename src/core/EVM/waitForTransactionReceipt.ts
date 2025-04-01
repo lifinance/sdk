@@ -11,7 +11,6 @@ import { waitForTransactionReceipt as waitForTransactionReceiptInternal } from '
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getPublicClient } from './publicClient.js'
-import { retryCount, retryDelay } from './utils.js'
 
 interface WaitForTransactionReceiptProps {
   client: Client
@@ -45,10 +44,12 @@ export async function waitForTransactionReceipt({
       'Transaction was reverted.'
     )
   }
-  if (replacementReason === 'cancelled') {
+  // We should only allow repriced transaction to continue the execution.
+  // Cancelled and replaced transactions should be treated as failed.
+  if (replacementReason === 'cancelled' || replacementReason === 'replaced') {
     throw new TransactionError(
       LiFiErrorCode.TransactionCanceled,
-      'User canceled transaction.'
+      'Transaction was canceled or replaced.'
     )
   }
 
@@ -73,8 +74,6 @@ async function waitForReceipt(
         replacementReason = response.reason
         onReplaced?.(response)
       },
-      retryCount,
-      retryDelay,
     })
   } catch {
     // We can ignore errors from waitForTransactionReceipt as we have a status check fallback
