@@ -114,6 +114,7 @@ export interface ExecutionOptions {
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
   executeInBackground?: boolean
+  disableMessageSigning?: boolean
   /**
    * @deprecated
    */

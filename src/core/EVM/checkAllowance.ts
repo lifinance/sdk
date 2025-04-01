@@ -23,6 +23,7 @@ export type CheckAllowanceParams = {
   allowUserInteraction?: boolean
   batchingSupported?: boolean
   permit2Supported?: boolean
+  disableMessageSigning?: boolean
 }
 
 export type AllowanceResult =
@@ -47,6 +48,7 @@ export const checkAllowance = async ({
   allowUserInteraction = false,
   batchingSupported = false,
   permit2Supported = false,
+  disableMessageSigning = false,
 }: CheckAllowanceParams): Promise<AllowanceResult> => {
   // Find existing or create new allowance process
   const allowanceProcess: Process = statusManager.findOrCreateProcess({
@@ -116,7 +118,10 @@ export const checkAllowance = async ({
 
     // Check if proxy contract is available and token supports native permits, not available for atomic batch
     const nativePermitSupported =
-      !!nativePermitData && !!chain.permit2Proxy && !batchingSupported
+      !!nativePermitData &&
+      !!chain.permit2Proxy &&
+      !batchingSupported &&
+      !disableMessageSigning
 
     if (nativePermitSupported && nativePermitData) {
       const signature = await getAction(
