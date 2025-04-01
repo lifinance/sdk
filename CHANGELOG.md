@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.4](https://github.com/lifinance/sdk/compare/v3.6.3...v3.6.4) (2025-04-01)
+
+
+### Bug Fixes
+
+* update sendCalls to support EIP-5792 with backward compatibility ([#243](https://github.com/lifinance/sdk/issues/243)) ([95f6575](https://github.com/lifinance/sdk/commit/95f6575c13036d8c4187c3fabd5a195689670be3))
+
 ### [3.6.3](https://github.com/lifinance/sdk/compare/v3.6.2...v3.6.3) (2025-04-01)
 
 
