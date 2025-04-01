@@ -44,7 +44,7 @@ function makeDomainSeparator({
 }: {
   name: string
   version: string
-  chainId: bigint
+  chainId: number
   verifyingContract: Address
   withSalt?: boolean
 }): Hex {
@@ -68,7 +68,7 @@ function makeDomainSeparator({
           EIP712_DOMAIN_TYPEHASH,
           nameHash,
           versionHash,
-          chainId,
+          BigInt(chainId),
           verifyingContract,
         ]
       )
@@ -89,7 +89,7 @@ function validateDomainSeparator({
 }: {
   name: string
   version: string
-  chainId: bigint
+  chainId: number
   verifyingContract: Address
   domainSeparator: Hex
 }): { isValid: boolean; domain: TypedDataDomain } {
@@ -197,7 +197,7 @@ export const getNativePermit = async (
       const { isValid, domain } = validateDomainSeparator({
         name: nameResult.result,
         version: versionResult.result ?? '1',
-        chainId: BigInt(chainId),
+        chainId,
         verifyingContract: tokenAddress,
         domainSeparator: domainSeparatorResult.result,
       })
@@ -209,9 +209,9 @@ export const getNativePermit = async (
       const message = {
         owner: client.account!.address,
         spender: spenderAddress,
-        value: amount,
-        nonce: noncesResult.result,
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+        value: amount.toString(),
+        nonce: noncesResult.result.toString(),
+        deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString(), // 30 minutes
       }
 
       return {
@@ -246,7 +246,7 @@ export const getNativePermit = async (
     const { isValid, domain } = validateDomainSeparator({
       name,
       version,
-      chainId: BigInt(chainId),
+      chainId,
       verifyingContract: tokenAddress,
       domainSeparator: domainSeparatorResult.value,
     })
@@ -258,9 +258,9 @@ export const getNativePermit = async (
     const message = {
       owner: client.account!.address,
       spender: spenderAddress,
-      value: amount,
-      nonce: noncesResult.value,
-      deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
+      value: amount.toString(),
+      nonce: noncesResult.value.toString(),
+      deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString(), // 30 minutes
     }
 
     return {

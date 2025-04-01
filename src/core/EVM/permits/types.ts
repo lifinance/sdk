@@ -7,9 +7,9 @@ export type PermitSignature = {
 export type NativePermitMessage = {
   owner: Address
   spender: Address
-  nonce: bigint
-  value: bigint
-  deadline: bigint
+  nonce: string
+  value: string
+  deadline: string
 }
 
 export type NativePermitData = {

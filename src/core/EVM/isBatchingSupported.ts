@@ -1,10 +1,51 @@
 import { ChainType } from '@lifi/types'
-import type { Client } from 'viem'
-import { getCapabilities } from 'viem/experimental'
-import type { GetCapabilitiesReturnType } from 'viem/experimental'
+import type {
+  Chain,
+  Client,
+  Transport,
+  WalletCapabilities,
+  WalletCapabilitiesRecord,
+} from 'viem'
+import { parseAccount } from 'viem/accounts'
+import type {
+  GetCapabilitiesParameters,
+  GetCapabilitiesReturnType,
+} from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import type { EVMProvider } from './types.js'
+
+export async function getCapabilities<chain extends Chain | undefined>(
+  client: Client<Transport, chain>,
+  parameters: GetCapabilitiesParameters = {}
+): Promise<GetCapabilitiesReturnType> {
+  const account_raw = parameters?.account ?? client.account
+
+  if (!account_raw) {
+    throw new Error('Account not found')
+  }
+  const account = parseAccount(account_raw)
+
+  const capabilities_raw = await client.request(
+    {
+      method: 'wallet_getCapabilities',
+      params: [account.address],
+    },
+    {
+      dedupe: true,
+      retryCount: 0,
+    }
+  )
+
+  const capabilities = {} as WalletCapabilitiesRecord<
+    WalletCapabilities,
+    number
+  >
+  for (const [key, value] of Object.entries(capabilities_raw)) {
+    capabilities[Number(key)] = value
+  }
+  return capabilities
+}
 
 export async function isBatchingSupported({
   client,
