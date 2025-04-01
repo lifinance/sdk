@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.3](https://github.com/lifinance/sdk/compare/v3.6.2...v3.6.3) (2025-04-01)
+
+
+### Bug Fixes
+
+* allow order permit type ([6c6efd4](https://github.com/lifinance/sdk/commit/6c6efd4412357cc6e21f87c18385e4398152c13a))
+* make permit message serializable ([23ed44d](https://github.com/lifinance/sdk/commit/23ed44d110e33e0578c7a6873b6fe6e595e24052))
+
 ### [3.6.2](https://github.com/lifinance/sdk/compare/v3.6.1...v3.6.2) (2025-03-13)
 
 
