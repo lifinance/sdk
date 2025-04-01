@@ -145,7 +145,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
         )
         break
       case 'relayed':
-        transactionReceipt = await waitForRelayedTransactionReceipt(txHash)
+        transactionReceipt = await waitForRelayedTransactionReceipt(
+          txHash,
+          step
+        )
         break
       default:
         transactionReceipt = await waitForTransactionReceipt({
@@ -449,14 +452,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
         })) as Address
         txType = 'batched'
       } else if (isRelayerTransaction) {
-        const permitWitnessTransferFromData = step.typedData.find(
-          (p) => p.primaryType === 'PermitWitnessTransferFrom'
+        const relayerTypedData = step.typedData.find(
+          (p) =>
+            p.primaryType === 'PermitWitnessTransferFrom' ||
+            p.primaryType === 'Order'
         )
 
-        if (!permitWitnessTransferFromData) {
+        if (!relayerTypedData) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
-            'Unable to prepare transaction. Permit data for transfer is not found.'
+            'Unable to prepare transaction. Typed data for transfer is not found.'
           )
         }
 
@@ -466,10 +471,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
           'signTypedData'
         )({
           account: this.client.account!,
-          primaryType: permitWitnessTransferFromData.primaryType,
-          domain: permitWitnessTransferFromData.domain,
-          types: permitWitnessTransferFromData.types,
-          message: permitWitnessTransferFromData.message,
+          primaryType: relayerTypedData.primaryType,
+          domain: relayerTypedData.domain,
+          types: relayerTypedData.types,
+          message: relayerTypedData.message,
         })
 
         this.statusManager.updateProcess(step, process.type, 'DONE')
@@ -483,7 +488,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         const signedTypedData: SignedTypedData[] = [
           {
-            ...permitWitnessTransferFromData,
+            ...relayerTypedData,
             signature: signature,
           },
         ]

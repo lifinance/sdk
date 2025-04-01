@@ -1,4 +1,4 @@
-import type { ExtendedTransactionInfo } from '@lifi/types'
+import type { ExtendedTransactionInfo, LiFiStep } from '@lifi/types'
 import type { Hash, WalletCallReceipt as _WalletCallReceipt } from 'viem'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -11,12 +11,16 @@ export type WalletCallReceipt = _WalletCallReceipt<
 >
 
 export const waitForRelayedTransactionReceipt = async (
-  taskId: Hash
+  taskId: Hash,
+  step: LiFiStep
 ): Promise<WalletCallReceipt> => {
   return waitForResult(
     async () => {
       const result = await getRelayedTransactionStatus({
         taskId,
+        fromChain: step.action.fromChainId,
+        toChain: step.action.toChainId,
+        ...(step.tool !== 'custom' && { bridge: step.tool }),
       }).catch((e) => {
         if (process.env.NODE_ENV === 'development') {
           console.debug('Fetching status from relayer failed.', e)

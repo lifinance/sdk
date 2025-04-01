@@ -390,8 +390,12 @@ export const getRelayedTransactionStatus = async (
     )
   }
 
+  const { taskId, ...otherParams } = params
+  const queryParams = new URLSearchParams(
+    otherParams as unknown as Record<string, string>
+  )
   const result = await request<RelayStatusResponse>(
-    `${config.get().apiUrl}/relayer/status/${params.taskId}`,
+    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }
