@@ -50,8 +50,7 @@ export const isStep = (step: LiFiStep): step is LiFiStep => {
 }
 
 const isAction = (action: Action): action is Action => {
-  const { fromChainId, fromAmount, fromToken, toChainId, toToken, slippage } =
-    action
+  const { fromChainId, fromAmount, fromToken, toChainId, toToken } = action
 
   return (
     typeof fromChainId === 'number' &&
@@ -59,8 +58,7 @@ const isAction = (action: Action): action is Action => {
     fromAmount !== '' &&
     isToken(fromToken) &&
     typeof toChainId === 'number' &&
-    isToken(toToken) &&
-    typeof slippage === 'number'
+    isToken(toToken)
   )
 }
 
