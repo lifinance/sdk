@@ -442,7 +442,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         calls.push(transferCall)
 
-        txHash = (await getAction(
+        const sendCallsResult = (await getAction(
           this.client,
           sendCalls,
           'sendCalls'
@@ -450,6 +450,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
           account: this.client.account!,
           calls,
         })) as Address
+        // EIP-5792 spec was updated to return an object with id instead of string hash directly
+        // This check allows backwards compatibility during transition period
+        txHash =
+          typeof sendCallsResult === 'object'
+            ? (sendCallsResult as { id: Hash })?.id
+            : sendCallsResult
         txType = 'batched'
       } else if (isRelayerTransaction) {
         const relayerTypedData = step.typedData.find(
