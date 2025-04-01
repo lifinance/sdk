@@ -93,22 +93,22 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.1.1",
-    "@lifi/types": "^17.7.1",
+    "@lifi/types": "^17.9.0",
     "@noble/curves": "^1.8.1",
-    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-base": "^0.9.24",
     "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.23.10"
+    "viem": "^2.24.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@commitlint/cli": "^19.8.0",
     "@commitlint/config-conventional": "^19.8.0",
     "@types/fs-extra": "^11.0.4",
-    "@types/ws": "^8.18.0",
-    "@vitest/coverage-v8": "^3.0.8",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^3.1.1",
     "fs-extra": "^11.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.0",
@@ -118,7 +118,7 @@
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.8"
+    "vitest": "^3.1.1"
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",
@@ -133,5 +133,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.6.2+sha512.47870716bea1572b53df34ad8647b42962bc790ce2bf4562ba0f643237d7302a3d6a8ecef9e4bdfc01d23af1969aa90485d4cebb0b9638fa5ef1daef656f6c1b"
+  "packageManager": "pnpm@10.7.0+sha512.6b865ad4b62a1d9842b61d674a393903b871d9244954f652b8842c2b553c72176b278f64c463e52d40fff8aba385c235c8c9ecf5cc7de4fd78b8bb6d49633ab6"
 }
