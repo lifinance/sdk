@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.6](https://github.com/lifinance/sdk/compare/v3.6.5...v3.6.6) (2025-04-04)
+
+
+### Bug Fixes
+
+* add flag to disable message signing ([#245](https://github.com/lifinance/sdk/issues/245)) ([c379b84](https://github.com/lifinance/sdk/commit/c379b845f9fdab7e7295c779b2425dbe67f5708a))
+
 ### [3.6.5](https://github.com/lifinance/sdk/compare/v3.6.4...v3.6.5) (2025-04-01)
 
 
