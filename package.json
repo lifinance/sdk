@@ -100,7 +100,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.25.0"
+    "viem": "^2.26.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -117,7 +117,7 @@
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2",
+    "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   },
   "peerDependencies": {
