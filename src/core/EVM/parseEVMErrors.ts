@@ -38,7 +38,12 @@ const handleSpecificErrors = async (
   //   code: -32000,
   //   message: 'User rejected transaction',
   // }
-  if (e.cause?.code === -32000) {
+  if (
+    e.cause?.code === -32000 ||
+    // Safe doesn't return proper code, but the error details includes 'rejected'
+    (e.name === 'TransactionExecutionError' &&
+      e.cause?.details?.includes('rejected'))
+  ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
   // Some wallets reject transactions sometimes with this code because of internal and JSON-RPC errors, e.g.:
