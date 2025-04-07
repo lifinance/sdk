@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.7](https://github.com/lifinance/sdk/compare/v3.6.6...v3.6.7) (2025-04-07)
+
+
+### Bug Fixes
+
+* improve error handling for transaction rejection in Safe ([#246](https://github.com/lifinance/sdk/issues/246)) ([e22f7ab](https://github.com/lifinance/sdk/commit/e22f7ab5e7015bc881504f7c1388ce20290e440d))
+* sync to latest EIP-5792 spec ([#247](https://github.com/lifinance/sdk/issues/247)) ([fa5578f](https://github.com/lifinance/sdk/commit/fa5578f66e9256b831cacd75393fb20e8d875191))
+
 ### [3.6.6](https://github.com/lifinance/sdk/compare/v3.6.5...v3.6.6) (2025-04-04)
 
 
