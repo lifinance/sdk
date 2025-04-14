@@ -1,6 +1,5 @@
 import { ChainType } from '@lifi/types'
 import type {
-  Chain,
   Client,
   Transport,
   WalletCapabilities,
@@ -15,21 +14,20 @@ import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import type { EVMProvider } from './types.js'
 
-export async function getCapabilities<chain extends Chain | undefined>(
-  client: Client<Transport, chain>,
-  parameters: GetCapabilitiesParameters = {}
-): Promise<GetCapabilitiesReturnType> {
-  const account_raw = parameters?.account ?? client.account
+export async function getCapabilities<
+  chainId extends number | undefined = undefined,
+>(
+  client: Client<Transport>,
+  parameters: GetCapabilitiesParameters<chainId> = {}
+): Promise<GetCapabilitiesReturnType<chainId>> {
+  const { account = client.account, chainId } = parameters
 
-  if (!account_raw) {
-    throw new Error('Account not found')
-  }
-  const account = parseAccount(account_raw)
+  const account_ = account ? parseAccount(account) : undefined
 
   const capabilities_raw = await client.request(
     {
       method: 'wallet_getCapabilities',
-      params: [account.address],
+      params: [account_?.address],
     },
     {
       dedupe: true,
@@ -44,7 +42,9 @@ export async function getCapabilities<chain extends Chain | undefined>(
   for (const [key, value] of Object.entries(capabilities_raw)) {
     capabilities[Number(key)] = value
   }
-  return capabilities
+  return (
+    typeof chainId === 'number' ? capabilities[chainId] : capabilities
+  ) as never
 }
 
 export async function isBatchingSupported({
@@ -65,12 +65,17 @@ export async function isBatchingSupported({
   }
 
   try {
-    const capabilities = (await getAction(
+    const capabilities = await getAction(
       _client,
       getCapabilities,
       'getCapabilities'
-    )(undefined)) as GetCapabilitiesReturnType
-    return capabilities[chainId]?.atomicBatch?.supported ?? false
+    )({ chainId })
+    return (
+      capabilities?.atomicBatch?.supported ||
+      capabilities?.atomic?.status === 'supported' ||
+      capabilities?.atomic?.status === 'ready' ||
+      false
+    )
   } catch {
     // If the wallet does not support getCapabilities or the call fails,
     // we assume that atomic batch is not supported
