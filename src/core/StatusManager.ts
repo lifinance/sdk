@@ -15,6 +15,7 @@ export type FindOrCreateProcessProps = {
   type: ProcessType
   chainId?: ChainId
   status?: ProcessStatus
+  startedAt?: number
 }
 
 /**
@@ -123,6 +124,7 @@ export class StatusManager {
     type,
     chainId,
     status,
+    startedAt,
   }: FindOrCreateProcessProps): Process => {
     const process = this.findProcess(step, type, status)
 
@@ -132,7 +134,7 @@ export class StatusManager {
 
     const newProcess: Process = {
       type: type,
-      startedAt: Date.now(),
+      startedAt: startedAt ?? Date.now(),
       message: getProcessMessage(type, status ?? 'STARTED'),
       status: status ?? 'STARTED',
       chainId: chainId,
@@ -179,9 +181,11 @@ export class StatusManager {
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
+        currentProcess.pendingAt = Date.now()
         break
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
+        currentProcess.actionRequiredAt = Date.now()
         break
       default:
         break
