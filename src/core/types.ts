@@ -148,9 +148,11 @@ export type Process = {
   txHash?: string
   multisigTxHash?: string
   txLink?: string
-  startedAt: number
+  actionRequiredAt?: number
   doneAt?: number
   failedAt?: number
+  pendingAt?: number
+  startedAt: number
   message?: string
   error?: {
     code: string | number

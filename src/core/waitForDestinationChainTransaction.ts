@@ -32,6 +32,7 @@ export async function waitForDestinationChainTransaction(
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
         chainId: toChain.id,
+        startedAt: process.doneAt,
       })
       processType = receivingChainProcess.type
     }
