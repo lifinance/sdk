@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.8](https://github.com/lifinance/sdk/compare/v3.6.7...v3.6.8) (2025-04-15)
+
+
+### Bug Fixes
+
+* add more timestamps for processes ([#248](https://github.com/lifinance/sdk/issues/248)) ([90a7715](https://github.com/lifinance/sdk/commit/90a77159e55556c08b7cb9ba3c04cc0465522383))
+* bump EIP-5792 specs ([#249](https://github.com/lifinance/sdk/issues/249)) ([3742296](https://github.com/lifinance/sdk/commit/3742296f35d72996dc497a4f51d3242fe77cdc60))
+
 ### [3.6.7](https://github.com/lifinance/sdk/compare/v3.6.6...v3.6.7) (2025-04-07)
 
 
