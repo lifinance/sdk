@@ -94,13 +94,13 @@
   "dependencies": {
     "@bigmi/core": "^0.1.1",
     "@lifi/types": "^17.12.0",
-    "@noble/curves": "^1.8.1",
+    "@noble/curves": "^1.8.2",
     "@solana/wallet-adapter-base": "^0.9.24",
     "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.26.5"
+    "viem": "^2.27.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

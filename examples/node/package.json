@@ -12,7 +12,7 @@
     "@wagmi/connectors": "^5.7.12",
     "@wagmi/core": "^2.16.7",
     "dotenv": "^16.5.0",
-    "viem": "^2.26.5"
+    "viem": "^2.27.0"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
