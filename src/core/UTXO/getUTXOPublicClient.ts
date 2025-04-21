@@ -1,5 +1,5 @@
 import { UTXOAPIActions, UTXOActions, utxo } from '@bigmi/core'
-import type { UTXOAPISchema, UTXOSchema } from '@bigmi/core'
+import type { Account, UTXOAPISchema, UTXOSchema } from '@bigmi/core'
 import {
   http,
   type Chain,
@@ -9,7 +9,7 @@ import {
   createClient,
   fallback,
   rpcSchema,
-} from 'viem'
+} from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
@@ -19,7 +19,7 @@ const publicClients: Record<
   Client<
     FallbackTransport<readonly HttpTransport[]>,
     Chain,
-    undefined,
+    Account | undefined,
     UTXOSchema & UTXOAPISchema,
     UTXOActions & UTXOAPIActions
   >
@@ -33,7 +33,13 @@ const publicClients: Record<
 export const getUTXOPublicClient = async (chainId: number) => {
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
-    const fallbackTransports = urls.map((url) => http(url))
+    const fallbackTransports = urls.map((url) =>
+      http(url, {
+        fetchOptions: {
+          method: 'POST',
+        },
+      })
+    )
     const _chain = await config.getChainById(chainId)
     const chain: Chain = {
       ..._chain,
