@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.9](https://github.com/lifinance/sdk/compare/v3.6.8...v3.6.9) (2025-04-28)
+
+
+### Bug Fixes
+
+* **viem:** make EIP-5792 stable ([310a4cc](https://github.com/lifinance/sdk/commit/310a4cc2b613044f68df9d89f478b5fc5644b006))
+
 ### [3.6.8](https://github.com/lifinance/sdk/compare/v3.6.7...v3.6.8) (2025-04-15)
 
 
