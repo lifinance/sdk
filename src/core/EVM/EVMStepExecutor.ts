@@ -11,10 +11,10 @@ import type {
 import {
   estimateGas,
   getAddresses,
+  sendCalls,
   sendTransaction,
   signTypedData,
 } from 'viem/actions'
-import { sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
