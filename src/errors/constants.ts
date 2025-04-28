@@ -9,6 +9,8 @@ export enum ErrorName {
   UnknownError = 'UnknownError',
   SlippageError = 'SlippageError',
   HTTPError = 'HTTPError',
+  RateLimitExceeded = 'RateLimitExceeded',
+  ThirdPartyError = 'ThirdPartyError',
 }
 
 export type ErrorCode = LiFiErrorCode
@@ -37,21 +39,9 @@ export enum LiFiErrorCode {
   TransactionConflict = 1020,
   TransactionNotFound = 1021,
   TransactionRejected = 1022,
-  TooManyRequests = 429,
-  UnprocessableEntity = 422,
-  RateLimit = 2000,
-  FailedDependency = 424,
-  RpcError = 2001,
-  InternalServerError = 500,
-  GasTooLow = 2002,
-  RequestRejected = 2003,
-  InternalErrorReceived = 2004,
-  PartyToolError = 4241,
-  UnknownErrorOccurred = 4242,
-  ThirdPartyToolTimeout = 4243,
-  RateLimitExceeded = 4244,
-  InternalErrorOccurred = 4245,
-  InvalidTransactionAmount = 4246,
+  TooManyRequests = 1023,
+  UnprocessableEntity = 1024,
+  FailedDependency = 1025,
 }
 
 export enum ErrorMessage {
