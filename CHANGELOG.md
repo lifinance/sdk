@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.10](https://github.com/lifinance/sdk/compare/v3.6.9...v3.6.10) (2025-04-29)
+
+
+### Bug Fixes
+
+* take old gas estimate if we failed to provide a new one ([#251](https://github.com/lifinance/sdk/issues/251)) ([d4c17c1](https://github.com/lifinance/sdk/commit/d4c17c1d58177494e8d606f07220b6459e0fa930))
+
 ### [3.6.9](https://github.com/lifinance/sdk/compare/v3.6.8...v3.6.9) (2025-04-28)
 
 
