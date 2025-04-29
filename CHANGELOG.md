@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.11](https://github.com/lifinance/sdk/compare/v3.6.10...v3.6.11) (2025-04-29)
+
+
+### Bug Fixes
+
+* let the wallet estimate the gas in case of failure ([123860e](https://github.com/lifinance/sdk/commit/123860ebc44b5b35a2c8b65b3f4939d758252486))
+
 ### [3.6.10](https://github.com/lifinance/sdk/compare/v3.6.9...v3.6.10) (2025-04-29)
 
 
