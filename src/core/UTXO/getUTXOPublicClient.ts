@@ -1,14 +1,21 @@
-import { UTXOAPIActions, UTXOActions, utxo } from '@bigmi/core'
-import type { Account, UTXOAPISchema, UTXOSchema } from '@bigmi/core'
 import {
   http,
-  type Chain,
-  type Client,
-  type FallbackTransport,
-  type HttpTransport,
   createClient,
   fallback,
+  publicActions,
   rpcSchema,
+  utxo,
+  walletActions,
+} from '@bigmi/core'
+import type {
+  Account,
+  Chain,
+  Client,
+  FallbackTransport,
+  HttpTransport,
+  PublicActions,
+  UTXOSchema,
+  WalletActions,
 } from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
@@ -20,8 +27,8 @@ const publicClients: Record<
     FallbackTransport<readonly HttpTransport[]>,
     Chain,
     Account | undefined,
-    UTXOSchema & UTXOAPISchema,
-    UTXOActions & UTXOAPIActions
+    UTXOSchema,
+    PublicActions & WalletActions
   >
 > = {}
 
@@ -52,7 +59,7 @@ export const getUTXOPublicClient = async (chainId: number) => {
     }
     const client = createClient({
       chain,
-      rpcSchema: rpcSchema<UTXOSchema & UTXOAPISchema>(),
+      rpcSchema: rpcSchema<UTXOSchema>(),
       transport: fallback([
         utxo('https://api.blockchair.com', {
           key: 'blockchair',
@@ -71,8 +78,8 @@ export const getUTXOPublicClient = async (chainId: number) => {
       ]),
       pollingInterval: 10_000,
     })
-      .extend(UTXOActions)
-      .extend(UTXOAPIActions)
+      .extend(publicActions)
+      .extend(walletActions)
     publicClients[chainId] = client
   }
 
