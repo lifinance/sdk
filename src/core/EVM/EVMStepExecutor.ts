@@ -559,6 +559,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
               transactionRequest.gas && transactionRequest.gas > estimatedGas
                 ? transactionRequest.gas
                 : estimatedGas
+          } catch (_) {
+            // Let the wallet estimate the gas in case of failure
           } finally {
             this.statusManager.updateProcess(step, process.type, 'DONE')
           }
