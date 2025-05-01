@@ -24,14 +24,8 @@ const statusCodeToErrorClassificationMap = new Map([
       message: ErrorMessage.SlippageError,
     },
   ],
-  [
-    424,
-    { type: ErrorName.ThirdPartyError, code: LiFiErrorCode.FailedDependency },
-  ],
-  [
-    429,
-    { type: ErrorName.RateLimitExceeded, code: LiFiErrorCode.TooManyRequests },
-  ],
+  [424, { type: ErrorName.ServerError, code: LiFiErrorCode.ThirdPartyError }],
+  [429, { type: ErrorName.ServerError, code: LiFiErrorCode.RateLimitExceeded }],
   [500, { type: ErrorName.ServerError, code: LiFiErrorCode.InternalError }],
 ])
 
