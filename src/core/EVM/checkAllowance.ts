@@ -95,12 +95,16 @@ export const checkAllowance = async ({
 
     const isRelayerTransaction = isRelayerStep(step)
 
+    // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
+    const isNativePermitAvailable =
+      !!chain.permit2Proxy && !batchingSupported && !disableMessageSigning
+
     let nativePermitData: NativePermitData | undefined
     if (isRelayerTransaction) {
       nativePermitData = step.typedData.find(
         (p) => p.primaryType === 'Permit'
       ) as NativePermitData
-    } else {
+    } else if (isNativePermitAvailable) {
       nativePermitData = await getNativePermit(
         client,
         chain.id,
@@ -116,14 +120,7 @@ export const checkAllowance = async ({
       return { status: 'ACTION_REQUIRED' }
     }
 
-    // Check if proxy contract is available and token supports native permits, not available for atomic batch
-    const nativePermitSupported =
-      !!nativePermitData &&
-      !!chain.permit2Proxy &&
-      !batchingSupported &&
-      !disableMessageSigning
-
-    if (nativePermitSupported && nativePermitData) {
+    if (isNativePermitAvailable && nativePermitData) {
       const signature = await getAction(
         client,
         signTypedData,
