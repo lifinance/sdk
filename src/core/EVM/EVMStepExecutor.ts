@@ -237,8 +237,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if step requires permit signature and will be used with relayer service
     const isRelayerTransaction = isRelayerStep(step)
 
-    // Check if the wallet supports message signing - useful for smart contract wallets
-    const disableMessageSigning = this.executionOptions?.disableMessageSigning
+    // Check if message signing is disabled - useful for smart contract wallets
+    // We also disable message signing for custom steps
+    const disableMessageSigning =
+      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =

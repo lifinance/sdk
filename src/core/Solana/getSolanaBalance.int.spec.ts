@@ -5,7 +5,7 @@ import { setupTestEnvironment } from '../../../tests/setup.js'
 import { findDefaultToken } from '../../../tests/tokens.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 
-const defaultWalletAddress = '6AUWsSCRFSCbrHKH9s84wfzJXtD6mNzAHs11x6pGEcmJ'
+const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 
 const retryTimes = 2
 const timeout = 10000
