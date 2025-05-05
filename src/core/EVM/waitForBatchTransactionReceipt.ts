@@ -3,7 +3,7 @@ import type {
   Hash,
   WalletCallReceipt as _WalletCallReceipt,
 } from 'viem'
-import { waitForCallsStatus } from 'viem/experimental'
+import { waitForCallsStatus } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
