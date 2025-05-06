@@ -116,7 +116,7 @@ export class StatusManager {
    * @param step The step that should contain the new process.
    * @param type Type of the process. Used to identify already existing processes.
    * @param chainId Chain Id of the process.
-   * @param status By default created procces is set to the STARTED status. We can override new process with the needed status.
+   * @param status By default created process is set to the STARTED status. We can override new process with the needed status.
    * @returns Returns process.
    */
   findOrCreateProcess = ({
