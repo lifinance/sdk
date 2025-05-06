@@ -27,9 +27,9 @@ export const checkBalance = async (
         // adjust amount in slippage limits
         step.action.fromAmount = currentBalance.toString()
       } else {
-        const neeeded = formatUnits(neededBalance, token.decimals)
+        const needed = formatUnits(neededBalance, token.decimals)
         const current = formatUnits(currentBalance, token.decimals)
-        let errorMessage = `Your ${token.symbol} balance is too low, you try to transfer ${neeeded} ${token.symbol}, but your wallet only holds ${current} ${token.symbol}. No funds have been sent.`
+        let errorMessage = `Your ${token.symbol} balance is too low, you try to transfer ${needed} ${token.symbol}, but your wallet only holds ${current} ${token.symbol}. No funds have been sent.`
 
         if (currentBalance !== 0n) {
           errorMessage += `If the problem consists, please delete this transfer and start a new one with a maximum of ${current} ${token.symbol}.`
