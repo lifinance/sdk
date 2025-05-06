@@ -9,7 +9,6 @@ export enum ErrorName {
   UnknownError = 'UnknownError',
   SlippageError = 'SlippageError',
   HTTPError = 'HTTPError',
-  ThirdPartyError = 'ThirdPartyError',
 }
 
 export type ErrorCode = LiFiErrorCode
