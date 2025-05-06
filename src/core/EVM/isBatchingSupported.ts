@@ -5,11 +5,8 @@ import type {
   WalletCapabilities,
   WalletCapabilitiesRecord,
 } from 'viem'
+import type { GetCapabilitiesParameters, GetCapabilitiesReturnType } from 'viem'
 import { parseAccount } from 'viem/accounts'
-import type {
-  GetCapabilitiesParameters,
-  GetCapabilitiesReturnType,
-} from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import type { EVMProvider } from './types.js'

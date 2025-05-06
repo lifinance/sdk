@@ -11,10 +11,10 @@ import type {
 import {
   estimateGas,
   getAddresses,
+  sendCalls,
   sendTransaction,
   signTypedData,
 } from 'viem/actions'
-import { sendCalls } from 'viem/experimental'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
@@ -237,8 +237,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if step requires permit signature and will be used with relayer service
     const isRelayerTransaction = isRelayerStep(step)
 
-    // Check if the wallet supports message signing - useful for smart contract wallets
-    const disableMessageSigning = this.executionOptions?.disableMessageSigning
+    // Check if message signing is disabled - useful for smart contract wallets
+    // We also disable message signing for custom steps
+    const disableMessageSigning =
+      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -545,9 +547,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
 
         if (signedNativePermitTypedData || permit2Supported) {
+          // Target address should be the Permit2 proxy contract in case of native permit or Permit2
+          transactionRequest.to = fromChain.permit2Proxy
           try {
-            // Target address should be the Permit2 proxy contract in case of native permit or Permit2
-            transactionRequest.to = fromChain.permit2Proxy
             // Try to re-estimate the gas due to additional Permit data
             const estimatedGas = await estimateGas(this.client, {
               account: this.client.account!,
@@ -559,9 +561,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
               transactionRequest.gas && transactionRequest.gas > estimatedGas
                 ? transactionRequest.gas
                 : estimatedGas
-          } catch {
+          } catch (_) {
             // Let the wallet estimate the gas in case of failure
-            transactionRequest.gas = undefined
           } finally {
             this.statusManager.updateProcess(step, process.type, 'DONE')
           }
