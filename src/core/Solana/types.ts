@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
-import type { SDKProvider } from '../types.js'
+import type { SDKProvider, StepExecutorOptions } from '../types.js'
 
 export interface SolanaProviderOptions {
   getWalletAdapter?: () => Promise<SignerWalletAdapter>
@@ -12,6 +12,10 @@ export interface SolanaProvider extends SDKProvider {
 
 export function isSolana(provider: SDKProvider): provider is SolanaProvider {
   return provider.type === ChainType.SVM
+}
+
+export interface SolanaStepExecutorOptions extends StepExecutorOptions {
+  walletAdapter: SignerWalletAdapter
 }
 
 export const TokenProgramAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'

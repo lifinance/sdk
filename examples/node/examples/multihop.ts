@@ -1,4 +1,4 @@
-import * as lifiDataTypes from '@lifi/data-types'
+import { findDefaultToken } from '@lifi/data-types'
 import type {
   ContractCallsQuoteRequest,
   QuoteRequest,
@@ -21,8 +21,6 @@ import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
 import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
-
-const { findDefaultToken } = (lifiDataTypes as any).default
 
 const run = async () => {
   console.info('>> Starting Multihop demo - route USDC.ARB to USDC.OPT')
