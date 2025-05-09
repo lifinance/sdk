@@ -1,8 +1,8 @@
 import { signPsbt, waitForTransaction } from '@bigmi/core'
 import type { ReplacementReason } from '@bigmi/core'
+import { type Client, withTimeout } from '@bigmi/core'
 import { ChainId } from '@lifi/types'
 import { Psbt, address, networks } from 'bitcoinjs-lib'
-import { type Client, withTimeout } from 'viem'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -183,7 +183,6 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               ),
             }
           )
-
           const signedPsbt = Psbt.fromHex(signedPsbtHex).finalizeAllInputs()
 
           txHex = signedPsbt.extractTransaction().toHex()

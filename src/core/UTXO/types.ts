@@ -1,5 +1,6 @@
+import type { Client } from '@bigmi/core'
+
 import { ChainType } from '@lifi/types'
-import type { Client } from 'viem'
 import type { SDKProvider } from '../types.js'
 
 export interface UTXOProviderOptions {
