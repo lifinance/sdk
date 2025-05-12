@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.14](https://github.com/lifinance/sdk/compare/v3.6.13...v3.6.14) (2025-05-12)
+
+
+### Bug Fixes
+
+* add timeout for getCapabilities call ([#256](https://github.com/lifinance/sdk/issues/256)) ([ee07c25](https://github.com/lifinance/sdk/commit/ee07c254a2bf9e640d66f07990d876450707b306))
+
 ### [3.6.13](https://github.com/lifinance/sdk/compare/v3.6.12...v3.6.13) (2025-05-06)
 
 
