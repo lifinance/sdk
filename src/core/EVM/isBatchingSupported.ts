@@ -9,6 +9,7 @@ import type { GetCapabilitiesParameters, GetCapabilitiesReturnType } from 'viem'
 import { parseAccount } from 'viem/accounts'
 import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
+import { sleep } from '../../utils/sleep.js'
 import type { EVMProvider } from './types.js'
 
 export async function getCapabilities<
@@ -62,11 +63,10 @@ export async function isBatchingSupported({
   }
 
   try {
-    const capabilities = await getAction(
-      _client,
-      getCapabilities,
-      'getCapabilities'
-    )({ chainId })
+    const capabilities = await Promise.race([
+      getAction(_client, getCapabilities, 'getCapabilities')({ chainId }),
+      sleep(2_000),
+    ])
     return (
       capabilities?.atomicBatch?.supported ||
       capabilities?.atomic?.status === 'supported' ||
