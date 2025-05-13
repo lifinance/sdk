@@ -66,7 +66,7 @@ describe.sequential('Solana token balance', async () => {
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.SOL)
+      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SOL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
 
