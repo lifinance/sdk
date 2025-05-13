@@ -100,7 +100,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.29.1"
+    "viem": "^2.29.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
