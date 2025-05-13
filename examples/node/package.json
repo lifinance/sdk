@@ -8,7 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "@lifi/data-types": "^6.11.5",
-    "@lifi/sdk": "^3.6.13",
+    "@lifi/sdk": "^3.6.14",
     "@wagmi/connectors": "^5.8.1",
     "@wagmi/core": "^2.17.1",
     "dotenv": "^16.5.0",

@@ -12,8 +12,8 @@ importers:
         specifier: ^6.11.5
         version: 6.11.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.6.13
-        version: 3.6.13(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.6.14
+        version: 3.6.14(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.8.1
         version: 5.8.1(@wagmi/core@2.17.1(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -230,8 +230,8 @@ packages:
   '@lifi/data-types@6.11.5':
     resolution: {integrity: sha512-Y4EHVmoOiPD6XzanKRVQPaISTvA2ei+87bMjVJKn0C9oc61NbFnjgAQmrCAA789rWWtMTyNlJ5rxbKpHM7q+Ww==}
 
-  '@lifi/sdk@3.6.13':
-    resolution: {integrity: sha512-CQqPJYYLZnrwx5QoS72HfJDW6EsshkUaNOMswA6+vo3/OFT0dgWDT7rCoCQRTBc4pSWxb7CTiELtkTLWAIIKQg==}
+  '@lifi/sdk@3.6.14':
+    resolution: {integrity: sha512-J19TfIXJ/uAChnuGPSfqPxaAyX7yjXw0spWi0i2FmJuDM66Spx3E9xOAvzIkoBiRYA5buXRPKb0exhL2OKydng==}
     peerDependencies:
       viem: ^2.21.0
 
@@ -1775,7 +1775,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.6.13(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.6.14(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.29.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
       '@bigmi/core': 0.1.1(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/types': 17.13.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)

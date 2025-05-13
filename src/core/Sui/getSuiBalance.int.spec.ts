@@ -34,8 +34,8 @@ describe.sequential('Sui token balance', async () => {
       expect(tokenBalance.amount).toBeGreaterThanOrEqual(0n)
 
       // contain block number
-      // expect(tokenBalance.blockNumber).toBeDefined()
-      // expect(tokenBalance.blockNumber).toBeGreaterThan(0)
+      expect(tokenBalance.blockNumber).toBeDefined()
+      expect(tokenBalance.blockNumber).toBeGreaterThan(0)
     }
   }
 
