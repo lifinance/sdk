@@ -92,7 +92,7 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "0.2.0",
+    "@bigmi/core": "^0.2.1",
     "@lifi/types": "^17.13.0",
     "@noble/curves": "^1.9.1",
     "@solana/wallet-adapter-base": "^0.9.26",
