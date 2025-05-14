@@ -84,7 +84,9 @@
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
     "watch": "tsc -w -p ./tsconfig.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "link:bigmi": "pnpm link @bigmi/core",
+    "unlink:bigmi": "pnpm unlink @bigmi/core"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
