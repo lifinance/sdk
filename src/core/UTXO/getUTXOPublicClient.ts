@@ -1,15 +1,22 @@
-import { UTXOAPIActions, UTXOActions, utxo } from '@bigmi/core'
-import type { UTXOAPISchema, UTXOSchema } from '@bigmi/core'
 import {
   http,
-  type Chain,
-  type Client,
-  type FallbackTransport,
-  type HttpTransport,
   createClient,
   fallback,
+  publicActions,
   rpcSchema,
-} from 'viem'
+  utxo,
+  walletActions,
+} from '@bigmi/core'
+import type {
+  Account,
+  Chain,
+  Client,
+  FallbackTransport,
+  HttpTransport,
+  PublicActions,
+  UTXOSchema,
+  WalletActions,
+} from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
@@ -19,9 +26,9 @@ const publicClients: Record<
   Client<
     FallbackTransport<readonly HttpTransport[]>,
     Chain,
-    undefined,
-    UTXOSchema & UTXOAPISchema,
-    UTXOActions & UTXOAPIActions
+    Account | undefined,
+    UTXOSchema,
+    PublicActions & WalletActions
   >
 > = {}
 
@@ -33,7 +40,13 @@ const publicClients: Record<
 export const getUTXOPublicClient = async (chainId: number) => {
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
-    const fallbackTransports = urls.map((url) => http(url))
+    const fallbackTransports = urls.map((url) =>
+      http(url, {
+        fetchOptions: {
+          method: 'POST',
+        },
+      })
+    )
     const _chain = await config.getChainById(chainId)
     const chain: Chain = {
       ..._chain,
@@ -46,7 +59,7 @@ export const getUTXOPublicClient = async (chainId: number) => {
     }
     const client = createClient({
       chain,
-      rpcSchema: rpcSchema<UTXOSchema & UTXOAPISchema>(),
+      rpcSchema: rpcSchema<UTXOSchema>(),
       transport: fallback([
         utxo('https://api.blockchair.com', {
           key: 'blockchair',
@@ -65,8 +78,8 @@ export const getUTXOPublicClient = async (chainId: number) => {
       ]),
       pollingInterval: 10_000,
     })
-      .extend(UTXOActions)
-      .extend(UTXOAPIActions)
+      .extend(publicActions)
+      .extend(walletActions)
     publicClients[chainId] = client
   }
 
