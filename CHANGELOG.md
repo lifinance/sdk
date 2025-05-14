@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.6.15](https://github.com/lifinance/sdk/compare/v3.6.14...v3.6.15) (2025-05-14)
+
+
+### Bug Fixes
+
+* skip allowance check for direct transfers ([#258](https://github.com/lifinance/sdk/issues/258)) ([2ecf469](https://github.com/lifinance/sdk/commit/2ecf469dad360a66cc962c9948821bd1da13c687))
+
 ### [3.6.14](https://github.com/lifinance/sdk/compare/v3.6.13...v3.6.14) (2025-05-12)
 
 
