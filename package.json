@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.7.0-alpha.0",
+  "version": "3.7.0-beta.2",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -84,7 +84,9 @@
     "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
     "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
     "watch": "tsc -w -p ./tsconfig.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "link:bigmi": "pnpm link @bigmi/core",
+    "unlink:bigmi": "pnpm unlink @bigmi/core"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
@@ -92,11 +94,11 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.1.1",
+    "@bigmi/core": "^0.2.1",
     "@lifi/types": "^17.13.0",
     "@mysten/sui": "^1.29.1",
     "@mysten/wallet-standard": "^0.15.0",
-    "@noble/curves": "^1.9.0",
+    "@noble/curves": "^1.9.1",
     "@solana/wallet-adapter-base": "^0.9.26",
     "@solana/web3.js": "^1.98.2",
     "bech32": "^2.0.0",
@@ -136,5 +138,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39"
+  "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }
