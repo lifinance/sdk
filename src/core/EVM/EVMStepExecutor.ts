@@ -254,7 +254,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // No existing swap/bridge transaction is pending
       !existingProcess?.txHash &&
       // Token is not native (address is not zero)
-      !isFromNativeToken
+      !isFromNativeToken &&
+      // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
+      step.estimate.approvalAddress
 
     let signedNativePermitTypedData: SignedTypedData | undefined
     if (checkForAllowance) {
