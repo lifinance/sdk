@@ -248,7 +248,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
       !!fromChain.permit2Proxy &&
       !batchingSupported &&
       !isFromNativeToken &&
-      !disableMessageSigning
+      !disableMessageSigning &&
+      // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
+      !!step.estimate.approvalAddress
 
     const checkForAllowance =
       // No existing swap/bridge transaction is pending
@@ -256,7 +258,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Token is not native (address is not zero)
       !isFromNativeToken &&
       // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
-      step.estimate.approvalAddress
+      !!step.estimate.approvalAddress
 
     let signedNativePermitTypedData: SignedTypedData | undefined
     if (checkForAllowance) {
