@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.7.0](https://github.com/lifinance/sdk/compare/v3.6.16...v3.7.0) (2025-05-15)
+
+
+### Features
+
+* add Sui support ([#257](https://github.com/lifinance/sdk/issues/257)) ([882a0a5](https://github.com/lifinance/sdk/commit/882a0a5b89cc6755b874ee7620cb5bf91ecdcea7))
+* remove Bigmi viem dependencies ([#252](https://github.com/lifinance/sdk/issues/252)) ([998d595](https://github.com/lifinance/sdk/commit/998d59571cc350d9bf58ef1ea9b939f4854df3ac))
+
 ### [3.6.16](https://github.com/lifinance/sdk/compare/v3.6.15...v3.6.16) (2025-05-14)
 
 
