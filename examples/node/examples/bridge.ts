@@ -1,4 +1,4 @@
-import * as lifiDataTypes from '@lifi/data-types'
+import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
@@ -14,8 +14,6 @@ import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { reportStepsExecutionToTerminal } from '../helpers/reportStepsExecutionToTerminal'
-
-const { findDefaultToken } = (lifiDataTypes as any).default
 
 async function run() {
   console.info('>> Starting Bridge Demo')

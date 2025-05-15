@@ -1,8 +1,8 @@
+import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { findDefaultToken } from '../../../tests/tokens.js'
 import { getTokens } from '../../services/api.js'
 import {
   getAllowance,
@@ -44,7 +44,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should work for MATIC on POL',
     { retry: retryTimes, timeout },
     async () => {
-      const token = findDefaultToken(CoinKey.MATIC, ChainId.POL)
+      const token = findDefaultToken(CoinKey.POL, ChainId.POL)
 
       const allowance = await getAllowance(
         token.chainId,
@@ -61,7 +61,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should return even with invalid data on POL',
     { retry: retryTimes, timeout },
     async () => {
-      const invalidToken = findDefaultToken(CoinKey.MATIC, ChainId.POL)
+      const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
 
       const allowance = await getAllowance(

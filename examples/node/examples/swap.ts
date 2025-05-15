@@ -1,4 +1,4 @@
-import * as lifiDataTypes from '@lifi/data-types'
+import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
@@ -14,8 +14,6 @@ import { optimism } from 'viem/chains'
 import { promptConfirm } from '../helpers/promptConfirm'
 import 'dotenv/config'
 import { reportStepsExecutionToTerminal } from '../helpers/reportStepsExecutionToTerminal'
-
-const dataTypes = (lifiDataTypes as any).default
 
 async function run() {
   console.info('>> Starting Swap Demo')
@@ -48,11 +46,9 @@ async function run() {
     fromAddress: account.address,
     fromChainId: ChainId.OPT, // Optimisim
     fromAmount: '100000', // USDT
-    fromTokenAddress: dataTypes.findDefaultToken(CoinKey.USDC, ChainId.OPT)
-      .address,
+    fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
     toChainId: ChainId.OPT, // Optimisim
-    toTokenAddress: dataTypes.findDefaultToken(CoinKey.USDT, ChainId.OPT)
-      .address,
+    toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.OPT).address,
     options: {
       slippage: 0.03, // = 3%
       allowSwitchChain: false, // execute all transaction on starting chain

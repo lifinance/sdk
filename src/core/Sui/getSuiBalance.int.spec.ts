@@ -3,24 +3,22 @@ import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { getSolanaBalance } from './getSolanaBalance.js'
+import { getSuiBalance } from './getSuiBalance.js'
 
-const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
+const defaultWalletAddress =
+  '0xd2fdd62880764fa73b895a9824ecec255a4bd9d654a125e58de33088cbf5eb67'
 
 const retryTimes = 2
 const timeout = 10000
 
 beforeAll(setupTestEnvironment)
 
-describe.sequential('Solana token balance', async () => {
+describe.sequential('Sui token balance', async () => {
   const loadAndCompareTokenAmounts = async (
     walletAddress: string,
     tokens: StaticToken[]
   ) => {
-    const tokenBalances = await getSolanaBalance(
-      walletAddress,
-      tokens as Token[]
-    )
+    const tokenBalances = await getSuiBalance(walletAddress, tokens as Token[])
 
     expect(tokenBalances.length).toEqual(tokens.length)
 
@@ -33,7 +31,7 @@ describe.sequential('Solana token balance', async () => {
 
       // set amount
       expect(tokenBalance.amount).toBeDefined()
-      expect(tokenBalance.amount).toBeGreaterThanOrEqual(0)
+      expect(tokenBalance.amount).toBeGreaterThanOrEqual(0n)
 
       // contain block number
       expect(tokenBalance.blockNumber).toBeDefined()
@@ -48,13 +46,13 @@ describe.sequential('Solana token balance', async () => {
   })
 
   it(
-    'should work for stables on SOL',
+    'should work for native SUI token',
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
       const tokens = [
-        findDefaultToken(CoinKey.SOL, ChainId.SOL),
-        findDefaultToken(CoinKey.USDC, ChainId.SOL),
+        findDefaultToken(CoinKey.SUI, ChainId.SUI),
+        findDefaultToken(CoinKey.USDC, ChainId.SUI),
       ]
 
       await loadAndCompareTokenAmounts(walletAddress, tokens)
@@ -66,11 +64,11 @@ describe.sequential('Solana token balance', async () => {
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SOL)
+      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SUI)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
+      const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
 
-      const tokenBalances = await getSolanaBalance(
+      const tokenBalances = await getSuiBalance(
         walletAddress,
         tokens as Token[]
       )
@@ -84,28 +82,4 @@ describe.sequential('Solana token balance', async () => {
       expect(invalidBalance!.amount).toBeUndefined()
     }
   )
-
-  // it(
-  //   'should execute route',
-  //   async () => {
-  //     const quote = await getQuote({
-  //       fromChain: ChainId.SOL,
-  //       fromAmount: '1000000',
-  //       fromToken: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  //       toChain: ChainId.ARB,
-  //       toToken: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-  //       fromAddress: '6AUWsSCRFSCbrHKH9s84wfzJXtD6mNzAHs11x6pGEcmJ',
-  //       toAddress: '0x29DaCdF7cCaDf4eE67c923b4C22255A4B2494eD7',
-  //     })
-
-  //     console.log(quote)
-
-  //     await executeRoute(convertQuoteToRoute(quote), {
-  //       updateRouteHook: (route) => {
-  //         console.log(route.steps?.[0].execution)
-  //       },
-  //     })
-  //   },
-  //   { timeout: 100000000 }
-  // )
 })

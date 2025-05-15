@@ -1,32 +1,35 @@
-import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
-import { VersionedTransaction } from '@solana/web3.js'
-import { withTimeout } from 'viem'
+import {
+  type WalletWithRequiredFeatures,
+  signAndExecuteTransaction,
+} from '@mysten/wallet-standard'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
 import type { LiFiStepExtended, TransactionParameters } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
-import { callSolanaWithRetry } from './connection.js'
-import { parseSolanaErrors } from './parseSolanaErrors.js'
-import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
-import type { SolanaStepExecutorOptions } from './types.js'
+import { parseSuiErrors } from './parseSuiErrors.js'
+import { callSuiWithRetry } from './suiClient.js'
+import type { SuiStepExecutorOptions } from './types.js'
 
-export class SolanaStepExecutor extends BaseStepExecutor {
-  private walletAdapter: SignerWalletAdapter
+export class SuiStepExecutor extends BaseStepExecutor {
+  private wallet: WalletWithRequiredFeatures
 
-  constructor(options: SolanaStepExecutorOptions) {
+  constructor(options: SuiStepExecutorOptions) {
     super(options)
-    this.walletAdapter = options.walletAdapter
+    this.wallet = options.wallet
   }
 
-  checkWalletAdapter = (step: LiFiStepExtended) => {
+  checkWallet = (step: LiFiStepExtended) => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (this.walletAdapter.publicKey!.toString() !== step.action.fromAddress) {
+    if (
+      !this.wallet.accounts?.some?.(
+        (account) => account.address === step.action.fromAddress
+      )
+    ) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -58,7 +61,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(this.walletAdapter.publicKey!.toString(), step)
+        await checkBalance(step.action.fromAddress!, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
@@ -111,32 +114,27 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         }
 
-        if (!transactionRequest.data) {
+        const transactionRequestData = transactionRequest.data
+
+        if (!transactionRequestData) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction.'
           )
         }
 
-        const versionedTransaction = VersionedTransaction.deserialize(
-          base64ToUint8Array(transactionRequest.data)
-        )
+        this.checkWallet(step)
 
-        this.checkWalletAdapter(step)
-
-        // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTx = await withTimeout<VersionedTransaction>(
-          () => this.walletAdapter.signTransaction(versionedTransaction),
-          {
-            // https://solana.com/docs/advanced/confirmation#transaction-expiration
-            // Use 2 minutes to account for fluctuations
-            timeout: 120_000,
-            errorInstance: new TransactionError(
-              LiFiErrorCode.TransactionExpired,
-              'Transaction has expired: blockhash is no longer recent enough.'
-            ),
-          }
-        )
+        // We give users 2 minutes to sign the transaction
+        const signedTx = await signAndExecuteTransaction(this.wallet, {
+          account: this.wallet.accounts.find(
+            (account) => account.address === step.action.fromAddress
+          )!,
+          chain: 'sui:mainnet',
+          transaction: {
+            toJSON: async () => transactionRequestData,
+          },
+        })
 
         process = this.statusManager.updateProcess(
           step,
@@ -144,37 +142,19 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const simulationResult = await callSolanaWithRetry((connection) =>
-          connection.simulateTransaction(signedTx, {
-            commitment: 'confirmed',
-            replaceRecentBlockhash: true,
+        const result = await callSuiWithRetry((client) =>
+          client.waitForTransaction({
+            digest: signedTx.digest,
+            options: {
+              showEffects: true,
+            },
           })
         )
 
-        if (simulationResult.value.err) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionSimulationFailed,
-            'Transaction simulation failed'
-          )
-        }
-
-        const confirmedTx = await sendAndConfirmTransaction(signedTx)
-
-        if (!confirmedTx.signatureResult) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionExpired,
-            'Transaction has expired: The block height has exceeded the maximum allowed limit.'
-          )
-        }
-
-        if (confirmedTx.signatureResult.err) {
-          const reason =
-            typeof confirmedTx.signatureResult.err === 'object'
-              ? JSON.stringify(confirmedTx.signatureResult.err)
-              : confirmedTx.signatureResult.err
+        if (result.effects?.status.status !== 'success') {
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
-            `Transaction failed: ${reason}`
+            `Transaction failed: ${result.effects?.status.error}`
           )
         }
 
@@ -184,8 +164,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           process.type,
           'PENDING',
           {
-            txHash: confirmedTx.txSignature,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTx.txSignature}`,
+            txHash: result.digest,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
           }
         )
 
@@ -193,7 +173,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           process = this.statusManager.updateProcess(step, process.type, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseSolanaErrors(e, step, process)
+        const error = await parseSuiErrors(e, step, process)
         process = this.statusManager.updateProcess(
           step,
           process.type,
@@ -218,7 +198,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       this.statusManager
     )
 
-    // DONE
     return step
   }
 }

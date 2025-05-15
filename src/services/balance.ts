@@ -1,4 +1,4 @@
-import { ChainType, type Token, type TokenAmount } from '@lifi/types'
+import type { Token, TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
 import { ValidationError } from '../errors/errors.js'
 import { isToken } from '../typeguards.js'
@@ -74,14 +74,9 @@ export const getTokenBalancesByChain = async (
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr)
       const chain = await config.getChainById(chainId)
-      const tokenAddress = tokensByChain[chainId][0].address
       const provider = config
         .get()
-        .providers.find((provider) =>
-          chain.chainType === ChainType.UTXO
-            ? provider.isAddress(walletAddress)
-            : provider.isAddress(tokenAddress)
-        )
+        .providers.find((provider) => provider.isAddress(walletAddress))
       if (!provider) {
         throw new Error(
           `SDK Token Provider for ${chain.chainType} is not found.`

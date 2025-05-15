@@ -1,4 +1,4 @@
-import * as lifiDataTypes from '@lifi/data-types'
+import { findDefaultToken } from '@lifi/data-types'
 import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
@@ -22,8 +22,6 @@ import 'dotenv/config'
 import { promptConfirm } from '../helpers/promptConfirm'
 import { checkTokenAllowance } from './utils/checkTokenAllowance'
 import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
-
-const { findDefaultToken } = (lifiDataTypes as any).default
 
 const run = async () => {
   console.info('>> Starting Yearn Demo: Deposit WETH on Polygon')

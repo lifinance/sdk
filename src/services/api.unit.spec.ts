@@ -1,3 +1,4 @@
+import { findDefaultToken } from '@lifi/data-types'
 import type {
   Action,
   ConnectionsRequest,
@@ -22,7 +23,6 @@ import {
   vi,
 } from 'vitest'
 import { setupTestEnvironment } from '../../tests/setup.js'
-import { findDefaultToken } from '../../tests/tokens.js'
 import { config } from '../config.js'
 import { SDKError } from '../errors/SDKError.js'
 import { ValidationError } from '../errors/errors.js'
@@ -559,7 +559,7 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x7f5c764cbc14f9669b88837ca1490cca17c31607&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
+        'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x0b2c639c533813f4aa9d7837caf62653d097ff85&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
       await expect(
         ApiService.getConnections(connectionRequest)

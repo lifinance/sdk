@@ -15,10 +15,7 @@ export { isEVM } from './core/EVM/types.js'
 export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
 export { isExtendedChain, convertExtendedChain } from './core/EVM/utils.js'
 export { isRelayerStep, isGaslessStep } from './core/EVM/typeguards.js'
-export type {
-  EVMProvider,
-  EVMProviderOptions,
-} from './core/EVM/types.js'
+export type { EVMProvider, EVMProviderOptions } from './core/EVM/types.js'
 export { StatusManager } from './core/StatusManager.js'
 export {
   executeRoute,
@@ -96,11 +93,7 @@ export {
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
 export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 export { BaseError } from './errors/baseError.js'
-export {
-  ErrorMessage,
-  ErrorName,
-  LiFiErrorCode,
-} from './errors/constants.js'
+export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
 export type { ErrorCode } from './errors/constants.js'
 export {
   BalanceError,
@@ -113,3 +106,6 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
+export { Sui } from './core/Sui/Sui.js'
+export { isSui } from './core/Sui/types.js'
+export type { SuiProvider, SuiProviderOptions } from './core/Sui/types.js'

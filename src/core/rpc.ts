@@ -9,7 +9,7 @@ export const getRpcUrl = async (chainId: ChainId): Promise<string> => {
 export const getRpcUrls = async (chainId: ChainId): Promise<string[]> => {
   const rpcUrls = (await config.getRPCUrls())[chainId]
   if (!rpcUrls?.length) {
-    throw new Error('RPC URL not found')
+    throw new Error(`RPC URL not found for chainId: ${chainId}`)
   }
   return rpcUrls
 }
