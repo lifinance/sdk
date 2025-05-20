@@ -177,48 +177,53 @@ export const getNativePermit = async (
     ] as const
 
     if (multicallAddress) {
-      const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
-        await multicall(client, {
-          contracts: contractCalls,
-          multicallAddress,
+      try {
+        const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
+          await multicall(client, {
+            contracts: contractCalls,
+            multicallAddress,
+          })
+
+        if (
+          nameResult.status !== 'success' ||
+          domainSeparatorResult.status !== 'success' ||
+          noncesResult.status !== 'success' ||
+          !nameResult.result ||
+          !domainSeparatorResult.result ||
+          noncesResult.result === undefined
+        ) {
+          // Fall back to individual calls if multicall fails
+          throw new Error('Multicall failed')
+        }
+
+        const { isValid, domain } = validateDomainSeparator({
+          name: nameResult.result,
+          version: versionResult.result ?? '1',
+          chainId,
+          verifyingContract: tokenAddress,
+          domainSeparator: domainSeparatorResult.result,
         })
 
-      if (
-        nameResult.status !== 'success' ||
-        domainSeparatorResult.status !== 'success' ||
-        noncesResult.status !== 'success' ||
-        !nameResult.result ||
-        !domainSeparatorResult.result ||
-        noncesResult.result === undefined
-      ) {
-        return undefined
-      }
+        if (!isValid) {
+          return undefined
+        }
 
-      const { isValid, domain } = validateDomainSeparator({
-        name: nameResult.result,
-        version: versionResult.result ?? '1',
-        chainId,
-        verifyingContract: tokenAddress,
-        domainSeparator: domainSeparatorResult.result,
-      })
+        const message = {
+          owner: client.account!.address,
+          spender: spenderAddress,
+          value: amount.toString(),
+          nonce: noncesResult.result.toString(),
+          deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString(), // 30 minutes
+        }
 
-      if (!isValid) {
-        return undefined
-      }
-
-      const message = {
-        owner: client.account!.address,
-        spender: spenderAddress,
-        value: amount.toString(),
-        nonce: noncesResult.result.toString(),
-        deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString(), // 30 minutes
-      }
-
-      return {
-        primaryType: 'Permit',
-        domain,
-        types: eip2612Types,
-        message,
+        return {
+          primaryType: 'Permit',
+          domain,
+          types: eip2612Types,
+          message,
+        }
+      } catch {
+        // Fall through to individual calls
       }
     }
 
