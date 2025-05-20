@@ -8,6 +8,7 @@ import type {
   SendTransactionParameters,
   TransactionReceipt,
 } from 'viem'
+import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 import {
   estimateGas,
   getAddresses,
@@ -194,7 +195,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
     )
   }
 
-  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
+  executeStep = async (
+    step: LiFiStepExtended,
+    // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
+    atomicityNotReady = false
+  ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
@@ -218,10 +223,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
-    const batchingSupported = await isBatchingSupported({
-      client: this.client,
-      chainId: fromChain.id,
-    })
+
+    // Batching via EIP-5792 is disabled in two cases:
+    // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
+    // 2. When the step is using thorswap tool
+    const batchingSupported =
+      atomicityNotReady || step.tool === 'thorswap'
+        ? false
+        : await isBatchingSupported({
+            client: this.client,
+            chainId: fromChain.id,
+          })
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -621,6 +633,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // DONE
       return step
     } catch (e: any) {
+      // If the wallet rejected the upgrade to 7702 account, we need to try again with the standard flow
+      if (e.cause.code === AtomicReadyWalletRejectedUpgradeError.code) {
+        step.execution = undefined
+        return this.executeStep(step, true)
+      }
       const error = await parseEVMErrors(e, step, process)
       process = this.statusManager.updateProcess(
         step,
