@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.2](https://github.com/lifinance/sdk/compare/v3.7.1...v3.7.2) (2025-05-21)
+
+
+### Bug Fixes
+
+* ensure safe access to error cause when handling wallet upgrade rejections ([#260](https://github.com/lifinance/sdk/issues/260)) ([426bd15](https://github.com/lifinance/sdk/commit/426bd1589676b3d388813171932e8de368d4668c))
+
 ### [3.7.1](https://github.com/lifinance/sdk/compare/v3.7.0...v3.7.1) (2025-05-20)
 
 
