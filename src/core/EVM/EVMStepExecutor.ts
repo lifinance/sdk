@@ -634,7 +634,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       return step
     } catch (e: any) {
       // If the wallet rejected the upgrade to 7702 account, we need to try again with the standard flow
-      if (e.cause.code === AtomicReadyWalletRejectedUpgradeError.code) {
+      if (e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code) {
         step.execution = undefined
         return this.executeStep(step, true)
       }
