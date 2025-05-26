@@ -84,7 +84,7 @@ export const setTokenAllowance = async ({
     return
   }
   const approvedAmount = await getAllowance(
-    token.chainId,
+    walletClient,
     token.address as Address,
     walletClient.account!.address,
     spenderAddress as Address
@@ -120,7 +120,7 @@ export const revokeTokenApproval = async ({
     return
   }
   const approvedAmount = await getAllowance(
-    token.chainId,
+    walletClient,
     token.address as Address,
     walletClient.account!.address,
     spenderAddress as Address

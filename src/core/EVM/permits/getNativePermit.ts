@@ -10,6 +10,7 @@ import type { Address, Client, Hex } from 'viem'
 import type { TypedDataDomain } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { eip2612Abi, eip2612Types } from '../abi.js'
+import { getActionWithFallback } from '../getActionWithFallback.js'
 import { getMulticallAddress } from '../utils.js'
 import type { NativePermitData } from './types.js'
 
@@ -34,6 +35,13 @@ const EIP712_DOMAIN_TYPEHASH =
  */
 const EIP712_DOMAIN_TYPEHASH_WITH_SALT =
   '0x36c25de3e541d5d970f66e4210d728721220fff5c077cc6cd008b3a0c62adab7' as Hex
+
+export type GetNativePermitParams = {
+  chainId: number
+  tokenAddress: Address
+  spenderAddress: Address
+  amount: bigint
+}
 
 function makeDomainSeparator({
   name,
@@ -144,10 +152,7 @@ function validateDomainSeparator({
  */
 export const getNativePermit = async (
   client: Client,
-  chainId: number,
-  tokenAddress: Address,
-  spenderAddress: Address,
-  amount: bigint
+  { chainId, tokenAddress, spenderAddress, amount }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
   try {
     const multicallAddress = await getMulticallAddress(chainId)
@@ -179,7 +184,7 @@ export const getNativePermit = async (
     if (multicallAddress) {
       try {
         const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
-          await multicall(client, {
+          await getActionWithFallback(client, multicall, 'multicall', {
             contracts: contractCalls,
             multicallAddress,
           })
@@ -229,7 +234,9 @@ export const getNativePermit = async (
 
     const [nameResult, domainSeparatorResult, noncesResult, versionResult] =
       (await Promise.allSettled(
-        contractCalls.map((call) => readContract(client, call))
+        contractCalls.map((call) =>
+          getActionWithFallback(client, readContract, 'readContract', call)
+        )
       )) as [
         PromiseSettledResult<string>,
         PromiseSettledResult<Hex>,

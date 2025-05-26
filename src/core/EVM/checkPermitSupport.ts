@@ -2,9 +2,9 @@ import type { ExtendedChain } from '@lifi/types'
 import { ChainType } from '@lifi/types'
 import type { Address } from 'viem'
 import { config } from '../../config.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'
-import type { NativePermitData } from './permits/types.js'
 import { getPublicClient } from './publicClient.js'
 import type { EVMProvider } from './types.js'
 
@@ -46,32 +46,23 @@ export const checkPermitSupport = async ({
     client = await getPublicClient(chain.id)
   }
 
-  let nativePermit: NativePermitData | undefined
-  // Try with wallet client first, fallback to public client
-  try {
-    nativePermit = await getNativePermit(
-      client,
-      chain.id,
+  const nativePermit = await getActionWithFallback(
+    client,
+    getNativePermit,
+    'getNativePermit',
+    {
+      chainId: chain.id,
       tokenAddress,
-      chain.permit2Proxy as Address,
-      amount
-    )
-  } catch {
-    client = await getPublicClient(chain.id)
-    nativePermit = await getNativePermit(
-      client,
-      chain.id,
-      tokenAddress,
-      chain.permit2Proxy as Address,
-      amount
-    )
-  }
+      spenderAddress: chain.permit2Proxy as Address,
+      amount,
+    }
+  )
 
   let permit2Allowance: bigint | undefined
   // Check Permit2 allowance if available on chain
   if (chain.permit2) {
     permit2Allowance = await getAllowance(
-      chain.id,
+      client,
       tokenAddress,
       ownerAddress,
       chain.permit2 as Address

@@ -5,6 +5,7 @@ import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
 import type { StatusManager } from '../StatusManager.js'
 import type { ExecutionOptions, Process, ProcessType } from '../types.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { getNativePermit } from './permits/getNativePermit.js'
@@ -81,7 +82,7 @@ export const checkAllowance = async ({
     const fromAmount = BigInt(step.action.fromAmount)
 
     const approved = await getAllowance(
-      chain.id,
+      client,
       step.action.fromToken.address as Address,
       client.account!.address,
       spenderAddress as Address
@@ -105,12 +106,16 @@ export const checkAllowance = async ({
         (p) => p.primaryType === 'Permit'
       ) as NativePermitData
     } else if (isNativePermitAvailable) {
-      nativePermitData = await getNativePermit(
+      nativePermitData = await getActionWithFallback(
         client,
-        chain.id,
-        step.action.fromToken.address as Address,
-        chain.permit2Proxy as Address,
-        fromAmount
+        getNativePermit,
+        'getNativePermit',
+        {
+          chainId: chain.id,
+          tokenAddress: step.action.fromToken.address as Address,
+          spenderAddress: chain.permit2Proxy as Address,
+          amount: fromAmount,
+        }
       )
     }
 
