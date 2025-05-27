@@ -3,6 +3,7 @@ import type { Address, Chain, Client, Transaction } from 'viem'
 import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 
 type ChainBlockExplorer = {
   name: string
@@ -58,7 +59,7 @@ export function isExtendedChain(chain: any): chain is ExtendedChain {
 export const getMaxPriorityFeePerGas = async (
   client: Client
 ): Promise<bigint | undefined> => {
-  const block = await getBlock(client, {
+  const block = await getActionWithFallback(client, getBlock, 'getBlock', {
     includeTransactions: true,
   })
 

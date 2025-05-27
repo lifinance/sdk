@@ -36,6 +36,7 @@ import type {
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { isBatchingSupported } from './isBatchingSupported.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
@@ -567,12 +568,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
           transactionRequest.to = fromChain.permit2Proxy
           try {
             // Try to re-estimate the gas due to additional Permit data
-            const estimatedGas = await estimateGas(this.client, {
-              account: this.client.account!,
-              to: transactionRequest.to as Address,
-              data: transactionRequest.data as Hex,
-              value: transactionRequest.value,
-            })
+            const estimatedGas = await getActionWithFallback(
+              this.client,
+              estimateGas,
+              'estimateGas',
+              {
+                account: this.client.account!,
+                to: transactionRequest.to as Address,
+                data: transactionRequest.data as Hex,
+                value: transactionRequest.value,
+              }
+            )
             transactionRequest.gas =
               transactionRequest.gas && transactionRequest.gas > estimatedGas
                 ? transactionRequest.gas

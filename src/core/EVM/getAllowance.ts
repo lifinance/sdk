@@ -1,8 +1,9 @@
 import type { BaseToken, ChainId } from '@lifi/types'
-import type { Address } from 'viem'
+import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
 import { allowanceAbi } from './abi.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { getPublicClient } from './publicClient.js'
 import type {
   TokenAllowance,
@@ -12,19 +13,23 @@ import type {
 import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
-  chainId: ChainId,
+  client: Client,
   tokenAddress: Address,
   ownerAddress: Address,
   spenderAddress: Address
 ): Promise<bigint> => {
-  const client = await getPublicClient(chainId)
   try {
-    const approved = (await readContract(client, {
-      address: tokenAddress as Address,
-      abi: allowanceAbi,
-      functionName: 'allowance',
-      args: [ownerAddress, spenderAddress],
-    })) as bigint
+    const approved = await getActionWithFallback(
+      client,
+      readContract,
+      'readContract',
+      {
+        address: tokenAddress as Address,
+        abi: allowanceAbi,
+        functionName: 'allowance' as const,
+        args: [ownerAddress, spenderAddress] as const,
+      }
+    )
     return approved
   } catch (_e) {
     return 0n
@@ -32,6 +37,7 @@ export const getAllowance = async (
 }
 
 export const getAllowanceMulticall = async (
+  client: Client,
   chainId: ChainId,
   tokens: TokenSpender[],
   ownerAddress: Address
@@ -44,8 +50,6 @@ export const getAllowanceMulticall = async (
     throw new Error(`No multicall address configured for chainId ${chainId}.`)
   }
 
-  const client = await getPublicClient(chainId)
-
   const contracts = tokens.map((token) => ({
     address: token.token.address as Address,
     abi: allowanceAbi,
@@ -53,7 +57,7 @@ export const getAllowanceMulticall = async (
     args: [ownerAddress, token.spenderAddress],
   }))
 
-  const results = await multicall(client, {
+  const results = await getActionWithFallback(client, multicall, 'multicall', {
     contracts,
     multicallAddress: multicallAddress as Address,
   })
@@ -88,8 +92,10 @@ export const getTokenAllowance = async (
     return
   }
 
+  const client = await getPublicClient(token.chainId)
+
   const approved = await getAllowance(
-    token.chainId,
+    client,
     token.address as Address,
     ownerAddress,
     spenderAddress
@@ -126,8 +132,10 @@ export const getTokenAllowanceMulticall = async (
   const allowances = (
     await Promise.all(
       chainKeys.map(async (chainId) => {
+        const client = await getPublicClient(chainId)
         // get allowances for current chain and token list
         return getAllowanceMulticall(
+          client,
           chainId,
           tokenDataByChain[chainId],
           ownerAddress

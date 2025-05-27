@@ -62,12 +62,14 @@ const getEVMBalanceMulticall = async (
       args: [walletAddress],
     }
   })
-  const blockNumber = await getBlockNumber(client)
-  const results = await multicall(client, {
-    contracts,
-    multicallAddress: multicallAddress as Address,
-    blockNumber,
-  })
+
+  const [blockNumber, results] = await Promise.all([
+    getBlockNumber(client),
+    multicall(client, {
+      contracts,
+      multicallAddress: multicallAddress as Address,
+    }),
+  ])
 
   if (!results.length) {
     return []
@@ -88,7 +90,7 @@ const getEVMBalanceDefault = async (
   walletAddress: Address
 ): Promise<TokenAmount[]> => {
   const client = await getPublicClient(chainId)
-  const blockNumber = await getBlockNumber(client)
+
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       return getBalance(client, {
@@ -103,7 +105,10 @@ const getEVMBalanceDefault = async (
     }) as Promise<bigint>
   })
 
-  const results = await Promise.allSettled(queue)
+  const [blockNumber, results] = await Promise.all([
+    getBlockNumber(client),
+    Promise.allSettled(queue),
+  ])
 
   const tokenAmounts: TokenAmount[] = tokens.map((token, index) => {
     const result = results[index]

@@ -1,6 +1,11 @@
 import type { LiFiStep } from '@lifi/sdk'
 import { getTokenAllowance, setTokenAllowance } from '@lifi/sdk'
-import type { PrivateKeyAccount, PublicClient, WalletClient } from 'viem'
+import type {
+  Address,
+  PrivateKeyAccount,
+  PublicClient,
+  WalletClient,
+} from 'viem'
 
 const AddressZero = '0x0000000000000000000000000000000000000000'
 
@@ -13,7 +18,7 @@ export const checkTokenAllowance = async (
     const approval = await getTokenAllowance(
       contactCallsQuoteResponse.action.fromToken,
       account.address,
-      contactCallsQuoteResponse.estimate.approvalAddress
+      contactCallsQuoteResponse.estimate.approvalAddress as Address
     )
 
     // set approval if needed

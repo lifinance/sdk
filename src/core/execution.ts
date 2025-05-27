@@ -1,5 +1,7 @@
 import type { Route } from '@lifi/types'
 import { config } from '../config.js'
+import { LiFiErrorCode } from '../errors/constants.js'
+import { ProviderError } from '../errors/errors.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
 import type { ExecutionOptions, RouteExtended } from './types.js'
@@ -106,7 +108,10 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
         .providers.find((provider) => provider.isAddress(fromAddress))
 
       if (!provider) {
-        throw new Error('SDK Execution Provider not found.')
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'SDK Execution Provider not found.'
+        )
       }
 
       const stepExecutor = await provider.getStepExecutor({
