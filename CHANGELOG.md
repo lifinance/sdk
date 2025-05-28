@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.3](https://github.com/lifinance/sdk/compare/v3.7.2...v3.7.3) (2025-05-28)
+
+
+### Bug Fixes
+
+* add public client fallback for wallet client failures on EVM RPC calls ([#261](https://github.com/lifinance/sdk/issues/261)) ([df917b2](https://github.com/lifinance/sdk/commit/df917b2b4b0e307a27ae74ebc7c921104fbb13e1))
+* improve 7702 upgrade rejection error handling ([#263](https://github.com/lifinance/sdk/issues/263)) ([3adf253](https://github.com/lifinance/sdk/commit/3adf2530bd93c4ff648efb6de7a3d71e1e20820c))
+
 ### [3.7.2](https://github.com/lifinance/sdk/compare/v3.7.1...v3.7.2) (2025-05-21)
 
 
