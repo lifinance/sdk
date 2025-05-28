@@ -91,16 +91,15 @@ const handleSpecificErrors = async (
 }
 
 export const isAtomicReadyWalletRejectedUpgradeError = (e: any) => {
-  const isCodeMatch =
-    e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code
+  if (e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code) {
+    return true
+  }
+
+  const details = e.cause?.details?.toLowerCase()
   const isTransactionError = e.name === TransactionExecutionError.name
   const hasRejectedUpgrade =
-    e.cause?.details?.toLowerCase().includes('rejected') &&
-    e.cause?.details?.toLowerCase().includes('upgrade')
-  const has7702ErrorCode = e.cause?.details?.toLowerCase().includes('7702')
+    details?.includes('rejected') && details?.includes('upgrade')
+  const has7702ErrorCode = details?.includes('7702')
 
-  return (
-    isCodeMatch ||
-    (isTransactionError && (hasRejectedUpgrade || has7702ErrorCode))
-  )
+  return isTransactionError && (hasRejectedUpgrade || has7702ErrorCode)
 }
