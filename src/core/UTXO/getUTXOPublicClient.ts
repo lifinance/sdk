@@ -4,7 +4,6 @@ import {
   fallback,
   publicActions,
   rpcSchema,
-  utxo,
   walletActions,
 } from '@bigmi/core'
 import type {
@@ -17,6 +16,9 @@ import type {
   UTXOSchema,
   WalletActions,
 } from '@bigmi/core'
+import { blockchair } from '@bigmi/core'
+import { blockcypher } from '@bigmi/core'
+import { mempool } from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
@@ -61,19 +63,9 @@ export const getUTXOPublicClient = async (chainId: number) => {
       chain,
       rpcSchema: rpcSchema<UTXOSchema>(),
       transport: fallback([
-        utxo('https://api.blockchair.com', {
-          key: 'blockchair',
-          includeChainToURL: true,
-        }),
-        utxo('https://api.blockcypher.com/v1/btc/main', {
-          key: 'blockcypher',
-        }),
-        utxo('https://mempool.space/api', {
-          key: 'mempool',
-        }),
-        utxo('https://rpc.ankr.com/http/btc_blockbook/api/v2', {
-          key: 'ankr',
-        }),
+        blockchair(),
+        blockcypher(),
+        mempool(),
         ...fallbackTransports,
       ]),
       pollingInterval: 10_000,
