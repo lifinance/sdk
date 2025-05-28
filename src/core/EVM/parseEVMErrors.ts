@@ -1,4 +1,9 @@
 import type { LiFiStep } from '@lifi/types'
+import {
+  AtomicReadyWalletRejectedUpgradeError,
+  TransactionExecutionError,
+  UserRejectedRequestError,
+} from 'viem'
 import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
@@ -28,8 +33,8 @@ const handleSpecificErrors = async (
   process?: Process
 ) => {
   if (
-    e.name === 'UserRejectedRequestError' ||
-    e.cause?.name === 'UserRejectedRequestError'
+    e.name === UserRejectedRequestError.name ||
+    e.cause?.name === UserRejectedRequestError.name
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
@@ -41,7 +46,7 @@ const handleSpecificErrors = async (
   if (
     e.cause?.code === -32000 ||
     // Safe doesn't return proper code, but the error details includes 'rejected'
-    (e.name === 'TransactionExecutionError' &&
+    (e.name === TransactionExecutionError.name &&
       e.cause?.details?.includes('rejected'))
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
@@ -83,4 +88,19 @@ const handleSpecificErrors = async (
   }
 
   return new UnknownError(e.message || ErrorMessage.UnknownError, e)
+}
+
+export const isAtomicReadyWalletRejectedUpgradeError = (e: any) => {
+  const isCodeMatch =
+    e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code
+  const isTransactionError = e.name === TransactionExecutionError.name
+  const hasRejectedUpgrade =
+    e.cause?.details?.toLowerCase().includes('rejected') &&
+    e.cause?.details?.toLowerCase().includes('upgrade')
+  const has7702ErrorCode = e.cause?.details?.toLowerCase().includes('7702')
+
+  return (
+    isCodeMatch ||
+    (isTransactionError && (hasRejectedUpgrade || has7702ErrorCode))
+  )
 }

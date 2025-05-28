@@ -8,7 +8,6 @@ import type {
   SendTransactionParameters,
   TransactionReceipt,
 } from 'viem'
-import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 import {
   estimateGas,
   getAddresses,
@@ -38,7 +37,10 @@ import { waitForDestinationChainTransaction } from '../waitForDestinationChainTr
 import { checkAllowance } from './checkAllowance.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { isBatchingSupported } from './isBatchingSupported.js'
-import { parseEVMErrors } from './parseEVMErrors.js'
+import {
+  isAtomicReadyWalletRejectedUpgradeError,
+  parseEVMErrors,
+} from './parseEVMErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
@@ -640,7 +642,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       return step
     } catch (e: any) {
       // If the wallet rejected the upgrade to 7702 account, we need to try again with the standard flow
-      if (e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code) {
+      if (isAtomicReadyWalletRejectedUpgradeError(e) && !atomicityNotReady) {
         step.execution = undefined
         return this.executeStep(step, true)
       }
