@@ -92,7 +92,9 @@ export const isAtomicReadyWalletRejectedUpgradeError = (e: any) => {
   }
 
   const details = e.cause?.details?.toLowerCase()
-  const isTransactionError = e.name === 'TransactionExecutionError'
+  const isTransactionError =
+    e.name === 'TransactionExecutionError' ||
+    e.cause?.name === 'TransactionExecutionError'
   const hasRejectedUpgrade =
     details?.includes('rejected') && details?.includes('upgrade')
   const has7702ErrorCode = details?.includes('7702')
