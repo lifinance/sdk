@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.5](https://github.com/lifinance/sdk/compare/v3.7.4...v3.7.5) (2025-05-29)
+
+
+### Bug Fixes
+
+* error handling should include nested error causes ([e54fc73](https://github.com/lifinance/sdk/commit/e54fc73b08f54e43e9162a83fddca265a801aadb))
+
 ### [3.7.4](https://github.com/lifinance/sdk/compare/v3.7.3...v3.7.4) (2025-05-29)
 
 
