@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.4](https://github.com/lifinance/sdk/compare/v3.7.3...v3.7.4) (2025-05-29)
+
+
+### Bug Fixes
+
+* error class names can't be minified correctly ([65662d3](https://github.com/lifinance/sdk/commit/65662d3de0e0cb319631a9eae9615f18f0495ddd))
+
 ### [3.7.3](https://github.com/lifinance/sdk/compare/v3.7.2...v3.7.3) (2025-05-28)
 
 
