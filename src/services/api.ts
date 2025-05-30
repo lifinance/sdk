@@ -12,7 +12,7 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
-  type QuoteRequest,
+  type QuoteRequest as QuoteRequestFromAmount,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -44,6 +44,13 @@ import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type { GetStatusRequestExtended } from './types.js'
 
+type QuoteRequest =
+  | QuoteRequestFromAmount
+  | (Omit<QuoteRequestFromAmount, 'fromAmount'> & {
+      toAmount: string
+      fromAmount?: never
+    })
+
 /**
  * Get a quote for a token transfer
  * @param params - The configuration of the requested quote
@@ -59,7 +66,6 @@ export const getQuote = async (
     'fromChain',
     'fromToken',
     'fromAddress',
-    'fromAmount',
     'toChain',
     'toToken',
   ]
@@ -71,6 +77,29 @@ export const getQuote = async (
         )
       )
     }
+  }
+  if (
+    (!('fromAmount' in params) || !params.fromAmount) &&
+    (!('toAmount' in params) || !params.toAmount)
+  ) {
+    throw new SDKError(
+      new ValidationError(
+        'Required parameter "fromAmount" or "toAmount" is missing.'
+      )
+    )
+  }
+  if (
+    'fromAmount' in params &&
+    'toAmount' in params &&
+    params.fromAmount &&
+    // @ts-expect-error type-agnostic runtime check
+    params.toAmount
+  ) {
+    throw new SDKError(
+      new ValidationError(
+        'Cannot provide both "fromAmount" and "toAmount" parameters.'
+      )
+    )
   }
   const _config = config.get()
   // apply defaults
@@ -93,7 +122,7 @@ export const getQuote = async (
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/quote?${new URLSearchParams(
+    `${_config.apiUrl}/${params.fromAmount ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -261,10 +290,10 @@ export const getStatus = async (
  * @returns Relayer quote for a token transfer
  */
 export const getRelayerQuote = async (
-  params: QuoteRequest,
+  params: QuoteRequestFromAmount,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
-  const requiredParameters: Array<keyof QuoteRequest> = [
+  const requiredParameters: Array<keyof QuoteRequestFromAmount> = [
     'fromChain',
     'fromToken',
     'fromAddress',
