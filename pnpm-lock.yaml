@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.3.0
-        version: 0.3.0(bs58@6.0.0)(typescript@5.8.3)
+        specifier: ^0.3.1
+        version: 0.3.1(bs58@6.0.0)(typescript@5.8.3)
       '@lifi/types':
         specifier: ^17.16.0
         version: 17.16.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -52,8 +52,8 @@ importers:
         specifier: ^19.8.1
         version: 19.8.1
       '@lifi/data-types':
-        specifier: ^6.14.4
-        version: 6.14.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
+        specifier: ^6.14.5
+        version: 6.14.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -146,8 +146,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.3.0':
-    resolution: {integrity: sha512-aDnB8IGRDmbccW/htIeemO6U1bbs9FR5hLR0Hjs9Xzj4DUXsgZx4fJAsA2JTQEyIRh5HvKJu68effCGH+K4RGg==}
+  '@bigmi/core@0.3.1':
+    resolution: {integrity: sha512-KU2KZJmyHPtw7m9sTfOWZ2gQaE8iONpLajmh4gCZfscZIRiL1LddqWkLuFIoFNfY0jbJmvqX46leLUw5YIOVDw==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -528,8 +528,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@lifi/data-types@6.14.4':
-    resolution: {integrity: sha512-MQaQSBVB7mMvkpHQI4vhl6LH8rz2T3hhZSE5GkbrLDK9votXhbkXIIBvltvnX4z4cGkR4yM/pwsVunAX5pzyiw==}
+  '@lifi/data-types@6.14.5':
+    resolution: {integrity: sha512-dK+4nZLcKl5Vkujxaz+3iK4nRDi//rPOcWaF8sY6z+h1LU5ClRTNOV8Plz6YBdEbBEoWOBdkuq6GEYg5PfixUw==}
 
   '@lifi/types@17.16.0':
     resolution: {integrity: sha512-jaJ1VGcfWLSjhQN65bIBSGs18K8U98avb8AlFwJvcROk237ueq6lD7Sd0OheAUohodI+v3udZ9KfrBp3SLghig==}
@@ -3030,7 +3030,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.3.0(bs58@6.0.0)(typescript@5.8.3)':
+  '@bigmi/core@0.3.1(bs58@6.0.0)(typescript@5.8.3)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -3365,7 +3365,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
 
-  '@lifi/data-types@6.14.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+  '@lifi/data-types@6.14.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
     dependencies:
       '@lifi/types': 17.16.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:

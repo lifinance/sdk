@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.14.4
-        version: 6.14.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+        specifier: ^6.14.5
+        version: 6.14.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.7.5
-        version: 3.7.5(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.7.6
+        version: 3.7.6(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.8.3
         version: 5.8.3(@wagmi/core@2.17.2(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -64,8 +64,8 @@ packages:
     resolution: {integrity: sha512-7EYtGezsdiDMyY80+65EzwiGmcJqpmcZCojSXaRgdrBaGtWTgDZKq69cPIVped6MkIM78cTQ2GOiEYjwOlG4xw==}
     engines: {node: '>=6.9.0'}
 
-  '@bigmi/core@0.3.0':
-    resolution: {integrity: sha512-aDnB8IGRDmbccW/htIeemO6U1bbs9FR5hLR0Hjs9Xzj4DUXsgZx4fJAsA2JTQEyIRh5HvKJu68effCGH+K4RGg==}
+  '@bigmi/core@0.3.1':
+    resolution: {integrity: sha512-KU2KZJmyHPtw7m9sTfOWZ2gQaE8iONpLajmh4gCZfscZIRiL1LddqWkLuFIoFNfY0jbJmvqX46leLUw5YIOVDw==}
 
   '@coinbase/wallet-sdk@3.9.3':
     resolution: {integrity: sha512-N/A2DRIf0Y3PHc1XAMvbBUu4zisna6qAdqABMZwBMNEfWrXpAwx16pZGkYCLGE+Rvv1edbcB2LYDRnACNcmCiw==}
@@ -269,11 +269,11 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.14.4':
-    resolution: {integrity: sha512-MQaQSBVB7mMvkpHQI4vhl6LH8rz2T3hhZSE5GkbrLDK9votXhbkXIIBvltvnX4z4cGkR4yM/pwsVunAX5pzyiw==}
+  '@lifi/data-types@6.14.5':
+    resolution: {integrity: sha512-dK+4nZLcKl5Vkujxaz+3iK4nRDi//rPOcWaF8sY6z+h1LU5ClRTNOV8Plz6YBdEbBEoWOBdkuq6GEYg5PfixUw==}
 
-  '@lifi/sdk@3.7.5':
-    resolution: {integrity: sha512-FoDMZ3scYuF8/CyUu5Cghzynxze7RrSZ4K4j0uOZFPT84GvWMb65XN9sQ94I2dqa9smPKgZsHf8wvR4mb2IoZQ==}
+  '@lifi/sdk@3.7.6':
+    resolution: {integrity: sha512-SnABaMm5MmjogBoDwoWgVqZ3Gg0kVKVraKTa1YreMuV3I7k+RrGEFHA5kSUTun+EifKhwN+j6bHqwn8cFDD3OA==}
     peerDependencies:
       viem: ^2.21.0
 
@@ -1745,7 +1745,7 @@ snapshots:
 
   '@babel/runtime@7.27.3': {}
 
-  '@bigmi/core@0.3.0(typescript@5.8.3)(use-sync-external-store@1.2.0)':
+  '@bigmi/core@0.3.1(typescript@5.8.3)(use-sync-external-store@1.2.0)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -1897,7 +1897,7 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@lifi/data-types@6.14.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/data-types@6.14.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       '@lifi/types': 17.16.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
@@ -1906,9 +1906,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.7.5(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.7.6(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.30.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
-      '@bigmi/core': 0.3.0(typescript@5.8.3)(use-sync-external-store@1.2.0)
+      '@bigmi/core': 0.3.1(typescript@5.8.3)(use-sync-external-store@1.2.0)
       '@lifi/types': 17.16.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@mysten/sui': 1.30.1(typescript@5.8.3)
       '@mysten/wallet-standard': 0.15.2(typescript@5.8.3)
