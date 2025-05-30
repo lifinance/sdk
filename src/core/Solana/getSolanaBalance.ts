@@ -3,7 +3,7 @@ import { PublicKey } from '@solana/web3.js'
 import { SolSystemProgram } from '../../constants.js'
 import { withDedupe } from '../../utils/withDedupe.js'
 import { callSolanaWithRetry } from './connection.js'
-import { TokenProgramAddress } from './types.js'
+import { Token2022ProgramId, TokenProgramId } from './types.js'
 
 export const getSolanaBalance = async (
   walletAddress: string,
@@ -28,51 +28,74 @@ const getSolanaBalanceDefault = async (
   walletAddress: string
 ): Promise<TokenAmount[]> => {
   const accountPublicKey = new PublicKey(walletAddress)
-  const tokenProgramPublicKey = new PublicKey(TokenProgramAddress)
-  const [slot, balance, tokenAccountsByOwner] = await Promise.allSettled([
-    withDedupe(
-      () =>
-        callSolanaWithRetry((connection) => connection.getSlot('confirmed')),
-      { id: `${getSolanaBalanceDefault.name}.getSlot` }
-    ),
-    withDedupe(
-      () =>
-        callSolanaWithRetry((connection) =>
-          connection.getBalance(accountPublicKey, 'confirmed')
-        ),
-      { id: `${getSolanaBalanceDefault.name}.getBalance` }
-    ),
-    withDedupe(
-      () =>
-        callSolanaWithRetry((connection) =>
-          connection.getParsedTokenAccountsByOwner(
-            accountPublicKey,
-            {
-              programId: tokenProgramPublicKey,
-            },
-            'confirmed'
-          )
-        ),
-      { id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner` }
-    ),
-  ])
+  const tokenProgramIdPublicKey = new PublicKey(TokenProgramId)
+  const token2022ProgramIdPublicKey = new PublicKey(Token2022ProgramId)
+  const [slot, balance, tokenAccountsByOwner, token2022AccountsByOwner] =
+    await Promise.allSettled([
+      withDedupe(
+        () =>
+          callSolanaWithRetry((connection) => connection.getSlot('confirmed')),
+        { id: `${getSolanaBalanceDefault.name}.getSlot` }
+      ),
+      withDedupe(
+        () =>
+          callSolanaWithRetry((connection) =>
+            connection.getBalance(accountPublicKey, 'confirmed')
+          ),
+        { id: `${getSolanaBalanceDefault.name}.getBalance` }
+      ),
+      withDedupe(
+        () =>
+          callSolanaWithRetry((connection) =>
+            connection.getParsedTokenAccountsByOwner(
+              accountPublicKey,
+              {
+                programId: tokenProgramIdPublicKey,
+              },
+              'confirmed'
+            )
+          ),
+        {
+          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${TokenProgramId}`,
+        }
+      ),
+      withDedupe(
+        () =>
+          callSolanaWithRetry((connection) =>
+            connection.getParsedTokenAccountsByOwner(
+              accountPublicKey,
+              {
+                programId: token2022ProgramIdPublicKey,
+              },
+              'confirmed'
+            )
+          ),
+        {
+          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${Token2022ProgramId}`,
+        }
+      ),
+    ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
   const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
-  const walletTokenAmounts =
-    tokenAccountsByOwner.status === 'fulfilled'
-      ? tokenAccountsByOwner.value.value.reduce(
-          (tokenAmounts, value) => {
-            const amount = BigInt(
-              value.account.data.parsed.info.tokenAmount.amount
-            )
-            if (amount > 0n) {
-              tokenAmounts[value.account.data.parsed.info.mint] = amount
-            }
-            return tokenAmounts
-          },
-          {} as Record<string, bigint>
-        )
-      : {}
+
+  const walletTokenAmounts = [
+    ...(tokenAccountsByOwner.status === 'fulfilled'
+      ? tokenAccountsByOwner.value.value
+      : []),
+    ...(token2022AccountsByOwner.status === 'fulfilled'
+      ? token2022AccountsByOwner.value.value
+      : []),
+  ].reduce(
+    (tokenAmounts: Record<string, bigint>, value: any) => {
+      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
+      if (amount > 0n) {
+        tokenAmounts[value.account.data.parsed.info.mint] = amount
+      }
+      return tokenAmounts
+    },
+    {} as Record<string, bigint>
+  )
+
   walletTokenAmounts[SolSystemProgram] = solBalance
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
     if (walletTokenAmounts[token.address]) {
