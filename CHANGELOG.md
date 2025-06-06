@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.9](https://github.com/lifinance/sdk/compare/v3.7.7...v3.7.9) (2025-06-06)
+
+
+### Bug Fixes
+
+* increase timeout for batch transactions ([#266](https://github.com/lifinance/sdk/issues/266)) ([5fa974d](https://github.com/lifinance/sdk/commit/5fa974d64a7118550ff3ff1d41d9a2e8990a3691))
+
 ### [3.7.8](https://github.com/lifinance/sdk/compare/v3.7.7...v3.7.8) (2025-06-06)
 
 
