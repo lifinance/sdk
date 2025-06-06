@@ -23,7 +23,7 @@ export const waitForBatchTransactionReceipt = async (
     'waitForCallsStatus'
   )({
     id: batchHash,
-    timeout: 300_000,
+    timeout: 3_600_000 * 24,
   })
 
   if (
