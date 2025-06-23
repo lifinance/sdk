@@ -1,10 +1,11 @@
 import type {
+  Connection,
   SendOptions,
   SignatureResult,
+  TransactionSignature,
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
-import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
 export type ConfirmedTransactionResult = {
@@ -24,10 +25,10 @@ export async function sendAndConfirmTransaction(
   const connections = await getSolanaConnections()
 
   const signedTxSerialized = signedTx.serialize()
-  // Create transaction hash (signature)
-  const txSignature = bs58.encode(signedTx.signatures[0])
+  // Create transaction hash (signature) from the signed transaction
+  const originalSignature = bs58.encode(signedTx.signatures[0])
 
-  if (!txSignature) {
+  if (!originalSignature) {
     throw new Error('Transaction signature is missing.')
   }
 
@@ -41,71 +42,73 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  for (const connection of connections) {
-    connection
-      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-      .catch()
-  }
+  const pollPromises = connections.map(async (connection) => {
+    const timeout = 60000
+    const startTime = Date.now()
+    let sentSignature: string | null = null
 
-  const abortControllers: AbortController[] = []
-
-  const confirmPromises = connections.map(async (connection) => {
-    const abortController = new AbortController()
-    abortControllers.push(abortController)
-    try {
-      const blockhashResult = await connection.getLatestBlockhash('confirmed')
-
-      const confirmTransactionPromise = connection
-        .confirmTransaction(
-          {
-            signature: txSignature,
-            blockhash: blockhashResult.blockhash,
-            lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
-            abortSignal: abortController.signal,
-          },
-          'confirmed'
-        )
-        .then((result) => result.value)
-
-      let signatureResult: SignatureResult | null = null
-      let blockHeight = await connection.getBlockHeight('confirmed')
-
-      while (
-        !signatureResult &&
-        blockHeight < blockhashResult.lastValidBlockHeight
-      ) {
-        await connection.sendRawTransaction(
+    // Retry sending until timeout or success
+    while (Date.now() - startTime < timeout) {
+      try {
+        sentSignature = await connection.sendRawTransaction(
           signedTxSerialized,
           rawTransactionOptions
         )
-        signatureResult = await Promise.race([
-          confirmTransactionPromise,
-          sleep(1000),
-        ])
 
-        if (signatureResult || abortController.signal.aborted) {
-          break
+        // Immediately start polling for confirmation after successful send
+        const confirmedSignature = await pollTransactionConfirmation(
+          sentSignature,
+          connection
+        )
+        return {
+          signatureResult: { err: null },
+          txSignature: confirmedSignature,
         }
-
-        blockHeight = await connection.getBlockHeight('confirmed')
+      } catch (error) {
+        // Log error for debugging but continue retrying
+        console.warn('Failed to send transaction to connection:', error)
       }
-
-      abortController.abort()
-
-      return signatureResult
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return Promise.reject(new Error('Confirmation aborted.'))
-      }
-      throw error
     }
+
+    throw new Error('Failed to send transaction after timeout')
   })
 
-  const signatureResult = await Promise.any(confirmPromises).catch(() => null)
-
-  for (const abortController of abortControllers) {
-    abortController.abort()
+  try {
+    const result = await Promise.any(pollPromises)
+    return result
+  } catch (error) {
+    // All connections failed - throw error instead of returning unconfirmed signature
+    throw new Error(
+      `Failed to send and confirm transaction on any connection: ${error}`
+    )
   }
+}
 
-  return { signatureResult, txSignature }
+async function pollTransactionConfirmation(
+  txtSig: TransactionSignature,
+  connection: Connection
+): Promise<TransactionSignature> {
+  // 15 second timeout
+  const timeout = 15000
+  // 5 second retry interval
+  const interval = 5000
+  let elapsed = 0
+
+  return new Promise<TransactionSignature>((resolve, reject) => {
+    const intervalId = setInterval(async () => {
+      elapsed += interval
+
+      if (elapsed >= timeout) {
+        clearInterval(intervalId)
+        reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
+      }
+
+      const status = await connection.getSignatureStatuses([txtSig])
+
+      if (status?.value[0]?.confirmationStatus === 'confirmed') {
+        clearInterval(intervalId)
+        resolve(txtSig)
+      }
+    }, interval)
+  })
 }
