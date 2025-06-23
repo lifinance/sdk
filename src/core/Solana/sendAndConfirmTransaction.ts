@@ -25,10 +25,10 @@ export async function sendAndConfirmTransaction(
   const connections = await getSolanaConnections()
 
   const signedTxSerialized = signedTx.serialize()
-  // Create transaction hash (signature) from the signed transaction
-  const originalSignature = bs58.encode(signedTx.signatures[0])
+  // Create transaction hash (signature)
+  const txSignature = bs58.encode(signedTx.signatures[0])
 
-  if (!originalSignature) {
+  if (!txSignature) {
     throw new Error('Transaction signature is missing.')
   }
 
@@ -47,7 +47,6 @@ export async function sendAndConfirmTransaction(
     const startTime = Date.now()
     let sentSignature: string | null = null
 
-    // Retry sending until timeout or success
     while (Date.now() - startTime < timeout) {
       try {
         sentSignature = await connection.sendRawTransaction(
@@ -55,7 +54,6 @@ export async function sendAndConfirmTransaction(
           rawTransactionOptions
         )
 
-        // Immediately start polling for confirmation after successful send
         const confirmedSignature = await pollTransactionConfirmation(
           sentSignature,
           connection
@@ -65,7 +63,6 @@ export async function sendAndConfirmTransaction(
           txSignature: confirmedSignature,
         }
       } catch (error) {
-        // Log error for debugging but continue retrying
         console.warn('Failed to send transaction to connection:', error)
       }
     }
@@ -77,7 +74,6 @@ export async function sendAndConfirmTransaction(
     const result = await Promise.any(pollPromises)
     return result
   } catch (error) {
-    // All connections failed - throw error instead of returning unconfirmed signature
     throw new Error(
       `Failed to send and confirm transaction on any connection: ${error}`
     )
