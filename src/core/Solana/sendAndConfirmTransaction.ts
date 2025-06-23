@@ -92,20 +92,37 @@ async function pollTransactionConfirmation(
   const timeout = 15000
   // 5 second retry interval
   const interval = 5000
-  let elapsed = 0
+  const startTime = Date.now()
+
+  const checkStatus = async () => {
+    try {
+      const status = await connection.getSignatureStatuses([txtSig])
+      return status?.value[0]?.confirmationStatus === 'confirmed'
+    } catch (error) {
+      console.warn('Error checking transaction status:', error)
+      return false
+    }
+  }
+
+  // Initial check
+  const isConfirmed = await checkStatus()
+  if (isConfirmed) {
+    return txtSig
+  }
 
   return new Promise<TransactionSignature>((resolve, reject) => {
     const intervalId = setInterval(async () => {
-      elapsed += interval
+      const elapsed = Date.now() - startTime
 
       if (elapsed >= timeout) {
         clearInterval(intervalId)
         reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
+        return
       }
 
-      const status = await connection.getSignatureStatuses([txtSig])
+      const isConfirmed = await checkStatus()
 
-      if (status?.value[0]?.confirmationStatus === 'confirmed') {
+      if (isConfirmed) {
         clearInterval(intervalId)
         resolve(txtSig)
       }
