@@ -13,6 +13,7 @@ export const eip2612Abi = parseAbi([
   'function nonces(address) external view returns (uint256)',
   'function name() external view returns (string)',
   'function version() external view returns (string)',
+  'function PERMIT_TYPEHASH() external view returns (bytes32)',
 ])
 
 export const approveAbi = parseAbi([
@@ -30,15 +31,3 @@ export const getEthBalanceAbi = parseAbi([
 export const balanceOfAbi = parseAbi([
   'function balanceOf(address) external view returns (uint256)',
 ])
-
-// EIP-2612 types
-// https://eips.ethereum.org/EIPS/eip-2612
-export const eip2612Types = {
-  Permit: [
-    { name: 'owner', type: 'address' },
-    { name: 'spender', type: 'address' },
-    { name: 'value', type: 'uint256' },
-    { name: 'nonce', type: 'uint256' },
-    { name: 'deadline', type: 'uint256' },
-  ],
-} as const
