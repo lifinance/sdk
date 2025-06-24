@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.3.1
-        version: 0.3.1(bs58@6.0.0)(typescript@5.8.3)
+        specifier: ^0.4.0-beta.0
+        version: 0.4.0-beta.0(bs58@6.0.0)(typescript@5.8.3)
       '@lifi/types':
         specifier: ^17.18.0
         version: 17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -155,8 +155,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.3.1':
-    resolution: {integrity: sha512-KU2KZJmyHPtw7m9sTfOWZ2gQaE8iONpLajmh4gCZfscZIRiL1LddqWkLuFIoFNfY0jbJmvqX46leLUw5YIOVDw==}
+  '@bigmi/core@0.4.0-beta.0':
+    resolution: {integrity: sha512-bJZV+0RwsKdRuge/5SaV+HtuYZwGCxYKzf+q1KYzbaopVSwIUESi/S5dgk3kpVrhNldC6Z4giva1amIx7MbFhg==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -3067,7 +3067,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.3.1(bs58@6.0.0)(typescript@5.8.3)':
+  '@bigmi/core@0.4.0-beta.0(bs58@6.0.0)(typescript@5.8.3)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
