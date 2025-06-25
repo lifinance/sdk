@@ -77,8 +77,3 @@ Please checkout the [SDK documentation](https://docs.li.fi/integrate-li.fi-sdk/l
 ## Changelog
 
 The [changelog](/CHANGELOG.md) is regularly updated to reflect what's changed in each new release.
-
-## License
-
-This project is licensed under the terms of the
-[Apache-2.0](/LICENSE.md).
