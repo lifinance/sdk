@@ -15,6 +15,8 @@ export { isEVM } from './core/EVM/types.js'
 export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
 export { isExtendedChain, convertExtendedChain } from './core/EVM/utils.js'
 export { isRelayerStep, isGaslessStep } from './core/EVM/typeguards.js'
+export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
+export { getNativePermit } from './core/EVM/permits/getNativePermit.js'
 export type { EVMProvider, EVMProviderOptions } from './core/EVM/types.js'
 export { StatusManager } from './core/StatusManager.js'
 export {

@@ -95,7 +95,7 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.4.0-beta.0",
-    "@lifi/types": "^17.18.0",
+    "@lifi/types": "^17.20.0-beta.0",
     "@mysten/sui": "^1.34.0",
     "@mysten/wallet-standard": "^0.16.3",
     "@noble/curves": "^1.9.2",
