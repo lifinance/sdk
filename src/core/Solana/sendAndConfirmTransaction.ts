@@ -1,10 +1,11 @@
 import type {
+  Connection,
   SendOptions,
   SignatureResult,
+  TransactionSignature,
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
-import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
 export type ConfirmedTransactionResult = {
@@ -41,71 +42,86 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  for (const connection of connections) {
-    connection
-      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-      .catch()
-  }
+  const pollPromises = connections.map(async (connection) => {
+    const timeout = 60000
+    const startTime = Date.now()
+    let sentSignature: string | null = null
 
-  const abortControllers: AbortController[] = []
-
-  const confirmPromises = connections.map(async (connection) => {
-    const abortController = new AbortController()
-    abortControllers.push(abortController)
-    try {
-      const blockhashResult = await connection.getLatestBlockhash('confirmed')
-
-      const confirmTransactionPromise = connection
-        .confirmTransaction(
-          {
-            signature: txSignature,
-            blockhash: blockhashResult.blockhash,
-            lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
-            abortSignal: abortController.signal,
-          },
-          'confirmed'
-        )
-        .then((result) => result.value)
-
-      let signatureResult: SignatureResult | null = null
-      let blockHeight = await connection.getBlockHeight('confirmed')
-
-      while (
-        !signatureResult &&
-        blockHeight < blockhashResult.lastValidBlockHeight
-      ) {
-        await connection.sendRawTransaction(
+    while (Date.now() - startTime < timeout) {
+      try {
+        sentSignature = await connection.sendRawTransaction(
           signedTxSerialized,
           rawTransactionOptions
         )
-        signatureResult = await Promise.race([
-          confirmTransactionPromise,
-          sleep(1000),
-        ])
 
-        if (signatureResult || abortController.signal.aborted) {
-          break
+        const confirmedSignature = await pollTransactionConfirmation(
+          sentSignature,
+          connection
+        )
+        return {
+          signatureResult: { err: null },
+          txSignature: confirmedSignature,
         }
-
-        blockHeight = await connection.getBlockHeight('confirmed')
+      } catch (error) {
+        console.warn('Failed to send transaction to connection:', error)
       }
-
-      abortController.abort()
-
-      return signatureResult
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return Promise.reject(new Error('Confirmation aborted.'))
-      }
-      throw error
     }
+
+    throw new Error('Failed to send transaction after timeout')
   })
 
-  const signatureResult = await Promise.any(confirmPromises).catch(() => null)
+  try {
+    const result = await Promise.any(pollPromises)
+    return result
+  } catch (error) {
+    throw new Error(
+      `Failed to send and confirm transaction on any connection: ${error}`
+    )
+  }
+}
 
-  for (const abortController of abortControllers) {
-    abortController.abort()
+async function pollTransactionConfirmation(
+  txtSig: TransactionSignature,
+  connection: Connection
+): Promise<TransactionSignature> {
+  // 15 second timeout
+  const timeout = 15000
+  // 5 second retry interval
+  const interval = 5000
+  const startTime = Date.now()
+
+  const checkStatus = async () => {
+    try {
+      const status = await connection.getSignatureStatuses([txtSig])
+      return status?.value[0]?.confirmationStatus === 'confirmed'
+    } catch (error) {
+      console.warn('Error checking transaction status:', error)
+      return false
+    }
   }
 
-  return { signatureResult, txSignature }
+  // Initial check
+  const isConfirmed = await checkStatus()
+  if (isConfirmed) {
+    return txtSig
+  }
+
+  return new Promise<TransactionSignature>((resolve, reject) => {
+    const intervalId = setInterval(async () => {
+      const elapsed = Date.now() - startTime
+
+      if (elapsed >= timeout) {
+        clearInterval(intervalId)
+        reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
+        return
+      }
+
+      const isConfirmed = await checkStatus()
+
+      if (isConfirmed) {
+        clearInterval(intervalId)
+        resolve(txtSig)
+      }
+    }, interval)
+  })
 }
