@@ -392,7 +392,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       // Create new transaction request
       if (
-        !step.transactionRequest ||
+        !step.transactionRequest &&
         !step.typedData?.some((p) => p.primaryType !== 'Permit')
       ) {
         const updatedStep = await this.getUpdatedStep(
@@ -413,7 +413,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
 
       if (
-        !step.transactionRequest ||
+        !step.transactionRequest &&
         !step.typedData?.some((p) => p.primaryType !== 'Permit')
       ) {
         throw new TransactionError(
