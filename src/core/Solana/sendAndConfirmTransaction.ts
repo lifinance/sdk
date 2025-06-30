@@ -43,11 +43,12 @@ export async function sendAndConfirmTransaction(
   }
 
   const pollPromises = connections.map(async (connection) => {
-    const timeout = 60000
-    const startTime = Date.now()
     let sentSignature: string | null = null
 
-    while (Date.now() - startTime < timeout) {
+    let blockhashResult = await connection.getLatestBlockhash('confirmed')
+    let currentBlockHeight = await connection.getBlockHeight('confirmed')
+
+    while (currentBlockHeight <= blockhashResult.lastValidBlockHeight) {
       try {
         sentSignature = await connection.sendRawTransaction(
           signedTxSerialized,
@@ -65,9 +66,12 @@ export async function sendAndConfirmTransaction(
       } catch (error) {
         console.warn('Failed to send transaction to connection:', error)
       }
+
+      blockhashResult = await connection.getLatestBlockhash('confirmed')
+      currentBlockHeight = await connection.getBlockHeight('confirmed')
     }
 
-    throw new Error('Failed to send transaction after timeout')
+    throw new Error('Blockhash expired, transaction cannot be sent')
   })
 
   try {
@@ -86,16 +90,15 @@ async function pollTransactionConfirmation(
 ): Promise<TransactionSignature> {
   // 15 second timeout
   const timeout = 15000
-  // 5 second retry interval
-  const interval = 5000
+  // 1 second retry interval
+  const interval = 1000
   const startTime = Date.now()
 
   const checkStatus = async () => {
     try {
       const status = await connection.getSignatureStatuses([txtSig])
       return status?.value[0]?.confirmationStatus === 'confirmed'
-    } catch (error) {
-      console.warn('Error checking transaction status:', error)
+    } catch (_) {
       return false
     }
   }
