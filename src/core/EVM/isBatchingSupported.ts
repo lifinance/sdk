@@ -9,9 +9,11 @@ import type { EVMProvider } from './types.js'
 export async function isBatchingSupported({
   client,
   chainId,
+  skipReady = false,
 }: {
   client?: Client
   chainId: number
+  skipReady?: boolean
 }): Promise<boolean> {
   const _client =
     client ??
@@ -31,7 +33,7 @@ export async function isBatchingSupported({
     return (
       capabilities?.atomicBatch?.supported ||
       capabilities?.atomic?.status === 'supported' ||
-      capabilities?.atomic?.status === 'ready' ||
+      (!skipReady && capabilities?.atomic?.status === 'ready') ||
       false
     )
   } catch {

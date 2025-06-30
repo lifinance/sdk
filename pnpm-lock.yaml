@@ -12,8 +12,8 @@ importers:
         specifier: ^0.4.0-beta.0
         version: 0.4.0-beta.0(bs58@6.0.0)(typescript@5.8.3)
       '@lifi/types':
-        specifier: ^17.18.0
-        version: 17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
+        specifier: ^17.20.0-beta.0
+        version: 17.20.0-beta.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
       '@mysten/sui':
         specifier: ^1.34.0
         version: 1.34.0(typescript@5.8.3)
@@ -542,6 +542,9 @@ packages:
 
   '@lifi/types@17.18.0':
     resolution: {integrity: sha512-rDHJZ3dwSdG/ZK/CKjfPs3SvCnADLPNNbDtWo1BXMtUY4wdO9ZjoxlpoHj4zzu/LPWVejUf7j4hiNOE43rFd5A==}
+
+  '@lifi/types@17.20.0-beta.0':
+    resolution: {integrity: sha512-K4EDkGND+AT8RPhkMkeZ1KGZX/HmSA1DIYXP0Us9SjrqjBQwE0UT96P9BPSHTgdyZfzE3gyZQBnpUHe38I4vaw==}
 
   '@mswjs/interceptors@0.39.2':
     resolution: {integrity: sha512-RuzCup9Ct91Y7V79xwCb146RaBRHZ7NBbrIUySumd1rpKqHL5OonaqrGIbug5hNwP/fRyxFMA6ISgw4FTtYFYg==}
@@ -3412,6 +3415,15 @@ snapshots:
       - zod
 
   '@lifi/types@17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      viem: 2.31.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
+  '@lifi/types@17.20.0-beta.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)':
     dependencies:
       viem: 2.31.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:

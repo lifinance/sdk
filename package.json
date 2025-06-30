@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.7.10-beta.1",
+  "version": "3.8.0-alpha.1",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -95,7 +95,7 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.4.0-beta.0",
-    "@lifi/types": "^17.18.0",
+    "@lifi/types": "^17.20.0-beta.0",
     "@mysten/sui": "^1.34.0",
     "@mysten/wallet-standard": "^0.16.3",
     "@noble/curves": "^1.9.2",

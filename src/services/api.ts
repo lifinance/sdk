@@ -22,6 +22,7 @@ import {
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
+  type SignedLiFiStep,
   type StatusResponse,
   type Token,
   type TokensRequest,
@@ -203,7 +204,7 @@ export const getContractCallsQuote = async (
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getStepTransaction = async (
-  step: LiFiStep,
+  step: LiFiStep | SignedLiFiStep,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {
