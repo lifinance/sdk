@@ -47,31 +47,34 @@ export async function sendAndConfirmTransaction(
 
     let blockhashResult = await connection.getLatestBlockhash('confirmed')
     let currentBlockHeight = await connection.getBlockHeight('confirmed')
+    let confirmedSignature = null
 
-    while (currentBlockHeight <= blockhashResult.lastValidBlockHeight) {
-      try {
-        sentSignature = await connection.sendRawTransaction(
-          signedTxSerialized,
-          rawTransactionOptions
-        )
+    while (
+      !confirmedSignature &&
+      currentBlockHeight < blockhashResult.lastValidBlockHeight
+    ) {
+      sentSignature = await connection.sendRawTransaction(
+        signedTxSerialized,
+        rawTransactionOptions
+      )
 
-        const confirmedSignature = await pollTransactionConfirmation(
-          sentSignature,
-          connection
-        )
-        return {
-          signatureResult: { err: null },
-          txSignature: confirmedSignature,
-        }
-      } catch (error) {
-        console.warn('Failed to send transaction to connection:', error)
-      }
+      confirmedSignature = await pollTransactionConfirmation(
+        sentSignature,
+        connection
+      )
 
       blockhashResult = await connection.getLatestBlockhash('confirmed')
       currentBlockHeight = await connection.getBlockHeight('confirmed')
     }
 
-    throw new Error('Blockhash expired, transaction cannot be sent')
+    if (!confirmedSignature) {
+      throw new Error('Transaction confirmation failed')
+    }
+
+    return {
+      signatureResult: { err: null },
+      txSignature: confirmedSignature,
+    }
   })
 
   try {
