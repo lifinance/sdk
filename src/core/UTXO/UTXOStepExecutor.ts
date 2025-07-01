@@ -183,7 +183,12 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               ),
             }
           )
-          const signedPsbt = Psbt.fromHex(signedPsbtHex).finalizeAllInputs()
+
+          const signedPsbt = Psbt.fromHex(signedPsbtHex)
+
+          if (!isPsbtFinalized(signedPsbt)) {
+            signedPsbt.finalizeAllInputs()
+          }
 
           txHex = signedPsbt.extractTransaction().toHex()
 
@@ -273,5 +278,14 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
     // DONE
     return step
+  }
+}
+
+function isPsbtFinalized(psbt: Psbt): boolean {
+  try {
+    psbt.extractTransaction()
+    return true
+  } catch (_) {
+    return false
   }
 }
