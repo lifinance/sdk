@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.7.10](https://github.com/lifinance/sdk/compare/v3.7.10-beta.1...v3.7.10) (2025-07-01)
+
+
+### Bug Fixes
+
+* adjust approval flow to allow native ERC20 tokens ([#278](https://github.com/lifinance/sdk/issues/278)) ([e15bddb](https://github.com/lifinance/sdk/commit/e15bddb6ef98105e266b6dde047fa6acf239434b))
+* **utxo:** add check for when inputs are already final ([#277](https://github.com/lifinance/sdk/issues/277)) ([2cb2584](https://github.com/lifinance/sdk/commit/2cb258458bea635c45358709aff15b27a6366ba7))
+
 ### [3.7.9](https://github.com/lifinance/sdk/compare/v3.7.7...v3.7.9) (2025-06-06)
 
 
