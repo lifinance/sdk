@@ -18,6 +18,7 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
+import { isPsbtFinalized } from './utils.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -278,14 +279,5 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
     // DONE
     return step
-  }
-}
-
-function isPsbtFinalized(psbt: Psbt): boolean {
-  try {
-    psbt.extractTransaction()
-    return true
-  } catch (_) {
-    return false
   }
 }
