@@ -2,7 +2,7 @@ import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
@@ -80,7 +80,7 @@ export const setTokenAllowance = async ({
   amount,
 }: ApproveTokenRequest): Promise<Hash | void> => {
   // native token don't need approval
-  if (isNativeTokenAddress(token.address)) {
+  if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(
@@ -116,7 +116,7 @@ export const revokeTokenApproval = async ({
   spenderAddress,
 }: RevokeApprovalRequest): Promise<Hash | void> => {
   // native token don't need approval
-  if (isNativeTokenAddress(token.address)) {
+  if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(

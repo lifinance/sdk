@@ -24,6 +24,7 @@ import {
   getStepTransaction,
   relayTransaction,
 } from '../../services/api.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
@@ -278,7 +279,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
     )
 
     const isFromNativeToken =
-      fromChain.nativeToken.address === step.action.fromToken.address
+      fromChain.nativeToken.address === step.action.fromToken.address &&
+      isZeroAddress(step.action.fromToken.address)
 
     // Check if step requires permit signature and will be used with relayer service
     const isRelayerTransaction = isRelayerStep(step)
