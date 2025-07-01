@@ -18,6 +18,7 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
+import { isPsbtFinalized } from './utils.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -183,7 +184,12 @@ export class UTXOStepExecutor extends BaseStepExecutor {
               ),
             }
           )
-          const signedPsbt = Psbt.fromHex(signedPsbtHex).finalizeAllInputs()
+
+          const signedPsbt = Psbt.fromHex(signedPsbtHex)
+
+          if (!isPsbtFinalized(signedPsbt)) {
+            signedPsbt.finalizeAllInputs()
+          }
 
           txHex = signedPsbt.extractTransaction().toHex()
 
