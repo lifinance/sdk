@@ -1,7 +1,7 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
-import { isNativeTokenAddress } from '../../utils/isZeroAddress.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { allowanceAbi } from './abi.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getPublicClient } from './publicClient.js'
@@ -88,7 +88,7 @@ export const getTokenAllowance = async (
   spenderAddress: Address
 ): Promise<bigint | undefined> => {
   // native token don't need approval
-  if (isNativeTokenAddress(token.address)) {
+  if (isZeroAddress(token.address)) {
     return
   }
 
@@ -115,7 +115,7 @@ export const getTokenAllowanceMulticall = async (
 ): Promise<TokenAllowance[]> => {
   // filter out native tokens
   const filteredTokens = tokens.filter(
-    ({ token }) => !isNativeTokenAddress(token.address)
+    ({ token }) => !isZeroAddress(token.address)
   )
 
   // group by chain
