@@ -1,10 +1,11 @@
 import type {
+  Connection,
   SendOptions,
   SignatureResult,
+  TransactionSignature,
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
-import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
 export type ConfirmedTransactionResult = {
@@ -24,6 +25,7 @@ export async function sendAndConfirmTransaction(
   const connections = await getSolanaConnections()
 
   const signedTxSerialized = signedTx.serialize()
+
   // Create transaction hash (signature)
   const txSignature = bs58.encode(signedTx.signatures[0])
 
@@ -41,71 +43,90 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  for (const connection of connections) {
-    connection
-      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-      .catch()
-  }
+  const pollPromises = connections.map(async (connection) => {
+    const blockhashResult = await connection.getLatestBlockhash('confirmed')
+    let blockHeight = await connection.getBlockHeight('confirmed')
+    let isConfirmed = false
 
-  const abortControllers: AbortController[] = []
+    while (
+      !isConfirmed &&
+      blockHeight <= blockhashResult.lastValidBlockHeight
+    ) {
+      const sentSignature = await connection.sendRawTransaction(
+        signedTxSerialized,
+        rawTransactionOptions
+      )
 
-  const confirmPromises = connections.map(async (connection) => {
-    const abortController = new AbortController()
-    abortControllers.push(abortController)
-    try {
-      const blockhashResult = await connection.getLatestBlockhash('confirmed')
+      isConfirmed = await pollTransactionConfirmation(sentSignature, connection)
 
-      const confirmTransactionPromise = connection
-        .confirmTransaction(
-          {
-            signature: txSignature,
-            blockhash: blockhashResult.blockhash,
-            lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
-            abortSignal: abortController.signal,
-          },
-          'confirmed'
-        )
-        .then((result) => result.value)
-
-      let signatureResult: SignatureResult | null = null
-      let blockHeight = await connection.getBlockHeight('confirmed')
-
-      while (
-        !signatureResult &&
-        blockHeight < blockhashResult.lastValidBlockHeight
-      ) {
-        await connection.sendRawTransaction(
-          signedTxSerialized,
-          rawTransactionOptions
-        )
-        signatureResult = await Promise.race([
-          confirmTransactionPromise,
-          sleep(1000),
-        ])
-
-        if (signatureResult || abortController.signal.aborted) {
-          break
-        }
-
-        blockHeight = await connection.getBlockHeight('confirmed')
+      if (isConfirmed) {
+        break
       }
 
-      abortController.abort()
+      blockHeight = await connection.getBlockHeight('confirmed')
+    }
 
-      return signatureResult
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return Promise.reject(new Error('Confirmation aborted.'))
-      }
-      throw error
+    if (!isConfirmed) {
+      throw new Error('Transaction confirmation failed')
+    }
+
+    return {
+      signatureResult: { err: null },
+      txSignature,
     }
   })
 
-  const signatureResult = await Promise.any(confirmPromises).catch(() => null)
+  return await Promise.any(pollPromises).catch((err) => ({
+    signatureResult: { err },
+    txSignature,
+  }))
+}
 
-  for (const abortController of abortControllers) {
-    abortController.abort()
+async function pollTransactionConfirmation(
+  txtSig: TransactionSignature,
+  connection: Connection
+): Promise<boolean> {
+  // 1s timeout
+  const timeout = 1000
+  // .4s polling interval
+  const interval = 400
+  const startTime = Date.now()
+
+  const checkStatus = async () => {
+    try {
+      const status = await connection.getSignatureStatuses([txtSig])
+      return status?.value[0]?.confirmationStatus === 'confirmed'
+    } catch (_) {
+      return false
+    }
   }
 
-  return { signatureResult, txSignature }
+  // Initial check
+  const isConfirmed = await checkStatus()
+  if (isConfirmed) {
+    return true
+  }
+
+  return new Promise<boolean>((resolve, reject) => {
+    const intervalId = setInterval(async () => {
+      try {
+        const elapsed = Date.now() - startTime
+        if (elapsed >= timeout) {
+          clearInterval(intervalId)
+          reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
+          return
+        }
+
+        const isConfirmed = await checkStatus()
+
+        if (isConfirmed) {
+          clearInterval(intervalId)
+          resolve(true)
+        }
+      } catch (e) {
+        clearInterval(intervalId)
+        reject(e)
+      }
+    }, interval)
+  })
 }
