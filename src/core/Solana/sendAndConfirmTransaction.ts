@@ -86,10 +86,10 @@ async function pollTransactionConfirmation(
   txtSig: TransactionSignature,
   connection: Connection
 ): Promise<boolean> {
-  // .5s timeout
-  const timeout = 500
-  // .1s polling interval
-  const interval = 100
+  // 1s timeout
+  const timeout = 1000
+  // .4s polling interval
+  const interval = 400
   const startTime = Date.now()
 
   const checkStatus = async () => {
@@ -111,7 +111,6 @@ async function pollTransactionConfirmation(
     const intervalId = setInterval(async () => {
       try {
         const elapsed = Date.now() - startTime
-
         if (elapsed >= timeout) {
           clearInterval(intervalId)
           reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
