@@ -86,10 +86,10 @@ async function pollTransactionConfirmation(
   txtSig: TransactionSignature,
   connection: Connection
 ): Promise<boolean> {
-  // 15 second timeout
-  const timeout = 15000
-  // 1 second retry interval
-  const interval = 1000
+  // .5 second timeout
+  const timeout = 500
+  // .1 polling interval
+  const interval = 100
   const startTime = Date.now()
 
   const checkStatus = async () => {
