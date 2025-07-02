@@ -9,11 +9,11 @@
 
 <h1 align="center">LI.FI SDK</h1>
 
-[**LI.FI SDK**](https://docs.li.fi/integrate-li.fi-sdk/li.fi-sdk-overview) provides a powerful toolkit for developers to enable seamless cross-chain and on-chain swaps and bridging within their applications. Our JavaScript/TypeScript SDK can be implemented in front-end or back-end environments, allowing you to build robust UX/UI around our advanced bridge and swap functionalities. LI.FI SDK efficiently manages all communications between our smart routing API and smart contracts and ensures optimal performance, security, and scalability for your cross-chain and on-chain needs.
+[**LI.FI SDK**](https://docs.li.fi/sdk/overview) provides a powerful toolkit for developers to enable seamless cross-chain and on-chain swaps and bridging within their applications. Our JavaScript/TypeScript SDK can be implemented in front-end or back-end environments, allowing you to build robust UX/UI around our advanced bridge and swap functionalities. LI.FI SDK efficiently manages all communications between our smart routing API and smart contracts and ensures optimal performance, security, and scalability for your cross-chain and on-chain needs.
 
-[**LI.FI SDK**](https://docs.li.fi/integrate-li.fi-sdk/li.fi-sdk-overview) features include:
+[**LI.FI SDK**](https://docs.li.fi/sdk/overview) features include:
 
-- All ecosystems, chains, bridges, exchanges, and solvers that [LI.FI](https://docs.li.fi/list-chains-bridges-dexs-solvers) supports
+- All ecosystems, chains, bridges, exchanges, and solvers that [LI.FI](https://docs.li.fi/introduction/chains) supports
 - Complete functionality covering full-cycle from obtaining routes/quotes to executing transactions
 - Easy tracking of the route and quote execution through the robust event and hooks handling
 - Highly customizable settings to tailor the SDK to your specific needs including configuration of RPCs and options to allow or deny certain chains, tokens, bridges, exchanges, solvers
@@ -72,7 +72,7 @@ See [examples](/examples) folder in this repository.
 
 ## Documentation
 
-Please checkout the [SDK documentation](https://docs.li.fi/integrate-li.fi-sdk/li.fi-sdk-overview) and our [API reference](https://apidocs.li.fi) for further information.
+Please checkout the [SDK documentation](https://docs.li.fi/sdk/overview) and our [API reference](https://docs.li.fi/api-reference/introduction) for further information.
 
 ## Changelog
 
