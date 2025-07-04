@@ -2,8 +2,8 @@ import { ChainType } from '@lifi/types'
 import { isAddress } from 'viem'
 import type { StepExecutorOptions } from '../types.js'
 import { EVMStepExecutor } from './EVMStepExecutor.js'
-import { getENSAddress } from './getENSAddress.js'
 import { getEVMBalance } from './getEVMBalance.js'
+import { resolveAddress } from './resolveAddress.js'
 import type { EVMProvider, EVMProviderOptions } from './types.js'
 
 export function EVM(options?: EVMProviderOptions): EVMProvider {
@@ -16,7 +16,7 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
       return _options
     },
     isAddress,
-    resolveAddress: getENSAddress,
+    resolveAddress,
     getBalance: getEVMBalance,
     getWalletClient: _options.getWalletClient,
     async getStepExecutor(
