@@ -331,10 +331,7 @@ export const relayTransaction = async (
   params: RelayRequest,
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
-  const requiredParameters: Array<keyof RelayRequest> = [
-    'typedData',
-    'transactionRequest',
-  ]
+  const requiredParameters: Array<keyof RelayRequest> = ['typedData']
 
   for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
