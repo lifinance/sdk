@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.18.0
-        version: 6.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+        specifier: ^6.19.0
+        version: 6.19.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.7.9
-        version: 3.7.9(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.7.10
+        version: 3.7.10(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.8.5
         version: 5.8.5(@wagmi/core@2.17.3(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -21,15 +21,15 @@ importers:
         specifier: ^2.17.3
         version: 2.17.3(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))
       dotenv:
-        specifier: ^17.0.0
-        version: 17.0.0
+        specifier: ^17.0.1
+        version: 17.0.1
       viem:
         specifier: ^2.31.6
         version: 2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     devDependencies:
       '@types/node':
-        specifier: ^24.0.8
-        version: 24.0.8
+        specifier: ^24.0.10
+        version: 24.0.10
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
@@ -47,8 +47,8 @@ packages:
       graphql:
         optional: true
 
-  '@0no-co/graphqlsp@1.12.16':
-    resolution: {integrity: sha512-B5pyYVH93Etv7xjT6IfB7QtMBdaaC07yjbhN6v8H7KgFStMkPvi+oWYBTibMFRMY89qwc9H8YixXg8SXDVgYWw==}
+  '@0no-co/graphqlsp@1.13.0':
+    resolution: {integrity: sha512-I8HVJ19PeF0QMKCcxUXjsmbI6L26bmAuDHUFdLD8xjhaOi7XG2ZhlkhqTYNxzYJN58yvv0IfKfn8yVrVvPUmVw==}
     peerDependencies:
       graphql: ^15.5.0 || ^16.0.0 || ^17.0.0
       typescript: ^5.0.0
@@ -60,8 +60,8 @@ packages:
     resolution: {integrity: sha512-vbavdySgbTTrmFE+EsiqUTzlOr5bzlnJtUv9PynGCAKvfQqjIXbvFdumPM/GxMDfyuGMJaJAU6TO4zc1Jf1i8Q==}
     engines: {node: '>=6.9.0'}
 
-  '@bigmi/core@0.3.1':
-    resolution: {integrity: sha512-KU2KZJmyHPtw7m9sTfOWZ2gQaE8iONpLajmh4gCZfscZIRiL1LddqWkLuFIoFNfY0jbJmvqX46leLUw5YIOVDw==}
+  '@bigmi/core@0.4.0':
+    resolution: {integrity: sha512-dkZYDzevUXGQghSzp/RlkCAlM7N+MkupUjuOAbWzw5dbWA7nkJdVWlAseDgVXqdufgRiHvxQ6MkJpheJ4zLi5g==}
 
   '@coinbase/wallet-sdk@3.9.3':
     resolution: {integrity: sha512-N/A2DRIf0Y3PHc1XAMvbBUu4zisna6qAdqABMZwBMNEfWrXpAwx16pZGkYCLGE+Rvv1edbcB2LYDRnACNcmCiw==}
@@ -265,16 +265,16 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.18.0':
-    resolution: {integrity: sha512-Wm9e29ALFGHU/uxsfLK7c7XlkQimNRejXdXYkP8kV7d3qmCQF/3REVbzM3aPdXAaaYoHk2gD2haPaxg0/78IZg==}
+  '@lifi/data-types@6.19.0':
+    resolution: {integrity: sha512-vlC9L4UCXu1yte6BAeZHbNkHfous0NBAwlt3fBrAewOjK2tJyun08frUZkF/mhQ7OXPYlQmWIaC5Gfs3310ZXQ==}
 
-  '@lifi/sdk@3.7.9':
-    resolution: {integrity: sha512-QPSbUi032SK70h0JZ1yKAUSl5E7K5Ph/7RPXRmGwFzYf8VD712zkvndQCqZefN5I4fl3taw6dMTf1Js3gIEICA==}
+  '@lifi/sdk@3.7.10':
+    resolution: {integrity: sha512-pQdWwCyE2cmmszxhvs8Gwhbwtyps4LlmK44gR91on3IISHnVxNHUQ9X4r8zwwpB2vSeXIVOfuvERS2Aq0v4CkA==}
     peerDependencies:
       viem: ^2.21.0
 
-  '@lifi/types@17.18.0':
-    resolution: {integrity: sha512-rDHJZ3dwSdG/ZK/CKjfPs3SvCnADLPNNbDtWo1BXMtUY4wdO9ZjoxlpoHj4zzu/LPWVejUf7j4hiNOE43rFd5A==}
+  '@lifi/types@17.19.1':
+    resolution: {integrity: sha512-95EAInhF1kPfOdc0VqpIRq3AfWUaCsqntF0SqGwK6QLnfQeSo5gBlG4vKoYu+cXNb3rzuJegVLKYvCtopU0RBA==}
 
   '@lit-labs/ssr-dom-shim@1.3.0':
     resolution: {integrity: sha512-nQIWonJ6eFAvUUrSlwyHDm/aE8PBDu5kRpL0vHMg6K8fK3Diq1xdPjTnsJSwxABhaZ+5eBi1btQB5ShUTKo4nQ==}
@@ -351,28 +351,18 @@ packages:
     resolution: {integrity: sha512-w8CVbdkDrVXFJbfBSlDfafDR6BAkpDmv1bC1UJVCoVny5tW2RKAdn9i68Xf7asYT4TnUhl/hN4zfUiKQq9II4g==}
     engines: {node: '>=16.0.0'}
 
-  '@mysten/bcs@1.6.2':
-    resolution: {integrity: sha512-po3tjm3Ue7UM1cuveDvrIckR6y22LKXr7KAQf12ZOMasZ0rRjBOdq3zDCVBJC+m536hNLq5uG5U2SQPUGN5+JA==}
-
   '@mysten/bcs@1.6.3':
     resolution: {integrity: sha512-QQ6u0U7a4+/o6rZ9tALTeGYMdf6V5z/HkRI/mhD5/fSr80DJoGzOWpFszcN/fhJpKb36vBaSQUMpS7yNQ10xBQ==}
 
-  '@mysten/sui@1.30.5':
-    resolution: {integrity: sha512-+b7WW0UV3nfnQnbM46mLpKgaXQiigh1LdH+Lys7kNQHbJmF3U1SMHddCs46Hhsansk9JMEMl2Qs15ibUW+CpTw==}
+  '@mysten/sui@1.35.0':
+    resolution: {integrity: sha512-za0+SiEFtjAjk0sJ8P9Q/X/m2E/YrXQ/UNsotEwb/eCqPyGS8A9Mrxkhm/iIgR1+AAl1OWUWCrqgJVe7u2i61A==}
     engines: {node: '>=18'}
-
-  '@mysten/sui@1.33.0':
-    resolution: {integrity: sha512-V6hNQrFe0IT85iZquBJ2BccywQtLXCmq5jojRsdy1iFTZCve2h+Aj0kE7z9+b8X0QD7weg/6KC9JMUa1j05neQ==}
-    engines: {node: '>=18'}
-
-  '@mysten/utils@0.0.1':
-    resolution: {integrity: sha512-KrrGE1N0KFIKkQoQW5/StA6kxRZqUkZlw/Txa7rbj+MVYbnKpdWeH1Xxm7w5rWd8PZ4Sc7v6uVoPz179BAoNZA==}
 
   '@mysten/utils@0.1.0':
     resolution: {integrity: sha512-nFxqArh4cr629elLsIk7UZmx5dFVshblwrfwaG7Dm2L/ii2C65bhK5tdTs6UiC3K0tCr8q8svrgzXyF9L0CN/A==}
 
-  '@mysten/wallet-standard@0.15.6':
-    resolution: {integrity: sha512-Hw02jDjZNsZSLzg7gT5Bu32i/PHUSF+crqwxZfzBElW3I3t0ArEho/dzt14GuPqOh/3nuUfPdOdeiU9cTDZGAQ==}
+  '@mysten/wallet-standard@0.16.4':
+    resolution: {integrity: sha512-kgW3Do/sKZi5xsfS1xfhq+hL9ZTAGf32oAKzc0j/Ce6Ffpd5J7JHehLJ+8Qdmekr99NjQ/EoDY9KD0thJ5WQrA==}
 
   '@noble/ciphers@1.2.1':
     resolution: {integrity: sha512-rONPWMC7PeExE077uLE4oqWrZ1IvAfz3oH9LibVAcVCopJiA9R62uavnbEzdkVmJYI6M6Zgkbeb07+tWjlq2XA==}
@@ -532,8 +522,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@24.0.8':
-    resolution: {integrity: sha512-WytNrFSgWO/esSH9NbpWUfTMGQwCGIKfCmNlmFDNiI5gGhgMmEA+V1AEvKLeBNvvtBnailJtkrEa2OIISwrVAA==}
+  '@types/node@24.0.10':
+    resolution: {integrity: sha512-ENHwaH+JIRTDIEEbDK6QSQntAYGtbvdDXnMXnZaZ6k13Du1dPMmprkEHIL7ok2Wl2aZevetwTAb5S+7yIF+enA==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -891,8 +881,8 @@ packages:
   dijkstrajs@1.0.3:
     resolution: {integrity: sha512-qiSlmBq9+BCdCA/L46dw8Uy93mloxsPSbwnm5yrKn2vMPiy8KyAskTF6zuV/j5BMsmOGZDPs7KjU+mjb670kfA==}
 
-  dotenv@17.0.0:
-    resolution: {integrity: sha512-A0BJ5lrpJVSfnMMXjmeO0xUnoxqsBHWCoqqTnGwGYVdnctqXXUEhJOO7LxmgxJon9tEZFGpe0xPRX0h2v3AANQ==}
+  dotenv@17.0.1:
+    resolution: {integrity: sha512-GLjkduuAL7IMJg/ZnOPm9AnWKJ82mSE2tzXLaJ/6hD6DhwGfZaXG77oB8qbReyiczNxnbxQKyh0OE5mXq0bAHA==}
     engines: {node: '>=12'}
 
   dunder-proto@1.0.1:
@@ -1035,8 +1025,8 @@ packages:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
 
-  gql.tada@1.8.10:
-    resolution: {integrity: sha512-FrvSxgz838FYVPgZHGOSgbpOjhR+yq44rCzww3oOPJYi0OvBJjAgCiP6LEokZIYND2fUTXzQAyLgcvgw1yNP5A==}
+  gql.tada@1.8.11:
+    resolution: {integrity: sha512-b94SV2ki1yZWm/MGzWIaWxuPJUMAYjlQllwoD9b8/GCVXKax1HS9xPfLq/p47UmAnUY3X8qDF0JdMEIr0EKmOA==}
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -1108,6 +1098,9 @@ packages:
 
   isarray@1.0.0:
     resolution: {integrity: sha512-VLghIWNM6ELQzo7zwmcg0NmTVyWKYjvIeM83yjp0wRDTmUnrM678fQbcKBo6n2CJEF0szoG//ytg+TKla89ALQ==}
+
+  isarray@2.0.5:
+    resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
   isomorphic-ws@4.0.1:
     resolution: {integrity: sha512-BhBvN2MBpWTaSHdWRb/bwdZJ1WaehQ2L1KngkCkfLUGF0mAWAT1sQUQacEmQ0jXkFw/czDXPNQSL5u2/Krsz1w==}
@@ -1374,8 +1367,9 @@ packages:
     resolution: {integrity: sha512-pgRc4hJ4/sNjWCSS9AmnS40x3bNMDTknHgL5UaMBTMyJnU90EgWh1Rz+MC9eFu4BuN/UwZjKQuY/1v3rM7HMfg==}
     engines: {node: '>= 0.4'}
 
-  sha.js@2.4.11:
-    resolution: {integrity: sha512-QMEp5B7cftE7APOjk5Y6xgrbWu+WkLVQwk8JNjZ8nKRciZaByEW6MubieAiToS7+dwvrjGhH8jRXz3MVd0AYqQ==}
+  sha.js@2.4.12:
+    resolution: {integrity: sha512-8LzC5+bvI45BjpfXU8V5fdU2mfeKiQe1D1gIMn7XUlF3OTUrpdJpPPH4EMAnF0DsHHdSZqCdSss5qCmJKuiO3w==}
+    engines: {node: '>= 0.10'}
     hasBin: true
 
   socket.io-client@4.8.1:
@@ -1438,6 +1432,10 @@ packages:
   thread-stream@0.15.2:
     resolution: {integrity: sha512-UkEhKIg2pD+fjkHQKyJO3yoIvAP3N6RlNFt2dUhcS1FGvCD1cQa1M/PGknCLFIyZdtJOWQjejp7bdNqmN7zwdA==}
 
+  to-buffer@1.2.1:
+    resolution: {integrity: sha512-tB82LpAIWjhLYbqjx3X4zEeHN6M8CiuOEy2JY8SEQVdYRe3CCHOFaqrBW1doLDrfpWhplcW7BL+bO3/6S3pcDQ==}
+    engines: {node: '>= 0.4'}
+
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
@@ -1451,6 +1449,10 @@ packages:
     resolution: {integrity: sha512-qjbnuR9Tr+FJOMBqJCW5ehvIo/buZq7vH7qD7JziU98h6l3qGy0a/yPFjwO+y0/T7GFpNgNAvEcPPVfyT8rrPQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
+
+  typed-array-buffer@1.0.3:
+    resolution: {integrity: sha512-nAYYwfY3qnzX30IkA6AQZjVbtK6duGontcQm1WSG1MD94YLqK0515GNApXkoxKOWMusVssAHWLh9SeaoefYFGw==}
+    engines: {node: '>= 0.4'}
 
   typescript@5.8.3:
     resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
@@ -1672,6 +1674,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xmlhttprequest-ssl@2.1.2:
     resolution: {integrity: sha512-TEU+nJVUUnA4CYJFLvK5X9AOeH4KvDvhIfm0vV1GaQRtchnG0hgK5p8hw/xjv8cunWYCsiPCSDzObPyhEwq3KQ==}
     engines: {node: '>=0.4.0'}
@@ -1712,8 +1726,8 @@ packages:
       use-sync-external-store:
         optional: true
 
-  zustand@5.0.5:
-    resolution: {integrity: sha512-mILtRfKW9xM47hqxGIxCv12gXusoY/xTSHBYApXozR0HmQv299whhBeeAcRy+KrPPybzosvJBCOmVjq6x12fCg==}
+  zustand@5.0.6:
+    resolution: {integrity: sha512-ihAqNeUVhe0MAD+X8M5UzqyZ9k3FFZLBTtqo6JLPwV53cbRB/mJwBI0PxcIgqhBBHlEs8G45OTDTMq3gNcLq3A==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -1736,7 +1750,7 @@ snapshots:
     optionalDependencies:
       graphql: 16.11.0
 
-  '@0no-co/graphqlsp@1.12.16(graphql@16.11.0)(typescript@5.8.3)':
+  '@0no-co/graphqlsp@1.13.0(graphql@16.11.0)(typescript@5.8.3)':
     dependencies:
       '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.8.3)
       graphql: 16.11.0
@@ -1746,14 +1760,14 @@ snapshots:
 
   '@babel/runtime@7.27.6': {}
 
-  '@bigmi/core@0.3.1(typescript@5.8.3)(use-sync-external-store@1.2.0)':
+  '@bigmi/core@0.4.0(typescript@5.8.3)(use-sync-external-store@1.2.0)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
       bitcoinjs-lib: 7.0.0-rc.0(typescript@5.8.3)
       bs58: 6.0.0
       eventemitter3: 5.0.1
-      zustand: 5.0.5(use-sync-external-store@1.2.0)
+      zustand: 5.0.6(use-sync-external-store@1.2.0)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -1771,7 +1785,7 @@ snapshots:
       eventemitter3: 5.0.1
       keccak: 3.0.4
       preact: 10.26.9
-      sha.js: 2.4.11
+      sha.js: 2.4.12
     transitivePeerDependencies:
       - supports-color
 
@@ -1883,7 +1897,7 @@ snapshots:
 
   '@gql.tada/cli-utils@1.6.3(graphql@16.11.0)(typescript@5.8.3)':
     dependencies:
-      '@0no-co/graphqlsp': 1.12.16(graphql@16.11.0)(typescript@5.8.3)
+      '@0no-co/graphqlsp': 1.13.0(graphql@16.11.0)(typescript@5.8.3)
       '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.8.3)
       graphql: 16.11.0
       typescript: 5.8.3
@@ -1898,21 +1912,21 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@lifi/data-types@6.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/data-types@6.19.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
-      '@lifi/types': 17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@lifi/types': 17.19.1(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.7.9(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.7.10(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
-      '@bigmi/core': 0.3.1(typescript@5.8.3)(use-sync-external-store@1.2.0)
-      '@lifi/types': 17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
-      '@mysten/sui': 1.33.0(typescript@5.8.3)
-      '@mysten/wallet-standard': 0.15.6(typescript@5.8.3)
+      '@bigmi/core': 0.4.0(typescript@5.8.3)(use-sync-external-store@1.2.0)
+      '@lifi/types': 17.19.1(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@mysten/sui': 1.35.0(typescript@5.8.3)
+      '@mysten/wallet-standard': 0.16.4(typescript@5.8.3)
       '@noble/curves': 1.9.2
       '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -1933,7 +1947,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.18.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/types@17.19.1(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       viem: 2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
@@ -2104,36 +2118,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mysten/bcs@1.6.2':
-    dependencies:
-      '@mysten/utils': 0.0.1
-      '@scure/base': 1.2.6
-
   '@mysten/bcs@1.6.3':
     dependencies:
       '@mysten/utils': 0.1.0
       '@scure/base': 1.2.6
 
-  '@mysten/sui@1.30.5(typescript@5.8.3)':
-    dependencies:
-      '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
-      '@mysten/bcs': 1.6.2
-      '@mysten/utils': 0.0.1
-      '@noble/curves': 1.9.2
-      '@noble/hashes': 1.8.0
-      '@scure/base': 1.2.6
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      gql.tada: 1.8.10(graphql@16.11.0)(typescript@5.8.3)
-      graphql: 16.11.0
-      poseidon-lite: 0.2.1
-      valibot: 0.36.0
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - typescript
-
-  '@mysten/sui@1.33.0(typescript@5.8.3)':
+  '@mysten/sui@1.35.0(typescript@5.8.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
       '@mysten/bcs': 1.6.3
@@ -2143,7 +2133,7 @@ snapshots:
       '@scure/base': 1.2.6
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      gql.tada: 1.8.10(graphql@16.11.0)(typescript@5.8.3)
+      gql.tada: 1.8.11(graphql@16.11.0)(typescript@5.8.3)
       graphql: 16.11.0
       poseidon-lite: 0.2.1
       valibot: 0.36.0
@@ -2152,17 +2142,13 @@ snapshots:
       - '@gql.tada/vue-support'
       - typescript
 
-  '@mysten/utils@0.0.1':
-    dependencies:
-      '@scure/base': 1.2.6
-
   '@mysten/utils@0.1.0':
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/wallet-standard@0.15.6(typescript@5.8.3)':
+  '@mysten/wallet-standard@0.16.4(typescript@5.8.3)':
     dependencies:
-      '@mysten/sui': 1.30.5(typescript@5.8.3)
+      '@mysten/sui': 1.35.0(typescript@5.8.3)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
@@ -2566,7 +2552,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 24.0.8
+      '@types/node': 24.0.10
 
   '@types/debug@4.1.12':
     dependencies:
@@ -2576,7 +2562,7 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@24.0.8':
+  '@types/node@24.0.10':
     dependencies:
       undici-types: 7.8.0
 
@@ -2586,11 +2572,11 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 24.0.8
+      '@types/node': 24.0.10
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.0.8
+      '@types/node': 24.0.10
 
   '@wagmi/connectors@5.8.5(@wagmi/core@2.17.3(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(viem@2.31.6(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
@@ -3391,7 +3377,7 @@ snapshots:
 
   dijkstrajs@1.0.3: {}
 
-  dotenv@17.0.0: {}
+  dotenv@17.0.1: {}
 
   dunder-proto@1.0.1:
     dependencies:
@@ -3576,10 +3562,10 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  gql.tada@1.8.10(graphql@16.11.0)(typescript@5.8.3):
+  gql.tada@1.8.11(graphql@16.11.0)(typescript@5.8.3):
     dependencies:
       '@0no-co/graphql.web': 1.1.2(graphql@16.11.0)
-      '@0no-co/graphqlsp': 1.12.16(graphql@16.11.0)(typescript@5.8.3)
+      '@0no-co/graphqlsp': 1.13.0(graphql@16.11.0)(typescript@5.8.3)
       '@gql.tada/cli-utils': 1.6.3(graphql@16.11.0)(typescript@5.8.3)
       '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.8.3)
       typescript: 5.8.3
@@ -3658,6 +3644,8 @@ snapshots:
       which-typed-array: 1.1.19
 
   isarray@1.0.0: {}
+
+  isarray@2.0.5: {}
 
   isomorphic-ws@4.0.1(ws@7.5.10(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
@@ -3913,7 +3901,7 @@ snapshots:
       buffer: 6.0.3
       eventemitter3: 5.0.1
       uuid: 8.3.2
-      ws: 8.18.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
@@ -3943,10 +3931,11 @@ snapshots:
       gopd: 1.2.0
       has-property-descriptors: 1.0.2
 
-  sha.js@2.4.11:
+  sha.js@2.4.12:
     dependencies:
       inherits: 2.0.4
       safe-buffer: 5.2.1
+      to-buffer: 1.2.1
 
   socket.io-client@4.8.1(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     dependencies:
@@ -4012,6 +4001,12 @@ snapshots:
     dependencies:
       real-require: 0.1.0
 
+  to-buffer@1.2.1:
+    dependencies:
+      isarray: 2.0.5
+      safe-buffer: 5.2.1
+      typed-array-buffer: 1.0.3
+
   tr46@0.0.3: {}
 
   tslib@1.14.1: {}
@@ -4024,6 +4019,12 @@ snapshots:
       get-tsconfig: 4.10.1
     optionalDependencies:
       fsevents: 2.3.3
+
+  typed-array-buffer@1.0.3:
+    dependencies:
+      call-bound: 1.0.4
+      es-errors: 1.3.0
+      is-typed-array: 1.1.15
 
   typescript@5.8.3: {}
 
@@ -4173,6 +4174,11 @@ snapshots:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
 
+  ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10):
+    optionalDependencies:
+      bufferutil: 4.0.9
+      utf-8-validate: 5.0.10
+
   xmlhttprequest-ssl@2.1.2: {}
 
   xtend@4.0.2: {}
@@ -4204,6 +4210,6 @@ snapshots:
     optionalDependencies:
       use-sync-external-store: 1.2.0
 
-  zustand@5.0.5(use-sync-external-store@1.2.0):
+  zustand@5.0.6(use-sync-external-store@1.2.0):
     optionalDependencies:
       use-sync-external-store: 1.2.0
