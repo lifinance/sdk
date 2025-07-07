@@ -3,6 +3,7 @@ import { ChainType } from '@lifi/types'
 import type { StepExecutorOptions } from '../types.js'
 import { UTXOStepExecutor } from './UTXOStepExecutor.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
+import { resolveAddress } from './resolveAddress.js'
 import type { UTXOProvider, UTXOProviderOptions } from './types.js'
 
 export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
@@ -12,10 +13,7 @@ export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
       return ChainType.UTXO
     },
     isAddress: isUTXOAddress,
-    async resolveAddress(name) {
-      // Not supported on UTXO yet
-      return name
-    },
+    resolveAddress,
     getBalance: getUTXOBalance,
     async getStepExecutor(
       options: StepExecutorOptions
