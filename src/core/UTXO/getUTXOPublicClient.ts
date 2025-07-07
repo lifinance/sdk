@@ -39,7 +39,17 @@ const publicClients: Record<
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getUTXOPublicClient = async (chainId: number) => {
+export const getUTXOPublicClient = async (
+  chainId: number
+): Promise<
+  Client<
+    FallbackTransport<readonly HttpTransport[]>,
+    Chain,
+    Account | undefined,
+    UTXOSchema,
+    PublicActions & WalletActions
+  >
+> => {
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
     const fallbackTransports = urls.map((url) =>
