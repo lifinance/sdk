@@ -6,6 +6,7 @@ import type {
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
+import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
 export type ConfirmedTransactionResult = {
@@ -43,45 +44,48 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  const pollPromises = connections.map(async (connection) => {
+  for (const connection of connections) {
+    connection
+      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
+      .catch()
+  }
+
+  const pollPromises = connections.map((connection) =>
+    pollTransactionConfirmation(txSignature, connection)
+  )
+
+  const resultPromises = connections.map(async (connection, index) => {
+    let isConfirmed = false
     const blockhashResult = await connection.getLatestBlockhash('confirmed')
     let blockHeight = await connection.getBlockHeight('confirmed')
-    let isConfirmed = false
 
     while (
-      !isConfirmed &&
-      blockHeight <= blockhashResult.lastValidBlockHeight
+      blockHeight <= blockhashResult.lastValidBlockHeight &&
+      !isConfirmed
     ) {
-      const sentSignature = await connection.sendRawTransaction(
-        signedTxSerialized,
-        rawTransactionOptions
-      )
-
-      isConfirmed = await pollTransactionConfirmation(sentSignature, connection)
-
-      if (isConfirmed) {
-        break
-      }
-
+      connection
+        .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
+        .catch()
       blockHeight = await connection.getBlockHeight('confirmed')
+      isConfirmed = Boolean(
+        await Promise.race([pollPromises[index], sleep(1000)])
+      )
+      if (isConfirmed) {
+        return {
+          signatureResult: { err: null },
+          txSignature,
+        }
+      }
     }
 
-    if (!isConfirmed) {
-      throw new Error('Transaction confirmation failed')
-    }
-
-    return {
-      signatureResult: { err: null },
-      txSignature,
-    }
+    throw new Error('Transaction confirmation failed')
   })
 
-  return await Promise.any(pollPromises).catch((err) => ({
+  return await Promise.any(resultPromises).catch((err) => ({
     signatureResult: { err },
     txSignature,
   }))
 }
-
 async function pollTransactionConfirmation(
   txtSig: TransactionSignature,
   connection: Connection
