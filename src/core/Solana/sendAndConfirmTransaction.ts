@@ -66,7 +66,6 @@ export async function sendAndConfirmTransaction(
       connection
         .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
         .catch()
-      blockHeight = await connection.getBlockHeight('confirmed')
       isConfirmed = Boolean(
         await Promise.race([pollPromises[index], sleep(1000)])
       )
@@ -76,6 +75,7 @@ export async function sendAndConfirmTransaction(
           txSignature,
         }
       }
+      blockHeight = await connection.getBlockHeight('confirmed')
     }
 
     throw new Error('Transaction confirmation failed')
