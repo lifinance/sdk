@@ -22,17 +22,16 @@ import { mempool } from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 
+type PublicClient = Client<
+  FallbackTransport<readonly HttpTransport[]>,
+  Chain,
+  Account | undefined,
+  UTXOSchema,
+  PublicActions & WalletActions
+>
+
 // cached providers
-const publicClients: Record<
-  number,
-  Client<
-    FallbackTransport<readonly HttpTransport[]>,
-    Chain,
-    Account | undefined,
-    UTXOSchema,
-    PublicActions & WalletActions
-  >
-> = {}
+const publicClients: Record<number, PublicClient> = {}
 
 /**
  * Get an instance of a provider for a specific chain
@@ -41,15 +40,7 @@ const publicClients: Record<
  */
 export const getUTXOPublicClient = async (
   chainId: number
-): Promise<
-  Client<
-    FallbackTransport<readonly HttpTransport[]>,
-    Chain,
-    Account | undefined,
-    UTXOSchema,
-    PublicActions & WalletActions
-  >
-> => {
+): Promise<PublicClient> => {
   if (!publicClients[chainId]) {
     const urls = await getRpcUrls(chainId)
     const fallbackTransports = urls.map((url) =>
