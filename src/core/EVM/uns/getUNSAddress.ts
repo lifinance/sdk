@@ -21,11 +21,17 @@ export const getUNSAddress = async (
 
     const nameHash = namehash(name)
 
-    const unsChain = CHAIN_ID_UNS_CHAIN_MAP[chain] || 'ETH'
+    const unsChain = CHAIN_ID_UNS_CHAIN_MAP[chain]
 
     const address =
-      (await getUnsAddress(L2Client, { name: nameHash, chain: unsChain })) ||
-      (await getUnsAddress(L1Client, { name: nameHash, chain: unsChain }))
+      (await getUnsAddress(L2Client, {
+        name: nameHash,
+        chain: unsChain,
+      })) ||
+      (await getUnsAddress(L1Client, {
+        name: nameHash,
+        chain: unsChain,
+      }))
 
     return address || undefined
   } catch (_) {
@@ -37,6 +43,7 @@ export const getUNSAddress = async (
 type GetUnsAddressParameters = {
   chain: string
   name: string
+  token?: string
 }
 
 type GetUnsAddressReturnType = Address | null
@@ -46,6 +53,8 @@ async function getUnsAddress(
   params: GetUnsAddressParameters
 ): Promise<GetUnsAddressReturnType> {
   const { name, chain } = params
+
+  // TODO: For more robust resolution, we should construct the keys based on the token and not the chain
   const keys = [`crypto.${chain}.address`]
 
   try {
@@ -59,29 +68,41 @@ async function getUnsAddress(
       throw new Error(`UNS contracts not deployed on chain ${chainId}`)
     }
 
+    const readContractAction = getAction(client, readContract, 'readContract')
+
+    const existsReadContractParameters = {
+      abi: UNSProxyReaderABI,
+      address: proxyAddress,
+      functionName: 'exists',
+      args: [BigInt(name)],
+    } as const
+
+    const exists = await readContractAction(existsReadContractParameters)
+
+    if (!exists) {
+      return null
+    }
+
     const readContractParameters = {
       abi: UNSProxyReaderABI,
       address: proxyAddress,
-      // @TODO: call the exists method to check if an address exists before trying to fetch it
       functionName: 'getData',
       args: [keys, BigInt(name)],
     } as const
 
-    const readContractAction = getAction(client, readContract, 'readContract')
     const res = await readContractAction(readContractParameters)
     const [, , addresses] = res
 
-    if (addresses[0] === '0x') {
-      return null
-    }
     const address = addresses[0]
-    if (address === '0x' || address === '') {
+
+    if (
+      address === '0x' ||
+      address === '' ||
+      trim(address as Address) === '0x00'
+    ) {
       return null
     }
 
-    if (trim(address as Address) === '0x00') {
-      return null
-    }
     return address as Address
   } catch {
     return null
