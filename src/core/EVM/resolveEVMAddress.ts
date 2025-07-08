@@ -1,4 +1,4 @@
-import { ChainId } from '../../index.js'
+import { ChainId } from '@lifi/types'
 import { getENSAddress } from './getENSAddress.js'
 import { getUNSAddress } from './uns/getUNSAddress.js'
 
