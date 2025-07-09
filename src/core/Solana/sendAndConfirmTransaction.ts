@@ -1,8 +1,6 @@
 import type {
-  Connection,
   SendOptions,
   SignatureResult,
-  TransactionSignature,
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
@@ -26,7 +24,6 @@ export async function sendAndConfirmTransaction(
   const connections = await getSolanaConnections()
 
   const signedTxSerialized = signedTx.serialize()
-
   // Create transaction hash (signature)
   const txSignature = bs58.encode(signedTx.signatures[0])
 
@@ -44,93 +41,92 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  for (const connection of connections) {
-    connection
-      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-      .catch()
-  }
+  const abortController = new AbortController()
 
-  const pollPromises = connections.map((connection) =>
-    pollTransactionConfirmation(txSignature, connection)
-  )
-
-  const resultPromises = connections.map(async (connection, index) => {
-    let isConfirmed = false
-    const blockhashResult = await connection.getLatestBlockhash('confirmed')
-    let blockHeight = await connection.getBlockHeight('confirmed')
-
-    while (
-      blockHeight <= blockhashResult.lastValidBlockHeight &&
-      !isConfirmed
-    ) {
-      connection
-        .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-        .catch()
-      isConfirmed = Boolean(
-        await Promise.race([pollPromises[index], sleep(1000)])
-      )
-      if (isConfirmed) {
-        return {
-          signatureResult: { err: null },
-          txSignature,
-        }
-      }
-      blockHeight = await connection.getBlockHeight('confirmed')
-    }
-
-    throw new Error('Transaction confirmation failed')
-  })
-
-  return await Promise.any(resultPromises).catch((err) => ({
-    signatureResult: { err },
-    txSignature,
-  }))
-}
-async function pollTransactionConfirmation(
-  txtSig: TransactionSignature,
-  connection: Connection
-): Promise<boolean> {
-  // 1s timeout
-  const timeout = 1000
-  // .4s polling interval
-  const interval = 400
-  const startTime = Date.now()
-
-  const checkStatus = async () => {
+  const confirmPromises = connections.map(async (connection) => {
     try {
-      const status = await connection.getSignatureStatuses([txtSig])
-      return status?.value[0]?.confirmationStatus === 'confirmed'
-    } catch (_) {
-      return false
-    }
-  }
-
-  // Initial check
-  const isConfirmed = await checkStatus()
-  if (isConfirmed) {
-    return true
-  }
-
-  return new Promise<boolean>((resolve, reject) => {
-    const intervalId = setInterval(async () => {
+      // Send initial transaction for this connection
       try {
-        const elapsed = Date.now() - startTime
-        if (elapsed >= timeout) {
-          clearInterval(intervalId)
-          reject(new Error(`Transaction ${txtSig}'s confirmation timed out`))
-          return
-        }
-
-        const isConfirmed = await checkStatus()
-
-        if (isConfirmed) {
-          clearInterval(intervalId)
-          resolve(true)
-        }
-      } catch (e) {
-        clearInterval(intervalId)
-        reject(e)
+        await connection.sendRawTransaction(
+          signedTxSerialized,
+          rawTransactionOptions
+        )
+      } catch (_) {
+        // Continue with confirmation even if initial send fails
       }
-    }, interval)
+
+      const [blockhashResult, initialBlockHeight] = await Promise.all([
+        connection.getLatestBlockhash('confirmed'),
+        connection.getBlockHeight('confirmed'),
+      ])
+      let currentBlockHeight = initialBlockHeight
+      let signatureResult: SignatureResult | null = null
+
+      const pollingPromise = (async () => {
+        while (
+          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          !abortController.signal.aborted
+        ) {
+          const statusResponse = await connection.getSignatureStatuses([
+            txSignature,
+          ])
+
+          const status = statusResponse.value[0]
+          if (
+            status &&
+            (status.confirmationStatus === 'confirmed' ||
+              status.confirmationStatus === 'finalized')
+          ) {
+            signatureResult = status
+            // Immediately abort all other connections when we find a result
+            abortController.abort()
+            return status
+          }
+
+          await sleep(400)
+        }
+        return null
+      })()
+
+      const sendingPromise = (async (): Promise<SignatureResult | null> => {
+        while (
+          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          !abortController.signal.aborted &&
+          !signatureResult
+        ) {
+          try {
+            await connection.sendRawTransaction(
+              signedTxSerialized,
+              rawTransactionOptions
+            )
+          } catch (_) {
+            // Continue trying even if individual sends fail
+          }
+
+          await sleep(1000)
+          if (!abortController.signal.aborted) {
+            currentBlockHeight = await connection.getBlockHeight('confirmed')
+          }
+        }
+        return null
+      })()
+
+      // Wait for polling to find the result
+      const result = await Promise.race([pollingPromise, sendingPromise])
+      return result
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        return null // Don't treat abortion as an error
+      }
+      throw error
+    }
   })
+
+  const signatureResult = await Promise.any(confirmPromises).catch(() => null)
+
+  if (!abortController.signal.aborted) {
+    abortController.abort()
+  }
+
+  return { signatureResult, txSignature }
 }
