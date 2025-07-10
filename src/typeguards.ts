@@ -72,7 +72,7 @@ const isEstimate = (estimate: Estimate): estimate is Estimate => {
     toAmount !== '' &&
     typeof toAmountMin === 'string' &&
     toAmountMin !== '' &&
-    typeof approvalAddress === 'string'
+    (typeof approvalAddress === 'string' || approvalAddress === null)
   )
 }
 
