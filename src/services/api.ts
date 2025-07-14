@@ -22,6 +22,7 @@ import {
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
+  type SignedLiFiStep,
   type StatusResponse,
   type Token,
   type TokensRequest,
@@ -203,7 +204,7 @@ export const getContractCallsQuote = async (
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getStepTransaction = async (
-  step: LiFiStep,
+  step: LiFiStep | SignedLiFiStep,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {
@@ -330,10 +331,7 @@ export const relayTransaction = async (
   params: RelayRequest,
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
-  const requiredParameters: Array<keyof RelayRequest> = [
-    'typedData',
-    'transactionRequest',
-  ]
+  const requiredParameters: Array<keyof RelayRequest> = ['typedData']
 
   for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
