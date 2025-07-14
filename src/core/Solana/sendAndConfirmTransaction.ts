@@ -41,61 +41,82 @@ export async function sendAndConfirmTransaction(
     preflightCommitment: 'confirmed',
   }
 
-  for (const connection of connections) {
-    connection
-      .sendRawTransaction(signedTxSerialized, rawTransactionOptions)
-      .catch()
-  }
-
-  const abortControllers: AbortController[] = []
+  const abortController = new AbortController()
 
   const confirmPromises = connections.map(async (connection) => {
-    const abortController = new AbortController()
-    abortControllers.push(abortController)
     try {
-      const blockhashResult = await connection.getLatestBlockhash('confirmed')
-
-      const confirmTransactionPromise = connection
-        .confirmTransaction(
-          {
-            signature: txSignature,
-            blockhash: blockhashResult.blockhash,
-            lastValidBlockHeight: blockhashResult.lastValidBlockHeight,
-            abortSignal: abortController.signal,
-          },
-          'confirmed'
-        )
-        .then((result) => result.value)
-
-      let signatureResult: SignatureResult | null = null
-      let blockHeight = await connection.getBlockHeight('confirmed')
-
-      while (
-        !signatureResult &&
-        blockHeight < blockhashResult.lastValidBlockHeight
-      ) {
+      // Send initial transaction for this connection
+      try {
         await connection.sendRawTransaction(
           signedTxSerialized,
           rawTransactionOptions
         )
-        signatureResult = await Promise.race([
-          confirmTransactionPromise,
-          sleep(1000),
-        ])
-
-        if (signatureResult || abortController.signal.aborted) {
-          break
-        }
-
-        blockHeight = await connection.getBlockHeight('confirmed')
+      } catch (_) {
+        // Continue with confirmation even if initial send fails
       }
 
-      abortController.abort()
+      const [blockhashResult, initialBlockHeight] = await Promise.all([
+        connection.getLatestBlockhash('confirmed'),
+        connection.getBlockHeight('confirmed'),
+      ])
+      let currentBlockHeight = initialBlockHeight
+      let signatureResult: SignatureResult | null = null
 
-      return signatureResult
+      const pollingPromise = (async () => {
+        while (
+          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          !abortController.signal.aborted
+        ) {
+          const statusResponse = await connection.getSignatureStatuses([
+            txSignature,
+          ])
+
+          const status = statusResponse.value[0]
+          if (
+            status &&
+            (status.confirmationStatus === 'confirmed' ||
+              status.confirmationStatus === 'finalized')
+          ) {
+            signatureResult = status
+            // Immediately abort all other connections when we find a result
+            abortController.abort()
+            return status
+          }
+
+          await sleep(400)
+        }
+        return null
+      })()
+
+      const sendingPromise = (async (): Promise<SignatureResult | null> => {
+        while (
+          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          !abortController.signal.aborted &&
+          !signatureResult
+        ) {
+          try {
+            await connection.sendRawTransaction(
+              signedTxSerialized,
+              rawTransactionOptions
+            )
+          } catch (_) {
+            // Continue trying even if individual sends fail
+          }
+
+          await sleep(1000)
+          if (!abortController.signal.aborted) {
+            currentBlockHeight = await connection.getBlockHeight('confirmed')
+          }
+        }
+        return null
+      })()
+
+      // Wait for polling to find the result
+      const result = await Promise.race([pollingPromise, sendingPromise])
+      return result
     } catch (error) {
       if (abortController.signal.aborted) {
-        return Promise.reject(new Error('Confirmation aborted.'))
+        return null // Don't treat abortion as an error
       }
       throw error
     }
@@ -103,7 +124,7 @@ export async function sendAndConfirmTransaction(
 
   const signatureResult = await Promise.any(confirmPromises).catch(() => null)
 
-  for (const abortController of abortControllers) {
+  if (!abortController.signal.aborted) {
     abortController.abort()
   }
 
