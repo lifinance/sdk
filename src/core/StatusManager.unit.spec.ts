@@ -2,13 +2,13 @@ import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  SOME_DATE,
   buildRouteObject,
   buildStepObject,
+  SOME_DATE,
 } from '../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../tests/setup.js'
-import { StatusManager } from './StatusManager.js'
 import { executionState } from './executionState.js'
+import { StatusManager } from './StatusManager.js'
 import type {
   ExecutionStatus,
   LiFiStepExtended,

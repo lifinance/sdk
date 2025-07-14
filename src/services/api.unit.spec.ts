@@ -10,7 +10,7 @@ import type {
   TransactionAnalyticsRequest,
 } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { http, HttpResponse } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -24,8 +24,8 @@ import {
 } from 'vitest'
 import { setupTestEnvironment } from '../../tests/setup.js'
 import { config } from '../config.js'
-import { SDKError } from '../errors/SDKError.js'
 import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
 import * as ApiService from './api.js'

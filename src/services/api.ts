@@ -10,15 +10,17 @@ import {
   type GasRecommendationRequest,
   type GasRecommendationResponse,
   type GetStatusRequest,
+  isContractCallsRequestWithFromAmount,
+  isContractCallsRequestWithToAmount,
   type LiFiStep,
   type QuoteRequest,
+  type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
   type RelayResponseData,
   type RelayStatusRequest,
   type RelayStatusResponse,
   type RelayStatusResponseData,
-  type RelayerQuoteResponse,
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
@@ -30,14 +32,12 @@ import {
   type ToolsResponse,
   type TransactionAnalyticsRequest,
   type TransactionAnalyticsResponse,
-  isContractCallsRequestWithFromAmount,
-  isContractCallsRequestWithToAmount,
 } from '@lifi/types'
 import { config } from '../config.js'
-import { SDKError } from '../errors/SDKError.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'

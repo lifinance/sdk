@@ -363,6 +363,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       // Create new transaction request
       if (!step.transactionRequest) {
+        // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         let updatedStep: LiFiStep
         if (isRelayerTransaction) {
@@ -525,6 +526,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (signedNativePermitTypedData) {
           signedTypedData.unshift(signedNativePermitTypedData)
         }
+        // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
           ...stepBase,

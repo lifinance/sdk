@@ -1,5 +1,5 @@
 import type { Address, Client } from 'viem'
-import { http, createClient } from 'viem'
+import { createClient, http } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { polygon } from 'viem/chains'

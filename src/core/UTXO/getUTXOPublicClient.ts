@@ -1,11 +1,3 @@
-import {
-  http,
-  createClient,
-  fallback,
-  publicActions,
-  rpcSchema,
-  walletActions,
-} from '@bigmi/core'
 import type {
   Account,
   Chain,
@@ -16,9 +8,17 @@ import type {
   UTXOSchema,
   WalletActions,
 } from '@bigmi/core'
-import { blockchair } from '@bigmi/core'
-import { blockcypher } from '@bigmi/core'
-import { mempool } from '@bigmi/core'
+import {
+  blockchair,
+  blockcypher,
+  createClient,
+  fallback,
+  http,
+  mempool,
+  publicActions,
+  rpcSchema,
+  walletActions,
+} from '@bigmi/core'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 

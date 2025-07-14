@@ -1,5 +1,5 @@
-import { hashTypedData } from 'viem'
 import type { Address, TypedData, TypedDataDomain } from 'viem'
+import { hashTypedData } from 'viem'
 import { invariant } from '../../../utils/invariant.js'
 import {
   MaxSigDeadline,

@@ -1,9 +1,9 @@
 import { ChainType } from '@lifi/types'
 import { isValidSuiAddress } from '@mysten/sui/utils'
 import type { StepExecutorOptions } from '../types.js'
-import { SuiStepExecutor } from './SuiStepExecutor.js'
 import { getSuiBalance } from './getSuiBalance.js'
 import { getSuiNSAddress } from './getSuiNSAddress.js'
+import { SuiStepExecutor } from './SuiStepExecutor.js'
 import type { SuiProvider, SuiProviderOptions } from './types.js'
 
 export function Sui(options?: SuiProviderOptions): SuiProvider {

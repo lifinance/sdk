@@ -1,3 +1,4 @@
+import type { Address, Client, Hex, TypedDataDomain } from 'viem'
 import {
   encodeAbiParameters,
   keccak256,
@@ -6,8 +7,6 @@ import {
   toBytes,
   toHex,
 } from 'viem'
-import type { Address, Client, Hex } from 'viem'
-import type { TypedDataDomain } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
