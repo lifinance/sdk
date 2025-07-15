@@ -2,20 +2,28 @@
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
 export { config } from './config.js'
+export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
 export {
   getTokenAllowance,
   getTokenAllowanceMulticall,
 } from './core/EVM/getAllowance.js'
 export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
+export { getNativePermit } from './core/EVM/permits/getNativePermit.js'
 export {
   revokeTokenApproval,
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
-export { isGaslessStep, isRelayerStep } from './core/EVM/typeguards.js'
+export {
+  isGaslessStep,
+  isRelayerStep,
+} from './core/EVM/typeguards.js'
 export type { EVMProvider, EVMProviderOptions } from './core/EVM/types.js'
 export { isEVM } from './core/EVM/types.js'
-export { convertExtendedChain, isExtendedChain } from './core/EVM/utils.js'
+export {
+  convertExtendedChain,
+  isExtendedChain,
+} from './core/EVM/utils.js'
 export {
   executeRoute,
   getActiveRoute,
