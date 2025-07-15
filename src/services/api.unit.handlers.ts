@@ -1,6 +1,6 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { http, HttpResponse } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { config } from '../config.js'
 
 const _config = config.get()

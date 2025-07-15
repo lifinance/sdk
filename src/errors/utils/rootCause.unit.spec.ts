@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { SDKError } from '../SDKError.js'
 import { BaseError } from '../baseError.js'
 import { ErrorName, LiFiErrorCode } from '../constants.js'
+import { SDKError } from '../SDKError.js'
 import { getRootCause } from './rootCause.js'
 
 const getErrorChain = () => {

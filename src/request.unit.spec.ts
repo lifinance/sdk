@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import {
   afterAll,
@@ -12,9 +12,9 @@ import {
 } from 'vitest'
 import { setupTestEnvironment } from '../tests/setup.js'
 import { config } from './config.js'
-import { SDKError } from './errors/SDKError.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
+import { SDKError } from './errors/SDKError.js'
 import { request } from './request.js'
 import { handlers } from './services/api.unit.handlers.js'
 import type { SDKBaseConfig } from './types/internal.js'

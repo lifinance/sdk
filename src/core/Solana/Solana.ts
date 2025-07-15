@@ -1,9 +1,9 @@
 import { ChainType } from '@lifi/types'
 import type { StepExecutorOptions } from '../types.js'
-import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import { getSNSAddress } from './getSNSAddress.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 import { isSVMAddress } from './isSVMAddress.js'
+import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import type { SolanaProvider, SolanaProviderOptions } from './types.js'
 
 export function Solana(options?: SolanaProviderOptions): SolanaProvider {

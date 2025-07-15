@@ -1,6 +1,6 @@
 import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
-import { http, createClient, fallback, webSocket } from 'viem'
+import { createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'

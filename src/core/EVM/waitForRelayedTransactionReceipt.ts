@@ -1,5 +1,5 @@
 import type { ExtendedTransactionInfo, LiFiStep } from '@lifi/types'
-import type { Hash, WalletCallReceipt as _WalletCallReceipt } from 'viem'
+import type { WalletCallReceipt as _WalletCallReceipt, Hash } from 'viem'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getRelayedTransactionStatus } from '../../services/api.js'

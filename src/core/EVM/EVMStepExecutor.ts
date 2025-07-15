@@ -203,6 +203,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     step: LiFiStepExtended,
     signedNativePermitTypedData?: SignedTypedData
   ): Promise<LiFiStep> => {
+    // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
     if (isRelayerStep(step) && isGaslessStep(step)) {
       const updatedRelayedStep = await getRelayerQuote({
@@ -549,6 +550,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (signedNativePermitTypedData) {
           signedTypedData.unshift(signedNativePermitTypedData)
         }
+        // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
           ...stepBase,

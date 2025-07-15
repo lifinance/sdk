@@ -1,8 +1,7 @@
-import { signPsbt, waitForTransaction } from '@bigmi/core'
-import type { ReplacementReason } from '@bigmi/core'
-import { type Client, withTimeout } from '@bigmi/core'
+import type { Client, ReplacementReason } from '@bigmi/core'
+import { signPsbt, waitForTransaction, withTimeout } from '@bigmi/core'
 import { ChainId } from '@lifi/types'
-import { Psbt, address, networks } from 'bitcoinjs-lib'
+import { address, networks, Psbt } from 'bitcoinjs-lib'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -83,6 +82,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           // Create new transaction
           if (!step.transactionRequest) {
+            // biome-ignore lint/correctness/noUnusedVariables: destructuring
             const { execution, ...stepBase } = step
             const updatedStep = await getStepTransaction(stepBase)
             const comparedStep = await stepComparison(
