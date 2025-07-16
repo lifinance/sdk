@@ -46,7 +46,7 @@ import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
 import { switchChain } from './switchChain.js'
-import { isRelayerStep } from './typeguards.js'
+import { isGaslessStep, isRelayerStep } from './typeguards.js'
 import type { Call, TransactionMethodType } from './types.js'
 import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
 import {
@@ -197,6 +197,38 @@ export class EVMStepExecutor extends BaseStepExecutor {
       toChain,
       this.statusManager
     )
+  }
+
+  private getUpdatedStep = async (
+    step: LiFiStepExtended,
+    signedNativePermitTypedData?: SignedTypedData
+  ): Promise<LiFiStep> => {
+    // biome-ignore lint/correctness/noUnusedVariables: destructuring
+    const { execution, ...stepBase } = step
+    if (isRelayerStep(step) && isGaslessStep(step)) {
+      const updatedRelayedStep = await getRelayerQuote({
+        fromChain: stepBase.action.fromChainId,
+        fromToken: stepBase.action.fromToken.address,
+        fromAddress: stepBase.action.fromAddress!,
+        fromAmount: stepBase.action.fromAmount,
+        toChain: stepBase.action.toChainId,
+        toToken: stepBase.action.toToken.address,
+        slippage: stepBase.action.slippage,
+        toAddress: stepBase.action.toAddress,
+        allowBridges: [stepBase.tool],
+      })
+      return {
+        ...updatedRelayedStep,
+        id: stepBase.id,
+      }
+    }
+
+    const params =
+      isRelayerStep(step) && !isGaslessStep(step) && signedNativePermitTypedData
+        ? { ...stepBase, typedData: [signedNativePermitTypedData] }
+        : stepBase
+
+    return getStepTransaction(params)
   }
 
   executeStep = async (
@@ -362,28 +394,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
       await checkBalance(this.client.account!.address, step)
 
       // Create new transaction request
-      if (!step.transactionRequest) {
-        const { execution, ...stepBase } = step
-        let updatedStep: LiFiStep
-        if (isRelayerTransaction) {
-          const updatedRelayedStep = await getRelayerQuote({
-            fromChain: stepBase.action.fromChainId,
-            fromToken: stepBase.action.fromToken.address,
-            fromAddress: stepBase.action.fromAddress!,
-            fromAmount: stepBase.action.fromAmount,
-            toChain: stepBase.action.toChainId,
-            toToken: stepBase.action.toToken.address,
-            slippage: stepBase.action.slippage,
-            toAddress: stepBase.action.toAddress,
-            allowBridges: [stepBase.tool],
-          })
-          updatedStep = {
-            ...updatedRelayedStep,
-            id: stepBase.id,
-          }
-        } else {
-          updatedStep = await getStepTransaction(stepBase)
-        }
+      if (
+        !step.transactionRequest &&
+        !step.typedData?.some((p) => p.primaryType !== 'Permit')
+      ) {
+        const updatedStep = await this.getUpdatedStep(
+          step,
+          signedNativePermitTypedData
+        )
         const comparedStep = await stepComparison(
           this.statusManager,
           step,
@@ -397,38 +415,47 @@ export class EVMStepExecutor extends BaseStepExecutor {
         })
       }
 
-      if (!step.transactionRequest) {
+      if (
+        !step.transactionRequest &&
+        !step.typedData?.some((p) => p.primaryType !== 'Permit')
+      ) {
         throw new TransactionError(
           LiFiErrorCode.TransactionUnprepared,
           'Unable to prepare transaction.'
         )
       }
 
-      let transactionRequest: TransactionParameters = {
-        to: step.transactionRequest.to,
-        from: step.transactionRequest.from,
-        data: step.transactionRequest.data,
-        value: step.transactionRequest.value
-          ? BigInt(step.transactionRequest.value)
-          : undefined,
-        gas: step.transactionRequest.gasLimit
-          ? BigInt(step.transactionRequest.gasLimit)
-          : undefined,
-        // gasPrice: step.transactionRequest.gasPrice
-        //   ? BigInt(step.transactionRequest.gasPrice as string)
-        //   : undefined,
-        // maxFeePerGas: step.transactionRequest.maxFeePerGas
-        //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
-        //   : undefined,
-        maxPriorityFeePerGas:
-          this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(this.client)
-            : step.transactionRequest.maxPriorityFeePerGas
-              ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
-              : undefined,
+      let transactionRequest: TransactionParameters | undefined
+      if (step.transactionRequest) {
+        transactionRequest = {
+          to: step.transactionRequest.to,
+          from: step.transactionRequest.from,
+          data: step.transactionRequest.data,
+          value: step.transactionRequest.value
+            ? BigInt(step.transactionRequest.value)
+            : undefined,
+          gas: step.transactionRequest.gasLimit
+            ? BigInt(step.transactionRequest.gasLimit)
+            : undefined,
+          // gasPrice: step.transactionRequest.gasPrice
+          //   ? BigInt(step.transactionRequest.gasPrice as string)
+          //   : undefined,
+          // maxFeePerGas: step.transactionRequest.maxFeePerGas
+          //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
+          //   : undefined,
+          maxPriorityFeePerGas:
+            this.client.account?.type === 'local'
+              ? await getMaxPriorityFeePerGas(this.client)
+              : step.transactionRequest.maxPriorityFeePerGas
+                ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
+                : undefined,
+        }
       }
 
-      if (this.executionOptions?.updateTransactionRequestHook) {
+      if (
+        this.executionOptions?.updateTransactionRequestHook &&
+        transactionRequest
+      ) {
         const customizedTransactionRequest: TransactionParameters =
           await this.executionOptions.updateTransactionRequestHook({
             requestType: 'transaction',
@@ -460,7 +487,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       let txHash: Hash
       let txType: TransactionMethodType = 'standard'
 
-      if (batchingSupported) {
+      if (batchingSupported && transactionRequest) {
         const transferCall: Call = {
           chainId: fromChain.id,
           data: transactionRequest.data as Hex,
@@ -482,9 +509,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         txType = 'batched'
       } else if (isRelayerTransaction) {
         const relayerTypedData = step.typedData.find(
-          (p) =>
-            p.primaryType === 'PermitWitnessTransferFrom' ||
-            p.primaryType === 'Order'
+          (p) => p.primaryType !== 'Permit'
         )
 
         if (!relayerTypedData) {
@@ -525,6 +550,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (signedNativePermitTypedData) {
           signedTypedData.unshift(signedNativePermitTypedData)
         }
+        // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
           ...stepBase,
@@ -533,6 +559,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
         txHash = relayedTransaction.taskId as Hash
         txType = 'relayed'
       } else {
+        if (!transactionRequest) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionUnprepared,
+            'Unable to prepare transaction. Transaction request is not found.'
+          )
+        }
         if (signedNativePermitTypedData) {
           transactionRequest.data = encodeNativePermitData(
             step.action.fromToken.address as Address,

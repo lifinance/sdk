@@ -10,18 +10,21 @@ import {
   type GasRecommendationRequest,
   type GasRecommendationResponse,
   type GetStatusRequest,
+  isContractCallsRequestWithFromAmount,
+  isContractCallsRequestWithToAmount,
   type LiFiStep,
   type QuoteRequest,
+  type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
   type RelayResponseData,
   type RelayStatusRequest,
   type RelayStatusResponse,
   type RelayStatusResponseData,
-  type RelayerQuoteResponse,
   type RequestOptions,
   type RoutesRequest,
   type RoutesResponse,
+  type SignedLiFiStep,
   type StatusResponse,
   type Token,
   type TokensRequest,
@@ -30,14 +33,12 @@ import {
   type ToolsResponse,
   type TransactionAnalyticsRequest,
   type TransactionAnalyticsResponse,
-  isContractCallsRequestWithFromAmount,
-  isContractCallsRequestWithToAmount,
 } from '@lifi/types'
 import { config } from '../config.js'
-import { SDKError } from '../errors/SDKError.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
@@ -203,7 +204,7 @@ export const getContractCallsQuote = async (
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getStepTransaction = async (
-  step: LiFiStep,
+  step: LiFiStep | SignedLiFiStep,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {
@@ -330,10 +331,7 @@ export const relayTransaction = async (
   params: RelayRequest,
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
-  const requiredParameters: Array<keyof RelayRequest> = [
-    'typedData',
-    'transactionRequest',
-  ]
+  const requiredParameters: Array<keyof RelayRequest> = ['typedData']
 
   for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {

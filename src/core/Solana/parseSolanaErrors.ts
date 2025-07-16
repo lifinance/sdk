@@ -1,8 +1,8 @@
 import type { LiFiStep } from '@lifi/types'
-import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, UnknownError } from '../../errors/errors.js'
+import { SDKError } from '../../errors/SDKError.js'
 import type { Process } from '../types.js'
 
 export const parseSolanaErrors = async (

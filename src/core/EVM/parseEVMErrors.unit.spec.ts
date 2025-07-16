@@ -2,7 +2,6 @@ import type { LiFiStep } from '@lifi/types'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import {
   ErrorMessage,
@@ -10,6 +9,7 @@ import {
   LiFiErrorCode,
 } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import { SDKError } from '../../errors/SDKError.js'
 import * as helpers from '../../utils/fetchTxErrorDetails.js'
 import type { Process } from '../types.js'
 import { parseEVMErrors } from './parseEVMErrors.js'

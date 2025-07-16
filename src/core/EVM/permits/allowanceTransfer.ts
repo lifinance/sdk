@@ -1,8 +1,8 @@
 import {
   type Address,
+  hashTypedData,
   type TypedData,
   type TypedDataDomain,
-  hashTypedData,
 } from 'viem'
 import { MaxUint48, MaxUint160 } from '../../../constants.js'
 import { invariant } from '../../../utils/invariant.js'

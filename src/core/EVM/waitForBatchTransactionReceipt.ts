@@ -1,7 +1,7 @@
 import type {
+  WalletCallReceipt as _WalletCallReceipt,
   Client,
   Hash,
-  WalletCallReceipt as _WalletCallReceipt,
 } from 'viem'
 import { waitForCallsStatus } from 'viem/actions'
 import { getAction } from 'viem/utils'

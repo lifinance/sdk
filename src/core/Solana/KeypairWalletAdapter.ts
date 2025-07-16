@@ -5,10 +5,10 @@ import type {
 } from '@solana/wallet-adapter-base'
 import {
   BaseSignerWalletAdapter,
+  isVersionedTransaction,
   WalletConfigError,
   WalletNotConnectedError,
   WalletReadyState,
-  isVersionedTransaction,
 } from '@solana/wallet-adapter-base'
 import type {
   Transaction,

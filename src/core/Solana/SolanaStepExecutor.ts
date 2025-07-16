@@ -62,6 +62,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         // Create new transaction
         if (!step.transactionRequest) {
+          // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
           const updatedStep = await getStepTransaction(stepBase)
           const comparedStep = await stepComparison(

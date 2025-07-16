@@ -1,6 +1,6 @@
 import type { LiFiStep, Route } from '@lifi/types'
-import { SDKError } from '../errors/SDKError.js'
 import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 
 /**
  * Converts a quote to Route

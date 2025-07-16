@@ -1,11 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { buildStepObject } from '../../../tests/fixtures.js'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { SDKError } from '../../errors/SDKError.js'
 import { BaseError } from '../../errors/baseError.js'
 import { ErrorName, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import { SDKError } from '../../errors/SDKError.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
+
 beforeAll(setupTestEnvironment)
 
 describe('parseSolanaStepError', () => {
