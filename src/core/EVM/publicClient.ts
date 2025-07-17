@@ -1,10 +1,11 @@
 import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
-import { createClient, fallback, http, webSocket } from 'viem'
+import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 import type { EVMProvider } from './types.js'
+import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
 // cached providers
 const publicClients: Record<number, Client> = {}
@@ -46,6 +47,17 @@ export const getPublicClient = async (chainId: number): Promise<Client> => {
       ...chain.contracts,
     }
   }
+
+  // Add UNS contracts for supported chains
+  if (chain.id === ChainId.ETH || chain.id === ChainId.POL) {
+    const unsProxyAddress = UNS_PROXY_READER_ADDRESSES[chain.id]
+
+    chain.contracts = {
+      ...chain.contracts,
+      unsProxyReader: { address: unsProxyAddress as Address },
+    }
+  }
+
   const provider = config.getProvider(ChainType.EVM) as EVMProvider | undefined
   publicClients[chainId] = createClient({
     chain: chain,
