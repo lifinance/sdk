@@ -94,23 +94,23 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.4.0",
+    "@bigmi/core": "^0.4.2",
     "@lifi/types": "^17.22.0",
     "@mysten/sui": "^1.36.0",
     "@mysten/wallet-standard": "^0.16.5",
-    "@noble/curves": "^1.9.2",
+    "@noble/curves": "^1.9.4",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.2",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.31.7"
+    "viem": "^2.32.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.1",
+    "@biomejs/biome": "^2.1.2",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@lifi/data-types": "^6.22.0",
+    "@lifi/data-types": "^6.23.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.4",
