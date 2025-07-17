@@ -1,9 +1,12 @@
-import { ChainId } from '@lifi/types'
-import { getENSAddress } from './getENSAddress.js'
-import { getUNSAddress } from './uns/getUNSAddress.js'
+import { ChainType } from '@lifi/types'
+import { resolveENSAddress } from './resolveENSAddress.js'
+import { resolveUNSAddress } from './uns/resolveUNSAddress.js'
 
 export async function resolveEVMAddress(
   name: string
 ): Promise<string | undefined> {
-  return (await getENSAddress(name)) || (await getUNSAddress(name, ChainId.ETH))
+  return (
+    (await resolveENSAddress(name)) ||
+    (await resolveUNSAddress(name, ChainType.EVM))
+  )
 }

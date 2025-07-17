@@ -1,4 +1,4 @@
-import { ChainId } from '@lifi/types'
+import { ChainId, ChainType } from '@lifi/types'
 import type { Address } from 'viem'
 
 export const UNS_PROXY_READER_ADDRESSES: Record<number, Address> = {
@@ -55,10 +55,9 @@ export const UNSProxyReaderABI = [
   },
 ] as const
 
-export const CHAIN_ID_UNS_CHAIN_MAP: Record<number, string> = {
-  [ChainId.POL]: 'ETH',
-  [ChainId.ETH]: 'ETH',
-  [ChainId.BTC]: 'BTC',
-  [ChainId.SUI]: 'SUI',
-  [ChainId.SOL]: 'SOL',
+export const CHAIN_TYPE_UNS_CHAIN_MAP: Record<ChainType, string> = {
+  [ChainType.EVM]: 'ETH',
+  [ChainType.UTXO]: 'BTC',
+  [ChainType.MVM]: 'SUI',
+  [ChainType.SVM]: 'SOL',
 }

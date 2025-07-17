@@ -1,4 +1,4 @@
-import { ChainId } from '@lifi/types'
+import { ChainId, type ChainType } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
@@ -6,14 +6,14 @@ import { getAction, trim } from 'viem/utils'
 import { getPublicClient } from '../publicClient.js'
 
 import {
-  CHAIN_ID_UNS_CHAIN_MAP,
-  UNSProxyReaderABI,
+  CHAIN_TYPE_UNS_CHAIN_MAP,
   getUNSProxyAddress,
+  UNSProxyReaderABI,
 } from './constants.js'
 
-export const getUNSAddress = async (
+export const resolveUNSAddress = async (
   name: string,
-  chain: ChainId
+  chainType: ChainType
 ): Promise<string | undefined> => {
   try {
     const L1Client = await getPublicClient(ChainId.ETH)
@@ -21,7 +21,7 @@ export const getUNSAddress = async (
 
     const nameHash = namehash(name)
 
-    const unsChain = CHAIN_ID_UNS_CHAIN_MAP[chain]
+    const unsChain = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
 
     const address =
       (await getUnsAddress(L2Client, {
@@ -65,7 +65,7 @@ async function getUnsAddress(
 
     const proxyAddress = getUNSProxyAddress(chainId)
     if (!proxyAddress) {
-      throw new Error(`UNS contracts not deployed on chain ${chainId}`)
+      throw new Error(`UNS contracts are not deployed on chain ${chainId}`)
     }
 
     const readContractAction = getAction(client, readContract, 'readContract')

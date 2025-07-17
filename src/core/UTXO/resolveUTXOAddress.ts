@@ -1,8 +1,8 @@
-import { ChainId } from '@lifi/types'
-import { getUNSAddress } from '../EVM/uns/getUNSAddress.js'
+import { ChainType } from '@lifi/types'
+import { resolveUNSAddress } from '../EVM/uns/resolveUNSAddress.js'
 
 export async function resolveUTXOAddress(
   name: string
 ): Promise<string | undefined> {
-  return (await getUNSAddress(name, ChainId.BTC)) || name
+  return (await resolveUNSAddress(name, ChainType.UTXO)) || name
 }

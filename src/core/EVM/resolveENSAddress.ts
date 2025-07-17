@@ -2,7 +2,7 @@ import { ChainId } from '@lifi/types'
 import { getEnsAddress, normalize } from 'viem/ens'
 import { getPublicClient } from './publicClient.js'
 
-export const getENSAddress = async (
+export const resolveENSAddress = async (
   name: string
 ): Promise<string | undefined> => {
   try {
