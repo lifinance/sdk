@@ -32,6 +32,7 @@ import type {
   LiFiStepExtended,
   Process,
   StepExecutorOptions,
+  TransactionMethodType,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
@@ -47,7 +48,7 @@ import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
 import { switchChain } from './switchChain.js'
 import { isGaslessStep, isRelayerStep } from './typeguards.js'
-import type { Call, TransactionMethodType } from './types.js'
+import type { Call } from './types.js'
 import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
 import {
   type WalletCallReceipt,

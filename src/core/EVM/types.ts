@@ -57,5 +57,3 @@ export type Call = {
   value?: bigint
   chainId?: number
 }
-
-export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
