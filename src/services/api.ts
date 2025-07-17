@@ -9,7 +9,6 @@ import {
   type ExtendedChain,
   type GasRecommendationRequest,
   type GasRecommendationResponse,
-  type GetStatusRequest,
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
@@ -42,6 +41,7 @@ import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
+import type { GetStatusRequestExtended } from './types.js'
 
 /**
  * Get a quote for a token transfer
@@ -233,7 +233,7 @@ export const getStepTransaction = async (
  * @returns Returns status response.
  */
 export const getStatus = async (
-  params: GetStatusRequest,
+  params: GetStatusRequestExtended,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
   if (!params.txHash) {

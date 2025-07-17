@@ -175,3 +175,5 @@ export interface Execution {
   feeCosts?: FeeCost[]
   gasCosts?: GasCost[]
 }
+
+export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

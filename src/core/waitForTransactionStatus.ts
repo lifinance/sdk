@@ -4,15 +4,16 @@ import { getStatus } from '../services/api.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
 import type { StatusManager } from './StatusManager.js'
-import type { ProcessType } from './types.js'
+import type { ProcessType, TransactionMethodType } from './types.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
 export async function waitForTransactionStatus(
-  txHash: string,
   statusManager: StatusManager,
-  processType: ProcessType,
+  txHash: string,
   step: LiFiStep,
+  processType: ProcessType,
+  processTxType?: TransactionMethodType,
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
@@ -21,6 +22,9 @@ export async function waitForTransactionStatus(
       toChain: step.action.toChainId,
       txHash,
       ...(step.tool !== 'custom' && { bridge: step.tool }),
+      ...(processTxType === 'relayed' && {
+        fromAddress: step.action.fromAddress,
+      }),
     })
       .then((statusResponse) => {
         switch (statusResponse.status) {
