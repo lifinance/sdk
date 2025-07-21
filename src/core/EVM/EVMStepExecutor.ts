@@ -15,7 +15,7 @@ import {
   sendTransaction,
   signTypedData,
 } from 'viem/actions'
-import { getAction, isHex } from 'viem/utils'
+import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -651,22 +651,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
         } as SendTransactionParameters)
       }
 
-      // Sometimes txHash can represent a batch hash or taskId rather than an individual transaction hash
-      // Those hashes might not be valid hex strings and should not be used to generate a txLink
-      const validatedTxHash = isHex(txHash, { strict: true })
-        ? txHash
-        : undefined
       process = this.statusManager.updateProcess(
         step,
         process.type,
         'PENDING',
         // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
         {
+          txHash,
           txType,
-          txHash: validatedTxHash,
           txLink:
-            txType === 'standard' && validatedTxHash
-              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${validatedTxHash}`
+            txType === 'standard'
+              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
               : undefined,
         }
       )
