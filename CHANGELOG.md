@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.8.1](https://github.com/lifinance/sdk/compare/v3.8.0...v3.8.1) (2025-07-17)
+
+
+### Bug Fixes
+
+* improve status handling for relayed transaction ([#284](https://github.com/lifinance/sdk/issues/284)) ([4ebfcf3](https://github.com/lifinance/sdk/commit/4ebfcf379708588df96eace55c90bf474db789d6))
+* validate txHash format before generating transaction link ([#283](https://github.com/lifinance/sdk/issues/283)) ([829e2d2](https://github.com/lifinance/sdk/commit/829e2d2c7c18403e9dd8cc6634823d50b93027c1))
+
 ## [3.8.0](https://github.com/lifinance/sdk/compare/v3.8.0-beta.1...v3.8.0) (2025-07-15)
 
 ### [3.7.11](https://github.com/lifinance/sdk/compare/v3.7.10...v3.7.11) (2025-07-04)

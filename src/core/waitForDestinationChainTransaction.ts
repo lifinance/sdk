@@ -38,10 +38,11 @@ export async function waitForDestinationChainTransaction(
     }
 
     const statusResponse = (await waitForTransactionStatus(
-      transactionHash,
       statusManager,
-      processType,
+      transactionHash,
       step,
+      processType,
+      process.txType,
       pollingInterval
     )) as FullStatusData
 
