@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.8.5](https://github.com/lifinance/sdk/compare/v3.8.4...v3.8.5) (2025-07-23)
+
+
+### Bug Fixes
+
+* refine error handling for relayed transaction receipt checks ([8e50744](https://github.com/lifinance/sdk/commit/8e50744a1b106862db7ac682ea36cf07e54b086f))
+
 ### [3.8.4](https://github.com/lifinance/sdk/compare/v3.8.3...v3.8.4) (2025-07-23)
 
 
