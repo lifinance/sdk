@@ -55,7 +55,10 @@ export const waitForRelayedTransactionReceipt = async (
     5000,
     3,
     (_, error) => {
-      return !(error instanceof TransactionError)
+      return !(
+        error instanceof TransactionError &&
+        error.code === LiFiErrorCode.TransactionFailed
+      )
     }
   )
 }
