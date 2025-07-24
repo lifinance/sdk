@@ -98,6 +98,7 @@ export {
   getContractCallsQuote,
   getGasRecommendation,
   getQuote,
+  getRelayedTransactionStatus,
   getRelayerQuote,
   getRoutes,
   getStatus,
@@ -106,6 +107,7 @@ export {
   getTokens,
   getTools,
   getTransactionHistory,
+  relayTransaction,
 } from './services/api.js'
 export {
   getTokenBalance,
