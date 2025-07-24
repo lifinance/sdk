@@ -1,5 +1,5 @@
 import { ChainType } from '@lifi/types'
-import { resolveUNSAddress } from '../EVM/uns/resolveUNSAddress.js'
+import { resolveUNSAddress } from '../uns/resolveUNSAddress.js'
 
 export async function resolveUTXOAddress(
   name: string

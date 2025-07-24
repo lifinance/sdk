@@ -3,7 +3,7 @@ import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
 import { getAction, trim } from 'viem/utils'
-import { getPublicClient } from '../publicClient.js'
+import { getPublicClient } from '../EVM/publicClient.js'
 
 import {
   CHAIN_TYPE_UNS_CHAIN_MAP,

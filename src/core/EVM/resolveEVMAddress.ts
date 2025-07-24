@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
+import { resolveUNSAddress } from '../uns/resolveUNSAddress.js'
 import { resolveENSAddress } from './resolveENSAddress.js'
-import { resolveUNSAddress } from './uns/resolveUNSAddress.js'
 
 export async function resolveEVMAddress(
   name: string
