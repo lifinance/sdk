@@ -25,7 +25,7 @@ import {
   type RoutesResponse,
   type SignedLiFiStep,
   type StatusResponse,
-  type Token,
+  type TokenExtended,
   type TokensRequest,
   type TokensResponse,
   type ToolsRequest,
@@ -492,7 +492,7 @@ export const getToken = async (
   chain: ChainKey | ChainId,
   token: string,
   options?: RequestOptions
-): Promise<Token> => {
+): Promise<TokenExtended> => {
   if (!chain) {
     throw new SDKError(
       new ValidationError('Required parameter "chain" is missing.')
@@ -503,7 +503,7 @@ export const getToken = async (
       new ValidationError('Required parameter "token" is missing.')
     )
   }
-  return await request<Token>(
+  return await request<TokenExtended>(
     `${config.getApiUrl()}/token?${new URLSearchParams({
       chain,
       token,
