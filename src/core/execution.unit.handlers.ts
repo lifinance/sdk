@@ -7,10 +7,10 @@ import {
   mockStepTransactionWithTxRequest,
 } from './execution.unit.mock.js'
 
-const _config = config.get()
+const apiUrl = config.getApiUrl()
 
 export const lifiHandlers = [
-  http.post(`${_config.apiUrl}/advanced/stepTransaction`, async () =>
+  http.post(`${apiUrl}/advanced/stepTransaction`, async () =>
     HttpResponse.json(
       mockStepTransactionWithTxRequest(
         buildStepObject({
@@ -19,12 +19,10 @@ export const lifiHandlers = [
       )
     )
   ),
-  http.get(`${_config.apiUrl}/chains`, async () =>
+  http.get(`${apiUrl}/chains`, async () =>
     HttpResponse.json({
       chains: mockChainsResponse,
     })
   ),
-  http.get(`${_config.apiUrl}/status`, async () =>
-    HttpResponse.json(mockStatus)
-  ),
+  http.get(`${apiUrl}/status`, async () => HttpResponse.json(mockStatus)),
 ]
