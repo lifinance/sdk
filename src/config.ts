@@ -6,6 +6,7 @@ export const config = (() => {
   const _config: SDKBaseConfig = {
     integrator: 'lifi-sdk',
     apiUrl: 'https://li.quest/v1',
+    apiV2Url: 'https://li.quest/v2',
     rpcUrls: {},
     chains: [],
     providers: [],
@@ -19,6 +20,12 @@ export const config = (() => {
     },
     get() {
       return _config
+    },
+    getApiUrl(version: 'v1' | 'v2' = 'v1'): string {
+      if (version === 'v2' && _config.apiV2Url) {
+        return _config.apiV2Url
+      }
+      return _config.apiUrl
     },
     set(options: SDKConfig) {
       const { chains, providers, rpcUrls, ...otherOptions } = options

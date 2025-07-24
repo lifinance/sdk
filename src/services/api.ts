@@ -625,8 +625,9 @@ export const getTransactionHistory = async (
   }
 
   const _config = config.get()
+  const apiUrl = config.getApiUrl('v2')
 
-  const url = new URL(`${_config.apiUrl}/analytics/transfers`)
+  const url = new URL(`${apiUrl}/analytics/transfers`)
 
   url.searchParams.append('integrator', _config.integrator)
   url.searchParams.append('wallet', wallet)
