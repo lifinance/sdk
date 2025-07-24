@@ -3,8 +3,12 @@ import type { SDKProvider } from '../core/types.js'
 
 export interface SDKBaseConfig {
   apiKey?: string
-  apiUrl: string
-  apiV2Url?: string
+  apiUrl:
+    | string
+    | {
+        v1: string
+        v2: string
+      }
   integrator: string
   userId?: string
   providers: SDKProvider[]

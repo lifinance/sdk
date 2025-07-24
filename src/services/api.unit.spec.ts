@@ -540,7 +540,7 @@ describe('ApiService', () => {
   describe('getAvailableConnections', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/connections`, async () =>
+        http.get(`${config.getApiUrl()}/connections`, async () =>
           HttpResponse.json({ connections: [] })
         )
       )

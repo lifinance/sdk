@@ -92,7 +92,7 @@ export const getQuote = async (
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/quote?${new URLSearchParams(
+    `${config.getApiUrl()}/quote?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -123,14 +123,17 @@ export const getRoutes = async (
     ...params.options,
   }
 
-  return await request<RoutesResponse>(`${_config.apiUrl}/advanced/routes`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-    signal: options?.signal,
-  })
+  return await request<RoutesResponse>(
+    `${config.getApiUrl()}/advanced/routes`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -186,7 +189,7 @@ export const getContractCallsQuote = async (
   params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
   params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
   // send request
-  return await request<LiFiStep>(`${_config.apiUrl}/quote/contractCalls`, {
+  return await request<LiFiStep>(`${config.getApiUrl()}/quote/contractCalls`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -213,7 +216,7 @@ export const getStepTransaction = async (
   }
 
   return await request<LiFiStep>(
-    `${config.get().apiUrl}/advanced/stepTransaction`,
+    `${config.getApiUrl()}/advanced/stepTransaction`,
     {
       method: 'POST',
       headers: {
@@ -245,7 +248,7 @@ export const getStatus = async (
     params as unknown as Record<string, string>
   )
   return await request<StatusResponse>(
-    `${config.get().apiUrl}/status?${queryParams}`,
+    `${config.getApiUrl()}/status?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -301,7 +304,7 @@ export const getRelayerQuote = async (
   }
 
   const result = await request<RelayerQuoteResponse>(
-    `${config.get().apiUrl}/relayer/quote?${new URLSearchParams(
+    `${config.getApiUrl()}/relayer/quote?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -344,7 +347,7 @@ export const relayTransaction = async (
   }
 
   const result = await request<RelayResponse>(
-    `${config.get().apiUrl}/relayer/relay`,
+    `${config.getApiUrl()}/relayer/relay`,
     {
       method: 'POST',
       headers: {
@@ -393,7 +396,7 @@ export const getRelayedTransactionStatus = async (
     otherParams as unknown as Record<string, string>
   )
   const result = await request<RelayStatusResponse>(
-    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    `${config.getApiUrl()}/relayer/status/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -434,7 +437,7 @@ export const getChains = async (
   const response = await withDedupe(
     () =>
       request<ChainsResponse>(
-        `${config.get().apiUrl}/chains?${urlSearchParams}`,
+        `${config.getApiUrl()}/chains?${urlSearchParams}`,
         {
           signal: options?.signal,
         }
@@ -467,7 +470,7 @@ export const getTokens = async (
   const response = await withDedupe(
     () =>
       request<TokensResponse>(
-        `${config.get().apiUrl}/tokens?${urlSearchParams}`,
+        `${config.getApiUrl()}/tokens?${urlSearchParams}`,
         {
           signal: options?.signal,
         }
@@ -501,7 +504,7 @@ export const getToken = async (
     )
   }
   return await request<Token>(
-    `${config.get().apiUrl}/token?${new URLSearchParams({
+    `${config.getApiUrl()}/token?${new URLSearchParams({
       chain,
       token,
     } as Record<string, string>)}`,
@@ -529,7 +532,7 @@ export const getTools = async (
     }
   }
   return await request<ToolsResponse>(
-    `${config.get().apiUrl}/tools?${new URLSearchParams(
+    `${config.getApiUrl()}/tools?${new URLSearchParams(
       params as Record<string, string>
     )}`,
     {
@@ -555,7 +558,7 @@ export const getGasRecommendation = async (
     )
   }
 
-  const url = new URL(`${config.get().apiUrl}/gas/suggestion/${params.chainId}`)
+  const url = new URL(`${config.getApiUrl()}/gas/suggestion/${params.chainId}`)
   if (params.fromChain) {
     url.searchParams.append('fromChain', params.fromChain as unknown as string)
   }
@@ -578,7 +581,7 @@ export const getConnections = async (
   connectionRequest: ConnectionsRequest,
   options?: RequestOptions
 ): Promise<ConnectionsResponse> => {
-  const url = new URL(`${config.get().apiUrl}/connections`)
+  const url = new URL(`${config.getApiUrl()}/connections`)
 
   const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
@@ -625,9 +628,8 @@ export const getTransactionHistory = async (
   }
 
   const _config = config.get()
-  const apiUrl = config.getApiUrl('v2')
 
-  const url = new URL(`${apiUrl}/analytics/transfers`)
+  const url = new URL(`${config.getApiUrl('v2')}/analytics/transfers`)
 
   url.searchParams.append('integrator', _config.integrator)
   url.searchParams.append('wallet', wallet)
