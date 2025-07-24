@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.8.7](https://github.com/lifinance/sdk/compare/v3.8.6...v3.8.7) (2025-07-24)
+
+
+### Bug Fixes
+
+* update token types ([75d7688](https://github.com/lifinance/sdk/commit/75d76882ad56ace173c63b8a5c66847ba49ebc1d))
+
 ### [3.8.6](https://github.com/lifinance/sdk/compare/v3.8.5...v3.8.6) (2025-07-24)
 
 
