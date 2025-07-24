@@ -574,7 +574,7 @@ describe('ApiService', () => {
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiV2Url}/analytics/transfers`, async () =>
+        http.get(`${config.getApiUrl('v2')}/analytics/transfers`, async () =>
           HttpResponse.json({})
         )
       )
