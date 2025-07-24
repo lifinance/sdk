@@ -34,7 +34,6 @@ import { handlers } from './api.unit.handlers.js'
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
-  const _config = config.get()
   const server = setupServer(...handlers)
   beforeAll(() => {
     setupTestEnvironment()
