@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.24.0
-        version: 6.24.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+        specifier: ^6.26.0
+        version: 6.26.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.8.2
-        version: 3.8.2(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.8.5
+        version: 3.8.5(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.9.0
         version: 5.9.0(@wagmi/core@2.18.0(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -28,8 +28,8 @@ importers:
         version: 2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     devDependencies:
       '@types/node':
-        specifier: ^24.0.15
-        version: 24.0.15
+        specifier: ^24.1.0
+        version: 24.1.0
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
@@ -279,16 +279,16 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.24.0':
-    resolution: {integrity: sha512-zgcVn0zGWIhG1u14rnk1DXHnX4cwIpK6wvF3GUYBacmFKk/2MbIumMQdLlM764+rLMM0bImBQQXNtU7e6urgxw==}
+  '@lifi/data-types@6.26.0':
+    resolution: {integrity: sha512-/duiWzVzOGXxzPu6RAUPC03Zy02bJEq0GSPOCT/4Et/1gcmAEd4vHHk96ceQ80dILJsFEQF/Xqx57Y2/rv3t4g==}
 
-  '@lifi/sdk@3.8.2':
-    resolution: {integrity: sha512-cwY2FPcntMDdK44jZiGJKaf7wiRTelL2yP0qzJ5iICBp3NrfL9camWo2Ik1o6VzUN3TzqdxBSIT2NXHPZdh5Qw==}
+  '@lifi/sdk@3.8.5':
+    resolution: {integrity: sha512-F4CKuJpsjxY/au54zVk6WxBxsdZWqjzG02Gzx375YrVqs7Q+Yi/Xh3IHGn+5gWj8gFot/2fgs4v+eliTSUx7yw==}
     peerDependencies:
       viem: ^2.21.0
 
-  '@lifi/types@17.23.0':
-    resolution: {integrity: sha512-Gv475IPlJeIXOYOe6FM4gaJoKedXVnQAhuK50R44QbTc+olHDIFEDR1diafaMSHweMdWF0YbbKzI/r98CcgXiQ==}
+  '@lifi/types@17.26.0':
+    resolution: {integrity: sha512-lfd+YNc5ApmNTGnn5V8a/3rNU8odBMdh7CTJNToPeuEnsXlAxEFKN6d1/ou7PH9MLvtrfBbypo+j3tzFT5XDgQ==}
 
   '@lit-labs/ssr-dom-shim@1.4.0':
     resolution: {integrity: sha512-ficsEARKnmmW5njugNYKipTm4SFnbik7CXtoencDZzmzo/dQ+2Q0bgkzJuoJP20Aj0F+izzJjOqsnkd6F/o1bw==}
@@ -368,15 +368,15 @@ packages:
   '@mysten/bcs@1.6.4':
     resolution: {integrity: sha512-HBBrqMtnVp5vy12efJYhj/HnOYGu+x5SqRQpnOJEHEkxypGZ01WNFoCNw7USzDSyJvPauhqdzUXzR+lYM1D5/g==}
 
-  '@mysten/sui@1.36.1':
-    resolution: {integrity: sha512-3QmILnc2BpV8sdr5bfJpf6ipE4L6gnm8BDvE5Jk4W1WZPgWMAly39fYsOKCc4TYB013zwxRRStplHdBAGPwX8Q==}
+  '@mysten/sui@1.36.2':
+    resolution: {integrity: sha512-TRRdzJBa+ZvAQwwjvagecmWNALP6G4oqum8E+959D17KJKBwR5uY9TvlWzUR7dnjNWXIju7OH6KEqgah9hKzUw==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.1.1':
     resolution: {integrity: sha512-jvhJC6/2la1QHltukQXzfyTZ+VVHxe187JjPx+mEXRUWyAo6jCSdioOQJIfaGu4K4i+37KeiydXRwV/bq/7UJQ==}
 
-  '@mysten/wallet-standard@0.16.6':
-    resolution: {integrity: sha512-VZUB6WpoBMUxUnZ/uLjJOnYt8D4gDsPe7S5DY25jIKSHXyWXzDWhXGSwRahjzWqBpCF8yjyRU833zpCLcIfaWg==}
+  '@mysten/wallet-standard@0.16.7':
+    resolution: {integrity: sha512-xWTQYmeIxQ00wppCZKnGRqsnFL0JovxMrqlsfCIwBoVzgYp7xPzlAPjv1cFc4hABDj+PEfd1fCwcnXN8xd8uiw==}
 
   '@noble/ciphers@1.2.1':
     resolution: {integrity: sha512-rONPWMC7PeExE077uLE4oqWrZ1IvAfz3oH9LibVAcVCopJiA9R62uavnbEzdkVmJYI6M6Zgkbeb07+tWjlq2XA==}
@@ -540,8 +540,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@24.0.15':
-    resolution: {integrity: sha512-oaeTSbCef7U/z7rDeJA138xpG3NuKc64/rZ2qmUFkFJmnMsAPaluIifqyWd8hSSMxyP9oie3dLAqYPblag9KgA==}
+  '@types/node@24.1.0':
+    resolution: {integrity: sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -1374,8 +1374,8 @@ packages:
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
-  rpc-websockets@9.1.1:
-    resolution: {integrity: sha512-1IXGM/TfPT6nfYMIXkJdzn+L4JEsmb0FL1O2OBjaH03V3yuUDdKFulGLMFG6ErV+8pZ5HVC0limve01RyO+saA==}
+  rpc-websockets@9.1.2:
+    resolution: {integrity: sha512-fvA0JfSqWmJsq0FqLnl51DPRMqPer7hcIqqLwuhgAUOWrLVuJhmNeL+Y4Ds5PdoX/NyUhUWoflL6A7bT93Xfkg==}
 
   safe-buffer@5.1.2:
     resolution: {integrity: sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==}
@@ -2002,21 +2002,21 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@lifi/data-types@6.24.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/data-types@6.26.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
-      '@lifi/types': 17.23.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@lifi/types': 17.26.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.8.2(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.8.5(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
       '@bigmi/core': 0.4.2(typescript@5.8.3)(use-sync-external-store@1.2.0)
-      '@lifi/types': 17.23.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
-      '@mysten/sui': 1.36.1(typescript@5.8.3)
-      '@mysten/wallet-standard': 0.16.6(typescript@5.8.3)
+      '@lifi/types': 17.26.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@mysten/sui': 1.36.2(typescript@5.8.3)
+      '@mysten/wallet-standard': 0.16.7(typescript@5.8.3)
       '@noble/curves': 1.9.4
       '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.98.2(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)
@@ -2037,7 +2037,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.23.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/types@17.26.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       viem: 2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
@@ -2213,7 +2213,7 @@ snapshots:
       '@mysten/utils': 0.1.1
       '@scure/base': 1.2.6
 
-  '@mysten/sui@1.36.1(typescript@5.8.3)':
+  '@mysten/sui@1.36.2(typescript@5.8.3)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
       '@mysten/bcs': 1.6.4
@@ -2236,9 +2236,9 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/wallet-standard@0.16.6(typescript@5.8.3)':
+  '@mysten/wallet-standard@0.16.7(typescript@5.8.3)':
     dependencies:
-      '@mysten/sui': 1.36.1(typescript@5.8.3)
+      '@mysten/sui': 1.36.2(typescript@5.8.3)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
@@ -2632,7 +2632,7 @@ snapshots:
       fast-stable-stringify: 1.0.0
       jayson: 4.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       node-fetch: 2.7.0
-      rpc-websockets: 9.1.1
+      rpc-websockets: 9.1.2
       superstruct: 2.0.2
     transitivePeerDependencies:
       - bufferutil
@@ -2646,7 +2646,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 24.0.15
+      '@types/node': 24.1.0
 
   '@types/debug@4.1.12':
     dependencies:
@@ -2656,7 +2656,7 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@24.0.15':
+  '@types/node@24.1.0':
     dependencies:
       undici-types: 7.8.0
 
@@ -2666,11 +2666,11 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 24.0.15
+      '@types/node': 24.1.0
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 24.0.15
+      '@types/node': 24.1.0
 
   '@wagmi/connectors@5.9.0(@wagmi/core@2.18.0(typescript@5.8.3)(use-sync-external-store@1.2.0)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.8.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
@@ -4012,7 +4012,7 @@ snapshots:
 
   resolve-pkg-maps@1.0.0: {}
 
-  rpc-websockets@9.1.1:
+  rpc-websockets@9.1.2:
     dependencies:
       '@swc/helpers': 0.5.17
       '@types/uuid': 8.3.4
