@@ -574,7 +574,7 @@ describe('ApiService', () => {
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/analytics/transfers`, async () =>
+        http.get(`${_config.apiV2Url}/analytics/transfers`, async () =>
           HttpResponse.json({})
         )
       )
@@ -586,7 +586,7 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        'https://li.quest/v1/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
+        'https://li.quest/v2/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
         ApiService.getTransactionHistory(walletAnalyticsRequest)
