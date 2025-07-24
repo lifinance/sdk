@@ -15,7 +15,7 @@ import {
   sendTransaction,
   signTypedData,
 } from 'viem/actions'
-import { getAction, isHex } from 'viem/utils'
+import { getAction } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -206,7 +206,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStep> => {
     // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
-    if (isRelayerStep(step) && isGaslessStep(step)) {
+    const relayerStep = isRelayerStep(step)
+    const gaslessStep = isGaslessStep(step)
+    if (relayerStep && gaslessStep) {
       const updatedRelayedStep = await getRelayerQuote({
         fromChain: stepBase.action.fromChainId,
         fromToken: stepBase.action.fromToken.address,
@@ -225,7 +227,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     const params =
-      isRelayerStep(step) && !isGaslessStep(step) && signedNativePermitTypedData
+      relayerStep && !gaslessStep && signedNativePermitTypedData
         ? { ...stepBase, typedData: [signedNativePermitTypedData] }
         : stepBase
 
@@ -258,6 +260,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const fromChain = await config.getChainById(step.action.fromChainId)
     const toChain = await config.getChainById(step.action.toChainId)
 
+    // Check if step requires permit signature and will be used with relayer service
+    const isRelayerTransaction = isRelayerStep(step)
+
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
 
@@ -267,10 +272,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const batchingSupported =
       atomicityNotReady || step.tool === 'thorswap'
         ? false
-        : await isBatchingSupported({
+        : !isRelayerTransaction &&
+          (await isBatchingSupported({
             client: this.client,
             chainId: fromChain.id,
-          })
+          }))
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -283,9 +289,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
-
-    // Check if step requires permit signature and will be used with relayer service
-    const isRelayerTransaction = isRelayerStep(step)
 
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
@@ -651,22 +654,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
         } as SendTransactionParameters)
       }
 
-      // Sometimes txHash can represent a batch hash or taskId rather than an individual transaction hash
-      // Those hashes might not be valid hex strings and should not be used to generate a txLink
-      const validatedTxHash = isHex(txHash, { strict: true })
-        ? txHash
-        : undefined
       process = this.statusManager.updateProcess(
         step,
         process.type,
         'PENDING',
         // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
         {
+          txHash,
           txType,
-          txHash: validatedTxHash,
           txLink:
-            txType === 'standard' && validatedTxHash
-              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${validatedTxHash}`
+            txType === 'standard'
+              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
               : undefined,
         }
       )

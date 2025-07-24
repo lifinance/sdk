@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.8.5](https://github.com/lifinance/sdk/compare/v3.8.4...v3.8.5) (2025-07-23)
+
+
+### Bug Fixes
+
+* refine error handling for relayed transaction receipt checks ([8e50744](https://github.com/lifinance/sdk/commit/8e50744a1b106862db7ac682ea36cf07e54b086f))
+
+### [3.8.4](https://github.com/lifinance/sdk/compare/v3.8.3...v3.8.4) (2025-07-23)
+
+
+### Bug Fixes
+
+* optimize relayer and gasless step checks ([231a008](https://github.com/lifinance/sdk/commit/231a0086dc918d28fcf7d5b1f7f5fe903d9fafb3))
+
+### [3.8.3](https://github.com/lifinance/sdk/compare/v3.8.2...v3.8.3) (2025-07-21)
+
+### [3.8.2](https://github.com/lifinance/sdk/compare/v3.8.1...v3.8.2) (2025-07-21)
+
+
+### Bug Fixes
+
+* remove custom hash validation ([b7f130b](https://github.com/lifinance/sdk/commit/b7f130b2b7495d7c7ba456743a91a2220f1b5a89))
+
 ### [3.8.1](https://github.com/lifinance/sdk/compare/v3.8.0...v3.8.1) (2025-07-17)
 
 
