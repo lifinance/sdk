@@ -98,3 +98,44 @@ export const getTokenBalancesByChain = async (
   }
   return tokenAmountsByChain
 }
+
+/**
+ * Returns the balances of all tokens a wallet holds across all aggregated chains.
+ * @param walletAddress - A wallet address.
+ * @returns An object containing the tokens and the amounts organized by chain ids.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ */
+export const getWalletBalances = async (
+  walletAddress: string
+): Promise<{ [chainId: number]: TokenAmount[] }> => {
+  if (!walletAddress) {
+    throw new ValidationError('Missing walletAddress.')
+  }
+
+  try {
+    const response = await fetch(
+      `https://develop.li.quest/v1/wallets/${walletAddress}/balances`
+    )
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const balanceMap: { [chainId: number]: TokenAmount[] } = {}
+    for (const balance of data?.balances || []) {
+      const tokensWithAmount = balance.tokens.filter((t: any) => t.amount > 0)
+      const chainId = Number(balance.chainId)
+      if (balanceMap[chainId]) {
+        balanceMap[chainId].push(...tokensWithAmount)
+      } else {
+        balanceMap[chainId] = tokensWithAmount
+      }
+    }
+    return balanceMap
+  } catch (error) {
+    if (config.get().debug) {
+      console.warn("Couldn't fetch wallet balances.", error)
+    }
+    return {}
+  }
+}

@@ -10,6 +10,7 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   balance,
   'getTokenBalancesByChain'
 )
+const mockedGetWalletBalances = vi.spyOn(balance, 'getWalletBalances')
 
 describe('Balance service tests', () => {
   beforeEach(() => {
@@ -162,6 +163,39 @@ describe('Balance service tests', () => {
         )
 
         expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
+        expect(result).toEqual(balanceResponse)
+      })
+    })
+  })
+
+  describe('getWalletBalances', () => {
+    describe('user input is invalid', () => {
+      it('should throw Error because of missing walletAddress', async () => {
+        await expect(balance.getWalletBalances('')).rejects.toThrow(
+          'Missing walletAddress.'
+        )
+      })
+    })
+
+    describe('user input is valid', () => {
+      it('should call the balance service', async () => {
+        const balanceResponse = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123n,
+              blockNumber: 1n,
+            },
+          ],
+        }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(SOME_WALLET_ADDRESS)
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
         expect(result).toEqual(balanceResponse)
       })
     })
