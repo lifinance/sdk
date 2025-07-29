@@ -1,6 +1,7 @@
-import type { Token, TokenAmount } from '@lifi/types'
+import type { RequestOptions, Token, TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
 import { ValidationError } from '../errors/errors.js'
+import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
 
 /**
@@ -106,23 +107,25 @@ export const getTokenBalancesByChain = async (
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getWalletBalances = async (
-  walletAddress: string
+  walletAddress: string,
+  options?: RequestOptions
 ): Promise<{ [chainId: number]: TokenAmount[] }> => {
   if (!walletAddress) {
     throw new ValidationError('Missing walletAddress.')
   }
 
   try {
-    const response = await fetch(
-      `https://develop.li.quest/v1/wallets/${walletAddress}/balances`
+    // TODO: add response type once BE is finished
+    const response = await request<any>(
+      `${config.get().apiUrl}/wallets/${walletAddress}/balances`,
+      {
+        signal: options?.signal,
+      }
     )
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`)
-    }
 
-    const data = await response.json()
     const balanceMap: { [chainId: number]: TokenAmount[] } = {}
-    for (const balance of data?.balances || []) {
+    for (const balance of response?.balances || []) {
+      // TODO: add type once BE is finished
       const tokensWithAmount = balance.tokens.filter((t: any) => t.amount > 0)
       const chainId = Number(balance.chainId)
       if (balanceMap[chainId]) {
