@@ -21,10 +21,8 @@ export const config = (() => {
       return _config
     },
     getApiUrl(version: 'v1' | 'v2' = 'v1'): string {
-      if (_config.apiUrl.endsWith('v1') || _config.apiUrl.endsWith('v2')) {
-        return _config.apiUrl
-      }
-      return `${_config.apiUrl}/${version}`
+      const baseUrl = _config.apiUrl.replace(/\/v[12]\/?$/, '')
+      return `${baseUrl}/${version}`
     },
     set(options: SDKConfig) {
       const { chains, providers, rpcUrls, ...otherOptions } = options
