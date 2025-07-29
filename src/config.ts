@@ -21,6 +21,9 @@ export const config = (() => {
       return _config
     },
     getApiUrl(version: 'v1' | 'v2' = 'v1'): string {
+      if (_config.apiUrl.endsWith('v1') || _config.apiUrl.endsWith('v2')) {
+        return _config.apiUrl
+      }
       return `${_config.apiUrl}/${version}`
     },
     set(options: SDKConfig) {
