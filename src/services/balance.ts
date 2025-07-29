@@ -69,24 +69,29 @@ export const getTokenBalancesByChain = async (
     throw new ValidationError('Invalid tokens passed.')
   }
 
+  const provider = config
+    .get()
+    .providers.find((provider) => provider.isAddress(walletAddress))
+  if (!provider) {
+    throw new Error(`SDK Token Provider for ${walletAddress} is not found.`)
+  }
+
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr)
       const chain = await config.getChainById(chainId)
-      const provider = config
-        .get()
-        .providers.find((provider) => provider.isAddress(walletAddress))
-      if (!provider) {
-        throw new Error(
-          `SDK Token Provider for ${chain.chainType} is not found.`
+      if (provider.type === chain.chainType) {
+        const tokenAmounts = await provider.getBalance(
+          walletAddress,
+          tokensByChain[chainId]
         )
+        tokenAmountsByChain[chainId] = tokenAmounts
+      } else {
+        // if the provider is not the same as the chain type,
+        // return the tokens as is
+        tokenAmountsByChain[chainId] = tokensByChain[chainId]
       }
-      const tokenAmounts = await provider.getBalance(
-        walletAddress,
-        tokensByChain[chainId]
-      )
-      tokenAmountsByChain[chainId] = tokenAmounts
     })
   )
   if (config.get().debug) {
