@@ -12,6 +12,8 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
+  type PaginatedResponse,
+  type PaginationQuery,
   type QuoteRequest,
   type RelayerQuoteResponse,
   type RelayRequest,
@@ -37,7 +39,6 @@ import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import type { PaginatedResponse, PaginationQuery } from '../index.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
