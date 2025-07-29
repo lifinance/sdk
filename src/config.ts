@@ -5,10 +5,7 @@ import type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 export const config = (() => {
   const _config: SDKBaseConfig = {
     integrator: 'lifi-sdk',
-    apiUrl: {
-      v1: 'https://li.quest/v1',
-      v2: 'https://li.quest/v2',
-    },
+    apiUrl: 'https://li.quest',
     rpcUrls: {},
     chains: [],
     providers: [],
@@ -24,10 +21,7 @@ export const config = (() => {
       return _config
     },
     getApiUrl(version: 'v1' | 'v2' = 'v1'): string {
-      if (typeof _config.apiUrl === 'string') {
-        return _config.apiUrl
-      }
-      return _config.apiUrl[version]
+      return `${_config.apiUrl}/${version}`
     },
     set(options: SDKConfig) {
       const { chains, providers, rpcUrls, ...otherOptions } = options

@@ -31,13 +31,13 @@ import {
   type ToolsRequest,
   type ToolsResponse,
   type TransactionAnalyticsRequest,
-  type TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { config } from '../config.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import type { PaginatedResponse, PaginationQuery } from '../index.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
@@ -618,9 +618,17 @@ export const getConnections = async (
 }
 
 export const getTransactionHistory = async (
-  { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
+  {
+    wallet,
+    status,
+    fromTimestamp,
+    toTimestamp,
+    limit,
+    next,
+    previous,
+  }: TransactionAnalyticsRequest & PaginationQuery,
   options?: RequestOptions
-): Promise<TransactionAnalyticsResponse> => {
+): Promise<PaginatedResponse<StatusResponse[]>> => {
   if (!wallet) {
     throw new SDKError(
       new ValidationError('Required parameter "wallet" is missing.')
@@ -630,7 +638,6 @@ export const getTransactionHistory = async (
   const _config = config.get()
 
   const url = new URL(`${config.getApiUrl('v2')}/analytics/transfers`)
-
   url.searchParams.append('integrator', _config.integrator)
   url.searchParams.append('wallet', wallet)
 
@@ -646,5 +653,17 @@ export const getTransactionHistory = async (
     url.searchParams.append('toTimestamp', toTimestamp.toString())
   }
 
-  return await request<TransactionAnalyticsResponse>(url, options)
+  if (limit) {
+    url.searchParams.append('limit', limit.toString())
+  }
+
+  if (next) {
+    url.searchParams.append('next', next.toString())
+  }
+
+  if (previous) {
+    url.searchParams.append('previous', previous.toString())
+  }
+
+  return await request<PaginatedResponse<StatusResponse[]>>(url, options)
 }
