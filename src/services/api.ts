@@ -624,7 +624,7 @@ export const getTransactionHistory = async (
     status,
     fromTimestamp,
     toTimestamp,
-    limit,
+    limit = 1000,
     next,
     previous,
   }: TransactionAnalyticsRequest & PaginationQuery,
@@ -641,6 +641,7 @@ export const getTransactionHistory = async (
   const url = new URL(`${config.getApiUrl('v2')}/analytics/transfers`)
   url.searchParams.append('integrator', _config.integrator)
   url.searchParams.append('wallet', wallet)
+  url.searchParams.append('limit', limit.toString())
 
   if (status) {
     url.searchParams.append('status', status)
@@ -652,10 +653,6 @@ export const getTransactionHistory = async (
 
   if (toTimestamp) {
     url.searchParams.append('toTimestamp', toTimestamp.toString())
-  }
-
-  if (limit) {
-    url.searchParams.append('limit', limit.toString())
   }
 
   if (next) {
