@@ -2,6 +2,7 @@ import { isUTXOAddress } from '@bigmi/core'
 import { ChainType } from '@lifi/types'
 import type { StepExecutorOptions } from '../types.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
+import { resolveUTXOAddress } from './resolveUTXOAddress.js'
 import type { UTXOProvider, UTXOProviderOptions } from './types.js'
 import { UTXOStepExecutor } from './UTXOStepExecutor.js'
 
@@ -12,10 +13,7 @@ export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
       return ChainType.UTXO
     },
     isAddress: isUTXOAddress,
-    async resolveAddress(name) {
-      // Not supported on UTXO yet
-      return name
-    },
+    resolveAddress: resolveUTXOAddress,
     getBalance: getUTXOBalance,
     async getStepExecutor(
       options: StepExecutorOptions
