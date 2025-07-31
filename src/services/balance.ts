@@ -1,6 +1,7 @@
-import type { Token, TokenAmount } from '@lifi/types'
+import type { RequestOptions, Token, TokenAmount } from '@lifi/types'
 import { config } from '../config.js'
 import { ValidationError } from '../errors/errors.js'
+import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
 
 /**
@@ -102,4 +103,47 @@ export const getTokenBalancesByChain = async (
     }
   }
   return tokenAmountsByChain
+}
+
+/**
+ * Returns the balances of all tokens a wallet holds across all aggregated chains.
+ * @param walletAddress - A wallet address.
+ * @returns An object containing the tokens and the amounts organized by chain ids.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ */
+export const getWalletBalances = async (
+  walletAddress: string,
+  options?: RequestOptions
+): Promise<{ [chainId: number]: TokenAmount[] }> => {
+  if (!walletAddress) {
+    throw new ValidationError('Missing walletAddress.')
+  }
+
+  try {
+    // TODO: add response type once BE is finished
+    const response = await request<any>(
+      `${config.get().apiUrl}/wallets/${walletAddress}/balances`,
+      {
+        signal: options?.signal,
+      }
+    )
+
+    const balanceMap: { [chainId: number]: TokenAmount[] } = {}
+    for (const balance of response?.balances || []) {
+      // TODO: add type once BE is finished
+      const tokensWithAmount = balance.tokens.filter((t: any) => t.amount > 0)
+      const chainId = Number(balance.chainId)
+      if (balanceMap[chainId]) {
+        balanceMap[chainId].push(...tokensWithAmount)
+      } else {
+        balanceMap[chainId] = tokensWithAmount
+      }
+    }
+    return balanceMap
+  } catch (error) {
+    if (config.get().debug) {
+      console.warn("Couldn't fetch wallet balances.", error)
+    }
+    return {}
+  }
 }
