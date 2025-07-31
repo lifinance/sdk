@@ -48,12 +48,9 @@ import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
 import { switchChain } from './switchChain.js'
 import { isGaslessStep, isRelayerStep } from './typeguards.js'
-import type { Call } from './types.js'
+import type { Call, WalletCallReceipt } from './types.js'
 import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
-import {
-  type WalletCallReceipt,
-  waitForBatchTransactionReceipt,
-} from './waitForBatchTransactionReceipt.js'
+import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
@@ -182,7 +179,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         'PENDING',
         {
           txHash: transactionReceipt.transactionHash,
-          txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
+          txLink:
+            (transactionReceipt as WalletCallReceipt).transactionLink ||
+            `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
         }
       )
     }
@@ -261,7 +260,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const toChain = await config.getChainById(step.action.toChainId)
 
     // Check if step requires permit signature and will be used with relayer service
-    const isRelayerTransaction = isRelayerStep(step)
+    let isRelayerTransaction = isRelayerStep(step)
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
@@ -417,6 +416,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           ...comparedStep,
           execution: step.execution,
         })
+        isRelayerTransaction = isRelayerStep(comparedStep)
       }
 
       if (
@@ -512,7 +512,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         txHash = id as Hash
         txType = 'batched'
       } else if (isRelayerTransaction) {
-        const relayerTypedData = step.typedData.find(
+        const relayerTypedData = step.typedData?.find(
           (p) => p.primaryType !== 'Permit'
         )
 
