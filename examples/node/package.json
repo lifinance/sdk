@@ -7,10 +7,10 @@
   "author": "LI.FI <github@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^6.27.0",
-    "@lifi/sdk": "^3.8.7",
-    "@wagmi/connectors": "^5.9.0",
-    "@wagmi/core": "^2.18.0",
+    "@lifi/data-types": "^6.27.1",
+    "@lifi/sdk": "^3.8.8",
+    "@wagmi/connectors": "^5.9.1",
+    "@wagmi/core": "^2.18.1",
     "dotenv": "^17.2.1",
     "viem": "^2.33.2"
   },
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/node": "^24.1.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.2"
   },
   "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
 }
