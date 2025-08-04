@@ -1,7 +1,15 @@
 import type { Client, ReplacementReason } from '@bigmi/core'
-import { signPsbt, waitForTransaction, withTimeout } from '@bigmi/core'
+import {
+  AddressType,
+  getAddressInfo,
+  hexToUnit8Array,
+  signPsbt,
+  waitForTransaction,
+  withTimeout,
+} from '@bigmi/core'
+import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
-import { address, networks, Psbt } from 'bitcoinjs-lib'
+import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -17,7 +25,7 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
-import { isPsbtFinalized } from './utils.js'
+import { isPsbtFinalized, toXOnly } from './utils.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -142,8 +150,30 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           this.checkClient(step)
 
           const psbtHex = transactionRequest.data
+          initEccLib(ecc)
 
           const psbt = Psbt.fromHex(psbtHex, { network: networks.bitcoin })
+
+          psbt.data.inputs.forEach((input, index) => {
+            const accountAddress = input.witnessUtxo
+              ? address.fromOutputScript(
+                  input.witnessUtxo.script,
+                  networks.bitcoin
+                )
+              : (this.client.account?.address as string)
+            const addressInfo = getAddressInfo(accountAddress)
+            if (addressInfo.type === AddressType.p2tr) {
+              if (!input.tapInternalKey) {
+                const pubKey = this.client.account?.publicKey
+                if (pubKey) {
+                  const tapInternalKey = toXOnly(hexToUnit8Array(pubKey))
+                  psbt.updateInput(index, {
+                    tapInternalKey,
+                  })
+                }
+              }
+            }
+          })
 
           const inputsToSign = Array.from(
             psbt.data.inputs
@@ -172,7 +202,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           const signedPsbtHex = await withTimeout(
             () =>
               signPsbt(this.client, {
-                psbt: psbtHex,
+                psbt: psbt.toHex(),
                 inputsToSign: inputsToSign,
                 finalize: false,
               }),

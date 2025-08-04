@@ -8,3 +8,6 @@ export function isPsbtFinalized(psbt: Psbt): boolean {
     return false
   }
 }
+
+export const toXOnly = (pubKey: Uint8Array) =>
+  pubKey.length === 32 ? pubKey : pubKey.subarray(1, 33)
