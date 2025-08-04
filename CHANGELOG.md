@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.8.10](https://github.com/lifinance/sdk/compare/v3.8.9...v3.8.10) (2025-08-04)
+
+
+### Bug Fixes
+
+* always pass from address to status ([#291](https://github.com/lifinance/sdk/issues/291)) ([af70d9c](https://github.com/lifinance/sdk/commit/af70d9c9c3b6efd9ac2d5c026203525d8a0c834e))
+
 ### [3.8.9](https://github.com/lifinance/sdk/compare/v3.8.8...v3.8.9) (2025-08-01)
 
 ### [3.8.8](https://github.com/lifinance/sdk/compare/v3.8.7...v3.8.8) (2025-07-31)
