@@ -3,7 +3,6 @@ import {
   AddressType,
   getAddressInfo,
   hexToUnit8Array,
-  // hexToUnit8Array,
   signPsbt,
   waitForTransaction,
   withTimeout,
