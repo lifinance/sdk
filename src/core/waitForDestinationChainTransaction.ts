@@ -42,7 +42,6 @@ export async function waitForDestinationChainTransaction(
       transactionHash,
       step,
       processType,
-      process.txType,
       pollingInterval
     )) as FullStatusData
 
