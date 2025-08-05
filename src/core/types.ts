@@ -1,5 +1,7 @@
 import type {
+  ChainId,
   ChainType,
+  CoinKey,
   FeeCost,
   GasCost,
   LiFiStep,
@@ -14,7 +16,11 @@ import type { Client } from 'viem'
 export interface SDKProvider {
   readonly type: ChainType
   isAddress(address: string): boolean
-  resolveAddress(name: string): Promise<string | undefined>
+  resolveAddress(
+    name: string,
+    chainId?: ChainId,
+    token?: CoinKey
+  ): Promise<string | undefined>
   getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor>
   getBalance(walletAddress: string, tokens: Token[]): Promise<TokenAmount[]>
 }

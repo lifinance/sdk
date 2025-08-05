@@ -1,4 +1,4 @@
-import { ChainId, type ChainType } from '@lifi/types'
+import { ChainId, type CoinKey } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
@@ -6,6 +6,7 @@ import { getAction, trim } from 'viem/utils'
 import { getPublicClient } from '../EVM/publicClient.js'
 
 import {
+  CHAIN_ID_FAMILY_MAP,
   CHAIN_TYPE_UNS_CHAIN_MAP,
   getUNSProxyAddress,
   UNSProxyReaderABI,
@@ -13,7 +14,8 @@ import {
 
 export const resolveUNSAddress = async (
   name: string,
-  chainType: ChainType
+  chain: ChainId,
+  token?: CoinKey
 ): Promise<string | undefined> => {
   try {
     const L1Client = await getPublicClient(ChainId.ETH)
@@ -21,26 +23,42 @@ export const resolveUNSAddress = async (
 
     const nameHash = namehash(name)
 
-    const unsChain = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
+    const family = CHAIN_ID_FAMILY_MAP[chain]
+    const unschain = CHAIN_TYPE_UNS_CHAIN_MAP[chain]
 
-    const address =
-      (await getUnsAddress(L2Client, {
-        name: nameHash,
-        chain: unsChain,
-      })) ||
-      (await getUnsAddress(L1Client, {
-        name: nameHash,
-        chain: unsChain,
-      }))
+    if (!family) {
+      throw new Error(`Unsupported network: ${chain}`)
+    }
 
-    return address
+    const keys: string[] = []
+
+    if (token && unschain) {
+      keys.push(`token.${family}.${unschain}.${token}.address`)
+    }
+
+    if (unschain) {
+      keys.push(`token.${family}.${unschain}.address`)
+    }
+
+    keys.push(`token.${family}.address`)
+
+    for (const key of keys) {
+      const address =
+        (await getUnsAddress(L2Client, { name: nameHash, key })) ||
+        (await getUnsAddress(L1Client, { name: nameHash, key }))
+      if (address) {
+        return address
+      }
+    }
+
+    return undefined
   } catch {
     return
   }
 }
 
 type GetUnsAddressParameters = {
-  chain: string
+  key: string
   name: string
 }
 
@@ -50,10 +68,7 @@ async function getUnsAddress(
   client: Client,
   params: GetUnsAddressParameters
 ): Promise<GetUnsAddressReturnType> {
-  const { name, chain } = params
-
-  // TODO: For more robust resolution, we should construct the keys based on the token and not the chain
-  const keys = [`crypto.${chain}.address`]
+  const { name, key } = params
 
   const chainId = client.chain?.id
   if (!chainId) {
@@ -84,7 +99,7 @@ async function getUnsAddress(
     abi: UNSProxyReaderABI,
     address: proxyAddress,
     functionName: 'getData',
-    args: [keys, BigInt(name)],
+    args: [[key], BigInt(name)],
   } as const
 
   const res = await readContractAction(readContractParameters)

@@ -2,7 +2,7 @@ import { ChainType } from '@lifi/types'
 import { isValidSuiAddress } from '@mysten/sui/utils'
 import type { StepExecutorOptions } from '../types.js'
 import { getSuiBalance } from './getSuiBalance.js'
-import { getSuiNSAddress } from './getSuiNSAddress.js'
+import { resolveSuiAddress } from './resolveSuiAddress.js'
 import { SuiStepExecutor } from './SuiStepExecutor.js'
 import type { SuiProvider, SuiProviderOptions } from './types.js'
 
@@ -13,7 +13,7 @@ export function Sui(options?: SuiProviderOptions): SuiProvider {
       return ChainType.MVM
     },
     isAddress: isValidSuiAddress,
-    resolveAddress: getSuiNSAddress,
+    resolveAddress: resolveSuiAddress,
     getBalance: getSuiBalance,
     async getStepExecutor(
       options: StepExecutorOptions
