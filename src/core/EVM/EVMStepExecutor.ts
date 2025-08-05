@@ -490,6 +490,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       let txHash: Hash
       let txType: TransactionMethodType = 'standard'
+      let txLink: string | undefined
 
       if (batchingSupported && transactionRequest) {
         const transferCall: Call = {
@@ -562,6 +563,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         })
         txHash = relayedTransaction.taskId as Hash
         txType = 'relayed'
+        txLink = relayedTransaction.txLink
       } else {
         if (!transactionRequest) {
           throw new TransactionError(
@@ -665,7 +667,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           txLink:
             txType === 'standard'
               ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
-              : undefined,
+              : txLink,
         }
       )
 
