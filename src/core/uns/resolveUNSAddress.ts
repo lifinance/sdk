@@ -26,6 +26,7 @@ export const resolveUNSAddress = async (
     const nameHash = namehash(name)
     const keys: string[] = []
 
+    // handle token based resolution
     if (chain) {
       const family = CHAIN_TYPE_FAMILY_MAP[chainType]
       const unschain = CHAIN_ID_UNS_CHAIN_MAP[chain]
@@ -42,11 +43,9 @@ export const resolveUNSAddress = async (
       }
     }
 
-    // fallback to getting the general address for the chain type
-    if (chainType) {
-      const unschainType = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
-      keys.push(`crypto.${unschainType}.address`)
-    }
+    // fallback to chain based resolution
+    const unschainType = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
+    keys.push(`crypto.${unschainType}.address`)
 
     for (const key of keys) {
       const address =
