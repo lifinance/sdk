@@ -1,4 +1,4 @@
-import { ChainId } from '@lifi/types'
+import { ChainType } from '@lifi/types'
 import { resolveUNSAddress } from '../uns/resolveUNSAddress.js'
 import { getSuiNSAddress } from './getSuiNSAddress.js'
 
@@ -7,6 +7,6 @@ export async function resolveSuiAddress(
 ): Promise<string | undefined> {
   return (
     (await getSuiNSAddress(name)) ||
-    (await resolveUNSAddress(name, ChainId.SUI))
+    (await resolveUNSAddress(name, ChainType.MVM))
   )
 }

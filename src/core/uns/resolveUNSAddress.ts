@@ -1,4 +1,4 @@
-import { ChainId, type CoinKey } from '@lifi/types'
+import { ChainId, type ChainType, type CoinKey } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
@@ -6,7 +6,8 @@ import { getAction, trim } from 'viem/utils'
 import { getPublicClient } from '../EVM/publicClient.js'
 
 import {
-  CHAIN_ID_FAMILY_MAP,
+  CHAIN_ID_UNS_CHAIN_MAP,
+  CHAIN_TYPE_FAMILY_MAP,
   CHAIN_TYPE_UNS_CHAIN_MAP,
   getUNSProxyAddress,
   UNSProxyReaderABI,
@@ -14,7 +15,8 @@ import {
 
 export const resolveUNSAddress = async (
   name: string,
-  chain: ChainId,
+  chainType: ChainType,
+  chain?: ChainId,
   token?: CoinKey
 ): Promise<string | undefined> => {
   try {
@@ -22,25 +24,29 @@ export const resolveUNSAddress = async (
     const L2Client = await getPublicClient(ChainId.POL)
 
     const nameHash = namehash(name)
-
-    const family = CHAIN_ID_FAMILY_MAP[chain]
-    const unschain = CHAIN_TYPE_UNS_CHAIN_MAP[chain]
-
-    if (!family) {
-      throw new Error(`Unsupported network: ${chain}`)
-    }
-
     const keys: string[] = []
 
-    if (token && unschain) {
-      keys.push(`token.${family}.${unschain}.${token}.address`)
+    if (chain) {
+      const family = CHAIN_TYPE_FAMILY_MAP[chainType]
+      const unschain = CHAIN_ID_UNS_CHAIN_MAP[chain]
+
+      if (family) {
+        if (token) {
+          keys.push(`token.${family}.${unschain}.${token}.address`)
+        }
+        if (unschain) {
+          keys.push(`token.${family}.${unschain}.address`)
+        }
+
+        keys.push(`token.${family}.address`)
+      }
     }
 
-    if (unschain) {
-      keys.push(`token.${family}.${unschain}.address`)
+    // fallback to getting the general address for the chain type
+    if (chainType) {
+      const unschainType = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
+      keys.push(`crypto.${unschainType}.address`)
     }
-
-    keys.push(`token.${family}.address`)
 
     for (const key of keys) {
       const address =
@@ -50,10 +56,9 @@ export const resolveUNSAddress = async (
         return address
       }
     }
-
     return undefined
   } catch {
-    return
+    return undefined
   }
 }
 

@@ -1,4 +1,4 @@
-import { ChainId } from '@lifi/types'
+import { ChainId, ChainType } from '@lifi/types'
 import type { Address } from 'viem'
 
 export const UNS_PROXY_READER_ADDRESSES: Record<number, Address> = {
@@ -55,17 +55,27 @@ export const UNSProxyReaderABI = [
   },
 ] as const
 
-export const CHAIN_TYPE_UNS_CHAIN_MAP: Partial<Record<ChainId, string>> = {
+export const CHAIN_TYPE_UNS_CHAIN_MAP: Record<ChainType, string> = {
+  [ChainType.EVM]: 'ETH',
+  [ChainType.MVM]: 'SUI',
+  [ChainType.SVM]: 'SOL',
+  [ChainType.UTXO]: 'BTC',
+}
+
+export const CHAIN_ID_UNS_CHAIN_MAP: Partial<Record<ChainId, string>> = {
   [ChainId.ETH]: 'ETH',
   [ChainId.BTC]: 'BTC',
   [ChainId.SUI]: 'SUI',
   [ChainId.SOL]: 'SOL',
+  [ChainId.BAS]: 'BASE',
+  [ChainId.POL]: 'MATIC',
+  [ChainId.ARB]: 'ARB1',
+  [ChainId.AVA]: 'AVAX',
 }
 
-export const CHAIN_ID_FAMILY_MAP: Partial<Record<ChainId, string>> = {
-  [ChainId.ETH]: 'ETH',
-  [ChainId.BTC]: 'BTC',
-  [ChainId.SUI]: 'MVM',
-  [ChainId.SOL]: 'SOL',
-  [ChainId.ABS]: 'ETH',
+export const CHAIN_TYPE_FAMILY_MAP: Record<ChainType, string> = {
+  [ChainType.EVM]: 'EVM',
+  [ChainType.UTXO]: 'BTC',
+  [ChainType.SVM]: 'SOL',
+  [ChainType.MVM]: 'SUI',
 }
