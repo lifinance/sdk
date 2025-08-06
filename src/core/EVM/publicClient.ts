@@ -4,8 +4,8 @@ import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
-import { UNS_PROXY_READER_ADDRESSES } from '../uns/constants.js'
 import type { EVMProvider } from './types.js'
+import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
 // cached providers
 const publicClients: Record<number, Client> = {}
