@@ -94,6 +94,7 @@
     ]
   },
   "dependencies": {
+    "@bitcoinerlab/secp256k1": "^1.2.0",
     "@bigmi/core": "^0.4.3",
     "@lifi/types": "^17.27.0",
     "@mysten/sui": "^1.37.1",

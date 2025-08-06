@@ -1,7 +1,15 @@
 import type { Client, ReplacementReason } from '@bigmi/core'
-import { signPsbt, waitForTransaction, withTimeout } from '@bigmi/core'
+import {
+  AddressType,
+  getAddressInfo,
+  hexToUnit8Array,
+  signPsbt,
+  waitForTransaction,
+  withTimeout,
+} from '@bigmi/core'
+import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
-import { address, networks, Psbt } from 'bitcoinjs-lib'
+import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -17,7 +25,7 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
-import { isPsbtFinalized } from './utils.js'
+import { isPsbtFinalized, toXOnly } from './utils.js'
 
 export interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -143,7 +151,43 @@ export class UTXOStepExecutor extends BaseStepExecutor {
 
           const psbtHex = transactionRequest.data
 
+          // Initialize ECC library required for Taproot operations
+          // https://github.com/bitcoinjs/bitcoinjs-lib?tab=readme-ov-file#using-taproot
+          initEccLib(ecc)
+
           const psbt = Psbt.fromHex(psbtHex, { network: networks.bitcoin })
+
+          psbt.data.inputs.forEach((input, index) => {
+            const accountAddress = input.witnessUtxo
+              ? address.fromOutputScript(
+                  input.witnessUtxo.script,
+                  networks.bitcoin
+                )
+              : (this.client.account?.address as string)
+            const addressInfo = getAddressInfo(accountAddress)
+            if (addressInfo.type === AddressType.p2tr) {
+              // Taproot (P2TR) addresses require specific PSBT fields for proper signing
+
+              // tapInternalKey: Required for Taproot key-path spending
+              // Most wallets  / libraries usually handle this already
+              if (!input.tapInternalKey) {
+                const pubKey = this.client.account?.publicKey
+                if (pubKey) {
+                  const tapInternalKey = toXOnly(hexToUnit8Array(pubKey))
+                  psbt.updateInput(index, {
+                    tapInternalKey,
+                  })
+                }
+              }
+              // sighashType: Required by bitcoinjs-lib even though the bitcoin protocol allows defaults
+              // check if sighashType is default (0) or not set (undefined)
+              if (!input.sighashType) {
+                psbt.updateInput(index, {
+                  sighashType: 1, // Default to Transaction.SIGHASH_ALL - 1
+                })
+              }
+            }
+          })
 
           const inputsToSign = Array.from(
             psbt.data.inputs
@@ -172,7 +216,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           const signedPsbtHex = await withTimeout(
             () =>
               signPsbt(this.client, {
-                psbt: psbtHex,
+                psbt: psbt.toHex(),
                 inputsToSign: inputsToSign,
                 finalize: false,
               }),
