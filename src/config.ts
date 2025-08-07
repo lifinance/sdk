@@ -21,7 +21,7 @@ export const config = (() => {
       return _config
     },
     getApiUrl(version: 'v1' | 'v2' = 'v1'): string {
-      const baseUrl = _config.apiUrl.replace(/\/v[12]\/?$/, '')
+      const baseUrl = new URL(_config.apiUrl).origin
       return `${baseUrl}/${version}`
     },
     set(options: SDKConfig) {
