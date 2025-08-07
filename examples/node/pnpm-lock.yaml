@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.27.1
-        version: 6.27.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+        specifier: ^6.27.2
+        version: 6.27.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.8.10
-        version: 3.8.10(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.8.11
+        version: 3.8.11(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.9.1
         version: 5.9.1(@wagmi/core@2.18.1(typescript@5.9.2)(use-sync-external-store@1.2.0)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -250,8 +250,8 @@ packages:
     resolution: {integrity: sha512-zQ0IqbdX8FZ9aw11vP+dZkKDkS+kgIvQPHnSAXzP9pLu+Rfu3D3XEeLbicvoXJTYnhZiPmsZUxgdzXwNKxRPbA==}
     engines: {node: '>=14'}
 
-  '@gql.tada/cli-utils@1.7.0':
-    resolution: {integrity: sha512-Jj74qfIplT+MzUUWABeUJxHF5lxiyOJpE4ENeIOwvcPAi+QYoxsKNj/aPcGAk2jK5CrP9aFtE5O7794q2rWjlQ==}
+  '@gql.tada/cli-utils@1.7.1':
+    resolution: {integrity: sha512-wg5ysZNQxtNQm67T3laVWmZzLpGb7QfyYWZdaUD2r1OjDj5Bgftq7eQlplmH+hsdffjuUyhJw/b5XAjeE2mJtg==}
     peerDependencies:
       '@gql.tada/svelte-support': 1.0.1
       '@gql.tada/vue-support': 1.0.1
@@ -274,19 +274,16 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.27.1':
-    resolution: {integrity: sha512-1ElwhbZFhW/fJG7UzH7buu7hNdirEPdYVzEAtWMdgrGeWST9o0wo0lTzwhpQYj/XVc0bbsDW2blQVBpzlvQX2w==}
+  '@lifi/data-types@6.27.2':
+    resolution: {integrity: sha512-EQYTmhzy44+BEQ+lvPYrKdmF/+W7oOExhEXe41xeMhNnElPJLvt78qCV2Zj0gKpTjRP4/3roUoROAX29q4wJJg==}
 
-  '@lifi/sdk@3.8.10':
-    resolution: {integrity: sha512-Fx3UXXMzebsodAak9ueaZaR06QKCUtAW7wro85Pw02Mg4t8IS1dGyRiJfgw7irMV1/RgDMar6TApnV/4rNgHtg==}
+  '@lifi/sdk@3.8.11':
+    resolution: {integrity: sha512-5Of0UNQ1sbTTdxU761GkHWtgIk0PCW3TECVh9VPJQlUZtAMx+miDteMPEClCnBq9S08UXgE5wriZc6vGRdnvCg==}
     peerDependencies:
       viem: ^2.21.0
 
-  '@lifi/types@17.26.0':
-    resolution: {integrity: sha512-lfd+YNc5ApmNTGnn5V8a/3rNU8odBMdh7CTJNToPeuEnsXlAxEFKN6d1/ou7PH9MLvtrfBbypo+j3tzFT5XDgQ==}
-
-  '@lifi/types@17.27.0':
-    resolution: {integrity: sha512-BxeViD2FO0oBYJ2EzoIXbasEfazvIckke2paZSfwXPI8mdjwUXhXip2SsI9poWMxx2OZKA9nva9hGay+7//AUA==}
+  '@lifi/types@17.28.0':
+    resolution: {integrity: sha512-cgRfpFqFdd87p1tAQ34Qt8pVVyfIBnqzMisHDaE0F+CuhzsiHBIUsk/Q845MhaK575WcGaVG0ODw5tEvOKP9TA==}
 
   '@lit-labs/ssr-dom-shim@1.4.0':
     resolution: {integrity: sha512-ficsEARKnmmW5njugNYKipTm4SFnbik7CXtoencDZzmzo/dQ+2Q0bgkzJuoJP20Aj0F+izzJjOqsnkd6F/o1bw==}
@@ -1045,8 +1042,8 @@ packages:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
 
-  gql.tada@1.8.12:
-    resolution: {integrity: sha512-VuHbhYyhPN7XDc06Gl3jYWxMlqa1MLX5xbrmbBbzelX/+M5khxDsNBE7FvTEvAmx0RyLyDkEtRPWRfIdMCTKTw==}
+  gql.tada@1.8.13:
+    resolution: {integrity: sha512-fYoorairdPgxtE7Sf1X9/6bSN9Kt2+PN8KLg3hcF8972qFnawwUgs1OLVU8efZMHwL7EBHhhKBhrsGPlOs2lZQ==}
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -1983,7 +1980,7 @@ snapshots:
       ethereum-cryptography: 2.2.1
       micro-ftch: 0.3.1
 
-  '@gql.tada/cli-utils@1.7.0(graphql@16.11.0)(typescript@5.9.2)':
+  '@gql.tada/cli-utils@1.7.1(graphql@16.11.0)(typescript@5.9.2)':
     dependencies:
       '@0no-co/graphqlsp': 1.15.0(graphql@16.11.0)(typescript@5.9.2)
       '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.9.2)
@@ -2000,19 +1997,19 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@lifi/data-types@6.27.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/data-types@6.27.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
-      '@lifi/types': 17.26.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@lifi/types': 17.28.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.8.10(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.8.11(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
       '@bigmi/core': 0.4.3(typescript@5.9.2)(use-sync-external-store@1.2.0)
-      '@lifi/types': 17.27.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@lifi/types': 17.28.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@mysten/sui': 1.37.1(typescript@5.9.2)
       '@mysten/wallet-standard': 0.16.9(typescript@5.9.2)
       '@noble/curves': 1.9.6
@@ -2035,16 +2032,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.26.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
-    dependencies:
-      viem: 2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
-    transitivePeerDependencies:
-      - bufferutil
-      - typescript
-      - utf-8-validate
-      - zod
-
-  '@lifi/types@17.27.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/types@17.28.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       viem: 2.33.2(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
@@ -2230,7 +2218,7 @@ snapshots:
       '@scure/base': 1.2.6
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      gql.tada: 1.8.12(graphql@16.11.0)(typescript@5.9.2)
+      gql.tada: 1.8.13(graphql@16.11.0)(typescript@5.9.2)
       graphql: 16.11.0
       poseidon-lite: 0.2.1
       valibot: 0.36.0
@@ -3669,11 +3657,11 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  gql.tada@1.8.12(graphql@16.11.0)(typescript@5.9.2):
+  gql.tada@1.8.13(graphql@16.11.0)(typescript@5.9.2):
     dependencies:
       '@0no-co/graphql.web': 1.2.0(graphql@16.11.0)
       '@0no-co/graphqlsp': 1.15.0(graphql@16.11.0)(typescript@5.9.2)
-      '@gql.tada/cli-utils': 1.7.0(graphql@16.11.0)(typescript@5.9.2)
+      '@gql.tada/cli-utils': 1.7.1(graphql@16.11.0)(typescript@5.9.2)
       '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.9.2)
       typescript: 5.9.2
     transitivePeerDependencies:
