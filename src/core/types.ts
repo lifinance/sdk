@@ -152,8 +152,9 @@ export type Process = {
   substatus?: Substatus
   chainId?: number
   txHash?: string
-  multisigTxHash?: string
+  taskId?: string
   txLink?: string
+  txType?: TransactionMethodType
   actionRequiredAt?: number
   doneAt?: number
   failedAt?: number
