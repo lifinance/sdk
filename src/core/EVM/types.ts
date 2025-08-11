@@ -1,5 +1,11 @@
 import { type BaseToken, ChainType } from '@lifi/types'
-import type { Address, Client, FallbackTransportConfig, Hex } from 'viem'
+import type {
+  WalletCallReceipt as _WalletCallReceipt,
+  Address,
+  Client,
+  FallbackTransportConfig,
+  Hex,
+} from 'viem'
 import type { SDKProvider, SwitchChainHook } from '../types.js'
 
 export interface EVMProviderOptions {
@@ -56,4 +62,11 @@ export type Call = {
   data?: Hex
   value?: bigint
   chainId?: number
+}
+
+export type WalletCallReceipt = _WalletCallReceipt<
+  bigint,
+  'success' | 'reverted'
+> & {
+  transactionLink?: string
 }

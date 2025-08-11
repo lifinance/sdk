@@ -166,6 +166,28 @@ describe('Balance service tests', () => {
         expect(result).toEqual(balanceResponse)
       })
     })
+
+    describe('provider is not the same as the chain type', () => {
+      it('should return the tokens as is', async () => {
+        const balanceResponse = {
+          [ChainId.DAI]: [SOME_TOKEN],
+        }
+
+        mockedGetTokenBalancesForChains.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getTokenBalancesByChain(
+          SOME_WALLET_ADDRESS,
+          {
+            [ChainId.DAI]: [SOME_TOKEN],
+          }
+        )
+
+        expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
+        expect(result).toEqual(balanceResponse)
+      })
+    })
   })
 
   describe('getWalletBalances', () => {
