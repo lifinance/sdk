@@ -17,7 +17,9 @@ export async function waitForDestinationChainTransaction(
   statusManager: StatusManager,
   pollingInterval?: number
 ): Promise<LiFiStepExtended> {
-  const transactionHash = process.txHash
+  // At this point, we should have a txHash or taskId
+  // taskId is used for custom integrations that don't use the standard transaction hash
+  const transactionHash = process.txHash || process.taskId
   let processType = process.type
   try {
     // Wait for the transaction status on the destination chain
@@ -52,7 +54,9 @@ export async function waitForDestinationChainTransaction(
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       txHash: statusReceiving?.txHash,
-      txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
+      txLink:
+        statusReceiving?.txLink ||
+        `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
     })
 
     // Update execution status
