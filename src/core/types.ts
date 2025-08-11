@@ -127,7 +127,12 @@ export interface ExecutionOptions {
   infiniteApproval?: boolean
 }
 
-export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
+export type ExecutionStatus =
+  | 'IDLE'
+  | 'ACTION_REQUIRED'
+  | 'PENDING'
+  | 'FAILED'
+  | 'DONE'
 
 export type ProcessStatus =
   | 'STARTED'
