@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.9.1](https://github.com/lifinance/sdk/compare/v3.9.0...v3.9.1) (2025-08-11)
+
+
+### Bug Fixes
+
+* adjust tx links handling ([#294](https://github.com/lifinance/sdk/issues/294)) ([e4defe1](https://github.com/lifinance/sdk/commit/e4defe152a8a55aab884b010c8d4a0a5b88e590e))
+
 ## [3.9.0](https://github.com/lifinance/sdk/compare/v3.9.0-beta.0...v3.9.0) (2025-08-08)
 
 ### [3.8.11](https://github.com/lifinance/sdk/compare/v3.8.10...v3.8.11) (2025-08-05)
