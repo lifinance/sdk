@@ -8,9 +8,9 @@
   "license": "MIT",
   "dependencies": {
     "@lifi/data-types": "^6.28.0",
-    "@lifi/sdk": "^3.8.11",
-    "@wagmi/connectors": "^5.9.1",
-    "@wagmi/core": "^2.18.1",
+    "@lifi/sdk": "^3.9.0",
+    "@wagmi/connectors": "^5.9.2",
+    "@wagmi/core": "^2.19.0",
     "dotenv": "^17.2.1",
     "viem": "^2.33.3"
   },
@@ -24,7 +24,7 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.2.0",
+    "@types/node": "^24.2.1",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2"
   },
