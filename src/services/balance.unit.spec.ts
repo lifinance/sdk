@@ -200,7 +200,7 @@ describe('Balance service tests', () => {
     })
 
     describe('user input is valid', () => {
-      it('should call the balance service', async () => {
+      it('should call the balance service without extended parameter', async () => {
         const balanceResponse = {
           [ChainId.DAI]: [
             {
@@ -218,6 +218,100 @@ describe('Balance service tests', () => {
         const result = await balance.getWalletBalances(SOME_WALLET_ADDRESS)
 
         expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS
+        )
+        expect(result).toEqual(balanceResponse)
+      })
+
+      it('should call the balance service with extended=true', async () => {
+        const balanceResponse = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123n,
+              marketCapUSD: 1000000,
+              volumeUSD24H: 50000,
+              fdvUSD: 2000000,
+            },
+          ],
+        }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(
+          SOME_WALLET_ADDRESS,
+          true
+        )
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS,
+          true
+        )
+        expect(result).toEqual(balanceResponse)
+      })
+
+      it('should call the balance service with extended=false', async () => {
+        const balanceResponse = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123n,
+            },
+          ],
+        }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(
+          SOME_WALLET_ADDRESS,
+          false
+        )
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS,
+          false
+        )
+        expect(result).toEqual(balanceResponse)
+      })
+
+      it('should call the balance service with options and extended=true', async () => {
+        const balanceResponse = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123n,
+              marketCapUSD: 1000000,
+              volumeUSD24H: 50000,
+              fdvUSD: 2000000,
+            },
+          ],
+        }
+
+        const options = { signal: new AbortController().signal }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(
+          SOME_WALLET_ADDRESS,
+          true,
+          options
+        )
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS,
+          true,
+          options
+        )
         expect(result).toEqual(balanceResponse)
       })
     })
