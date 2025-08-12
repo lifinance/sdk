@@ -1,5 +1,5 @@
 import { findDefaultToken } from '@lifi/data-types'
-import type { Token } from '@lifi/types'
+import type { Token, WalletToken, WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as balance from './balance.js'
@@ -201,12 +201,11 @@ describe('Balance service tests', () => {
 
     describe('user input is valid', () => {
       it('should call the balance service without extended parameter', async () => {
-        const balanceResponse = {
+        const balanceResponse: Record<number, WalletToken[]> = {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123n,
-              blockNumber: 1n,
+              amount: 123,
             },
           ],
         }
@@ -225,11 +224,11 @@ describe('Balance service tests', () => {
       })
 
       it('should call the balance service with extended=true', async () => {
-        const balanceResponse = {
+        const balanceResponse: Record<number, WalletTokenExtended[]> = {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123n,
+              amount: 123,
               marketCapUSD: 1000000,
               volumeUSD24H: 50000,
               fdvUSD: 2000000,
@@ -255,11 +254,11 @@ describe('Balance service tests', () => {
       })
 
       it('should call the balance service with extended=false', async () => {
-        const balanceResponse = {
+        const balanceResponse: Record<number, WalletToken[]> = {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123n,
+              amount: 123,
             },
           ],
         }
@@ -282,11 +281,11 @@ describe('Balance service tests', () => {
       })
 
       it('should call the balance service with options and extended=true', async () => {
-        const balanceResponse = {
+        const balanceResponse: Record<number, WalletTokenExtended[]> = {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123n,
+              amount: 123,
               marketCapUSD: 1000000,
               volumeUSD24H: 50000,
               fdvUSD: 2000000,

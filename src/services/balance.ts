@@ -1,9 +1,11 @@
 import type {
+  GetWalletBalanceExtendedResponse,
   GetWalletBalanceResponse,
   RequestOptions,
   Token,
   TokenAmount,
   WalletToken,
+  WalletTokenExtended,
 } from '@lifi/types'
 import { config } from '../config.js'
 import { ValidationError } from '../errors/errors.js'
@@ -119,22 +121,26 @@ export const getTokenBalancesByChain = async (
  * @returns An object containing the tokens and the amounts organized by chain ids.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getWalletBalances = async (
+export const getWalletBalances = async <T extends boolean = false>(
   walletAddress: string,
-  extended?: boolean,
+  extended?: T,
   options?: RequestOptions
-): Promise<Record<number, WalletToken[]>> => {
+): Promise<
+  Record<number, (T extends true ? WalletTokenExtended : WalletToken)[]>
+> => {
   if (!walletAddress) {
     throw new ValidationError('Missing walletAddress.')
   }
 
   const queryParams = extended !== undefined ? `?extended=${extended}` : ''
 
-  const response = await request<GetWalletBalanceResponse>(
-    `${config.get().apiUrl}/wallets/${walletAddress}/balances${queryParams}`,
-    {
-      signal: options?.signal,
-    }
-  )
-  return response?.balances || {}
+  const response = await request<
+    GetWalletBalanceResponse | GetWalletBalanceExtendedResponse
+  >(`${config.get().apiUrl}/wallets/${walletAddress}/balances${queryParams}`, {
+    signal: options?.signal,
+  })
+  return (response?.balances || {}) as Record<
+    number,
+    (T extends true ? WalletTokenExtended : WalletToken)[]
+  >
 }
