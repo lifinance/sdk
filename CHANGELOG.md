@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.9.2](https://github.com/lifinance/sdk/compare/v3.9.1...v3.9.2) (2025-08-13)
+
+
+### Bug Fixes
+
+* update batching conditions to include relayer transactions ([a458d29](https://github.com/lifinance/sdk/commit/a458d29d25959a73c5a4959d23ce5c5f9e6ecc79))
+
 ### [3.9.1](https://github.com/lifinance/sdk/compare/v3.9.0...v3.9.1) (2025-08-11)
 
 
