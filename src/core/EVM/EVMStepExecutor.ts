@@ -268,17 +268,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
 
-    // Batching via EIP-5792 is disabled in two cases:
+    // Batching via EIP-5792 is disabled in the next cases:
     // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
-    // 2. When the step is using thorswap tool
+    // 2. When the step is using thorswap tool (temporary disabled)
+    // 3. When using relayer transactions
     const batchingSupported =
-      atomicityNotReady || step.tool === 'thorswap'
+      atomicityNotReady || step.tool === 'thorswap' || isRelayerTransaction
         ? false
-        : !isRelayerTransaction &&
-          (await isBatchingSupported({
+        : await isBatchingSupported({
             client: this.client,
             chainId: fromChain.id,
-          }))
+          })
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
