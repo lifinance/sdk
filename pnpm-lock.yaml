@@ -18,11 +18,11 @@ importers:
         specifier: ^17.29.0
         version: 17.29.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@mysten/sui':
-        specifier: ^1.37.1
-        version: 1.37.1(typescript@5.9.2)
+        specifier: ^1.37.2
+        version: 1.37.2(typescript@5.9.2)
       '@mysten/wallet-standard':
-        specifier: ^0.16.9
-        version: 0.16.9(typescript@5.9.2)
+        specifier: ^0.16.10
+        version: 0.16.10(typescript@5.9.2)
       '@noble/curves':
         specifier: ^1.9.6
         version: 1.9.6
@@ -55,8 +55,8 @@ importers:
         specifier: ^19.8.1
         version: 19.8.1
       '@lifi/data-types':
-        specifier: ^6.28.0
-        version: 6.28.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: ^6.28.1
+        version: 6.28.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -535,8 +535,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@lifi/data-types@6.28.0':
-    resolution: {integrity: sha512-4H5OyA5MXckSaa5dRXdoXK0PAo+Qdl8ZUe33qtgjksUQUSUSe5r9SdkbPzIkuSgP5si+J9APeY4AA0ZugRLErQ==}
+  '@lifi/data-types@6.28.1':
+    resolution: {integrity: sha512-CWpp5qLndNqegd3pobQhgNjEgJEat9PKVmcwdpGpQDZP1FYVdcA6q7cCQ/R+V30XIITX809nXD4LBRzLUCYhgA==}
 
   '@lifi/types@17.29.0':
     resolution: {integrity: sha512-zwnUCt3LKD2cMx9uOW02LXiz4IaI0ZfaTCsE9FHX6md4OIQf8ALwZmJDQR8QALJ/U5rs1cxnbsTrMObtlO9IMg==}
@@ -548,15 +548,15 @@ packages:
   '@mysten/bcs@1.7.0':
     resolution: {integrity: sha512-8zE2Jzj2ai55RlVXx2pEMbbq+X3vB+uPGBvZr0F79IdTwuwcu4QdFG3PT/zHsytsvATkn+z0f2YDWhM5916u2A==}
 
-  '@mysten/sui@1.37.1':
-    resolution: {integrity: sha512-xkQEgO/XdGz9T5vJU0iEiw8ZnuDSHWjdYA+u783wY5dt0TknYDBBcThaufhz9j+tksCxKhR5OkktE+Wz3zdYtw==}
+  '@mysten/sui@1.37.2':
+    resolution: {integrity: sha512-HZLsKfiqbIgZvmoSPdW+AVNEzj9OYf9TV/VP9qEAIKERLS9EEeBYpz3Ju7WR6apuQvjOtPGs5yimEOuQQ7sRww==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.1.1':
     resolution: {integrity: sha512-jvhJC6/2la1QHltukQXzfyTZ+VVHxe187JjPx+mEXRUWyAo6jCSdioOQJIfaGu4K4i+37KeiydXRwV/bq/7UJQ==}
 
-  '@mysten/wallet-standard@0.16.9':
-    resolution: {integrity: sha512-1Wyps0Qnw+EMKUIHJfDGwhZBxTTYyhvx9UM8wsw+/Bscywe5+t9kLaUFblS81Xu0u8tTp1ZAmZDSkr/2y7NS9A==}
+  '@mysten/wallet-standard@0.16.10':
+    resolution: {integrity: sha512-JXki0DFI8EvoQPlXmcNdEdO2slsidCZh6F4VEAeMHC58fkKuZOfUmTORHsTW3wHdLJkny952ROzYIHBhO3sRYg==}
 
   '@noble/ciphers@1.3.0':
     resolution: {integrity: sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==}
@@ -3419,7 +3419,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.4
 
-  '@lifi/data-types@6.28.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@lifi/data-types@6.28.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@lifi/types': 17.29.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -3451,7 +3451,7 @@ snapshots:
       '@mysten/utils': 0.1.1
       '@scure/base': 1.2.6
 
-  '@mysten/sui@1.37.1(typescript@5.9.2)':
+  '@mysten/sui@1.37.2(typescript@5.9.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
       '@mysten/bcs': 1.7.0
@@ -3474,9 +3474,9 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/wallet-standard@0.16.9(typescript@5.9.2)':
+  '@mysten/wallet-standard@0.16.10(typescript@5.9.2)':
     dependencies:
-      '@mysten/sui': 1.37.1(typescript@5.9.2)
+      '@mysten/sui': 1.37.2(typescript@5.9.2)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
