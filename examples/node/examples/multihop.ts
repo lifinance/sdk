@@ -7,14 +7,14 @@ import type {
 import {
   ChainId,
   CoinKey,
-  EVM,
   createConfig,
+  EVM,
   getContractCallsQuote,
   getQuote,
   getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { http, createWalletClient, fromHex, publicActions } from 'viem'
+import { createWalletClient, fromHex, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
