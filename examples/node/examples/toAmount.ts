@@ -3,13 +3,13 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  EVM,
   createConfig,
+  EVM,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { http, createWalletClient, publicActions } from 'viem'
+import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
