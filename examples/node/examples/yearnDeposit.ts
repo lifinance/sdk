@@ -3,16 +3,16 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  EVM,
   createConfig,
+  EVM,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
 import {
-  http,
   createWalletClient,
   encodeFunctionData,
+  http,
   parseAbi,
   publicActions,
 } from 'viem'

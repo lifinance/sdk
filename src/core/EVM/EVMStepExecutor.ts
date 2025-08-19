@@ -15,7 +15,7 @@ import {
   sendTransaction,
   signTypedData,
 } from 'viem/actions'
-import { getAction } from 'viem/utils'
+import { getAction, isHex } from 'viem/utils'
 import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -126,30 +126,26 @@ export class EVMStepExecutor extends BaseStepExecutor {
     process,
     fromChain,
     toChain,
-    txType,
-    txHash,
     isBridgeExecution,
   }: {
     step: LiFiStepExtended
     process: Process
     fromChain: ExtendedChain
     toChain: ExtendedChain
-    txType: TransactionMethodType
-    txHash: Hash
     isBridgeExecution: boolean
   }) => {
     let transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
 
-    switch (txType) {
+    switch (process.txType) {
       case 'batched':
         transactionReceipt = await waitForBatchTransactionReceipt(
           this.client,
-          txHash
+          process.taskId as Hash
         )
         break
       case 'relayed':
         transactionReceipt = await waitForRelayedTransactionReceipt(
-          txHash,
+          process.taskId as Hash,
           step
         )
         break
@@ -157,7 +153,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         transactionReceipt = await waitForTransactionReceipt({
           client: this.client,
           chainId: fromChain.id,
-          txHash,
+          txHash: process.txHash as Hash,
           onReplaced: (response) => {
             this.statusManager.updateProcess(step, process.type, 'PENDING', {
               txHash: response.transaction.hash,
@@ -171,17 +167,24 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // This might happen if the transaction was replaced.
     if (
       transactionReceipt?.transactionHash &&
-      transactionReceipt.transactionHash !== txHash
+      transactionReceipt.transactionHash !== process.txHash
     ) {
+      // Validate if transaction hash is a valid hex string that can be used on-chain
+      // Some custom integrations may return non-hex identifiers to support custom status tracking
+      const txHash = isHex(transactionReceipt.transactionHash, { strict: true })
+        ? transactionReceipt.transactionHash
+        : undefined
       process = this.statusManager.updateProcess(
         step,
         process.type,
         'PENDING',
         {
-          txHash: transactionReceipt.transactionHash,
+          txHash: txHash,
           txLink:
             (transactionReceipt as WalletCallReceipt).transactionLink ||
-            `${fromChain.metamask.blockExplorerUrls[0]}tx/${transactionReceipt.transactionHash}`,
+            (txHash
+              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
+              : undefined),
         }
       )
     }
@@ -265,17 +268,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
 
-    // Batching via EIP-5792 is disabled in two cases:
+    // Batching via EIP-5792 is disabled in the next cases:
     // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
-    // 2. When the step is using thorswap tool
+    // 2. When the step is using thorswap tool (temporary disabled)
+    // 3. When using relayer transactions
     const batchingSupported =
-      atomicityNotReady || step.tool === 'thorswap'
+      atomicityNotReady || step.tool === 'thorswap' || isRelayerTransaction
         ? false
-        : !isRelayerTransaction &&
-          (await isBatchingSupported({
+        : await isBatchingSupported({
             client: this.client,
             chainId: fromChain.id,
-          }))
+          })
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -307,6 +310,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const checkForAllowance =
       // No existing swap/bridge transaction is pending
       !existingProcess?.txHash &&
+      // No existing swap/bridge batch/order is pending
+      !existingProcess?.taskId &&
       // Token is not native (address is not zero)
       !isFromNativeToken &&
       // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
@@ -346,38 +351,31 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     let process = this.statusManager.findProcess(step, currentProcessType)
-
-    if (process?.status === 'DONE') {
-      await waitForDestinationChainTransaction(
-        step,
-        process,
-        fromChain,
-        toChain,
-        this.statusManager
-      )
-
-      return step
-    }
-
     try {
-      if (process?.txHash) {
+      if (process?.status === 'DONE') {
+        await waitForDestinationChainTransaction(
+          step,
+          process,
+          fromChain,
+          toChain,
+          this.statusManager
+        )
+
+        return step
+      }
+
+      if (process?.txHash || process?.taskId) {
         // Make sure that the chain is still correct
         const updatedClient = await this.checkClient(step, process)
         if (!updatedClient) {
           return step
         }
 
-        // Wait for exiting transaction
-        const txHash = process.txHash as Hash
-        const txType = process.txType as TransactionMethodType
-
         await this.waitForTransaction({
           step,
           process,
           fromChain,
           toChain,
-          txType,
-          txHash,
           isBridgeExecution,
         })
 
@@ -488,7 +486,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      let txHash: Hash
+      let txHash: Hash | undefined
+      let taskId: Hash | undefined
       let txType: TransactionMethodType = 'standard'
       let txLink: string | undefined
 
@@ -510,7 +509,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           account: this.client.account!,
           calls,
         })
-        txHash = id as Hash
+        taskId = id as Hash
         txType = 'batched'
       } else if (isRelayerTransaction) {
         const relayerTypedData = step.typedData?.find(
@@ -561,7 +560,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           ...stepBase,
           typedData: signedTypedData,
         })
-        txHash = relayedTransaction.taskId as Hash
+        taskId = relayedTransaction.taskId as Hash
         txType = 'relayed'
         txLink = relayedTransaction.txLink
       } else {
@@ -663,9 +662,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
         // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
         {
           txHash,
+          taskId,
           txType,
           txLink:
-            txType === 'standard'
+            txType === 'standard' && txHash
               ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
               : txLink,
         }
@@ -676,8 +676,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
         process,
         fromChain,
         toChain,
-        txHash,
-        txType,
         isBridgeExecution,
       })
 

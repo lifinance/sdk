@@ -2,13 +2,13 @@ import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
-  EVM,
   createConfig,
+  EVM,
   executeRoute,
   getRoutes,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { http, createWalletClient } from 'viem'
+import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { optimism } from 'viem/chains'
 import { promptConfirm } from '../helpers/promptConfirm'

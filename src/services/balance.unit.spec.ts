@@ -1,5 +1,5 @@
 import { findDefaultToken } from '@lifi/data-types'
-import type { Token } from '@lifi/types'
+import type { Token, WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as balance from './balance.js'
@@ -10,6 +10,7 @@ const mockedGetTokenBalancesForChains = vi.spyOn(
   balance,
   'getTokenBalancesByChain'
 )
+const mockedGetWalletBalances = vi.spyOn(balance, 'getWalletBalances')
 
 describe('Balance service tests', () => {
   beforeEach(() => {
@@ -184,6 +185,76 @@ describe('Balance service tests', () => {
         )
 
         expect(mockedGetTokenBalancesForChains).toHaveBeenCalledTimes(1)
+        expect(result).toEqual(balanceResponse)
+      })
+    })
+  })
+
+  describe('getWalletBalances', () => {
+    describe('user input is invalid', () => {
+      it('should throw Error because of missing walletAddress', async () => {
+        await expect(balance.getWalletBalances('')).rejects.toThrow(
+          'Missing walletAddress.'
+        )
+      })
+    })
+
+    describe('user input is valid', () => {
+      it('should call the balance service without options', async () => {
+        const balanceResponse: Record<number, WalletTokenExtended[]> = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123,
+              marketCapUSD: 1000000,
+              volumeUSD24H: 50000,
+              fdvUSD: 2000000,
+            },
+          ],
+        }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(SOME_WALLET_ADDRESS)
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS
+        )
+        expect(result).toEqual(balanceResponse)
+      })
+
+      it('should call the balance service with options', async () => {
+        const balanceResponse: Record<number, WalletTokenExtended[]> = {
+          [ChainId.DAI]: [
+            {
+              ...SOME_TOKEN,
+              amount: 123,
+              marketCapUSD: 1000000,
+              volumeUSD24H: 50000,
+              fdvUSD: 2000000,
+            },
+          ],
+        }
+
+        const options = { signal: new AbortController().signal }
+
+        mockedGetWalletBalances.mockReturnValue(
+          Promise.resolve(balanceResponse)
+        )
+
+        const result = await balance.getWalletBalances(
+          SOME_WALLET_ADDRESS,
+          options
+        )
+
+        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
+        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
+          SOME_WALLET_ADDRESS,
+          options
+        )
         expect(result).toEqual(balanceResponse)
       })
     })

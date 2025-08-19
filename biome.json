@@ -27,7 +27,13 @@
       "recommended": true,
       "correctness": {
         "noUnusedImports": "error",
-        "noUnusedVariables": "error"
+        "noUnusedVariables": "error",
+        "useImportExtensions": {
+          "level": "error",
+          "options": {
+            "forceJsExtensions": true
+          }
+        }
       },
       "performance": {
         "noBarrelFile": "error",
@@ -61,5 +67,22 @@
       "semicolons": "asNeeded",
       "trailingCommas": "es5"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["examples/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          },
+          "correctness": {
+            "useImportExtensions": {
+              "level": "off"
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -1,6 +1,13 @@
-import type { Token, TokenAmount } from '@lifi/types'
+import type {
+  GetWalletBalanceExtendedResponse,
+  RequestOptions,
+  Token,
+  TokenAmount,
+  WalletTokenExtended,
+} from '@lifi/types'
 import { config } from '../config.js'
 import { ValidationError } from '../errors/errors.js'
+import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
 
 /**
@@ -79,7 +86,7 @@ export const getTokenBalancesByChain = async (
   const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
-      const chainId = Number.parseInt(chainIdStr)
+      const chainId = Number.parseInt(chainIdStr, 10)
       const chain = await config.getChainById(chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
@@ -102,4 +109,29 @@ export const getTokenBalancesByChain = async (
     }
   }
   return tokenAmountsByChain
+}
+
+/**
+ * Returns the balances of tokens a wallet holds across EVM chains.
+ * @param walletAddress - A wallet address.
+ * @param options - Optional request options.
+ * @returns An object containing the tokens and the amounts organized by chain ids.
+ * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ */
+export const getWalletBalances = async (
+  walletAddress: string,
+  options?: RequestOptions
+): Promise<Record<number, WalletTokenExtended[]>> => {
+  if (!walletAddress) {
+    throw new ValidationError('Missing walletAddress.')
+  }
+
+  const response = await request<GetWalletBalanceExtendedResponse>(
+    `${config.get().apiUrl}/wallets/${walletAddress}/balances?extended=true`,
+    {
+      signal: options?.signal,
+    }
+  )
+
+  return (response?.balances || {}) as Record<number, WalletTokenExtended[]>
 }

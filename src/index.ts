@@ -18,7 +18,11 @@ export {
   isGaslessStep,
   isRelayerStep,
 } from './core/EVM/typeguards.js'
-export type { EVMProvider, EVMProviderOptions } from './core/EVM/types.js'
+export type {
+  EVMProvider,
+  EVMProviderOptions,
+  WalletCallReceipt,
+} from './core/EVM/types.js'
 export { isEVM } from './core/EVM/types.js'
 export {
   convertExtendedChain,
