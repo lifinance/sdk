@@ -1,10 +1,8 @@
 import type {
   GetWalletBalanceExtendedResponse,
-  GetWalletBalanceResponse,
   RequestOptions,
   Token,
   TokenAmount,
-  WalletToken,
   WalletTokenExtended,
 } from '@lifi/types'
 import { config } from '../config.js'
@@ -114,33 +112,26 @@ export const getTokenBalancesByChain = async (
 }
 
 /**
- * Returns the balances of all tokens a wallet holds across all aggregated chains.
+ * Returns the balances of tokens a wallet holds across EVM chains.
  * @param walletAddress - A wallet address.
- * @param extended - Optional boolean to include extended token information.
  * @param options - Optional request options.
  * @returns An object containing the tokens and the amounts organized by chain ids.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getWalletBalances = async <T extends boolean = false>(
+export const getWalletBalances = async (
   walletAddress: string,
-  extended?: T,
   options?: RequestOptions
-): Promise<
-  Record<number, (T extends true ? WalletTokenExtended : WalletToken)[]>
-> => {
+): Promise<Record<number, WalletTokenExtended[]>> => {
   if (!walletAddress) {
     throw new ValidationError('Missing walletAddress.')
   }
 
-  const queryParams = extended !== undefined ? `?extended=${extended}` : ''
+  const response = await request<GetWalletBalanceExtendedResponse>(
+    `${config.get().apiUrl}/wallets/${walletAddress}/balances?extended=true`,
+    {
+      signal: options?.signal,
+    }
+  )
 
-  const response = await request<
-    GetWalletBalanceResponse | GetWalletBalanceExtendedResponse
-  >(`${config.get().apiUrl}/wallets/${walletAddress}/balances${queryParams}`, {
-    signal: options?.signal,
-  })
-  return (response?.balances || {}) as Record<
-    number,
-    (T extends true ? WalletTokenExtended : WalletToken)[]
-  >
+  return (response?.balances || {}) as Record<number, WalletTokenExtended[]>
 }

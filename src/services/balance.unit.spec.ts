@@ -1,5 +1,5 @@
 import { findDefaultToken } from '@lifi/data-types'
-import type { Token, WalletToken, WalletTokenExtended } from '@lifi/types'
+import type { Token, WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as balance from './balance.js'
@@ -200,12 +200,15 @@ describe('Balance service tests', () => {
     })
 
     describe('user input is valid', () => {
-      it('should call the balance service without extended parameter', async () => {
-        const balanceResponse: Record<number, WalletToken[]> = {
+      it('should call the balance service without options', async () => {
+        const balanceResponse: Record<number, WalletTokenExtended[]> = {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
               amount: 123,
+              marketCapUSD: 1000000,
+              volumeUSD24H: 50000,
+              fdvUSD: 2000000,
             },
           ],
         }
@@ -223,64 +226,7 @@ describe('Balance service tests', () => {
         expect(result).toEqual(balanceResponse)
       })
 
-      it('should call the balance service with extended=true', async () => {
-        const balanceResponse: Record<number, WalletTokenExtended[]> = {
-          [ChainId.DAI]: [
-            {
-              ...SOME_TOKEN,
-              amount: 123,
-              marketCapUSD: 1000000,
-              volumeUSD24H: 50000,
-              fdvUSD: 2000000,
-            },
-          ],
-        }
-
-        mockedGetWalletBalances.mockReturnValue(
-          Promise.resolve(balanceResponse)
-        )
-
-        const result = await balance.getWalletBalances(
-          SOME_WALLET_ADDRESS,
-          true
-        )
-
-        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
-        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-          SOME_WALLET_ADDRESS,
-          true
-        )
-        expect(result).toEqual(balanceResponse)
-      })
-
-      it('should call the balance service with extended=false', async () => {
-        const balanceResponse: Record<number, WalletToken[]> = {
-          [ChainId.DAI]: [
-            {
-              ...SOME_TOKEN,
-              amount: 123,
-            },
-          ],
-        }
-
-        mockedGetWalletBalances.mockReturnValue(
-          Promise.resolve(balanceResponse)
-        )
-
-        const result = await balance.getWalletBalances(
-          SOME_WALLET_ADDRESS,
-          false
-        )
-
-        expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
-        expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-          SOME_WALLET_ADDRESS,
-          false
-        )
-        expect(result).toEqual(balanceResponse)
-      })
-
-      it('should call the balance service with options and extended=true', async () => {
+      it('should call the balance service with options', async () => {
         const balanceResponse: Record<number, WalletTokenExtended[]> = {
           [ChainId.DAI]: [
             {
@@ -301,14 +247,12 @@ describe('Balance service tests', () => {
 
         const result = await balance.getWalletBalances(
           SOME_WALLET_ADDRESS,
-          true,
           options
         )
 
         expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
         expect(mockedGetWalletBalances).toHaveBeenCalledWith(
           SOME_WALLET_ADDRESS,
-          true,
           options
         )
         expect(result).toEqual(balanceResponse)
