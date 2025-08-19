@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.10.0](https://github.com/lifinance/sdk/compare/v3.9.3...v3.10.0) (2025-08-19)
+
+
+### Features
+
+* add getWalletBalances() ([#288](https://github.com/lifinance/sdk/issues/288)) ([1ec6446](https://github.com/lifinance/sdk/commit/1ec6446befa9a9b3f241ba3d535770f8c8c00cc3))
+
 ### [3.9.3](https://github.com/lifinance/sdk/compare/v3.9.2...v3.9.3) (2025-08-18)
 
 ### [3.9.2](https://github.com/lifinance/sdk/compare/v3.9.1...v3.9.2) (2025-08-13)
