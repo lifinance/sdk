@@ -140,11 +140,11 @@ export type ProcessStatus =
 export type ProcessType =
   | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
-  | 'SWITCH_CHAIN'
+  | 'SWITCH_CHAIN' // TODO: remove this type
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
-  | 'TRANSACTION'
+  | 'TRANSACTION' // TODO: remove this type
 
 export type Process = {
   type: ProcessType

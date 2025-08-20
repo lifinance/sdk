@@ -67,13 +67,19 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (step: LiFiStepExtended, process?: Process) => {
+  checkClient = async (
+    step: LiFiStepExtended,
+    process: Process,
+    targetChainId?: number
+  ) => {
     const updatedClient = await switchChain(
       this.client,
       this.statusManager,
       step,
+      process,
+      targetChainId ?? step.action.fromChainId,
       this.allowUserInteraction,
-      this.executionOptions?.switchChainHook
+      this.executionOptions
     )
     if (updatedClient) {
       this.client = updatedClient
@@ -92,17 +98,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
     if (
       accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
     ) {
-      let processToUpdate = process
-      if (!processToUpdate) {
-        // We need to create some process if we don't have one so we can show the error
-        processToUpdate = this.statusManager.findOrCreateProcess({
-          step,
-          type: 'TRANSACTION',
-        })
-      }
       const errorMessage =
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      this.statusManager.updateProcess(step, processToUpdate.type, 'FAILED', {
+      this.statusManager.updateProcess(step, process.type, 'FAILED', {
         error: {
           code: LiFiErrorCode.WalletChangedDuringExecution,
           message: errorMessage,
@@ -204,7 +202,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
   private getUpdatedStep = async (
     step: LiFiStepExtended,
-    signedNativePermitTypedData?: SignedTypedData
+    signedTypedData?: SignedTypedData[]
   ): Promise<LiFiStep> => {
     // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
@@ -229,8 +227,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     const params =
-      relayerStep && !gaslessStep && signedNativePermitTypedData
-        ? { ...stepBase, typedData: [signedNativePermitTypedData] }
+      relayerStep && !gaslessStep && signedTypedData?.length
+        ? { ...stepBase, typedData: signedTypedData }
         : stepBase
 
     return getStepTransaction(params)
@@ -252,8 +250,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // If the step is waiting for a transaction on the destination chain, we do not switch the chain
     // All changes are already done from the source chain
     // Return the step
-    if (destinationChainProcess?.substatus !== 'WAIT_DESTINATION_TRANSACTION') {
-      const updatedClient = await this.checkClient(step)
+    if (
+      destinationChainProcess &&
+      destinationChainProcess.substatus !== 'WAIT_DESTINATION_TRANSACTION'
+    ) {
+      const updatedClient = await this.checkClient(
+        step,
+        destinationChainProcess
+      )
       if (!updatedClient) {
         return step
       }
@@ -267,6 +271,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
+    // Signed typed data for native permits and other messages
+    let signedTypedData: SignedTypedData[] = []
 
     // Batching via EIP-5792 is disabled in the next cases:
     // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
@@ -317,7 +323,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
       !!step.estimate.approvalAddress
 
-    let signedNativePermitTypedData: SignedTypedData | undefined
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
@@ -330,6 +335,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
+        checkClient: this.checkClient,
       })
 
       if (allowanceResult.status === 'BATCH_APPROVAL') {
@@ -340,7 +346,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
       }
       if (allowanceResult.status === 'NATIVE_PERMIT') {
-        signedNativePermitTypedData = allowanceResult.data
+        signedTypedData = Object.values(allowanceResult.data)
       }
       if (
         allowanceResult.status === 'ACTION_REQUIRED' &&
@@ -383,7 +389,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
 
       const permitRequired =
-        !batchingSupported && !signedNativePermitTypedData && permit2Supported
+        !batchingSupported && !signedTypedData?.length && permit2Supported
       process = this.statusManager.findOrCreateProcess({
         step,
         type: permitRequired ? 'PERMIT' : currentProcessType,
@@ -399,10 +405,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         !step.transactionRequest &&
         !step.typedData?.some((p) => p.primaryType !== 'Permit')
       ) {
-        const updatedStep = await this.getUpdatedStep(
-          step,
-          signedNativePermitTypedData
-        )
+        const updatedStep = await this.getUpdatedStep(step, signedTypedData)
         const comparedStep = await stepComparison(
           this.statusManager,
           step,
@@ -417,10 +420,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         isRelayerTransaction = isRelayerStep(comparedStep)
       }
 
-      if (
-        !step.transactionRequest &&
-        !step.typedData?.some((p) => p.primaryType !== 'Permit')
-      ) {
+      if (!step.transactionRequest && !step.typedData?.length) {
         throw new TransactionError(
           LiFiErrorCode.TransactionUnprepared,
           'Unable to prepare transaction.'
@@ -512,28 +512,30 @@ export class EVMStepExecutor extends BaseStepExecutor {
         taskId = id as Hash
         txType = 'batched'
       } else if (isRelayerTransaction) {
-        const relayerTypedData = step.typedData?.find(
-          (p) => p.primaryType !== 'Permit'
-        )
-
-        if (!relayerTypedData) {
+        if (!step.typedData?.length) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction. Typed data for transfer is not found.'
           )
         }
 
-        const signature = await getAction(
-          this.client,
-          signTypedData,
-          'signTypedData'
-        )({
-          account: this.client.account!,
-          primaryType: relayerTypedData.primaryType,
-          domain: relayerTypedData.domain,
-          types: relayerTypedData.types,
-          message: relayerTypedData.message,
-        })
+        for (const typedData of step.typedData) {
+          const signature = await getAction(
+            this.client,
+            signTypedData,
+            'signTypedData'
+          )({
+            account: this.client.account!,
+            primaryType: typedData.primaryType,
+            domain: typedData.domain,
+            types: typedData.types,
+            message: typedData.message,
+          })
+          signedTypedData.push({
+            ...typedData,
+            signature: signature,
+          })
+        }
 
         this.statusManager.updateProcess(step, process.type, 'DONE')
 
@@ -544,16 +546,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
           chainId: fromChain.id,
         })
 
-        const signedTypedData: SignedTypedData[] = [
-          {
-            ...relayerTypedData,
-            signature: signature,
-          },
-        ]
-        // Add native permit if available as first element, order is important
-        if (signedNativePermitTypedData) {
-          signedTypedData.unshift(signedNativePermitTypedData)
-        }
         // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
@@ -570,6 +562,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
             'Unable to prepare transaction. Transaction request is not found.'
           )
         }
+        const signedNativePermitTypedData = signedTypedData.find(
+          (p) => p.primaryType === 'Permit' && p.domain.chainId === fromChain.id
+        )
         if (signedNativePermitTypedData) {
           transactionRequest.data = encodeNativePermitData(
             step.action.fromToken.address as Address,
