@@ -39,15 +39,15 @@ export type CheckAllowanceParams = {
 
 export type AllowanceResult =
   | {
-      status: 'ACTION_REQUIRED' | 'DONE'
+      status: 'ACTION_REQUIRED'
     }
   | {
       status: 'BATCH_APPROVAL'
-      data: Call
+      data: { call: Call; signedPermits: Map<number, SignedTypedData> }
     }
   | {
-      status: 'NATIVE_PERMIT'
-      data: Record<number, SignedTypedData>
+      status: 'NATIVE_PERMIT' | 'DONE'
+      data: Map<number, SignedTypedData>
     }
 
 export const checkAllowance = async ({
@@ -63,112 +63,124 @@ export const checkAllowance = async ({
   checkClient,
 }: CheckAllowanceParams): Promise<AllowanceResult> => {
   // Find existing or create new allowance process
-  let allowanceProcess: Process = statusManager.findOrCreateProcess({
+  let sharedProcess: Process = statusManager.findOrCreateProcess({
     step,
-    type: 'TOKEN_ALLOWANCE',
+    type: 'PERMIT',
     chainId: step.action.fromChainId,
   })
+  try {
+    // First, sign all permits in step.typedData if allowUserInteraction is enabled
+    const signedPermits: Map<number, SignedTypedData> =
+      sharedProcess.signedPermits ?? new Map()
 
-  // First, sign all permits in step.typedData if allowUserInteraction is enabled
-  const signedPermits: Record<number, SignedTypedData> =
-    allowanceProcess.signedPermits ?? {}
+    if (allowUserInteraction && !disableMessageSigning && step.typedData) {
+      for (const typedData of step.typedData) {
+        if (typedData.primaryType === 'Permit') {
+          const permitChainId = typedData.domain.chainId as number
+          const spenderAddress = typedData.message.spender as Address
+          const fromAmount = BigInt(typedData.message.value)
 
-  if (allowUserInteraction && !disableMessageSigning && step.typedData) {
-    for (const typedData of step.typedData) {
-      if (typedData.primaryType === 'Permit') {
-        const permitChainId = typedData.domain.chainId as number
-        const spenderAddress = typedData.message.spender as Address
-        const fromAmount = BigInt(typedData.message.value)
+          // Check if we already have a valid permit for this chain and requirements
+          const existingValidPermit =
+            signedPermits.has(permitChainId) &&
+            isNativePermitValid(
+              signedPermits.get(permitChainId)!,
+              permitChainId,
+              spenderAddress,
+              client.account!.address,
+              fromAmount
+            )
 
-        // Check if we already have a valid permit for this chain and requirements
-        const existingValidPermit = isNativePermitValid(
-          signedPermits[permitChainId],
-          permitChainId,
-          spenderAddress,
-          client.account!.address,
-          fromAmount
-        )
-
-        if (existingValidPermit) {
-          // Skip signing if we already have a valid permit
-          continue
-        }
-
-        // Switch to the permit's chain if needed
-        const permitClient = await checkClient(
-          step,
-          allowanceProcess,
-          permitChainId
-        )
-        if (!permitClient) {
-          return { status: 'ACTION_REQUIRED' }
-        }
-        allowanceProcess = statusManager.updateProcess(
-          step,
-          allowanceProcess.type,
-          'ACTION_REQUIRED'
-        )
-        const signature = await getAction(
-          permitClient,
-          signTypedData,
-          'signTypedData'
-        )({
-          account: permitClient.account!,
-          domain: typedData.domain,
-          types: typedData.types,
-          primaryType: 'Permit',
-          message: typedData.message,
-        })
-        const signedPermit: SignedTypedData = {
-          ...typedData,
-          signature,
-        }
-        signedPermits[permitChainId] = signedPermit
-        allowanceProcess = statusManager.updateProcess(
-          step,
-          allowanceProcess.type,
-          'ACTION_REQUIRED',
-          {
-            signedPermits,
+          if (existingValidPermit) {
+            // Skip signing if we already have a valid permit
+            continue
           }
-        )
-      }
-    }
 
-    // Check if there's a signed permit for the source transaction chain
-    const matchingPermit = signedPermits[chain.id]
-    if (matchingPermit) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
+          // Switch to the permit's chain if needed
+          const permitClient = await checkClient(
+            step,
+            sharedProcess,
+            permitChainId
+          )
+          if (!permitClient) {
+            return { status: 'ACTION_REQUIRED' }
+          }
+          sharedProcess = statusManager.updateProcess(
+            step,
+            sharedProcess.type,
+            'ACTION_REQUIRED'
+          )
+          const signature = await getAction(
+            permitClient,
+            signTypedData,
+            'signTypedData'
+          )({
+            account: permitClient.account!,
+            domain: typedData.domain,
+            types: typedData.types,
+            primaryType: 'Permit',
+            message: typedData.message,
+          })
+          const signedPermit: SignedTypedData = {
+            ...typedData,
+            signature,
+          }
+          signedPermits.set(permitChainId, signedPermit)
+          sharedProcess = statusManager.updateProcess(
+            step,
+            sharedProcess.type,
+            'ACTION_REQUIRED',
+            {
+              signedPermits,
+            }
+          )
+        }
+      }
+
+      statusManager.updateProcess(step, sharedProcess.type, 'DONE', {
         signedPermits,
       })
-      return {
-        status: 'NATIVE_PERMIT',
-        data: signedPermits,
+      // Check if there's a signed permit for the source transaction chain
+      const matchingPermit = signedPermits.get(chain.id)
+      if (matchingPermit) {
+        return {
+          status: 'NATIVE_PERMIT',
+          data: signedPermits,
+        }
       }
     }
-  }
 
-  const updatedClient = await checkClient(step, allowanceProcess)
-  if (!updatedClient) {
-    return { status: 'ACTION_REQUIRED' }
-  }
+    statusManager.updateProcess(step, sharedProcess.type, 'DONE', {
+      signedPermits,
+    })
 
-  try {
+    // Find existing or create new allowance process
+    sharedProcess = statusManager.findOrCreateProcess({
+      step,
+      type: 'TOKEN_ALLOWANCE',
+      chainId: step.action.fromChainId,
+    })
+
+    const updatedClient = await checkClient(step, sharedProcess)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
+
     // Handle existing pending transaction
-    if (allowanceProcess.txHash && allowanceProcess.status !== 'DONE') {
+    if (sharedProcess.txHash && sharedProcess.status !== 'DONE') {
       await waitForApprovalTransaction(
         updatedClient,
-        allowanceProcess.txHash as Address,
-        allowanceProcess.type,
+        sharedProcess.txHash as Address,
+        sharedProcess.type,
         step,
         chain,
         statusManager
       )
-      return { status: 'DONE' }
+      return { status: 'DONE', data: signedPermits }
     }
 
     // Start new allowance check
-    statusManager.updateProcess(step, allowanceProcess.type, 'STARTED')
+    statusManager.updateProcess(step, sharedProcess.type, 'STARTED')
 
     const spenderAddress = permit2Supported
       ? chain.permit2
@@ -185,8 +197,8 @@ export const checkAllowance = async ({
 
     // Return early if already approved
     if (fromAmount <= approved) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return { status: 'DONE' }
+      statusManager.updateProcess(step, sharedProcess.type, 'DONE')
+      return { status: 'DONE', data: signedPermits }
     }
 
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
@@ -208,7 +220,7 @@ export const checkAllowance = async ({
       )
     }
 
-    statusManager.updateProcess(step, allowanceProcess.type, 'ACTION_REQUIRED')
+    statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
       return { status: 'ACTION_REQUIRED' }
@@ -216,13 +228,15 @@ export const checkAllowance = async ({
 
     if (isNativePermitAvailable && nativePermitData) {
       // Check if we already have a valid permit for this chain and requirements
-      const existingValidPermit = isNativePermitValid(
-        signedPermits[nativePermitData.domain.chainId as number],
-        nativePermitData.domain.chainId as number,
-        nativePermitData.message.spender as Address,
-        client.account!.address,
-        BigInt(nativePermitData.message.value)
-      )
+      const existingValidPermit =
+        signedPermits.has(nativePermitData.domain.chainId as number) &&
+        isNativePermitValid(
+          signedPermits.get(nativePermitData.domain.chainId as number)!,
+          nativePermitData.domain.chainId as number,
+          nativePermitData.message.spender as Address,
+          client.account!.address,
+          BigInt(nativePermitData.message.value)
+        )
 
       if (!existingValidPermit) {
         // Sign the permit
@@ -243,10 +257,13 @@ export const checkAllowance = async ({
           ...nativePermitData,
           signature,
         }
-        signedPermits[nativePermitData.domain.chainId as number] = signedPermit
+        signedPermits.set(
+          nativePermitData.domain.chainId as number,
+          signedPermit
+        )
       }
 
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE', {
+      statusManager.updateProcess(step, sharedProcess.type, 'DONE', {
         signedPermits,
       })
       return {
@@ -267,13 +284,16 @@ export const checkAllowance = async ({
     )
 
     if (batchingSupported) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      statusManager.updateProcess(step, sharedProcess.type, 'DONE')
       return {
         status: 'BATCH_APPROVAL',
         data: {
-          to: step.action.fromToken.address as Address,
-          data: approveTxHash,
-          chainId: step.action.fromToken.chainId,
+          call: {
+            to: step.action.fromToken.address as Address,
+            data: approveTxHash,
+            chainId: step.action.fromToken.chainId,
+          },
+          signedPermits,
         },
       }
     }
@@ -281,16 +301,16 @@ export const checkAllowance = async ({
     await waitForApprovalTransaction(
       updatedClient,
       approveTxHash,
-      allowanceProcess.type,
+      sharedProcess.type,
       step,
       chain,
       statusManager
     )
 
-    return { status: 'DONE' }
+    return { status: 'DONE', data: signedPermits }
   } catch (e: any) {
-    const error = await parseEVMErrors(e, step, allowanceProcess)
-    statusManager.updateProcess(step, allowanceProcess.type, 'FAILED', {
+    const error = await parseEVMErrors(e, step, sharedProcess)
+    statusManager.updateProcess(step, sharedProcess.type, 'FAILED', {
       error: {
         message: error.cause.message,
         code: error.code,

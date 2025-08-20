@@ -338,21 +338,24 @@ export class EVMStepExecutor extends BaseStepExecutor {
         checkClient: this.checkClient,
       })
 
-      if (allowanceResult.status === 'BATCH_APPROVAL') {
-        // Create approval transaction call
-        // No value needed since we're only approving ERC20 tokens
-        if (batchingSupported) {
-          calls.push(allowanceResult.data)
-        }
-      }
-      if (allowanceResult.status === 'NATIVE_PERMIT') {
-        signedTypedData = Object.values(allowanceResult.data)
-      }
-      if (
-        allowanceResult.status === 'ACTION_REQUIRED' &&
-        !this.allowUserInteraction
-      ) {
-        return step
+      switch (allowanceResult.status) {
+        case 'BATCH_APPROVAL':
+          calls.push(allowanceResult.data.call)
+          signedTypedData = Array.from(
+            allowanceResult.data.signedPermits.values()
+          )
+          break
+        case 'NATIVE_PERMIT':
+          signedTypedData = Array.from(allowanceResult.data.values())
+          break
+        case 'DONE':
+          signedTypedData = Array.from(allowanceResult.data.values())
+          break
+        default:
+          if (!this.allowUserInteraction) {
+            return step
+          }
+          break
       }
     }
 
@@ -388,11 +391,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      const permitRequired =
-        !batchingSupported && !signedTypedData?.length && permit2Supported
       process = this.statusManager.findOrCreateProcess({
         step,
-        type: permitRequired ? 'PERMIT' : currentProcessType,
+        type: currentProcessType,
         status: 'STARTED',
         chainId: fromChain.id,
       })
@@ -416,8 +417,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         Object.assign(step, {
           ...comparedStep,
           execution: step.execution,
+          typedData: updatedStep.typedData,
         })
-        isRelayerTransaction = isRelayerStep(comparedStep)
+        isRelayerTransaction = isRelayerStep(step)
       }
 
       if (!step.transactionRequest && !step.typedData?.length) {
@@ -581,14 +583,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
             amount: BigInt(step.action.fromAmount),
             data: transactionRequest.data as Hex,
           })
-          this.statusManager.updateProcess(step, process.type, 'DONE')
+          // this.statusManager.updateProcess(step, process.type, 'DONE')
 
-          process = this.statusManager.findOrCreateProcess({
-            step,
-            type: currentProcessType,
-            status: 'PENDING',
-            chainId: fromChain.id,
-          })
+          // process = this.statusManager.findOrCreateProcess({
+          //   step,
+          //   type: currentProcessType,
+          //   status: 'PENDING',
+          //   chainId: fromChain.id,
+          // })
           transactionRequest.data = encodePermit2Data(
             step.action.fromToken.address as Address,
             BigInt(step.action.fromAmount),
@@ -624,15 +626,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
             if (transactionRequest.gas) {
               transactionRequest.gas = transactionRequest.gas + 80_000n
             }
-          } finally {
-            this.statusManager.updateProcess(step, process.type, 'DONE')
           }
+          // finally {
+          //   this.statusManager.updateProcess(step, process.type, 'DONE')
+          // }
         }
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'ACTION_REQUIRED'
-        )
+        // process = this.statusManager.updateProcess(
+        //   step,
+        //   process.type,
+        //   'ACTION_REQUIRED'
+        // )
         txHash = await getAction(
           this.client,
           sendTransaction,
