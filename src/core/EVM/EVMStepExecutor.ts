@@ -318,6 +318,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       !!step.estimate.approvalAddress
 
     let signedNativePermitTypedData: SignedTypedData | undefined
+    let stepTransactionSignedNativePermitTypedData: SignedTypedData | undefined
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
@@ -330,6 +331,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
+        switchChainHook: this.executionOptions?.switchChainHook!,
       })
 
       if (allowanceResult.status === 'BATCH_APPROVAL') {
@@ -341,6 +343,16 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
       if (allowanceResult.status === 'NATIVE_PERMIT') {
         signedNativePermitTypedData = allowanceResult.data
+      }
+      if (allowanceResult.status === 'DESTINATION_NATIVE_PERMIT') {
+        stepTransactionSignedNativePermitTypedData = (
+          allowanceResult as any
+        )?.data?.find(
+          (p: any) => p.status === 'DESTINATION_NATIVE_PERMIT'
+        )?.data
+        signedNativePermitTypedData = (allowanceResult as any)?.data?.find(
+          (p: any) => p.status === 'NATIVE_PERMIT'
+        )?.data
       }
       if (
         allowanceResult.status === 'ACTION_REQUIRED' &&
@@ -401,7 +413,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       ) {
         const updatedStep = await this.getUpdatedStep(
           step,
-          signedNativePermitTypedData
+          stepTransactionSignedNativePermitTypedData ||
+            signedNativePermitTypedData
         )
         const comparedStep = await stepComparison(
           this.statusManager,

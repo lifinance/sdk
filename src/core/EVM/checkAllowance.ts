@@ -4,9 +4,14 @@ import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { ExecutionOptions, Process, ProcessType } from '../types.js'
+import type {
+  ExecutionOptions,
+  Process,
+  ProcessType,
+  SwitchChainHook,
+} from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
-import { getAllowance } from './getAllowance.js'
+// import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { getNativePermit } from './permits/getNativePermit.js'
 import type { NativePermitData } from './permits/types.js'
@@ -25,6 +30,7 @@ export type CheckAllowanceParams = {
   batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
+  switchChainHook: SwitchChainHook
 }
 
 export type AllowanceResult =
@@ -39,6 +45,10 @@ export type AllowanceResult =
       status: 'NATIVE_PERMIT'
       data: SignedTypedData
     }
+  | {
+      status: 'DESTINATION_NATIVE_PERMIT'
+      data: SignedTypedData[]
+    }
 
 export const checkAllowance = async ({
   client,
@@ -50,6 +60,7 @@ export const checkAllowance = async ({
   batchingSupported = false,
   permit2Supported = false,
   disableMessageSigning = false,
+  switchChainHook,
 }: CheckAllowanceParams): Promise<AllowanceResult> => {
   // Find existing or create new allowance process
   const allowanceProcess: Process = statusManager.findOrCreateProcess({
@@ -81,18 +92,18 @@ export const checkAllowance = async ({
 
     const fromAmount = BigInt(step.action.fromAmount)
 
-    const approved = await getAllowance(
-      client,
-      step.action.fromToken.address as Address,
-      client.account!.address,
-      spenderAddress as Address
-    )
+    // const approved = await getAllowance(
+    //   client,
+    //   step.action.fromToken.address as Address,
+    //   client.account!.address,
+    //   spenderAddress as Address
+    // )
 
-    // Return early if already approved
-    if (fromAmount <= approved) {
-      statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return { status: 'DONE' }
-    }
+    // // Return early if already approved
+    // if (fromAmount <= approved) {
+    //   statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+    //   return { status: 'DONE' }
+    // }
 
     const isRelayerTransaction = isRelayerStep(step)
 
@@ -101,11 +112,31 @@ export const checkAllowance = async ({
       !!chain.permit2Proxy && !batchingSupported && !disableMessageSigning
 
     let nativePermitData: NativePermitData | undefined
+    let destinationChainNativePermitData: NativePermitData | undefined
     if (isRelayerTransaction) {
-      nativePermitData = step.typedData.find(
+      const permitData = step.typedData?.find(
         (p) => p.primaryType === 'Permit'
       ) as NativePermitData
+      if (permitData && permitData.domain.chainId === chain.id) {
+        nativePermitData = permitData
+      } else {
+        destinationChainNativePermitData = permitData
+      }
     } else if (isNativePermitAvailable) {
+      nativePermitData = await getActionWithFallback(
+        client,
+        getNativePermit,
+        'getNativePermit',
+        {
+          chainId: chain.id,
+          tokenAddress: step.action.fromToken.address as Address,
+          spenderAddress: chain.permit2Proxy as Address,
+          amount: fromAmount,
+        }
+      )
+    }
+
+    if (isRelayerTransaction && !nativePermitData) {
       nativePermitData = await getActionWithFallback(
         client,
         getNativePermit,
@@ -125,6 +156,8 @@ export const checkAllowance = async ({
       return { status: 'ACTION_REQUIRED' }
     }
 
+    const arr: any = []
+
     if (isNativePermitAvailable && nativePermitData) {
       const signature = await getAction(
         client,
@@ -138,14 +171,54 @@ export const checkAllowance = async ({
         message: nativePermitData.message,
       })
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
-      return {
-        status: 'NATIVE_PERMIT',
-        data: {
-          ...nativePermitData,
-          signature,
-        },
+      if (destinationChainNativePermitData) {
+        arr.push({
+          status: 'DESTINATION_NATIVE_PERMIT',
+          data: {
+            ...nativePermitData,
+            signature,
+          },
+        })
+      } else {
+        return {
+          status: 'NATIVE_PERMIT',
+          data: {
+            ...nativePermitData,
+            signature,
+          },
+        }
       }
     }
+
+    // if (destinationChainNativePermitData) {
+    //   const updatedClient = await switchChainHook(
+    //     destinationChainNativePermitData.domain.chainId as number
+    //   )
+    //   if (!updatedClient) {
+    //     throw new Error('Client not updated')
+    //   }
+    //   const signature = await getAction(
+    //     updatedClient,
+    //     signTypedData,
+    //     'signTypedData'
+    //   )({
+    //     account: client.account!,
+    //     domain: destinationChainNativePermitData.domain,
+    //     types: destinationChainNativePermitData.types,
+    //     primaryType: 'Permit',
+    //     message: destinationChainNativePermitData.message,
+    //   })
+    //   // statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+    //   await switchChainHook(chain.id)
+    //   arr.push({
+    //     status: 'DESTINATION_NATIVE_PERMIT',
+    //     data: {
+    //       ...destinationChainNativePermitData,
+    //       signature,
+    //     },
+    //   })
+    //   return { status: 'DESTINATION_NATIVE_PERMIT', data: arr }
+    // }
 
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
@@ -157,6 +230,36 @@ export const checkAllowance = async ({
       executionOptions,
       batchingSupported
     )
+
+    if (destinationChainNativePermitData) {
+      const updatedClient = await switchChainHook(
+        destinationChainNativePermitData.domain.chainId as number
+      )
+      if (!updatedClient) {
+        throw new Error('Client not updated')
+      }
+      const signature = await getAction(
+        updatedClient,
+        signTypedData,
+        'signTypedData'
+      )({
+        account: client.account!,
+        domain: destinationChainNativePermitData.domain,
+        types: destinationChainNativePermitData.types,
+        primaryType: 'Permit',
+        message: destinationChainNativePermitData.message,
+      })
+      // statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
+      await switchChainHook(chain.id)
+      arr.push({
+        status: 'DESTINATION_NATIVE_PERMIT',
+        data: {
+          ...destinationChainNativePermitData,
+          signature,
+        },
+      })
+      return { status: 'DESTINATION_NATIVE_PERMIT', data: arr }
+    }
 
     if (batchingSupported) {
       statusManager.updateProcess(step, allowanceProcess.type, 'DONE')
