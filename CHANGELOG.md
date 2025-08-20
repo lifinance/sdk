@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.10.1](https://github.com/lifinance/sdk/compare/v3.10.0...v3.10.1) (2025-08-20)
+
+
+### Bug Fixes
+
+* add missing export of getWalletBalances ([#297](https://github.com/lifinance/sdk/issues/297)) ([d27d891](https://github.com/lifinance/sdk/commit/d27d891681b100c8de966acc5cca4423597e685b))
+
 ## [3.10.0](https://github.com/lifinance/sdk/compare/v3.9.3...v3.10.0) (2025-08-19)
 
 
