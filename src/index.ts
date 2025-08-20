@@ -117,6 +117,7 @@ export {
   getTokenBalance,
   getTokenBalances,
   getTokenBalancesByChain,
+  getWalletBalances,
 } from './services/balance.js'
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
 export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
