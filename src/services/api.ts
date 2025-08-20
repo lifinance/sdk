@@ -26,6 +26,7 @@ import {
   type SignedLiFiStep,
   type StatusResponse,
   type TokenExtended,
+  type TokensExtendedResponse,
   type TokensRequest,
   type TokensResponse,
   type ToolsRequest,
@@ -453,7 +454,7 @@ export const getChains = async (
 export const getTokens = async (
   params?: TokensRequest,
   options?: RequestOptions
-): Promise<TokensResponse> => {
+): Promise<TokensResponse | TokensExtendedResponse> => {
   if (params) {
     for (const key of Object.keys(params)) {
       if (!params[key as keyof TokensRequest]) {
@@ -464,14 +465,14 @@ export const getTokens = async (
   const urlSearchParams = new URLSearchParams(
     params as Record<string, string>
   ).toString()
+  const hasOrderBy = params?.orderBy !== undefined
   const response = await withDedupe(
     () =>
-      request<TokensResponse>(
-        `${config.get().apiUrl}/tokens?${urlSearchParams}`,
-        {
-          signal: options?.signal,
-        }
-      ),
+      request<
+        typeof hasOrderBy extends true ? TokensExtendedResponse : TokensResponse
+      >(`${config.get().apiUrl}/tokens?${urlSearchParams}`, {
+        signal: options?.signal,
+      }),
     { id: `${getTokens.name}.${urlSearchParams}` }
   )
   return response
