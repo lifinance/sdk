@@ -102,9 +102,11 @@
     "@noble/curves": "^1.9.6",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.4",
+    "@tronweb3/tronwallet-abstract-adapter": "^1.1.9",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
+    "tronweb": "^6.0.4",
     "viem": "^2.33.3"
   },
   "devDependencies": {

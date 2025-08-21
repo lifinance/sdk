@@ -51,6 +51,9 @@ export { StatusManager } from './core/StatusManager.js'
 export { Sui } from './core/Sui/Sui.js'
 export type { SuiProvider, SuiProviderOptions } from './core/Sui/types.js'
 export { isSui } from './core/Sui/types.js'
+export { Tron } from './core/Tron/Tron.js'
+export type { TronProvider, TronProviderOptions } from './core/Tron/types.js'
+export { isTron } from './core/Tron/types.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
