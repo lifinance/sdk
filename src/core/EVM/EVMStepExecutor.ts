@@ -208,7 +208,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   private prepareUpdatedStep = async (
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
-  ): Promise<TransactionParameters | undefined> => {
+  ) => {
     // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
     const relayerStep = isRelayerStep(step)
@@ -247,7 +247,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     Object.assign(step, {
       ...comparedStep,
       execution: step.execution,
-      typedData: updatedStep.typedData,
+      typedData: updatedStep.typedData ?? step.typedData,
     })
 
     if (!step.transactionRequest && !step.typedData?.length) {
@@ -299,7 +299,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    return transactionRequest
+    return {
+      transactionRequest,
+      // We should always check against the updated step,
+      // because the step may be updated with typed data from the previously signed typed data
+      isRelayerTransaction: isRelayerStep(updatedStep),
+    }
   }
 
   executeStep = async (
@@ -334,9 +339,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const fromChain = await config.getChainById(step.action.fromChainId)
     const toChain = await config.getChainById(step.action.toChainId)
 
-    // Check if step requires permit signature and will be used with relayer service
-    let isRelayerTransaction = isRelayerStep(step)
-
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
     // Signed typed data for native permits and other messages
@@ -347,7 +349,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // 2. When the step is using thorswap tool (temporary disabled)
     // 3. When using relayer transactions
     const batchingSupported =
-      atomicityNotReady || step.tool === 'thorswap' || isRelayerTransaction
+      atomicityNotReady || step.tool === 'thorswap' || isRelayerStep(step)
         ? false
         : await isBatchingSupported({
             client: this.client,
@@ -394,7 +396,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
-        client: this.client,
+        checkClient: this.checkClient,
         chain: fromChain,
         step,
         statusManager: this.statusManager,
@@ -403,7 +405,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
-        checkClient: this.checkClient,
       })
 
       switch (allowanceResult.status) {
@@ -467,11 +468,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       await checkBalance(this.client.account!.address, step)
 
       // Try to prepare a new transaction request and update the step with typed data
-      const transactionRequest = await this.prepareUpdatedStep(
-        step,
-        signedTypedData
-      )
-      isRelayerTransaction = isRelayerStep(step)
+      const { transactionRequest, isRelayerTransaction } =
+        await this.prepareUpdatedStep(step, signedTypedData)
 
       // Make sure that the chain is still correct
       const updatedClient = await this.checkClient(step, process)
@@ -518,13 +516,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         const intentTypedData = step.typedData?.filter(
           (typedData) =>
             !signedTypedData.some((signedPermit) =>
-              isNativePermitValid(
-                signedPermit,
-                typedData.domain.chainId as number,
-                typedData.message.spender,
-                typedData.message.owner,
-                BigInt(typedData.message.value ?? 0)
-              )
+              isNativePermitValid(signedPermit, typedData)
             )
         )
         if (!intentTypedData?.length) {

@@ -1,15 +1,11 @@
-import type { SignedTypedData } from '@lifi/types'
-import type { Address } from 'viem'
+import type { SignedTypedData, TypedData } from '@lifi/types'
 
 /**
  * Checks if an existing native permit is valid for the given requirements
  */
 export const isNativePermitValid = (
   permit: SignedTypedData,
-  chainId: number,
-  spenderAddress?: Address,
-  ownerAddress?: Address,
-  amount: bigint = 0n
+  typedData: TypedData
 ): boolean => {
   // Only check native permits (EIP-2612)
   if (permit.primaryType !== 'Permit') {
@@ -17,7 +13,10 @@ export const isNativePermitValid = (
   }
 
   // Check if the permit is for the correct chain
-  if (permit.domain.chainId !== chainId) {
+  if (
+    permit.domain.chainId !== typedData.domain.chainId ||
+    (permit.domain.salt && permit.domain.salt !== typedData.domain.salt)
+  ) {
     return false
   }
 
@@ -28,18 +27,20 @@ export const isNativePermitValid = (
   }
 
   // Check spender
-  if (message.spender?.toLowerCase() !== spenderAddress?.toLowerCase()) {
+  if (
+    message.spender?.toLowerCase() !== typedData.message.spender?.toLowerCase()
+  ) {
     return false
   }
 
   // Check owner
-  if (message.owner?.toLowerCase() !== ownerAddress?.toLowerCase()) {
+  if (message.owner?.toLowerCase() !== typedData.message.owner?.toLowerCase()) {
     return false
   }
 
   // Check amount (value field in native permits)
   const permitAmount = BigInt(message.value || 0)
-  if (permitAmount < amount) {
+  if (permitAmount < BigInt(typedData.message.value || 0)) {
     return false
   }
 

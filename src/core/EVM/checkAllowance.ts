@@ -21,7 +21,11 @@ import type { Call } from './types.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export type CheckAllowanceParams = {
-  client: Client
+  checkClient(
+    step: LiFiStepExtended,
+    process: Process,
+    targetChainId?: number
+  ): Promise<Client | undefined>
   chain: ExtendedChain
   step: LiFiStep
   statusManager: StatusManager
@@ -30,11 +34,6 @@ export type CheckAllowanceParams = {
   batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
-  checkClient(
-    step: LiFiStepExtended,
-    process: Process,
-    targetChainId?: number
-  ): Promise<Client | undefined>
 }
 
 export type AllowanceResult =
@@ -51,7 +50,7 @@ export type AllowanceResult =
     }
 
 export const checkAllowance = async ({
-  client,
+  checkClient,
   chain,
   step,
   statusManager,
@@ -60,7 +59,6 @@ export const checkAllowance = async ({
   batchingSupported = false,
   permit2Supported = false,
   disableMessageSigning = false,
-  checkClient,
 }: CheckAllowanceParams): Promise<AllowanceResult> => {
   let sharedProcess: Process | undefined
   let signedTypedData: SignedTypedData[] = []
@@ -78,8 +76,6 @@ export const checkAllowance = async ({
       signedTypedData = sharedProcess.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
         const permitChainId = typedData.domain.chainId as number
-        const spenderAddress = typedData.message.spender as Address
-        const fromAmount = BigInt(typedData.message.value)
 
         // Check if we already have a valid permit for this chain and requirements
         const signedTypedDataForChain = signedTypedData.find(
@@ -87,13 +83,7 @@ export const checkAllowance = async ({
         )
         const existingValidPermit =
           signedTypedDataForChain &&
-          isNativePermitValid(
-            signedTypedDataForChain,
-            permitChainId,
-            spenderAddress,
-            client.account!.address,
-            fromAmount
-          )
+          isNativePermitValid(signedTypedDataForChain, typedData)
 
         if (existingValidPermit) {
           // Skip signing if we already have a valid permit
@@ -237,13 +227,7 @@ export const checkAllowance = async ({
       )
       const existingValidPermit =
         signedTypedDataForChain &&
-        isNativePermitValid(
-          signedTypedDataForChain,
-          nativePermitData.domain.chainId as number,
-          nativePermitData.message.spender as Address,
-          client.account!.address,
-          BigInt(nativePermitData.message.value)
-        )
+        isNativePermitValid(signedTypedDataForChain, nativePermitData)
 
       if (!existingValidPermit) {
         statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED')
