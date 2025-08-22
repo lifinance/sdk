@@ -7,9 +7,9 @@ import type { Address } from 'viem'
 export const isNativePermitValid = (
   permit: SignedTypedData,
   chainId: number,
-  spenderAddress: Address,
-  ownerAddress: Address,
-  amount: bigint
+  spenderAddress?: Address,
+  ownerAddress?: Address,
+  amount: bigint = 0n
 ): boolean => {
   // Only check native permits (EIP-2612)
   if (permit.primaryType !== 'Permit') {
@@ -28,27 +28,27 @@ export const isNativePermitValid = (
   }
 
   // Check spender
-  if (message.spender?.toLowerCase() !== spenderAddress.toLowerCase()) {
+  if (message.spender?.toLowerCase() !== spenderAddress?.toLowerCase()) {
     return false
   }
 
   // Check owner
-  if (message.owner?.toLowerCase() !== ownerAddress.toLowerCase()) {
+  if (message.owner?.toLowerCase() !== ownerAddress?.toLowerCase()) {
     return false
   }
 
   // Check amount (value field in native permits)
-  const permitAmount = BigInt(message.value || '0')
-  if (permitAmount <= amount) {
+  const permitAmount = BigInt(message.value || 0)
+  if (permitAmount < amount) {
     return false
   }
 
   // Check deadline (must have at least 5 minutes remaining)
-  const deadlineTimestamp = parseInt(message.deadline || '0', 10)
-  const currentTimestamp = Math.floor(Date.now() / 1000)
-  const fiveMinutesInSeconds = 5 * 60
+  const deadlineTimestamp = parseInt(message.deadline || 0, 10)
+  // Add 5 minutes bufferto the current timestamp
+  const allowedTimestamp = Math.floor(Date.now() / 1000) + 5 * 60
 
-  if (deadlineTimestamp <= currentTimestamp + fiveMinutesInSeconds) {
+  if (deadlineTimestamp <= allowedTimestamp) {
     return false
   }
 

@@ -132,6 +132,7 @@ export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
 export type ProcessStatus =
   | 'STARTED'
   | 'ACTION_REQUIRED'
+  | 'MESSAGE_REQUIRED'
   | 'PENDING'
   | 'FAILED'
   | 'DONE'
@@ -140,11 +141,9 @@ export type ProcessStatus =
 export type ProcessType =
   | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
-  | 'SWITCH_CHAIN' // TODO: remove this type
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
-  | 'TRANSACTION' // TODO: remove this type
 
 export type Process = {
   type: ProcessType

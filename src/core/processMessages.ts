@@ -10,20 +10,17 @@ const processMessages: Record<
     PENDING: 'Waiting for token allowance',
     DONE: 'Token allowance set',
   },
-  SWITCH_CHAIN: {
-    ACTION_REQUIRED: 'Chain switch required',
-    PENDING: 'Waiting for chain switch',
-    DONE: 'Chain switched',
-  },
   SWAP: {
     STARTED: 'Preparing swap transaction',
-    ACTION_REQUIRED: 'Please sign the transaction',
+    ACTION_REQUIRED: 'Sign swap transaction',
+    MESSAGE_REQUIRED: 'Sign swap message',
     PENDING: 'Waiting for swap transaction',
     DONE: 'Swap completed',
   },
   CROSS_CHAIN: {
     STARTED: 'Preparing bridge transaction',
-    ACTION_REQUIRED: 'Please sign the transaction',
+    ACTION_REQUIRED: 'Sign bridge transaction',
+    MESSAGE_REQUIRED: 'Sign bridge message',
     PENDING: 'Waiting for bridge transaction',
     DONE: 'Bridge transaction confirmed',
   },
@@ -37,7 +34,6 @@ const processMessages: Record<
     PENDING: 'Waiting for permit message',
     DONE: 'Permit message signed',
   },
-  TRANSACTION: {},
 }
 const substatusMessages: Record<
   StatusMessage,

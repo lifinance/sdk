@@ -45,11 +45,16 @@ import {
 } from './parseEVMErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
+import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
 import { switchChain } from './switchChain.js'
 import { isGaslessStep, isRelayerStep } from './typeguards.js'
 import type { Call, WalletCallReceipt } from './types.js'
-import { convertExtendedChain, getMaxPriorityFeePerGas } from './utils.js'
+import {
+  convertExtendedChain,
+  getMaxPriorityFeePerGas,
+  isSaltMatchingChainId,
+} from './utils.js'
 import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
@@ -200,14 +205,15 @@ export class EVMStepExecutor extends BaseStepExecutor {
     )
   }
 
-  private getUpdatedStep = async (
+  private prepareUpdatedStep = async (
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
-  ): Promise<LiFiStep> => {
+  ): Promise<TransactionParameters | undefined> => {
     // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
     const relayerStep = isRelayerStep(step)
     const gaslessStep = isGaslessStep(step)
+    let updatedStep: LiFiStep
     if (relayerStep && gaslessStep) {
       const updatedRelayedStep = await getRelayerQuote({
         fromChain: stepBase.action.fromChainId,
@@ -220,18 +226,80 @@ export class EVMStepExecutor extends BaseStepExecutor {
         toAddress: stepBase.action.toAddress,
         allowBridges: [stepBase.tool],
       })
-      return {
+      updatedStep = {
         ...updatedRelayedStep,
         id: stepBase.id,
       }
-    }
-
-    const params =
-      relayerStep && !gaslessStep && signedTypedData?.length
+    } else {
+      const params = signedTypedData?.length
         ? { ...stepBase, typedData: signedTypedData }
         : stepBase
+      updatedStep = await getStepTransaction(params)
+    }
 
-    return getStepTransaction(params)
+    const comparedStep = await stepComparison(
+      this.statusManager,
+      step,
+      updatedStep,
+      this.allowUserInteraction,
+      this.executionOptions
+    )
+    Object.assign(step, {
+      ...comparedStep,
+      execution: step.execution,
+      typedData: updatedStep.typedData,
+    })
+
+    if (!step.transactionRequest && !step.typedData?.length) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction.'
+      )
+    }
+
+    let transactionRequest: TransactionParameters | undefined
+    if (step.transactionRequest) {
+      transactionRequest = {
+        to: step.transactionRequest.to,
+        from: step.transactionRequest.from,
+        data: step.transactionRequest.data,
+        value: step.transactionRequest.value
+          ? BigInt(step.transactionRequest.value)
+          : undefined,
+        gas: step.transactionRequest.gasLimit
+          ? BigInt(step.transactionRequest.gasLimit)
+          : undefined,
+        // gasPrice: step.transactionRequest.gasPrice
+        //   ? BigInt(step.transactionRequest.gasPrice as string)
+        //   : undefined,
+        // maxFeePerGas: step.transactionRequest.maxFeePerGas
+        //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
+        //   : undefined,
+        maxPriorityFeePerGas:
+          this.client.account?.type === 'local'
+            ? await getMaxPriorityFeePerGas(this.client)
+            : step.transactionRequest.maxPriorityFeePerGas
+              ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
+              : undefined,
+      }
+    }
+
+    if (
+      this.executionOptions?.updateTransactionRequestHook &&
+      transactionRequest
+    ) {
+      const customizedTransactionRequest: TransactionParameters =
+        await this.executionOptions.updateTransactionRequestHook({
+          requestType: 'transaction',
+          ...transactionRequest,
+        })
+      transactionRequest = {
+        ...transactionRequest,
+        ...customizedTransactionRequest,
+      }
+    }
+
+    return transactionRequest
   }
 
   executeStep = async (
@@ -341,15 +409,13 @@ export class EVMStepExecutor extends BaseStepExecutor {
       switch (allowanceResult.status) {
         case 'BATCH_APPROVAL':
           calls.push(allowanceResult.data.call)
-          signedTypedData = Array.from(
-            allowanceResult.data.signedPermits.values()
-          )
+          signedTypedData = allowanceResult.data.signedTypedData
           break
         case 'NATIVE_PERMIT':
-          signedTypedData = Array.from(allowanceResult.data.values())
+          signedTypedData = allowanceResult.data
           break
         case 'DONE':
-          signedTypedData = Array.from(allowanceResult.data.values())
+          signedTypedData = allowanceResult.data
           break
         default:
           if (!this.allowUserInteraction) {
@@ -398,79 +464,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
         chainId: fromChain.id,
       })
 
-      // Check balance
       await checkBalance(this.client.account!.address, step)
 
-      // Create new transaction request
-      if (
-        !step.transactionRequest &&
-        !step.typedData?.some((p) => p.primaryType !== 'Permit')
-      ) {
-        const updatedStep = await this.getUpdatedStep(step, signedTypedData)
-        const comparedStep = await stepComparison(
-          this.statusManager,
-          step,
-          updatedStep,
-          this.allowUserInteraction,
-          this.executionOptions
-        )
-        Object.assign(step, {
-          ...comparedStep,
-          execution: step.execution,
-          typedData: updatedStep.typedData,
-        })
-        isRelayerTransaction = isRelayerStep(step)
-      }
-
-      if (!step.transactionRequest && !step.typedData?.length) {
-        throw new TransactionError(
-          LiFiErrorCode.TransactionUnprepared,
-          'Unable to prepare transaction.'
-        )
-      }
-
-      let transactionRequest: TransactionParameters | undefined
-      if (step.transactionRequest) {
-        transactionRequest = {
-          to: step.transactionRequest.to,
-          from: step.transactionRequest.from,
-          data: step.transactionRequest.data,
-          value: step.transactionRequest.value
-            ? BigInt(step.transactionRequest.value)
-            : undefined,
-          gas: step.transactionRequest.gasLimit
-            ? BigInt(step.transactionRequest.gasLimit)
-            : undefined,
-          // gasPrice: step.transactionRequest.gasPrice
-          //   ? BigInt(step.transactionRequest.gasPrice as string)
-          //   : undefined,
-          // maxFeePerGas: step.transactionRequest.maxFeePerGas
-          //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
-          //   : undefined,
-          maxPriorityFeePerGas:
-            this.client.account?.type === 'local'
-              ? await getMaxPriorityFeePerGas(this.client)
-              : step.transactionRequest.maxPriorityFeePerGas
-                ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
-                : undefined,
-        }
-      }
-
-      if (
-        this.executionOptions?.updateTransactionRequestHook &&
-        transactionRequest
-      ) {
-        const customizedTransactionRequest: TransactionParameters =
-          await this.executionOptions.updateTransactionRequestHook({
-            requestType: 'transaction',
-            ...transactionRequest,
-          })
-
-        transactionRequest = {
-          ...transactionRequest,
-          ...customizedTransactionRequest,
-        }
-      }
+      // Try to prepare a new transaction request and update the step with typed data
+      const transactionRequest = await this.prepareUpdatedStep(
+        step,
+        signedTypedData
+      )
+      isRelayerTransaction = isRelayerStep(step)
 
       // Make sure that the chain is still correct
       const updatedClient = await this.checkClient(step, process)
@@ -514,14 +515,26 @@ export class EVMStepExecutor extends BaseStepExecutor {
         taskId = id as Hash
         txType = 'batched'
       } else if (isRelayerTransaction) {
-        if (!step.typedData?.length) {
+        const intentTypedData = step.typedData?.filter(
+          (typedData) =>
+            !signedTypedData.some((signedPermit) =>
+              isNativePermitValid(
+                signedPermit,
+                typedData.domain.chainId as number,
+                typedData.message.spender,
+                typedData.message.owner,
+                BigInt(typedData.message.value ?? 0)
+              )
+            )
+        )
+        if (!intentTypedData?.length) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction. Typed data for transfer is not found.'
           )
         }
-
-        for (const typedData of step.typedData) {
+        this.statusManager.updateProcess(step, process.type, 'MESSAGE_REQUIRED')
+        for (const typedData of intentTypedData) {
           const signature = await getAction(
             this.client,
             signTypedData,
@@ -539,14 +552,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           })
         }
 
-        this.statusManager.updateProcess(step, process.type, 'DONE')
-
-        process = this.statusManager.findOrCreateProcess({
-          step,
-          type: currentProcessType,
-          status: 'PENDING',
-          chainId: fromChain.id,
-        })
+        this.statusManager.updateProcess(step, process.type, 'PENDING')
 
         // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
@@ -565,7 +571,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
           )
         }
         const signedNativePermitTypedData = signedTypedData.find(
-          (p) => p.primaryType === 'Permit' && p.domain.chainId === fromChain.id
+          (p) =>
+            p.primaryType === 'Permit' &&
+            (p.domain.chainId === fromChain.id ||
+              isSaltMatchingChainId(p.domain.salt as Hex, fromChain.id))
         )
         if (signedNativePermitTypedData) {
           transactionRequest.data = encodeNativePermitData(
@@ -576,6 +585,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
             transactionRequest.data as Hex
           )
         } else if (permit2Supported) {
+          this.statusManager.updateProcess(
+            step,
+            process.type,
+            'MESSAGE_REQUIRED'
+          )
           const permit2Signature = await signPermit2Message({
             client: this.client,
             chain: fromChain,
@@ -583,14 +597,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
             amount: BigInt(step.action.fromAmount),
             data: transactionRequest.data as Hex,
           })
-          // this.statusManager.updateProcess(step, process.type, 'DONE')
-
-          // process = this.statusManager.findOrCreateProcess({
-          //   step,
-          //   type: currentProcessType,
-          //   status: 'PENDING',
-          //   chainId: fromChain.id,
-          // })
           transactionRequest.data = encodePermit2Data(
             step.action.fromToken.address as Address,
             BigInt(step.action.fromAmount),
@@ -598,6 +604,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
             permit2Signature.message.deadline,
             transactionRequest.data as Hex,
             permit2Signature.signature
+          )
+          this.statusManager.updateProcess(
+            step,
+            process.type,
+            'ACTION_REQUIRED'
           )
         }
 
@@ -627,15 +638,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
               transactionRequest.gas = transactionRequest.gas + 80_000n
             }
           }
-          // finally {
-          //   this.statusManager.updateProcess(step, process.type, 'DONE')
-          // }
         }
-        // process = this.statusManager.updateProcess(
-        //   step,
-        //   process.type,
-        //   'ACTION_REQUIRED'
-        // )
         txHash = await getAction(
           this.client,
           sendTransaction,
