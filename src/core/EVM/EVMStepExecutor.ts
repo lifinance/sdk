@@ -307,6 +307,39 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
   }
 
+  private estimateTransactionRequest = async (
+    transactionRequest: TransactionParameters,
+    fromChain: ExtendedChain
+  ) => {
+    // Target address should be the Permit2 proxy contract in case of native permit or Permit2
+    transactionRequest.to = fromChain.permit2Proxy
+    try {
+      // Try to re-estimate the gas due to additional Permit data
+      const estimatedGas = await getActionWithFallback(
+        this.client,
+        estimateGas,
+        'estimateGas',
+        {
+          account: this.client.account!,
+          to: transactionRequest.to as Address,
+          data: transactionRequest.data as Hex,
+          value: transactionRequest.value,
+        }
+      )
+      transactionRequest.gas =
+        transactionRequest.gas && transactionRequest.gas > estimatedGas
+          ? transactionRequest.gas
+          : estimatedGas
+    } catch (_) {
+      // If we fail to estimate the gas, we add 80_000 gas units Permit buffer to the gas limit
+      if (transactionRequest.gas) {
+        transactionRequest.gas = transactionRequest.gas + 80_000n
+      }
+    }
+
+    return transactionRequest
+  }
+
   executeStep = async (
     step: LiFiStepExtended,
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
@@ -468,7 +501,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       await checkBalance(this.client.account!.address, step)
 
       // Try to prepare a new transaction request and update the step with typed data
-      const { transactionRequest, isRelayerTransaction } =
+      let { transactionRequest, isRelayerTransaction } =
         await this.prepareUpdatedStep(step, signedTypedData)
 
       // Make sure that the chain is still correct
@@ -605,32 +638,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
 
         if (signedNativePermitTypedData || permit2Supported) {
-          // Target address should be the Permit2 proxy contract in case of native permit or Permit2
-          transactionRequest.to = fromChain.permit2Proxy
-          try {
-            // Try to re-estimate the gas due to additional Permit data
-            const estimatedGas = await getActionWithFallback(
-              this.client,
-              estimateGas,
-              'estimateGas',
-              {
-                account: this.client.account!,
-                to: transactionRequest.to as Address,
-                data: transactionRequest.data as Hex,
-                value: transactionRequest.value,
-              }
-            )
-            transactionRequest.gas =
-              transactionRequest.gas && transactionRequest.gas > estimatedGas
-                ? transactionRequest.gas
-                : estimatedGas
-          } catch (_) {
-            // If we fail to estimate the gas, we add 80_000 gas units Permit buffer to the gas limit
-            if (transactionRequest.gas) {
-              transactionRequest.gas = transactionRequest.gas + 80_000n
-            }
-          }
+          transactionRequest = await this.estimateTransactionRequest(
+            transactionRequest,
+            fromChain
+          )
         }
+
         txHash = await getAction(
           this.client,
           sendTransaction,

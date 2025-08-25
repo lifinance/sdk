@@ -266,7 +266,11 @@ export const checkAllowance = async ({
       }
     }
 
-    statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED')
+    // Clear the txHash and txLink from potential previous approval transaction
+    statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED', {
+      txHash: undefined,
+      txLink: undefined,
+    })
 
     if (!allowUserInteraction) {
       return { status: 'ACTION_REQUIRED' }
@@ -280,9 +284,13 @@ export const checkAllowance = async ({
       spenderAddress as Address,
       approveAmount,
       executionOptions,
+      // We need to return the populated transaction is batching is supported
+      // instead of executing transaction on-chain
       batchingSupported
     )
 
+    // If batching is supported, we need to return the batch approval data
+    // because allowance was't set by standard approval transaction
     if (batchingSupported) {
       statusManager.updateProcess(step, sharedProcess.type, 'DONE')
       return {
