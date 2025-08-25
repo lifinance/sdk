@@ -6,6 +6,7 @@ import {
   parseAbiParameters,
   toBytes,
   toHex,
+  zeroHash,
 } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { eip2612Abi } from '../abi.js'
@@ -67,10 +68,6 @@ function makeDomainSeparator({
   return keccak256(encoded)
 }
 
-// TODO: Add support for EIP-5267 when adoption increases
-// This EIP provides a standard way to query domain separator and permit type hash
-// via eip712Domain() function, which would simplify permit validation
-// https://eips.ethereum.org/EIPS/eip-5267
 function validateDomainSeparator({
   name,
   version,
@@ -125,12 +122,168 @@ function validateDomainSeparator({
   }
 }
 
+/**
+ * Attempts to retrieve contract data using EIP-5267 eip712Domain() function
+ * @link https://eips.ethereum.org/EIPS/eip-5267
+ * @param client - The Viem client instance
+ * @param chainId - The chain ID
+ * @param tokenAddress - The token contract address
+ * @returns Contract data if EIP-5267 is supported, undefined otherwise
+ */
+const getEIP712DomainData = async (
+  client: Client,
+  chainId: number,
+  tokenAddress: Address
+) => {
+  try {
+    const multicallAddress = await getMulticallAddress(chainId)
+
+    const contractCalls = [
+      {
+        address: tokenAddress,
+        abi: eip2612Abi,
+        functionName: 'eip712Domain',
+      },
+      {
+        address: tokenAddress,
+        abi: eip2612Abi,
+        functionName: 'nonces',
+        args: [client.account!.address],
+      },
+    ] as const
+
+    if (multicallAddress) {
+      try {
+        const [eip712DomainResult, noncesResult] = await getActionWithFallback(
+          client,
+          multicall,
+          'multicall',
+          {
+            contracts: contractCalls,
+            multicallAddress,
+          }
+        )
+
+        if (
+          eip712DomainResult.status !== 'success' ||
+          noncesResult.status !== 'success' ||
+          !eip712DomainResult.result ||
+          noncesResult.result === undefined
+        ) {
+          // Fall back to individual calls if multicall fails
+          throw new Error('EIP-5267 multicall failed')
+        }
+
+        const [, name, version, tokenChainId, verifyingContract, salt] =
+          eip712DomainResult.result
+
+        if (
+          Number(tokenChainId) !== chainId ||
+          verifyingContract.toLowerCase() !== tokenAddress.toLowerCase()
+        ) {
+          return undefined
+        }
+
+        // Build domain object directly from EIP-5267 data
+        // Use the actual salt value returned by EIP-5267 - this is the canonical salt that the contract uses
+        const hasSalt = salt !== zeroHash
+        const domain = hasSalt
+          ? {
+              name,
+              version,
+              verifyingContract: tokenAddress,
+              salt,
+            }
+          : {
+              name,
+              version,
+              chainId,
+              verifyingContract: tokenAddress,
+            }
+
+        return {
+          name,
+          version,
+          domain,
+          permitTypehash: undefined, // EIP-5267 doesn't provide permit typehash directly
+          nonce: noncesResult.result,
+        }
+      } catch {
+        // Fall through to individual calls
+      }
+    }
+
+    // Fallback to individual contract calls
+    const [eip712DomainResult, noncesResult] = (await Promise.allSettled(
+      contractCalls.map((call) =>
+        getActionWithFallback(client, readContract, 'readContract', call)
+      )
+    )) as [
+      PromiseSettledResult<
+        [Hex, string, string, bigint, Address, Hex, bigint[]]
+      >,
+      PromiseSettledResult<bigint>,
+    ]
+
+    if (
+      eip712DomainResult.status !== 'fulfilled' ||
+      noncesResult.status !== 'fulfilled'
+    ) {
+      return undefined
+    }
+
+    const [, name, version, tokenChainId, verifyingContract, salt] =
+      eip712DomainResult.value
+
+    if (
+      Number(tokenChainId) !== chainId ||
+      verifyingContract.toLowerCase() !== tokenAddress.toLowerCase()
+    ) {
+      return undefined
+    }
+
+    // Build domain object directly from EIP-5267 data
+    // Use the actual salt value returned by EIP-5267 - this is the canonical salt that the contract uses
+    const hasSalt = salt !== zeroHash
+    const domain = hasSalt
+      ? {
+          name,
+          version,
+          verifyingContract: tokenAddress,
+          salt,
+        }
+      : {
+          name,
+          version,
+          chainId,
+          verifyingContract: tokenAddress,
+        }
+
+    return {
+      name,
+      version,
+      domain,
+      permitTypehash: undefined, // EIP-5267 doesn't provide permit typehash directly
+      nonce: noncesResult.value,
+    }
+  } catch {
+    return undefined
+  }
+}
+
 export const getContractData = async (
   client: Client,
   chainId: number,
   tokenAddress: Address
 ) => {
   try {
+    // First try EIP-5267 approach - returns domain object directly
+    const eip5267Data = await getEIP712DomainData(client, chainId, tokenAddress)
+    if (eip5267Data) {
+      return eip5267Data
+    }
+
+    // Fallback to legacy approach - validates and returns domain object
     const multicallAddress = await getMulticallAddress(chainId)
 
     const contractCalls = [
@@ -187,9 +340,22 @@ export const getContractData = async (
           throw new Error('Multicall failed')
         }
 
+        // Validate domain separator and create domain object
+        const { isValid, domain } = validateDomainSeparator({
+          name: nameResult.result,
+          version: versionResult.result ?? '1',
+          chainId,
+          verifyingContract: tokenAddress,
+          domainSeparator: domainSeparatorResult.result,
+        })
+
+        if (!isValid) {
+          return undefined
+        }
+
         return {
           name: nameResult.result,
-          domainSeparator: domainSeparatorResult.result,
+          domain,
           permitTypehash: permitTypehashResult.result,
           nonce: noncesResult.result,
           version: versionResult.result ?? '1',
@@ -229,9 +395,22 @@ export const getContractData = async (
     const version =
       versionResult.status === 'fulfilled' ? versionResult.value : '1'
 
+    // Validate domain separator and create domain object
+    const { isValid, domain } = validateDomainSeparator({
+      name,
+      version,
+      chainId,
+      verifyingContract: tokenAddress,
+      domainSeparator: domainSeparatorResult.value,
+    })
+
+    if (!isValid) {
+      return undefined
+    }
+
     return {
       name,
-      domainSeparator: domainSeparatorResult.value,
+      domain,
       permitTypehash:
         permitTypehashResult.status === 'fulfilled'
           ? permitTypehashResult.value
@@ -260,22 +439,10 @@ export const getNativePermit = async (
   if (!contractData) {
     return undefined
   }
-  const { name, domainSeparator, permitTypehash, nonce, version } = contractData
 
   // We don't support DAI-like permits yet (e.g. DAI on Ethereum)
-  if (permitTypehash === DAI_LIKE_PERMIT_TYPEHASH) {
-    return undefined
-  }
-
-  const { isValid, domain } = validateDomainSeparator({
-    name,
-    version,
-    chainId,
-    verifyingContract: tokenAddress,
-    domainSeparator,
-  })
-
-  if (!isValid) {
+  // https://eips.ethereum.org/EIPS/eip-2612#backwards-compatibility
+  if (contractData.permitTypehash === DAI_LIKE_PERMIT_TYPEHASH) {
     return undefined
   }
 
@@ -285,13 +452,13 @@ export const getNativePermit = async (
     owner: client.account!.address,
     spender: spenderAddress,
     value: amount.toString(),
-    nonce: nonce.toString(),
+    nonce: contractData.nonce.toString(),
     deadline,
   }
 
   return {
     primaryType: 'Permit',
-    domain,
+    domain: contractData.domain,
     types: eip2612Types,
     message,
   }

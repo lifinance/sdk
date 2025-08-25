@@ -6,7 +6,7 @@ import { buildStepObject } from '../../../tests/fixtures.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { ExecutionOptions } from '../types.js'
+import type { ExecutionOptions, Process } from '../types.js'
 import { switchChain } from './switchChain.js'
 
 let client: Client
@@ -18,6 +18,7 @@ let switchChainHookMock: Mock
 let findOrCreateProcessMock: Mock
 let updateExecutionMock: Mock
 let updateProcessMock: Mock
+let mockProcess: Process
 
 describe('switchChain', () => {
   beforeEach(() => {
@@ -36,6 +37,11 @@ describe('switchChain', () => {
     findOrCreateProcessMock = vi.fn()
     updateExecutionMock = vi.fn()
     updateProcessMock = vi.fn()
+    mockProcess = {
+      type: 'SWAP',
+      status: 'STARTED',
+      startedAt: Date.now(),
+    }
     statusManager = {
       initExecutionObject: vi.fn(),
       findOrCreateProcess: findOrCreateProcessMock,
@@ -55,8 +61,10 @@ describe('switchChain', () => {
         client,
         statusManager,
         step,
+        mockProcess,
+        step.action.fromChainId,
         true,
-        hooks.switchChainHook
+        hooks
       )
 
       expect(updatedClient).toEqual(client)
@@ -77,14 +85,13 @@ describe('switchChain', () => {
           client,
           statusManager,
           step,
+          mockProcess,
+          step.action.fromChainId,
           false,
-          hooks.switchChainHook
+          hooks
         )
 
         expect(updatedClient).toBeUndefined()
-
-        expect(statusManager.initExecutionObject).toHaveBeenCalled()
-        expect(statusManager.findOrCreateProcess).toHaveBeenCalled()
         expect(hooks.switchChainHook).not.toHaveBeenCalled()
       })
     })
@@ -103,8 +110,10 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
+              mockProcess,
+              step.action.fromChainId,
               true,
-              hooks.switchChainHook
+              hooks
             )
           ).rejects.toThrowError(new Error('something went wrong'))
 
@@ -126,8 +135,10 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
+              mockProcess,
+              step.action.fromChainId,
               true,
-              hooks.switchChainHook
+              hooks
             )
           ).rejects.toThrowError(
             new ProviderError(
@@ -159,23 +170,16 @@ describe('switchChain', () => {
             client,
             statusManager,
             step,
+            mockProcess,
+            step.action.fromChainId,
             true,
-            hooks.switchChainHook
+            hooks
           )
 
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
           expect(updatedClient).toEqual(newClient)
-          expect(statusManager.updateProcess).toHaveBeenCalledWith(
-            step,
-            'SWITCH_CHAIN',
-            'DONE'
-          )
-          expect(statusManager.updateExecution).toHaveBeenCalledWith(
-            step,
-            'PENDING'
-          )
         })
       })
     })
