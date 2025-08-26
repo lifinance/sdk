@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.9.2",
+  "version": "3.10.1",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -94,21 +94,21 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.4.3",
+    "@bigmi/core": "^0.4.4",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/types": "^17.29.0",
-    "@mysten/sui": "^1.37.2",
-    "@mysten/wallet-standard": "^0.16.10",
-    "@noble/curves": "^1.9.6",
+    "@mysten/sui": "^1.37.3",
+    "@mysten/wallet-standard": "^0.16.11",
+    "@noble/curves": "^1.9.7",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.4",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.33.3"
+    "viem": "^2.34.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.1.4",
+    "@biomejs/biome": "^2.2.0",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@lifi/data-types": "^6.28.1",
@@ -119,7 +119,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
     "madge": "^8.0.0",
-    "msw": "^2.10.4",
+    "msw": "^2.10.5",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.9.2",

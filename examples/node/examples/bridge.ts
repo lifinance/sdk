@@ -2,13 +2,13 @@ import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
-  EVM,
   createConfig,
+  EVM,
   executeRoute,
   getRoutes,
 } from '@lifi/sdk'
 import type { Address, Chain } from 'viem'
-import { http, createWalletClient } from 'viem'
+import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { arbitrum, mainnet, optimism, polygon } from 'viem/chains'
 import 'dotenv/config'
