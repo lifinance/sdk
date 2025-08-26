@@ -20,7 +20,7 @@ import {
 
 import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
-import { lifiToBigmiChainId } from './utils.js'
+import { toBigmiChainId } from './utils.js'
 
 type PublicClient = Client<
   FallbackTransport<readonly HttpTransport[]>,
@@ -54,7 +54,7 @@ export const getUTXOPublicClient = async (
     const chain: Chain = {
       ..._chain,
       ..._chain.metamask,
-      id: lifiToBigmiChainId(_chain.id),
+      id: toBigmiChainId(_chain.id),
       name: _chain.metamask.chainName,
       rpcUrls: {
         default: { http: _chain.metamask.rpcUrls },
