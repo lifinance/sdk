@@ -15,11 +15,11 @@ export function isPsbtFinalized(psbt: Psbt): boolean {
 export const toXOnly = (pubKey: Uint8Array) =>
   pubKey.length === 32 ? pubKey : pubKey.subarray(1, 33)
 
-export const lifiToBigmiChainId = (lifiChainId: ChainId): BigmiChainId => {
-  switch (lifiChainId) {
+export const toBigmiChainId = (chainId: ChainId): BigmiChainId => {
+  switch (chainId) {
     case ChainId.BTC:
       return BigmiChainId.BITCOIN_MAINNET
     default:
-      throw new Error(`Unsupported chainId mapping: ${lifiChainId}`)
+      throw new Error(`Unsupported chainId mapping: ${chainId}`)
   }
 }
