@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.11.0](https://github.com/lifinance/sdk/compare/v3.10.1...v3.11.0) (2025-08-27)
+
+
+### Features
+
+* improve message-based execution flow ([#300](https://github.com/lifinance/sdk/issues/300)) ([6605adc](https://github.com/lifinance/sdk/commit/6605adc0b415ce3d53bdb3712e5e06f40b760680))
+* update getTokens() and getTokenBalances() responses ([#298](https://github.com/lifinance/sdk/issues/298)) ([801bc6c](https://github.com/lifinance/sdk/commit/801bc6ccea73a0ede37ffa1848d72e21323c7325))
+
 ### [3.10.1](https://github.com/lifinance/sdk/compare/v3.10.0...v3.10.1) (2025-08-20)
 
 
