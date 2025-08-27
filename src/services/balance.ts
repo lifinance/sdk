@@ -34,10 +34,14 @@ export const getTokenBalance = async (
  * @returns A list of objects containing the tokens and the amounts on different chains.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getTokenBalances = async (
+export async function getTokenBalances(
   walletAddress: string,
-  tokens: Token[] | TokenExtended[]
-): Promise<TokenAmount[] | TokenAmountExtended[]> => {
+  tokens: Token[]
+): Promise<TokenAmount[]>
+export async function getTokenBalances(
+  walletAddress: string,
+  tokens: TokenExtended[]
+): Promise<TokenAmountExtended[]> {
   // split by chain
   const tokensByChain = tokens.reduce(
     (tokens, token) => {
@@ -64,10 +68,14 @@ export const getTokenBalances = async (
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getTokenBalancesByChain = async (
+export async function getTokenBalancesByChain(
   walletAddress: string,
-  tokensByChain: { [chainId: number]: Token[] | TokenExtended[] }
-): Promise<{ [chainId: number]: TokenAmount[] | TokenAmountExtended[] }> => {
+  tokensByChain: { [chainId: number]: Token[] }
+): Promise<{ [chainId: number]: TokenAmount[] }>
+export async function getTokenBalancesByChain(
+  walletAddress: string,
+  tokensByChain: { [chainId: number]: TokenExtended[] }
+): Promise<{ [chainId: number]: TokenAmountExtended[] }> {
   if (!walletAddress) {
     throw new ValidationError('Missing walletAddress.')
   }

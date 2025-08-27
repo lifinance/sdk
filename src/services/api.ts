@@ -451,10 +451,18 @@ export const getChains = async (
  * @param options - Request options
  * @returns The tokens that are available on the requested chains
  */
-export const getTokens = async (
+export async function getTokens(
+  params?: TokensRequest & { extended?: false | undefined },
+  options?: RequestOptions
+): Promise<TokensResponse>
+export async function getTokens(
+  params: TokensRequest & { extended: true },
+  options?: RequestOptions
+): Promise<TokensExtendedResponse>
+export async function getTokens(
   params?: TokensRequest,
   options?: RequestOptions
-): Promise<TokensResponse | TokensExtendedResponse> => {
+): Promise<TokensResponse> {
   if (params) {
     for (const key of Object.keys(params)) {
       if (!params[key as keyof TokensRequest]) {
