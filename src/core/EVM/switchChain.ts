@@ -4,7 +4,7 @@ import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { LiFiStepExtended, SwitchChainHook } from '../types.js'
+import type { ExecutionOptions, LiFiStepExtended, Process } from '../types.js'
 
 /**
  * This method checks whether the wallet client is configured for the correct chain.
@@ -27,8 +27,10 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
+  process: Process,
+  targetChainId: number,
   allowUserInteraction: boolean,
-  switchChainHook?: SwitchChainHook
+  executionOptions?: ExecutionOptions
 ): Promise<Client | undefined> => {
   // if we are already on the correct chain we can proceed directly
   const currentChainId = (await getAction(
@@ -36,26 +38,22 @@ export const switchChain = async (
     getChainId,
     'getChainId'
   )(undefined)) as GetChainIdReturnType
-  if (currentChainId === step.action.fromChainId) {
+  if (currentChainId === targetChainId) {
     return client
   }
-
-  // -> set status message
-  step.execution = statusManager.initExecutionObject(step)
-  statusManager.updateExecution(step, 'ACTION_REQUIRED')
-
-  let switchProcess = statusManager.findOrCreateProcess({
-    step,
-    type: 'SWITCH_CHAIN',
-    status: 'ACTION_REQUIRED',
-  })
 
   if (!allowUserInteraction) {
     return
   }
 
   try {
-    const updatedClient = await switchChainHook?.(step.action.fromChainId)
+    if (!executionOptions?.switchChainHook) {
+      throw new ProviderError(
+        LiFiErrorCode.ChainSwitchError,
+        'Chain switch hook is not provided.'
+      )
+    }
+    const updatedClient = await executionOptions.switchChainHook(targetChainId)
     let updatedChainId: number | undefined
     if (updatedClient) {
       updatedChainId = (await getAction(
@@ -64,22 +62,16 @@ export const switchChain = async (
         'getChainId'
       )(undefined)) as GetChainIdReturnType
     }
-    if (updatedChainId !== step.action.fromChainId) {
+    if (updatedChainId !== targetChainId) {
       throw new ProviderError(
         LiFiErrorCode.ChainSwitchError,
         'Chain switch required.'
       )
     }
 
-    switchProcess = statusManager.updateProcess(
-      step,
-      switchProcess.type,
-      'DONE'
-    )
-    statusManager.updateExecution(step, 'PENDING')
     return updatedClient
   } catch (error: any) {
-    statusManager.updateProcess(step, switchProcess.type, 'FAILED', {
+    statusManager.updateProcess(step, process.type, 'FAILED', {
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,

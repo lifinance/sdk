@@ -66,7 +66,7 @@ export const resumeRoute = async (
     }
   }
 
-  await prepareRestart(route)
+  prepareRestart(route)
 
   return executeRoute(route, executionOptions)
 }

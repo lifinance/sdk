@@ -1,5 +1,6 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
-import type { Address, Chain, Client, Transaction } from 'viem'
+import type { Address, Chain, Client, Hex, Transaction } from 'viem'
+import { pad, toHex } from 'viem'
 import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
@@ -100,3 +101,18 @@ export const retryDelay = ({ count }: { count: number; error: Error }) =>
   Math.min(~~(1 << count) * 200, 3000)
 
 export const retryCount = 30
+
+/**
+ * Helper function to check if a domain salt matches a chainId.
+ * The salt is a padded hex string representation of the chainId.
+ */
+export const isSaltMatchingChainId = (
+  salt: Hex | undefined,
+  chainId: number
+): boolean => {
+  if (!salt) {
+    return false
+  }
+  const paddedChainId = pad(toHex(chainId), { size: 32 })
+  return salt.toLowerCase() === paddedChainId.toLowerCase()
+}
