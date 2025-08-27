@@ -465,11 +465,11 @@ export const getTokens = async (
   const urlSearchParams = new URLSearchParams(
     params as Record<string, string>
   ).toString()
-  const hasOrderBy = params?.orderBy !== undefined
+  const isExtended = params?.extended === true
   const response = await withDedupe(
     () =>
       request<
-        typeof hasOrderBy extends true ? TokensExtendedResponse : TokensResponse
+        typeof isExtended extends true ? TokensExtendedResponse : TokensResponse
       >(`${config.get().apiUrl}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),

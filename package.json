@@ -96,7 +96,7 @@
   "dependencies": {
     "@bigmi/core": "^0.4.4",
     "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "^17.29.0",
+    "@lifi/types": "^17.34.0",
     "@mysten/sui": "^1.37.3",
     "@mysten/wallet-standard": "^0.16.11",
     "@noble/curves": "^1.9.7",
