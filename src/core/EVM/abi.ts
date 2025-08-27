@@ -14,6 +14,8 @@ export const eip2612Abi = parseAbi([
   'function name() external view returns (string)',
   'function version() external view returns (string)',
   'function PERMIT_TYPEHASH() external view returns (bytes32)',
+  // EIP-5267
+  'function eip712Domain() external view returns (bytes1, string, string, uint256, address, bytes32, uint256[])',
 ])
 
 export const approveAbi = parseAbi([
