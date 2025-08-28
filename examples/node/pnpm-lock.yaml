@@ -12,8 +12,8 @@ importers:
         specifier: ^6.34.0
         version: 6.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.11.0
-        version: 3.11.0(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.11.1
+        version: 3.11.1(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.9.8
         version: 5.9.8(@wagmi/core@2.20.1(typescript@5.9.2)(use-sync-external-store@1.2.0)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -63,8 +63,8 @@ packages:
   '@base-org/account@1.1.1':
     resolution: {integrity: sha512-IfVJPrDPhHfqXRDb89472hXkpvJuQQR7FDI9isLPHEqSYt/45whIoBxSPgZ0ssTt379VhQo4+87PWI1DoLSfAQ==}
 
-  '@bigmi/core@0.4.5':
-    resolution: {integrity: sha512-BfVvwWpPg7Kt/GJi7s5DvEs5uqnCUQDvq0IFCY43UZKe9u83uFO+ymVb2LhbsgJrwxF7X6H0c2ZC8W0fZsfq3w==}
+  '@bigmi/core@0.5.1':
+    resolution: {integrity: sha512-5407O0/yqTTqH0OyzHxD9jqchGk9RRBC+9/9RNmVdm5YrmIV0C1e7bMwBKPXHOou5VDNwWHnPtbSHNsqf3Y0wQ==}
 
   '@bitcoinerlab/secp256k1@1.2.0':
     resolution: {integrity: sha512-jeujZSzb3JOZfmJYI0ph1PVpCRV5oaexCgy+RvCXV8XlY+XFB/2n3WOcvBsKLsOw78KYgnQrQWb2HrKE4be88Q==}
@@ -285,8 +285,8 @@ packages:
   '@lifi/data-types@6.34.0':
     resolution: {integrity: sha512-IPnQTW3zQFzg1OhP/XB81EnFgtVwxc9fuUGROd7TsprLJ8xqBV29kM16z4TQxe4cIBmRLYOgL/H7V9L+Pl9y6w==}
 
-  '@lifi/sdk@3.11.0':
-    resolution: {integrity: sha512-E4y5fQpKagmeDazF3jfXCDe0/+FIGRy4yIaWUqVeGygQOh/bjEuw0CgWQ0ICMNYQszOkBYe/VU5TDrFzbghAHQ==}
+  '@lifi/sdk@3.11.1':
+    resolution: {integrity: sha512-9qed2LV1Z42wnWrvtlunA+DI8cbj91uTf894aigfj4xMh1BMYjI3Y7va9Ol5ND6+GcGs9n7IBJt87v6gjJ+6Gw==}
     peerDependencies:
       viem: ^2.21.0
 
@@ -1850,7 +1850,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@bigmi/core@0.4.5(typescript@5.9.2)(use-sync-external-store@1.2.0)':
+  '@bigmi/core@0.5.1(typescript@5.9.2)(use-sync-external-store@1.2.0)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -2039,9 +2039,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.11.0(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.11.1(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
-      '@bigmi/core': 0.4.5(typescript@5.9.2)(use-sync-external-store@1.2.0)
+      '@bigmi/core': 0.5.1(typescript@5.9.2)(use-sync-external-store@1.2.0)
       '@bitcoinerlab/secp256k1': 1.2.0
       '@lifi/types': 17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@mysten/sui': 1.37.5(typescript@5.9.2)

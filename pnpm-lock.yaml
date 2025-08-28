@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.5.0
-        version: 0.5.0(bs58@6.0.0)(typescript@5.9.2)
+        specifier: ^0.5.1
+        version: 0.5.1(bs58@6.0.0)(typescript@5.9.2)
       '@bitcoinerlab/secp256k1':
         specifier: ^1.2.0
         version: 1.2.0
@@ -149,8 +149,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.5.0':
-    resolution: {integrity: sha512-g0FxY6LBPTlArAV/Z9+XZ7iLyMZ3exsQBaAnZg+k+gQ2KE85DgTWpc/sImTWCQX1/5X/PYzQ4nnYBE+Y6gMNCw==}
+  '@bigmi/core@0.5.1':
+    resolution: {integrity: sha512-5407O0/yqTTqH0OyzHxD9jqchGk9RRBC+9/9RNmVdm5YrmIV0C1e7bMwBKPXHOou5VDNwWHnPtbSHNsqf3Y0wQ==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -3069,7 +3069,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.5.0(bs58@6.0.0)(typescript@5.9.2)':
+  '@bigmi/core@0.5.1(bs58@6.0.0)(typescript@5.9.2)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
