@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.11.2",
+  "version": "3.11.3",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -94,7 +94,7 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.5.1",
+    "@bigmi/core": "^0.5.2",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/types": "^17.35.0",
     "@mysten/sui": "^1.37.5",
