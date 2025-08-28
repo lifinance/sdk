@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.33.0
-        version: 6.33.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+        specifier: ^6.34.0
+        version: 6.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@lifi/sdk':
-        specifier: ^3.10.1
-        version: 3.10.1(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
+        specifier: ^3.11.0
+        version: 3.11.0(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
       '@wagmi/connectors':
         specifier: ^5.9.8
         version: 5.9.8(@wagmi/core@2.20.1(typescript@5.9.2)(use-sync-external-store@1.2.0)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)))(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)
@@ -282,16 +282,16 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.33.0':
-    resolution: {integrity: sha512-hVxNoky9uJHAEIx0xgdNUckznsUpkZC7xUwF3flKj/jIQRgrtG0ne/hjRamemtzZ2IVJMrKWcaca/XLzL3p8Sg==}
+  '@lifi/data-types@6.34.0':
+    resolution: {integrity: sha512-IPnQTW3zQFzg1OhP/XB81EnFgtVwxc9fuUGROd7TsprLJ8xqBV29kM16z4TQxe4cIBmRLYOgL/H7V9L+Pl9y6w==}
 
-  '@lifi/sdk@3.10.1':
-    resolution: {integrity: sha512-YzG5Xj1ebTTmKgswk3QkaJ8qk2ofLRVzLfAGEnXtgADHvMSKyju0GzvJwcxWXeMw2WFYzODA0dHaWalLK7WBdQ==}
+  '@lifi/sdk@3.11.0':
+    resolution: {integrity: sha512-E4y5fQpKagmeDazF3jfXCDe0/+FIGRy4yIaWUqVeGygQOh/bjEuw0CgWQ0ICMNYQszOkBYe/VU5TDrFzbghAHQ==}
     peerDependencies:
       viem: ^2.21.0
 
-  '@lifi/types@17.34.0':
-    resolution: {integrity: sha512-KIuAXZNA+FxrwGpER+TfNhfopc18BofJOXszTgb8eYxyKowfngMkbEyF1hUnF5l6AJedB7I0WvnMb/6lDFH8xg==}
+  '@lifi/types@17.35.0':
+    resolution: {integrity: sha512-WWHgh/cgzuyq/l+gzswMa7Pp1W/GHxZUpFwMywfysJPewWvNx+ZKzYoLjj/mNCGuCFMD0sMVUb1W1oMSHqvQ8g==}
 
   '@lit-labs/ssr-dom-shim@1.4.0':
     resolution: {integrity: sha512-ficsEARKnmmW5njugNYKipTm4SFnbik7CXtoencDZzmzo/dQ+2Q0bgkzJuoJP20Aj0F+izzJjOqsnkd6F/o1bw==}
@@ -379,15 +379,15 @@ packages:
   '@mysten/bcs@1.7.0':
     resolution: {integrity: sha512-8zE2Jzj2ai55RlVXx2pEMbbq+X3vB+uPGBvZr0F79IdTwuwcu4QdFG3PT/zHsytsvATkn+z0f2YDWhM5916u2A==}
 
-  '@mysten/sui@1.37.4':
-    resolution: {integrity: sha512-3dKddNEF7XTfPnYIfVyHHTX+9fraQrKFxiBJ8nveISqo4skyClH/nDyS8Nkh7coknbWghuSSsD82liCOZX2uLw==}
+  '@mysten/sui@1.37.5':
+    resolution: {integrity: sha512-kAKizRUdhC/gwQ7UkubbmwTno5UoA1a7Ps8R6GlPVWpCfpVM2HytmwFDOKVMA+51Qji4BaNxyq25SRpJw76fPw==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.1.1':
     resolution: {integrity: sha512-jvhJC6/2la1QHltukQXzfyTZ+VVHxe187JjPx+mEXRUWyAo6jCSdioOQJIfaGu4K4i+37KeiydXRwV/bq/7UJQ==}
 
-  '@mysten/wallet-standard@0.16.12':
-    resolution: {integrity: sha512-zyWMGsXk8uZKa+rvkMWpi1Dfm6+Dorx8/9fCQw2SOkwM/hR4GjGL5TyypM8hxLej9KouUmbAS2Bij3kIITTVjw==}
+  '@mysten/wallet-standard@0.16.13':
+    resolution: {integrity: sha512-hoWcqD2CEtzwdGm2V40n3j1rfkJboiFiaiMdrnxjGqbZvsHYb/T31pPNmXlFq+8fi292E3NASSFjmnjiOCd5vw==}
 
   '@noble/ciphers@1.2.1':
     resolution: {integrity: sha512-rONPWMC7PeExE077uLE4oqWrZ1IvAfz3oH9LibVAcVCopJiA9R62uavnbEzdkVmJYI6M6Zgkbeb07+tWjlq2XA==}
@@ -2030,22 +2030,22 @@ snapshots:
     dependencies:
       graphql: 16.11.0
 
-  '@lifi/data-types@6.33.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/data-types@6.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
-      '@lifi/types': 17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@lifi/types': 17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.10.1(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
+  '@lifi/sdk@3.11.0(bufferutil@4.0.9)(typescript@5.9.2)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
       '@bigmi/core': 0.4.5(typescript@5.9.2)(use-sync-external-store@1.2.0)
       '@bitcoinerlab/secp256k1': 1.2.0
-      '@lifi/types': 17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
-      '@mysten/sui': 1.37.4(typescript@5.9.2)
-      '@mysten/wallet-standard': 0.16.12(typescript@5.9.2)
+      '@lifi/types': 17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
+      '@mysten/sui': 1.37.5(typescript@5.9.2)
+      '@mysten/wallet-standard': 0.16.13(typescript@5.9.2)
       '@noble/curves': 1.9.7
       '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
       '@solana/web3.js': 1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
@@ -2066,7 +2066,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
+  '@lifi/types@17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       viem: 2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)(zod@3.22.4)
     transitivePeerDependencies:
@@ -2264,7 +2264,7 @@ snapshots:
       '@mysten/utils': 0.1.1
       '@scure/base': 1.2.6
 
-  '@mysten/sui@1.37.4(typescript@5.9.2)':
+  '@mysten/sui@1.37.5(typescript@5.9.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
       '@mysten/bcs': 1.7.0
@@ -2287,9 +2287,9 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/wallet-standard@0.16.12(typescript@5.9.2)':
+  '@mysten/wallet-standard@0.16.13(typescript@5.9.2)':
     dependencies:
-      '@mysten/sui': 1.37.4(typescript@5.9.2)
+      '@mysten/sui': 1.37.5(typescript@5.9.2)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'

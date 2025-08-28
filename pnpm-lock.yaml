@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.4.5
-        version: 0.4.5(bs58@6.0.0)(typescript@5.9.2)
+        specifier: ^0.5.0
+        version: 0.5.0(bs58@6.0.0)(typescript@5.9.2)
       '@bitcoinerlab/secp256k1':
         specifier: ^1.2.0
         version: 1.2.0
       '@lifi/types':
-        specifier: ^17.34.0
-        version: 17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: ^17.35.0
+        version: 17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@mysten/sui':
-        specifier: ^1.37.4
-        version: 1.37.4(typescript@5.9.2)
+        specifier: ^1.37.5
+        version: 1.37.5(typescript@5.9.2)
       '@mysten/wallet-standard':
-        specifier: ^0.16.12
-        version: 0.16.12(typescript@5.9.2)
+        specifier: ^0.16.13
+        version: 0.16.13(typescript@5.9.2)
       '@noble/curves':
         specifier: ^1.9.7
         version: 1.9.7
@@ -55,8 +55,8 @@ importers:
         specifier: ^19.8.1
         version: 19.8.1
       '@lifi/data-types':
-        specifier: ^6.33.0
-        version: 6.33.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: ^6.34.0
+        version: 6.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -149,8 +149,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.4.5':
-    resolution: {integrity: sha512-BfVvwWpPg7Kt/GJi7s5DvEs5uqnCUQDvq0IFCY43UZKe9u83uFO+ymVb2LhbsgJrwxF7X6H0c2ZC8W0fZsfq3w==}
+  '@bigmi/core@0.5.0':
+    resolution: {integrity: sha512-g0FxY6LBPTlArAV/Z9+XZ7iLyMZ3exsQBaAnZg+k+gQ2KE85DgTWpc/sImTWCQX1/5X/PYzQ4nnYBE+Y6gMNCw==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -535,11 +535,11 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@lifi/data-types@6.33.0':
-    resolution: {integrity: sha512-hVxNoky9uJHAEIx0xgdNUckznsUpkZC7xUwF3flKj/jIQRgrtG0ne/hjRamemtzZ2IVJMrKWcaca/XLzL3p8Sg==}
+  '@lifi/data-types@6.34.0':
+    resolution: {integrity: sha512-IPnQTW3zQFzg1OhP/XB81EnFgtVwxc9fuUGROd7TsprLJ8xqBV29kM16z4TQxe4cIBmRLYOgL/H7V9L+Pl9y6w==}
 
-  '@lifi/types@17.34.0':
-    resolution: {integrity: sha512-KIuAXZNA+FxrwGpER+TfNhfopc18BofJOXszTgb8eYxyKowfngMkbEyF1hUnF5l6AJedB7I0WvnMb/6lDFH8xg==}
+  '@lifi/types@17.35.0':
+    resolution: {integrity: sha512-WWHgh/cgzuyq/l+gzswMa7Pp1W/GHxZUpFwMywfysJPewWvNx+ZKzYoLjj/mNCGuCFMD0sMVUb1W1oMSHqvQ8g==}
 
   '@mswjs/interceptors@0.39.6':
     resolution: {integrity: sha512-bndDP83naYYkfayr/qhBHMhk0YGwS1iv6vaEGcr0SQbO0IZtbOPqjKjds/WcG+bJA+1T5vCx6kprKOzn5Bg+Vw==}
@@ -548,15 +548,15 @@ packages:
   '@mysten/bcs@1.7.0':
     resolution: {integrity: sha512-8zE2Jzj2ai55RlVXx2pEMbbq+X3vB+uPGBvZr0F79IdTwuwcu4QdFG3PT/zHsytsvATkn+z0f2YDWhM5916u2A==}
 
-  '@mysten/sui@1.37.4':
-    resolution: {integrity: sha512-3dKddNEF7XTfPnYIfVyHHTX+9fraQrKFxiBJ8nveISqo4skyClH/nDyS8Nkh7coknbWghuSSsD82liCOZX2uLw==}
+  '@mysten/sui@1.37.5':
+    resolution: {integrity: sha512-kAKizRUdhC/gwQ7UkubbmwTno5UoA1a7Ps8R6GlPVWpCfpVM2HytmwFDOKVMA+51Qji4BaNxyq25SRpJw76fPw==}
     engines: {node: '>=18'}
 
   '@mysten/utils@0.1.1':
     resolution: {integrity: sha512-jvhJC6/2la1QHltukQXzfyTZ+VVHxe187JjPx+mEXRUWyAo6jCSdioOQJIfaGu4K4i+37KeiydXRwV/bq/7UJQ==}
 
-  '@mysten/wallet-standard@0.16.12':
-    resolution: {integrity: sha512-zyWMGsXk8uZKa+rvkMWpi1Dfm6+Dorx8/9fCQw2SOkwM/hR4GjGL5TyypM8hxLej9KouUmbAS2Bij3kIITTVjw==}
+  '@mysten/wallet-standard@0.16.13':
+    resolution: {integrity: sha512-hoWcqD2CEtzwdGm2V40n3j1rfkJboiFiaiMdrnxjGqbZvsHYb/T31pPNmXlFq+8fi292E3NASSFjmnjiOCd5vw==}
 
   '@noble/ciphers@1.3.0':
     resolution: {integrity: sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==}
@@ -3069,7 +3069,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.4.5(bs58@6.0.0)(typescript@5.9.2)':
+  '@bigmi/core@0.5.0(bs58@6.0.0)(typescript@5.9.2)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -3408,16 +3408,16 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lifi/data-types@6.33.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@lifi/data-types@6.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
-      '@lifi/types': 17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+      '@lifi/types': 17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.34.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@lifi/types@17.35.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
       viem: 2.36.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
@@ -3440,7 +3440,7 @@ snapshots:
       '@mysten/utils': 0.1.1
       '@scure/base': 1.2.6
 
-  '@mysten/sui@1.37.4(typescript@5.9.2)':
+  '@mysten/sui@1.37.5(typescript@5.9.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.11.0)
       '@mysten/bcs': 1.7.0
@@ -3463,9 +3463,9 @@ snapshots:
     dependencies:
       '@scure/base': 1.2.6
 
-  '@mysten/wallet-standard@0.16.12(typescript@5.9.2)':
+  '@mysten/wallet-standard@0.16.13(typescript@5.9.2)':
     dependencies:
-      '@mysten/sui': 1.37.4(typescript@5.9.2)
+      '@mysten/sui': 1.37.5(typescript@5.9.2)
       '@wallet-standard/core': 1.1.1
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
