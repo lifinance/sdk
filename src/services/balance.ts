@@ -3,6 +3,8 @@ import type {
   RequestOptions,
   Token,
   TokenAmount,
+  TokenAmountExtended,
+  TokenExtended,
   WalletTokenExtended,
 } from '@lifi/types'
 import { config } from '../config.js'
@@ -26,16 +28,20 @@ export const getTokenBalance = async (
 }
 
 /**
- * Returns the balances for a list tokens a wallet holds  across all aggregated chains.
+ * Returns the balances for a list tokens a wallet holds across all aggregated chains.
  * @param walletAddress - A wallet address.
- * @param tokens - A list of Token objects.
+ * @param tokens - A list of Token (or TokenExtended) objects.
  * @returns A list of objects containing the tokens and the amounts on different chains.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getTokenBalances = async (
+export async function getTokenBalances(
   walletAddress: string,
   tokens: Token[]
-): Promise<TokenAmount[]> => {
+): Promise<TokenAmount[]>
+export async function getTokenBalances(
+  walletAddress: string,
+  tokens: TokenExtended[]
+): Promise<TokenAmountExtended[]> {
   // split by chain
   const tokensByChain = tokens.reduce(
     (tokens, token) => {
@@ -45,7 +51,7 @@ export const getTokenBalances = async (
       tokens[token.chainId].push(token)
       return tokens
     },
-    {} as { [chainId: number]: Token[] }
+    {} as { [chainId: number]: Token[] | TokenExtended[] }
   )
 
   const tokenAmountsByChain = await getTokenBalancesByChain(
@@ -62,10 +68,14 @@ export const getTokenBalances = async (
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
-export const getTokenBalancesByChain = async (
+export async function getTokenBalancesByChain(
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
-): Promise<{ [chainId: number]: TokenAmount[] }> => {
+): Promise<{ [chainId: number]: TokenAmount[] }>
+export async function getTokenBalancesByChain(
+  walletAddress: string,
+  tokensByChain: { [chainId: number]: TokenExtended[] }
+): Promise<{ [chainId: number]: TokenAmountExtended[] }> {
   if (!walletAddress) {
     throw new ValidationError('Missing walletAddress.')
   }
@@ -83,7 +93,9 @@ export const getTokenBalancesByChain = async (
     throw new Error(`SDK Token Provider for ${walletAddress} is not found.`)
   }
 
-  const tokenAmountsByChain: { [chainId: number]: TokenAmount[] } = {}
+  const tokenAmountsByChain: {
+    [chainId: number]: TokenAmount[] | TokenAmountExtended[]
+  } = {}
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr, 10)

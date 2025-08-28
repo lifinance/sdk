@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.11.0-beta.0",
+  "version": "3.11.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -94,24 +94,24 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.4.4",
+    "@bigmi/core": "^0.4.5",
     "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "^17.29.0",
-    "@mysten/sui": "^1.37.3",
-    "@mysten/wallet-standard": "^0.16.11",
+    "@lifi/types": "^17.34.0",
+    "@mysten/sui": "^1.37.4",
+    "@mysten/wallet-standard": "^0.16.12",
     "@noble/curves": "^1.9.7",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.4",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.34.0"
+    "viem": "^2.36.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
+    "@biomejs/biome": "^2.2.2",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@lifi/data-types": "^6.28.1",
+    "@lifi/data-types": "^6.33.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.4",
@@ -139,5 +139,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
+  "packageManager": "pnpm@10.15.0+sha512.486ebc259d3e999a4e8691ce03b5cac4a71cbeca39372a9b762cb500cfdf0873e2cb16abe3d951b1ee2cf012503f027b98b6584e4df22524e0c7450d9ec7aa7b"
 }
