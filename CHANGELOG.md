@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.11.4](https://github.com/lifinance/sdk/compare/v3.11.3...v3.11.4) (2025-08-29)
+
+
+### Bug Fixes
+
+* add setAllowance export from setAllowance.js ([#301](https://github.com/lifinance/sdk/issues/301)) ([cf38abc](https://github.com/lifinance/sdk/commit/cf38abccf6becbfe7df871609f75c4e172d05532))
+
 ### [3.11.3](https://github.com/lifinance/sdk/compare/v3.11.2...v3.11.3) (2025-08-28)
 
 ### [3.11.2](https://github.com/lifinance/sdk/compare/v3.11.1...v3.11.2) (2025-08-28)
