@@ -12,6 +12,7 @@ export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
 export { getNativePermit } from './core/EVM/permits/getNativePermit.js'
 export {
   revokeTokenApproval,
+  setAllowance,
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
 export {
