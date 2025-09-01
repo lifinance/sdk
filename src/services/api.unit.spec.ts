@@ -269,9 +269,8 @@ describe('ApiService', () => {
             fromAmount,
             toChain,
             toToken,
-            // @ts-expect-error test runtime check
             toAmount,
-          })
+          } as any)
         ).rejects.toThrowError(
           new SDKError(
             new ValidationError(

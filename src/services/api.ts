@@ -44,12 +44,11 @@ import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type { GetStatusRequestExtended } from './types.js'
 
-type QuoteRequest =
-  | QuoteRequestFromAmount
-  | (Omit<QuoteRequestFromAmount, 'fromAmount'> & {
-      toAmount: string
-      fromAmount?: never
-    })
+type QuoteRequestToAmount = Omit<QuoteRequestFromAmount, 'fromAmount'> & {
+  toAmount: string
+}
+
+type QuoteRequest = QuoteRequestFromAmount | QuoteRequestToAmount
 
 /**
  * Get a quote for a token transfer
@@ -58,10 +57,18 @@ type QuoteRequest =
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Quote for a token transfer
  */
-export const getQuote = async (
+export async function getQuote(
+  params: QuoteRequestFromAmount,
+  options?: RequestOptions
+): Promise<LiFiStep>
+export async function getQuote(
+  params: QuoteRequestToAmount,
+  options?: RequestOptions
+): Promise<LiFiStep>
+export async function getQuote(
   params: QuoteRequest,
   options?: RequestOptions
-): Promise<LiFiStep> => {
+): Promise<LiFiStep> {
   const requiredParameters: Array<keyof QuoteRequest> = [
     'fromChain',
     'fromToken',
@@ -69,6 +76,7 @@ export const getQuote = async (
     'toChain',
     'toToken',
   ]
+
   for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
       throw new SDKError(
@@ -78,23 +86,21 @@ export const getQuote = async (
       )
     }
   }
-  if (
-    (!('fromAmount' in params) || !params.fromAmount) &&
-    (!('toAmount' in params) || !params.toAmount)
-  ) {
+
+  const isFromAmountRequest =
+    'fromAmount' in params && params.fromAmount !== undefined
+  const isToAmountRequest =
+    'toAmount' in params && params.toAmount !== undefined
+
+  if (!isFromAmountRequest && !isToAmountRequest) {
     throw new SDKError(
       new ValidationError(
         'Required parameter "fromAmount" or "toAmount" is missing.'
       )
     )
   }
-  if (
-    'fromAmount' in params &&
-    'toAmount' in params &&
-    params.fromAmount &&
-    // @ts-expect-error type-agnostic runtime check
-    params.toAmount
-  ) {
+
+  if (isFromAmountRequest && isToAmountRequest) {
     throw new SDKError(
       new ValidationError(
         'Cannot provide both "fromAmount" and "toAmount" parameters.'
@@ -122,7 +128,7 @@ export const getQuote = async (
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/${params.fromAmount ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
+    `${_config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
