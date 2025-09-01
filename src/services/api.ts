@@ -12,7 +12,6 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
-  type QuoteRequest as QuoteRequestFromAmount,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -42,13 +41,12 @@ import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
-import type { GetStatusRequestExtended } from './types.js'
-
-type QuoteRequestToAmount = Omit<QuoteRequestFromAmount, 'fromAmount'> & {
-  toAmount: string
-}
-
-type QuoteRequest = QuoteRequestFromAmount | QuoteRequestToAmount
+import type {
+  GetStatusRequestExtended,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types.js'
 
 /**
  * Get a quote for a token transfer
