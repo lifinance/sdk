@@ -137,13 +137,52 @@ export class EVMStepExecutor extends BaseStepExecutor {
     toChain: ExtendedChain
     isBridgeExecution: boolean
   }) => {
-    let transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
+    const updateProcessWithReceipt = (
+      transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
+    ) => {
+      // Update pending process if the transaction hash from the receipt is different.
+      // This might happen if the transaction was replaced or we used taskId instead of txHash.
+      if (
+        transactionReceipt?.transactionHash &&
+        transactionReceipt.transactionHash !== process.txHash
+      ) {
+        // Validate if transaction hash is a valid hex string that can be used on-chain
+        // Some custom integrations may return non-hex identifiers to support custom status tracking
+        const txHash = isHex(transactionReceipt.transactionHash, {
+          strict: true,
+        })
+          ? transactionReceipt.transactionHash
+          : undefined
+        process = this.statusManager.updateProcess(
+          step,
+          process.type,
+          'PENDING',
+          {
+            txHash: txHash,
+            txLink:
+              (transactionReceipt as WalletCallReceipt).transactionLink ||
+              (txHash
+                ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
+                : undefined),
+          }
+        )
+      }
+    }
 
+    let transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
     switch (process.txType) {
       case 'batched':
         transactionReceipt = await waitForBatchTransactionReceipt(
           this.client,
-          process.taskId as Hash
+          process.taskId as Hash,
+          (result) => {
+            const receipt = result.receipts?.find(
+              (r) => r.status === 'reverted'
+            ) as WalletCallReceipt | undefined
+            if (receipt) {
+              updateProcessWithReceipt(receipt)
+            }
+          }
         )
         break
       case 'relayed':
@@ -166,31 +205,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         })
     }
 
-    // Update pending process if the transaction hash from the receipt is different.
-    // This might happen if the transaction was replaced.
-    if (
-      transactionReceipt?.transactionHash &&
-      transactionReceipt.transactionHash !== process.txHash
-    ) {
-      // Validate if transaction hash is a valid hex string that can be used on-chain
-      // Some custom integrations may return non-hex identifiers to support custom status tracking
-      const txHash = isHex(transactionReceipt.transactionHash, { strict: true })
-        ? transactionReceipt.transactionHash
-        : undefined
-      process = this.statusManager.updateProcess(
-        step,
-        process.type,
-        'PENDING',
-        {
-          txHash: txHash,
-          txLink:
-            (transactionReceipt as WalletCallReceipt).transactionLink ||
-            (txHash
-              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
-              : undefined),
-        }
-      )
-    }
+    updateProcessWithReceipt(transactionReceipt)
 
     if (isBridgeExecution) {
       process = this.statusManager.updateProcess(step, process.type, 'DONE')
