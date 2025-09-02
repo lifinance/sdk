@@ -30,15 +30,22 @@ const handleSpecificErrors = async (
 ) => {
   if (
     e.name === 'UserRejectedRequestError' ||
-    e.cause?.name === 'UserRejectedRequestError'
+    e.cause?.name === 'UserRejectedRequestError' ||
+    /**
+     * This error is specific to MetaMask and thrown when the user rejects the signature of the native token transfer, at that point, the bundle id is unknown.
+     * @see https://github.com/MetaMask/metamask-extension/blob/main/app/scripts/lib/transaction/eip5792.ts#L141-L146
+     */
+    e.name === 'UnknownBundleIdError'
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
-  // Safe Wallet via WalletConnect returns -32000 code when user rejects the signature
-  // {
-  //   code: -32000,
-  //   message: 'User rejected transaction',
-  // }
+  /**
+   * Safe Wallet via WalletConnect returns -32000 code when user rejects the signature
+   * {
+   *   code: -32000,
+   *   message: 'User rejected transaction',
+   * }
+   */
   if (
     e.cause?.code === -32000 ||
     // Safe doesn't return proper code, but the error details includes 'rejected'
@@ -47,12 +54,14 @@ const handleSpecificErrors = async (
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
-  // Some wallets reject transactions sometimes with this code because of internal and JSON-RPC errors, e.g.:
-  // {
-  //     "code": -32603,
-  //     "message": "Pop up window failed to open",
-  //     "docUrl": "https://docs.cloud.coinbase.com/wallet-sdk/docs/errors"
-  // }
+  /**
+   * Some wallets reject transactions sometimes with this code because of internal and JSON-RPC errors, e.g.:
+   * {
+   *     "code": -32603,
+   *     "message": "Pop up window failed to open",
+   *     "docUrl": "https://docs.cloud.coinbase.com/wallet-sdk/docs/errors"
+   * }
+   */
   if (e.cause?.code === -32603) {
     return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
   }
