@@ -12,7 +12,6 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
-  type QuoteRequest,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -42,7 +41,12 @@ import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { withDedupe } from '../utils/withDedupe.js'
-import type { GetStatusRequestExtended } from './types.js'
+import type {
+  GetStatusRequestExtended,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types.js'
 
 /**
  * Get a quote for a token transfer
@@ -51,18 +55,26 @@ import type { GetStatusRequestExtended } from './types.js'
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Quote for a token transfer
  */
-export const getQuote = async (
+export async function getQuote(
+  params: QuoteRequestFromAmount,
+  options?: RequestOptions
+): Promise<LiFiStep>
+export async function getQuote(
+  params: QuoteRequestToAmount,
+  options?: RequestOptions
+): Promise<LiFiStep>
+export async function getQuote(
   params: QuoteRequest,
   options?: RequestOptions
-): Promise<LiFiStep> => {
+): Promise<LiFiStep> {
   const requiredParameters: Array<keyof QuoteRequest> = [
     'fromChain',
     'fromToken',
     'fromAddress',
-    'fromAmount',
     'toChain',
     'toToken',
   ]
+
   for (const requiredParameter of requiredParameters) {
     if (!params[requiredParameter]) {
       throw new SDKError(
@@ -71,6 +83,27 @@ export const getQuote = async (
         )
       )
     }
+  }
+
+  const isFromAmountRequest =
+    'fromAmount' in params && params.fromAmount !== undefined
+  const isToAmountRequest =
+    'toAmount' in params && params.toAmount !== undefined
+
+  if (!isFromAmountRequest && !isToAmountRequest) {
+    throw new SDKError(
+      new ValidationError(
+        'Required parameter "fromAmount" or "toAmount" is missing.'
+      )
+    )
+  }
+
+  if (isFromAmountRequest && isToAmountRequest) {
+    throw new SDKError(
+      new ValidationError(
+        'Cannot provide both "fromAmount" and "toAmount" parameters.'
+      )
+    )
   }
   const _config = config.get()
   // apply defaults
@@ -93,7 +126,7 @@ export const getQuote = async (
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/quote?${new URLSearchParams(
+    `${_config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -261,10 +294,10 @@ export const getStatus = async (
  * @returns Relayer quote for a token transfer
  */
 export const getRelayerQuote = async (
-  params: QuoteRequest,
+  params: QuoteRequestFromAmount,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
-  const requiredParameters: Array<keyof QuoteRequest> = [
+  const requiredParameters: Array<keyof QuoteRequestFromAmount> = [
     'fromChain',
     'fromToken',
     'fromAddress',
