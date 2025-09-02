@@ -575,12 +575,25 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
         this.statusManager.updateProcess(step, process.type, 'MESSAGE_REQUIRED')
         for (const typedData of intentTypedData) {
+          if (!this.allowUserInteraction) {
+            return step
+          }
+          const typedDataChainId = typedData.domain.chainId as number
+          // Switch to the typed data's chain if needed
+          const updatedClient = await this.checkClient(
+            step,
+            process,
+            typedDataChainId
+          )
+          if (!updatedClient) {
+            return step
+          }
           const signature = await getAction(
-            this.client,
+            updatedClient,
             signTypedData,
             'signTypedData'
           )({
-            account: this.client.account!,
+            account: updatedClient.account!,
             primaryType: typedData.primaryType,
             domain: typedData.domain,
             types: typedData.types,
