@@ -60,6 +60,7 @@ export const CHAIN_TYPE_UNS_CHAIN_MAP: Record<ChainType, string> = {
   [ChainType.MVM]: 'SUI',
   [ChainType.SVM]: 'SOL',
   [ChainType.UTXO]: 'BTC',
+  [ChainType.TVM]: 'TRON',
 }
 
 export const CHAIN_ID_UNS_CHAIN_MAP: Partial<Record<ChainId, string>> = {
@@ -78,4 +79,5 @@ export const CHAIN_TYPE_FAMILY_MAP: Record<ChainType, string> = {
   [ChainType.UTXO]: 'BTC',
   [ChainType.SVM]: 'SOL',
   [ChainType.MVM]: 'SUI',
+  [ChainType.TVM]: 'TRON',
 }

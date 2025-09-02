@@ -29,14 +29,14 @@ export const resolveUNSAddress = async (
     // handle token based resolution
     if (chain) {
       const family = CHAIN_TYPE_FAMILY_MAP[chainType]
-      const unschain = CHAIN_ID_UNS_CHAIN_MAP[chain]
+      const unsChain = CHAIN_ID_UNS_CHAIN_MAP[chain]
 
       if (family) {
         if (token) {
-          keys.push(`token.${family}.${unschain}.${token}.address`)
+          keys.push(`token.${family}.${unsChain}.${token}.address`)
         }
-        if (unschain) {
-          keys.push(`token.${family}.${unschain}.address`)
+        if (unsChain) {
+          keys.push(`token.${family}.${unsChain}.address`)
         }
 
         keys.push(`token.${family}.address`)
@@ -44,8 +44,8 @@ export const resolveUNSAddress = async (
     }
 
     // fallback to chain based resolution
-    const unschainType = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
-    keys.push(`crypto.${unschainType}.address`)
+    const unsChainType = CHAIN_TYPE_UNS_CHAIN_MAP[chainType]
+    keys.push(`crypto.${unsChainType}.address`)
 
     for (const key of keys) {
       const address =
