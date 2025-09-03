@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.1](https://github.com/lifinance/sdk/compare/v3.12.0...v3.12.1) (2025-09-03)
+
+
+### Bug Fixes
+
+* improve gasless step validation ([#305](https://github.com/lifinance/sdk/issues/305)) ([b9d4b47](https://github.com/lifinance/sdk/commit/b9d4b47245476166f865622986bfba511192b905))
+
 ## [3.12.0](https://github.com/lifinance/sdk/compare/v3.11.4...v3.12.0) (2025-09-02)
 
 
