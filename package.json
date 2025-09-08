@@ -86,11 +86,15 @@
     "watch": "tsc -w -p ./tsconfig.json",
     "prepare": "husky",
     "link:bigmi": "pnpm link @bigmi/core",
-    "unlink:bigmi": "pnpm unlink @bigmi/core"
+    "unlink:bigmi": "pnpm unlink @bigmi/core",
+    "knip:all": "knip",
+    "knip:check": "knip --dependencies --exports --files --no-config-hints --exclude binaries",
+    "knip:write": "pnpm knip:check --fix"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "pnpm check:write"
+      "pnpm check:write",
+      "bash -c 'pnpm knip:check'"
     ]
   },
   "dependencies": {
@@ -113,16 +117,17 @@
     "@commitlint/config-conventional": "^19.8.1",
     "@lifi/data-types": "^6.35.1",
     "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.3.1",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.4",
     "fs-extra": "^11.3.1",
     "husky": "^9.1.7",
+    "knip": "^5.63.1",
     "lint-staged": "^16.1.6",
     "madge": "^8.0.0",
     "msw": "^2.11.1",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },

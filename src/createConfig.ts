@@ -18,7 +18,7 @@ function createBaseConfig(options: SDKConfig) {
   return _config
 }
 
-export async function createChainsConfig() {
+async function createChainsConfig() {
   config.loading = getChains({
     chainTypes: [ChainType.EVM, ChainType.SVM, ChainType.UTXO, ChainType.MVM],
   })

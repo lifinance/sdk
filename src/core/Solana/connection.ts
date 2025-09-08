@@ -8,7 +8,7 @@ const connections = new Map<string, Connection>()
  * Initializes the Solana connections if they haven't been initialized yet.
  * @returns - Promise that resolves when connections are initialized.
  */
-export const ensureConnections = async (): Promise<void> => {
+const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {

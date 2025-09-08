@@ -7,7 +7,7 @@ import bs58 from 'bs58'
 import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
-export type ConfirmedTransactionResult = {
+type ConfirmedTransactionResult = {
   signatureResult: SignatureResult | null
   txSignature: string
 }
