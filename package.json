@@ -93,7 +93,9 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "pnpm check:write",
+      "pnpm check:write"
+    ],
+    "*": [
       "bash -c 'pnpm knip:check'"
     ]
   },
