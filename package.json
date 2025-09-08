@@ -88,7 +88,7 @@
     "link:bigmi": "pnpm link @bigmi/core",
     "unlink:bigmi": "pnpm unlink @bigmi/core",
     "knip:all": "knip",
-    "knip:check": "knip --dependencies --exports --files --no-config-hints --exclude binaries",
+    "knip:check": "knip --dependencies --files --no-config-hints --exclude binaries",
     "knip:write": "pnpm knip:check --fix"
   },
   "lint-staged": {
