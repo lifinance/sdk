@@ -1,4 +1,4 @@
-import type { LiFiStep } from '@lifi/types'
+import type { ExtendedChain, LiFiStep } from '@lifi/types'
 import type { LiFiStepExtended } from '../types.js'
 
 type RelayerStep = (LiFiStepExtended | LiFiStep) & {
@@ -12,9 +12,15 @@ export function isRelayerStep(
 }
 
 export function isGaslessStep(
-  step: LiFiStepExtended | LiFiStep
+  step: LiFiStepExtended | LiFiStep,
+  chain?: ExtendedChain
 ): step is RelayerStep {
-  return !!step.typedData?.find(
-    (p) => p.primaryType === 'PermitWitnessTransferFrom'
+  return (
+    !!step.typedData?.some(
+      (p) => p.primaryType === 'PermitWitnessTransferFrom'
+    ) ||
+    !!(
+      chain && step.typedData?.some((p) => p.message.spender === chain?.permit2)
+    )
   )
 }
