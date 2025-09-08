@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.2](https://github.com/lifinance/sdk/compare/v3.12.1...v3.12.2) (2025-09-08)
+
+
+### Bug Fixes
+
+* improve relayer message-based flow ([#304](https://github.com/lifinance/sdk/issues/304)) ([9b56399](https://github.com/lifinance/sdk/commit/9b56399796f34d73804cadb4892f82dcc0203777))
+
 ### [3.12.1](https://github.com/lifinance/sdk/compare/v3.12.0...v3.12.1) (2025-09-03)
 
 
