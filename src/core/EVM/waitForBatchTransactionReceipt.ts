@@ -1,5 +1,5 @@
 import type { Client, Hash } from 'viem'
-import { waitForCallsStatus } from 'viem/actions'
+import { type GetCallsStatusReturnType, waitForCallsStatus } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
@@ -7,9 +7,10 @@ import type { WalletCallReceipt } from './types.js'
 
 export const waitForBatchTransactionReceipt = async (
   client: Client,
-  batchHash: Hash
+  batchHash: Hash,
+  onFailed?: (result: GetCallsStatusReturnType) => void
 ): Promise<WalletCallReceipt> => {
-  const { receipts, status, statusCode } = await getAction(
+  const result = await getAction(
     client,
     waitForCallsStatus,
     'waitForCallsStatus'
@@ -18,30 +19,29 @@ export const waitForBatchTransactionReceipt = async (
     timeout: 3_600_000 * 24,
   })
 
-  if (
-    status === 'success' ||
-    // @ts-expect-error: for backwards compatibility
-    status === 'CONFIRMED'
-  ) {
+  if (result.status === 'success') {
     if (
-      !receipts?.length ||
-      !receipts.every((receipt) => receipt.transactionHash) ||
-      receipts.some((receipt) => receipt.status === 'reverted')
+      !result.receipts?.length ||
+      !result.receipts.every((receipt) => receipt.transactionHash) ||
+      result.receipts.some((receipt) => receipt.status === 'reverted')
     ) {
+      onFailed?.(result)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
         'Transaction was reverted.'
       )
     }
-    const transactionReceipt = receipts.at(-1)!
+    const transactionReceipt = result.receipts.at(-1)!
     return transactionReceipt
   }
-  if (statusCode >= 400 && statusCode < 500) {
+  if (result.statusCode >= 400 && result.statusCode < 500) {
+    onFailed?.(result)
     throw new TransactionError(
       LiFiErrorCode.TransactionCanceled,
       'Transaction was canceled.'
     )
   }
+  onFailed?.(result)
   throw new TransactionError(
     LiFiErrorCode.TransactionFailed,
     'Transaction failed.'

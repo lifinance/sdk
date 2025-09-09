@@ -2,6 +2,75 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.4](https://github.com/lifinance/sdk/compare/v3.12.3...v3.12.4) (2025-09-09)
+
+
+### Bug Fixes
+
+* filter signed typed data ([#308](https://github.com/lifinance/sdk/issues/308)) ([7eb9f69](https://github.com/lifinance/sdk/commit/7eb9f69bbc9a909f373d6b34e68881fa123db613))
+
+### [3.12.3](https://github.com/lifinance/sdk/compare/v3.12.2...v3.12.3) (2025-09-09)
+
+
+### Bug Fixes
+
+* domain chainId should be number ([#307](https://github.com/lifinance/sdk/issues/307)) ([5b64d26](https://github.com/lifinance/sdk/commit/5b64d26bb65a0a697867db35f3cfdc725174a9c8))
+
+### [3.12.2](https://github.com/lifinance/sdk/compare/v3.12.1...v3.12.2) (2025-09-08)
+
+
+### Bug Fixes
+
+* improve relayer message-based flow ([#304](https://github.com/lifinance/sdk/issues/304)) ([9b56399](https://github.com/lifinance/sdk/commit/9b56399796f34d73804cadb4892f82dcc0203777))
+
+### [3.12.1](https://github.com/lifinance/sdk/compare/v3.12.0...v3.12.1) (2025-09-03)
+
+
+### Bug Fixes
+
+* improve gasless step validation ([#305](https://github.com/lifinance/sdk/issues/305)) ([b9d4b47](https://github.com/lifinance/sdk/commit/b9d4b47245476166f865622986bfba511192b905))
+
+## [3.12.0](https://github.com/lifinance/sdk/compare/v3.11.4...v3.12.0) (2025-09-02)
+
+
+### Features
+
+* **api:** support quotes to amount ([#265](https://github.com/lifinance/sdk/issues/265)) ([db6871f](https://github.com/lifinance/sdk/commit/db6871f110805760e0fc8989460b412b6aece690))
+
+
+### Bug Fixes
+
+* handle UnknownBundleIdError error ([#302](https://github.com/lifinance/sdk/issues/302)) ([642a1af](https://github.com/lifinance/sdk/commit/642a1af2d9d3a390c63cabcd9700402baf8eac10))
+* update process with transaction receipt links when it exists ([#303](https://github.com/lifinance/sdk/issues/303)) ([f6d23bf](https://github.com/lifinance/sdk/commit/f6d23bf9ebce6668c3ac308b7ff29fa5d8b69828))
+
+### [3.11.4](https://github.com/lifinance/sdk/compare/v3.11.3...v3.11.4) (2025-08-29)
+
+
+### Bug Fixes
+
+* add setAllowance export from setAllowance.js ([#301](https://github.com/lifinance/sdk/issues/301)) ([cf38abc](https://github.com/lifinance/sdk/commit/cf38abccf6becbfe7df871609f75c4e172d05532))
+
+### [3.11.3](https://github.com/lifinance/sdk/compare/v3.11.2...v3.11.3) (2025-08-28)
+
+### [3.11.2](https://github.com/lifinance/sdk/compare/v3.11.1...v3.11.2) (2025-08-28)
+
+### [3.11.1](https://github.com/lifinance/sdk/compare/v3.11.0...v3.11.1) (2025-08-28)
+
+## [3.11.0](https://github.com/lifinance/sdk/compare/v3.10.1...v3.11.0) (2025-08-27)
+
+
+### Features
+
+* improve message-based execution flow ([#300](https://github.com/lifinance/sdk/issues/300)) ([6605adc](https://github.com/lifinance/sdk/commit/6605adc0b415ce3d53bdb3712e5e06f40b760680))
+* update getTokens() and getTokenBalances() responses ([#298](https://github.com/lifinance/sdk/issues/298)) ([801bc6c](https://github.com/lifinance/sdk/commit/801bc6ccea73a0ede37ffa1848d72e21323c7325))
+
+### [3.10.1](https://github.com/lifinance/sdk/compare/v3.10.0...v3.10.1) (2025-08-20)
+
+
+### Bug Fixes
+
+* add missing export of getWalletBalances ([#297](https://github.com/lifinance/sdk/issues/297)) ([d27d891](https://github.com/lifinance/sdk/commit/d27d891681b100c8de966acc5cca4423597e685b))
+
 ## [3.10.0](https://github.com/lifinance/sdk/compare/v3.9.3...v3.10.0) (2025-08-19)
 
 

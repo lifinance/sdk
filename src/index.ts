@@ -12,6 +12,7 @@ export { isBatchingSupported } from './core/EVM/isBatchingSupported.js'
 export { getNativePermit } from './core/EVM/permits/getNativePermit.js'
 export {
   revokeTokenApproval,
+  setAllowance,
   setTokenAllowance,
 } from './core/EVM/setAllowance.js'
 export {
@@ -117,6 +118,7 @@ export {
   getTokenBalance,
   getTokenBalances,
   getTokenBalancesByChain,
+  getWalletBalances,
 } from './services/balance.js'
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
 export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'

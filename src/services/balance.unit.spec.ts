@@ -205,7 +205,7 @@ describe('Balance service tests', () => {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123,
+              amount: '123',
               marketCapUSD: 1000000,
               volumeUSD24H: 50000,
               fdvUSD: 2000000,
@@ -231,7 +231,7 @@ describe('Balance service tests', () => {
           [ChainId.DAI]: [
             {
               ...SOME_TOKEN,
-              amount: 123,
+              amount: '123',
               marketCapUSD: 1000000,
               volumeUSD24H: 50000,
               fdvUSD: 2000000,

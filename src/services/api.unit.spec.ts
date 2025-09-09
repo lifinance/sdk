@@ -194,6 +194,7 @@ describe('ApiService', () => {
     const fromAmount = '1000'
     const toChain = ChainId.POL
     const toToken = 'MATIC'
+    const toAmount = '1000'
 
     describe('user input is invalid', () => {
       it('throw an error', async () => {
@@ -253,7 +254,27 @@ describe('ApiService', () => {
           })
         ).rejects.toThrowError(
           new SDKError(
-            new ValidationError('Required parameter "fromAmount" is missing.')
+            new ValidationError(
+              'Required parameter "fromAmount" or "toAmount" is missing.'
+            )
+          )
+        )
+
+        await expect(
+          ApiService.getQuote({
+            fromChain,
+            fromToken,
+            fromAddress,
+            fromAmount,
+            toChain,
+            toToken,
+            toAmount,
+          } as any)
+        ).rejects.toThrowError(
+          new SDKError(
+            new ValidationError(
+              'Cannot provide both "fromAmount" and "toAmount" parameters.'
+            )
           )
         )
 
