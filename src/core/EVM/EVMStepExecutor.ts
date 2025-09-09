@@ -59,7 +59,7 @@ import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
-export interface EVMStepExecutorOptions extends StepExecutorOptions {
+interface EVMStepExecutorOptions extends StepExecutorOptions {
   client: Client
 }
 

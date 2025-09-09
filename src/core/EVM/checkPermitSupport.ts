@@ -8,7 +8,7 @@ import { getNativePermit } from './permits/getNativePermit.js'
 import { getPublicClient } from './publicClient.js'
 import type { EVMProvider } from './types.js'
 
-export type PermitSupport = {
+type PermitSupport = {
   /** Whether the token supports EIP-2612 native permits */
   nativePermitSupported: boolean
   /** Whether Permit2 is available and has sufficient allowance */

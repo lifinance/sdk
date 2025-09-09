@@ -12,7 +12,6 @@ export const getSNSAddress = async (name: string) => {
     if (!name.endsWith('.sol')) {
       return
     }
-    // const rpcUrl = await getRpcUrl(ChainId.SOL)
     const snsWorkerUrl = `https://sns-sdk-proxy.bonfida.workers.dev/resolve/${name}`
     const response: Response = await fetch(snsWorkerUrl)
     if (!response.ok) {

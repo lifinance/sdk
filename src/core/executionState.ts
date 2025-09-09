@@ -1,15 +1,15 @@
 import type { ExecutionOptions, RouteExtended, StepExecutor } from './types.js'
 
-export interface ExecutionData {
+interface ExecutionData {
   route: RouteExtended
   executors: StepExecutor[]
   executionOptions?: ExecutionOptions
   promise?: Promise<RouteExtended>
 }
 
-export type ExecutionStateParams = Omit<ExecutionData, 'executors'>
+type ExecutionStateParams = Omit<ExecutionData, 'executors'>
 
-export interface ExecutionState {
+interface ExecutionState {
   state: Partial<Record<string, ExecutionData>>
   get(routeId: string): ExecutionData | undefined
   create(params: ExecutionStateParams): ExecutionData

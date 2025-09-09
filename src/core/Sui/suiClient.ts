@@ -8,7 +8,7 @@ const clients = new Map<string, SuiClient>()
  * Initializes the Sui clients if they haven't been initialized yet.
  * @returns - Promise that resolves when clients are initialized.
  */
-export const ensureClients = async (): Promise<void> => {
+const ensureClients = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SUI)
   for (const rpcUrl of rpcUrls) {
     if (!clients.get(rpcUrl)) {
@@ -16,15 +16,6 @@ export const ensureClients = async (): Promise<void> => {
       clients.set(rpcUrl, client)
     }
   }
-}
-
-/**
- * Wrapper around getting the client (RPC provider) for Sui
- * @returns - Sui RPC clients
- */
-export const getSuiClients = async (): Promise<SuiClient[]> => {
-  await ensureClients()
-  return Array.from(clients.values())
 }
 
 /**

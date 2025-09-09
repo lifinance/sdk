@@ -3,7 +3,7 @@
  *
  * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
  */
-export class LruMap<value = unknown> extends Map<string, value> {
+class LruMap<value = unknown> extends Map<string, value> {
   maxSize: number
 
   constructor(size: number) {
@@ -21,7 +21,7 @@ export class LruMap<value = unknown> extends Map<string, value> {
 }
 
 /** @internal */
-export const promiseCache = /*#__PURE__*/ new LruMap<Promise<any>>(8192)
+const promiseCache = /*#__PURE__*/ new LruMap<Promise<any>>(8192)
 
 type WithDedupeOptions = {
   enabled?: boolean | undefined

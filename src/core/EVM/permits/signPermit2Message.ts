@@ -6,7 +6,7 @@ import { getAction } from 'viem/utils'
 import { getPermitTransferFromValues } from './getPermitTransferFromValues.js'
 import { getPermitData } from './signatureTransfer.js'
 
-export interface SignPermit2MessageParams {
+interface SignPermit2MessageParams {
   client: Client
   chain: ExtendedChain
   tokenAddress: Address

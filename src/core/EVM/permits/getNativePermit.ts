@@ -20,7 +20,7 @@ import {
 } from './constants.js'
 import type { NativePermitData } from './types.js'
 
-export type GetNativePermitParams = {
+type GetNativePermitParams = {
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -271,7 +271,7 @@ const getEIP712DomainData = async (
   }
 }
 
-export const getContractData = async (
+const getContractData = async (
   client: Client,
   chainId: number,
   tokenAddress: Address
