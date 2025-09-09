@@ -127,7 +127,7 @@ export async function getQuote(
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
+    `${config.getApiUrl()}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
