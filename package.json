@@ -105,13 +105,13 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0-rc.0",
     "bs58": "^6.0.0",
-    "viem": "^2.37.4"
+    "viem": "^2.37.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.3",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
-    "@lifi/data-types": "^6.35.1",
+    "@lifi/data-types": "^6.35.2",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^3.2.4",
