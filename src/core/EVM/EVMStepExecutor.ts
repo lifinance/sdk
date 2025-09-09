@@ -578,7 +578,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           if (!this.allowUserInteraction) {
             return step
           }
-          const typedDataChainId = typedData.domain.chainId as number
+          const typedDataChainId = Number(typedData.domain.chainId)
           // Switch to the typed data's chain if needed
           const updatedClient = await this.checkClient(
             step,
@@ -626,7 +626,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         const signedNativePermitTypedData = signedTypedData.find(
           (p) =>
             p.primaryType === 'Permit' &&
-            (p.domain.chainId === fromChain.id ||
+            (Number(p.domain.chainId) === fromChain.id ||
               isSaltMatchingChainId(p.domain.salt as Hex, fromChain.id))
         )
         if (signedNativePermitTypedData) {
