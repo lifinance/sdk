@@ -246,8 +246,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
         id: stepBase.id,
       }
     } else {
-      const params = signedTypedData?.length
-        ? { ...stepBase, typedData: signedTypedData }
+      const filteredSignedTypedData = signedTypedData?.filter(
+        (item) => item.signature
+      )
+      const params = filteredSignedTypedData?.length
+        ? {
+            ...stepBase,
+            typedData: filteredSignedTypedData,
+          }
         : stepBase
       updatedStep = await getStepTransaction(params)
     }
