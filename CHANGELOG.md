@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.4](https://github.com/lifinance/sdk/compare/v3.12.3...v3.12.4) (2025-09-09)
+
+
+### Bug Fixes
+
+* filter signed typed data ([#308](https://github.com/lifinance/sdk/issues/308)) ([7eb9f69](https://github.com/lifinance/sdk/commit/7eb9f69bbc9a909f373d6b34e68881fa123db613))
+
 ### [3.12.3](https://github.com/lifinance/sdk/compare/v3.12.2...v3.12.3) (2025-09-09)
 
 
