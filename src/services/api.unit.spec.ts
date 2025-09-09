@@ -606,7 +606,7 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        'https://li.quest/v2/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&limit=1000&fromTimestamp=1696326609361&toTimestamp=1696326609362'
+        'https://li.quest/v2/analytics/transfers?integrator=lifi-sdk&limit=10&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
         ApiService.getTransactionHistory(walletAnalyticsRequest)

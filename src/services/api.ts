@@ -674,24 +674,21 @@ export const getTransactionHistory = async (
     status,
     fromTimestamp,
     toTimestamp,
-    limit = 1000,
+    limit = 10,
     next,
     previous,
   }: TransactionAnalyticsRequest & PaginationQuery,
   options?: RequestOptions
 ): Promise<PaginatedResponse<StatusResponse[]>> => {
-  if (!wallet) {
-    throw new SDKError(
-      new ValidationError('Required parameter "wallet" is missing.')
-    )
-  }
-
   const _config = config.get()
 
   const url = new URL(`${config.getApiUrl('v2')}/analytics/transfers`)
   url.searchParams.append('integrator', _config.integrator)
-  url.searchParams.append('wallet', wallet)
   url.searchParams.append('limit', limit.toString())
+
+  if (wallet) {
+    url.searchParams.append('wallet', wallet)
+  }
 
   if (status) {
     url.searchParams.append('status', status)
