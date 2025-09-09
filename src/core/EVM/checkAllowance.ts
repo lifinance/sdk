@@ -75,11 +75,12 @@ export const checkAllowance = async ({
       })
       signedTypedData = sharedProcess.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
-        const permitChainId = typedData.domain.chainId as number
+        const permitChainId = Number(typedData.domain.chainId)
 
         // Check if we already have a valid permit for this chain and requirements
         const signedTypedDataForChain = signedTypedData.find(
-          (signedTypedData) => signedTypedData.domain.chainId === permitChainId
+          (signedTypedData) =>
+            Number(signedTypedData.domain.chainId) === permitChainId
         )
         const existingValidPermit =
           signedTypedDataForChain &&
@@ -140,7 +141,7 @@ export const checkAllowance = async ({
       })
       // Check if there's a signed permit for the source transaction chain
       const matchingPermit = signedTypedData.find(
-        (signedTypedData) => signedTypedData.domain.chainId === chain.id
+        (signedTypedData) => Number(signedTypedData.domain.chainId) === chain.id
       )
       if (matchingPermit) {
         return {
@@ -223,7 +224,8 @@ export const checkAllowance = async ({
       // Check if we already have a valid permit for this chain and requirements
       const signedTypedDataForChain = signedTypedData.find(
         (signedTypedData) =>
-          signedTypedData.domain.chainId === nativePermitData.domain.chainId
+          Number(signedTypedData.domain.chainId) ===
+          Number(nativePermitData.domain.chainId)
       )
       const existingValidPermit =
         signedTypedDataForChain &&
