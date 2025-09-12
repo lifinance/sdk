@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.5](https://github.com/lifinance/sdk/compare/v3.12.4...v3.12.5) (2025-09-12)
+
+
+### Bug Fixes
+
+* improve smart account sigs ([#309](https://github.com/lifinance/sdk/issues/309)) ([4bd1f37](https://github.com/lifinance/sdk/commit/4bd1f3725a68d10317002f25d0517a80ef9187e3))
+
 ### [3.12.4](https://github.com/lifinance/sdk/compare/v3.12.3...v3.12.4) (2025-09-09)
 
 
