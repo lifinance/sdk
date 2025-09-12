@@ -118,7 +118,7 @@ export const checkAllowance = async ({
           account: permitClient.account!,
           domain: typedData.domain,
           types: typedData.types,
-          primaryType: 'Permit',
+          primaryType: typedData.primaryType,
           message: typedData.message,
         })
         const signedPermit: SignedTypedData = {
@@ -247,7 +247,7 @@ export const checkAllowance = async ({
           account: updatedClient.account!,
           domain: nativePermitData.domain,
           types: nativePermitData.types,
-          primaryType: 'Permit',
+          primaryType: nativePermitData.primaryType,
           message: nativePermitData.message,
         })
 
