@@ -34,7 +34,6 @@ import { handlers } from './api.unit.handlers.js'
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
-  const _config = config.get()
   const server = setupServer(...handlers)
   beforeAll(() => {
     setupTestEnvironment()
@@ -561,7 +560,7 @@ describe('ApiService', () => {
   describe('getAvailableConnections', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/connections`, async () =>
+        http.get(`${config.getApiUrl()}/connections`, async () =>
           HttpResponse.json({ connections: [] })
         )
       )
@@ -595,7 +594,7 @@ describe('ApiService', () => {
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/analytics/transfers`, async () =>
+        http.get(`${config.getApiUrl('v2')}/analytics/transfers`, async () =>
           HttpResponse.json({})
         )
       )
@@ -607,7 +606,7 @@ describe('ApiService', () => {
       }
 
       const generatedURL =
-        'https://li.quest/v1/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
+        'https://li.quest/v2/analytics/transfers?integrator=lifi-sdk&limit=10&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
         ApiService.getTransactionHistory(walletAnalyticsRequest)
