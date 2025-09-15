@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.6](https://github.com/lifinance/sdk/compare/v3.12.5...v3.12.6) (2025-09-15)
+
+
+### Bug Fixes
+
+* add InsufficientGas error ([f7947c0](https://github.com/lifinance/sdk/commit/f7947c09ce925933f74d0fbe4d24160af95911de))
+
 ### [3.12.5](https://github.com/lifinance/sdk/compare/v3.12.4...v3.12.5) (2025-09-12)
 
 
