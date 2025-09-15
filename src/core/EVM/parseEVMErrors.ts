@@ -66,6 +66,17 @@ const handleSpecificErrors = async (
     return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
   }
 
+  /**
+   * This error is specific to Smart Accounts and thrown when the user doesn't have enough gas to pay for the transaction.
+   */
+  if (
+    e.name === 'InsufficientPrefundError' ||
+    e.cause?.name === 'InsufficientPrefundError' ||
+    e.cause?.cause?.name === 'InsufficientPrefundError'
+  ) {
+    return new TransactionError(LiFiErrorCode.InsufficientGas, e.message, e)
+  }
+
   if (
     step &&
     process?.txHash &&
