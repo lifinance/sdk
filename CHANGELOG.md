@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.7](https://github.com/lifinance/sdk/compare/v3.12.6...v3.12.7) (2025-09-16)
+
+
+### Bug Fixes
+
+* improve salt based permits handling ([#310](https://github.com/lifinance/sdk/issues/310)) ([27cd1e1](https://github.com/lifinance/sdk/commit/27cd1e19a45202d9518ed1d9cdb4a5def1478948))
+
 ### [3.12.6](https://github.com/lifinance/sdk/compare/v3.12.5...v3.12.6) (2025-09-15)
 
 
