@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.8](https://github.com/lifinance/sdk/compare/v3.12.7...v3.12.8) (2025-09-16)
+
+
+### Bug Fixes
+
+* handle empty gas cost in convertQuoteToRoute function ([1617f2a](https://github.com/lifinance/sdk/commit/1617f2a7481f4a864d28b2c35ce8f6fee88192a9))
+
 ### [3.12.7](https://github.com/lifinance/sdk/compare/v3.12.6...v3.12.7) (2025-09-16)
 
 
