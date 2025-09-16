@@ -52,8 +52,8 @@ import { isGaslessStep, isRelayerStep } from './typeguards.js'
 import type { Call, WalletCallReceipt } from './types.js'
 import {
   convertExtendedChain,
+  getDomainChainId,
   getMaxPriorityFeePerGas,
-  isSaltMatchingChainId,
 } from './utils.js'
 import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
@@ -584,7 +584,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
           if (!this.allowUserInteraction) {
             return step
           }
-          const typedDataChainId = Number(typedData.domain.chainId)
+          const typedDataChainId =
+            getDomainChainId(typedData.domain) || fromChain.id
           // Switch to the typed data's chain if needed
           const updatedClient = await this.checkClient(
             step,
@@ -632,8 +633,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         const signedNativePermitTypedData = signedTypedData.find(
           (p) =>
             p.primaryType === 'Permit' &&
-            (Number(p.domain.chainId) === fromChain.id ||
-              isSaltMatchingChainId(p.domain.salt as Hex, fromChain.id))
+            getDomainChainId(p.domain) === fromChain.id
         )
         if (signedNativePermitTypedData) {
           transactionRequest.data = encodeNativePermitData(
