@@ -27,7 +27,7 @@ import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
 import { isPsbtFinalized, toXOnly } from './utils.js'
 
-export interface UTXOStepExecutorOptions extends StepExecutorOptions {
+interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
 }
 

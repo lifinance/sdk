@@ -10,7 +10,7 @@ import type {
   ProcessType,
 } from './types.js'
 
-export type FindOrCreateProcessProps = {
+type FindOrCreateProcessProps = {
   step: LiFiStepExtended
   type: ProcessType
   chainId?: ChainId

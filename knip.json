@@ -1,0 +1,5 @@
+{
+    "ignore": ["examples/**", "scripts/**", "src/core/EVM/permits/**", "src/errors/constants.ts"],
+    "ignoreDependencies": ["bech32", "@types/fs-extra", "fs-extra", "@types/ws"]
+}
+  

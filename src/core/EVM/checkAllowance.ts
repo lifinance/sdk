@@ -21,7 +21,7 @@ import type { Call } from './types.js'
 import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
-export type CheckAllowanceParams = {
+type CheckAllowanceParams = {
   checkClient(
     step: LiFiStepExtended,
     process: Process,
@@ -37,7 +37,7 @@ export type CheckAllowanceParams = {
   disableMessageSigning?: boolean
 }
 
-export type AllowanceResult =
+type AllowanceResult =
   | {
       status: 'ACTION_REQUIRED'
     }
