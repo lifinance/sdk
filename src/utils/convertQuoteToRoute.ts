@@ -36,7 +36,7 @@ export const convertQuoteToRoute = (quote: LiFiStep): Route => {
     toAmountMin: quote.estimate.toAmountMin,
     toAmountUSD: quote.estimate.toAmountUSD,
     toAddress: quote.action.toAddress || quote.action.fromAddress,
-    gasCostUSD: quote.estimate.gasCosts?.[0].amountUSD,
+    gasCostUSD: quote.estimate.gasCosts?.[0]?.amountUSD || '0',
     steps: [quote],
     insurance: { state: 'NOT_INSURABLE', feeAmountUsd: '0' },
   }

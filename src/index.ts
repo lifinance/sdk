@@ -27,6 +27,7 @@ export type {
 export { isEVM } from './core/EVM/types.js'
 export {
   convertExtendedChain,
+  isDelegationDesignatorCode,
   isExtendedChain,
 } from './core/EVM/utils.js'
 export {

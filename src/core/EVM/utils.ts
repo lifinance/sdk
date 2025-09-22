@@ -1,6 +1,5 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
-import type { Address, Chain, Client, Hex, Transaction } from 'viem'
-import { pad, toHex } from 'viem'
+import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
 import { config } from '../../config.js'
 import { median } from '../../utils/median.js'
@@ -103,16 +102,47 @@ export const retryDelay = ({ count }: { count: number; error: Error }) =>
 export const retryCount = 30
 
 /**
- * Helper function to check if a domain salt matches a chainId.
- * The salt is a padded hex string representation of the chainId.
+ * Helper function to get the chain ID from a TypedDataDomain.
+ * Extracts the chain ID from either the chainId field or the salt field.
+ * The salt is expected to be a padded hex string representation of the chainId.
  */
-export const isSaltMatchingChainId = (
-  salt: Hex | undefined,
-  chainId: number
-): boolean => {
-  if (!salt) {
-    return false
+export const getDomainChainId = (domain: TypedDataDomain): number | null => {
+  if (domain.chainId) {
+    return Number(domain.chainId)
   }
-  const paddedChainId = pad(toHex(chainId), { size: 32 })
-  return salt.toLowerCase() === paddedChainId.toLowerCase()
+  if (!domain.salt) {
+    return null
+  }
+  try {
+    // Convert the hex salt to a number
+    // The salt should be a padded 32-byte hex representation of the chainId
+    const saltChainId = Number(domain.salt)
+    return !Number.isNaN(saltChainId) ? saltChainId : null
+  } catch {
+    return null
+  }
 }
+
+/**
+ * EIP-7702 introduces delegation designators that allow EOAs to delegate execution to other contracts.
+ * A delegation designator starts with 0xef0100 followed by the target contract address.
+ *
+ * When an EOA has this code, it means:
+ * - The EOA can still send transactions (unlike other contract accounts)
+ * - All contract calls are delegated to the target address
+ * - The code itself remains as the delegation designator (0xef0100 || address)
+ *
+ * Delegation Designator Structure:
+ *
+ * ─────┬───┬──┬───────────────────────────────────────┐
+ *      │   │  │                                       │
+ *  0x ef 0100 a94f5374fce5edbc8e2a8697c15331677e6ebf0b
+ *      │   │  └───────────────────────────────────────┘
+ *      │   │                         Target Address
+ *      │   └── 7702
+ *      └── 3541
+ *
+ * @see https://eips.ethereum.org/EIPS/eip-7702
+ */
+export const isDelegationDesignatorCode = (code?: string) =>
+  code?.startsWith('0xef0100')

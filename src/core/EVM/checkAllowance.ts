@@ -18,6 +18,7 @@ import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import type { NativePermitData } from './permits/types.js'
 import { setAllowance } from './setAllowance.js'
 import type { Call } from './types.js'
+import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
@@ -75,17 +76,12 @@ export const checkAllowance = async ({
       })
       signedTypedData = sharedProcess.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
-        const permitChainId = typedData.domain.chainId as number
-
         // Check if we already have a valid permit for this chain and requirements
         const signedTypedDataForChain = signedTypedData.find(
-          (signedTypedData) => signedTypedData.domain.chainId === permitChainId
+          (signedTypedData) => isNativePermitValid(signedTypedData, typedData)
         )
-        const existingValidPermit =
-          signedTypedDataForChain &&
-          isNativePermitValid(signedTypedDataForChain, typedData)
 
-        if (existingValidPermit) {
+        if (signedTypedDataForChain) {
           // Skip signing if we already have a valid permit
           continue
         }
@@ -99,11 +95,13 @@ export const checkAllowance = async ({
           return { status: 'ACTION_REQUIRED' }
         }
 
+        const typedDataChainId =
+          getDomainChainId(typedData.domain) || step.action.fromChainId
         // Switch to the permit's chain if needed
         const permitClient = await checkClient(
           step,
           sharedProcess,
-          permitChainId
+          typedDataChainId
         )
         if (!permitClient) {
           return { status: 'ACTION_REQUIRED' }
@@ -117,7 +115,7 @@ export const checkAllowance = async ({
           account: permitClient.account!,
           domain: typedData.domain,
           types: typedData.types,
-          primaryType: 'Permit',
+          primaryType: typedData.primaryType,
           message: typedData.message,
         })
         const signedPermit: SignedTypedData = {
@@ -140,7 +138,8 @@ export const checkAllowance = async ({
       })
       // Check if there's a signed permit for the source transaction chain
       const matchingPermit = signedTypedData.find(
-        (signedTypedData) => signedTypedData.domain.chainId === chain.id
+        (signedTypedData) =>
+          getDomainChainId(signedTypedData.domain) === step.action.fromChainId
       )
       if (matchingPermit) {
         return {
@@ -221,15 +220,11 @@ export const checkAllowance = async ({
         ? signedTypedData
         : sharedProcess.signedTypedData || []
       // Check if we already have a valid permit for this chain and requirements
-      const signedTypedDataForChain = signedTypedData.find(
-        (signedTypedData) =>
-          signedTypedData.domain.chainId === nativePermitData.domain.chainId
+      const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
+        isNativePermitValid(signedTypedData, nativePermitData)
       )
-      const existingValidPermit =
-        signedTypedDataForChain &&
-        isNativePermitValid(signedTypedDataForChain, nativePermitData)
 
-      if (!existingValidPermit) {
+      if (!signedTypedDataForChain) {
         statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED')
 
         if (!allowUserInteraction) {
@@ -245,7 +240,7 @@ export const checkAllowance = async ({
           account: updatedClient.account!,
           domain: nativePermitData.domain,
           types: nativePermitData.types,
-          primaryType: 'Permit',
+          primaryType: nativePermitData.primaryType,
           message: nativePermitData.message,
         })
 

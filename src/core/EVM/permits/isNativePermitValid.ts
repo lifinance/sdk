@@ -14,7 +14,7 @@ export const isNativePermitValid = (
 
   // Check if the permit is for the correct chain
   if (
-    permit.domain.chainId !== typedData.domain.chainId ||
+    Number(permit.domain.chainId) !== Number(typedData.domain.chainId) ||
     (permit.domain.salt && permit.domain.salt !== typedData.domain.salt)
   ) {
     return false

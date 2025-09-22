@@ -8,10 +8,10 @@ import {
   toHex,
   zeroHash,
 } from 'viem'
-import { multicall, readContract } from 'viem/actions'
+import { getCode, multicall, readContract } from 'viem/actions'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
-import { getMulticallAddress } from '../utils.js'
+import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH,
@@ -119,6 +119,45 @@ function validateDomainSeparator({
   return {
     isValid: false,
     domain: {},
+  }
+}
+
+/**
+ * Checks if the account can use native permits based on its code.
+ * Returns true if:
+ * 1. Account has no code (EOA)
+ * 2. Account is EOA and has EIP-7702 delegation designator code
+ *
+ * @param client - The Viem client instance
+ * @returns Promise<boolean> - Whether the account can use native permits
+ */
+const canAccountUseNativePermits = async (client: Client): Promise<boolean> => {
+  try {
+    const accountCode = await getActionWithFallback(
+      client,
+      getCode,
+      'getCode',
+      {
+        address: client.account!.address,
+      }
+    )
+
+    // If no code (0x or undefined), it's an EOA - can use native permits
+    if (!accountCode || accountCode === '0x') {
+      return true
+    }
+
+    // If has code but it's EIP-7702 delegation designator - can use native permits
+    if (isDelegationDesignatorCode(accountCode)) {
+      return true
+    }
+
+    // If has code but not EIP-7702 delegation - cannot use native permits
+    // Smart Accounts like Kernel (ZeroDev) can't produce ECDSA signatures, so we can't use native permits in current implementation
+    return false
+  } catch {
+    // If we can't check the code, assume it's not safe to use native permits
+    return false
   }
 }
 
@@ -435,6 +474,12 @@ export const getNativePermit = async (
   client: Client,
   { chainId, tokenAddress, spenderAddress, amount }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
+  // Check if the account can use native permits (EOA or EIP-7702 delegated account)
+  const canUsePermits = await canAccountUseNativePermits(client)
+  if (!canUsePermits) {
+    return undefined
+  }
+
   const contractData = await getContractData(client, chainId, tokenAddress)
   if (!contractData) {
     return undefined

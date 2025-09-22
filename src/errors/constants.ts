@@ -39,6 +39,7 @@ export enum LiFiErrorCode {
   TransactionRejected = 1022,
   RateLimitExceeded = 1023,
   ThirdPartyError = 1024,
+  InsufficientGas = 1025,
 }
 
 export enum ErrorMessage {

@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.8](https://github.com/lifinance/sdk/compare/v3.12.7...v3.12.8) (2025-09-16)
+
+
+### Bug Fixes
+
+* handle empty gas cost in convertQuoteToRoute function ([1617f2a](https://github.com/lifinance/sdk/commit/1617f2a7481f4a864d28b2c35ce8f6fee88192a9))
+
+### [3.12.7](https://github.com/lifinance/sdk/compare/v3.12.6...v3.12.7) (2025-09-16)
+
+
+### Bug Fixes
+
+* improve salt based permits handling ([#310](https://github.com/lifinance/sdk/issues/310)) ([27cd1e1](https://github.com/lifinance/sdk/commit/27cd1e19a45202d9518ed1d9cdb4a5def1478948))
+
+### [3.12.6](https://github.com/lifinance/sdk/compare/v3.12.5...v3.12.6) (2025-09-15)
+
+
+### Bug Fixes
+
+* add InsufficientGas error ([f7947c0](https://github.com/lifinance/sdk/commit/f7947c09ce925933f74d0fbe4d24160af95911de))
+
+### [3.12.5](https://github.com/lifinance/sdk/compare/v3.12.4...v3.12.5) (2025-09-12)
+
+
+### Bug Fixes
+
+* improve smart account sigs ([#309](https://github.com/lifinance/sdk/issues/309)) ([4bd1f37](https://github.com/lifinance/sdk/commit/4bd1f3725a68d10317002f25d0517a80ef9187e3))
+
+### [3.12.4](https://github.com/lifinance/sdk/compare/v3.12.3...v3.12.4) (2025-09-09)
+
+
+### Bug Fixes
+
+* filter signed typed data ([#308](https://github.com/lifinance/sdk/issues/308)) ([7eb9f69](https://github.com/lifinance/sdk/commit/7eb9f69bbc9a909f373d6b34e68881fa123db613))
+
+### [3.12.3](https://github.com/lifinance/sdk/compare/v3.12.2...v3.12.3) (2025-09-09)
+
+
+### Bug Fixes
+
+* domain chainId should be number ([#307](https://github.com/lifinance/sdk/issues/307)) ([5b64d26](https://github.com/lifinance/sdk/commit/5b64d26bb65a0a697867db35f3cfdc725174a9c8))
+
 ### [3.12.2](https://github.com/lifinance/sdk/compare/v3.12.1...v3.12.2) (2025-09-08)
 
 
