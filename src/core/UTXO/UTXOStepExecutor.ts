@@ -25,7 +25,7 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
-import { isPsbtFinalized, toXOnly } from './utils.js'
+import { generateRedeemScript, isPsbtFinalized, toXOnly } from './utils.js'
 
 interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -185,6 +185,16 @@ export class UTXOStepExecutor extends BaseStepExecutor {
                 psbt.updateInput(index, {
                   sighashType: 1, // Default to Transaction.SIGHASH_ALL - 1
                 })
+              }
+            }
+            if (addressInfo.type === AddressType.p2sh) {
+              if (!input.redeemScript) {
+                const pubKey = this.client.account?.publicKey
+                if (pubKey) {
+                  psbt.updateInput(index, {
+                    redeemScript: generateRedeemScript(hexToUnit8Array(pubKey)),
+                  })
+                }
               }
             }
           })
