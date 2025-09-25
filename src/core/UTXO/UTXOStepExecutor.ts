@@ -187,6 +187,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
                 })
               }
             }
+            // redeemScript: Required by Pay-to-Script-Hash (P2SH) addresses for proper spending
             if (addressInfo.type === AddressType.p2sh) {
               if (!input.redeemScript) {
                 const pubKey = this.client.account?.publicKey
