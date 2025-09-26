@@ -180,6 +180,8 @@ export interface Execution {
   toToken?: Token
   feeCosts?: FeeCost[]
   gasCosts?: GasCost[]
+  internalTxLink?: string
+  externalTxLink?: string
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
