@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.11](https://github.com/lifinance/sdk/compare/v3.12.10...v3.12.11) (2025-09-26)
+
+
+### Bug Fixes
+
+* explorer links updates ([#312](https://github.com/lifinance/sdk/issues/312)) ([1b26f22](https://github.com/lifinance/sdk/commit/1b26f22d5b12a4cb34bc868fee86f721f99aaf21))
+* **utxo:** add support for nested segwit addresses ([#311](https://github.com/lifinance/sdk/issues/311)) ([2e142bf](https://github.com/lifinance/sdk/commit/2e142bf5d510f9e9a64516ed0ce544d03a9af4d5))
+
 ### [3.12.10](https://github.com/lifinance/sdk/compare/v3.12.9...v3.12.10) (2025-09-25)
 
 ### [3.12.9](https://github.com/lifinance/sdk/compare/v3.12.8...v3.12.9) (2025-09-22)
