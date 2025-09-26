@@ -1,6 +1,6 @@
 import { ChainId as BigmiChainId } from '@bigmi/core'
 import { ChainId } from '@lifi/types'
-import type { Psbt } from 'bitcoinjs-lib'
+import { type Psbt, payments } from 'bitcoinjs-lib'
 
 export function isPsbtFinalized(psbt: Psbt): boolean {
   try {
@@ -23,3 +23,12 @@ export const toBigmiChainId = (chainId: ChainId): BigmiChainId => {
       throw new Error(`Unsupported chainId mapping: ${chainId}`)
   }
 }
+
+/**
+ * Generate redeem script for P2SH addresses
+ * @param publicKey
+ * @returns redeem script
+ */
+export const generateRedeemScript = (publicKey: Uint8Array) =>
+  // P2SH addresses are created by hashing the public key and using the result as the script
+  payments.p2wpkh({ pubkey: publicKey }).output
