@@ -66,6 +66,8 @@ export async function waitForDestinationChainTransaction(
       }),
       ...(statusReceiving?.amount && { toAmount: statusReceiving.amount }),
       ...(statusReceiving?.token && { toToken: statusReceiving.token }),
+      internalTxLink: statusResponse?.lifiExplorerLink,
+      externalTxLink: statusResponse?.bridgeExplorerLink,
       gasCosts: [
         {
           amount: statusResponse.sending.gasAmount,
