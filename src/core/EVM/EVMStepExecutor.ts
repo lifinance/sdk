@@ -249,12 +249,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const filteredSignedTypedData = signedTypedData?.filter(
         (item) => item.signature
       )
+      const { typedData: _, ...restStepBase } = stepBase
       const params = filteredSignedTypedData?.length
-        ? {
-            ...stepBase,
-            typedData: filteredSignedTypedData,
-          }
-        : stepBase
+        ? { ...restStepBase, typedData: filteredSignedTypedData }
+        : restStepBase
       updatedStep = await getStepTransaction(params)
     }
 
