@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.12.12](https://github.com/lifinance/sdk/compare/v3.12.11...v3.12.12) (2025-10-01)
+
+
+### Bug Fixes
+
+* improve typed data handling when requesting step ([#313](https://github.com/lifinance/sdk/issues/313)) ([dd0cc35](https://github.com/lifinance/sdk/commit/dd0cc3598d6a9bf4e39a44738a1023dbda8a4c9d))
+
 ### [3.12.11](https://github.com/lifinance/sdk/compare/v3.12.10...v3.12.11) (2025-09-26)
 
 
