@@ -8,11 +8,11 @@
   "license": "MIT",
   "dependencies": {
     "@lifi/data-types": "^6.39.0",
-    "@lifi/sdk": "^3.12.10",
+    "@lifi/sdk": "^3.12.11",
     "@wagmi/connectors": "^5.11.2",
     "@wagmi/core": "^2.21.2",
-    "dotenv": "^17.2.2",
-    "viem": "^2.37.8"
+    "dotenv": "^17.2.3",
+    "viem": "^2.37.9"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -24,9 +24,9 @@
     "example:yearn": "tsx examples/yearnDeposit.ts"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2",
+    "@types/node": "^24.6.1",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad"
 }
