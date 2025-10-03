@@ -12,6 +12,8 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
+  type PaginatedResponse,
+  type PaginationQuery,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -31,7 +33,6 @@ import {
   type ToolsRequest,
   type ToolsResponse,
   type TransactionAnalyticsRequest,
-  type TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { config } from '../config.js'
 import { BaseError } from '../errors/baseError.js'
@@ -126,7 +127,7 @@ export async function getQuote(
   }
 
   return await request<LiFiStep>(
-    `${_config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
+    `${config.getApiUrl()}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -157,14 +158,17 @@ export const getRoutes = async (
     ...params.options,
   }
 
-  return await request<RoutesResponse>(`${_config.apiUrl}/advanced/routes`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(params),
-    signal: options?.signal,
-  })
+  return await request<RoutesResponse>(
+    `${config.getApiUrl()}/advanced/routes`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal: options?.signal,
+    }
+  )
 }
 
 /**
@@ -220,7 +224,7 @@ export const getContractCallsQuote = async (
   params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
   params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
   // send request
-  return await request<LiFiStep>(`${_config.apiUrl}/quote/contractCalls`, {
+  return await request<LiFiStep>(`${config.getApiUrl()}/quote/contractCalls`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -247,7 +251,7 @@ export const getStepTransaction = async (
   }
 
   return await request<LiFiStep>(
-    `${config.get().apiUrl}/advanced/stepTransaction`,
+    `${config.getApiUrl()}/advanced/stepTransaction`,
     {
       method: 'POST',
       headers: {
@@ -279,7 +283,7 @@ export const getStatus = async (
     params as unknown as Record<string, string>
   )
   return await request<StatusResponse>(
-    `${config.get().apiUrl}/status?${queryParams}`,
+    `${config.getApiUrl()}/status?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -335,7 +339,7 @@ export const getRelayerQuote = async (
   }
 
   const result = await request<RelayerQuoteResponse>(
-    `${config.get().apiUrl}/relayer/quote?${new URLSearchParams(
+    `${config.getApiUrl()}/relayer/quote?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -386,7 +390,7 @@ export const relayTransaction = async (
     : '/advanced/relay'
 
   const result = await request<RelayResponse>(
-    `${config.get().apiUrl}${relayerPath}`,
+    `${config.getApiUrl()}${relayerPath}`,
     {
       method: 'POST',
       headers: {
@@ -435,7 +439,7 @@ export const getRelayedTransactionStatus = async (
     otherParams as unknown as Record<string, string>
   )
   const result = await request<RelayStatusResponse>(
-    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    `${config.getApiUrl()}/relayer/status/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -476,7 +480,7 @@ export const getChains = async (
   const response = await withDedupe(
     () =>
       request<ChainsResponse>(
-        `${config.get().apiUrl}/chains?${urlSearchParams}`,
+        `${config.getApiUrl()}/chains?${urlSearchParams}`,
         {
           signal: options?.signal,
         }
@@ -519,7 +523,7 @@ export async function getTokens(
     () =>
       request<
         typeof isExtended extends true ? TokensExtendedResponse : TokensResponse
-      >(`${config.get().apiUrl}/tokens?${urlSearchParams}`, {
+      >(`${config.getApiUrl()}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),
     { id: `${getTokens.name}.${urlSearchParams}` }
@@ -551,7 +555,7 @@ export const getToken = async (
     )
   }
   return await request<TokenExtended>(
-    `${config.get().apiUrl}/token?${new URLSearchParams({
+    `${config.getApiUrl()}/token?${new URLSearchParams({
       chain,
       token,
     } as Record<string, string>)}`,
@@ -579,7 +583,7 @@ export const getTools = async (
     }
   }
   return await request<ToolsResponse>(
-    `${config.get().apiUrl}/tools?${new URLSearchParams(
+    `${config.getApiUrl()}/tools?${new URLSearchParams(
       params as Record<string, string>
     )}`,
     {
@@ -605,7 +609,7 @@ export const getGasRecommendation = async (
     )
   }
 
-  const url = new URL(`${config.get().apiUrl}/gas/suggestion/${params.chainId}`)
+  const url = new URL(`${config.getApiUrl()}/gas/suggestion/${params.chainId}`)
   if (params.fromChain) {
     url.searchParams.append('fromChain', params.fromChain as unknown as string)
   }
@@ -628,7 +632,7 @@ export const getConnections = async (
   connectionRequest: ConnectionsRequest,
   options?: RequestOptions
 ): Promise<ConnectionsResponse> => {
-  const url = new URL(`${config.get().apiUrl}/connections`)
+  const url = new URL(`${config.getApiUrl()}/connections`)
 
   const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
@@ -665,21 +669,26 @@ export const getConnections = async (
 }
 
 export const getTransactionHistory = async (
-  { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
+  {
+    wallet,
+    status,
+    fromTimestamp,
+    toTimestamp,
+    limit = 10,
+    next,
+    previous,
+  }: TransactionAnalyticsRequest & PaginationQuery,
   options?: RequestOptions
-): Promise<TransactionAnalyticsResponse> => {
-  if (!wallet) {
-    throw new SDKError(
-      new ValidationError('Required parameter "wallet" is missing.')
-    )
-  }
-
+): Promise<PaginatedResponse<StatusResponse[]>> => {
   const _config = config.get()
 
-  const url = new URL(`${_config.apiUrl}/analytics/transfers`)
-
+  const url = new URL(`${config.getApiUrl('v2')}/analytics/transfers`)
   url.searchParams.append('integrator', _config.integrator)
-  url.searchParams.append('wallet', wallet)
+  url.searchParams.append('limit', limit.toString())
+
+  if (wallet) {
+    url.searchParams.append('wallet', wallet)
+  }
 
   if (status) {
     url.searchParams.append('status', status)
@@ -693,5 +702,13 @@ export const getTransactionHistory = async (
     url.searchParams.append('toTimestamp', toTimestamp.toString())
   }
 
-  return await request<TransactionAnalyticsResponse>(url, options)
+  if (next) {
+    url.searchParams.append('next', next.toString())
+  }
+
+  if (previous) {
+    url.searchParams.append('previous', previous.toString())
+  }
+
+  return await request<PaginatedResponse<StatusResponse[]>>(url, options)
 }
