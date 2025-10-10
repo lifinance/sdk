@@ -1,12 +1,13 @@
 import { HttpResponse, http } from 'msw'
 import { buildStepObject } from '../../tests/fixtures.js'
-import { config } from '../config.js'
+import { createConfig } from '../createConfig.js'
 import {
   mockChainsResponse,
   mockStatus,
   mockStepTransactionWithTxRequest,
 } from './execution.unit.mock.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const _config = config.get()
 
 export const lifiHandlers = [

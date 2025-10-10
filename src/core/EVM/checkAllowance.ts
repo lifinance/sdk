@@ -9,6 +9,7 @@ import type {
   LiFiStepExtended,
   Process,
   ProcessType,
+  SDKProviderConfig,
 } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
@@ -22,6 +23,7 @@ import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
+  config: SDKProviderConfig
   checkClient(
     step: LiFiStepExtended,
     process: Process,
@@ -51,6 +53,7 @@ type AllowanceResult =
     }
 
 export const checkAllowance = async ({
+  config,
   checkClient,
   chain,
   step,
@@ -164,6 +167,7 @@ export const checkAllowance = async ({
     // Handle existing pending transaction
     if (sharedProcess.txHash && sharedProcess.status !== 'DONE') {
       await waitForApprovalTransaction(
+        config,
         updatedClient,
         sharedProcess.txHash as Address,
         sharedProcess.type,
@@ -184,6 +188,7 @@ export const checkAllowance = async ({
     const fromAmount = BigInt(step.action.fromAmount)
 
     const approved = await getAllowance(
+      config,
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
@@ -203,10 +208,12 @@ export const checkAllowance = async ({
     let nativePermitData: NativePermitData | undefined
     if (isNativePermitAvailable) {
       nativePermitData = await getActionWithFallback(
+        config,
         updatedClient,
         getNativePermit,
         'getNativePermit',
         {
+          config,
           chainId: chain.id,
           tokenAddress: step.action.fromToken.address as Address,
           spenderAddress: chain.permit2Proxy as Address,
@@ -274,6 +281,7 @@ export const checkAllowance = async ({
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
     const approveTxHash = await setAllowance(
+      config,
       updatedClient,
       step.action.fromToken.address as Address,
       spenderAddress as Address,
@@ -302,6 +310,7 @@ export const checkAllowance = async ({
     }
 
     await waitForApprovalTransaction(
+      config,
       updatedClient,
       approveTxHash,
       sharedProcess.type,
@@ -332,6 +341,7 @@ export const checkAllowance = async ({
 }
 
 const waitForApprovalTransaction = async (
+  config: SDKProviderConfig,
   client: Client,
   txHash: Hash,
   processType: ProcessType,
@@ -348,6 +358,7 @@ const waitForApprovalTransaction = async (
   })
 
   const transactionReceipt = await waitForTransactionReceipt({
+    config,
     client,
     chainId: chain.id,
     txHash,

@@ -1,7 +1,8 @@
 import type { LiFiStep } from '@lifi/types'
-import { config } from '../config.js'
+import type { SDKProviderConfig } from '../core/types.js'
 
 export const getTransactionFailedMessage = async (
+  config: SDKProviderConfig,
   step: LiFiStep,
   txLink?: string
 ): Promise<string> => {

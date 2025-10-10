@@ -23,7 +23,7 @@ import {
   vi,
 } from 'vitest'
 import { setupTestEnvironment } from '../../tests/setup.js'
-import { config } from '../config.js'
+import { createConfig } from '../createConfig.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
@@ -31,6 +31,7 @@ import { requestSettings } from '../request.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
@@ -83,7 +84,7 @@ describe('ApiService', () => {
           fromChainId: 'xxx' as unknown as ChainId,
         })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -94,7 +95,7 @@ describe('ApiService', () => {
           fromAmount: 10000000000000 as unknown as string,
         })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -105,7 +106,7 @@ describe('ApiService', () => {
           fromTokenAddress: 1234 as unknown as string,
         })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -116,7 +117,7 @@ describe('ApiService', () => {
           toChainId: 'xxx' as unknown as ChainId,
         })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -125,7 +126,7 @@ describe('ApiService', () => {
       it('should throw Error because of invalid toTokenAddress type', async () => {
         const request = getRoutesRequest({ toTokenAddress: '' })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -136,7 +137,7 @@ describe('ApiService', () => {
           options: { slippage: 'not a number' as unknown as number },
         })
 
-        await expect(ApiService.getRoutes(request)).rejects.toThrow(
+        await expect(ApiService.getRoutes(config, request)).rejects.toThrow(
           'Invalid routes request.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -147,7 +148,7 @@ describe('ApiService', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
           const request = getRoutesRequest({})
-          await ApiService.getRoutes(request)
+          await ApiService.getRoutes(config, request)
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
@@ -158,7 +159,7 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getToken(undefined as unknown as ChainId, 'DAI')
+          ApiService.getToken(config, undefined as unknown as ChainId, 'DAI')
         ).rejects.toThrowError(
           new SDKError(
             new ValidationError('Required parameter "chain" is missing.')
@@ -167,7 +168,11 @@ describe('ApiService', () => {
         expect(mockedFetch).toHaveBeenCalledTimes(0)
 
         await expect(
-          ApiService.getToken(ChainId.ETH, undefined as unknown as string)
+          ApiService.getToken(
+            config,
+            ChainId.ETH,
+            undefined as unknown as string
+          )
         ).rejects.toThrowError(
           new SDKError(
             new ValidationError('Required parameter "token" is missing.')
@@ -180,7 +185,7 @@ describe('ApiService', () => {
     describe('user input is valid', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          await ApiService.getToken(ChainId.DAI, 'DAI')
+          await ApiService.getToken(config, ChainId.DAI, 'DAI')
 
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
@@ -200,7 +205,7 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain: undefined as unknown as ChainId,
             fromToken,
             fromAddress,
@@ -215,7 +220,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken: undefined as unknown as string,
             fromAddress,
@@ -230,7 +235,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress: undefined as unknown as string,
@@ -245,7 +250,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress,
@@ -262,7 +267,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress,
@@ -280,7 +285,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress,
@@ -295,7 +300,7 @@ describe('ApiService', () => {
         )
 
         await expect(
-          ApiService.getQuote({
+          ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress,
@@ -316,7 +321,7 @@ describe('ApiService', () => {
     describe('user input is valid', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          await ApiService.getQuote({
+          await ApiService.getQuote(config, {
             fromChain,
             fromToken,
             fromAddress,
@@ -340,7 +345,7 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getStatus({
+          ApiService.getStatus(config, {
             bridge,
             fromChain,
             toChain,
@@ -359,7 +364,12 @@ describe('ApiService', () => {
     describe('user input is valid', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          await ApiService.getStatus({ bridge, fromChain, toChain, txHash })
+          await ApiService.getStatus(config, {
+            bridge,
+            fromChain,
+            toChain,
+            txHash,
+          })
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
@@ -369,7 +379,7 @@ describe('ApiService', () => {
   describe('getChains', () => {
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
-        const chains = await ApiService.getChains()
+        const chains = await ApiService.getChains(config)
 
         expect(chains[0]?.id).toEqual(1)
         expect(mockedFetch).toHaveBeenCalledTimes(1)
@@ -380,7 +390,7 @@ describe('ApiService', () => {
   describe('getTools', () => {
     describe('and the backend succeeds', () => {
       it('returns the tools', async () => {
-        const tools = await ApiService.getTools({
+        const tools = await ApiService.getTools(config, {
           chains: [ChainId.ETH, ChainId.POL],
         })
 
@@ -393,7 +403,7 @@ describe('ApiService', () => {
 
   describe('getTokens', () => {
     it('return the tokens', async () => {
-      const result = await ApiService.getTokens({
+      const result = await ApiService.getTokens(config, {
         chains: [ChainId.ETH, ChainId.POL],
       })
       expect(result).toBeDefined()
@@ -470,27 +480,27 @@ describe('ApiService', () => {
         it('should throw Error because of invalid id', async () => {
           const step = getStep({ id: null as unknown as string })
 
-          await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid step.'
-          )
+          await expect(
+            ApiService.getStepTransaction(config, step)
+          ).rejects.toThrow('Invalid step.')
           expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid type', async () => {
           const step = getStep({ type: 42 as unknown as 'lifi' })
 
-          await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid Step'
-          )
+          await expect(
+            ApiService.getStepTransaction(config, step)
+          ).rejects.toThrow('Invalid Step')
           expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
         it('should throw Error because of invalid tool', async () => {
           const step = getStep({ tool: null as unknown as StepTool })
 
-          await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid step.'
-          )
+          await expect(
+            ApiService.getStepTransaction(config, step)
+          ).rejects.toThrow('Invalid step.')
           expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
@@ -498,9 +508,9 @@ describe('ApiService', () => {
         it('should throw Error because of invalid action', async () => {
           const step = getStep({ action: 'xxx' as unknown as Action })
 
-          await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid step.'
-          )
+          await expect(
+            ApiService.getStepTransaction(config, step)
+          ).rejects.toThrow('Invalid step.')
           expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
 
@@ -510,9 +520,9 @@ describe('ApiService', () => {
             estimate: 'Is this really an estimate?' as unknown as Estimate,
           })
 
-          await expect(ApiService.getStepTransaction(step)).rejects.toThrow(
-            'Invalid step.'
-          )
+          await expect(
+            ApiService.getStepTransaction(config, step)
+          ).rejects.toThrow('Invalid step.')
           expect(mockedFetch).toHaveBeenCalledTimes(0)
         })
       })
@@ -522,7 +532,7 @@ describe('ApiService', () => {
           it('call the server once', async () => {
             const step = getStep({})
 
-            await ApiService.getStepTransaction(step)
+            await ApiService.getStepTransaction(config, step)
             expect(mockedFetch).toHaveBeenCalledTimes(1)
           })
         })
@@ -534,7 +544,7 @@ describe('ApiService', () => {
     describe('user input is invalid', () => {
       it('throw an error', async () => {
         await expect(
-          ApiService.getGasRecommendation({
+          ApiService.getGasRecommendation(config, {
             chainId: undefined as unknown as number,
           })
         ).rejects.toThrowError(
@@ -549,7 +559,7 @@ describe('ApiService', () => {
     describe('user input is valid', () => {
       describe('and the backend call is successful', () => {
         it('call the server once', async () => {
-          await ApiService.getGasRecommendation({
+          await ApiService.getGasRecommendation(config, {
             chainId: ChainId.OPT,
           })
 
@@ -583,12 +593,12 @@ describe('ApiService', () => {
         'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x0b2c639c533813f4aa9d7837caf62653d097ff85&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
       await expect(
-        ApiService.getConnections(connectionRequest)
+        ApiService.getConnections(config, connectionRequest)
       ).resolves.toEqual({
         connections: [],
       })
 
-      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect((mockedFetch.mock.calls[0][1] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })
@@ -610,10 +620,10 @@ describe('ApiService', () => {
         'https://li.quest/v1/analytics/transfers?integrator=lifi-sdk&wallet=0x5520abcd&fromTimestamp=1696326609361&toTimestamp=1696326609362'
 
       await expect(
-        ApiService.getTransactionHistory(walletAnalyticsRequest)
+        ApiService.getTransactionHistory(config, walletAnalyticsRequest)
       ).resolves.toEqual({})
 
-      expect((mockedFetch.mock.calls[0][0] as URL).href).toEqual(generatedURL)
+      expect((mockedFetch.mock.calls[0][1] as URL).href).toEqual(generatedURL)
       expect(mockedFetch).toHaveBeenCalledOnce()
     })
   })

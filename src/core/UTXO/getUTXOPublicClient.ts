@@ -17,9 +17,8 @@ import {
   type WalletActions,
   walletActions,
 } from '@bigmi/core'
-
-import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
+import type { SDKProviderConfig } from '../types.js'
 import { toBigmiChainId } from './utils.js'
 
 type PublicClient = Client<
@@ -39,10 +38,11 @@ const publicClients: Record<number, PublicClient> = {}
  * @returns The public client for the given chain
  */
 export const getUTXOPublicClient = async (
+  config: SDKProviderConfig,
   chainId: number
 ): Promise<PublicClient> => {
   if (!publicClients[chainId]) {
-    const urls = await getRpcUrls(chainId)
+    const urls = await getRpcUrls(config, chainId)
     const fallbackTransports = urls.map((url) =>
       http(url, {
         fetchOptions: {

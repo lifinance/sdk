@@ -11,7 +11,7 @@ import {
   vi,
 } from 'vitest'
 import { setupTestEnvironment } from '../tests/setup.js'
-import { config } from './config.js'
+import { createConfig } from './createConfig.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
@@ -21,6 +21,7 @@ import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const apiUrl = config.get().apiUrl
 
 describe('request new', () => {
@@ -50,7 +51,7 @@ describe('request new', () => {
   it('should be able to successfully make a fetch request', async () => {
     const url = `${apiUrl}/advanced/routes`
 
-    const response = await request<{ message: string }>(url, {
+    const response = await request<{ message: string }>(config, url, {
       method: 'POST',
       retries: 0,
     })
@@ -79,7 +80,7 @@ describe('request new', () => {
       retries: 0,
     }
 
-    const response = await request<{ message: string }>(url, options)
+    const response = await request<{ message: string }>(config, url, options)
 
     expect(response).toEqual(successResponse)
   })
@@ -112,7 +113,7 @@ describe('request new', () => {
       },
     }
 
-    const response = await request<{ message: string }>(url, options)
+    const response = await request<{ message: string }>(config, url, options)
 
     expect(response).toEqual(successResponse)
   })
@@ -125,7 +126,7 @@ describe('request new', () => {
       const url = `${apiUrl}/advanced/routes`
 
       await expect(
-        request<{ message: string }>(url, {
+        request<{ message: string }>(config, url, {
           method: 'POST',
           retries: 0,
         })
@@ -152,7 +153,10 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(url, { method: 'POST', retries: 0 })
+        await request<{ message: string }>(config, url, {
+          method: 'POST',
+          retries: 0,
+        })
       } catch (e) {
         expect((e as SDKError).name).toEqual('SDKError')
         expect(((e as SDKError).cause as HTTPError).status).toEqual(400)
@@ -171,7 +175,7 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(url, {
+        await request<{ message: string }>(config, url, {
           method: 'POST',
           retries: 0,
         })

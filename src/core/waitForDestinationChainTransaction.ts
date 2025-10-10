@@ -6,10 +6,11 @@ import type {
 import { LiFiErrorCode } from '../errors/constants.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
-import type { LiFiStepExtended, Process } from './types.js'
+import type { LiFiStepExtended, Process, SDKProviderConfig } from './types.js'
 import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 
 export async function waitForDestinationChainTransaction(
+  config: SDKProviderConfig,
   step: LiFiStepExtended,
   process: Process,
   fromChain: ExtendedChain,
@@ -40,6 +41,7 @@ export async function waitForDestinationChainTransaction(
     }
 
     const statusResponse = (await waitForTransactionStatus(
+      config,
       statusManager,
       transactionHash,
       step,
@@ -84,6 +86,7 @@ export async function waitForDestinationChainTransaction(
     return step
   } catch (e: unknown) {
     const htmlMessage = await getTransactionFailedMessage(
+      config,
       step,
       `${toChain.metamask.blockExplorerUrls[0]}tx/${transactionHash}`
     )

@@ -1,8 +1,9 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { config } from '../config.js'
+import { createConfig } from '../createConfig.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const _config = config.get()
 
 export const handlers = [

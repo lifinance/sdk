@@ -16,7 +16,6 @@ import {
   signTypedData,
 } from 'viem/actions'
 import { getAction, isHex } from 'viem/utils'
-import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import {
@@ -31,6 +30,7 @@ import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   Process,
+  SDKProviderConfig,
   StepExecutorOptions,
   TransactionMethodType,
   TransactionParameters,
@@ -124,19 +124,22 @@ export class EVMStepExecutor extends BaseStepExecutor {
     return updatedClient
   }
 
-  waitForTransaction = async ({
-    step,
-    process,
-    fromChain,
-    toChain,
-    isBridgeExecution,
-  }: {
-    step: LiFiStepExtended
-    process: Process
-    fromChain: ExtendedChain
-    toChain: ExtendedChain
-    isBridgeExecution: boolean
-  }) => {
+  waitForTransaction = async (
+    config: SDKProviderConfig,
+    {
+      step,
+      process,
+      fromChain,
+      toChain,
+      isBridgeExecution,
+    }: {
+      step: LiFiStepExtended
+      process: Process
+      fromChain: ExtendedChain
+      toChain: ExtendedChain
+      isBridgeExecution: boolean
+    }
+  ) => {
     const updateProcessWithReceipt = (
       transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
     ) => {
@@ -187,12 +190,14 @@ export class EVMStepExecutor extends BaseStepExecutor {
         break
       case 'relayed':
         transactionReceipt = await waitForRelayedTransactionReceipt(
+          config,
           process.taskId as Hash,
           step
         )
         break
       default:
         transactionReceipt = await waitForTransactionReceipt({
+          config,
           client: this.client,
           chainId: fromChain.id,
           txHash: process.txHash as Hash,
@@ -212,6 +217,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
+      config,
       step,
       process,
       fromChain,
@@ -221,6 +227,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   private prepareUpdatedStep = async (
+    config: SDKProviderConfig,
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
@@ -230,7 +237,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const gaslessStep = isGaslessStep(step)
     let updatedStep: LiFiStep
     if (relayerStep && gaslessStep) {
-      const updatedRelayedStep = await getRelayerQuote({
+      const updatedRelayedStep = await getRelayerQuote(config, {
         fromChain: stepBase.action.fromChainId,
         fromToken: stepBase.action.fromToken.address,
         fromAddress: stepBase.action.fromAddress!,
@@ -253,7 +260,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const params = filteredSignedTypedData?.length
         ? { ...restStepBase, typedData: filteredSignedTypedData }
         : restStepBase
-      updatedStep = await getStepTransaction(params)
+      updatedStep = await getStepTransaction(config, params)
     }
 
     const comparedStep = await stepComparison(
@@ -296,7 +303,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         //   : undefined,
         maxPriorityFeePerGas:
           this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(this.client)
+            ? await getMaxPriorityFeePerGas(config, this.client)
             : step.transactionRequest.maxPriorityFeePerGas
               ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
               : undefined,
@@ -327,6 +334,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   private estimateTransactionRequest = async (
+    config: SDKProviderConfig,
     transactionRequest: TransactionParameters,
     fromChain: ExtendedChain
   ) => {
@@ -335,6 +343,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     try {
       // Try to re-estimate the gas due to additional Permit data
       const estimatedGas = await getActionWithFallback(
+        config,
         this.client,
         estimateGas,
         'estimateGas',
@@ -360,6 +369,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
+    config: SDKProviderConfig,
     step: LiFiStepExtended,
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
@@ -403,7 +413,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const batchingSupported =
       atomicityNotReady || step.tool === 'thorswap' || isRelayerStep(step)
         ? false
-        : await isBatchingSupported({
+        : await isBatchingSupported(config, {
             client: this.client,
             chainId: fromChain.id,
           })
@@ -448,6 +458,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
+        config,
         checkClient: this.checkClient,
         chain: fromChain,
         step,
@@ -482,6 +493,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     try {
       if (process?.status === 'DONE') {
         await waitForDestinationChainTransaction(
+          config,
           step,
           process,
           fromChain,
@@ -499,7 +511,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
           return step
         }
 
-        await this.waitForTransaction({
+        await this.waitForTransaction(config, {
           step,
           process,
           fromChain,
@@ -517,11 +529,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
         chainId: fromChain.id,
       })
 
-      await checkBalance(this.client.account!.address, step)
+      await checkBalance(config, this.client.account!.address, step)
 
       // Try to prepare a new transaction request and update the step with typed data
       let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(step, signedTypedData)
+        await this.prepareUpdatedStep(config, step, signedTypedData)
 
       // Make sure that the chain is still correct
       const updatedClient = await this.checkClient(step, process)
@@ -614,7 +626,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
-        const relayedTransaction = await relayTransaction({
+        const relayedTransaction = await relayTransaction(config, {
           ...stepBase,
           typedData: signedTypedData,
         })
@@ -647,7 +659,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
             process.type,
             'MESSAGE_REQUIRED'
           )
-          const permit2Signature = await signPermit2Message({
+          const permit2Signature = await signPermit2Message(config, {
             client: this.client,
             chain: fromChain,
             tokenAddress: step.action.fromToken.address as Address,
@@ -671,6 +683,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         if (signedNativePermitTypedData || permit2Supported) {
           transactionRequest = await this.estimateTransactionRequest(
+            config,
             transactionRequest,
             fromChain
           )
@@ -709,7 +722,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         }
       )
 
-      await this.waitForTransaction({
+      await this.waitForTransaction(config, {
         step,
         process,
         fromChain,
@@ -723,7 +736,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // If the wallet rejected the upgrade to 7702 account, we need to try again with the standard flow
       if (isAtomicReadyWalletRejectedUpgradeError(e) && !atomicityNotReady) {
         step.execution = undefined
-        return this.executeStep(step, true)
+        return this.executeStep(config, step, true)
       }
       const error = await parseEVMErrors(e, step, process)
       process = this.statusManager.updateProcess(

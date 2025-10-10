@@ -4,8 +4,11 @@ import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
+import { createConfig } from '../../createConfig.js'
 import { getTokens } from '../../services/api.js'
 import { getEVMBalance } from './getEVMBalance.js'
+
+const config = createConfig({ integrator: 'lifi-sdk' })
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
@@ -20,6 +23,7 @@ describe('getBalances integration tests', () => {
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getEVMBalance(
+      config,
       walletAddress as Address,
       tokens as Token[]
     )
@@ -81,6 +85,7 @@ describe('getBalances integration tests', () => {
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
 
       const tokenBalances = await getEVMBalance(
+        config,
         walletAddress,
         tokens as Token[]
       )
@@ -116,7 +121,7 @@ describe('getBalances integration tests', () => {
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
-      const { tokens } = await getTokens({
+      const { tokens } = await getTokens(config, {
         chains: [ChainId.OPT],
       })
       expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)

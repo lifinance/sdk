@@ -2,6 +2,7 @@ import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
+import type { SDKProviderConfig } from '../types.js'
 import { allowanceAbi } from './abi.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getPublicClient } from './publicClient.js'
@@ -13,6 +14,7 @@ import type {
 import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
+  config: SDKProviderConfig,
   client: Client,
   tokenAddress: Address,
   ownerAddress: Address,
@@ -20,6 +22,7 @@ export const getAllowance = async (
 ): Promise<bigint> => {
   try {
     const approved = await getActionWithFallback(
+      config,
       client,
       readContract,
       'readContract',
@@ -37,6 +40,7 @@ export const getAllowance = async (
 }
 
 export const getAllowanceMulticall = async (
+  config: SDKProviderConfig,
   client: Client,
   chainId: ChainId,
   tokens: TokenSpender[],
@@ -45,7 +49,7 @@ export const getAllowanceMulticall = async (
   if (!tokens.length) {
     return []
   }
-  const multicallAddress = await getMulticallAddress(chainId)
+  const multicallAddress = await getMulticallAddress(config, chainId)
   if (!multicallAddress) {
     throw new Error(`No multicall address configured for chainId ${chainId}.`)
   }
@@ -57,10 +61,16 @@ export const getAllowanceMulticall = async (
     args: [ownerAddress, token.spenderAddress],
   }))
 
-  const results = await getActionWithFallback(client, multicall, 'multicall', {
-    contracts,
-    multicallAddress: multicallAddress as Address,
-  })
+  const results = await getActionWithFallback(
+    config,
+    client,
+    multicall,
+    'multicall',
+    {
+      contracts,
+      multicallAddress: multicallAddress as Address,
+    }
+  )
 
   if (!results.length) {
     throw new Error(
@@ -83,6 +93,7 @@ export const getAllowanceMulticall = async (
  * @returns Returns allowance
  */
 export const getTokenAllowance = async (
+  config: SDKProviderConfig,
   token: BaseToken,
   ownerAddress: Address,
   spenderAddress: Address
@@ -92,9 +103,10 @@ export const getTokenAllowance = async (
     return
   }
 
-  const client = await getPublicClient(token.chainId)
+  const client = await getPublicClient(config, token.chainId)
 
   const approved = await getAllowance(
+    config,
     client,
     token.address as Address,
     ownerAddress,
@@ -110,6 +122,7 @@ export const getTokenAllowance = async (
  * @returns Returns array of tokens and their allowance
  */
 export const getTokenAllowanceMulticall = async (
+  config: SDKProviderConfig,
   ownerAddress: Address,
   tokens: TokenSpender[]
 ): Promise<TokenAllowance[]> => {
@@ -132,9 +145,10 @@ export const getTokenAllowanceMulticall = async (
   const allowances = (
     await Promise.all(
       chainKeys.map(async (chainId) => {
-        const client = await getPublicClient(chainId)
+        const client = await getPublicClient(config, chainId)
         // get allowances for current chain and token list
         return getAllowanceMulticall(
+          config,
           client,
           chainId,
           tokenDataByChain[chainId],

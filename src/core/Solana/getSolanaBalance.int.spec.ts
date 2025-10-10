@@ -3,8 +3,10 @@ import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
+import { createConfig } from '../../createConfig.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 
 const retryTimes = 2
@@ -18,6 +20,7 @@ describe.sequential('Solana token balance', async () => {
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getSolanaBalance(
+      config,
       walletAddress,
       tokens as Token[]
     )
@@ -71,6 +74,7 @@ describe.sequential('Solana token balance', async () => {
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
 
       const tokenBalances = await getSolanaBalance(
+        config,
         walletAddress,
         tokens as Token[]
       )
@@ -100,7 +104,7 @@ describe.sequential('Solana token balance', async () => {
 
   //     console.log(quote)
 
-  //     await executeRoute(convertQuoteToRoute(quote), {
+  //     await executeRoute(config, convertQuoteToRoute(quote), {
   //       updateRouteHook: (route) => {
   //         console.log(route.steps?.[0].execution)
   //       },

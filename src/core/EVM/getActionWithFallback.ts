@@ -8,6 +8,7 @@ import type {
   WalletActions,
 } from 'viem'
 import { getAction } from 'viem/utils'
+import type { SDKProviderConfig } from '../types.js'
 import { getPublicClient } from './publicClient.js'
 
 /**
@@ -33,6 +34,7 @@ export const getActionWithFallback = async <
   parameters,
   returnType,
 >(
+  config: SDKProviderConfig,
   walletClient: client,
   actionFn: (_: client, parameters: parameters) => returnType,
   name: keyof PublicActions | keyof WalletActions | (string & {}),
@@ -52,7 +54,7 @@ export const getActionWithFallback = async <
       throw error
     }
 
-    const publicClient = await getPublicClient(chainId)
+    const publicClient = await getPublicClient(config, chainId)
     return await getAction(publicClient, actionFn, name)(params)
   }
 }

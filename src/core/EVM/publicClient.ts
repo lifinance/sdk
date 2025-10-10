@@ -2,8 +2,8 @@ import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
+import type { SDKProviderConfig } from '../types.js'
 import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
@@ -15,12 +15,15 @@ const publicClients: Record<number, Client> = {}
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getPublicClient = async (chainId: number): Promise<Client> => {
+export const getPublicClient = async (
+  config: SDKProviderConfig,
+  chainId: number
+): Promise<Client> => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
   }
 
-  const urls = await getRpcUrls(chainId)
+  const urls = await getRpcUrls(config, chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
       ? webSocket(url)

@@ -5,9 +5,11 @@ import { waitForTransactionReceipt } from 'viem/actions'
 import { polygon } from 'viem/chains'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
+import { createConfig } from '../../createConfig.js'
 import { revokeTokenApproval, setTokenAllowance } from './setAllowance.js'
 import { retryCount, retryDelay } from './utils.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {
   name: 'USDT',
@@ -41,6 +43,7 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     'should revoke allowance for ERC20 on POL',
     async () => {
       const revokeTxHash = await revokeTokenApproval({
+        config,
         walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,
@@ -63,6 +66,7 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     'should set allowance ERC20 on POL',
     async () => {
       const approvalTxHash = await setTokenAllowance({
+        config,
         walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,

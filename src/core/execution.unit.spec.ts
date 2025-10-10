@@ -12,10 +12,12 @@ import {
   vi,
 } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
+import { createConfig } from '../createConfig.js'
 import { requestSettings } from '../request.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
 
+const config = createConfig({ integrator: 'lifi-sdk' })
 let client: Partial<Client>
 
 vi.mock('../balance', () => ({
@@ -61,7 +63,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
       step,
     })
 
-    await executeRoute(route)
+    await executeRoute(config, route)
 
     expect(sendTransaction).toHaveBeenCalledWith(client, {
       gasLimit: 125000n,

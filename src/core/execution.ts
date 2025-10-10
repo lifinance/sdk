@@ -1,10 +1,13 @@
 import type { Route } from '@lifi/types'
-import { config } from '../config.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { ProviderError } from '../errors/errors.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
-import type { ExecutionOptions, RouteExtended } from './types.js'
+import type {
+  ExecutionOptions,
+  RouteExtended,
+  SDKProviderConfig,
+} from './types.js'
 
 /**
  * Execute a route.
@@ -14,6 +17,7 @@ import type { ExecutionOptions, RouteExtended } from './types.js'
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const executeRoute = async (
+  config: SDKProviderConfig,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -27,7 +31,7 @@ export const executeRoute = async (
   }
 
   executionState.create({ route: clonedRoute, executionOptions })
-  executionPromise = executeSteps(clonedRoute)
+  executionPromise = executeSteps(config, clonedRoute)
   executionState.update({
     route: clonedRoute,
     promise: executionPromise,
@@ -44,6 +48,7 @@ export const executeRoute = async (
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const resumeRoute = async (
+  config: SDKProviderConfig,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -68,10 +73,13 @@ export const resumeRoute = async (
 
   prepareRestart(route)
 
-  return executeRoute(route, executionOptions)
+  return executeRoute(config, route, executionOptions)
 }
 
-const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
+const executeSteps = async (
+  config: SDKProviderConfig,
+  route: RouteExtended
+): Promise<RouteExtended> => {
   // Loop over steps and execute them
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
@@ -105,7 +113,7 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
 
       const provider = config
         .get()
-        .providers.find((provider) => provider.isAddress(fromAddress))
+        .providers.find((provider: any) => provider.isAddress(fromAddress))
 
       if (!provider) {
         throw new ProviderError(
@@ -125,7 +133,7 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
         updateRouteExecution(route, execution.executionOptions)
       }
 
-      const executedStep = await stepExecutor.executeStep(step)
+      const executedStep = await stepExecutor.executeStep(config, step)
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
       if (executedStep.execution?.status !== 'DONE') {

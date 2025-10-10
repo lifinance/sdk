@@ -3,7 +3,10 @@ import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
+import { createConfig } from '../../createConfig.js'
 import { getSuiBalance } from './getSuiBalance.js'
+
+const config = createConfig({ integrator: 'lifi-sdk' })
 
 const defaultWalletAddress =
   '0xd2fdd62880764fa73b895a9824ecec255a4bd9d654a125e58de33088cbf5eb67'
@@ -18,7 +21,11 @@ describe.sequential('Sui token balance', async () => {
     walletAddress: string,
     tokens: StaticToken[]
   ) => {
-    const tokenBalances = await getSuiBalance(walletAddress, tokens as Token[])
+    const tokenBalances = await getSuiBalance(
+      config,
+      walletAddress,
+      tokens as Token[]
+    )
 
     expect(tokenBalances.length).toEqual(tokens.length)
 
@@ -69,6 +76,7 @@ describe.sequential('Sui token balance', async () => {
       const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
 
       const tokenBalances = await getSuiBalance(
+        config,
         walletAddress,
         tokens as Token[]
       )

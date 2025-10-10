@@ -10,9 +10,11 @@ import type {
 import { waitForTransactionReceipt as waitForTransactionReceiptInternal } from 'viem/actions'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import type { SDKProviderConfig } from '../types.js'
 import { getPublicClient } from './publicClient.js'
 
 interface WaitForTransactionReceiptProps {
+  config: SDKProviderConfig
   client: Client
   chainId: ChainId
   txHash: Hash
@@ -20,6 +22,7 @@ interface WaitForTransactionReceiptProps {
 }
 
 export async function waitForTransactionReceipt({
+  config,
   client,
   chainId,
   txHash,
@@ -32,7 +35,7 @@ export async function waitForTransactionReceipt({
   )
 
   if (!transactionReceipt?.status) {
-    const publicClient = await getPublicClient(chainId)
+    const publicClient = await getPublicClient(config, chainId)
     const result = await waitForReceipt(publicClient, txHash, onReplaced)
     transactionReceipt = result.transactionReceipt
     replacementReason = result.replacementReason

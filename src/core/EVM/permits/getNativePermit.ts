@@ -9,6 +9,7 @@ import {
   zeroHash,
 } from 'viem'
 import { getCode, multicall, readContract } from 'viem/actions'
+import type { SDKProviderConfig } from '../../types.js'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
 import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
@@ -21,6 +22,7 @@ import {
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
+  config: SDKProviderConfig
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -131,9 +133,13 @@ function validateDomainSeparator({
  * @param client - The Viem client instance
  * @returns Promise<boolean> - Whether the account can use native permits
  */
-const canAccountUseNativePermits = async (client: Client): Promise<boolean> => {
+const canAccountUseNativePermits = async (
+  config: SDKProviderConfig,
+  client: Client
+): Promise<boolean> => {
   try {
     const accountCode = await getActionWithFallback(
+      config,
       client,
       getCode,
       'getCode',
@@ -170,12 +176,13 @@ const canAccountUseNativePermits = async (client: Client): Promise<boolean> => {
  * @returns Contract data if EIP-5267 is supported, undefined otherwise
  */
 const getEIP712DomainData = async (
+  config: SDKProviderConfig,
   client: Client,
   chainId: number,
   tokenAddress: Address
 ) => {
   try {
-    const multicallAddress = await getMulticallAddress(chainId)
+    const multicallAddress = await getMulticallAddress(config, chainId)
 
     const contractCalls = [
       {
@@ -194,6 +201,7 @@ const getEIP712DomainData = async (
     if (multicallAddress) {
       try {
         const [eip712DomainResult, noncesResult] = await getActionWithFallback(
+          config,
           client,
           multicall,
           'multicall',
@@ -255,7 +263,13 @@ const getEIP712DomainData = async (
     // Fallback to individual contract calls
     const [eip712DomainResult, noncesResult] = (await Promise.allSettled(
       contractCalls.map((call) =>
-        getActionWithFallback(client, readContract, 'readContract', call)
+        getActionWithFallback(
+          config,
+          client,
+          readContract,
+          'readContract',
+          call
+        )
       )
     )) as [
       PromiseSettledResult<
@@ -311,19 +325,25 @@ const getEIP712DomainData = async (
 }
 
 const getContractData = async (
+  config: SDKProviderConfig,
   client: Client,
   chainId: number,
   tokenAddress: Address
 ) => {
   try {
     // First try EIP-5267 approach - returns domain object directly
-    const eip5267Data = await getEIP712DomainData(client, chainId, tokenAddress)
+    const eip5267Data = await getEIP712DomainData(
+      config,
+      client,
+      chainId,
+      tokenAddress
+    )
     if (eip5267Data) {
       return eip5267Data
     }
 
     // Fallback to legacy approach - validates and returns domain object
-    const multicallAddress = await getMulticallAddress(chainId)
+    const multicallAddress = await getMulticallAddress(config, chainId)
 
     const contractCalls = [
       {
@@ -362,10 +382,16 @@ const getContractData = async (
           permitTypehashResult,
           noncesResult,
           versionResult,
-        ] = await getActionWithFallback(client, multicall, 'multicall', {
-          contracts: contractCalls,
-          multicallAddress,
-        })
+        ] = await getActionWithFallback(
+          config,
+          client,
+          multicall,
+          'multicall',
+          {
+            contracts: contractCalls,
+            multicallAddress,
+          }
+        )
 
         if (
           nameResult.status !== 'success' ||
@@ -412,7 +438,13 @@ const getContractData = async (
       versionResult,
     ] = (await Promise.allSettled(
       contractCalls.map((call) =>
-        getActionWithFallback(client, readContract, 'readContract', call)
+        getActionWithFallback(
+          config,
+          client,
+          readContract,
+          'readContract',
+          call
+        )
       )
     )) as [
       PromiseSettledResult<string>,
@@ -472,15 +504,26 @@ const getContractData = async (
  */
 export const getNativePermit = async (
   client: Client,
-  { chainId, tokenAddress, spenderAddress, amount }: GetNativePermitParams
+  {
+    config,
+    chainId,
+    tokenAddress,
+    spenderAddress,
+    amount,
+  }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
   // Check if the account can use native permits (EOA or EIP-7702 delegated account)
-  const canUsePermits = await canAccountUseNativePermits(client)
+  const canUsePermits = await canAccountUseNativePermits(config, client)
   if (!canUsePermits) {
     return undefined
   }
 
-  const contractData = await getContractData(client, chainId, tokenAddress)
+  const contractData = await getContractData(
+    config,
+    client,
+    chainId,
+    tokenAddress
+  )
   if (!contractData) {
     return undefined
   }

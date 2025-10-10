@@ -12,17 +12,37 @@ import type {
   TokenAmount,
 } from '@lifi/types'
 import type { Client } from 'viem'
+import type { ExtendedChain } from '../index.js'
+import type { RPCUrls, SDKBaseConfig, SDKConfig } from '../types/internal.js'
+
+export interface SDKProviderConfig {
+  loading: Promise<void>
+  get(): SDKBaseConfig
+  set(options: SDKConfig): SDKBaseConfig
+  getProvider(type: ChainType): SDKProvider | undefined
+  setProviders(providers: SDKProvider[]): void
+  setChains(chains: ExtendedChain[]): void
+  getChains(): Promise<ExtendedChain[]>
+  getChainById(chainId: ChainId): Promise<ExtendedChain>
+  setRPCUrls(rpcUrls: RPCUrls, skipChains?: ChainId[]): void
+  getRPCUrls(): Promise<Partial<Record<ChainId, string[]>>>
+}
 
 export interface SDKProvider {
   readonly type: ChainType
   isAddress(address: string): boolean
   resolveAddress(
     name: string,
+    config?: SDKProviderConfig,
     chainId?: ChainId,
     token?: CoinKey
   ): Promise<string | undefined>
   getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor>
-  getBalance(walletAddress: string, tokens: Token[]): Promise<TokenAmount[]>
+  getBalance(
+    config: SDKProviderConfig,
+    walletAddress: string,
+    tokens: Token[]
+  ): Promise<TokenAmount[]>
 }
 
 export interface StepExecutorOptions {
@@ -40,7 +60,10 @@ export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
-  executeStep(step: LiFiStepExtended): Promise<LiFiStepExtended>
+  executeStep(
+    config: SDKProviderConfig,
+    step: LiFiStepExtended
+  ): Promise<LiFiStepExtended>
 }
 
 export interface RouteExtended extends Omit<Route, 'steps'> {

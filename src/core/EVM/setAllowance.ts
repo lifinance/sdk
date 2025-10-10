@@ -3,13 +3,18 @@ import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { ExecutionOptions, TransactionParameters } from '../types.js'
+import type {
+  ExecutionOptions,
+  SDKProviderConfig,
+  TransactionParameters,
+} from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
+  config: SDKProviderConfig,
   client: Client,
   tokenAddress: Address,
   contractAddress: Address,
@@ -32,7 +37,7 @@ export const setAllowance = async (
     data,
     maxPriorityFeePerGas:
       client.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(client)
+        ? await getMaxPriorityFeePerGas(config, client)
         : undefined,
   }
 
@@ -74,6 +79,7 @@ export const setAllowance = async (
  * @returns Returns Hash or nothing
  */
 export const setTokenAllowance = async ({
+  config,
   walletClient,
   token,
   spenderAddress,
@@ -84,6 +90,7 @@ export const setTokenAllowance = async ({
     return
   }
   const approvedAmount = await getAllowance(
+    config,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -92,6 +99,7 @@ export const setTokenAllowance = async ({
 
   if (amount > approvedAmount) {
     const approveTx = await setAllowance(
+      config,
       walletClient,
       token.address as Address,
       spenderAddress as Address,
@@ -111,6 +119,7 @@ export const setTokenAllowance = async ({
  * @returns Returns Hash or nothing
  */
 export const revokeTokenApproval = async ({
+  config,
   walletClient,
   token,
   spenderAddress,
@@ -120,6 +129,7 @@ export const revokeTokenApproval = async ({
     return
   }
   const approvedAmount = await getAllowance(
+    config,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -127,6 +137,7 @@ export const revokeTokenApproval = async ({
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
+      config,
       walletClient,
       token.address as Address,
       spenderAddress as Address,

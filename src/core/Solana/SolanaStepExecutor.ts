@@ -1,7 +1,6 @@
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { VersionedTransaction } from '@solana/web3.js'
 import { withTimeout } from 'viem'
-import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
@@ -9,7 +8,11 @@ import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
-import type { LiFiStepExtended, TransactionParameters } from '../types.js'
+import type {
+  LiFiStepExtended,
+  SDKProviderConfig,
+  TransactionParameters,
+} from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
@@ -34,7 +37,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
   }
 
-  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
+  executeStep = async (
+    config: SDKProviderConfig,
+    step: LiFiStepExtended
+  ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await config.getChainById(step.action.fromChainId)
@@ -58,13 +64,17 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(this.walletAdapter.publicKey!.toString(), step)
+        await checkBalance(
+          config,
+          this.walletAdapter.publicKey!.toString(),
+          step
+        )
 
         // Create new transaction
         if (!step.transactionRequest) {
           // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
-          const updatedStep = await getStepTransaction(stepBase)
+          const updatedStep = await getStepTransaction(config, stepBase)
           const comparedStep = await stepComparison(
             this.statusManager,
             step,
@@ -145,11 +155,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const simulationResult = await callSolanaWithRetry((connection) =>
-          connection.simulateTransaction(signedTx, {
-            commitment: 'confirmed',
-            replaceRecentBlockhash: true,
-          })
+        const simulationResult = await callSolanaWithRetry(
+          config,
+          (connection) =>
+            connection.simulateTransaction(signedTx, {
+              commitment: 'confirmed',
+              replaceRecentBlockhash: true,
+            })
         )
 
         if (simulationResult.value.err) {
@@ -159,7 +171,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const confirmedTx = await sendAndConfirmTransaction(signedTx)
+        const confirmedTx = await sendAndConfirmTransaction(config, signedTx)
 
         if (!confirmedTx.signatureResult) {
           throw new TransactionError(
@@ -212,6 +224,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
+      config,
       step,
       process,
       fromChain,

@@ -2,14 +2,17 @@ import {
   signAndExecuteTransaction,
   type WalletWithRequiredFeatures,
 } from '@mysten/wallet-standard'
-import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
-import type { LiFiStepExtended, TransactionParameters } from '../types.js'
+import type {
+  LiFiStepExtended,
+  SDKProviderConfig,
+  TransactionParameters,
+} from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { parseSuiErrors } from './parseSuiErrors.js'
 import { callSuiWithRetry } from './suiClient.js'
@@ -37,7 +40,10 @@ export class SuiStepExecutor extends BaseStepExecutor {
     }
   }
 
-  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
+  executeStep = async (
+    config: SDKProviderConfig,
+    step: LiFiStepExtended
+  ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await config.getChainById(step.action.fromChainId)
@@ -61,13 +67,13 @@ export class SuiStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(step.action.fromAddress!, step)
+        await checkBalance(config, step.action.fromAddress!, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
           // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
-          const updatedStep = await getStepTransaction(stepBase)
+          const updatedStep = await getStepTransaction(config, stepBase)
           const comparedStep = await stepComparison(
             this.statusManager,
             step,
@@ -143,7 +149,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const result = await callSuiWithRetry((client) =>
+        const result = await callSuiWithRetry(config, (client) =>
           client.waitForTransaction({
             digest: signedTx.digest,
             options: {
@@ -192,6 +198,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
+      config,
       step,
       process,
       fromChain,

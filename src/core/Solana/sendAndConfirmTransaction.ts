@@ -5,6 +5,7 @@ import type {
 } from '@solana/web3.js'
 import bs58 from 'bs58'
 import { sleep } from '../../utils/sleep.js'
+import type { SDKProviderConfig } from '../types.js'
 import { getSolanaConnections } from './connection.js'
 
 type ConfirmedTransactionResult = {
@@ -19,9 +20,10 @@ type ConfirmedTransactionResult = {
  * @returns - The confirmation result of the transaction.
  */
 export async function sendAndConfirmTransaction(
+  config: SDKProviderConfig,
   signedTx: VersionedTransaction
 ): Promise<ConfirmedTransactionResult> {
-  const connections = await getSolanaConnections()
+  const connections = await getSolanaConnections(config)
 
   const signedTxSerialized = signedTx.serialize()
   // Create transaction hash (signature)

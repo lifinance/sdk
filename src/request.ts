@@ -1,4 +1,4 @@
-import { config } from './config.js'
+import type { SDKProviderConfig } from './core/types.js'
 import { ValidationError } from './errors/errors.js'
 import { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
@@ -18,6 +18,7 @@ const stripExtendRequestInitProperties = ({
 })
 
 export const request = async <T = Response>(
+  config: SDKProviderConfig,
   url: RequestInfo | URL,
   options: ExtendedRequestInit = {
     retries: requestSettings.retries,
@@ -83,7 +84,10 @@ export const request = async <T = Response>(
   } catch (error) {
     if (options.retries > 0 && (error as HTTPError).status === 500) {
       await sleep(500)
-      return request<T>(url, { ...options, retries: options.retries - 1 })
+      return request<T>(config, url, {
+        ...options,
+        retries: options.retries - 1,
+      })
     }
 
     await (error as HTTPError).buildAdditionalDetails?.()

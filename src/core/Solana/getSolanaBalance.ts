@@ -2,10 +2,12 @@ import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
 import { SolSystemProgram } from '../../constants.js'
 import { withDedupe } from '../../utils/withDedupe.js'
+import type { SDKProviderConfig } from '../types.js'
 import { callSolanaWithRetry } from './connection.js'
 import { Token2022ProgramId, TokenProgramId } from './types.js'
 
 export const getSolanaBalance = async (
+  config: SDKProviderConfig,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -19,10 +21,11 @@ export const getSolanaBalance = async (
     }
   }
 
-  return getSolanaBalanceDefault(chainId, tokens, walletAddress)
+  return getSolanaBalanceDefault(config, chainId, tokens, walletAddress)
 }
 
 const getSolanaBalanceDefault = async (
+  config: SDKProviderConfig,
   _chainId: ChainId,
   tokens: Token[],
   walletAddress: string
@@ -34,19 +37,21 @@ const getSolanaBalanceDefault = async (
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) => connection.getSlot('confirmed')),
+          callSolanaWithRetry(config, (connection) =>
+            connection.getSlot('confirmed')
+          ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
+          callSolanaWithRetry(config, (connection) =>
             connection.getBalance(accountPublicKey, 'confirmed')
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
+          callSolanaWithRetry(config, (connection) =>
             connection.getParsedTokenAccountsByOwner(
               accountPublicKey,
               {
@@ -61,7 +66,7 @@ const getSolanaBalanceDefault = async (
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
+          callSolanaWithRetry(config, (connection) =>
             connection.getParsedTokenAccountsByOwner(
               accountPublicKey,
               {

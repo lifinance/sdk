@@ -7,11 +7,13 @@ import {
   readContract,
 } from 'viem/actions'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
+import type { SDKProviderConfig } from '../types.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
 
 export const getEVMBalance = async (
+  config: SDKProviderConfig,
   walletAddress: Address,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -25,26 +27,28 @@ export const getEVMBalance = async (
     }
   }
 
-  const multicallAddress = await getMulticallAddress(chainId)
+  const multicallAddress = await getMulticallAddress(config, chainId)
 
   if (multicallAddress && tokens.length > 1) {
     return getEVMBalanceMulticall(
+      config,
       chainId,
       tokens,
       walletAddress,
       multicallAddress
     )
   }
-  return getEVMBalanceDefault(chainId, tokens, walletAddress)
+  return getEVMBalanceDefault(config, chainId, tokens, walletAddress)
 }
 
 const getEVMBalanceMulticall = async (
+  config: SDKProviderConfig,
   chainId: ChainId,
   tokens: Token[],
   walletAddress: string,
   multicallAddress: string
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(chainId)
+  const client = await getPublicClient(config, chainId)
 
   const contracts = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
@@ -85,11 +89,12 @@ const getEVMBalanceMulticall = async (
 }
 
 const getEVMBalanceDefault = async (
+  config: SDKProviderConfig,
   chainId: ChainId,
   tokens: Token[],
   walletAddress: Address
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(chainId)
+  const client = await getPublicClient(config, chainId)
 
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {

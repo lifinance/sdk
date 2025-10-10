@@ -10,7 +10,6 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
-import { config } from '../../config.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
@@ -19,6 +18,7 @@ import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
+  SDKProviderConfig,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
@@ -50,7 +50,10 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     }
   }
 
-  executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
+  executeStep = async (
+    config: SDKProviderConfig,
+    step: LiFiStepExtended
+  ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await config.getChainById(step.action.fromChainId)
@@ -65,7 +68,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
       chainId: fromChain.id,
     })
 
-    const publicClient = await getUTXOPublicClient(ChainId.BTC)
+    const publicClient = await getUTXOPublicClient(config, ChainId.BTC)
 
     if (process.status !== 'DONE') {
       try {
@@ -86,13 +89,13 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           )
 
           // Check balance
-          await checkBalance(this.client.account!.address, step)
+          await checkBalance(config, this.client.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
             // biome-ignore lint/correctness/noUnusedVariables: destructuring
             const { execution, ...stepBase } = step
-            const updatedStep = await getStepTransaction(stepBase)
+            const updatedStep = await getStepTransaction(config, stepBase)
             const comparedStep = await stepComparison(
               this.statusManager,
               step,
@@ -324,6 +327,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
+      config,
       step,
       process,
       fromChain,
