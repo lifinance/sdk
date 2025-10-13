@@ -1,5 +1,8 @@
-import type { LiFiStep } from '@lifi/sdk'
-import { getTokenAllowance, setTokenAllowance } from '@lifi/sdk'
+import type { LiFiStep, SDKClient } from '@lifi/sdk'
+import {
+  getTokenAllowance,
+  setTokenAllowance,
+} from '@lifi/sdk-provider-ethereum'
 import type {
   Address,
   PrivateKeyAccount,
@@ -10,12 +13,14 @@ import type {
 const AddressZero = '0x0000000000000000000000000000000000000000'
 
 export const checkTokenAllowance = async (
+  sdkClient: SDKClient,
   contactCallsQuoteResponse: LiFiStep,
   account: PrivateKeyAccount,
   client: WalletClient
 ) => {
   if (contactCallsQuoteResponse.action.fromToken.address !== AddressZero) {
     const approval = await getTokenAllowance(
+      sdkClient,
       contactCallsQuoteResponse.action.fromToken,
       account.address,
       contactCallsQuoteResponse.estimate.approvalAddress as Address
@@ -26,7 +31,7 @@ export const checkTokenAllowance = async (
       approval !== undefined &&
       approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
     ) {
-      const txHash = await setTokenAllowance({
+      const txHash = await setTokenAllowance(sdkClient, {
         walletClient: client,
         spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
         token: contactCallsQuoteResponse.action.fromToken,

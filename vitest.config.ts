@@ -5,5 +5,8 @@ export default defineConfig({
   // plugins: [tsconfigPaths() as any],
   test: {
     dangerouslyIgnoreUnhandledErrors: true,
+    coverage: {
+      provider: 'v8',
+    },
   },
 })

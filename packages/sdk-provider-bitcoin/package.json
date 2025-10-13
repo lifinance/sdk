@@ -1,0 +1,70 @@
+{
+  "name": "@lifi/sdk-provider-bitcoin",
+  "version": "4.0.0",
+  "description": "LI.FI Bitcoin SDK Provider",
+  "keywords": [
+    "lifi",
+    "sdk",
+    "bitcoin"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/_types/index.d.ts",
+      "import": "./src/_esm/index.js",
+      "default": "./src/_cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./src/_cjs/index.js",
+  "module": "./src/_esm/index.js",
+  "types": "./src/_types/index.d.ts",
+  "typings": "./src/_types/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
+    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && mkdir -p ./src/_cjs && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && mkdir -p ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
+    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "clean": "rm -rf dist src/_esm src/_cjs src/_types",
+    "coverage": "vitest run --coverage",
+    "package": "npm run build && npm pack",
+    "release:build": "pnpm build",
+    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test:cov": "pnpm test --coverage",
+    "test:unit": "pnpm test .unit.spec.ts --passWithNoTests",
+    "check:types": "tsc --noEmit",
+    "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
+    "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
+    "watch": "tsc -w -p ./tsconfig.json"
+  },
+  "dependencies": {
+    "@bigmi/core": "^0.6.2",
+    "@bitcoinerlab/secp256k1": "^1.2.0",
+    "@lifi/sdk": "workspace:*",
+    "bech32": "^2.0.0",
+    "bitcoinjs-lib": "^7.0.0"
+  },
+  "devDependencies": {
+    "@lifi/data-types": "^6.40.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "fs-extra": "^11.3.2",
+    "madge": "^8.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
+}

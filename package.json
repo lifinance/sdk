@@ -1,117 +1,52 @@
 {
-  "name": "@lifi/sdk",
-  "version": "3.13.3",
-  "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
-  "keywords": [
-    "bridge",
-    "bridge-aggregation",
-    "cross-chain",
-    "cross-chain-applications",
-    "cross-chain-bridge",
-    "dapp",
-    "defi",
-    "ethereum",
-    "ethers",
-    "lifi",
-    "metamask",
-    "multi-chain",
-    "sdk",
-    "swap",
-    "viem",
-    "wagmi",
-    "web3",
-    "web3-react"
-  ],
-  "homepage": "https://github.com/lifinance/sdk",
-  "bugs": {
-    "url": "https://github.com/lifinance/sdk/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/lifinance/sdk.git"
-  },
-  "license": "Apache-2.0",
-  "author": "LI.FI <github@li.finance>",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./src/_types/index.d.ts",
-      "import": "./src/_esm/index.js",
-      "default": "./src/_cjs/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "main": "./src/_cjs/index.js",
-  "module": "./src/_esm/index.js",
-  "types": "./src/_types/index.d.ts",
-  "typings": "./src/_types/index.d.ts",
+  "version": "4.0.0",
+  "private": true,
   "sideEffects": false,
-  "directories": {
-    "test": "tests"
-  },
-  "files": [
-    "src",
-    "!src/**/*.test.ts",
-    "!src/**/*.mock.ts",
-    "!src/**/*.spec.ts",
-    "!src/**/*.handlers.ts",
-    "!src/**/*.tsbuildinfo"
-  ],
+  "type": "module",
   "scripts": {
-    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
-    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
-    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
-    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
-    "clean": "rm -rf dist src/_esm src/_cjs src/_types",
-    "coverage": "vitest run --coverage",
-    "postinstall": "husky",
-    "prepack": "pinst --disable",
-    "postpack": "pinst --enable",
-    "package": "npm run build && npm pack",
+    "build": "pnpm --filter @lifi/sdk build && pnpm -r --parallel --filter './packages/**' --filter '!@lifi/sdk' build",
+    "clean": "pnpm -r --parallel --filter './packages/**' clean",
+    "clean:cache": "pnpm store prune",
+    "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
+    "clean:modules:trash": "find . -name \"node_modules\" -type d -prune -exec trash {} +",
+    "release": "pnpm release:version && pnpm release:build && pnpm standard-version -a -s",
+    "release:alpha": "pnpm release:version --preid alpha && pnpm release:build && pnpm standard-version -a -s --prerelease alpha --skip.changelog",
+    "release:beta": "pnpm release:version --preid beta && pnpm release:build && pnpm standard-version -a -s --prerelease beta --skip.changelog",
+    "release:version": "lerna version --no-changelog --no-push --no-git-tag-version --no-private",
+    "release:build": "pnpm -r --parallel release:build",
+    "check": "biome check",
+    "check:write": "biome check --write",
+    "check:write:unsafe": "biome check --write --unsafe",
+    "check:types": "pnpm -r --parallel check:types",
+    "check:circular-deps": "pnpm -r --parallel check:circular-deps",
+    "test": "pnpm -r --parallel test",
+    "test:cov": "pnpm -r --parallel test:cov",
+    "test:unit": "pnpm -r --parallel test:unit",
+    "link:bigmi": "pnpm -r --parallel link:bigmi",
+    "unlink:bigmi": "pnpm -r --parallel unlink:bigmi",
     "pre-commit": "lint-staged",
     "pre-push": "pnpm check:types && pnpm check:circular-deps && pnpm test:unit",
     "prepublishOnly": "pnpm node scripts/prepublishOnly.js",
-    "release": "standard-version -a -s",
-    "release:alpha": "standard-version -a -s --prerelease alpha --skip.changelog",
-    "release:beta": "standard-version -a -s --prerelease beta --skip.changelog",
-    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
-    "test:cov": "pnpm test --coverage",
-    "test:unit": "pnpm test .unit.spec.ts",
-    "check": "biome check ./src",
-    "check:write": "biome check --write ./src",
-    "check:write:unsafe": "biome check --write --unsafe ./src",
-    "check:types": "tsc --noEmit",
-    "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
-    "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
-    "watch": "tsc -w -p ./tsconfig.json",
     "prepare": "husky",
-    "link:bigmi": "pnpm link @bigmi/core",
-    "unlink:bigmi": "pnpm unlink @bigmi/core",
+    "postinstall": "husky",
+    "prepack": "pinst --disable",
+    "postpack": "pinst --enable",
     "knip:all": "knip",
     "knip:check": "knip --dependencies --files --no-config-hints --exclude binaries",
     "knip:write": "pnpm knip:check --fix"
   },
   "lint-staged": {
-    "src/**/*.{ts,tsx}": [
+    "packages/**/*.{ts,tsx}": [
       "pnpm check:write"
     ],
     "*": [
       "bash -c 'pnpm knip:check'"
     ]
   },
-  "dependencies": {
-    "@bigmi/core": "^0.6.2",
-    "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "17.46.0",
-    "@mysten/sui": "^1.45.0",
-    "@mysten/wallet-standard": "^0.19.7",
-    "@noble/curves": "^1.9.7",
-    "@solana/wallet-adapter-base": "^0.9.27",
-    "@solana/web3.js": "^1.98.4",
-    "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^7.0.0",
-    "bs58": "^6.0.0",
-    "viem": "^2.39.0"
+  "standard-version": {
+    "scripts": {
+      "postbump": "node scripts/version.js && git add ."
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.5",
@@ -128,6 +63,7 @@
     "madge": "^8.0.0",
     "msw": "^2.12.1",
     "pinst": "^3.0.0",
+    "lerna": "^9.0.0",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.8"
@@ -140,10 +76,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "standard-version": {
-    "scripts": {
-      "postbump": "node scripts/version.js && git add ."
-    }
-  },
   "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
 }
+  
