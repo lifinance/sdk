@@ -3,7 +3,7 @@ import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import type { SDKBaseConfig } from '../../types/internal.js'
+import type { SDKBaseConfig } from '../types.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
 
 const config = await setupTestEnvironment()

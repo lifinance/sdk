@@ -4,10 +4,9 @@ import type {
   FullStatusData,
 } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
-import type { SDKBaseConfig } from '../types/internal.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
-import type { LiFiStepExtended, Process } from './types.js'
+import type { LiFiStepExtended, Process, SDKBaseConfig } from './types.js'
 import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 
 export async function waitForDestinationChainTransaction(

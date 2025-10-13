@@ -8,10 +8,10 @@ import type {
   WalletTokenExtended,
 } from '@lifi/types'
 import { getChainById } from '../core/configProvider.js'
+import type { SDKBaseConfig } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
-import type { SDKBaseConfig } from '../types/internal.js'
 
 /**
  * Returns the balances of a specific token a wallet holds across all aggregated chains.

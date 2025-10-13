@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { getEnsAddress, normalize } from 'viem/ens'
-import type { SDKBaseConfig } from '../../types/internal.js'
+import type { SDKBaseConfig } from '../types.js'
 import { getPublicClient } from './publicClient.js'
 
 export const resolveENSAddress = async (

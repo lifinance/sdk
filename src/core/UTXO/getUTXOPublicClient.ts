@@ -17,9 +17,9 @@ import {
   type WalletActions,
   walletActions,
 } from '@bigmi/core'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { getChainById } from '../configProvider.js'
 import { getRpcUrls } from '../rpc.js'
+import type { SDKBaseConfig } from '../types.js'
 import { toBigmiChainId } from './utils.js'
 
 type PublicClient = Client<

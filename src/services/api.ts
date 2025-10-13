@@ -33,13 +33,13 @@ import {
   type TransactionAnalyticsRequest,
   type TransactionAnalyticsResponse,
 } from '@lifi/types'
+import type { SDKBaseConfig } from '../core/types.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
-import type { SDKBaseConfig } from '../types/internal.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type {
   GetStatusRequestExtended,

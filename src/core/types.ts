@@ -2,17 +2,39 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ExtendedChain,
   FeeCost,
   GasCost,
   LiFiStep,
   Route,
+  RouteOptions,
   Step,
   Substatus,
   Token,
   TokenAmount,
 } from '@lifi/types'
 import type { Client } from 'viem'
-import type { SDKBaseConfig } from '../types/internal.js'
+
+export interface SDKBaseConfig {
+  apiKey?: string
+  apiUrl: string
+  integrator: string
+  userId?: string
+  providers: SDKProvider[]
+  routeOptions?: RouteOptions
+  rpcUrls: RPCUrls
+  chains: ExtendedChain[]
+  disableVersionCheck?: boolean
+  widgetVersion?: string
+  preloadChains: boolean
+  debug: boolean
+}
+
+export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
+  integrator: string
+}
+
+export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface SDKProvider {
   readonly type: ChainType

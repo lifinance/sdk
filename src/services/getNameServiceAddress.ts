@@ -1,5 +1,5 @@
 import type { ChainType } from '@lifi/types'
-import type { SDKBaseConfig } from '../types/internal.js'
+import type { SDKBaseConfig } from '../core/types.js'
 
 export const getNameServiceAddress = async (
   config: SDKBaseConfig,

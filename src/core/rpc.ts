@@ -1,5 +1,5 @@
 import type { ChainId } from '@lifi/types'
-import type { SDKBaseConfig } from '../types/internal.js'
+import type { SDKBaseConfig } from './types.js'
 
 export const getRpcUrls = (
   config: SDKBaseConfig,

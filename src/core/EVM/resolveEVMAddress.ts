@@ -1,6 +1,6 @@
 import type { ChainId, CoinKey } from '@lifi/types'
 import { ChainType } from '@lifi/types'
-import type { SDKBaseConfig } from '../../types/internal.js'
+import type { SDKBaseConfig } from '../types.js'
 import { resolveENSAddress } from './resolveENSAddress.js'
 import { resolveUNSAddress } from './uns/resolveUNSAddress.js'
 

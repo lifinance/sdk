@@ -1,10 +1,9 @@
 import type { Route } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { ProviderError } from '../errors/errors.js'
-import type { SDKBaseConfig } from '../types/internal.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
-import type { ExecutionOptions, RouteExtended } from './types.js'
+import type { ExecutionOptions, RouteExtended, SDKBaseConfig } from './types.js'
 
 /**
  * Execute a route.

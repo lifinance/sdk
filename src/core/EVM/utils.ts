@@ -1,8 +1,8 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
 import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { median } from '../../utils/median.js'
+import type { SDKBaseConfig } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 
 type ChainBlockExplorer = {

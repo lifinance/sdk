@@ -3,7 +3,7 @@ import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
 import { getAction, trim } from 'viem/utils'
-import type { SDKBaseConfig } from '../../../types/internal.js'
+import type { SDKBaseConfig } from '../../../core/types.js'
 import { getPublicClient } from '../publicClient.js'
 import {
   CHAIN_ID_UNS_CHAIN_MAP,

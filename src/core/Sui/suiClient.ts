@@ -1,7 +1,7 @@
 import { ChainId } from '@lifi/types'
 import { SuiClient } from '@mysten/sui/client'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { getRpcUrls } from '../rpc.js'
+import type { SDKBaseConfig } from '../types.js'
 
 const clients = new Map<string, SuiClient>()
 

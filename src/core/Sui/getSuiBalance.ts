@@ -1,6 +1,6 @@
 import type { Token, TokenAmount } from '@lifi/types'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { withDedupe } from '../../utils/withDedupe.js'
+import type { SDKBaseConfig } from '../types.js'
 import { callSuiWithRetry } from './suiClient.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
 

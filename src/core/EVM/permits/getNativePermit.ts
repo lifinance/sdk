@@ -9,7 +9,7 @@ import {
   zeroHash,
 } from 'viem'
 import { getCode, multicall, readContract } from 'viem/actions'
-import type { SDKBaseConfig } from '../../../types/internal.js'
+import type { SDKBaseConfig } from '../../../core/types.js'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
 import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'

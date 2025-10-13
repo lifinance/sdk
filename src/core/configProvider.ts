@@ -1,6 +1,5 @@
 import type { ChainId, ChainType } from '@lifi/types'
-import type { SDKProvider } from '../core/types.js'
-import type { SDKBaseConfig } from '../types/internal.js'
+import type { SDKBaseConfig, SDKProvider } from './types.js'
 
 export const getProvider = (
   config: SDKBaseConfig,

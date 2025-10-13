@@ -1,9 +1,9 @@
 import type { LiFiStep } from '@lifi/types'
-import type { SDKBaseConfig } from '../types/internal.js'
 import { StatusManager } from './StatusManager.js'
 import type {
   ExecutionOptions,
   InteractionSettings,
+  SDKBaseConfig,
   StepExecutor,
   StepExecutorOptions,
 } from './types.js'

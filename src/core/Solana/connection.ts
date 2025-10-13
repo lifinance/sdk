@@ -1,7 +1,7 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { getRpcUrls } from '../rpc.js'
+import type { SDKBaseConfig } from '../types.js'
 
 const connections = new Map<string, Connection>()
 

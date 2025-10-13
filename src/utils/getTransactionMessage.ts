@@ -1,6 +1,6 @@
 import type { LiFiStep } from '@lifi/types'
 import { getChainById } from '../core/configProvider.js'
-import type { SDKBaseConfig } from '../types/internal.js'
+import type { SDKBaseConfig } from '../core/types.js'
 
 export const getTransactionFailedMessage = async (
   config: SDKBaseConfig,

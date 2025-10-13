@@ -69,6 +69,9 @@ export type {
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
   RouteExtended,
+  RPCUrls,
+  SDKBaseConfig,
+  SDKConfig,
   SDKProvider,
   StepExecutor,
   StepExecutorOptions,
@@ -121,7 +124,6 @@ export {
   getWalletBalances,
 } from './services/balance.js'
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
-export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

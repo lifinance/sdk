@@ -1,8 +1,8 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
 import { SolSystemProgram } from '../../constants.js'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { withDedupe } from '../../utils/withDedupe.js'
+import type { SDKBaseConfig } from '../types.js'
 import { callSolanaWithRetry } from './connection.js'
 import { Token2022ProgramId, TokenProgramId } from './types.js'
 

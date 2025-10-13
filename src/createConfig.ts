@@ -1,7 +1,11 @@
 import { ChainId, ChainType } from '@lifi/types'
-import type { SDKProvider } from './core/types.js'
+import type {
+  RPCUrls,
+  SDKBaseConfig,
+  SDKConfig,
+  SDKProvider,
+} from './core/types.js'
 import { getChains } from './services/api.js'
-import type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 import { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 import { name, version } from './version.js'
 

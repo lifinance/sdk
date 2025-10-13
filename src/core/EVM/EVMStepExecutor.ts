@@ -23,7 +23,6 @@ import {
   getStepTransaction,
   relayTransaction,
 } from '../../services/api.js'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
@@ -32,6 +31,7 @@ import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   Process,
+  SDKBaseConfig,
   StepExecutorOptions,
   TransactionMethodType,
   TransactionParameters,

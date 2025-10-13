@@ -2,9 +2,12 @@ import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { ExecutionOptions, TransactionParameters } from '../types.js'
+import type {
+  ExecutionOptions,
+  SDKBaseConfig,
+  TransactionParameters,
+} from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'

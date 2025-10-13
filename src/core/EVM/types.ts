@@ -6,8 +6,7 @@ import type {
   FallbackTransportConfig,
   Hex,
 } from 'viem'
-import type { SDKBaseConfig } from '../../types/internal.js'
-import type { SDKProvider, SwitchChainHook } from '../types.js'
+import type { SDKBaseConfig, SDKProvider, SwitchChainHook } from '../types.js'
 
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>

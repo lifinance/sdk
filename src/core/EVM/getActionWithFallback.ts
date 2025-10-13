@@ -8,7 +8,7 @@ import type {
   WalletActions,
 } from 'viem'
 import { getAction } from 'viem/utils'
-import type { SDKBaseConfig } from '../../types/internal.js'
+import type { SDKBaseConfig } from '../types.js'
 import { getPublicClient } from './publicClient.js'
 
 /**

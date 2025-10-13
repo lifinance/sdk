@@ -13,13 +13,13 @@ import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
-import type { SDKBaseConfig } from '../../types/internal.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { getChainById } from '../configProvider.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
+  SDKBaseConfig,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
