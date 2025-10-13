@@ -1,0 +1,47 @@
+import type {
+  ChainId,
+  ChainKey,
+  RequestOptions,
+  TokenExtended,
+} from '@lifi/types'
+import type { SDKBaseConfig } from '../core/types.js'
+import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
+import { request } from '../request.js'
+
+/**
+ * Fetch information about a Token
+ * @param config - The SDK client configuration
+ * @param chain - Id or key of the chain that contains the token
+ * @param token - Address or symbol of the token on the requested chain
+ * @param options - Request options
+ * @throws {LiFiError} - Throws a LiFiError if request fails
+ * @returns Token information
+ */
+export const getToken = async (
+  config: SDKBaseConfig,
+  chain: ChainKey | ChainId,
+  token: string,
+  options?: RequestOptions
+): Promise<TokenExtended> => {
+  if (!chain) {
+    throw new SDKError(
+      new ValidationError('Required parameter "chain" is missing.')
+    )
+  }
+  if (!token) {
+    throw new SDKError(
+      new ValidationError('Required parameter "token" is missing.')
+    )
+  }
+  return await request<TokenExtended>(
+    config,
+    `${config.apiUrl}/token?${new URLSearchParams({
+      chain,
+      token,
+    } as Record<string, string>)}`,
+    {
+      signal: options?.signal,
+    }
+  )
+}

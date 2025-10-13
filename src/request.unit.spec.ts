@@ -10,12 +10,12 @@ import {
   it,
   vi,
 } from 'vitest'
+import { handlers } from './actions/api.unit.handlers.js'
 import { createClient } from './core/client/createClient.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
 import { request } from './request.js'
-import { handlers } from './services/api.unit.handlers.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 

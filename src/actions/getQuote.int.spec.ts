@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createClient } from '../core/client/createClient.js'
-import { getQuote } from './api.js'
+import { getQuote } from './getQuote.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',

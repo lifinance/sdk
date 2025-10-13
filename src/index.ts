@@ -1,6 +1,26 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { getChains } from './actions/getChains.js'
+export { getConnections } from './actions/getConnections.js'
+export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
+export { getGasRecommendation } from './actions/getGasRecommendation.js'
+export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
+export { getQuote } from './actions/getQuote.js'
+export { getRelayedTransactionStatus } from './actions/getRelayedTransactionStatus.js'
+export { getRelayerQuote } from './actions/getRelayerQuote.js'
+export { getRoutes } from './actions/getRoutes.js'
+export { getStatus } from './actions/getStatus.js'
+export { getStepTransaction } from './actions/getStepTransaction.js'
+export { getToken } from './actions/getToken.js'
+export { getTokenBalance } from './actions/getTokenBalance.js'
+export { getTokenBalances } from './actions/getTokenBalances.js'
+export { getTokenBalancesByChain } from './actions/getTokenBalancesByChain.js'
+export { getTokens } from './actions/getTokens.js'
+export { getTools } from './actions/getTools.js'
+export { getTransactionHistory } from './actions/getTransactionHistory.js'
+export { getWalletBalances } from './actions/getWalletBalances.js'
+export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './core/client/createClient.js'
 export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
@@ -101,30 +121,7 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
-export {
-  getChains,
-  getConnections,
-  getContractCallsQuote,
-  getGasRecommendation,
-  getQuote,
-  getRelayedTransactionStatus,
-  getRelayerQuote,
-  getRoutes,
-  getStatus,
-  getStepTransaction,
-  getToken,
-  getTokens,
-  getTools,
-  getTransactionHistory,
-  relayTransaction,
-} from './services/api.js'
-export {
-  getTokenBalance,
-  getTokenBalances,
-  getTokenBalancesByChain,
-  getWalletBalances,
-} from './services/balance.js'
-export { getNameServiceAddress } from './services/getNameServiceAddress.js'
+
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

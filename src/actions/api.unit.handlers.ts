@@ -37,4 +37,12 @@ export const handlers = [
   http.get(`${config.apiUrl}/gas/suggestion/${ChainId.OPT}`, async () =>
     HttpResponse.json({})
   ),
+  http.get(`${config.apiUrl}/connections`, async () =>
+    HttpResponse.json({ connections: [] })
+  ),
+  http.get(`${config.apiUrl}/analytics/transfers`, async () =>
+    HttpResponse.json({})
+  ),
 ]
+
+export { config }

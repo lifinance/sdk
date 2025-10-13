@@ -1,5 +1,5 @@
 import { ChainId, ChainType, type ExtendedChain } from '@lifi/types'
-import { getChains } from '../../services/api.js'
+import { getChains } from '../../actions/getChains.js'
 import type { RPCUrls, SDKBaseConfig } from '../types.js'
 import { getRpcUrlsFromChains } from '../utils.js'
 
