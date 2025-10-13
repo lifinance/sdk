@@ -14,17 +14,12 @@ import {
 import { createClient } from '../client/createClient.js'
 import { requestSettings } from '../request.js'
 import { buildRouteObject, buildStepObject } from '../tests/fixtures.js'
-import { EVM } from './EVM/EVM.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
-import { Solana } from './Solana/Solana.js'
-import { Sui } from './Sui/Sui.js'
-import { UTXO } from './UTXO/UTXO.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
 })
-client.setProviders([EVM(), UTXO(), Solana(), Sui()])
 
 let viemClient: Partial<Client>
 

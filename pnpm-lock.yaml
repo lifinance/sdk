@@ -78,39 +78,9 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@bigmi/core':
-        specifier: ^0.6.0
-        version: 0.6.0(bs58@6.0.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)
-      '@bitcoinerlab/secp256k1':
-        specifier: ^1.2.0
-        version: 1.2.0
       '@lifi/types':
         specifier: ^17.41.0
         version: 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
-      '@mysten/sui':
-        specifier: ^1.39.1
-        version: 1.39.1(typescript@5.9.3)
-      '@mysten/wallet-standard':
-        specifier: ^0.18.1
-        version: 0.18.1(typescript@5.9.3)
-      '@noble/curves':
-        specifier: ^1.9.7
-        version: 1.9.7
-      '@solana/wallet-adapter-base':
-        specifier: ^0.9.27
-        version: 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10))
-      '@solana/web3.js':
-        specifier: ^1.98.4
-        version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
-      bech32:
-        specifier: ^2.0.0
-        version: 2.0.0
-      bitcoinjs-lib:
-        specifier: ^7.0.0
-        version: 7.0.0(typescript@5.9.3)
-      bs58:
-        specifier: ^6.0.0
-        version: 6.0.0
       viem:
         specifier: ^2.38.0
         version: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
@@ -136,6 +106,175 @@ importers:
       msw:
         specifier: ^2.11.3
         version: 2.11.3(@types/node@24.7.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/sdk-provider-bitcoin:
+    dependencies:
+      '@bigmi/core':
+        specifier: ^0.6.0
+        version: 0.6.0(typescript@5.9.3)(use-sync-external-store@1.2.0)
+      '@bitcoinerlab/secp256k1':
+        specifier: ^1.2.0
+        version: 1.2.0
+      '@lifi/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@lifi/types':
+        specifier: ^17.41.0
+        version: 17.41.0(typescript@5.9.3)
+      bech32:
+        specifier: ^2.0.0
+        version: 2.0.0
+      bitcoinjs-lib:
+        specifier: ^7.0.0
+        version: 7.0.0(typescript@5.9.3)
+    devDependencies:
+      '@lifi/data-types':
+        specifier: ^6.40.0
+        version: 6.40.0(typescript@5.9.3)
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1))
+      fs-extra:
+        specifier: ^11.3.2
+        version: 11.3.2
+      madge:
+        specifier: ^8.0.0
+        version: 8.0.0(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/sdk-provider-ethereum:
+    dependencies:
+      '@lifi/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@lifi/types':
+        specifier: ^17.41.0
+        version: 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
+      viem:
+        specifier: ^2.38.0
+        version: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
+    devDependencies:
+      '@lifi/data-types':
+        specifier: ^6.40.0
+        version: 6.40.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1))
+      fs-extra:
+        specifier: ^11.3.2
+        version: 11.3.2
+      madge:
+        specifier: ^8.0.0
+        version: 8.0.0(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/sdk-provider-solana:
+    dependencies:
+      '@lifi/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@lifi/types':
+        specifier: ^17.41.0
+        version: 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      '@noble/curves':
+        specifier: ^1.9.7
+        version: 1.9.7
+      '@solana/wallet-adapter-base':
+        specifier: ^0.9.27
+        version: 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10))
+      '@solana/web3.js':
+        specifier: ^1.98.4
+        version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      bs58:
+        specifier: ^6.0.0
+        version: 6.0.0
+    devDependencies:
+      '@lifi/data-types':
+        specifier: ^6.40.0
+        version: 6.40.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1))
+      fs-extra:
+        specifier: ^11.3.2
+        version: 11.3.2
+      madge:
+        specifier: ^8.0.0
+        version: 8.0.0(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1)
+
+  packages/sdk-provider-sui:
+    dependencies:
+      '@lifi/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@lifi/types':
+        specifier: ^17.41.0
+        version: 17.41.0(typescript@5.9.3)
+      '@mysten/sui':
+        specifier: ^1.39.1
+        version: 1.39.1(typescript@5.9.3)
+      '@mysten/wallet-standard':
+        specifier: ^0.18.1
+        version: 0.18.1(typescript@5.9.3)
+    devDependencies:
+      '@lifi/data-types':
+        specifier: ^6.40.0
+        version: 6.40.0(typescript@5.9.3)
+      '@types/fs-extra':
+        specifier: ^11.0.4
+        version: 11.0.4
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(msw@2.11.3(@types/node@24.7.0)(typescript@5.9.3))(tsx@4.20.6)(yaml@2.8.1))
+      fs-extra:
+        specifier: ^11.3.2
+        version: 11.3.2
+      madge:
+        specifier: ^8.0.0
+        version: 8.0.0(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -200,8 +339,6 @@ packages:
 
   '@bigmi/core@0.6.0':
     resolution: {integrity: sha512-heteOig6vKvJZcBe2etvjJk4DqZujrmHWm7n+Vh6jiAtNIMOvSqwvsyiRXhtNAXreXMw0+XREnX+Hc2Hj4cjPA==}
-    peerDependencies:
-      bs58: ^6.0.0
 
   '@biomejs/biome@2.2.5':
     resolution: {integrity: sha512-zcIi+163Rc3HtyHbEO7CjeHq8DjQRs40HsGbW6vx2WI0tg8mYQOPouhvHSyEnCBAorfYNnKdR64/IxO7xQ5faw==}
@@ -5580,7 +5717,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.6.0(bs58@6.0.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)':
+  '@bigmi/core@0.6.0(typescript@5.9.3)(use-sync-external-store@1.2.0)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -6209,6 +6346,15 @@ snapshots:
       - supports-color
       - typescript
 
+  '@lifi/data-types@6.40.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      '@lifi/types': 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
   '@lifi/data-types@6.40.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       '@lifi/types': 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)
@@ -6227,9 +6373,18 @@ snapshots:
       - utf-8-validate
       - zod
 
+  '@lifi/data-types@6.40.0(typescript@5.9.3)':
+    dependencies:
+      '@lifi/types': 17.41.0(typescript@5.9.3)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
   '@lifi/sdk@3.12.14(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4))(zod@3.22.4)':
     dependencies:
-      '@bigmi/core': 0.6.0(bs58@6.0.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)
+      '@bigmi/core': 0.6.0(typescript@5.9.3)(use-sync-external-store@1.2.0)
       '@bitcoinerlab/secp256k1': 1.2.0
       '@lifi/types': 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)
       '@mysten/sui': 1.39.1(typescript@5.9.3)
@@ -6254,6 +6409,15 @@ snapshots:
       - utf-8-validate
       - zod
 
+  '@lifi/types@17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)':
+    dependencies:
+      viem: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
   '@lifi/types@17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)':
     dependencies:
       viem: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4)
@@ -6266,6 +6430,15 @@ snapshots:
   '@lifi/types@17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)':
     dependencies:
       viem: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - zod
+
+  '@lifi/types@17.41.0(typescript@5.9.3)':
+    dependencies:
+      viem: 2.38.0(typescript@5.9.3)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -9855,7 +10028,7 @@ snapshots:
     dependencies:
       ws: 8.18.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
-  isows@1.0.7(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
+  isows@1.0.7(ws@8.18.3):
     dependencies:
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
@@ -11885,6 +12058,23 @@ snapshots:
       - utf-8-validate
       - zod
 
+  viem@2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10):
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.1.0(typescript@5.9.3)(zod@4.1.12)
+      isows: 1.0.7(ws@8.18.3)
+      ox: 0.9.6(typescript@5.9.3)(zod@4.1.12)
+      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
   viem@2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.22.4):
     dependencies:
       '@noble/curves': 1.9.1
@@ -11892,7 +12082,7 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.1.0(typescript@5.9.3)(zod@3.22.4)
-      isows: 1.0.7(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      isows: 1.0.7(ws@8.18.3)
       ox: 0.9.6(typescript@5.9.3)(zod@3.22.4)
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
@@ -11909,7 +12099,24 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.1.0(typescript@5.9.3)(zod@4.1.12)
-      isows: 1.0.7(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      isows: 1.0.7(ws@8.18.3)
+      ox: 0.9.6(typescript@5.9.3)(zod@4.1.12)
+      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
+  viem@2.38.0(typescript@5.9.3):
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.1.0(typescript@5.9.3)(zod@4.1.12)
+      isows: 1.0.7(ws@8.18.3)
       ox: 0.9.6(typescript@5.9.3)(zod@4.1.12)
       ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:

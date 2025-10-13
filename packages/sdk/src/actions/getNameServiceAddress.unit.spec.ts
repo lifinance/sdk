@@ -1,10 +1,22 @@
 import type { ChainType } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
-import { EVM } from '../core/EVM/EVM.js'
-import { Solana } from '../core/Solana/Solana.js'
-import { UTXO } from '../core/UTXO/UTXO.js'
 import { client } from './actions.unit.handlers.js'
 import { getNameServiceAddress } from './getNameServiceAddress.js'
+
+// Mock providers locally
+const createMockProvider = (type: ChainType, resolveAddressMock: any) => ({
+  type,
+  resolveAddress: resolveAddressMock,
+  isAddress: vi.fn(),
+  getBalance: vi.fn(),
+  getStepExecutor: vi.fn(),
+  setOptions: vi.fn(),
+})
+
+const EVM = (_options: any) => createMockProvider('EVM' as ChainType, vi.fn())
+const Solana = (_options: any) =>
+  createMockProvider('SVM' as ChainType, vi.fn())
+const UTXO = (_options: any) => createMockProvider('UTXO' as ChainType, vi.fn())
 
 describe('getNameServiceAddress', () => {
   describe('success scenarios', () => {

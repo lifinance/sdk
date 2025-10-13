@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "build": "pnpm -r --parallel --filter './packages/**' build",
+    "build": "pnpm --filter @lifi/sdk build && pnpm -r --parallel --filter './packages/**' --filter '!@lifi/sdk' build",
     "clean": "pnpm -r --parallel --filter './packages/**' clean",
     "clean:cache": "pnpm store prune",
     "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
@@ -19,6 +19,7 @@
     "check:write:unsafe": "biome check --write --unsafe",
     "check:types": "pnpm -r --parallel check:types",
     "check:circular-deps": "pnpm -r --parallel check:circular-deps",
+    "test": "pnpm -r --parallel test",
     "test:unit": "pnpm -r --parallel test:unit",
     "link:bigmi": "pnpm -r --parallel link:bigmi",
     "unlink:bigmi": "pnpm -r --parallel unlink:bigmi",

@@ -78,17 +78,7 @@
     "unlink:bigmi": "pnpm unlink @bigmi/core"
   },
   "dependencies": {
-    "@bigmi/core": "^0.6.0",
-    "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/types": "^17.41.0",
-    "@mysten/sui": "^1.39.1",
-    "@mysten/wallet-standard": "^0.18.1",
-    "@noble/curves": "^1.9.7",
-    "@solana/wallet-adapter-base": "^0.9.27",
-    "@solana/web3.js": "^1.98.4",
-    "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^7.0.0",
-    "bs58": "^6.0.0",
     "viem": "^2.38.0"
   },
   "devDependencies": {
@@ -103,8 +93,6 @@
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
-    "@solana/wallet-adapter-base": "^0.9.0",
-    "@solana/web3.js": "^1.98.0",
     "viem": "^2.21.0"
   },
   "publishConfig": {
