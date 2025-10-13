@@ -1,0 +1,113 @@
+{
+  "name": "@lifi/sdk",
+  "version": "4.0.0",
+  "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
+  "keywords": [
+    "bridge",
+    "bridge-aggregation",
+    "cross-chain",
+    "cross-chain-applications",
+    "cross-chain-bridge",
+    "dapp",
+    "defi",
+    "ethereum",
+    "ethers",
+    "lifi",
+    "metamask",
+    "multi-chain",
+    "sdk",
+    "swap",
+    "viem",
+    "wagmi",
+    "web3",
+    "web3-react"
+  ],
+  "homepage": "https://github.com/lifinance/sdk",
+  "bugs": {
+    "url": "https://github.com/lifinance/sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lifinance/sdk.git"
+  },
+  "license": "Apache-2.0",
+  "author": "LI.FI <github@li.finance>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/_types/index.d.ts",
+      "import": "./src/_esm/index.js",
+      "default": "./src/_cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./src/_cjs/index.js",
+  "module": "./src/_esm/index.js",
+  "types": "./src/_types/index.d.ts",
+  "typings": "./src/_types/index.d.ts",
+  "sideEffects": false,
+  "directories": {
+    "test": "tests"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo"
+  ],
+  "scripts": {
+    "build": "pnpm clean && pnpm build:version && pnpm build:cjs && pnpm build:esm && pnpm build:types",
+    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
+    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
+    "build:version": "node ../../scripts/version.js",
+    "clean": "rm -rf dist src/_esm src/_cjs src/_types",
+    "coverage": "vitest run --coverage",
+    "package": "npm run build && npm pack",
+    "release:build": "pnpm build",
+    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test:cov": "pnpm test --coverage",
+    "test:unit": "pnpm test .unit.spec.ts",
+    "check:types": "tsc --noEmit",
+    "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
+    "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
+    "watch": "tsc -w -p ./tsconfig.json",
+    "link:bigmi": "pnpm link @bigmi/core",
+    "unlink:bigmi": "pnpm unlink @bigmi/core"
+  },
+  "dependencies": {
+    "@bigmi/core": "^0.6.0",
+    "@bitcoinerlab/secp256k1": "^1.2.0",
+    "@lifi/types": "^17.41.0",
+    "@mysten/sui": "^1.39.1",
+    "@mysten/wallet-standard": "^0.18.1",
+    "@noble/curves": "^1.9.7",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/web3.js": "^1.98.4",
+    "bech32": "^2.0.0",
+    "bitcoinjs-lib": "^7.0.0",
+    "bs58": "^6.0.0",
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "@lifi/data-types": "^6.40.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "fs-extra": "^11.3.2",
+    "madge": "^8.0.0",
+    "msw": "^2.11.3",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@solana/wallet-adapter-base": "^0.9.0",
+    "@solana/web3.js": "^1.98.0",
+    "viem": "^2.21.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

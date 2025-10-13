@@ -122,6 +122,7 @@ export type {
   TransactionRequestUpdateHook,
   UpdateRouteHook,
 } from './types/core.js'
+
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

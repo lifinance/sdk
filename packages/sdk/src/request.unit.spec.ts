@@ -1,17 +1,6 @@
 import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
-import { handlers } from './actions/actions.unit.handlers.js'
-import { createClient } from './client/createClient.js'
+import { describe, expect, it } from 'vitest'
+import { client, setupTestServer } from './actions/actions.unit.handlers.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
@@ -19,39 +8,13 @@ import { request } from './request.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const client = createClient({
-  integrator: 'lifi-sdk',
-})
-const config = client.config
-const apiUrl = client.config.apiUrl
-
 describe('request new', () => {
-  const server = setupServer(...handlers)
-
-  beforeAll(() => {
-    server.listen({
-      onUnhandledRequest: 'warn',
-    })
-
-    vi.spyOn(global, 'fetch')
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => server.resetHandlers())
-
-  afterAll(() => {
-    server.close()
-
-    vi.clearAllMocks()
-  })
+  const server = setupTestServer()
 
   it('should be able to successfully make a fetch request', async () => {
-    const url = `${apiUrl}/advanced/routes`
+    const url = `${client.config.apiUrl}/advanced/routes`
 
-    const response = await request<{ message: string }>(config, url, {
+    const response = await request<{ message: string }>(client.config, url, {
       method: 'POST',
       retries: 0,
     })
@@ -60,7 +23,7 @@ describe('request new', () => {
   })
 
   it('should remove the extended request init properties that fetch does not care about', async () => {
-    const url = `${apiUrl}/advanced/routes`
+    const url = `${client.config.apiUrl}/advanced/routes`
     const successResponse = { message: 'it works' }
 
     server.use(
@@ -80,13 +43,17 @@ describe('request new', () => {
       retries: 0,
     }
 
-    const response = await request<{ message: string }>(config, url, options)
+    const response = await request<{ message: string }>(
+      client.config,
+      url,
+      options
+    )
 
     expect(response).toEqual(successResponse)
   })
 
   it('should update the headers information available from config', async () => {
-    const url = `${apiUrl}/advanced/routes`
+    const url = `${client.config.apiUrl}/advanced/routes`
     const successResponse = { message: 'it works' }
 
     server.use(
@@ -113,20 +80,24 @@ describe('request new', () => {
       },
     }
 
-    const response = await request<{ message: string }>(config, url, options)
+    const response = await request<{ message: string }>(
+      client.config,
+      url,
+      options
+    )
 
     expect(response).toEqual(successResponse)
   })
 
   describe('when dealing with errors', () => {
     it('should throw an error if the Integrator property is missing from the config', async () => {
-      const originalIntegrator = config.integrator
-      config.integrator = ''
+      const originalIntegrator = client.config.integrator
+      client.config.integrator = ''
 
-      const url = `${apiUrl}/advanced/routes`
+      const url = `${client.config.apiUrl}/advanced/routes`
 
       await expect(
-        request<{ message: string }>(config, url, {
+        request<{ message: string }>(client.config, url, {
           method: 'POST',
           retries: 0,
         })
@@ -138,12 +109,12 @@ describe('request new', () => {
         )
       )
 
-      config.integrator = originalIntegrator
+      client.config.integrator = originalIntegrator
     })
     it('should throw a error with when the request fails', async () => {
       expect.assertions(2)
 
-      const url = `${apiUrl}/advanced/routes`
+      const url = `${client.config.apiUrl}/advanced/routes`
       const errorResponse = { message: 'something went wrong on the server' }
 
       server.use(
@@ -153,7 +124,7 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(config, url, {
+        await request<{ message: string }>(client.config, url, {
           method: 'POST',
           retries: 0,
         })
@@ -165,7 +136,7 @@ describe('request new', () => {
     it('should throw a error and attempt retries when the request fails with a 500', async () => {
       expect.assertions(2)
 
-      const url = `${apiUrl}/advanced/routes`
+      const url = `${client.config.apiUrl}/advanced/routes`
       const errorResponse = { message: 'something went wrong on the server' }
 
       server.use(
@@ -175,7 +146,7 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(config, url, {
+        await request<{ message: string }>(client.config, url, {
           method: 'POST',
           retries: 0,
         })
