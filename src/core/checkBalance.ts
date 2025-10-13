@@ -2,11 +2,11 @@ import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
 import { BalanceError } from '../errors/errors.js'
 import { getTokenBalance } from '../services/balance.js'
+import type { SDKBaseConfig } from '../types/internal.js'
 import { sleep } from '../utils/sleep.js'
-import type { SDKProviderConfig } from './types.js'
 
 export const checkBalance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   step: LiFiStep,
   depth = 0

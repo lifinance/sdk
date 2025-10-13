@@ -2,12 +2,13 @@ import { ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { getCapabilities } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { sleep } from '../../utils/sleep.js'
-import type { SDKProviderConfig } from '../types.js'
+import { getProvider } from '../configProvider.js'
 import type { EVMProvider } from './types.js'
 
 export async function isBatchingSupported(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   {
     client,
     chainId,
@@ -21,7 +22,7 @@ export async function isBatchingSupported(
   const _client =
     client ??
     (await (
-      config.getProvider(ChainType.EVM) as EVMProvider
+      getProvider(config, ChainType.EVM) as EVMProvider
     )?.getWalletClient?.())
 
   if (!_client) {

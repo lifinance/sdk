@@ -6,14 +6,14 @@ import {
   multicall,
   readContract,
 } from 'viem/actions'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { SDKProviderConfig } from '../types.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
 
 export const getEVMBalance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: Address,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -42,7 +42,7 @@ export const getEVMBalance = async (
 }
 
 const getEVMBalanceMulticall = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   chainId: ChainId,
   tokens: Token[],
   walletAddress: string,
@@ -89,7 +89,7 @@ const getEVMBalanceMulticall = async (
 }
 
 const getEVMBalanceDefault = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   chainId: ChainId,
   tokens: Token[],
   walletAddress: Address

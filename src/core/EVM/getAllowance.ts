@@ -1,8 +1,8 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { SDKProviderConfig } from '../types.js'
 import { allowanceAbi } from './abi.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getPublicClient } from './publicClient.js'
@@ -14,7 +14,7 @@ import type {
 import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   tokenAddress: Address,
   ownerAddress: Address,
@@ -40,7 +40,7 @@ export const getAllowance = async (
 }
 
 export const getAllowanceMulticall = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   chainId: ChainId,
   tokens: TokenSpender[],
@@ -93,7 +93,7 @@ export const getAllowanceMulticall = async (
  * @returns Returns allowance
  */
 export const getTokenAllowance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   token: BaseToken,
   ownerAddress: Address,
   spenderAddress: Address
@@ -122,7 +122,7 @@ export const getTokenAllowance = async (
  * @returns Returns array of tokens and their allowance
  */
 export const getTokenAllowanceMulticall = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   ownerAddress: Address,
   tokens: TokenSpender[]
 ): Promise<TokenAllowance[]> => {

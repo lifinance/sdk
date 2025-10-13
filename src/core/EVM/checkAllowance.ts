@@ -3,13 +3,13 @@ import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import type { StatusManager } from '../StatusManager.js'
 import type {
   ExecutionOptions,
   LiFiStepExtended,
   Process,
   ProcessType,
-  SDKProviderConfig,
 } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
@@ -23,7 +23,7 @@ import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
-  config: SDKProviderConfig
+  config: SDKBaseConfig
   checkClient(
     step: LiFiStepExtended,
     process: Process,
@@ -341,7 +341,7 @@ export const checkAllowance = async ({
 }
 
 const waitForApprovalTransaction = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   txHash: Hash,
   processType: ProcessType,

@@ -1,7 +1,7 @@
-import type { SDKProviderConfig } from './core/types.js'
 import { ValidationError } from './errors/errors.js'
 import { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
+import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { sleep } from './utils/sleep.js'
 import { version } from './version.js'
@@ -18,13 +18,13 @@ const stripExtendRequestInitProperties = ({
 })
 
 export const request = async <T = Response>(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   url: RequestInfo | URL,
   options: ExtendedRequestInit = {
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion, apiKey } = config.get()
+  const { userId, integrator, widgetVersion, apiKey } = config
 
   if (!integrator) {
     throw new SDKError(

@@ -23,14 +23,15 @@ import {
   getStepTransaction,
   relayTransaction,
 } from '../../services/api.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getChainById } from '../configProvider.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   Process,
-  SDKProviderConfig,
   StepExecutorOptions,
   TransactionMethodType,
   TransactionParameters,
@@ -125,7 +126,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   waitForTransaction = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     {
       step,
       process,
@@ -227,7 +228,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   private prepareUpdatedStep = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
@@ -334,7 +335,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   private estimateTransactionRequest = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     transactionRequest: TransactionParameters,
     fromChain: ExtendedChain
   ) => {
@@ -369,7 +370,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     step: LiFiStepExtended,
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
@@ -398,8 +399,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    const fromChain = await config.getChainById(step.action.fromChainId)
-    const toChain = await config.getChainById(step.action.toChainId)
+    const fromChain = await getChainById(config, step.action.fromChainId)
+    const toChain = await getChainById(config, step.action.toChainId)
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []

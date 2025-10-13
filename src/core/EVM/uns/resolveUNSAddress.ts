@@ -3,7 +3,7 @@ import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
 import { getAction, trim } from 'viem/utils'
-import type { SDKProviderConfig } from '../../types.js'
+import type { SDKBaseConfig } from '../../../types/internal.js'
 import { getPublicClient } from '../publicClient.js'
 import {
   CHAIN_ID_UNS_CHAIN_MAP,
@@ -14,7 +14,7 @@ import {
 } from './constants.js'
 
 export const resolveUNSAddress = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   name: string,
   chainType: ChainType,
   chain?: ChainId,

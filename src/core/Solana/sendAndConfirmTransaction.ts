@@ -4,8 +4,8 @@ import type {
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { sleep } from '../../utils/sleep.js'
-import type { SDKProviderConfig } from '../types.js'
 import { getSolanaConnections } from './connection.js'
 
 type ConfirmedTransactionResult = {
@@ -20,7 +20,7 @@ type ConfirmedTransactionResult = {
  * @returns - The confirmation result of the transaction.
  */
 export async function sendAndConfirmTransaction(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   signedTx: VersionedTransaction
 ): Promise<ConfirmedTransactionResult> {
   const connections = await getSolanaConnections(config)

@@ -1,8 +1,8 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
 import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { median } from '../../utils/median.js'
-import type { SDKProviderConfig } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 
 type ChainBlockExplorer = {
@@ -57,7 +57,7 @@ export function isExtendedChain(chain: any): chain is ExtendedChain {
 }
 
 export const getMaxPriorityFeePerGas = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client
 ): Promise<bigint | undefined> => {
   const block = await getActionWithFallback(
@@ -95,10 +95,10 @@ export const getMaxPriorityFeePerGas = async (
 
 // Multicall
 export const getMulticallAddress = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   chainId: ChainId
 ): Promise<Address | undefined> => {
-  const chains = await config.getChains()
+  const chains = config.chains
   return chains.find((chain: any) => chain.id === chainId)
     ?.multicallAddress as Address
 }

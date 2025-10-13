@@ -1,9 +1,9 @@
 import type { LiFiStep } from '@lifi/types'
+import type { SDKBaseConfig } from '../types/internal.js'
 import { StatusManager } from './StatusManager.js'
 import type {
   ExecutionOptions,
   InteractionSettings,
-  SDKProviderConfig,
   StepExecutor,
   StepExecutorOptions,
 } from './types.js'
@@ -37,8 +37,5 @@ export abstract class BaseStepExecutor implements StepExecutor {
     this.allowExecution = interactionSettings.allowExecution
   }
 
-  abstract executeStep(
-    config: SDKProviderConfig,
-    step: LiFiStep
-  ): Promise<LiFiStep>
+  abstract executeStep(config: SDKBaseConfig, step: LiFiStep): Promise<LiFiStep>
 }

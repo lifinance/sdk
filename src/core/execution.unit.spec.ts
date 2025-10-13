@@ -12,12 +12,12 @@ import {
   vi,
 } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
-import { createConfig } from '../createConfig.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
 import { requestSettings } from '../request.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
+const config = await setupTestEnvironment()
 let client: Partial<Client>
 
 vi.mock('../balance', () => ({

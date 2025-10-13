@@ -3,7 +3,6 @@ import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { createConfig } from '../../createConfig.js'
 import { getTokens } from '../../services/api.js'
 import {
   getAllowance,
@@ -13,7 +12,7 @@ import {
 import { getPublicClient } from './publicClient.js'
 import type { TokenSpender } from './types.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
+const config = await setupTestEnvironment()
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const defaultSpenderAddress = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'
 const memeToken = {

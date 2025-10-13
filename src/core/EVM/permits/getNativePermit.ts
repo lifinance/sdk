@@ -9,7 +9,7 @@ import {
   zeroHash,
 } from 'viem'
 import { getCode, multicall, readContract } from 'viem/actions'
-import type { SDKProviderConfig } from '../../types.js'
+import type { SDKBaseConfig } from '../../../types/internal.js'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
 import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
@@ -22,7 +22,7 @@ import {
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
-  config: SDKProviderConfig
+  config: SDKBaseConfig
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -134,7 +134,7 @@ function validateDomainSeparator({
  * @returns Promise<boolean> - Whether the account can use native permits
  */
 const canAccountUseNativePermits = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client
 ): Promise<boolean> => {
   try {
@@ -176,7 +176,7 @@ const canAccountUseNativePermits = async (
  * @returns Contract data if EIP-5267 is supported, undefined otherwise
  */
 const getEIP712DomainData = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   chainId: number,
   tokenAddress: Address
@@ -325,7 +325,7 @@ const getEIP712DomainData = async (
 }
 
 const getContractData = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   chainId: number,
   tokenAddress: Address

@@ -1,7 +1,7 @@
 import { ChainId } from '@lifi/types'
 import { SuiClient } from '@mysten/sui/client'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { getRpcUrls } from '../rpc.js'
-import type { SDKProviderConfig } from '../types.js'
 
 const clients = new Map<string, SuiClient>()
 
@@ -9,8 +9,8 @@ const clients = new Map<string, SuiClient>()
  * Initializes the Sui clients if they haven't been initialized yet.
  * @returns - Promise that resolves when clients are initialized.
  */
-const ensureClients = async (config: SDKProviderConfig): Promise<void> => {
-  const rpcUrls = await getRpcUrls(config, ChainId.SUI)
+const ensureClients = async (config: SDKBaseConfig): Promise<void> => {
+  const rpcUrls = getRpcUrls(config, ChainId.SUI)
   for (const rpcUrl of rpcUrls) {
     if (!clients.get(rpcUrl)) {
       const client = new SuiClient({ url: rpcUrl })
@@ -25,7 +25,7 @@ const ensureClients = async (config: SDKProviderConfig): Promise<void> => {
  * @returns - The result of the function call.
  */
 export async function callSuiWithRetry<R>(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   fn: (client: SuiClient) => Promise<R>
 ): Promise<R> {
   // Ensure clients are initialized

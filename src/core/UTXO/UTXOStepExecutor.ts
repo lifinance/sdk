@@ -13,12 +13,13 @@ import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getChainById } from '../configProvider.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
-  SDKProviderConfig,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
@@ -51,13 +52,13 @@ export class UTXOStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await config.getChainById(step.action.fromChainId)
-    const toChain = await config.getChainById(step.action.toChainId)
+    const fromChain = await getChainById(config, step.action.fromChainId)
+    const toChain = await getChainById(config, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'

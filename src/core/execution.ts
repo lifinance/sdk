@@ -1,13 +1,10 @@
 import type { Route } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { ProviderError } from '../errors/errors.js'
+import type { SDKBaseConfig } from '../types/internal.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
-import type {
-  ExecutionOptions,
-  RouteExtended,
-  SDKProviderConfig,
-} from './types.js'
+import type { ExecutionOptions, RouteExtended } from './types.js'
 
 /**
  * Execute a route.
@@ -17,7 +14,7 @@ import type {
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const executeRoute = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -48,7 +45,7 @@ export const executeRoute = async (
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const resumeRoute = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -77,7 +74,7 @@ export const resumeRoute = async (
 }
 
 const executeSteps = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   route: RouteExtended
 ): Promise<RouteExtended> => {
   // Loop over steps and execute them
@@ -111,9 +108,9 @@ const executeSteps = async (
         throw new Error('Action fromAddress is not specified.')
       }
 
-      const provider = config
-        .get()
-        .providers.find((provider: any) => provider.isAddress(fromAddress))
+      const provider = config.providers.find((provider) =>
+        provider.isAddress(fromAddress)
+      )
 
       if (!provider) {
         throw new ProviderError(

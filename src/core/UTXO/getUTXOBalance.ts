@@ -1,9 +1,9 @@
 import { ChainId, type Token, type TokenAmount } from '@lifi/types'
-import type { SDKProviderConfig } from '../types.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 
 export const getUTXOBalance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {

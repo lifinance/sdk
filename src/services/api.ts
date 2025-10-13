@@ -33,13 +33,13 @@ import {
   type TransactionAnalyticsRequest,
   type TransactionAnalyticsResponse,
 } from '@lifi/types'
-import type { SDKProviderConfig } from '../core/types.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
+import type { SDKBaseConfig } from '../types/internal.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type {
   GetStatusRequestExtended,
@@ -56,17 +56,17 @@ import type {
  * @returns Quote for a token transfer
  */
 export async function getQuote(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: QuoteRequestFromAmount,
   options?: RequestOptions
 ): Promise<LiFiStep>
 export async function getQuote(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: QuoteRequestToAmount,
   options?: RequestOptions
 ): Promise<LiFiStep>
 export async function getQuote(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: QuoteRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> {
@@ -108,7 +108,7 @@ export async function getQuote(
       )
     )
   }
-  const _config = config.get()
+  const _config = config
   // apply defaults
   params.integrator ??= _config.integrator
   params.order ??= _config.routeOptions?.order
@@ -147,14 +147,14 @@ export async function getQuote(
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getRoutes = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: RoutesRequest,
   options?: RequestOptions
 ): Promise<RoutesResponse> => {
   if (!isRoutesRequest(params)) {
     throw new SDKError(new ValidationError('Invalid routes request.'))
   }
-  const _config = config.get()
+  const _config = config
   // apply defaults
   params.options = {
     integrator: _config.integrator,
@@ -184,7 +184,7 @@ export const getRoutes = async (
  * @returns - Returns step.
  */
 export const getContractCallsQuote = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: ContractCallsQuoteRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
@@ -216,7 +216,7 @@ export const getContractCallsQuote = async (
       )
     )
   }
-  const _config = config.get()
+  const _config = config
   // apply defaults
   // option.order is not used in this endpoint
   params.integrator ??= _config.integrator
@@ -252,7 +252,7 @@ export const getContractCallsQuote = async (
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getStepTransaction = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   step: LiFiStep | SignedLiFiStep,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
@@ -263,7 +263,7 @@ export const getStepTransaction = async (
 
   return await request<LiFiStep>(
     config,
-    `${config.get().apiUrl}/advanced/stepTransaction`,
+    `${config.apiUrl}/advanced/stepTransaction`,
     {
       method: 'POST',
       headers: {
@@ -283,7 +283,7 @@ export const getStepTransaction = async (
  * @returns Returns status response.
  */
 export const getStatus = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: GetStatusRequestExtended,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
@@ -297,7 +297,7 @@ export const getStatus = async (
   )
   return await request<StatusResponse>(
     config,
-    `${config.get().apiUrl}/status?${queryParams}`,
+    `${config.apiUrl}/status?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -312,7 +312,7 @@ export const getStatus = async (
  * @returns Relayer quote for a token transfer
  */
 export const getRelayerQuote = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: QuoteRequestFromAmount,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
@@ -333,7 +333,7 @@ export const getRelayerQuote = async (
       )
     }
   }
-  const _config = config.get()
+  const _config = config
   // apply defaults
   params.integrator ??= _config.integrator
   params.order ??= _config.routeOptions?.order
@@ -355,7 +355,7 @@ export const getRelayerQuote = async (
 
   const result = await request<RelayerQuoteResponse>(
     config,
-    `${config.get().apiUrl}/relayer/quote?${new URLSearchParams(
+    `${config.apiUrl}/relayer/quote?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -382,7 +382,7 @@ export const getRelayerQuote = async (
  * @returns Task ID for the relayed transaction
  */
 export const relayTransaction = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: RelayRequest,
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
@@ -408,7 +408,7 @@ export const relayTransaction = async (
 
   const result = await request<RelayResponse>(
     config,
-    `${config.get().apiUrl}${relayerPath}`,
+    `${config.apiUrl}${relayerPath}`,
     {
       method: 'POST',
       headers: {
@@ -443,7 +443,7 @@ export const relayTransaction = async (
  * @returns Status of the relayed transaction
  */
 export const getRelayedTransactionStatus = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: RelayStatusRequest,
   options?: RequestOptions
 ): Promise<RelayStatusResponseData> => {
@@ -459,7 +459,7 @@ export const getRelayedTransactionStatus = async (
   )
   const result = await request<RelayStatusResponse>(
     config,
-    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    `${config.apiUrl}/relayer/status/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }
@@ -484,7 +484,7 @@ export const getRelayedTransactionStatus = async (
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getChains = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params?: ChainsRequest,
   options?: RequestOptions
 ): Promise<ExtendedChain[]> => {
@@ -502,7 +502,7 @@ export const getChains = async (
     () =>
       request<ChainsResponse>(
         config,
-        `${config.get().apiUrl}/chains?${urlSearchParams}`,
+        `${config.apiUrl}/chains?${urlSearchParams}`,
         {
           signal: options?.signal,
         }
@@ -519,17 +519,17 @@ export const getChains = async (
  * @returns The tokens that are available on the requested chains
  */
 export async function getTokens(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params?: TokensRequest & { extended?: false | undefined },
   options?: RequestOptions
 ): Promise<TokensResponse>
 export async function getTokens(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: TokensRequest & { extended: true },
   options?: RequestOptions
 ): Promise<TokensExtendedResponse>
 export async function getTokens(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params?: TokensRequest,
   options?: RequestOptions
 ): Promise<TokensResponse> {
@@ -548,7 +548,7 @@ export async function getTokens(
     () =>
       request<
         typeof isExtended extends true ? TokensExtendedResponse : TokensResponse
-      >(config, `${config.get().apiUrl}/tokens?${urlSearchParams}`, {
+      >(config, `${config.apiUrl}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),
     { id: `${getTokens.name}.${urlSearchParams}` }
@@ -565,7 +565,7 @@ export async function getTokens(
  * @returns Token information
  */
 export const getToken = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   chain: ChainKey | ChainId,
   token: string,
   options?: RequestOptions
@@ -582,7 +582,7 @@ export const getToken = async (
   }
   return await request<TokenExtended>(
     config,
-    `${config.get().apiUrl}/token?${new URLSearchParams({
+    `${config.apiUrl}/token?${new URLSearchParams({
       chain,
       token,
     } as Record<string, string>)}`,
@@ -599,7 +599,7 @@ export const getToken = async (
  * @returns The tools that are available on the requested chains
  */
 export const getTools = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params?: ToolsRequest,
   options?: RequestOptions
 ): Promise<ToolsResponse> => {
@@ -612,7 +612,7 @@ export const getTools = async (
   }
   return await request<ToolsResponse>(
     config,
-    `${config.get().apiUrl}/tools?${new URLSearchParams(
+    `${config.apiUrl}/tools?${new URLSearchParams(
       params as Record<string, string>
     )}`,
     {
@@ -629,7 +629,7 @@ export const getTools = async (
  * @returns Gas recommendation response.
  */
 export const getGasRecommendation = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: GasRecommendationRequest,
   options?: RequestOptions
 ): Promise<GasRecommendationResponse> => {
@@ -639,7 +639,7 @@ export const getGasRecommendation = async (
     )
   }
 
-  const url = new URL(`${config.get().apiUrl}/gas/suggestion/${params.chainId}`)
+  const url = new URL(`${config.apiUrl}/gas/suggestion/${params.chainId}`)
   if (params.fromChain) {
     url.searchParams.append('fromChain', params.fromChain as unknown as string)
   }
@@ -659,11 +659,11 @@ export const getGasRecommendation = async (
  * @returns ConnectionsResponse
  */
 export const getConnections = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   connectionRequest: ConnectionsRequest,
   options?: RequestOptions
 ): Promise<ConnectionsResponse> => {
-  const url = new URL(`${config.get().apiUrl}/connections`)
+  const url = new URL(`${config.apiUrl}/connections`)
 
   const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
@@ -700,7 +700,7 @@ export const getConnections = async (
 }
 
 export const getTransactionHistory = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
   options?: RequestOptions
 ): Promise<TransactionAnalyticsResponse> => {
@@ -710,11 +710,9 @@ export const getTransactionHistory = async (
     )
   }
 
-  const _config = config.get()
+  const url = new URL(`${config.apiUrl}/analytics/transfers`)
 
-  const url = new URL(`${_config.apiUrl}/analytics/transfers`)
-
-  url.searchParams.append('integrator', _config.integrator)
+  url.searchParams.append('integrator', config.integrator)
   url.searchParams.append('wallet', wallet)
 
   if (status) {

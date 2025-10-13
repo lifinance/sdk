@@ -23,7 +23,6 @@ import {
   vi,
 } from 'vitest'
 import { setupTestEnvironment } from '../../tests/setup.js'
-import { createConfig } from '../createConfig.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
@@ -31,11 +30,11 @@ import { requestSettings } from '../request.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
+const config = await setupTestEnvironment()
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
-  const _config = config.get()
+  const _config = config
   const server = setupServer(...handlers)
   beforeAll(() => {
     setupTestEnvironment()

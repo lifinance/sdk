@@ -1,7 +1,8 @@
 import type { ExtendedChain } from '@lifi/types'
 import { ChainType } from '@lifi/types'
 import type { Address } from 'viem'
-import type { SDKProviderConfig } from '../types.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
+import { getProvider } from '../configProvider.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'
@@ -28,7 +29,7 @@ type PermitSupport = {
  * @returns Object indicating which permit types are supported
  */
 export const checkPermitSupport = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   {
     chain,
     tokenAddress,
@@ -41,7 +42,7 @@ export const checkPermitSupport = async (
     amount: bigint
   }
 ): Promise<PermitSupport> => {
-  const provider = config.getProvider(ChainType.EVM) as EVMProvider | undefined
+  const provider = getProvider(config, ChainType.EVM) as EVMProvider | undefined
 
   let client = await provider?.getWalletClient?.()
 

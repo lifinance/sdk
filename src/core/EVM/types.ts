@@ -6,11 +6,8 @@ import type {
   FallbackTransportConfig,
   Hex,
 } from 'viem'
-import type {
-  SDKProvider,
-  SDKProviderConfig,
-  SwitchChainHook,
-} from '../types.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
+import type { SDKProvider, SwitchChainHook } from '../types.js'
 
 export interface EVMProviderOptions {
   getWalletClient?: () => Promise<Client>
@@ -45,7 +42,7 @@ export type TokenSpenderAllowance = {
 }
 
 export interface ApproveTokenRequest {
-  config: SDKProviderConfig
+  config: SDKBaseConfig
   walletClient: Client
   token: BaseToken
   spenderAddress: string
@@ -57,7 +54,7 @@ export interface ApproveTokenRequest {
 }
 
 export interface RevokeApprovalRequest {
-  config: SDKProviderConfig
+  config: SDKBaseConfig
   walletClient: Client
   token: BaseToken
   spenderAddress: string

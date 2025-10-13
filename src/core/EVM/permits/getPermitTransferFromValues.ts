@@ -1,13 +1,13 @@
 import type { ExtendedChain } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
-import type { SDKProviderConfig } from '../../types.js'
+import type { SDKBaseConfig } from '../../../types/internal.js'
 import { permit2ProxyAbi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
 import type { PermitTransferFrom } from './signatureTransfer.js'
 
 export const getPermitTransferFromValues = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   client: Client,
   chain: ExtendedChain,
   tokenAddress: Address,

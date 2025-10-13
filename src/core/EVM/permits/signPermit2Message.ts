@@ -3,7 +3,7 @@ import type { Address, Client, Hex } from 'viem'
 import { keccak256 } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { SDKProviderConfig } from '../../types.js'
+import type { SDKBaseConfig } from '../../../types/internal.js'
 import { getPermitTransferFromValues } from './getPermitTransferFromValues.js'
 import { getPermitData } from './signatureTransfer.js'
 
@@ -17,7 +17,7 @@ interface SignPermit2MessageParams {
 }
 
 export async function signPermit2Message(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   params: SignPermit2MessageParams
 ): Promise<SignedTypedData> {
   const { client, chain, tokenAddress, amount, data, witness } = params

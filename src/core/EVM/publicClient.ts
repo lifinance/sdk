@@ -2,8 +2,9 @@ import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
+import type { SDKBaseConfig } from '../../types/internal.js'
+import { getChainById, getProvider } from '../configProvider.js'
 import { getRpcUrls } from '../rpc.js'
-import type { SDKProviderConfig } from '../types.js'
 import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
@@ -16,14 +17,14 @@ const publicClients: Record<number, Client> = {}
  * @returns The public client for the given chain
  */
 export const getPublicClient = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   chainId: number
 ): Promise<Client> => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
   }
 
-  const urls = await getRpcUrls(config, chainId)
+  const urls = getRpcUrls(config, chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
       ? webSocket(url)
@@ -33,7 +34,7 @@ export const getPublicClient = async (
           },
         })
   )
-  const _chain = await config.getChainById(chainId)
+  const _chain = await getChainById(config, chainId)
   const chain: Chain = {
     ..._chain,
     ..._chain.metamask,
@@ -61,7 +62,7 @@ export const getPublicClient = async (
     }
   }
 
-  const provider = config.getProvider(ChainType.EVM) as EVMProvider | undefined
+  const provider = getProvider(config, ChainType.EVM) as EVMProvider | undefined
   publicClients[chainId] = createClient({
     chain: chain,
     transport: fallback(

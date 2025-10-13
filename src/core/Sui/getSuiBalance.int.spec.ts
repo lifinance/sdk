@@ -3,10 +3,9 @@ import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setupTestEnvironment } from '../../../tests/setup.js'
-import { createConfig } from '../../createConfig.js'
 import { getSuiBalance } from './getSuiBalance.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
+const config = await setupTestEnvironment()
 
 const defaultWalletAddress =
   '0xd2fdd62880764fa73b895a9824ecec255a4bd9d654a125e58de33088cbf5eb67'

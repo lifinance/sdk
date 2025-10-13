@@ -1,10 +1,10 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { createConfig } from '../createConfig.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
-const _config = config.get()
+const config = await setupTestEnvironment()
+const _config = config
 
 export const handlers = [
   http.post(`${_config.apiUrl}/advanced/routes`, async () => {

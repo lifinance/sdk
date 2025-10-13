@@ -2,10 +2,10 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { Token, WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createConfig } from '../createConfig.js'
+import { setupTestEnvironment } from '../../tests/setup.js'
 import * as balance from './balance.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
+const config = await setupTestEnvironment()
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
 const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
 const mockedGetTokenBalancesForChains = vi.spyOn(

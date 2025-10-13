@@ -1,10 +1,10 @@
 import { ChainId } from '@lifi/types'
 import { getEnsAddress, normalize } from 'viem/ens'
-import type { SDKProviderConfig } from '../types.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { getPublicClient } from './publicClient.js'
 
 export const resolveENSAddress = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   name: string
 ): Promise<string | undefined> => {
   try {

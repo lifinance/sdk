@@ -11,18 +11,16 @@ import {
   vi,
 } from 'vitest'
 import { setupTestEnvironment } from '../tests/setup.js'
-import { createConfig } from './createConfig.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
 import { request } from './request.js'
 import { handlers } from './services/api.unit.handlers.js'
-import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const config = createConfig({ integrator: 'lifi-sdk' })
-const apiUrl = config.get().apiUrl
+const config = await setupTestEnvironment()
+const apiUrl = config.apiUrl
 
 describe('request new', () => {
   const server = setupServer(...handlers)
@@ -120,8 +118,8 @@ describe('request new', () => {
 
   describe('when dealing with errors', () => {
     it('should throw an error if the Integrator property is missing from the config', async () => {
-      const originalIntegrator = config.get().integrator
-      config.set({ integrator: '' } as SDKBaseConfig)
+      const originalIntegrator = config.integrator
+      config.integrator = ''
 
       const url = `${apiUrl}/advanced/routes`
 
@@ -138,7 +136,7 @@ describe('request new', () => {
         )
       )
 
-      config.set({ integrator: originalIntegrator } as SDKBaseConfig)
+      config.integrator = originalIntegrator
     })
     it('should throw a error with when the request fails', async () => {
       expect.assertions(2)

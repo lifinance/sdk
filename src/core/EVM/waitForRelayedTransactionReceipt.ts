@@ -3,12 +3,12 @@ import type { Hash } from 'viem'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getRelayedTransactionStatus } from '../../services/api.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { waitForResult } from '../../utils/waitForResult.js'
-import type { SDKProviderConfig } from '../types.js'
 import type { WalletCallReceipt } from './types.js'
 
 export const waitForRelayedTransactionReceipt = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   taskId: Hash,
   step: LiFiStep
 ): Promise<WalletCallReceipt> => {

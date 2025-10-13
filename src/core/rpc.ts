@@ -1,11 +1,11 @@
 import type { ChainId } from '@lifi/types'
-import type { SDKProviderConfig } from './types.js'
+import type { SDKBaseConfig } from '../types/internal.js'
 
-export const getRpcUrls = async (
-  config: SDKProviderConfig,
+export const getRpcUrls = (
+  config: SDKBaseConfig,
   chainId: ChainId
-): Promise<string[]> => {
-  const rpcUrls = (await config.getRPCUrls())[chainId]
+): string[] => {
+  const rpcUrls = config.rpcUrls[chainId]
   if (!rpcUrls?.length) {
     throw new Error(`RPC URL not found for chainId: ${chainId}`)
   }

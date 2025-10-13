@@ -7,10 +7,11 @@ import type {
   TokenExtended,
   WalletTokenExtended,
 } from '@lifi/types'
-import type { SDKProviderConfig } from '../core/types.js'
+import { getChainById } from '../core/configProvider.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
+import type { SDKBaseConfig } from '../types/internal.js'
 
 /**
  * Returns the balances of a specific token a wallet holds across all aggregated chains.
@@ -20,7 +21,7 @@ import { isToken } from '../typeguards.js'
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getTokenBalance = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   token: Token
 ): Promise<TokenAmount | null> => {
@@ -36,12 +37,12 @@ export const getTokenBalance = async (
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export async function getTokenBalances(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]>
 export async function getTokenBalances(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokens: TokenExtended[]
 ): Promise<TokenAmountExtended[]> {
@@ -73,12 +74,12 @@ export async function getTokenBalances(
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export async function getTokenBalancesByChain(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }>
 export async function getTokenBalancesByChain(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokensByChain: { [chainId: number]: TokenExtended[] }
 ): Promise<{ [chainId: number]: TokenAmountExtended[] }> {
@@ -92,9 +93,9 @@ export async function getTokenBalancesByChain(
     throw new ValidationError('Invalid tokens passed.')
   }
 
-  const provider = config
-    .get()
-    .providers.find((provider: any) => provider.isAddress(walletAddress))
+  const provider = config.providers.find((provider) =>
+    provider.isAddress(walletAddress)
+  )
   if (!provider) {
     throw new Error(`SDK Token Provider for ${walletAddress} is not found.`)
   }
@@ -105,7 +106,7 @@ export async function getTokenBalancesByChain(
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr, 10)
-      const chain = await config.getChainById(chainId)
+      const chain = await getChainById(config, chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
           config,
@@ -120,7 +121,7 @@ export async function getTokenBalancesByChain(
       }
     })
   )
-  if (config.get().debug) {
+  if (config.debug) {
     for (const result of tokenAmountsSettled) {
       if (result.status === 'rejected') {
         console.warn("Couldn't fetch token balance.", result.reason)
@@ -138,7 +139,7 @@ export async function getTokenBalancesByChain(
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getWalletBalances = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   options?: RequestOptions
 ): Promise<Record<number, WalletTokenExtended[]>> => {
@@ -148,7 +149,7 @@ export const getWalletBalances = async (
 
   const response = await request<GetWalletBalanceExtendedResponse>(
     config,
-    `${config.get().apiUrl}/wallets/${walletAddress}/balances?extended=true`,
+    `${config.apiUrl}/wallets/${walletAddress}/balances?extended=true`,
     {
       signal: options?.signal,
     }

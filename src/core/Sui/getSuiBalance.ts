@@ -1,11 +1,11 @@
 import type { Token, TokenAmount } from '@lifi/types'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { withDedupe } from '../../utils/withDedupe.js'
-import type { SDKProviderConfig } from '../types.js'
 import { callSuiWithRetry } from './suiClient.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
 
 export async function getSuiBalance(
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> {
@@ -24,7 +24,7 @@ export async function getSuiBalance(
 }
 
 const getSuiBalanceDefault = async (
-  config: SDKProviderConfig,
+  config: SDKBaseConfig,
   _chainId: number,
   tokens: Token[],
   walletAddress: string

@@ -4,15 +4,13 @@ import { withTimeout } from 'viem'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
+import type { SDKBaseConfig } from '../../types/internal.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
+import { getChainById } from '../configProvider.js'
 import { stepComparison } from '../stepComparison.js'
-import type {
-  LiFiStepExtended,
-  SDKProviderConfig,
-  TransactionParameters,
-} from '../types.js'
+import type { LiFiStepExtended, TransactionParameters } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
@@ -38,13 +36,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKProviderConfig,
+    config: SDKBaseConfig,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await config.getChainById(step.action.fromChainId)
-    const toChain = await config.getChainById(step.action.toChainId)
+    const fromChain = await getChainById(config, step.action.fromChainId)
+    const toChain = await getChainById(config, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
