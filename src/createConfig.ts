@@ -43,7 +43,7 @@ function initializeConfig(options: SDKConfig) {
   return _config
 }
 
-function createBaseConfig(options: SDKConfig) {
+export function createBaseConfig(options: SDKConfig) {
   if (!options.integrator) {
     throw new Error(
       'Integrator not found. Please see documentation https://docs.li.fi/integrate-li.fi-js-sdk/set-up-the-sdk'
