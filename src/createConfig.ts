@@ -1,51 +1,13 @@
 import { ChainId, ChainType } from '@lifi/types'
-import type {
-  RPCUrls,
-  SDKBaseConfig,
-  SDKConfig,
-  SDKProvider,
-} from './core/types.js'
+import {
+  getMergedProviders,
+  getMergedRPCUrls,
+  getMetamaskRPCUrls,
+} from './core/configProvider.js'
+import type { SDKBaseConfig, SDKConfig } from './core/types.js'
 import { getChains } from './services/api.js'
 import { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 import { name, version } from './version.js'
-
-function setProviders(
-  configProviders: SDKProvider[],
-  providers: SDKProvider[]
-) {
-  const providerMap = new Map(
-    configProviders.map((provider) => [provider.type, provider])
-  )
-  for (const provider of providers) {
-    providerMap.set(provider.type, provider)
-  }
-  return Array.from(providerMap.values())
-}
-
-function setRPCUrls(
-  configRPCUrls: RPCUrls,
-  rpcUrls: RPCUrls,
-  skipChains?: ChainId[]
-) {
-  const newRPCUrls = { ...configRPCUrls }
-  for (const rpcUrlsKey in rpcUrls) {
-    const chainId = Number(rpcUrlsKey) as ChainId
-    const urls = rpcUrls[chainId]
-    if (!urls?.length) {
-      continue
-    }
-    if (!newRPCUrls[chainId]?.length) {
-      newRPCUrls[chainId] = Array.from(urls)
-    } else if (!skipChains?.includes(chainId)) {
-      const filteredUrls = urls.filter(
-        (url) => !newRPCUrls[chainId]?.includes(url)
-      )
-      newRPCUrls[chainId].push(...filteredUrls)
-    }
-  }
-
-  return newRPCUrls
-}
 
 function initializeConfig(options: SDKConfig) {
   const _config: SDKBaseConfig = {
@@ -64,23 +26,18 @@ function initializeConfig(options: SDKConfig) {
   // Set chains
   if (chains) {
     _config.chains = chains
-    const rpcUrls = chains.reduce((rpcUrls, chain) => {
-      if (chain.metamask?.rpcUrls?.length) {
-        rpcUrls[chain.id as ChainId] = chain.metamask.rpcUrls
-      }
-      return rpcUrls
-    }, {} as RPCUrls)
-    _config.rpcUrls = setRPCUrls(_config.rpcUrls, rpcUrls, [ChainId.SOL])
+    const rpcUrls = getMetamaskRPCUrls(chains)
+    _config.rpcUrls = getMergedRPCUrls(_config.rpcUrls, rpcUrls, [ChainId.SOL])
   }
 
   // Set providers
   if (providers) {
-    _config.providers = setProviders(_config.providers, providers)
+    _config.providers = getMergedProviders(_config.providers, providers)
   }
 
   // Set RPC URLs
   if (rpcUrls) {
-    _config.rpcUrls = setRPCUrls(_config.rpcUrls, rpcUrls)
+    _config.rpcUrls = getMergedRPCUrls(_config.rpcUrls, rpcUrls)
   }
 
   return _config
@@ -106,14 +63,12 @@ export async function createConfig(options: SDKConfig) {
       chainTypes: [ChainType.EVM, ChainType.SVM, ChainType.UTXO, ChainType.MVM],
     })
       .then((chains) => {
+        // Set chains
         _config.chains = chains
-        const rpcUrls = chains.reduce((rpcUrls, chain) => {
-          if (chain.metamask?.rpcUrls?.length) {
-            rpcUrls[chain.id as ChainId] = chain.metamask.rpcUrls
-          }
-          return rpcUrls
-        }, {} as RPCUrls)
-        _config.rpcUrls = setRPCUrls(_config.rpcUrls, rpcUrls, [ChainId.SOL])
+        const rpcUrls = getMetamaskRPCUrls(chains)
+        _config.rpcUrls = getMergedRPCUrls(_config.rpcUrls, rpcUrls, [
+          ChainId.SOL,
+        ])
       })
       .catch()
   }

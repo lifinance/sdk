@@ -103,7 +103,7 @@ export const getTokenAllowance = async (
     return
   }
 
-  const client = await getPublicClient(config, token.chainId)
+  const client = getPublicClient(config, token.chainId)
 
   const approved = await getAllowance(
     config,
@@ -145,7 +145,7 @@ export const getTokenAllowanceMulticall = async (
   const allowances = (
     await Promise.all(
       chainKeys.map(async (chainId) => {
-        const client = await getPublicClient(config, chainId)
+        const client = getPublicClient(config, chainId)
         // get allowances for current chain and token list
         return getAllowanceMulticall(
           config,

@@ -47,7 +47,7 @@ export const checkPermitSupport = async (
   let client = await provider?.getWalletClient?.()
 
   if (!client) {
-    client = await getPublicClient(config, chain.id)
+    client = getPublicClient(config, chain.id)
   }
 
   const nativePermit = await getActionWithFallback(

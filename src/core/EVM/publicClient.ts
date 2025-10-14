@@ -16,10 +16,10 @@ const publicClients: Record<number, Client> = {}
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getPublicClient = async (
+export const getPublicClient = (
   config: SDKBaseConfig,
   chainId: number
-): Promise<Client> => {
+): Client => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
   }
@@ -34,7 +34,7 @@ export const getPublicClient = async (
           },
         })
   )
-  const _chain = await getChainById(config, chainId)
+  const _chain = getChainById(config, chainId)
   const chain: Chain = {
     ..._chain,
     ..._chain.metamask,

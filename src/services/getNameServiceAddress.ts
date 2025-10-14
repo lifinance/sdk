@@ -9,16 +9,14 @@ export const getNameServiceAddress = async (
   try {
     let providers = config.providers
     if (chainType) {
-      providers = providers.filter(
-        (provider: any) => provider.type === chainType
-      )
+      providers = providers.filter((provider) => provider.type === chainType)
     }
-    const resolvers = providers.map((provider: any) => provider.resolveAddress)
+    const resolvers = providers.map((provider) => provider.resolveAddress)
     if (!resolvers.length) {
       return
     }
     const result = await Promise.any(
-      resolvers.map(async (resolve: any) => {
+      resolvers.map(async (resolve) => {
         const address = await resolve(name)
         if (!address) {
           throw undefined

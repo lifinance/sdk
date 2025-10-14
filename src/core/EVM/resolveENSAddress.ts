@@ -8,7 +8,7 @@ export const resolveENSAddress = async (
   name: string
 ): Promise<string | undefined> => {
   try {
-    const client = await getPublicClient(config, ChainId.ETH)
+    const client = getPublicClient(config, ChainId.ETH)
     const address = await getEnsAddress(client, {
       name: normalize(name),
     })

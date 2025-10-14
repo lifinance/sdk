@@ -99,7 +99,7 @@ export const getMulticallAddress = async (
   chainId: ChainId
 ): Promise<Address | undefined> => {
   const chains = config.chains
-  return chains.find((chain: any) => chain.id === chainId)
+  return chains.find((chain) => chain.id === chainId)
     ?.multicallAddress as Address
 }
 

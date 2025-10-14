@@ -4,35 +4,34 @@ import { HttpResponse, http } from 'msw'
 import { setupTestEnvironment } from '../../tests/setup.js'
 
 const config = await setupTestEnvironment()
-const _config = config
 
 export const handlers = [
-  http.post(`${_config.apiUrl}/advanced/routes`, async () => {
+  http.post(`${config.apiUrl}/advanced/routes`, async () => {
     return HttpResponse.json({})
   }),
-  http.post(`${_config.apiUrl}/advanced/possibilities`, async () =>
+  http.post(`${config.apiUrl}/advanced/possibilities`, async () =>
     HttpResponse.json({})
   ),
-  http.get(`${_config.apiUrl}/token`, async () => HttpResponse.json({})),
-  http.get(`${_config.apiUrl}/quote`, async () => HttpResponse.json({})),
-  http.get(`${_config.apiUrl}/status`, async () => HttpResponse.json({})),
-  http.get(`${_config.apiUrl}/chains`, async () =>
+  http.get(`${config.apiUrl}/token`, async () => HttpResponse.json({})),
+  http.get(`${config.apiUrl}/quote`, async () => HttpResponse.json({})),
+  http.get(`${config.apiUrl}/status`, async () => HttpResponse.json({})),
+  http.get(`${config.apiUrl}/chains`, async () =>
     HttpResponse.json({ chains: [{ id: 1 }] })
   ),
-  http.get(`${_config.apiUrl}/tools`, async () =>
+  http.get(`${config.apiUrl}/tools`, async () =>
     HttpResponse.json({ bridges: [], exchanges: [] })
   ),
-  http.get(`${_config.apiUrl}/tokens`, async () =>
+  http.get(`${config.apiUrl}/tokens`, async () =>
     HttpResponse.json({
       tokens: {
         [ChainId.ETH]: [findDefaultToken(CoinKey.ETH, ChainId.ETH)],
       },
     })
   ),
-  http.post(`${_config.apiUrl}/advanced/stepTransaction`, async () =>
+  http.post(`${config.apiUrl}/advanced/stepTransaction`, async () =>
     HttpResponse.json({})
   ),
-  http.get(`${_config.apiUrl}/gas/suggestion/${ChainId.OPT}`, async () =>
+  http.get(`${config.apiUrl}/gas/suggestion/${ChainId.OPT}`, async () =>
     HttpResponse.json({})
   ),
 ]

@@ -106,7 +106,7 @@ export async function getTokenBalancesByChain(
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr, 10)
-      const chain = await getChainById(config, chainId)
+      const chain = getChainById(config, chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
           config,

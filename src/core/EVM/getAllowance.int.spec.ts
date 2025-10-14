@@ -32,7 +32,7 @@ beforeAll(setupTestEnvironment)
 
 describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
   it('should work for ERC20 on POL', async () => {
-    const client = await getPublicClient(config, memeToken.chainId)
+    const client = getPublicClient(config, memeToken.chainId)
     const allowance = await getAllowance(
       config,
       client,
@@ -49,7 +49,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     { retry: retryTimes, timeout },
     async () => {
       const token = findDefaultToken(CoinKey.POL, ChainId.POL)
-      const client = await getPublicClient(config, token.chainId)
+      const client = getPublicClient(config, token.chainId)
       const allowance = await getAllowance(
         config,
         client,
@@ -68,7 +68,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     async () => {
       const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const client = await getPublicClient(config, invalidToken.chainId)
+      const client = getPublicClient(config, invalidToken.chainId)
       const allowance = await getAllowance(
         config,
         client,
@@ -84,7 +84,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should handle empty lists with multicall',
     { retry: retryTimes, timeout },
     async () => {
-      const client = await getPublicClient(config, 137)
+      const client = getPublicClient(config, 137)
       const allowances = await getAllowanceMulticall(
         config,
         client,

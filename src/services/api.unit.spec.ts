@@ -34,7 +34,6 @@ const config = await setupTestEnvironment()
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
-  const _config = config
   const server = setupServer(...handlers)
   beforeAll(() => {
     setupTestEnvironment()
@@ -570,7 +569,7 @@ describe('ApiService', () => {
   describe('getAvailableConnections', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/connections`, async () =>
+        http.get(`${config.apiUrl}/connections`, async () =>
           HttpResponse.json({ connections: [] })
         )
       )
@@ -604,7 +603,7 @@ describe('ApiService', () => {
   describe('getTransactionHistory', () => {
     it('returns empty array in response', async () => {
       server.use(
-        http.get(`${_config.apiUrl}/analytics/transfers`, async () =>
+        http.get(`${config.apiUrl}/analytics/transfers`, async () =>
           HttpResponse.json({})
         )
       )

@@ -21,8 +21,8 @@ export const resolveUNSAddress = async (
   token?: CoinKey
 ): Promise<string | undefined> => {
   try {
-    const L1Client = await getPublicClient(config, ChainId.ETH)
-    const L2Client = await getPublicClient(config, ChainId.POL)
+    const L1Client = getPublicClient(config, ChainId.ETH)
+    const L2Client = getPublicClient(config, ChainId.POL)
 
     const nameHash = namehash(name)
     const keys: string[] = []

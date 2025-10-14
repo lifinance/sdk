@@ -48,7 +48,7 @@ const getEVMBalanceMulticall = async (
   walletAddress: string,
   multicallAddress: string
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(config, chainId)
+  const client = getPublicClient(config, chainId)
 
   const contracts = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
@@ -94,7 +94,7 @@ const getEVMBalanceDefault = async (
   tokens: Token[],
   walletAddress: Address
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(config, chainId)
+  const client = getPublicClient(config, chainId)
 
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {

@@ -108,19 +108,19 @@ export async function getQuote(
       )
     )
   }
-  const _config = config
+
   // apply defaults
-  params.integrator ??= _config.integrator
-  params.order ??= _config.routeOptions?.order
-  params.slippage ??= _config.routeOptions?.slippage
-  params.referrer ??= _config.routeOptions?.referrer
-  params.fee ??= _config.routeOptions?.fee
-  params.allowBridges ??= _config.routeOptions?.bridges?.allow
-  params.denyBridges ??= _config.routeOptions?.bridges?.deny
-  params.preferBridges ??= _config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= _config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
+  params.integrator ??= config.integrator
+  params.order ??= config.routeOptions?.order
+  params.slippage ??= config.routeOptions?.slippage
+  params.referrer ??= config.routeOptions?.referrer
+  params.fee ??= config.routeOptions?.fee
+  params.allowBridges ??= config.routeOptions?.bridges?.allow
+  params.denyBridges ??= config.routeOptions?.bridges?.deny
+  params.preferBridges ??= config.routeOptions?.bridges?.prefer
+  params.allowExchanges ??= config.routeOptions?.exchanges?.allow
+  params.denyExchanges ??= config.routeOptions?.exchanges?.deny
+  params.preferExchanges ??= config.routeOptions?.exchanges?.prefer
 
   for (const key of Object.keys(params)) {
     if (!params[key as keyof QuoteRequest]) {
@@ -130,7 +130,7 @@ export async function getQuote(
 
   return await request<LiFiStep>(
     config,
-    `${_config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
+    `${config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {
@@ -154,17 +154,17 @@ export const getRoutes = async (
   if (!isRoutesRequest(params)) {
     throw new SDKError(new ValidationError('Invalid routes request.'))
   }
-  const _config = config
+
   // apply defaults
   params.options = {
-    integrator: _config.integrator,
-    ..._config.routeOptions,
+    integrator: config.integrator,
+    ...config.routeOptions,
     ...params.options,
   }
 
   return await request<RoutesResponse>(
     config,
-    `${_config.apiUrl}/advanced/routes`,
+    `${config.apiUrl}/advanced/routes`,
     {
       method: 'POST',
       headers: {
@@ -216,23 +216,23 @@ export const getContractCallsQuote = async (
       )
     )
   }
-  const _config = config
+
   // apply defaults
   // option.order is not used in this endpoint
-  params.integrator ??= _config.integrator
-  params.slippage ??= _config.routeOptions?.slippage
-  params.referrer ??= _config.routeOptions?.referrer
-  params.fee ??= _config.routeOptions?.fee
-  params.allowBridges ??= _config.routeOptions?.bridges?.allow
-  params.denyBridges ??= _config.routeOptions?.bridges?.deny
-  params.preferBridges ??= _config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= _config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
+  params.integrator ??= config.integrator
+  params.slippage ??= config.routeOptions?.slippage
+  params.referrer ??= config.routeOptions?.referrer
+  params.fee ??= config.routeOptions?.fee
+  params.allowBridges ??= config.routeOptions?.bridges?.allow
+  params.denyBridges ??= config.routeOptions?.bridges?.deny
+  params.preferBridges ??= config.routeOptions?.bridges?.prefer
+  params.allowExchanges ??= config.routeOptions?.exchanges?.allow
+  params.denyExchanges ??= config.routeOptions?.exchanges?.deny
+  params.preferExchanges ??= config.routeOptions?.exchanges?.prefer
   // send request
   return await request<LiFiStep>(
     config,
-    `${_config.apiUrl}/quote/contractCalls`,
+    `${config.apiUrl}/quote/contractCalls`,
     {
       method: 'POST',
       headers: {
@@ -333,19 +333,19 @@ export const getRelayerQuote = async (
       )
     }
   }
-  const _config = config
+
   // apply defaults
-  params.integrator ??= _config.integrator
-  params.order ??= _config.routeOptions?.order
-  params.slippage ??= _config.routeOptions?.slippage
-  params.referrer ??= _config.routeOptions?.referrer
-  params.fee ??= _config.routeOptions?.fee
-  params.allowBridges ??= _config.routeOptions?.bridges?.allow
-  params.denyBridges ??= _config.routeOptions?.bridges?.deny
-  params.preferBridges ??= _config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= _config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= _config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= _config.routeOptions?.exchanges?.prefer
+  params.integrator ??= config.integrator
+  params.order ??= config.routeOptions?.order
+  params.slippage ??= config.routeOptions?.slippage
+  params.referrer ??= config.routeOptions?.referrer
+  params.fee ??= config.routeOptions?.fee
+  params.allowBridges ??= config.routeOptions?.bridges?.allow
+  params.denyBridges ??= config.routeOptions?.bridges?.deny
+  params.preferBridges ??= config.routeOptions?.bridges?.prefer
+  params.allowExchanges ??= config.routeOptions?.exchanges?.allow
+  params.denyExchanges ??= config.routeOptions?.exchanges?.deny
+  params.preferExchanges ??= config.routeOptions?.exchanges?.prefer
 
   for (const key of Object.keys(params)) {
     if (!params[key as keyof QuoteRequest]) {
