@@ -38,12 +38,12 @@ const publicClients: Record<number, PublicClient> = {}
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getUTXOPublicClient = (
+export const getUTXOPublicClient = async (
   config: SDKBaseConfig,
   chainId: number
-): PublicClient => {
+): Promise<PublicClient> => {
   if (!publicClients[chainId]) {
-    const urls = getRpcUrls(config, chainId)
+    const urls = await getRpcUrls(config, chainId)
     const fallbackTransports = urls.map((url) =>
       http(url, {
         fetchOptions: {
@@ -51,7 +51,7 @@ export const getUTXOPublicClient = (
         },
       })
     )
-    const _chain = getChainById(config, chainId)
+    const _chain = await getChainById(config, chainId)
     const chain: Chain = {
       ..._chain,
       ..._chain.metamask,

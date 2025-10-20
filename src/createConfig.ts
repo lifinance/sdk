@@ -1,9 +1,3 @@
-import { ChainId } from '@lifi/types'
-import {
-  getMergedProviders,
-  getMergedRPCUrls,
-  getMetamaskRPCUrls,
-} from './core/configProvider.js'
 import type { SDKBaseConfig, SDKConfig } from './core/types.js'
 import { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 import { name, version } from './version.js'
@@ -13,31 +7,10 @@ function initializeConfig(options: SDKConfig) {
     integrator: 'lifi-sdk',
     apiUrl: 'https://li.quest/v1',
     rpcUrls: {},
-    chains: [],
     providers: [],
     debug: false,
   }
-
-  const { chains, providers, rpcUrls, ...otherOptions } = options
-  Object.assign(_config, otherOptions)
-
-  // Set chains
-  if (chains) {
-    _config.chains = chains
-    const rpcUrls = getMetamaskRPCUrls(chains)
-    _config.rpcUrls = getMergedRPCUrls(_config.rpcUrls, rpcUrls, [ChainId.SOL])
-  }
-
-  // Set providers
-  if (providers) {
-    _config.providers = getMergedProviders(_config.providers, providers)
-  }
-
-  // Set RPC URLs
-  if (rpcUrls) {
-    _config.rpcUrls = getMergedRPCUrls(_config.rpcUrls, rpcUrls)
-  }
-
+  Object.assign(_config, options)
   return _config
 }
 

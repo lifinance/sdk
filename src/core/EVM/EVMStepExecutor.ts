@@ -399,8 +399,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    const fromChain = getChainById(config, step.action.fromChainId)
-    const toChain = getChainById(config, step.action.toChainId)
+    const fromChain = await getChainById(config, step.action.fromChainId)
+    const toChain = await getChainById(config, step.action.toChainId)
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []

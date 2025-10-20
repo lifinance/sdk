@@ -10,7 +10,7 @@ const connections = new Map<string, Connection>()
  * @returns - Promise that resolves when connections are initialized.
  */
 const ensureConnections = async (config: SDKBaseConfig): Promise<void> => {
-  const rpcUrls = getRpcUrls(config, ChainId.SOL)
+  const rpcUrls = await getRpcUrls(config, ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
       const connection = new Connection(rpcUrl)

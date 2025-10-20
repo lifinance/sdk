@@ -57,8 +57,8 @@ export class UTXOStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = getChainById(config, step.action.fromChainId)
-    const toChain = getChainById(config, step.action.toChainId)
+    const fromChain = await getChainById(config, step.action.fromChainId)
+    const toChain = await getChainById(config, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'

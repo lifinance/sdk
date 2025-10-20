@@ -2,7 +2,6 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
-  ExtendedChain,
   FeeCost,
   GasCost,
   LiFiStep,
@@ -24,7 +23,6 @@ export interface SDKBaseConfig {
   routeOptions?: RouteOptions
   executionOptions?: ExecutionOptions
   rpcUrls: RPCUrls
-  chains: ExtendedChain[]
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean

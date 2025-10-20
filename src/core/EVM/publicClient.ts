@@ -16,15 +16,15 @@ const publicClients: Record<number, Client> = {}
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getPublicClient = (
+export const getPublicClient = async (
   config: SDKBaseConfig,
   chainId: number
-): Client => {
+): Promise<Client> => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
   }
 
-  const urls = getRpcUrls(config, chainId)
+  const urls = await getRpcUrls(config, chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
       ? webSocket(url)
@@ -34,7 +34,7 @@ export const getPublicClient = (
           },
         })
   )
-  const _chain = getChainById(config, chainId)
+  const _chain = await getChainById(config, chainId)
   const chain: Chain = {
     ..._chain,
     ..._chain.metamask,

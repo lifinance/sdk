@@ -10,7 +10,7 @@ const clients = new Map<string, SuiClient>()
  * @returns - Promise that resolves when clients are initialized.
  */
 const ensureClients = async (config: SDKBaseConfig): Promise<void> => {
-  const rpcUrls = getRpcUrls(config, ChainId.SUI)
+  const rpcUrls = await getRpcUrls(config, ChainId.SUI)
   for (const rpcUrl of rpcUrls) {
     if (!clients.get(rpcUrl)) {
       const client = new SuiClient({ url: rpcUrl })

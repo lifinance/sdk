@@ -1,4 +1,6 @@
-import type { ChainId, ChainType, ExtendedChain } from '@lifi/types'
+import type { ChainId, ExtendedChain } from '@lifi/types'
+import { ChainType } from '@lifi/types'
+import { getChains } from '../services/api.js'
 import type { RPCUrls, SDKBaseConfig, SDKProvider } from './types.js'
 
 export function getProvider(
@@ -10,21 +12,11 @@ export function getProvider(
   )
 }
 
-export function getMergedProviders(
-  configProviders: SDKProvider[],
-  providers: SDKProvider[]
-) {
-  const providerMap = new Map(
-    configProviders.map((provider) => [provider.type, provider])
-  )
-  for (const provider of providers) {
-    providerMap.set(provider.type, provider)
-  }
-  return Array.from(providerMap.values())
-}
-
-export function getChainById(config: SDKBaseConfig, chainId: ChainId) {
-  const chain = config.chains?.find((chain) => chain.id === chainId)
+export async function getChainById(config: SDKBaseConfig, chainId: ChainId) {
+  const chains = await getChains(config, {
+    chainTypes: [ChainType.EVM, ChainType.SVM, ChainType.UTXO, ChainType.MVM],
+  })
+  const chain = chains?.find((chain) => chain.id === chainId)
   if (!chain) {
     throw new Error(`ChainId ${chainId} not found`)
   }

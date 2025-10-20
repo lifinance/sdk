@@ -35,7 +35,7 @@ export async function waitForTransactionReceipt({
   )
 
   if (!transactionReceipt?.status) {
-    const publicClient = getPublicClient(config, chainId)
+    const publicClient = await getPublicClient(config, chainId)
     const result = await waitForReceipt(publicClient, txHash, onReplaced)
     transactionReceipt = result.transactionReceipt
     replacementReason = result.replacementReason

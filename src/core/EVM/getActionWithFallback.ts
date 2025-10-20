@@ -54,7 +54,7 @@ export const getActionWithFallback = async <
       throw error
     }
 
-    const publicClient = getPublicClient(config, chainId)
+    const publicClient = await getPublicClient(config, chainId)
     return await getAction(publicClient, actionFn, name)(params)
   }
 }
