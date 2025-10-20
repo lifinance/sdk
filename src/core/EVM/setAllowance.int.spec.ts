@@ -3,12 +3,16 @@ import { createClient, http } from 'viem'
 import { mnemonicToAccount } from 'viem/accounts'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { polygon } from 'viem/chains'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
+import { describe, expect, it } from 'vitest'
+import { createConfig } from '../../createConfig.js'
+import { EVM } from './EVM.js'
 import { revokeTokenApproval, setTokenAllowance } from './setAllowance.js'
 import { retryCount, retryDelay } from './utils.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+  providers: [EVM()],
+})
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {
   name: 'USDT',
@@ -35,8 +39,6 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     chain: polygon,
     transport: http(),
   })
-
-  beforeAll(setupTestEnvironment)
 
   it(
     'should revoke allowance for ERC20 on POL',

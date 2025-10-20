@@ -1,19 +1,21 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
+import { describe, expect, it } from 'vitest'
+import { createConfig } from '../../createConfig.js'
 import type { SDKBaseConfig } from '../types.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
+import { UTXO } from './UTXO.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+  providers: [UTXO()],
+})
 
 const defaultWalletAddress = 'bc1q5hx26klsnyqqc9255vuh0s96guz79x0cc54896'
 
 const retryTimes = 2
 const timeout = 10000
-
-beforeAll(setupTestEnvironment)
 
 describe('getBalances integration tests', () => {
   const loadAndCompareTokenAmounts = async (

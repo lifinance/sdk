@@ -22,7 +22,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { setupTestEnvironment } from '../../tests/setup.js'
+import { createConfig } from '../createConfig.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
@@ -30,13 +30,14 @@ import { requestSettings } from '../request.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+})
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {
   const server = setupServer(...handlers)
   beforeAll(() => {
-    setupTestEnvironment()
     server.listen({
       onUnhandledRequest: 'warn',
     })

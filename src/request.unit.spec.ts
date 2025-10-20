@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { setupTestEnvironment } from '../tests/setup.js'
+import { createConfig } from './createConfig.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
@@ -19,14 +19,15 @@ import { handlers } from './services/api.unit.handlers.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+})
 const apiUrl = config.apiUrl
 
 describe('request new', () => {
   const server = setupServer(...handlers)
 
   beforeAll(() => {
-    setupTestEnvironment()
     server.listen({
       onUnhandledRequest: 'warn',
     })

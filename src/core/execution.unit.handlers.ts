@@ -1,13 +1,15 @@
 import { HttpResponse, http } from 'msw'
 import { buildStepObject } from '../../tests/fixtures.js'
-import { setupTestEnvironment } from '../../tests/setup.js'
+import { createConfig } from '../createConfig.js'
 import {
   mockChainsResponse,
   mockStatus,
   mockStepTransactionWithTxRequest,
 } from './execution.unit.mock.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+})
 
 export const lifiHandlers = [
   http.post(`${config.apiUrl}/advanced/stepTransaction`, async () =>

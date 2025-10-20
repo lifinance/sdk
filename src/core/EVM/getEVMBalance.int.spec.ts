@@ -2,19 +2,21 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
+import { describe, expect, it } from 'vitest'
+import { createConfig } from '../../createConfig.js'
 import { getTokens } from '../../services/api.js'
+import { EVM } from './EVM.js'
 import { getEVMBalance } from './getEVMBalance.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+  providers: [EVM()],
+})
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
 const retryTimes = 2
 const timeout = 10000
-
-beforeAll(setupTestEnvironment)
 
 describe('getBalances integration tests', () => {
   const loadAndCompareTokenAmounts = async (

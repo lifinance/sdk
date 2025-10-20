@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../tests/setup.js'
+import { createConfig } from '../createConfig.js'
 import { getQuote } from './api.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+})
 
 describe('ApiService Integration Tests', () => {
   it('should successfully request a quote', async () => {

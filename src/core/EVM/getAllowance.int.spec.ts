@@ -1,9 +1,10 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
+import { describe, expect, it } from 'vitest'
+import { createConfig } from '../../createConfig.js'
 import { getTokens } from '../../services/api.js'
+import { EVM } from './EVM.js'
 import {
   getAllowance,
   getAllowanceMulticall,
@@ -12,7 +13,10 @@ import {
 import { getPublicClient } from './publicClient.js'
 import type { TokenSpender } from './types.js'
 
-const config = await setupTestEnvironment()
+const config = createConfig({
+  integrator: 'lifi-sdk',
+  providers: [EVM()],
+})
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const defaultSpenderAddress = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'
 const memeToken = {
@@ -27,8 +31,6 @@ const defaultMemeAllowance = 123000000000000000000n
 
 const retryTimes = 2
 const timeout = 10000
-
-beforeAll(setupTestEnvironment)
 
 describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
   it('should work for ERC20 on POL', async () => {
