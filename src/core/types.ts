@@ -22,11 +22,11 @@ export interface SDKBaseConfig {
   userId?: string
   providers: SDKProvider[]
   routeOptions?: RouteOptions
+  executionOptions?: ExecutionOptions
   rpcUrls: RPCUrls
   chains: ExtendedChain[]
   disableVersionCheck?: boolean
   widgetVersion?: string
-  preloadChains: boolean
   debug: boolean
 }
 
