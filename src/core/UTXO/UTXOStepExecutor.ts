@@ -15,7 +15,7 @@ import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../configProvider.js'
+import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
@@ -26,18 +26,22 @@ import type {
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
+import type { UTXOProvider } from './types.js'
 import { generateRedeemScript, isPsbtFinalized, toXOnly } from './utils.js'
 
 interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
+  provider: UTXOProvider
 }
 
 export class UTXOStepExecutor extends BaseStepExecutor {
   private client: Client
+  private provider: UTXOProvider
 
   constructor(options: UTXOStepExecutorOptions) {
     super(options)
     this.client = options.client
+    this.provider = options.provider
   }
 
   checkClient = (step: LiFiStepExtended) => {
@@ -90,7 +94,12 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           )
 
           // Check balance
-          await checkBalance(config, this.client.account!.address, step)
+          await checkBalance(
+            config,
+            [this.provider],
+            this.client.account!.address,
+            step
+          )
 
           // Create new transaction
           if (!step.transactionRequest) {

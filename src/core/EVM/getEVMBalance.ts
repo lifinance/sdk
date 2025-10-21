@@ -1,5 +1,5 @@
-import type { ChainId, Token, TokenAmount } from '@lifi/types'
-import type { Address } from 'viem'
+import type { Token, TokenAmount } from '@lifi/types'
+import type { Address, Client, FallbackTransportConfig } from 'viem'
 import {
   getBalance,
   getBlockNumber,
@@ -15,8 +15,9 @@ import { getMulticallAddress } from './utils.js'
 export const getEVMBalance = async (
   config: SDKBaseConfig,
   walletAddress: Address,
-  tokens: Token[]
-): Promise<TokenAmount[]> => {
+  tokens: Token[],
+  fallbackTransportConfig?: FallbackTransportConfig
+) => {
   if (tokens.length === 0) {
     return []
   }
@@ -29,27 +30,24 @@ export const getEVMBalance = async (
 
   const multicallAddress = await getMulticallAddress(config, chainId)
 
+  const client = await getPublicClient(config, chainId, fallbackTransportConfig)
   if (multicallAddress && tokens.length > 1) {
     return getEVMBalanceMulticall(
-      config,
-      chainId,
+      client,
       tokens,
       walletAddress,
       multicallAddress
     )
   }
-  return getEVMBalanceDefault(config, chainId, tokens, walletAddress)
+  return getEVMBalanceDefault(client, tokens, walletAddress)
 }
 
 const getEVMBalanceMulticall = async (
-  config: SDKBaseConfig,
-  chainId: ChainId,
+  client: Client,
   tokens: Token[],
   walletAddress: string,
   multicallAddress: string
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(config, chainId)
-
   const contracts = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       return {
@@ -89,13 +87,10 @@ const getEVMBalanceMulticall = async (
 }
 
 const getEVMBalanceDefault = async (
-  config: SDKBaseConfig,
-  chainId: ChainId,
+  client: Client,
   tokens: Token[],
   walletAddress: Address
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(config, chainId)
-
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       return getBalance(client, {

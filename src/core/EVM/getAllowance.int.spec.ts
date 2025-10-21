@@ -15,8 +15,9 @@ import type { TokenSpender } from './types.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
-  providers: [EVM()],
 })
+const provider = EVM()
+
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const defaultSpenderAddress = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'
 const memeToken = {
@@ -37,6 +38,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     const client = await getPublicClient(config, memeToken.chainId)
     const allowance = await getAllowance(
       config,
+      provider,
       client,
       memeToken.address as Address,
       defaultWalletAddress,
@@ -54,6 +56,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
       const client = await getPublicClient(config, token.chainId)
       const allowance = await getAllowance(
         config,
+        provider,
         client,
         token.address as Address,
         defaultWalletAddress,
@@ -73,6 +76,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
       const client = await getPublicClient(config, invalidToken.chainId)
       const allowance = await getAllowance(
         config,
+        provider,
         client,
         invalidToken.address as Address,
         defaultWalletAddress,
@@ -89,6 +93,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
       const client = await getPublicClient(config, 137)
       const allowances = await getAllowanceMulticall(
         config,
+        provider,
         client,
         137,
         [],
@@ -119,6 +124,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
       if (tokenSpenders?.length) {
         const tokens = await getTokenAllowanceMulticall(
           config,
+          provider,
           defaultWalletAddress,
           tokenSpenders.slice(0, 10)
         )

@@ -26,7 +26,7 @@ import {
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../configProvider.js'
+import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
@@ -50,7 +50,7 @@ import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
 import { switchChain } from './switchChain.js'
 import { isGaslessStep, isRelayerStep } from './typeguards.js'
-import type { Call, WalletCallReceipt } from './types.js'
+import type { Call, EVMProvider, WalletCallReceipt } from './types.js'
 import {
   convertExtendedChain,
   getDomainChainId,
@@ -62,14 +62,17 @@ import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 interface EVMStepExecutorOptions extends StepExecutorOptions {
   client: Client
+  provider: EVMProvider
 }
 
 export class EVMStepExecutor extends BaseStepExecutor {
   private client: Client
+  private provider: EVMProvider
 
   constructor(options: EVMStepExecutorOptions) {
     super(options)
     this.client = options.client
+    this.provider = options.provider
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
@@ -304,7 +307,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         //   : undefined,
         maxPriorityFeePerGas:
           this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(config, this.client)
+            ? await getMaxPriorityFeePerGas(config, this.provider, this.client)
             : step.transactionRequest.maxPriorityFeePerGas
               ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
               : undefined,
@@ -336,6 +339,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
   private estimateTransactionRequest = async (
     config: SDKBaseConfig,
+    provider: EVMProvider,
     transactionRequest: TransactionParameters,
     fromChain: ExtendedChain
   ) => {
@@ -345,6 +349,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Try to re-estimate the gas due to additional Permit data
       const estimatedGas = await getActionWithFallback(
         config,
+        provider,
         this.client,
         estimateGas,
         'estimateGas',
@@ -414,8 +419,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const batchingSupported =
       atomicityNotReady || step.tool === 'thorswap' || isRelayerStep(step)
         ? false
-        : await isBatchingSupported(config, {
+        : await isBatchingSupported({
             client: this.client,
+            provider: this.provider,
             chainId: fromChain.id,
           })
 
@@ -460,6 +466,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance({
         config,
+        provider: this.provider,
         checkClient: this.checkClient,
         chain: fromChain,
         step,
@@ -530,7 +537,12 @@ export class EVMStepExecutor extends BaseStepExecutor {
         chainId: fromChain.id,
       })
 
-      await checkBalance(config, this.client.account!.address, step)
+      await checkBalance(
+        config,
+        [this.provider],
+        this.client.account!.address,
+        step
+      )
 
       // Try to prepare a new transaction request and update the step with typed data
       let { transactionRequest, isRelayerTransaction } =
@@ -660,13 +672,17 @@ export class EVMStepExecutor extends BaseStepExecutor {
             process.type,
             'MESSAGE_REQUIRED'
           )
-          const permit2Signature = await signPermit2Message(config, {
-            client: this.client,
-            chain: fromChain,
-            tokenAddress: step.action.fromToken.address as Address,
-            amount: BigInt(step.action.fromAmount),
-            data: transactionRequest.data as Hex,
-          })
+          const permit2Signature = await signPermit2Message(
+            config,
+            this.provider,
+            {
+              client: this.client,
+              chain: fromChain,
+              tokenAddress: step.action.fromToken.address as Address,
+              amount: BigInt(step.action.fromAmount),
+              data: transactionRequest.data as Hex,
+            }
+          )
           transactionRequest.data = encodePermit2Data(
             step.action.fromToken.address as Address,
             BigInt(step.action.fromAmount),
@@ -685,6 +701,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         if (signedNativePermitTypedData || permit2Supported) {
           transactionRequest = await this.estimateTransactionRequest(
             config,
+            this.provider,
             transactionRequest,
             fromChain
           )

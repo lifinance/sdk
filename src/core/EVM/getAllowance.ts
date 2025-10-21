@@ -7,6 +7,7 @@ import { allowanceAbi } from './abi.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getPublicClient } from './publicClient.js'
 import type {
+  EVMProvider,
   TokenAllowance,
   TokenSpender,
   TokenSpenderAllowance,
@@ -15,6 +16,7 @@ import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   tokenAddress: Address,
   ownerAddress: Address,
@@ -23,6 +25,7 @@ export const getAllowance = async (
   try {
     const approved = await getActionWithFallback(
       config,
+      provider,
       client,
       readContract,
       'readContract',
@@ -41,6 +44,7 @@ export const getAllowance = async (
 
 export const getAllowanceMulticall = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   chainId: ChainId,
   tokens: TokenSpender[],
@@ -63,6 +67,7 @@ export const getAllowanceMulticall = async (
 
   const results = await getActionWithFallback(
     config,
+    provider,
     client,
     multicall,
     'multicall',
@@ -94,6 +99,7 @@ export const getAllowanceMulticall = async (
  */
 export const getTokenAllowance = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   token: BaseToken,
   ownerAddress: Address,
   spenderAddress: Address
@@ -107,6 +113,7 @@ export const getTokenAllowance = async (
 
   const approved = await getAllowance(
     config,
+    provider,
     client,
     token.address as Address,
     ownerAddress,
@@ -123,6 +130,7 @@ export const getTokenAllowance = async (
  */
 export const getTokenAllowanceMulticall = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   ownerAddress: Address,
   tokens: TokenSpender[]
 ): Promise<TokenAllowance[]> => {
@@ -145,10 +153,15 @@ export const getTokenAllowanceMulticall = async (
   const allowances = (
     await Promise.all(
       chainKeys.map(async (chainId) => {
-        const client = await getPublicClient(config, chainId)
+        const client = await getPublicClient(
+          config,
+          chainId,
+          provider?.options?.fallbackTransportConfig
+        )
         // get allowances for current chain and token list
         return getAllowanceMulticall(
           config,
+          provider,
           client,
           chainId,
           tokenDataByChain[chainId],

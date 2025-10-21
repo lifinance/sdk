@@ -7,7 +7,6 @@ function initializeConfig(options: SDKConfig) {
     integrator: 'lifi-sdk',
     apiUrl: 'https://li.quest/v1',
     rpcUrls: {},
-    providers: [],
     debug: false,
   }
   Object.assign(_config, options)

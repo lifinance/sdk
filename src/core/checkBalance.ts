@@ -3,16 +3,18 @@ import { formatUnits } from 'viem'
 import { BalanceError } from '../errors/errors.js'
 import { getTokenBalance } from '../services/balance.js'
 import { sleep } from '../utils/sleep.js'
-import type { SDKBaseConfig } from './types.js'
+import type { SDKBaseConfig, SDKProvider } from './types.js'
 
 export const checkBalance = async (
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   step: LiFiStep,
   depth = 0
 ): Promise<void> => {
   const token = await getTokenBalance(
     config,
+    providers,
     walletAddress,
     step.action.fromToken
   )
@@ -23,7 +25,7 @@ export const checkBalance = async (
     if (currentBalance < neededBalance) {
       if (depth <= 3) {
         await sleep(200)
-        await checkBalance(config, walletAddress, step, depth + 1)
+        await checkBalance(config, providers, walletAddress, step, depth + 1)
       } else if (
         (neededBalance *
           BigInt((1 - (step.action.slippage ?? 0)) * 1_000_000_000)) /

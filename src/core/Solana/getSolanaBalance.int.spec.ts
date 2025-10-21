@@ -4,12 +4,11 @@ import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
 import { createConfig } from '../../createConfig.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
-import { Solana } from './Solana.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
-  providers: [Solana()],
 })
+
 const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 
 const retryTimes = 2
@@ -105,7 +104,7 @@ describe.sequential('Solana token balance', async () => {
 
   //     console.log(quote)
 
-  //     await executeRoute(config, convertQuoteToRoute(quote), {
+  //     await executeRoute(config, providers, convertQuoteToRoute(quote), {
   //       updateRouteHook: (route) => {
   //         console.log(route.steps?.[0].execution)
   //       },

@@ -7,24 +7,32 @@ import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../configProvider.js'
+import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKBaseConfig,
+  StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { parseSuiErrors } from './parseSuiErrors.js'
 import { callSuiWithRetry } from './suiClient.js'
-import type { SuiStepExecutorOptions } from './types.js'
+import type { SuiProvider } from './types.js'
+
+interface SuiStepExecutorOptions extends StepExecutorOptions {
+  wallet: WalletWithRequiredFeatures
+  provider: SuiProvider
+}
 
 export class SuiStepExecutor extends BaseStepExecutor {
   private wallet: WalletWithRequiredFeatures
+  private provider: SuiProvider
 
   constructor(options: SuiStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
+    this.provider = options.provider
   }
 
   checkWallet = (step: LiFiStepExtended) => {
@@ -68,7 +76,12 @@ export class SuiStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(config, step.action.fromAddress!, step)
+        await checkBalance(
+          config,
+          [this.provider],
+          step.action.fromAddress!,
+          step
+        )
 
         // Create new transaction
         if (!step.transactionRequest) {

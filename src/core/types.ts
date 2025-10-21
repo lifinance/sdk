@@ -19,7 +19,6 @@ export interface SDKBaseConfig {
   apiUrl: string
   integrator: string
   userId?: string
-  providers: SDKProvider[]
   routeOptions?: RouteOptions
   executionOptions?: ExecutionOptions
   rpcUrls: RPCUrls

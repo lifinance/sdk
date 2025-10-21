@@ -14,12 +14,20 @@ import {
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
 import { createConfig } from '../createConfig.js'
 import { requestSettings } from '../request.js'
+import { EVM } from './EVM/EVM.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
+import { Solana } from './Solana/Solana.js'
+import { Sui } from './Sui/Sui.js'
+import type { SDKProvider } from './types.js'
+import { UTXO } from './UTXO/UTXO.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
 })
+
+const providers: SDKProvider[] = [EVM(), UTXO(), Solana(), Sui()]
+
 let client: Partial<Client>
 
 vi.mock('../balance', () => ({
@@ -65,7 +73,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
       step,
     })
 
-    await executeRoute(config, route)
+    await executeRoute(config, providers, route)
 
     expect(sendTransaction).toHaveBeenCalledWith(client, {
       gasLimit: 125000n,

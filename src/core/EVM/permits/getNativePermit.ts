@@ -12,6 +12,7 @@ import { getCode, multicall, readContract } from 'viem/actions'
 import type { SDKBaseConfig } from '../../../core/types.js'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
+import type { EVMProvider } from '../types.js'
 import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
@@ -23,6 +24,7 @@ import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
   config: SDKBaseConfig
+  provider: EVMProvider
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -135,11 +137,13 @@ function validateDomainSeparator({
  */
 const canAccountUseNativePermits = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client
 ): Promise<boolean> => {
   try {
     const accountCode = await getActionWithFallback(
       config,
+      provider,
       client,
       getCode,
       'getCode',
@@ -177,6 +181,7 @@ const canAccountUseNativePermits = async (
  */
 const getEIP712DomainData = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   chainId: number,
   tokenAddress: Address
@@ -202,6 +207,7 @@ const getEIP712DomainData = async (
       try {
         const [eip712DomainResult, noncesResult] = await getActionWithFallback(
           config,
+          provider,
           client,
           multicall,
           'multicall',
@@ -265,6 +271,7 @@ const getEIP712DomainData = async (
       contractCalls.map((call) =>
         getActionWithFallback(
           config,
+          provider,
           client,
           readContract,
           'readContract',
@@ -326,6 +333,7 @@ const getEIP712DomainData = async (
 
 const getContractData = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   chainId: number,
   tokenAddress: Address
@@ -334,6 +342,7 @@ const getContractData = async (
     // First try EIP-5267 approach - returns domain object directly
     const eip5267Data = await getEIP712DomainData(
       config,
+      provider,
       client,
       chainId,
       tokenAddress
@@ -384,6 +393,7 @@ const getContractData = async (
           versionResult,
         ] = await getActionWithFallback(
           config,
+          provider,
           client,
           multicall,
           'multicall',
@@ -440,6 +450,7 @@ const getContractData = async (
       contractCalls.map((call) =>
         getActionWithFallback(
           config,
+          provider,
           client,
           readContract,
           'readContract',
@@ -506,6 +517,7 @@ export const getNativePermit = async (
   client: Client,
   {
     config,
+    provider,
     chainId,
     tokenAddress,
     spenderAddress,
@@ -513,13 +525,18 @@ export const getNativePermit = async (
   }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
   // Check if the account can use native permits (EOA or EIP-7702 delegated account)
-  const canUsePermits = await canAccountUseNativePermits(config, client)
+  const canUsePermits = await canAccountUseNativePermits(
+    config,
+    provider,
+    client
+  )
   if (!canUsePermits) {
     return undefined
   }
 
   const contractData = await getContractData(
     config,
+    provider,
     client,
     chainId,
     tokenAddress

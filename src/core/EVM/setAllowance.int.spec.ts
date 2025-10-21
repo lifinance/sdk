@@ -11,8 +11,8 @@ import { retryCount, retryDelay } from './utils.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
-  providers: [EVM()],
 })
+const provider = EVM()
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {
   name: 'USDT',
@@ -45,6 +45,7 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     async () => {
       const revokeTxHash = await revokeTokenApproval({
         config,
+        provider,
         walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,
@@ -68,6 +69,7 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
     async () => {
       const approvalTxHash = await setTokenAllowance({
         config,
+        provider,
         walletClient: client,
         token: testToken,
         spenderAddress: defaultSpenderAddress,

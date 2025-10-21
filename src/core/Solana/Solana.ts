@@ -30,6 +30,7 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
         executionOptions: {
           ...options.executionOptions,
         },
+        provider: this,
       })
 
       return executor

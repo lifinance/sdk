@@ -1,11 +1,10 @@
-import { ChainId, ChainType } from '@lifi/types'
-import type { Client } from 'viem'
+import { ChainId } from '@lifi/types'
+import type { Client, FallbackTransportConfig } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import { getChainById, getProvider } from '../configProvider.js'
+import { getChainById } from '../getChainById.js'
 import { getRpcUrls } from '../rpc.js'
 import type { SDKBaseConfig } from '../types.js'
-import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
 // cached providers
@@ -18,7 +17,8 @@ const publicClients: Record<number, Client> = {}
  */
 export const getPublicClient = async (
   config: SDKBaseConfig,
-  chainId: number
+  chainId: number,
+  fallbackTransportConfig?: FallbackTransportConfig
 ): Promise<Client> => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
@@ -62,13 +62,9 @@ export const getPublicClient = async (
     }
   }
 
-  const provider = getProvider(config, ChainType.EVM) as EVMProvider | undefined
   publicClients[chainId] = createClient({
     chain: chain,
-    transport: fallback(
-      fallbackTransports,
-      provider?.options?.fallbackTransportConfig
-    ),
+    transport: fallback(fallbackTransports, fallbackTransportConfig),
     batch: {
       multicall: true,
     },

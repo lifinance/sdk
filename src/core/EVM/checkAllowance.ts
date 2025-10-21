@@ -18,12 +18,13 @@ import { getNativePermit } from './permits/getNativePermit.js'
 import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import type { NativePermitData } from './permits/types.js'
 import { setAllowance } from './setAllowance.js'
-import type { Call } from './types.js'
+import type { Call, EVMProvider } from './types.js'
 import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
   config: SDKBaseConfig
+  provider: EVMProvider
   checkClient(
     step: LiFiStepExtended,
     process: Process,
@@ -54,6 +55,7 @@ type AllowanceResult =
 
 export const checkAllowance = async ({
   config,
+  provider,
   checkClient,
   chain,
   step,
@@ -189,6 +191,7 @@ export const checkAllowance = async ({
 
     const approved = await getAllowance(
       config,
+      provider,
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
@@ -209,11 +212,13 @@ export const checkAllowance = async ({
     if (isNativePermitAvailable) {
       nativePermitData = await getActionWithFallback(
         config,
+        provider,
         updatedClient,
         getNativePermit,
         'getNativePermit',
         {
           config,
+          provider,
           chainId: chain.id,
           tokenAddress: step.action.fromToken.address as Address,
           spenderAddress: chain.permit2Proxy as Address,
@@ -282,6 +287,7 @@ export const checkAllowance = async ({
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
     const approveTxHash = await setAllowance(
       config,
+      provider,
       updatedClient,
       step.action.fromToken.address as Address,
       spenderAddress as Address,

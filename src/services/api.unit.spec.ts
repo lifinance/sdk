@@ -33,6 +33,7 @@ import { handlers } from './api.unit.handlers.js'
 const config = createConfig({
   integrator: 'lifi-sdk',
 })
+
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('ApiService', () => {

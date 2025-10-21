@@ -7,8 +7,8 @@ import type {
   TokenExtended,
   WalletTokenExtended,
 } from '@lifi/types'
-import { getChainById } from '../core/configProvider.js'
-import type { SDKBaseConfig } from '../core/types.js'
+import { getChainById } from '../core/getChainById.js'
+import type { SDKBaseConfig, SDKProvider } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
@@ -22,10 +22,16 @@ import { isToken } from '../typeguards.js'
  */
 export const getTokenBalance = async (
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   token: Token
 ): Promise<TokenAmount | null> => {
-  const tokenAmounts = await getTokenBalances(config, walletAddress, [token])
+  const tokenAmounts = await getTokenBalances(
+    config,
+    providers,
+    walletAddress,
+    [token]
+  )
   return tokenAmounts.length ? tokenAmounts[0] : null
 }
 
@@ -38,11 +44,13 @@ export const getTokenBalance = async (
  */
 export async function getTokenBalances(
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]>
 export async function getTokenBalances(
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   tokens: TokenExtended[]
 ): Promise<TokenAmountExtended[]> {
@@ -60,6 +68,7 @@ export async function getTokenBalances(
 
   const tokenAmountsByChain = await getTokenBalancesByChain(
     config,
+    providers,
     walletAddress,
     tokensByChain
   )
@@ -75,11 +84,13 @@ export async function getTokenBalances(
  */
 export async function getTokenBalancesByChain(
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }>
 export async function getTokenBalancesByChain(
   config: SDKBaseConfig,
+  providers: SDKProvider[],
   walletAddress: string,
   tokensByChain: { [chainId: number]: TokenExtended[] }
 ): Promise<{ [chainId: number]: TokenAmountExtended[] }> {
@@ -93,7 +104,7 @@ export async function getTokenBalancesByChain(
     throw new ValidationError('Invalid tokens passed.')
   }
 
-  const provider = config.providers.find((provider) =>
+  const provider = providers.find((provider) =>
     provider.isAddress(walletAddress)
   )
   if (!provider) {

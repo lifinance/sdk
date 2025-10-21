@@ -4,11 +4,9 @@ import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
 import { createConfig } from '../../createConfig.js'
 import { getSuiBalance } from './getSuiBalance.js'
-import { Sui } from './Sui.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
-  providers: [Sui()],
 })
 
 const defaultWalletAddress =

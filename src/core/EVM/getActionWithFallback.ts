@@ -10,6 +10,7 @@ import type {
 import { getAction } from 'viem/utils'
 import type { SDKBaseConfig } from '../types.js'
 import { getPublicClient } from './publicClient.js'
+import type { EVMProvider } from './types.js'
 
 /**
  * Executes an action with a fallback to public client if the wallet client fails due to rate limiting
@@ -35,6 +36,7 @@ export const getActionWithFallback = async <
   returnType,
 >(
   config: SDKBaseConfig,
+  provider: EVMProvider,
   walletClient: client,
   actionFn: (_: client, parameters: parameters) => returnType,
   name: keyof PublicActions | keyof WalletActions | (string & {}),
@@ -54,7 +56,11 @@ export const getActionWithFallback = async <
       throw error
     }
 
-    const publicClient = await getPublicClient(config, chainId)
+    const publicClient = await getPublicClient(
+      config,
+      chainId,
+      provider?.options?.fallbackTransportConfig
+    )
     return await getAction(publicClient, actionFn, name)(params)
   }
 }

@@ -1,6 +1,6 @@
-import { ChainType } from '@lifi/types'
-import { isAddress } from 'viem'
-import type { StepExecutorOptions } from '../types.js'
+import { ChainType, type Token } from '@lifi/types'
+import { type Address, type FallbackTransportConfig, isAddress } from 'viem'
+import type { SDKBaseConfig, StepExecutorOptions } from '../types.js'
 import { EVMStepExecutor } from './EVMStepExecutor.js'
 import { getEVMBalance } from './getEVMBalance.js'
 import { resolveEVMAddress } from './resolveEVMAddress.js'
@@ -17,7 +17,17 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
     },
     isAddress,
     resolveAddress: resolveEVMAddress,
-    getBalance: getEVMBalance,
+    getBalance: (
+      config: SDKBaseConfig,
+      walletAddress: Address,
+      tokens: Token[]
+    ) =>
+      getEVMBalance(
+        config,
+        walletAddress,
+        tokens,
+        _options.fallbackTransportConfig as FallbackTransportConfig
+      ),
     getWalletClient: _options.getWalletClient,
     async getStepExecutor(
       options: StepExecutorOptions
@@ -36,6 +46,7 @@ export function EVM(options?: EVMProviderOptions): EVMProvider {
           switchChainHook:
             _options.switchChain ?? options.executionOptions?.switchChainHook,
         },
+        provider: this,
       })
 
       return executor

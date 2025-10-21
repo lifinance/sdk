@@ -1,7 +1,5 @@
 import type { ExtendedChain } from '@lifi/types'
-import { ChainType } from '@lifi/types'
 import type { Address } from 'viem'
-import { getProvider } from '../configProvider.js'
 import type { SDKBaseConfig } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
@@ -22,6 +20,8 @@ type PermitSupport = {
  * 1. Native permit (EIP-2612) support
  * 2. Permit2 availability and allowance
  *
+ * @param config - The SDK base config
+ * @param provider - The EVM SDK provider
  * @param chain - The chain to check permit support on
  * @param tokenAddress - The token address to check
  * @param ownerAddress - The address that would sign the permit
@@ -30,6 +30,7 @@ type PermitSupport = {
  */
 export const checkPermitSupport = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   {
     chain,
     tokenAddress,
@@ -42,21 +43,25 @@ export const checkPermitSupport = async (
     amount: bigint
   }
 ): Promise<PermitSupport> => {
-  const provider = getProvider(config, ChainType.EVM) as EVMProvider | undefined
-
   let client = await provider?.getWalletClient?.()
 
   if (!client) {
-    client = await getPublicClient(config, chain.id)
+    client = await getPublicClient(
+      config,
+      chain.id,
+      provider?.options?.fallbackTransportConfig
+    )
   }
 
   const nativePermit = await getActionWithFallback(
     config,
+    provider,
     client,
     getNativePermit,
     'getNativePermit',
     {
       config,
+      provider,
       chainId: chain.id,
       tokenAddress,
       spenderAddress: chain.permit2Proxy as Address,
@@ -69,6 +74,7 @@ export const checkPermitSupport = async (
   if (chain.permit2) {
     permit2Allowance = await getAllowance(
       config,
+      provider,
       client,
       tokenAddress,
       ownerAddress,

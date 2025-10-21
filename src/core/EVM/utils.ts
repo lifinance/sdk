@@ -6,6 +6,7 @@ import { getChains } from '../../services/api.js'
 import { median } from '../../utils/median.js'
 import type { SDKBaseConfig } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
+import type { EVMProvider } from './types.js'
 
 type ChainBlockExplorer = {
   name: string
@@ -60,10 +61,12 @@ export function isExtendedChain(chain: any): chain is ExtendedChain {
 
 export const getMaxPriorityFeePerGas = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client
 ): Promise<bigint | undefined> => {
   const block = await getActionWithFallback(
     config,
+    provider,
     client,
     getBlock,
     'getBlock',

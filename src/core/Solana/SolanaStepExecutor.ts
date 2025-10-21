@@ -7,25 +7,33 @@ import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../configProvider.js'
+import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKBaseConfig,
+  StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
-import type { SolanaStepExecutorOptions } from './types.js'
+import type { SolanaProvider } from './types.js'
+
+interface SolanaStepExecutorOptions extends StepExecutorOptions {
+  walletAdapter: SignerWalletAdapter
+  provider: SolanaProvider
+}
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter
+  private provider: SolanaProvider
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.walletAdapter = options.walletAdapter
+    this.provider = options.provider
   }
 
   checkWalletAdapter = (step: LiFiStepExtended) => {
@@ -67,6 +75,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         // Check balance
         await checkBalance(
           config,
+          [this.provider],
           this.walletAdapter.publicKey!.toString(),
           step
         )

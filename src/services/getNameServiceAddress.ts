@@ -1,13 +1,13 @@
 import type { ChainType } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKProvider } from '../core/types.js'
 
 export const getNameServiceAddress = async (
-  config: SDKBaseConfig,
+  allProviders: SDKProvider[],
   name: string,
   chainType?: ChainType
 ): Promise<string | undefined> => {
   try {
-    let providers = config.providers
+    let providers = [...allProviders]
     if (chainType) {
       providers = providers.filter((provider) => provider.type === chainType)
     }

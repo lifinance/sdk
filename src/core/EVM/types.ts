@@ -42,6 +42,7 @@ export type TokenSpenderAllowance = {
 
 export interface ApproveTokenRequest {
   config: SDKBaseConfig
+  provider: EVMProvider
   walletClient: Client
   token: BaseToken
   spenderAddress: string
@@ -54,6 +55,7 @@ export interface ApproveTokenRequest {
 
 export interface RevokeApprovalRequest {
   config: SDKBaseConfig
+  provider: EVMProvider
   walletClient: Client
   token: BaseToken
   spenderAddress: string

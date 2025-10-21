@@ -10,11 +10,16 @@ import type {
 } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
-import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
+import type {
+  ApproveTokenRequest,
+  EVMProvider,
+  RevokeApprovalRequest,
+} from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   tokenAddress: Address,
   contractAddress: Address,
@@ -37,7 +42,7 @@ export const setAllowance = async (
     data,
     maxPriorityFeePerGas:
       client.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(config, client)
+        ? await getMaxPriorityFeePerGas(config, provider, client)
         : undefined,
   }
 
@@ -80,6 +85,7 @@ export const setAllowance = async (
  */
 export const setTokenAllowance = async ({
   config,
+  provider,
   walletClient,
   token,
   spenderAddress,
@@ -91,6 +97,7 @@ export const setTokenAllowance = async ({
   }
   const approvedAmount = await getAllowance(
     config,
+    provider,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -100,6 +107,7 @@ export const setTokenAllowance = async ({
   if (amount > approvedAmount) {
     const approveTx = await setAllowance(
       config,
+      provider,
       walletClient,
       token.address as Address,
       spenderAddress as Address,
@@ -120,6 +128,7 @@ export const setTokenAllowance = async ({
  */
 export const revokeTokenApproval = async ({
   config,
+  provider,
   walletClient,
   token,
   spenderAddress,
@@ -130,6 +139,7 @@ export const revokeTokenApproval = async ({
   }
   const approvedAmount = await getAllowance(
     config,
+    provider,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -138,6 +148,7 @@ export const revokeTokenApproval = async ({
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
       config,
+      provider,
       walletClient,
       token.address as Address,
       spenderAddress as Address,

@@ -4,10 +4,12 @@ import { readContract } from 'viem/actions'
 import type { SDKBaseConfig } from '../../../core/types.js'
 import { permit2ProxyAbi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
+import type { EVMProvider } from '../types.js'
 import type { PermitTransferFrom } from './signatureTransfer.js'
 
 export const getPermitTransferFromValues = async (
   config: SDKBaseConfig,
+  provider: EVMProvider,
   client: Client,
   chain: ExtendedChain,
   tokenAddress: Address,
@@ -15,6 +17,7 @@ export const getPermitTransferFromValues = async (
 ): Promise<PermitTransferFrom> => {
   const nonce = await getActionWithFallback(
     config,
+    provider,
     client,
     readContract,
     'readContract',

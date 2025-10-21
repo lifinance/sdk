@@ -5,11 +5,9 @@ import { describe, expect, it } from 'vitest'
 import { createConfig } from '../../createConfig.js'
 import type { SDKBaseConfig } from '../types.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
-import { UTXO } from './UTXO.js'
 
 const config = createConfig({
   integrator: 'lifi-sdk',
-  providers: [UTXO()],
 })
 
 const defaultWalletAddress = 'bc1q5hx26klsnyqqc9255vuh0s96guz79x0cc54896'
