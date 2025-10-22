@@ -55,8 +55,8 @@ importers:
         specifier: ^20.0.0
         version: 20.0.0
       '@lifi/data-types':
-        specifier: ^6.39.0
-        version: 6.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)
+        specifier: ^6.41.1
+        version: 6.41.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)
       '@types/fs-extra':
         specifier: ^11.0.4
         version: 11.0.4
@@ -538,11 +538,11 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lifi/data-types@6.39.0':
-    resolution: {integrity: sha512-aehGD5Zfz6HMueOK+93G9T1bJm5XhTcIkylOu/Nz95U09OrfAiS1/5TLlWYPn66qxUL8lqA5Q0p2efWyg7I+kg==}
+  '@lifi/data-types@6.41.1':
+    resolution: {integrity: sha512-NfL6ROqUjaSiEpR5kgM4UlezuJKMif06BlJ8Vmy2Aiue3sdiMy3q9Fs5fSCB7060J7hFCdWV3EyKfoyqPn2dQw==}
 
-  '@lifi/types@17.39.1':
-    resolution: {integrity: sha512-jOD5UtJqC9UuRwAKlmce8SoBOzilp2dL237IaeMVRPccCRTvT+VT6c7QfJkFWaS/Gug2kOQ4/TSkKXsK89j5aw==}
+  '@lifi/types@17.44.1':
+    resolution: {integrity: sha512-UWvp88nZhBV1zgaSYLo5j+m8ftsIhlWcf25YbgpzozUytiZnX6lsqQnO+6H/BiR7YK3xPAGH3VMZkZiIiEWZFg==}
 
   '@lifi/types@17.45.0-alpha.0':
     resolution: {integrity: sha512-Wmo7w2m45YMWuUtBIHWjVzL/fBVa7ADfeQeCR7o934Kk14dd721rtrbsYOn6PNFqMnYY7forcIUYVlk0XknExw==}
@@ -3487,16 +3487,16 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@lifi/data-types@6.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)':
+  '@lifi/data-types@6.41.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)':
     dependencies:
-      '@lifi/types': 17.39.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)
+      '@lifi/types': 17.44.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.39.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)':
+  '@lifi/types@17.44.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)':
     dependencies:
       viem: 2.37.9(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11)
     transitivePeerDependencies:
