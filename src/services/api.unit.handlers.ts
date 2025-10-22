@@ -1,7 +1,7 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { createClient } from '../client/createClient.js'
+import { createClient } from '../core/client/createClient.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',

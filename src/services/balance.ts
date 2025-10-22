@@ -7,7 +7,6 @@ import type {
   TokenExtended,
   WalletTokenExtended,
 } from '@lifi/types'
-import { getChainById } from '../client/getChainById.js'
 import type { SDKClient, SDKProvider } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
@@ -107,7 +106,7 @@ export async function getTokenBalancesByChain(
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr, 10)
-      const chain = await getChainById(client, chainId)
+      const chain = await client.getChainById(chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
           client,

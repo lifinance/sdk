@@ -2,8 +2,8 @@ import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { describe, expect, it } from 'vitest'
-import { createClient } from '../../client/createClient.js'
 import { getTokens } from '../../services/api.js'
+import { createClient } from '../client/createClient.js'
 import { EVM } from './EVM.js'
 import {
   getAllowance,

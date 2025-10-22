@@ -1,6 +1,5 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import { getRpcUrls } from '../../client/getRpcUrls.js'
 import type { SDKClient } from '../types.js'
 
 const connections = new Map<string, Connection>()
@@ -10,7 +9,7 @@ const connections = new Map<string, Connection>()
  * @returns - Promise that resolves when connections are initialized.
  */
 const ensureConnections = async (client: SDKClient): Promise<void> => {
-  const rpcUrls = await getRpcUrls(client, ChainId.SOL)
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
       const connection = new Connection(rpcUrl)

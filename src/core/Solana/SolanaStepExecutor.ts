@@ -1,7 +1,6 @@
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { VersionedTransaction } from '@solana/web3.js'
 import { withTimeout } from 'viem'
-import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
@@ -48,8 +47,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await getChainById(client, step.action.fromChainId)
-    const toChain = await getChainById(client, step.action.toChainId)
+    const fromChain = await client.getChainById(step.action.fromChainId)
+    const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'

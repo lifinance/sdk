@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createClient } from '../client/createClient.js'
+import { createClient } from '../core/client/createClient.js'
 import { getQuote } from './api.js'
 
 const client = createClient({

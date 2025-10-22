@@ -10,7 +10,6 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
-import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
@@ -57,8 +56,8 @@ export class UTXOStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await getChainById(client, step.action.fromChainId)
-    const toChain = await getChainById(client, step.action.toChainId)
+    const fromChain = await client.getChainById(step.action.fromChainId)
+    const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'

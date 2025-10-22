@@ -1,6 +1,5 @@
 import { ChainId } from '@lifi/types'
 import { SuiClient } from '@mysten/sui/client'
-import { getRpcUrls } from '../../client/getRpcUrls.js'
 import type { SDKClient } from '../types.js'
 
 const clients = new Map<string, SuiClient>()
@@ -10,7 +9,7 @@ const clients = new Map<string, SuiClient>()
  * @returns - Promise that resolves when clients are initialized.
  */
 const ensureClients = async (client: SDKClient): Promise<void> => {
-  const rpcUrls = await getRpcUrls(client, ChainId.SUI)
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SUI)
   for (const rpcUrl of rpcUrls) {
     if (!clients.get(rpcUrl)) {
       const client = new SuiClient({ url: rpcUrl })

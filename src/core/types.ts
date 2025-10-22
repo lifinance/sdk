@@ -56,13 +56,10 @@ export interface SDKClient {
   providers: SDKProvider[]
   getProvider(type: ChainType): SDKProvider | undefined
   setProviders(providers: SDKProvider[]): void
-  _storage: {
-    chainsUpdatedAt?: number
-    chains: ExtendedChain[]
-    rpcUrls: RPCUrls
-    setChains(chains: ExtendedChain[]): void
-    setRPCUrls(rpcUrls: RPCUrls, skipChains?: ChainId[]): void
-  }
+  getChains(): Promise<ExtendedChain[]>
+  getChainById(chainId: ChainId): Promise<ExtendedChain>
+  getRpcUrls(): Promise<RPCUrls>
+  getRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {

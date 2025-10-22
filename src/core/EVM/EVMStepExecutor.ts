@@ -16,7 +16,6 @@ import {
   signTypedData,
 } from 'viem/actions'
 import { getAction, isHex } from 'viem/utils'
-import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import {
@@ -398,8 +397,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       }
     }
 
-    const fromChain = await getChainById(client, step.action.fromChainId)
-    const toChain = await getChainById(client, step.action.toChainId)
+    const fromChain = await client.getChainById(step.action.fromChainId)
+    const toChain = await client.getChainById(step.action.toChainId)
 
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []

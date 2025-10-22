@@ -2,7 +2,7 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
-import { createClient } from '../../client/createClient.js'
+import { createClient } from '../client/createClient.js'
 import { getSuiBalance } from './getSuiBalance.js'
 
 const client = createClient({

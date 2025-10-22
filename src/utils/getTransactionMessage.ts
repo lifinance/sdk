@@ -1,5 +1,4 @@
 import type { LiFiStep } from '@lifi/types'
-import { getChainById } from '../client/getChainById.js'
 import type { SDKClient } from '../core/types.js'
 
 export const getTransactionFailedMessage = async (
@@ -7,7 +6,7 @@ export const getTransactionFailedMessage = async (
   step: LiFiStep,
   txLink?: string
 ): Promise<string> => {
-  const chain = await getChainById(client, step.action.toChainId)
+  const chain = await client.getChainById(step.action.toChainId)
 
   const baseString = `It appears that your transaction may not have been successful.
   However, to confirm this, please check your ${chain.name} wallet for ${step.action.toToken.symbol}.`

@@ -2,8 +2,6 @@ import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import { getChainById } from '../../client/getChainById.js'
-import { getRpcUrls } from '../../client/getRpcUrls.js'
 import type { SDKClient } from '../types.js'
 import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
@@ -24,7 +22,7 @@ export const getPublicClient = async (
     return publicClients[chainId]
   }
 
-  const urls = await getRpcUrls(client, chainId)
+  const urls = await client.getRpcUrlsByChainId(chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
       ? webSocket(url)
@@ -34,7 +32,7 @@ export const getPublicClient = async (
           },
         })
   )
-  const _chain = await getChainById(client, chainId)
+  const _chain = await client.getChainById(chainId)
   const chain: Chain = {
     ..._chain,
     ..._chain.metamask,

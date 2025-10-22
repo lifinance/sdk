@@ -12,8 +12,8 @@ import {
   vi,
 } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
-import { createClient } from '../client/createClient.js'
 import { requestSettings } from '../request.js'
+import { createClient } from './client/createClient.js'
 import { EVM } from './EVM/EVM.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
