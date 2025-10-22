@@ -11,6 +11,7 @@ import type {
   ProcessType,
   SDKClient,
 } from '../types.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { getNativePermit } from './permits/getNativePermit.js'
@@ -207,13 +208,20 @@ export const checkAllowance = async (
 
     let nativePermitData: NativePermitData | undefined
     if (isNativePermitAvailable) {
-      nativePermitData = await getNativePermit(client, {
-        client: updatedClient,
-        chainId: chain.id,
-        tokenAddress: step.action.fromToken.address as Address,
-        spenderAddress: chain.permit2Proxy as Address,
-        amount: fromAmount,
-      })
+      nativePermitData = await getActionWithFallback(
+        client,
+        updatedClient,
+        getNativePermit,
+        'getNativePermit',
+        {
+          client,
+          viemClient: updatedClient,
+          chainId: chain.id,
+          tokenAddress: step.action.fromToken.address as Address,
+          spenderAddress: chain.permit2Proxy as Address,
+          amount: fromAmount,
+        }
+      )
     }
 
     if (isNativePermitAvailable && nativePermitData) {

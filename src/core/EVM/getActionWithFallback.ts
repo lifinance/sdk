@@ -18,6 +18,7 @@ import { getPublicClient } from './publicClient.js'
  * Note: Only falls back to public client if the initial client was a wallet client (has an account address).
  * If the initial client was already a public client, no fallback will occur.
  *
+ * @param client - The SDK client
  * @param walletClient - The wallet client to use primarily
  * @param action - The function or method to execute
  * @param actionName - The name of the action (used for error handling)

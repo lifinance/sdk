@@ -106,7 +106,7 @@ describe.sequential('Solana token balance', async () => {
 
   //     console.log(quote)
 
-  //     await executeRoute(config, providers, convertQuoteToRoute(quote), {
+  //     await executeRoute(client, convertQuoteToRoute(quote), {
   //       updateRouteHook: (route) => {
   //         console.log(route.steps?.[0].execution)
   //       },

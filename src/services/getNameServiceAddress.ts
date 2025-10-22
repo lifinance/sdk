@@ -7,9 +7,13 @@ export const getNameServiceAddress = async (
   chainType?: ChainType
 ): Promise<string | undefined> => {
   try {
-    let providers = client.providers
+    let providers = []
     if (chainType) {
-      providers = providers.filter((provider) => provider.type === chainType)
+      providers = client.providers.filter(
+        (provider) => provider.type === chainType
+      )
+    } else {
+      providers = client.providers
     }
     const resolvers = providers.map((provider) => provider.resolveAddress)
     if (!resolvers.length) {

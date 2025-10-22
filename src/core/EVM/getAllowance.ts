@@ -86,6 +86,7 @@ export const getAllowanceMulticall = async (
 
 /**
  * Get the current allowance for a certain token.
+ * @param client - The SDK client
  * @param token - The token that should be checked
  * @param ownerAddress - The owner of the token
  * @param spenderAddress - The spender address that has to be approved
@@ -116,6 +117,7 @@ export const getTokenAllowance = async (
 
 /**
  * Get the current allowance for a list of token/spender address pairs.
+ * @param client - The SDK client
  * @param ownerAddress - The owner of the tokens
  * @param tokens - A list of token and spender address pairs
  * @returns Returns array of tokens and their allowance

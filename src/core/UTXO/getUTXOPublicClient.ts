@@ -33,6 +33,7 @@ const publicClients: Record<number, PublicClient> = {}
 
 /**
  * Get an instance of a provider for a specific chain
+ * @param client - The SDK client
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */

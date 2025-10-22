@@ -20,6 +20,7 @@ const ensureClients = async (client: SDKClient): Promise<void> => {
 
 /**
  * Calls a function on the SuiClient instances with retry logic.
+ * @param client - The SDK client
  * @param fn - The function to call, which receives a SuiClient instance.
  * @returns - The result of the function call.
  */

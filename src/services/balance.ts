@@ -30,6 +30,7 @@ export const getTokenBalance = async (
 
 /**
  * Returns the balances for a list tokens a wallet holds across all aggregated chains.
+ * @param client - The SDK client
  * @param walletAddress - A wallet address.
  * @param tokens - A list of Token (or TokenExtended) objects.
  * @returns A list of objects containing the tokens and the amounts on different chains.
@@ -67,6 +68,7 @@ export async function getTokenBalances(
 
 /**
  * This method queries the balances of tokens for a specific list of chains for a given wallet.
+ * @param client - The SDK client
  * @param walletAddress - A wallet address.
  * @param tokensByChain - A list of token objects organized by chain ids.
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
@@ -133,6 +135,7 @@ export async function getTokenBalancesByChain(
 
 /**
  * Returns the balances of tokens a wallet holds across EVM chains.
+ * @param client - The SDK client
  * @param walletAddress - A wallet address.
  * @param options - Optional request options.
  * @returns An object containing the tokens and the amounts organized by chain ids.

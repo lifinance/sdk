@@ -31,6 +31,7 @@ export const getSolanaConnections = async (
 
 /**
  * Calls a function on the Connection instances with retry logic.
+ * @param client - The SDK client
  * @param fn - The function to call, which receives a Connection instance.
  * @returns - The result of the function call.
  */

@@ -11,17 +11,13 @@ import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
-  StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
-
-interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  walletAdapter: SignerWalletAdapter
-}
+import type { SolanaStepExecutorOptions } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter

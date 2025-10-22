@@ -12,6 +12,7 @@ import type {
 
 /**
  * Execute a route.
+ * @param client - The SDK client.
  * @param route - The route that should be executed. Cannot be an active route.
  * @param executionOptions - An object containing settings and callbacks.
  * @returns The executed route.
@@ -43,6 +44,7 @@ export const executeRoute = async (
 
 /**
  * Resume the execution of a route that has been stopped or had an error while executing.
+ * @param client - The SDK client.
  * @param route - The route that is to be executed. Cannot be an active route.
  * @param executionOptions - An object containing settings and callbacks.
  * @returns The executed route.

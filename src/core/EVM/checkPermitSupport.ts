@@ -1,6 +1,7 @@
 import { ChainType, type ExtendedChain } from '@lifi/types'
 import type { Address } from 'viem'
 import type { SDKClient } from '../types.js'
+import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'
 import { getPublicClient } from './publicClient.js'
@@ -19,8 +20,7 @@ type PermitSupport = {
  * 1. Native permit (EIP-2612) support
  * 2. Permit2 availability and allowance
  *
- * @param config - The SDK base config
- * @param provider - The EVM SDK provider
+ * @param client - The SDK client
  * @param chain - The chain to check permit support on
  * @param tokenAddress - The token address to check
  * @param ownerAddress - The address that would sign the permit
@@ -48,13 +48,20 @@ export const checkPermitSupport = async (
     viemClient = await getPublicClient(client, chain.id)
   }
 
-  const nativePermit = await getNativePermit(client, {
-    client: viemClient,
-    chainId: chain.id,
-    tokenAddress,
-    spenderAddress: chain.permit2Proxy as Address,
-    amount,
-  })
+  const nativePermit = await getActionWithFallback(
+    client,
+    viemClient,
+    getNativePermit,
+    'getNativePermit',
+    {
+      client,
+      viemClient,
+      chainId: chain.id,
+      tokenAddress,
+      spenderAddress: chain.permit2Proxy as Address,
+      amount,
+    }
+  )
 
   let permit2Allowance: bigint | undefined
   // Check Permit2 allowance if available on chain

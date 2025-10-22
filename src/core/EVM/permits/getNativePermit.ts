@@ -22,7 +22,8 @@ import {
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
-  client: Client
+  client: SDKClient
+  viemClient: Client
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -130,7 +131,8 @@ function validateDomainSeparator({
  * 1. Account has no code (EOA)
  * 2. Account is EOA and has EIP-7702 delegation designator code
  *
- * @param client - The Viem client instance
+ * @param client - The SDK client
+ * @param viemClient - The Viem client instance
  * @returns Promise<boolean> - Whether the account can use native permits
  */
 const canAccountUseNativePermits = async (
@@ -170,7 +172,8 @@ const canAccountUseNativePermits = async (
 /**
  * Attempts to retrieve contract data using EIP-5267 eip712Domain() function
  * @link https://eips.ethereum.org/EIPS/eip-5267
- * @param client - The Viem client instance
+ * @param client - The SDK client
+ * @param viemClient - The Viem client instance
  * @param chainId - The chain ID
  * @param tokenAddress - The token contract address
  * @returns Contract data if EIP-5267 is supported, undefined otherwise
@@ -497,15 +500,16 @@ const getContractData = async (
 /**
  * Retrieves native permit data (EIP-2612) for a token on a specific chain
  * @link https://eips.ethereum.org/EIPS/eip-2612
- * @param client - The Viem client instance
+   @param client - The SDK client
+ * @param viemClient - The Viem client instance
  * @param chain - The extended chain object containing chain details
  * @param tokenAddress - The address of the token to check for permit support
  * @returns {Promise<NativePermitData>} Object containing permit data including name, version, nonce and support status
  */
 export const getNativePermit = async (
-  client: SDKClient,
+  viemClient: Client,
   {
-    client: viemClient,
+    client,
     chainId,
     tokenAddress,
     spenderAddress,

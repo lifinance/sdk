@@ -11,16 +11,12 @@ import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
-  StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { parseSuiErrors } from './parseSuiErrors.js'
 import { callSuiWithRetry } from './suiClient.js'
-
-interface SuiStepExecutorOptions extends StepExecutorOptions {
-  wallet: WalletWithRequiredFeatures
-}
+import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
   private wallet: WalletWithRequiredFeatures

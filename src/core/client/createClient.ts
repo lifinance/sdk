@@ -20,7 +20,7 @@ export function createClient(options: SDKConfig): SDKClient {
     checkPackageUpdates(name, version)
   }
 
-  const config: SDKBaseConfig = {
+  const _config: SDKBaseConfig = {
     ...options,
     apiUrl: options?.apiUrl ?? 'https://li.quest/v1',
     rpcUrls: options?.rpcUrls ?? {},
@@ -29,18 +29,21 @@ export function createClient(options: SDKConfig): SDKClient {
   }
 
   let _providers: SDKProvider[] = []
-
-  const _storage = getClientStorage(config)
+  const _storage = getClientStorage(_config)
 
   return {
-    config,
-    providers: _providers,
+    get config() {
+      return _config
+    },
+    get providers() {
+      return _providers
+    },
     getProvider(type: ChainType) {
-      return _providers.find((provider) => provider.type === type)
+      return this.providers.find((provider) => provider.type === type)
     },
     setProviders(newProviders: SDKProvider[]) {
       const providerMap = new Map(
-        _providers.map((provider) => [provider.type, provider])
+        this.providers.map((provider) => [provider.type, provider])
       )
       for (const provider of newProviders) {
         providerMap.set(provider.type, provider)

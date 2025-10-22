@@ -50,6 +50,7 @@ import type {
 
 /**
  * Get a quote for a token transfer
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested quote
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
@@ -141,6 +142,7 @@ export async function getQuote(
 
 /**
  * Get a set of routes for a request that describes a transfer of tokens.
+ * @param config - The SDK client configuration
  * @param params - A description of the transfer.
  * @param options - Request options
  * @returns The resulting routes that can be used to realize the described transfer of tokens.
@@ -178,6 +180,7 @@ export const getRoutes = async (
 
 /**
  * Get a quote for a destination contract call
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested destination call
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
@@ -246,6 +249,7 @@ export const getContractCallsQuote = async (
 
 /**
  * Get the transaction data for a single step of a route
+ * @param config - The SDK client configuration
  * @param step - The step object.
  * @param options - Request options
  * @returns The step populated with the transaction data.
@@ -277,6 +281,7 @@ export const getStepTransaction = async (
 
 /**
  * Check the status of a transfer. For cross chain transfers, the "bridge" parameter is required.
+ * @param config - The SDK client configuration
  * @param params - Configuration of the requested status
  * @param options - Request options.
  * @throws {LiFiError} - Throws a LiFiError if request fails
@@ -306,6 +311,7 @@ export const getStatus = async (
 
 /**
  * Get a relayer quote for a token transfer
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested quote
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
@@ -376,6 +382,7 @@ export const getRelayerQuote = async (
 
 /**
  * Relay a transaction through the relayer service
+ * @param config - The SDK client configuration
  * @param params - The configuration for the relay request
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
@@ -478,6 +485,7 @@ export const getRelayedTransactionStatus = async (
 
 /**
  * Get all available chains
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested chains
  * @param options - Request options
  * @returns A list of all available chains
@@ -514,6 +522,7 @@ export const getChains = async (
 
 /**
  * Get all known tokens.
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested tokens
  * @param options - Request options
  * @returns The tokens that are available on the requested chains
@@ -558,6 +567,7 @@ export async function getTokens(
 
 /**
  * Fetch information about a Token
+ * @param config - The SDK client configuration
  * @param chain - Id or key of the chain that contains the token
  * @param token - Address or symbol of the token on the requested chain
  * @param options - Request options
@@ -594,6 +604,7 @@ export const getToken = async (
 
 /**
  * Get the available tools to bridge and swap tokens.
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested tools
  * @param options - Request options
  * @returns The tools that are available on the requested chains
@@ -623,6 +634,7 @@ export const getTools = async (
 
 /**
  * Get gas recommendation for a certain chain
+ * @param config - The SDK client configuration
  * @param params - Configuration of the requested gas recommendation.
  * @param options - Request options
  * @throws {LiFiError} Throws a LiFiError if request fails.
@@ -654,6 +666,7 @@ export const getGasRecommendation = async (
 
 /**
  * Get all the available connections for swap/bridging tokens
+ * @param config - The SDK client configuration
  * @param connectionRequest ConnectionsRequest
  * @param options - Request options
  * @returns ConnectionsResponse

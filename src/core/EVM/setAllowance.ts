@@ -71,6 +71,7 @@ export const setAllowance = async (
 
 /**
  * Set approval for a certain token and amount.
+ * @param client - The SDK client
  * @param request - The approval request
  * @param request.walletClient - The Viem wallet client used to send the transaction
  * @param request.token - The token for which to set the allowance
@@ -109,6 +110,7 @@ export const setTokenAllowance = async (
 
 /**
  * Revoke approval for a certain token.
+ * @param client - The SDK client
  * @param request - The revoke request
  * @param request.walletClient - The Viem wallet client used to send the transaction
  * @param request.token - The token for which to revoke the allowance
