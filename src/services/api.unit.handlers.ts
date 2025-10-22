@@ -1,11 +1,12 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { createConfig } from '../createConfig.js'
+import { createClient } from '../client/createClient.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
+const config = client.config
 
 export const handlers = [
   http.post(`${config.apiUrl}/advanced/routes`, async () => {

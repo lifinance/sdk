@@ -9,10 +9,9 @@ import {
   zeroHash,
 } from 'viem'
 import { getCode, multicall, readContract } from 'viem/actions'
-import type { SDKBaseConfig } from '../../../core/types.js'
+import type { SDKClient } from '../../types.js'
 import { eip2612Abi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
-import type { EVMProvider } from '../types.js'
 import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
@@ -23,8 +22,7 @@ import {
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
-  config: SDKBaseConfig
-  provider: EVMProvider
+  client: Client
   chainId: number
   tokenAddress: Address
   spenderAddress: Address
@@ -136,19 +134,17 @@ function validateDomainSeparator({
  * @returns Promise<boolean> - Whether the account can use native permits
  */
 const canAccountUseNativePermits = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
-  client: Client
+  client: SDKClient,
+  viemClient: Client
 ): Promise<boolean> => {
   try {
     const accountCode = await getActionWithFallback(
-      config,
-      provider,
       client,
+      viemClient,
       getCode,
       'getCode',
       {
-        address: client.account!.address,
+        address: viemClient.account!.address,
       }
     )
 
@@ -180,14 +176,13 @@ const canAccountUseNativePermits = async (
  * @returns Contract data if EIP-5267 is supported, undefined otherwise
  */
 const getEIP712DomainData = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   chainId: number,
   tokenAddress: Address
 ) => {
   try {
-    const multicallAddress = await getMulticallAddress(config, chainId)
+    const multicallAddress = await getMulticallAddress(client.config, chainId)
 
     const contractCalls = [
       {
@@ -199,16 +194,15 @@ const getEIP712DomainData = async (
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'nonces',
-        args: [client.account!.address],
+        args: [viemClient.account!.address],
       },
     ] as const
 
     if (multicallAddress) {
       try {
         const [eip712DomainResult, noncesResult] = await getActionWithFallback(
-          config,
-          provider,
           client,
+          viemClient,
           multicall,
           'multicall',
           {
@@ -270,9 +264,8 @@ const getEIP712DomainData = async (
     const [eip712DomainResult, noncesResult] = (await Promise.allSettled(
       contractCalls.map((call) =>
         getActionWithFallback(
-          config,
-          provider,
           client,
+          viemClient,
           readContract,
           'readContract',
           call
@@ -332,18 +325,16 @@ const getEIP712DomainData = async (
 }
 
 const getContractData = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   chainId: number,
   tokenAddress: Address
 ) => {
   try {
     // First try EIP-5267 approach - returns domain object directly
     const eip5267Data = await getEIP712DomainData(
-      config,
-      provider,
       client,
+      viemClient,
       chainId,
       tokenAddress
     )
@@ -352,7 +343,7 @@ const getContractData = async (
     }
 
     // Fallback to legacy approach - validates and returns domain object
-    const multicallAddress = await getMulticallAddress(config, chainId)
+    const multicallAddress = await getMulticallAddress(client.config, chainId)
 
     const contractCalls = [
       {
@@ -374,7 +365,7 @@ const getContractData = async (
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'nonces',
-        args: [client.account!.address],
+        args: [viemClient.account!.address],
       },
       {
         address: tokenAddress,
@@ -392,9 +383,8 @@ const getContractData = async (
           noncesResult,
           versionResult,
         ] = await getActionWithFallback(
-          config,
-          provider,
           client,
+          viemClient,
           multicall,
           'multicall',
           {
@@ -449,9 +439,8 @@ const getContractData = async (
     ] = (await Promise.allSettled(
       contractCalls.map((call) =>
         getActionWithFallback(
-          config,
-          provider,
           client,
+          viemClient,
           readContract,
           'readContract',
           call
@@ -514,10 +503,9 @@ const getContractData = async (
  * @returns {Promise<NativePermitData>} Object containing permit data including name, version, nonce and support status
  */
 export const getNativePermit = async (
-  client: Client,
+  client: SDKClient,
   {
-    config,
-    provider,
+    client: viemClient,
     chainId,
     tokenAddress,
     spenderAddress,
@@ -525,19 +513,14 @@ export const getNativePermit = async (
   }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
   // Check if the account can use native permits (EOA or EIP-7702 delegated account)
-  const canUsePermits = await canAccountUseNativePermits(
-    config,
-    provider,
-    client
-  )
+  const canUsePermits = await canAccountUseNativePermits(client, viemClient)
   if (!canUsePermits) {
     return undefined
   }
 
   const contractData = await getContractData(
-    config,
-    provider,
     client,
+    viemClient,
     chainId,
     tokenAddress
   )
@@ -554,7 +537,7 @@ export const getNativePermit = async (
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString() // 30 minutes
 
   const message = {
-    owner: client.account!.address,
+    owner: viemClient.account!.address,
     spender: spenderAddress,
     value: amount.toString(),
     nonce: contractData.nonce.toString(),

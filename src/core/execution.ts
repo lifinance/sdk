@@ -6,7 +6,7 @@ import { prepareRestart } from './prepareRestart.js'
 import type {
   ExecutionOptions,
   RouteExtended,
-  SDKBaseConfig,
+  SDKClient,
   SDKProvider,
 } from './types.js'
 
@@ -18,8 +18,7 @@ import type {
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const executeRoute = async (
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -33,7 +32,7 @@ export const executeRoute = async (
   }
 
   executionState.create({ route: clonedRoute, executionOptions })
-  executionPromise = executeSteps(config, providers, clonedRoute)
+  executionPromise = executeSteps(client, clonedRoute)
   executionState.update({
     route: clonedRoute,
     promise: executionPromise,
@@ -50,8 +49,7 @@ export const executeRoute = async (
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const resumeRoute = async (
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -76,12 +74,11 @@ export const resumeRoute = async (
 
   prepareRestart(route)
 
-  return executeRoute(config, providers, route, executionOptions)
+  return executeRoute(client, route, executionOptions)
 }
 
 const executeSteps = async (
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   route: RouteExtended
 ): Promise<RouteExtended> => {
   // Loop over steps and execute them
@@ -115,7 +112,7 @@ const executeSteps = async (
         throw new Error('Action fromAddress is not specified.')
       }
 
-      const provider = providers.find((provider) =>
+      const provider = client.providers.find((provider: SDKProvider) =>
         provider.isAddress(fromAddress)
       )
 
@@ -137,7 +134,7 @@ const executeSteps = async (
         updateRouteExecution(route, execution.executionOptions)
       }
 
-      const executedStep = await stepExecutor.executeStep(config, step)
+      const executedStep = await stepExecutor.executeStep(client, step)
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
       if (executedStep.execution?.status !== 'DONE') {

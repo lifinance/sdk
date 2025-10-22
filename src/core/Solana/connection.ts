@@ -1,7 +1,7 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import { getRpcUrls } from '../rpc.js'
-import type { SDKBaseConfig } from '../types.js'
+import { getRpcUrls } from '../../client/getRpcUrls.js'
+import type { SDKClient } from '../types.js'
 
 const connections = new Map<string, Connection>()
 
@@ -9,8 +9,8 @@ const connections = new Map<string, Connection>()
  * Initializes the Solana connections if they haven't been initialized yet.
  * @returns - Promise that resolves when connections are initialized.
  */
-const ensureConnections = async (config: SDKBaseConfig): Promise<void> => {
-  const rpcUrls = await getRpcUrls(config, ChainId.SOL)
+const ensureConnections = async (client: SDKClient): Promise<void> => {
+  const rpcUrls = await getRpcUrls(client, ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
       const connection = new Connection(rpcUrl)
@@ -24,9 +24,9 @@ const ensureConnections = async (config: SDKBaseConfig): Promise<void> => {
  * @returns - Solana RPC connections
  */
 export const getSolanaConnections = async (
-  config: SDKBaseConfig
+  client: SDKClient
 ): Promise<Connection[]> => {
-  await ensureConnections(config)
+  await ensureConnections(client)
   return Array.from(connections.values())
 }
 
@@ -36,11 +36,11 @@ export const getSolanaConnections = async (
  * @returns - The result of the function call.
  */
 export async function callSolanaWithRetry<R>(
-  config: SDKBaseConfig,
+  client: SDKClient,
   fn: (connection: Connection) => Promise<R>
 ): Promise<R> {
   // Ensure connections are initialized
-  await ensureConnections(config)
+  await ensureConnections(client)
   let lastError: any = null
   for (const connection of connections.values()) {
     try {

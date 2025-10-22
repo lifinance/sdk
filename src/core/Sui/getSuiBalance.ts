@@ -1,11 +1,11 @@
 import type { Token, TokenAmount } from '@lifi/types'
 import { withDedupe } from '../../utils/withDedupe.js'
-import type { SDKBaseConfig } from '../types.js'
+import type { SDKClient } from '../types.js'
 import { callSuiWithRetry } from './suiClient.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
 
 export async function getSuiBalance(
-  config: SDKBaseConfig,
+  client: SDKClient,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> {
@@ -20,11 +20,11 @@ export async function getSuiBalance(
     }
   }
 
-  return getSuiBalanceDefault(config, chainId, tokens, walletAddress)
+  return getSuiBalanceDefault(client, chainId, tokens, walletAddress)
 }
 
 const getSuiBalanceDefault = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   _chainId: number,
   tokens: Token[],
   walletAddress: string
@@ -32,7 +32,7 @@ const getSuiBalanceDefault = async (
   const [coins, checkpoint] = await Promise.allSettled([
     withDedupe(
       () =>
-        callSuiWithRetry(config, (client) =>
+        callSuiWithRetry(client, (client) =>
           client.getAllBalances({
             owner: walletAddress,
           })
@@ -41,7 +41,7 @@ const getSuiBalanceDefault = async (
     ),
     withDedupe(
       () =>
-        callSuiWithRetry(config, (client) =>
+        callSuiWithRetry(client, (client) =>
           client.getLatestCheckpointSequenceNumber()
         ),
       { id: `${getSuiBalanceDefault.name}.getLatestCheckpointSequenceNumber` }

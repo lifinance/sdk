@@ -1,5 +1,5 @@
 import type { Token, TokenAmount } from '@lifi/types'
-import type { Address, Client, FallbackTransportConfig } from 'viem'
+import type { Address, Client } from 'viem'
 import {
   getBalance,
   getBlockNumber,
@@ -7,16 +7,15 @@ import {
   readContract,
 } from 'viem/actions'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { SDKBaseConfig } from '../types.js'
+import type { SDKClient } from '../types.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
 
 export const getEVMBalance = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   walletAddress: Address,
-  tokens: Token[],
-  fallbackTransportConfig?: FallbackTransportConfig
+  tokens: Token[]
 ) => {
   if (tokens.length === 0) {
     return []
@@ -28,18 +27,18 @@ export const getEVMBalance = async (
     }
   }
 
-  const multicallAddress = await getMulticallAddress(config, chainId)
+  const multicallAddress = await getMulticallAddress(client.config, chainId)
 
-  const client = await getPublicClient(config, chainId, fallbackTransportConfig)
+  const viemClient = await getPublicClient(client, chainId)
   if (multicallAddress && tokens.length > 1) {
     return getEVMBalanceMulticall(
-      client,
+      viemClient,
       tokens,
       walletAddress,
       multicallAddress
     )
   }
-  return getEVMBalanceDefault(client, tokens, walletAddress)
+  return getEVMBalanceDefault(viemClient, tokens, walletAddress)
 }
 
 const getEVMBalanceMulticall = async (

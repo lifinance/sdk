@@ -30,7 +30,6 @@ export function UTXO(options?: UTXOProviderOptions): UTXOProvider {
         executionOptions: {
           ...options.executionOptions,
         },
-        provider: this,
       })
 
       return executor

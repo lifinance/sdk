@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { createConfig } from '../createConfig.js'
+import { createClient } from '../client/createClient.js'
 import { getQuote } from './api.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
 
 describe('ApiService Integration Tests', () => {
   it('should successfully request a quote', async () => {
-    const quote = await getQuote(config, {
+    const quote = await getQuote(client.config, {
       fromChain: '1',
       fromToken: '0x0000000000000000000000000000000000000000',
       fromAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',

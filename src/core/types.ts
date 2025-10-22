@@ -2,6 +2,7 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ExtendedChain,
   FeeCost,
   GasCost,
   LiFiStep,
@@ -38,16 +39,30 @@ export interface SDKProvider {
   isAddress(address: string): boolean
   resolveAddress(
     name: string,
-    config?: SDKBaseConfig,
+    client: SDKClient,
     chainId?: ChainId,
     token?: CoinKey
   ): Promise<string | undefined>
   getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor>
   getBalance(
-    config: SDKBaseConfig,
+    client: SDKClient,
     walletAddress: string,
     tokens: Token[]
   ): Promise<TokenAmount[]>
+}
+
+export interface SDKClient {
+  config: SDKBaseConfig
+  providers: SDKProvider[]
+  getProvider(type: ChainType): SDKProvider | undefined
+  setProviders(providers: SDKProvider[]): void
+  _storage: {
+    chainsUpdatedAt?: number
+    chains: ExtendedChain[]
+    rpcUrls: RPCUrls
+    setChains(chains: ExtendedChain[]): void
+    setRPCUrls(rpcUrls: RPCUrls, skipChains?: ChainId[]): void
+  }
 }
 
 export interface StepExecutorOptions {
@@ -66,7 +81,7 @@ export interface StepExecutor {
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
   executeStep(
-    config: SDKBaseConfig,
+    client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended>
 }

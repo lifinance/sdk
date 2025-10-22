@@ -2,37 +2,33 @@ import {
   signAndExecuteTransaction,
   type WalletWithRequiredFeatures,
 } from '@mysten/wallet-standard'
+import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
-  SDKBaseConfig,
+  SDKClient,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { parseSuiErrors } from './parseSuiErrors.js'
 import { callSuiWithRetry } from './suiClient.js'
-import type { SuiProvider } from './types.js'
 
 interface SuiStepExecutorOptions extends StepExecutorOptions {
   wallet: WalletWithRequiredFeatures
-  provider: SuiProvider
 }
 
 export class SuiStepExecutor extends BaseStepExecutor {
   private wallet: WalletWithRequiredFeatures
-  private provider: SuiProvider
 
   constructor(options: SuiStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
-    this.provider = options.provider
   }
 
   checkWallet = (step: LiFiStepExtended) => {
@@ -50,13 +46,13 @@ export class SuiStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKBaseConfig,
+    client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await getChainById(config, step.action.fromChainId)
-    const toChain = await getChainById(config, step.action.toChainId)
+    const fromChain = await getChainById(client, step.action.fromChainId)
+    const toChain = await getChainById(client, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -76,18 +72,13 @@ export class SuiStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(
-          config,
-          [this.provider],
-          step.action.fromAddress!,
-          step
-        )
+        await checkBalance(client, step.action.fromAddress!, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
           // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
-          const updatedStep = await getStepTransaction(config, stepBase)
+          const updatedStep = await getStepTransaction(client.config, stepBase)
           const comparedStep = await stepComparison(
             this.statusManager,
             step,
@@ -163,7 +154,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const result = await callSuiWithRetry(config, (client) =>
+        const result = await callSuiWithRetry(client, (client) =>
           client.waitForTransaction({
             digest: signedTx.digest,
             options: {
@@ -212,7 +203,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
-      config,
+      client,
       step,
       process,
       fromChain,

@@ -1,7 +1,6 @@
-import type { ExtendedChain } from '@lifi/types'
+import { ChainType, type ExtendedChain } from '@lifi/types'
 import type { Address } from 'viem'
-import type { SDKBaseConfig } from '../types.js'
-import { getActionWithFallback } from './getActionWithFallback.js'
+import type { SDKClient } from '../types.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'
 import { getPublicClient } from './publicClient.js'
@@ -29,8 +28,7 @@ type PermitSupport = {
  * @returns Object indicating which permit types are supported
  */
 export const checkPermitSupport = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
+  client: SDKClient,
   {
     chain,
     tokenAddress,
@@ -43,39 +41,27 @@ export const checkPermitSupport = async (
     amount: bigint
   }
 ): Promise<PermitSupport> => {
-  let client = await provider?.getWalletClient?.()
+  const provider = client.getProvider(ChainType.EVM) as EVMProvider | undefined
+  let viemClient = await provider?.getWalletClient?.()
 
-  if (!client) {
-    client = await getPublicClient(
-      config,
-      chain.id,
-      provider?.options?.fallbackTransportConfig
-    )
+  if (!viemClient) {
+    viemClient = await getPublicClient(client, chain.id)
   }
 
-  const nativePermit = await getActionWithFallback(
-    config,
-    provider,
-    client,
-    getNativePermit,
-    'getNativePermit',
-    {
-      config,
-      provider,
-      chainId: chain.id,
-      tokenAddress,
-      spenderAddress: chain.permit2Proxy as Address,
-      amount,
-    }
-  )
+  const nativePermit = await getNativePermit(client, {
+    client: viemClient,
+    chainId: chain.id,
+    tokenAddress,
+    spenderAddress: chain.permit2Proxy as Address,
+    amount,
+  })
 
   let permit2Allowance: bigint | undefined
   // Check Permit2 allowance if available on chain
   if (chain.permit2) {
     permit2Allowance = await getAllowance(
-      config,
-      provider,
       client,
+      viemClient,
       tokenAddress,
       ownerAddress,
       chain.permit2 as Address

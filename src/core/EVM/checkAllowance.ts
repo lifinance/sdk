@@ -9,22 +9,19 @@ import type {
   LiFiStepExtended,
   Process,
   ProcessType,
-  SDKBaseConfig,
+  SDKClient,
 } from '../types.js'
-import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 import { getNativePermit } from './permits/getNativePermit.js'
 import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import type { NativePermitData } from './permits/types.js'
 import { setAllowance } from './setAllowance.js'
-import type { Call, EVMProvider } from './types.js'
+import type { Call } from './types.js'
 import { getDomainChainId } from './utils.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
-  config: SDKBaseConfig
-  provider: EVMProvider
   checkClient(
     step: LiFiStepExtended,
     process: Process,
@@ -53,19 +50,20 @@ type AllowanceResult =
       data: SignedTypedData[]
     }
 
-export const checkAllowance = async ({
-  config,
-  provider,
-  checkClient,
-  chain,
-  step,
-  statusManager,
-  executionOptions,
-  allowUserInteraction = false,
-  batchingSupported = false,
-  permit2Supported = false,
-  disableMessageSigning = false,
-}: CheckAllowanceParams): Promise<AllowanceResult> => {
+export const checkAllowance = async (
+  client: SDKClient,
+  {
+    checkClient,
+    chain,
+    step,
+    statusManager,
+    executionOptions,
+    allowUserInteraction = false,
+    batchingSupported = false,
+    permit2Supported = false,
+    disableMessageSigning = false,
+  }: CheckAllowanceParams
+): Promise<AllowanceResult> => {
   let sharedProcess: Process | undefined
   let signedTypedData: SignedTypedData[] = []
   try {
@@ -169,7 +167,7 @@ export const checkAllowance = async ({
     // Handle existing pending transaction
     if (sharedProcess.txHash && sharedProcess.status !== 'DONE') {
       await waitForApprovalTransaction(
-        config,
+        client,
         updatedClient,
         sharedProcess.txHash as Address,
         sharedProcess.type,
@@ -190,8 +188,7 @@ export const checkAllowance = async ({
     const fromAmount = BigInt(step.action.fromAmount)
 
     const approved = await getAllowance(
-      config,
-      provider,
+      client,
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
@@ -210,21 +207,13 @@ export const checkAllowance = async ({
 
     let nativePermitData: NativePermitData | undefined
     if (isNativePermitAvailable) {
-      nativePermitData = await getActionWithFallback(
-        config,
-        provider,
-        updatedClient,
-        getNativePermit,
-        'getNativePermit',
-        {
-          config,
-          provider,
-          chainId: chain.id,
-          tokenAddress: step.action.fromToken.address as Address,
-          spenderAddress: chain.permit2Proxy as Address,
-          amount: fromAmount,
-        }
-      )
+      nativePermitData = await getNativePermit(client, {
+        client: updatedClient,
+        chainId: chain.id,
+        tokenAddress: step.action.fromToken.address as Address,
+        spenderAddress: chain.permit2Proxy as Address,
+        amount: fromAmount,
+      })
     }
 
     if (isNativePermitAvailable && nativePermitData) {
@@ -286,8 +275,7 @@ export const checkAllowance = async ({
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
     const approveTxHash = await setAllowance(
-      config,
-      provider,
+      client,
       updatedClient,
       step.action.fromToken.address as Address,
       spenderAddress as Address,
@@ -316,7 +304,7 @@ export const checkAllowance = async ({
     }
 
     await waitForApprovalTransaction(
-      config,
+      client,
       updatedClient,
       approveTxHash,
       sharedProcess.type,
@@ -347,8 +335,8 @@ export const checkAllowance = async ({
 }
 
 const waitForApprovalTransaction = async (
-  config: SDKBaseConfig,
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   txHash: Hash,
   processType: ProcessType,
   step: LiFiStep,
@@ -363,9 +351,8 @@ const waitForApprovalTransaction = async (
     txLink: getTxLink(txHash),
   })
 
-  const transactionReceipt = await waitForTransactionReceipt({
-    config,
-    client,
+  const transactionReceipt = await waitForTransactionReceipt(client, {
+    client: viemClient,
     chainId: chain.id,
     txHash,
     onReplaced(response) {

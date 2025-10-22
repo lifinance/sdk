@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { createConfig } from './createConfig.js'
+import { createClient } from './client/createClient.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
@@ -19,10 +19,11 @@ import { handlers } from './services/api.unit.handlers.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
-const apiUrl = config.apiUrl
+const config = client.config
+const apiUrl = client.config.apiUrl
 
 describe('request new', () => {
   const server = setupServer(...handlers)

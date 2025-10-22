@@ -22,7 +22,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { createConfig } from '../createConfig.js'
+import { createClient } from '../client/createClient.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
@@ -30,9 +30,10 @@ import { requestSettings } from '../request.js'
 import * as ApiService from './api.js'
 import { handlers } from './api.unit.handlers.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
+const config = client.config
 
 const mockedFetch = vi.spyOn(request, 'request')
 

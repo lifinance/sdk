@@ -12,30 +12,28 @@ import {
   vi,
 } from 'vitest'
 import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
-import { createConfig } from '../createConfig.js'
+import { createClient } from '../client/createClient.js'
 import { requestSettings } from '../request.js'
 import { EVM } from './EVM/EVM.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
 import { Solana } from './Solana/Solana.js'
 import { Sui } from './Sui/Sui.js'
-import type { SDKProvider } from './types.js'
 import { UTXO } from './UTXO/UTXO.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
+client.setProviders([EVM(), UTXO(), Solana(), Sui()])
 
-const providers: SDKProvider[] = [EVM(), UTXO(), Solana(), Sui()]
-
-let client: Partial<Client>
+let viemClient: Partial<Client>
 
 vi.mock('../balance', () => ({
   checkBalance: vi.fn(() => Promise.resolve([])),
 }))
 
 vi.mock('../execution/switchChain', () => ({
-  switchChain: vi.fn(() => Promise.resolve(client)),
+  switchChain: vi.fn(() => Promise.resolve(viemClient)),
 }))
 
 vi.mock('../allowance/getAllowance', () => ({
@@ -55,7 +53,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
     requestSettings.retries = 0
     vi.clearAllMocks()
 
-    client = {
+    viemClient = {
       sendTransaction: () => Promise.resolve('0xabc'),
       getChainId: () => Promise.resolve(137),
       getAddresses: () =>
@@ -73,9 +71,9 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
       step,
     })
 
-    await executeRoute(config, providers, route)
+    await executeRoute(client, route)
 
-    expect(sendTransaction).toHaveBeenCalledWith(client, {
+    expect(sendTransaction).toHaveBeenCalledWith(viemClient, {
       gasLimit: 125000n,
       gasPrice: 100000n,
       // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget

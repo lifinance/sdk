@@ -2,13 +2,15 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
-import { createConfig } from '../../createConfig.js'
-import type { SDKBaseConfig } from '../types.js'
+import { createClient } from '../../client/createClient.js'
+import type { SDKClient } from '../types.js'
 import { getUTXOBalance } from './getUTXOBalance.js'
+import { UTXO } from './UTXO.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
+client.setProviders([UTXO()])
 
 const defaultWalletAddress = 'bc1q5hx26klsnyqqc9255vuh0s96guz79x0cc54896'
 
@@ -17,12 +19,12 @@ const timeout = 10000
 
 describe('getBalances integration tests', () => {
   const loadAndCompareTokenAmounts = async (
-    config: SDKBaseConfig,
+    client: SDKClient,
     walletAddress: string,
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getUTXOBalance(
-      config,
+      client,
       walletAddress,
       tokens as Token[]
     )
@@ -56,7 +58,7 @@ describe('getBalances integration tests', () => {
         findDefaultToken(CoinKey.USDT, ChainId.POL),
       ]
 
-      await loadAndCompareTokenAmounts(config, walletAddress, tokens)
+      await loadAndCompareTokenAmounts(client, walletAddress, tokens)
     }
   )
 })

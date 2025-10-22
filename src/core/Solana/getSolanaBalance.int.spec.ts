@@ -2,12 +2,14 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
-import { createConfig } from '../../createConfig.js'
+import { createClient } from '../../client/createClient.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
+import { Solana } from './Solana.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
+client.setProviders([Solana()])
 
 const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 
@@ -20,7 +22,7 @@ describe.sequential('Solana token balance', async () => {
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getSolanaBalance(
-      config,
+      client,
       walletAddress,
       tokens as Token[]
     )
@@ -74,7 +76,7 @@ describe.sequential('Solana token balance', async () => {
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
 
       const tokenBalances = await getSolanaBalance(
-        config,
+        client,
         walletAddress,
         tokens as Token[]
       )

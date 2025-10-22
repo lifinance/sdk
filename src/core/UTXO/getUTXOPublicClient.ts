@@ -17,9 +17,9 @@ import {
   type WalletActions,
   walletActions,
 } from '@bigmi/core'
-import { getChainById } from '../getChainById.js'
-import { getRpcUrls } from '../rpc.js'
-import type { SDKBaseConfig } from '../types.js'
+import { getChainById } from '../../client/getChainById.js'
+import { getRpcUrls } from '../../client/getRpcUrls.js'
+import type { SDKClient } from '../types.js'
 import { toBigmiChainId } from './utils.js'
 
 type PublicClient = Client<
@@ -39,11 +39,11 @@ const publicClients: Record<number, PublicClient> = {}
  * @returns The public client for the given chain
  */
 export const getUTXOPublicClient = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   chainId: number
 ): Promise<PublicClient> => {
   if (!publicClients[chainId]) {
-    const urls = await getRpcUrls(config, chainId)
+    const urls = await getRpcUrls(client, chainId)
     const fallbackTransports = urls.map((url) =>
       http(url, {
         fetchOptions: {
@@ -51,7 +51,7 @@ export const getUTXOPublicClient = async (
         },
       })
     )
-    const _chain = await getChainById(config, chainId)
+    const _chain = await getChainById(client, chainId)
     const chain: Chain = {
       ..._chain,
       ..._chain.metamask,
@@ -62,7 +62,7 @@ export const getUTXOPublicClient = async (
         public: { http: _chain.metamask.rpcUrls },
       },
     }
-    const client = createClient({
+    const bigmiClient = createClient({
       chain,
       rpcSchema: rpcSchema<UTXOSchema>(),
       transport: fallback([
@@ -75,7 +75,7 @@ export const getUTXOPublicClient = async (
     })
       .extend(publicActions)
       .extend(walletActions)
-    publicClients[chainId] = client
+    publicClients[chainId] = bigmiClient
   }
 
   if (!publicClients[chainId]) {

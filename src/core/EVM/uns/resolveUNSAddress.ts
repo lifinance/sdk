@@ -3,7 +3,7 @@ import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'
 import { getAction, trim } from 'viem/utils'
-import type { SDKBaseConfig } from '../../../core/types.js'
+import type { SDKClient } from '../../types.js'
 import { getPublicClient } from '../publicClient.js'
 import {
   CHAIN_ID_UNS_CHAIN_MAP,
@@ -14,15 +14,15 @@ import {
 } from './constants.js'
 
 export const resolveUNSAddress = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   name: string,
   chainType: ChainType,
   chain?: ChainId,
   token?: CoinKey
 ): Promise<string | undefined> => {
   try {
-    const L1Client = await getPublicClient(config, ChainId.ETH)
-    const L2Client = await getPublicClient(config, ChainId.POL)
+    const L1Client = await getPublicClient(client, ChainId.ETH)
+    const L2Client = await getPublicClient(client, ChainId.POL)
 
     const nameHash = namehash(name)
     const keys: string[] = []

@@ -2,10 +2,10 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it } from 'vitest'
-import { createConfig } from '../../createConfig.js'
+import { createClient } from '../../client/createClient.js'
 import { getSuiBalance } from './getSuiBalance.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
 
@@ -21,7 +21,7 @@ describe.sequential('Sui token balance', async () => {
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getSuiBalance(
-      config,
+      client,
       walletAddress,
       tokens as Token[]
     )
@@ -75,7 +75,7 @@ describe.sequential('Sui token balance', async () => {
       const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
 
       const tokenBalances = await getSuiBalance(
-        config,
+        client,
         walletAddress,
         tokens as Token[]
       )

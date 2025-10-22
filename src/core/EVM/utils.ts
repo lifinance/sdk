@@ -4,9 +4,8 @@ import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
 import { getChains } from '../../services/api.js'
 import { median } from '../../utils/median.js'
-import type { SDKBaseConfig } from '../types.js'
+import type { SDKBaseConfig, SDKClient } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
-import type { EVMProvider } from './types.js'
 
 type ChainBlockExplorer = {
   name: string
@@ -60,14 +59,12 @@ export function isExtendedChain(chain: any): chain is ExtendedChain {
 }
 
 export const getMaxPriorityFeePerGas = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
-  client: Client
+  client: SDKClient,
+  viemClient: Client
 ): Promise<bigint | undefined> => {
   const block = await getActionWithFallback(
-    config,
-    provider,
     client,
+    viemClient,
     getBlock,
     'getBlock',
     {

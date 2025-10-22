@@ -2,18 +2,18 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { Token, WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createClient } from '../client/createClient.js'
 import { EVM } from '../core/EVM/EVM.js'
 import { Solana } from '../core/Solana/Solana.js'
 import { Sui } from '../core/Sui/Sui.js'
-import type { SDKProvider } from '../core/types.js'
 import { UTXO } from '../core/UTXO/UTXO.js'
-import { createConfig } from '../createConfig.js'
 import * as balance from './balance.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
-const providers: SDKProvider[] = [EVM(), UTXO(), Solana(), Sui()]
+client.setProviders([EVM(), UTXO(), Solana(), Sui()])
+
 const mockedGetTokenBalance = vi.spyOn(balance, 'getTokenBalance')
 const mockedGetTokenBalances = vi.spyOn(balance, 'getTokenBalances')
 const mockedGetTokenBalancesForChains = vi.spyOn(
@@ -36,13 +36,13 @@ describe('Balance service tests', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(
-          balance.getTokenBalance(config, providers, '', SOME_TOKEN)
+          balance.getTokenBalance(client, '', SOME_TOKEN)
         ).rejects.toThrow('Missing walletAddress.')
       })
 
       it('should throw Error because of invalid token', async () => {
         await expect(
-          balance.getTokenBalance(config, providers, SOME_WALLET_ADDRESS, {
+          balance.getTokenBalance(client, SOME_WALLET_ADDRESS, {
             address: 'some wrong stuff',
             chainId: 'not a chain Id',
           } as unknown as Token)
@@ -61,8 +61,7 @@ describe('Balance service tests', () => {
         mockedGetTokenBalance.mockReturnValue(Promise.resolve(balanceResponse))
 
         const result = await balance.getTokenBalance(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           SOME_TOKEN
         )
@@ -77,13 +76,13 @@ describe('Balance service tests', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(
-          balance.getTokenBalances(config, providers, '', [SOME_TOKEN])
+          balance.getTokenBalances(client, '', [SOME_TOKEN])
         ).rejects.toThrow('Missing walletAddress.')
       })
 
       it('should throw Error because of an invalid token', async () => {
         await expect(
-          balance.getTokenBalances(config, providers, SOME_WALLET_ADDRESS, [
+          balance.getTokenBalances(client, SOME_WALLET_ADDRESS, [
             SOME_TOKEN,
             { not: 'a token' } as unknown as Token,
           ])
@@ -93,8 +92,7 @@ describe('Balance service tests', () => {
       it('should return empty token list as it is', async () => {
         mockedGetTokenBalances.mockReturnValue(Promise.resolve([]))
         const result = await balance.getTokenBalances(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           []
         )
@@ -116,8 +114,7 @@ describe('Balance service tests', () => {
         mockedGetTokenBalances.mockReturnValue(Promise.resolve(balanceResponse))
 
         const result = await balance.getTokenBalances(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           [SOME_TOKEN]
         )
@@ -132,7 +129,7 @@ describe('Balance service tests', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
         await expect(
-          balance.getTokenBalancesByChain(config, providers, '', {
+          balance.getTokenBalancesByChain(client, '', {
             [ChainId.DAI]: [SOME_TOKEN],
           })
         ).rejects.toThrow('Missing walletAddress.')
@@ -140,14 +137,9 @@ describe('Balance service tests', () => {
 
       it('should throw Error because of an invalid token', async () => {
         await expect(
-          balance.getTokenBalancesByChain(
-            config,
-            providers,
-            SOME_WALLET_ADDRESS,
-            {
-              [ChainId.DAI]: [{ not: 'a token' } as unknown as Token],
-            }
-          )
+          balance.getTokenBalancesByChain(client, SOME_WALLET_ADDRESS, {
+            [ChainId.DAI]: [{ not: 'a token' } as unknown as Token],
+          })
         ).rejects.toThrow('Invalid tokens passed.')
       })
 
@@ -155,8 +147,7 @@ describe('Balance service tests', () => {
         mockedGetTokenBalancesForChains.mockReturnValue(Promise.resolve([]))
 
         const result = await balance.getTokenBalancesByChain(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           {
             [ChainId.DAI]: [],
@@ -185,8 +176,7 @@ describe('Balance service tests', () => {
         )
 
         const result = await balance.getTokenBalancesByChain(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           {
             [ChainId.DAI]: [SOME_TOKEN],
@@ -209,8 +199,7 @@ describe('Balance service tests', () => {
         )
 
         const result = await balance.getTokenBalancesByChain(
-          config,
-          providers,
+          client,
           SOME_WALLET_ADDRESS,
           {
             [ChainId.DAI]: [SOME_TOKEN],
@@ -226,7 +215,7 @@ describe('Balance service tests', () => {
   describe('getWalletBalances', () => {
     describe('user input is invalid', () => {
       it('should throw Error because of missing walletAddress', async () => {
-        await expect(balance.getWalletBalances(config, '')).rejects.toThrow(
+        await expect(balance.getWalletBalances(client, '')).rejects.toThrow(
           'Missing walletAddress.'
         )
       })
@@ -251,13 +240,13 @@ describe('Balance service tests', () => {
         )
 
         const result = await balance.getWalletBalances(
-          config,
+          client,
           SOME_WALLET_ADDRESS
         )
 
         expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
         expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-          config,
+          client,
           SOME_WALLET_ADDRESS
         )
         expect(result).toEqual(balanceResponse)
@@ -283,14 +272,14 @@ describe('Balance service tests', () => {
         )
 
         const result = await balance.getWalletBalances(
-          config,
+          client,
           SOME_WALLET_ADDRESS,
           options
         )
 
         expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
         expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-          config,
+          client,
           SOME_WALLET_ADDRESS,
           options
         )

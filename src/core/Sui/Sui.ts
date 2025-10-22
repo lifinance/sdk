@@ -30,7 +30,6 @@ export function Sui(options?: SuiProviderOptions): SuiProvider {
         executionOptions: {
           ...options.executionOptions,
         },
-        provider: this,
       })
 
       return executor

@@ -1,6 +1,7 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { createClient } from './client/createClient.js'
 export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
 export {
@@ -71,6 +72,7 @@ export type {
   RouteExtended,
   RPCUrls,
   SDKBaseConfig,
+  SDKClient,
   SDKConfig,
   SDKProvider,
   StepExecutor,
@@ -85,7 +87,6 @@ export type {
 export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
 export { isUTXO } from './core/UTXO/types.js'
 export { UTXO } from './core/UTXO/UTXO.js'
-export { createConfig } from './createConfig.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
 export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'

@@ -1,18 +1,18 @@
 import { HttpResponse, http } from 'msw'
 import { buildStepObject } from '../../tests/fixtures.js'
-import { createConfig } from '../createConfig.js'
+import { createClient } from '../client/createClient.js'
 import {
   mockChainsResponse,
   mockStatus,
   mockStepTransactionWithTxRequest,
 } from './execution.unit.mock.js'
 
-const config = createConfig({
+const client = createClient({
   integrator: 'lifi-sdk',
 })
 
 export const lifiHandlers = [
-  http.post(`${config.apiUrl}/advanced/stepTransaction`, async () =>
+  http.post(`${client.config.apiUrl}/advanced/stepTransaction`, async () =>
     HttpResponse.json(
       mockStepTransactionWithTxRequest(
         buildStepObject({
@@ -21,12 +21,12 @@ export const lifiHandlers = [
       )
     )
   ),
-  http.get(`${config.apiUrl}/chains`, async () =>
+  http.get(`${client.config.apiUrl}/chains`, async () =>
     HttpResponse.json({
       chains: mockChainsResponse,
     })
   ),
-  http.get(`${config.apiUrl}/status`, async () =>
+  http.get(`${client.config.apiUrl}/status`, async () =>
     HttpResponse.json(mockStatus)
   ),
 ]

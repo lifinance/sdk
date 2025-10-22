@@ -1,17 +1,17 @@
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { VersionedTransaction } from '@solana/web3.js'
 import { withTimeout } from 'viem'
+import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
-  SDKBaseConfig,
+  SDKClient,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
@@ -19,21 +19,17 @@ import { waitForDestinationChainTransaction } from '../waitForDestinationChainTr
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
-import type { SolanaProvider } from './types.js'
 
 interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
-  provider: SolanaProvider
 }
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter
-  private provider: SolanaProvider
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.walletAdapter = options.walletAdapter
-    this.provider = options.provider
   }
 
   checkWalletAdapter = (step: LiFiStepExtended) => {
@@ -47,13 +43,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKBaseConfig,
+    client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await getChainById(config, step.action.fromChainId)
-    const toChain = await getChainById(config, step.action.toChainId)
+    const fromChain = await getChainById(client, step.action.fromChainId)
+    const toChain = await getChainById(client, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -74,8 +70,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         // Check balance
         await checkBalance(
-          config,
-          [this.provider],
+          client,
           this.walletAdapter.publicKey!.toString(),
           step
         )
@@ -84,7 +79,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         if (!step.transactionRequest) {
           // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
-          const updatedStep = await getStepTransaction(config, stepBase)
+          const updatedStep = await getStepTransaction(client.config, stepBase)
           const comparedStep = await stepComparison(
             this.statusManager,
             step,
@@ -166,7 +161,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         const simulationResult = await callSolanaWithRetry(
-          config,
+          client,
           (connection) =>
             connection.simulateTransaction(signedTx, {
               commitment: 'confirmed',
@@ -181,7 +176,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const confirmedTx = await sendAndConfirmTransaction(config, signedTx)
+        const confirmedTx = await sendAndConfirmTransaction(client, signedTx)
 
         if (!confirmedTx.signatureResult) {
           throw new TransactionError(
@@ -234,7 +229,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
-      config,
+      client,
       step,
       process,
       fromChain,

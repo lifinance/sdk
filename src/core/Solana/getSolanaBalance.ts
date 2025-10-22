@@ -2,12 +2,12 @@ import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { PublicKey } from '@solana/web3.js'
 import { SolSystemProgram } from '../../constants.js'
 import { withDedupe } from '../../utils/withDedupe.js'
-import type { SDKBaseConfig } from '../types.js'
+import type { SDKClient } from '../types.js'
 import { callSolanaWithRetry } from './connection.js'
 import { Token2022ProgramId, TokenProgramId } from './types.js'
 
 export const getSolanaBalance = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -21,11 +21,11 @@ export const getSolanaBalance = async (
     }
   }
 
-  return getSolanaBalanceDefault(config, chainId, tokens, walletAddress)
+  return getSolanaBalanceDefault(client, chainId, tokens, walletAddress)
 }
 
 const getSolanaBalanceDefault = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   _chainId: ChainId,
   tokens: Token[],
   walletAddress: string
@@ -37,21 +37,21 @@ const getSolanaBalanceDefault = async (
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry(config, (connection) =>
+          callSolanaWithRetry(client, (connection) =>
             connection.getSlot('confirmed')
           ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(config, (connection) =>
+          callSolanaWithRetry(client, (connection) =>
             connection.getBalance(accountPublicKey, 'confirmed')
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(config, (connection) =>
+          callSolanaWithRetry(client, (connection) =>
             connection.getParsedTokenAccountsByOwner(
               accountPublicKey,
               {
@@ -66,7 +66,7 @@ const getSolanaBalanceDefault = async (
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(config, (connection) =>
+          callSolanaWithRetry(client, (connection) =>
             connection.getParsedTokenAccountsByOwner(
               accountPublicKey,
               {

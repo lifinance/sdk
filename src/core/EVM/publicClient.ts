@@ -1,10 +1,11 @@
-import { ChainId } from '@lifi/types'
-import type { Client, FallbackTransportConfig } from 'viem'
+import { ChainId, ChainType } from '@lifi/types'
+import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import { getChainById } from '../getChainById.js'
-import { getRpcUrls } from '../rpc.js'
-import type { SDKBaseConfig } from '../types.js'
+import { getChainById } from '../../client/getChainById.js'
+import { getRpcUrls } from '../../client/getRpcUrls.js'
+import type { SDKClient } from '../types.js'
+import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 
 // cached providers
@@ -16,15 +17,14 @@ const publicClients: Record<number, Client> = {}
  * @returns The public client for the given chain
  */
 export const getPublicClient = async (
-  config: SDKBaseConfig,
-  chainId: number,
-  fallbackTransportConfig?: FallbackTransportConfig
+  client: SDKClient,
+  chainId: number
 ): Promise<Client> => {
   if (publicClients[chainId]) {
     return publicClients[chainId]
   }
 
-  const urls = await getRpcUrls(config, chainId)
+  const urls = await getRpcUrls(client, chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
       ? webSocket(url)
@@ -34,7 +34,7 @@ export const getPublicClient = async (
           },
         })
   )
-  const _chain = await getChainById(config, chainId)
+  const _chain = await getChainById(client, chainId)
   const chain: Chain = {
     ..._chain,
     ..._chain.metamask,
@@ -62,9 +62,13 @@ export const getPublicClient = async (
     }
   }
 
+  const provider = client.getProvider(ChainType.EVM) as EVMProvider | undefined
   publicClients[chainId] = createClient({
     chain: chain,
-    transport: fallback(fallbackTransports, fallbackTransportConfig),
+    transport: fallback(
+      fallbackTransports,
+      provider?.options?.fallbackTransportConfig
+    ),
     batch: {
       multicall: true,
     },

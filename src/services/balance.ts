@@ -7,8 +7,8 @@ import type {
   TokenExtended,
   WalletTokenExtended,
 } from '@lifi/types'
-import { getChainById } from '../core/getChainById.js'
-import type { SDKBaseConfig, SDKProvider } from '../core/types.js'
+import { getChainById } from '../client/getChainById.js'
+import type { SDKClient, SDKProvider } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 import { isToken } from '../typeguards.js'
@@ -21,17 +21,11 @@ import { isToken } from '../typeguards.js'
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getTokenBalance = async (
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   walletAddress: string,
   token: Token
 ): Promise<TokenAmount | null> => {
-  const tokenAmounts = await getTokenBalances(
-    config,
-    providers,
-    walletAddress,
-    [token]
-  )
+  const tokenAmounts = await getTokenBalances(client, walletAddress, [token])
   return tokenAmounts.length ? tokenAmounts[0] : null
 }
 
@@ -43,14 +37,12 @@ export const getTokenBalance = async (
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export async function getTokenBalances(
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]>
 export async function getTokenBalances(
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   walletAddress: string,
   tokens: TokenExtended[]
 ): Promise<TokenAmountExtended[]> {
@@ -67,8 +59,7 @@ export async function getTokenBalances(
   )
 
   const tokenAmountsByChain = await getTokenBalancesByChain(
-    config,
-    providers,
+    client,
     walletAddress,
     tokensByChain
   )
@@ -83,14 +74,12 @@ export async function getTokenBalances(
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export async function getTokenBalancesByChain(
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   walletAddress: string,
   tokensByChain: { [chainId: number]: Token[] }
 ): Promise<{ [chainId: number]: TokenAmount[] }>
 export async function getTokenBalancesByChain(
-  config: SDKBaseConfig,
-  providers: SDKProvider[],
+  client: SDKClient,
   walletAddress: string,
   tokensByChain: { [chainId: number]: TokenExtended[] }
 ): Promise<{ [chainId: number]: TokenAmountExtended[] }> {
@@ -98,13 +87,14 @@ export async function getTokenBalancesByChain(
     throw new ValidationError('Missing walletAddress.')
   }
 
+  const config = client.config
   const tokenList = Object.values(tokensByChain).flat()
   const invalidTokens = tokenList.filter((token) => !isToken(token))
   if (invalidTokens.length) {
     throw new ValidationError('Invalid tokens passed.')
   }
 
-  const provider = providers.find((provider) =>
+  const provider = client.providers.find((provider: SDKProvider) =>
     provider.isAddress(walletAddress)
   )
   if (!provider) {
@@ -117,10 +107,10 @@ export async function getTokenBalancesByChain(
   const tokenAmountsSettled = await Promise.allSettled(
     Object.keys(tokensByChain).map(async (chainIdStr) => {
       const chainId = Number.parseInt(chainIdStr, 10)
-      const chain = await getChainById(config, chainId)
+      const chain = await getChainById(client, chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
-          config,
+          client,
           walletAddress,
           tokensByChain[chainId]
         )
@@ -150,7 +140,7 @@ export async function getTokenBalancesByChain(
  * @throws {BaseError} Throws a ValidationError if parameters are invalid.
  */
 export const getWalletBalances = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   walletAddress: string,
   options?: RequestOptions
 ): Promise<Record<number, WalletTokenExtended[]>> => {
@@ -159,8 +149,8 @@ export const getWalletBalances = async (
   }
 
   const response = await request<GetWalletBalanceExtendedResponse>(
-    config,
-    `${config.apiUrl}/wallets/${walletAddress}/balances?extended=true`,
+    client.config,
+    `${client.config.apiUrl}/wallets/${walletAddress}/balances?extended=true`,
     {
       signal: options?.signal,
     }

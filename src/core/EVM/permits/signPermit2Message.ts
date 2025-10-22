@@ -3,8 +3,7 @@ import type { Address, Client, Hex } from 'viem'
 import { keccak256 } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { SDKBaseConfig } from '../../../core/types.js'
-import type { EVMProvider } from '../types.js'
+import type { SDKClient } from '../../types.js'
 import { getPermitTransferFromValues } from './getPermitTransferFromValues.js'
 import { getPermitData } from './signatureTransfer.js'
 
@@ -18,16 +17,21 @@ interface SignPermit2MessageParams {
 }
 
 export async function signPermit2Message(
-  config: SDKBaseConfig,
-  provider: EVMProvider,
+  client: SDKClient,
   params: SignPermit2MessageParams
 ): Promise<SignedTypedData> {
-  const { client, chain, tokenAddress, amount, data, witness } = params
+  const {
+    client: viemClient,
+    chain,
+    tokenAddress,
+    amount,
+    data,
+    witness,
+  } = params
 
   const permitTransferFrom = await getPermitTransferFromValues(
-    config,
-    provider,
     client,
+    viemClient,
     chain,
     tokenAddress,
     amount
@@ -62,11 +66,11 @@ export async function signPermit2Message(
     : 'PermitTransferFrom'
 
   const signature = await getAction(
-    client,
+    viemClient,
     signTypedData,
     'signTypedData'
   )({
-    account: client.account!,
+    account: viemClient.account!,
     primaryType,
     domain: permitData.domain,
     types: permitData.types,

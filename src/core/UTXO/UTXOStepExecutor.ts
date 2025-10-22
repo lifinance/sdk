@@ -10,38 +10,34 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
+import { getChainById } from '../../client/getChainById.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { getStepTransaction } from '../../services/api.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
-import { getChainById } from '../getChainById.js'
 import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
-  SDKBaseConfig,
+  SDKClient,
   StepExecutorOptions,
   TransactionParameters,
 } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
-import type { UTXOProvider } from './types.js'
 import { generateRedeemScript, isPsbtFinalized, toXOnly } from './utils.js'
 
 interface UTXOStepExecutorOptions extends StepExecutorOptions {
   client: Client
-  provider: UTXOProvider
 }
 
 export class UTXOStepExecutor extends BaseStepExecutor {
   private client: Client
-  private provider: UTXOProvider
 
   constructor(options: UTXOStepExecutorOptions) {
     super(options)
     this.client = options.client
-    this.provider = options.provider
   }
 
   checkClient = (step: LiFiStepExtended) => {
@@ -56,13 +52,13 @@ export class UTXOStepExecutor extends BaseStepExecutor {
   }
 
   executeStep = async (
-    config: SDKBaseConfig,
+    client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await getChainById(config, step.action.fromChainId)
-    const toChain = await getChainById(config, step.action.toChainId)
+    const fromChain = await getChainById(client, step.action.fromChainId)
+    const toChain = await getChainById(client, step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
@@ -73,7 +69,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
       chainId: fromChain.id,
     })
 
-    const publicClient = await getUTXOPublicClient(config, ChainId.BTC)
+    const publicClient = await getUTXOPublicClient(client, ChainId.BTC)
 
     if (process.status !== 'DONE') {
       try {
@@ -94,18 +90,16 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           )
 
           // Check balance
-          await checkBalance(
-            config,
-            [this.provider],
-            this.client.account!.address,
-            step
-          )
+          await checkBalance(client, this.client.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
             // biome-ignore lint/correctness/noUnusedVariables: destructuring
             const { execution, ...stepBase } = step
-            const updatedStep = await getStepTransaction(config, stepBase)
+            const updatedStep = await getStepTransaction(
+              client.config,
+              stepBase
+            )
             const comparedStep = await stepComparison(
               this.statusManager,
               step,
@@ -337,7 +331,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
     }
 
     await waitForDestinationChainTransaction(
-      config,
+      client,
       step,
       process,
       fromChain,

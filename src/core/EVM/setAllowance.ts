@@ -5,22 +5,17 @@ import { getAction } from 'viem/utils'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import type {
   ExecutionOptions,
-  SDKBaseConfig,
+  SDKClient,
   TransactionParameters,
 } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
-import type {
-  ApproveTokenRequest,
-  EVMProvider,
-  RevokeApprovalRequest,
-} from './types.js'
+import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
-  config: SDKBaseConfig,
-  provider: EVMProvider,
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   tokenAddress: Address,
   contractAddress: Address,
   amount: bigint,
@@ -41,8 +36,8 @@ export const setAllowance = async (
     to: tokenAddress,
     data,
     maxPriorityFeePerGas:
-      client.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(config, provider, client)
+      viemClient.account?.type === 'local'
+        ? await getMaxPriorityFeePerGas(client, viemClient)
         : undefined,
   }
 
@@ -60,12 +55,12 @@ export const setAllowance = async (
   }
 
   return getAction(
-    client,
+    viemClient,
     sendTransaction,
     'sendTransaction'
   )({
     to: transactionRequest.to,
-    account: client.account!,
+    account: viemClient.account!,
     data: transactionRequest.data,
     gas: transactionRequest.gas,
     gasPrice: transactionRequest.gasPrice,
@@ -83,21 +78,16 @@ export const setAllowance = async (
  * @param request.amount - The amount of tokens to approve
  * @returns Returns Hash or nothing
  */
-export const setTokenAllowance = async ({
-  config,
-  provider,
-  walletClient,
-  token,
-  spenderAddress,
-  amount,
-}: ApproveTokenRequest): Promise<Hash | void> => {
+export const setTokenAllowance = async (
+  client: SDKClient,
+  { walletClient, token, spenderAddress, amount }: ApproveTokenRequest
+): Promise<Hash | void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(
-    config,
-    provider,
+    client,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -106,8 +96,7 @@ export const setTokenAllowance = async ({
 
   if (amount > approvedAmount) {
     const approveTx = await setAllowance(
-      config,
-      provider,
+      client,
       walletClient,
       token.address as Address,
       spenderAddress as Address,
@@ -126,20 +115,16 @@ export const setTokenAllowance = async ({
  * @param request.spenderAddress - The address of the spender
  * @returns Returns Hash or nothing
  */
-export const revokeTokenApproval = async ({
-  config,
-  provider,
-  walletClient,
-  token,
-  spenderAddress,
-}: RevokeApprovalRequest): Promise<Hash | void> => {
+export const revokeTokenApproval = async (
+  client: SDKClient,
+  { walletClient, token, spenderAddress }: RevokeApprovalRequest
+): Promise<Hash | void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(
-    config,
-    provider,
+    client,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -147,8 +132,7 @@ export const revokeTokenApproval = async ({
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
-      config,
-      provider,
+      client,
       walletClient,
       token.address as Address,
       spenderAddress as Address,
