@@ -40,6 +40,7 @@ import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
+import { decodeTaskId } from '../utils/decode.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type {
   GetStatusRequestExtended,
@@ -439,8 +440,12 @@ export const getRelayedTransactionStatus = async (
   const queryParams = new URLSearchParams(
     otherParams as unknown as Record<string, string>
   )
+
+  const decodedTaskId = decodeTaskId(taskId)
+  const statusPath = decodedTaskId.length === 3 ? '/status' : '/relayer/status'
+
   const result = await request<RelayStatusResponse>(
-    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    `${config.get().apiUrl}${statusPath}/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }
