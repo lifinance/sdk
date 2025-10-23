@@ -9,10 +9,11 @@ import { request } from '../request.js'
 
 /**
  * Returns the balances of tokens a wallet holds across EVM chains.
+ * @param config - The SDK client configuration.
  * @param walletAddress - A wallet address.
  * @param options - Optional request options.
  * @returns An object containing the tokens and the amounts organized by chain ids.
- * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {ValidationError} Throws a ValidationError if parameters are invalid.
  */
 export const getWalletBalances = async (
   config: SDKBaseConfig,

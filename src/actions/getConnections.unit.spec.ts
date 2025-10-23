@@ -15,7 +15,7 @@ import {
 } from 'vitest'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { config, handlers } from './api.unit.handlers.js'
+import { config, handlers } from './actions.unit.handlers.js'
 import { getConnections } from './getConnections.js'
 
 const mockedFetch = vi.spyOn(request, 'request')

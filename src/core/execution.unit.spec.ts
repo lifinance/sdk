@@ -11,8 +11,8 @@ import {
   it,
   vi,
 } from 'vitest'
-import { buildRouteObject, buildStepObject } from '../../tests/fixtures.js'
 import { requestSettings } from '../request.js'
+import { buildRouteObject, buildStepObject } from '../tests/fixtures.js'
 import { createClient } from './client/createClient.js'
 import { EVM } from './EVM/EVM.js'
 import { executeRoute } from './execution.js'

@@ -5,18 +5,28 @@ import type {
 } from '@lifi/types'
 import type { SDKBaseConfig } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
-import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 
+/**
+ * Get the transaction history for a wallet
+ * @param config - The SDK client configuration
+ * @param params - The parameters for the transaction history request
+ * @param params.wallet - The wallet address
+ * @param params.status - The status of the transactions
+ * @param params.fromTimestamp - The start timestamp for the transactions
+ * @param params.toTimestamp - The end timestamp for the transactions
+ * @param options - Request options
+ * @throws {ValidationError} - Throws a ValidationError if parameters are invalid
+ * @throws {LiFiError} - Throws a LiFiError if request fails.
+ * @returns The transaction history response
+ */
 export const getTransactionHistory = async (
   config: SDKBaseConfig,
   { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
   options?: RequestOptions
 ): Promise<TransactionAnalyticsResponse> => {
   if (!wallet) {
-    throw new SDKError(
-      new ValidationError('Required parameter "wallet" is missing.')
-    )
+    throw new ValidationError('Required parameter "wallet" is missing.')
   }
 
   const url = new URL(`${config.apiUrl}/analytics/transfers`)

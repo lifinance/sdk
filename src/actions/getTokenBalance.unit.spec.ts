@@ -2,12 +2,9 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createClient } from '../core/client/createClient.js'
+import { client } from './actions.unit.handlers.js'
 import { getTokenBalance } from './getTokenBalance.js'
 
-const client = createClient({
-  integrator: 'lifi-sdk',
-})
 const mockedGetTokenBalance = vi.spyOn(
   await import('./getTokenBalance.js'),
   'getTokenBalance'

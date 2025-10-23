@@ -14,7 +14,7 @@ import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
 import { requestSettings } from '../request.js'
-import { config, handlers } from './api.unit.handlers.js'
+import { config, handlers } from './actions.unit.handlers.js'
 import { getQuote } from './getQuote.js'
 
 const mockedFetch = vi.spyOn(request, 'request')

@@ -11,7 +11,7 @@ import {
   vi,
 } from 'vitest'
 import { requestSettings } from '../request.js'
-import { config, handlers } from './api.unit.handlers.js'
+import { config, handlers } from './actions.unit.handlers.js'
 import { getTokens } from './getTokens.js'
 
 describe('getTokens', () => {

@@ -13,10 +13,11 @@ import { request } from '../request.js'
 
 /**
  * Relay a transaction through the relayer service
+ * @param config - The SDK client configuration
  * @param params - The configuration for the relay request
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
- * @returns Task ID for the relayed transaction
+ * @returns Task ID and transaction link for the relayed transaction
  */
 export const relayTransaction = async (
   config: SDKBaseConfig,

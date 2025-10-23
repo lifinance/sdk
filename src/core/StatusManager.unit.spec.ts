@@ -5,7 +5,7 @@ import {
   buildRouteObject,
   buildStepObject,
   SOME_DATE,
-} from '../../tests/fixtures.js'
+} from '../tests/fixtures.js'
 import { executionState } from './executionState.js'
 import { StatusManager } from './StatusManager.js'
 import type {

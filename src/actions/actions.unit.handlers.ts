@@ -6,6 +6,7 @@ import { createClient } from '../core/client/createClient.js'
 const client = createClient({
   integrator: 'lifi-sdk',
 })
+
 const config = client.config
 
 export const handlers = [
@@ -45,4 +46,4 @@ export const handlers = [
   ),
 ]
 
-export { config }
+export { client, config }

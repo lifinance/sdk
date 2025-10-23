@@ -10,6 +10,7 @@ import { withDedupe } from '../utils/withDedupe.js'
 
 /**
  * Get all known tokens.
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested tokens
  * @param options - Request options
  * @returns The tokens that are available on the requested chains

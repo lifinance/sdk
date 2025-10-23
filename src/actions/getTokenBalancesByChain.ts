@@ -10,11 +10,12 @@ import { isToken } from '../typeguards.js'
 
 /**
  * This method queries the balances of tokens for a specific list of chains for a given wallet.
- * @param config - The SDK client configuration
+ * @param client - The SDK client.
  * @param walletAddress - A wallet address.
  * @param tokensByChain - A list of token objects organized by chain ids.
  * @returns A list of objects containing the tokens and the amounts on different chains organized by the chosen chains.
- * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {ValidationError} Throws a ValidationError if validation fails.
+ * @throws {Error} Throws an Error if the SDK Provider for the wallet address is not found.
  */
 export async function getTokenBalancesByChain(
   client: SDKClient,

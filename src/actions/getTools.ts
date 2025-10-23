@@ -4,6 +4,7 @@ import { request } from '../request.js'
 
 /**
  * Get the available tools to bridge and swap tokens.
+ * @param config - The SDK client configuration
  * @param params - The configuration of the requested tools
  * @param options - Request options
  * @returns The tools that are available on the requested chains

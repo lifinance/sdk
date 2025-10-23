@@ -9,11 +9,12 @@ import { getTokenBalancesByChain } from './getTokenBalancesByChain.js'
 
 /**
  * Returns the balances for a list tokens a wallet holds across all aggregated chains.
- * @param config - The SDK client configuration
+ * @param client - The SDK client.
  * @param walletAddress - A wallet address.
  * @param tokens - A list of Token (or TokenExtended) objects.
  * @returns A list of objects containing the tokens and the amounts on different chains.
- * @throws {BaseError} Throws a ValidationError if parameters are invalid.
+ * @throws {ValidationError} Throws a ValidationError if validation fails.
+ * @throws {Error} Throws an Error if the SDK Provider for the wallet address is not found.
  */
 export async function getTokenBalances(
   client: SDKClient,
@@ -42,7 +43,5 @@ export async function getTokenBalances(
     walletAddress,
     tokensByChain
   )
-  return Object.values(tokenAmountsByChain).flat() as
-    | TokenAmount[]
-    | TokenAmountExtended[]
+  return Object.values(tokenAmountsByChain).flat()
 }

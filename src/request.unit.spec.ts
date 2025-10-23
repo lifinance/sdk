@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from 'vitest'
-import { handlers } from './actions/api.unit.handlers.js'
+import { handlers } from './actions/actions.unit.handlers.js'
 import { createClient } from './core/client/createClient.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
