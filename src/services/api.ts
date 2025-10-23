@@ -442,20 +442,20 @@ export const getRelayedTransactionStatus = async (
   )
 
   const decodedTaskId = decodeTaskId(taskId)
-  let url: string
   // Temporary solution during the transition between status endpoints
   if (decodedTaskId.length === 3) {
-    // For /status endpoint, taskId is a query parameter
-    queryParams.set('taskId', taskId)
-    url = `${config.get().apiUrl}/status?${queryParams}`
-  } else {
-    // For /relayer/status endpoint, taskId is inline in the path
-    url = `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`
+    return (await getStatus(
+      params,
+      options
+    )) as unknown as RelayStatusResponseData
   }
 
-  const result = await request<RelayStatusResponse>(url, {
-    signal: options?.signal,
-  })
+  const result = await request<RelayStatusResponse>(
+    `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    {
+      signal: options?.signal,
+    }
+  )
 
   if (result.status === 'error') {
     throw new BaseError(
