@@ -5,40 +5,14 @@ import type {
 } from '@lifi/types'
 import { ChainId } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { config } from './actions.unit.handlers.js'
+import { config, setupTestServer } from './actions.unit.handlers.js'
 import { getContractCallsQuote } from './getContractCallsQuote.js'
 
 describe('getContractCallsQuote', () => {
-  const server = setupServer()
-
-  beforeAll(() => {
-    server.listen()
-  })
-
-  afterEach(() => {
-    server.resetHandlers()
-  })
-
-  afterAll(() => {
-    server.close()
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  const server = setupTestServer()
 
   const createMockContractCallsRequest = (
     overrides: Partial<ContractCallsQuoteRequest> = {}

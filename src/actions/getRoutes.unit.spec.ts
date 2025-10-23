@@ -1,44 +1,15 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { RoutesRequest } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { setupServer } from 'msw/node'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import * as request from '../request.js'
-import { requestSettings } from '../request.js'
-import { config, handlers } from './actions.unit.handlers.js'
+import { config, setupTestServer } from './actions.unit.handlers.js'
 import { getRoutes } from './getRoutes.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('getRoutes', () => {
-  const server = setupServer(...handlers)
-
-  beforeAll(() => {
-    server.listen({
-      onUnhandledRequest: 'warn',
-    })
-    requestSettings.retries = 0
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => server.resetHandlers())
-
-  afterAll(() => {
-    requestSettings.retries = 1
-    server.close()
-  })
+  setupTestServer()
 
   const getRoutesRequest = ({
     fromChainId = ChainId.BSC,

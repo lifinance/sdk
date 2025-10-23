@@ -1,43 +1,14 @@
 import type { TransactionAnalyticsRequest } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import * as request from '../request.js'
-import { requestSettings } from '../request.js'
-import { config, handlers } from './actions.unit.handlers.js'
+import { config, setupTestServer } from './actions.unit.handlers.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('getTransactionHistory', () => {
-  const server = setupServer(...handlers)
-
-  beforeAll(() => {
-    server.listen({
-      onUnhandledRequest: 'warn',
-    })
-    requestSettings.retries = 0
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => server.resetHandlers())
-
-  afterAll(() => {
-    requestSettings.retries = 1
-    server.close()
-  })
+  const server = setupTestServer()
 
   it('returns empty array in response', async () => {
     server.use(

@@ -1,7 +1,10 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
+import { setupServer } from 'msw/node'
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { createClient } from '../core/client/createClient.js'
+import { requestSettings } from '../request.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
@@ -45,5 +48,33 @@ export const handlers = [
     HttpResponse.json({})
   ),
 ]
+
+/**
+ * Sets up MSW server with common handlers for HTTP-based tests
+ * Call this function at the top level of your test file
+ */
+export const setupTestServer = () => {
+  const server = setupServer(...handlers)
+
+  beforeAll(() => {
+    server.listen({
+      onUnhandledRequest: 'warn',
+    })
+    requestSettings.retries = 0
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => server.resetHandlers())
+
+  afterAll(() => {
+    requestSettings.retries = 1
+    server.close()
+  })
+
+  return server
+}
 
 export { client, config }

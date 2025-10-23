@@ -5,45 +5,16 @@ import type {
   RequestOptions,
 } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { requestSettings } from '../request.js'
-import { config, handlers } from './actions.unit.handlers.js'
+import { config, setupTestServer } from './actions.unit.handlers.js'
 import { getRelayedTransactionStatus } from './getRelayedTransactionStatus.js'
 
 describe('getRelayedTransactionStatus', () => {
-  const server = setupServer(...handlers)
-
-  beforeAll(() => {
-    server.listen({
-      onUnhandledRequest: 'warn',
-    })
-    requestSettings.retries = 0
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  afterEach(() => server.resetHandlers())
-
-  afterAll(() => {
-    requestSettings.retries = 1
-    server.close()
-  })
+  const server = setupTestServer()
 
   const createMockRelayStatusRequest = (
     overrides: Partial<RelayStatusRequest> = {}
