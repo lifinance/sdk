@@ -41,7 +41,7 @@ export async function waitForDestinationChainTransaction(
     }
 
     const statusResponse = (await waitForTransactionStatus(
-      client.config,
+      client,
       statusManager,
       transactionHash,
       step,

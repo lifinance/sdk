@@ -2,7 +2,7 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { WalletTokenExtended } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { config } from './actions.unit.handlers.js'
+import { client } from './actions.unit.handlers.js'
 import { getWalletBalances } from './getWalletBalances.js'
 
 const mockedGetWalletBalances = vi.spyOn(
@@ -23,7 +23,7 @@ describe('getWalletBalances', () => {
 
   describe('user input is invalid', () => {
     it('should throw Error because of missing walletAddress', async () => {
-      await expect(getWalletBalances(config, '')).rejects.toThrow(
+      await expect(getWalletBalances(client, '')).rejects.toThrow(
         'Missing walletAddress.'
       )
     })
@@ -45,11 +45,11 @@ describe('getWalletBalances', () => {
 
       mockedGetWalletBalances.mockReturnValue(Promise.resolve(balanceResponse))
 
-      const result = await getWalletBalances(config, SOME_WALLET_ADDRESS)
+      const result = await getWalletBalances(client, SOME_WALLET_ADDRESS)
 
       expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
       expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-        config,
+        client,
         SOME_WALLET_ADDRESS
       )
       expect(result).toEqual(balanceResponse)
@@ -73,14 +73,14 @@ describe('getWalletBalances', () => {
       mockedGetWalletBalances.mockReturnValue(Promise.resolve(balanceResponse))
 
       const result = await getWalletBalances(
-        config,
+        client,
         SOME_WALLET_ADDRESS,
         options
       )
 
       expect(mockedGetWalletBalances).toHaveBeenCalledTimes(1)
       expect(mockedGetWalletBalances).toHaveBeenCalledWith(
-        config,
+        client,
         SOME_WALLET_ADDRESS,
         options
       )

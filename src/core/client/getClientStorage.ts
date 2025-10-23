@@ -1,5 +1,5 @@
 import { ChainId, ChainType, type ExtendedChain } from '@lifi/types'
-import { getChains } from '../../actions/getChains.js'
+import { getChainsFromConfig } from '../../actions/getChains.js'
 import type { RPCUrls, SDKBaseConfig } from '../types.js'
 import { getRpcUrlsFromChains } from '../utils.js'
 
@@ -17,7 +17,7 @@ export const getClientStorage = (config: SDKBaseConfig) => {
     },
     async getChains() {
       if (this.needReset || !_chains.length) {
-        _chains = await getChains(config, {
+        _chains = await getChainsFromConfig(config, {
           chainTypes: [
             ChainType.EVM,
             ChainType.SVM,

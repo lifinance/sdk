@@ -4,12 +4,12 @@ import { ServerError } from '../errors/errors.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
 import type { StatusManager } from './StatusManager.js'
-import type { ProcessType, SDKBaseConfig } from './types.js'
+import type { ProcessType, SDKClient } from './types.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
 export async function waitForTransactionStatus(
-  config: SDKBaseConfig,
+  client: SDKClient,
   statusManager: StatusManager,
   txHash: string,
   step: LiFiStep,
@@ -17,7 +17,7 @@ export async function waitForTransactionStatus(
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
-    return getStatus(config, {
+    return getStatus(client, {
       fromChain: step.action.fromChainId,
       fromAddress: step.action.fromAddress,
       toChain: step.action.toChainId,

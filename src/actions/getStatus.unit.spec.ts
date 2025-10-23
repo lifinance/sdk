@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getStatus } from './getStatus.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
@@ -19,7 +19,7 @@ describe('getStatus', () => {
   describe('user input is invalid', () => {
     it('throw an error', async () => {
       await expect(
-        getStatus(config, {
+        getStatus(client, {
           bridge,
           fromChain,
           toChain,
@@ -38,7 +38,7 @@ describe('getStatus', () => {
   describe('user input is valid', () => {
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
-        await getStatus(config, {
+        await getStatus(client, {
           bridge,
           fromChain,
           toChain,

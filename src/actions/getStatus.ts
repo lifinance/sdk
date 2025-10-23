@@ -1,5 +1,5 @@
 import type { RequestOptions, StatusResponse } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
@@ -7,14 +7,14 @@ import type { GetStatusRequestExtended } from '../types/actions.js'
 
 /**
  * Check the status of a transfer. For cross chain transfers, the "bridge" parameter is required.
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - Configuration of the requested status
  * @param options - Request options.
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Returns status response.
  */
 export const getStatus = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: GetStatusRequestExtended,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
@@ -27,8 +27,8 @@ export const getStatus = async (
     params as unknown as Record<string, string>
   )
   return await request<StatusResponse>(
-    config,
-    `${config.apiUrl}/status?${queryParams}`,
+    client.config,
+    `${client.config.apiUrl}/status?${queryParams}`,
     {
       signal: options?.signal,
     }

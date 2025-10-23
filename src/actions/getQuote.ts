@@ -1,5 +1,5 @@
 import type { LiFiStep, RequestOptions } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
@@ -11,24 +11,24 @@ import type {
 
 /**
  * Get a quote for a token transfer
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - The configuration of the requested quote
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Quote for a token transfer
  */
 export async function getQuote(
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: QuoteRequestFromAmount,
   options?: RequestOptions
 ): Promise<LiFiStep>
 export async function getQuote(
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: QuoteRequestToAmount,
   options?: RequestOptions
 ): Promise<LiFiStep>
 export async function getQuote(
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: QuoteRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> {
@@ -72,17 +72,17 @@ export async function getQuote(
   }
 
   // apply defaults
-  params.integrator ??= config.integrator
-  params.order ??= config.routeOptions?.order
-  params.slippage ??= config.routeOptions?.slippage
-  params.referrer ??= config.routeOptions?.referrer
-  params.fee ??= config.routeOptions?.fee
-  params.allowBridges ??= config.routeOptions?.bridges?.allow
-  params.denyBridges ??= config.routeOptions?.bridges?.deny
-  params.preferBridges ??= config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= config.routeOptions?.exchanges?.prefer
+  params.integrator ??= client.config.integrator
+  params.order ??= client.config.routeOptions?.order
+  params.slippage ??= client.config.routeOptions?.slippage
+  params.referrer ??= client.config.routeOptions?.referrer
+  params.fee ??= client.config.routeOptions?.fee
+  params.allowBridges ??= client.config.routeOptions?.bridges?.allow
+  params.denyBridges ??= client.config.routeOptions?.bridges?.deny
+  params.preferBridges ??= client.config.routeOptions?.bridges?.prefer
+  params.allowExchanges ??= client.config.routeOptions?.exchanges?.allow
+  params.denyExchanges ??= client.config.routeOptions?.exchanges?.deny
+  params.preferExchanges ??= client.config.routeOptions?.exchanges?.prefer
 
   for (const key of Object.keys(params)) {
     if (!params[key as keyof QuoteRequest]) {
@@ -91,8 +91,8 @@ export async function getQuote(
   }
 
   return await request<LiFiStep>(
-    config,
-    `${config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
+    client.config,
+    `${client.config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
       params as unknown as Record<string, string>
     )}`,
     {

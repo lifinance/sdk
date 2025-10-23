@@ -4,7 +4,7 @@ import type {
   RelayResponseData,
   RequestOptions,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
@@ -13,14 +13,14 @@ import { request } from '../request.js'
 
 /**
  * Relay a transaction through the relayer service
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - The configuration for the relay request
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Task ID and transaction link for the relayed transaction
  */
 export const relayTransaction = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: RelayRequest,
   options?: RequestOptions
 ): Promise<RelayResponseData> => {
@@ -45,8 +45,8 @@ export const relayTransaction = async (
     : '/advanced/relay'
 
   const result = await request<RelayResponse>(
-    config,
-    `${config.apiUrl}${relayerPath}`,
+    client.config,
+    `${client.config.apiUrl}${relayerPath}`,
     {
       method: 'POST',
       headers: {

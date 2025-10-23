@@ -188,7 +188,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
         break
       case 'relayed':
         transactionReceipt = await waitForRelayedTransactionReceipt(
-          client.config,
+          client,
           process.taskId as Hash,
           step
         )
@@ -234,7 +234,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     const gaslessStep = isGaslessStep(step)
     let updatedStep: LiFiStep
     if (relayerStep && gaslessStep) {
-      const updatedRelayedStep = await getRelayerQuote(client.config, {
+      const updatedRelayedStep = await getRelayerQuote(client, {
         fromChain: stepBase.action.fromChainId,
         fromToken: stepBase.action.fromToken.address,
         fromAddress: stepBase.action.fromAddress!,
@@ -257,7 +257,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
       const params = filteredSignedTypedData?.length
         ? { ...restStepBase, typedData: filteredSignedTypedData }
         : restStepBase
-      updatedStep = await getStepTransaction(client.config, params)
+      updatedStep = await getStepTransaction(client, params)
     }
 
     const comparedStep = await stepComparison(
@@ -622,7 +622,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
-        const relayedTransaction = await relayTransaction(client.config, {
+        const relayedTransaction = await relayTransaction(client, {
           ...stepBase,
           typedData: signedTypedData,
         })

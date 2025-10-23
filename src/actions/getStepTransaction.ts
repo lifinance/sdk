@@ -1,18 +1,18 @@
 import type { LiFiStep, RequestOptions, SignedLiFiStep } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { request } from '../request.js'
 import { isStep } from '../typeguards.js'
 
 /**
  * Get the transaction data for a single step of a route
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param step - The step object.
  * @param options - Request options
  * @returns The step populated with the transaction data.
  * @throws {LiFiError} Throws a LiFiError if request fails.
  */
 export const getStepTransaction = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   step: LiFiStep | SignedLiFiStep,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
@@ -22,8 +22,8 @@ export const getStepTransaction = async (
   }
 
   return await request<LiFiStep>(
-    config,
-    `${config.apiUrl}/advanced/stepTransaction`,
+    client.config,
+    `${client.config.apiUrl}/advanced/stepTransaction`,
     {
       method: 'POST',
       headers: {

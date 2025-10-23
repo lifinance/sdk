@@ -31,7 +31,7 @@ export function createClient(options: SDKConfig): SDKClient {
   let _providers: SDKProvider[] = []
   const _storage = getClientStorage(_config)
 
-  return {
+  const client: SDKClient = {
     get config() {
       return _config
     },
@@ -72,5 +72,23 @@ export function createClient(options: SDKConfig): SDKClient {
       }
       return chainRpcUrls
     },
-  } as SDKClient
+  }
+
+  function extend<TClient extends SDKClient>(
+    base: TClient
+  ): <TExtensions extends Record<string, any>>(
+    extendFn: (client: TClient) => TExtensions
+  ) => TClient & TExtensions {
+    return (extendFn) => {
+      const extensions = extendFn(base)
+      const extended = { ...base, ...extensions } as TClient & typeof extensions
+
+      // Preserve the extend function for further extensions
+      return Object.assign(extended, {
+        extend: extend(extended),
+      })
+    }
+  }
+
+  return Object.assign(client, { extend: extend(client) })
 }

@@ -10,7 +10,7 @@ import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getRelayedTransactionStatus } from './getRelayedTransactionStatus.js'
 
 describe('getRelayedTransactionStatus', () => {
@@ -48,7 +48,7 @@ describe('getRelayedTransactionStatus', () => {
     it('should get relayed transaction status successfully', async () => {
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.json(mockSuccessResponse)
           }
@@ -57,7 +57,7 @@ describe('getRelayedTransactionStatus', () => {
 
       const request = createMockRelayStatusRequest()
 
-      const result = await getRelayedTransactionStatus(config, request)
+      const result = await getRelayedTransactionStatus(client, request)
 
       expect(result).toEqual(mockStatusResponseData)
     })
@@ -71,7 +71,7 @@ describe('getRelayedTransactionStatus', () => {
       let capturedOptions: any
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async ({ request }) => {
             capturedOptions = request
             return HttpResponse.json(mockSuccessResponse)
@@ -81,7 +81,7 @@ describe('getRelayedTransactionStatus', () => {
 
       const request = createMockRelayStatusRequest()
 
-      await getRelayedTransactionStatus(config, request, options)
+      await getRelayedTransactionStatus(client, request, options)
 
       expect(capturedOptions.signal).toBeDefined()
       expect(capturedOptions.signal).toBeInstanceOf(AbortSignal)
@@ -104,7 +104,7 @@ describe('getRelayedTransactionStatus', () => {
       // Test PENDING status
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.json(pendingResponse)
           }
@@ -112,7 +112,7 @@ describe('getRelayedTransactionStatus', () => {
       )
 
       let result = await getRelayedTransactionStatus(
-        config,
+        client,
         createMockRelayStatusRequest()
       )
       expect(result.status).toBe('PENDING')
@@ -121,7 +121,7 @@ describe('getRelayedTransactionStatus', () => {
       server.resetHandlers()
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.json(completedResponse)
           }
@@ -129,7 +129,7 @@ describe('getRelayedTransactionStatus', () => {
       )
 
       result = await getRelayedTransactionStatus(
-        config,
+        client,
         createMockRelayStatusRequest()
       )
       expect(result.status).toBe('COMPLETED')
@@ -138,7 +138,7 @@ describe('getRelayedTransactionStatus', () => {
       server.resetHandlers()
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.json(failedResponse)
           }
@@ -146,7 +146,7 @@ describe('getRelayedTransactionStatus', () => {
       )
 
       result = await getRelayedTransactionStatus(
-        config,
+        client,
         createMockRelayStatusRequest()
       )
       expect(result.status).toBe('FAILED')
@@ -160,11 +160,11 @@ describe('getRelayedTransactionStatus', () => {
       })
 
       await expect(
-        getRelayedTransactionStatus(config, invalidRequest)
+        getRelayedTransactionStatus(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getRelayedTransactionStatus(config, invalidRequest)
+        await getRelayedTransactionStatus(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -179,7 +179,7 @@ describe('getRelayedTransactionStatus', () => {
     it('should throw BaseError when server returns error status', async () => {
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.json(mockErrorResponse)
           }
@@ -189,11 +189,11 @@ describe('getRelayedTransactionStatus', () => {
       const request = createMockRelayStatusRequest()
 
       await expect(
-        getRelayedTransactionStatus(config, request)
+        getRelayedTransactionStatus(client, request)
       ).rejects.toThrow(BaseError)
 
       try {
-        await getRelayedTransactionStatus(config, request)
+        await getRelayedTransactionStatus(client, request)
       } catch (error) {
         expect(error).toBeInstanceOf(BaseError)
         expect((error as BaseError).name).toBe(ErrorName.ServerError)
@@ -205,7 +205,7 @@ describe('getRelayedTransactionStatus', () => {
     it('should throw SDKError when network request fails', async () => {
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             return HttpResponse.error()
           }
@@ -215,14 +215,14 @@ describe('getRelayedTransactionStatus', () => {
       const request = createMockRelayStatusRequest()
 
       await expect(
-        getRelayedTransactionStatus(config, request)
+        getRelayedTransactionStatus(client, request)
       ).rejects.toThrow(SDKError)
     })
 
     it('should throw SDKError when request times out', async () => {
       server.use(
         http.get(
-          `${config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
+          `${client.config.apiUrl}/relayer/status/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`,
           async () => {
             // Simulate timeout by not responding
             await new Promise(() => {}) // Never resolves
@@ -236,7 +236,7 @@ describe('getRelayedTransactionStatus', () => {
       }
 
       await expect(
-        getRelayedTransactionStatus(config, request, timeoutOptions)
+        getRelayedTransactionStatus(client, request, timeoutOptions)
       ).rejects.toThrow()
     })
   })

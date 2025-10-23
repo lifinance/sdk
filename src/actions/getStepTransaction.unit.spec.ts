@@ -3,7 +3,7 @@ import type { Action, Estimate, LiFiStep, StepTool, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
 import * as request from '../request.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getStepTransaction } from './getStepTransaction.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
@@ -79,7 +79,7 @@ describe('getStepTransaction', () => {
       it('should throw Error because of invalid id', async () => {
         const step = getStep({ id: null as unknown as string })
 
-        await expect(getStepTransaction(config, step)).rejects.toThrow(
+        await expect(getStepTransaction(client, step)).rejects.toThrow(
           'Invalid step.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -88,7 +88,7 @@ describe('getStepTransaction', () => {
       it('should throw Error because of invalid type', async () => {
         const step = getStep({ type: 42 as unknown as 'lifi' })
 
-        await expect(getStepTransaction(config, step)).rejects.toThrow(
+        await expect(getStepTransaction(client, step)).rejects.toThrow(
           'Invalid Step'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -97,7 +97,7 @@ describe('getStepTransaction', () => {
       it('should throw Error because of invalid tool', async () => {
         const step = getStep({ tool: null as unknown as StepTool })
 
-        await expect(getStepTransaction(config, step)).rejects.toThrow(
+        await expect(getStepTransaction(client, step)).rejects.toThrow(
           'Invalid step.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -107,7 +107,7 @@ describe('getStepTransaction', () => {
       it('should throw Error because of invalid action', async () => {
         const step = getStep({ action: 'xxx' as unknown as Action })
 
-        await expect(getStepTransaction(config, step)).rejects.toThrow(
+        await expect(getStepTransaction(client, step)).rejects.toThrow(
           'Invalid step.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -119,7 +119,7 @@ describe('getStepTransaction', () => {
           estimate: 'Is this really an estimate?' as unknown as Estimate,
         })
 
-        await expect(getStepTransaction(config, step)).rejects.toThrow(
+        await expect(getStepTransaction(client, step)).rejects.toThrow(
           'Invalid step.'
         )
         expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -131,7 +131,7 @@ describe('getStepTransaction', () => {
         it('call the server once', async () => {
           const step = getStep({})
 
-          await getStepTransaction(config, step)
+          await getStepTransaction(client, step)
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })

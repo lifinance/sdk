@@ -3,13 +3,13 @@ import type {
   TransactionAnalyticsRequest,
   TransactionAnalyticsResponse,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { request } from '../request.js'
 
 /**
  * Get the transaction history for a wallet
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - The parameters for the transaction history request
  * @param params.wallet - The wallet address
  * @param params.status - The status of the transactions
@@ -21,7 +21,7 @@ import { request } from '../request.js'
  * @returns The transaction history response
  */
 export const getTransactionHistory = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   { wallet, status, fromTimestamp, toTimestamp }: TransactionAnalyticsRequest,
   options?: RequestOptions
 ): Promise<TransactionAnalyticsResponse> => {
@@ -29,9 +29,9 @@ export const getTransactionHistory = async (
     throw new ValidationError('Required parameter "wallet" is missing.')
   }
 
-  const url = new URL(`${config.apiUrl}/analytics/transfers`)
+  const url = new URL(`${client.config.apiUrl}/analytics/transfers`)
 
-  url.searchParams.append('integrator', config.integrator)
+  url.searchParams.append('integrator', client.config.integrator)
   url.searchParams.append('wallet', wallet)
 
   if (status) {
@@ -46,5 +46,9 @@ export const getTransactionHistory = async (
     url.searchParams.append('toTimestamp', toTimestamp.toString())
   }
 
-  return await request<TransactionAnalyticsResponse>(config, url, options)
+  return await request<TransactionAnalyticsResponse>(
+    client.config,
+    url,
+    options
+  )
 }

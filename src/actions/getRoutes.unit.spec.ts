@@ -3,7 +3,7 @@ import type { RoutesRequest } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
 import * as request from '../request.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getRoutes } from './getRoutes.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
@@ -40,7 +40,7 @@ describe('getRoutes', () => {
         fromChainId: 'xxx' as unknown as ChainId,
       })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -51,7 +51,7 @@ describe('getRoutes', () => {
         fromAmount: 10000000000000 as unknown as string,
       })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -62,7 +62,7 @@ describe('getRoutes', () => {
         fromTokenAddress: 1234 as unknown as string,
       })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -73,7 +73,7 @@ describe('getRoutes', () => {
         toChainId: 'xxx' as unknown as ChainId,
       })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -82,7 +82,7 @@ describe('getRoutes', () => {
     it('should throw Error because of invalid toTokenAddress type', async () => {
       const request = getRoutesRequest({ toTokenAddress: '' })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -93,7 +93,7 @@ describe('getRoutes', () => {
         options: { slippage: 'not a number' as unknown as number },
       })
 
-      await expect(getRoutes(config, request)).rejects.toThrow(
+      await expect(getRoutes(client, request)).rejects.toThrow(
         'Invalid routes request.'
       )
       expect(mockedFetch).toHaveBeenCalledTimes(0)
@@ -104,7 +104,7 @@ describe('getRoutes', () => {
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
         const request = getRoutesRequest({})
-        await getRoutes(config, request)
+        await getRoutes(client, request)
         expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })

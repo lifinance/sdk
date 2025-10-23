@@ -1,16 +1,16 @@
 import type { RequestOptions, ToolsRequest, ToolsResponse } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { request } from '../request.js'
 
 /**
  * Get the available tools to bridge and swap tokens.
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - The configuration of the requested tools
  * @param options - Request options
  * @returns The tools that are available on the requested chains
  */
 export const getTools = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params?: ToolsRequest,
   options?: RequestOptions
 ): Promise<ToolsResponse> => {
@@ -22,8 +22,8 @@ export const getTools = async (
     }
   }
   return await request<ToolsResponse>(
-    config,
-    `${config.apiUrl}/tools?${new URLSearchParams(
+    client.config,
+    `${client.config.apiUrl}/tools?${new URLSearchParams(
       params as Record<string, string>
     )}`,
     {

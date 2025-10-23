@@ -8,7 +8,7 @@ import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getContractCallsQuote } from './getContractCallsQuote.js'
 
 describe('getContractCallsQuote', () => {
@@ -87,7 +87,7 @@ describe('getContractCallsQuote', () => {
   describe('success scenarios', () => {
     it('should get contract calls quote successfully with fromAmount', async () => {
       server.use(
-        http.post(`${config.apiUrl}/quote/contractCalls`, async () => {
+        http.post(`${client.config.apiUrl}/quote/contractCalls`, async () => {
           return HttpResponse.json(mockLiFiStep)
         })
       )
@@ -96,14 +96,14 @@ describe('getContractCallsQuote', () => {
         fromAmount: '1000000',
       })
 
-      const result = await getContractCallsQuote(config, request)
+      const result = await getContractCallsQuote(client, request)
 
       expect(result).toEqual(mockLiFiStep)
     })
 
     it('should get contract calls quote successfully with toAmount', async () => {
       server.use(
-        http.post(`${config.apiUrl}/quote/contractCalls`, async () => {
+        http.post(`${client.config.apiUrl}/quote/contractCalls`, async () => {
           return HttpResponse.json(mockLiFiStep)
         })
       )
@@ -113,7 +113,7 @@ describe('getContractCallsQuote', () => {
         fromAmount: undefined,
       })
 
-      const result = await getContractCallsQuote(config, request)
+      const result = await getContractCallsQuote(client, request)
 
       expect(result).toEqual(mockLiFiStep)
     })
@@ -127,7 +127,7 @@ describe('getContractCallsQuote', () => {
       let capturedOptions: any
       server.use(
         http.post(
-          `${config.apiUrl}/quote/contractCalls`,
+          `${client.config.apiUrl}/quote/contractCalls`,
           async ({ request }) => {
             capturedOptions = request
             return HttpResponse.json(mockLiFiStep)
@@ -137,7 +137,7 @@ describe('getContractCallsQuote', () => {
 
       const request = createMockContractCallsRequest()
 
-      await getContractCallsQuote(config, request, options)
+      await getContractCallsQuote(client, request, options)
 
       expect(capturedOptions.signal).toBeDefined()
       expect(capturedOptions.signal).toBeInstanceOf(AbortSignal)
@@ -151,11 +151,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -171,11 +171,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -191,11 +191,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -211,11 +211,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -231,11 +231,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -251,11 +251,11 @@ describe('getContractCallsQuote', () => {
       })
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -272,11 +272,11 @@ describe('getContractCallsQuote', () => {
       delete (invalidRequest as any).toAmount
 
       await expect(
-        getContractCallsQuote(config, invalidRequest)
+        getContractCallsQuote(client, invalidRequest)
       ).rejects.toThrow(SDKError)
 
       try {
-        await getContractCallsQuote(config, invalidRequest)
+        await getContractCallsQuote(client, invalidRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(SDKError)
         expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -290,21 +290,21 @@ describe('getContractCallsQuote', () => {
   describe('error scenarios', () => {
     it('should throw SDKError when network request fails', async () => {
       server.use(
-        http.post(`${config.apiUrl}/quote/contractCalls`, async () => {
+        http.post(`${client.config.apiUrl}/quote/contractCalls`, async () => {
           return HttpResponse.error()
         })
       )
 
       const request = createMockContractCallsRequest()
 
-      await expect(getContractCallsQuote(config, request)).rejects.toThrow(
+      await expect(getContractCallsQuote(client, request)).rejects.toThrow(
         SDKError
       )
     })
 
     it('should throw SDKError when request times out', async () => {
       server.use(
-        http.post(`${config.apiUrl}/quote/contractCalls`, async () => {
+        http.post(`${client.config.apiUrl}/quote/contractCalls`, async () => {
           // Simulate timeout by not responding
           await new Promise(() => {}) // Never resolves
         })
@@ -316,7 +316,7 @@ describe('getContractCallsQuote', () => {
       }
 
       await expect(
-        getContractCallsQuote(config, request, timeoutOptions)
+        getContractCallsQuote(client, request, timeoutOptions)
       ).rejects.toThrow()
     })
   })

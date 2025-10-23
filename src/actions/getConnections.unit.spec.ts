@@ -4,7 +4,7 @@ import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import * as request from '../request.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getConnections } from './getConnections.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
@@ -14,7 +14,7 @@ describe('getConnections', () => {
 
   it('returns empty array in response', async () => {
     server.use(
-      http.get(`${config.apiUrl}/connections`, async () =>
+      http.get(`${client.config.apiUrl}/connections`, async () =>
         HttpResponse.json({ connections: [] })
       )
     )
@@ -35,7 +35,7 @@ describe('getConnections', () => {
     const generatedURL =
       'https://li.quest/v1/connections?fromChain=56&fromToken=0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d&toChain=10&toToken=0x0b2c639c533813f4aa9d7837caf62653d097ff85&allowBridges=connext&allowBridges=uniswap&allowBridges=polygon&denyBridges=Hop&denyBridges=Multichain&preferBridges=Hyphen&preferBridges=Across&allowExchanges=1inch&allowExchanges=ParaSwap&allowExchanges=SushiSwap&denyExchanges=UbeSwap&denyExchanges=BeamSwap&preferExchanges=Evmoswap&preferExchanges=Diffusion'
 
-    await expect(getConnections(config, connectionRequest)).resolves.toEqual({
+    await expect(getConnections(client, connectionRequest)).resolves.toEqual({
       connections: [],
     })
 

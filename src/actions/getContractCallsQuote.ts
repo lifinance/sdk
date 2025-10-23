@@ -7,21 +7,21 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 
 /**
  * Get a quote for a destination contract call
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - The configuration of the requested destination call
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns - Returns step.
  */
 export const getContractCallsQuote = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: ContractCallsQuoteRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
@@ -55,20 +55,20 @@ export const getContractCallsQuote = async (
   }
   // apply defaults
   // option.order is not used in this endpoint
-  params.integrator ??= config.integrator
-  params.slippage ??= config.routeOptions?.slippage
-  params.referrer ??= config.routeOptions?.referrer
-  params.fee ??= config.routeOptions?.fee
-  params.allowBridges ??= config.routeOptions?.bridges?.allow
-  params.denyBridges ??= config.routeOptions?.bridges?.deny
-  params.preferBridges ??= config.routeOptions?.bridges?.prefer
-  params.allowExchanges ??= config.routeOptions?.exchanges?.allow
-  params.denyExchanges ??= config.routeOptions?.exchanges?.deny
-  params.preferExchanges ??= config.routeOptions?.exchanges?.prefer
+  params.integrator ??= client.config.integrator
+  params.slippage ??= client.config.routeOptions?.slippage
+  params.referrer ??= client.config.routeOptions?.referrer
+  params.fee ??= client.config.routeOptions?.fee
+  params.allowBridges ??= client.config.routeOptions?.bridges?.allow
+  params.denyBridges ??= client.config.routeOptions?.bridges?.deny
+  params.preferBridges ??= client.config.routeOptions?.bridges?.prefer
+  params.allowExchanges ??= client.config.routeOptions?.exchanges?.allow
+  params.denyExchanges ??= client.config.routeOptions?.exchanges?.deny
+  params.preferExchanges ??= client.config.routeOptions?.exchanges?.prefer
   // send request
   return await request<LiFiStep>(
-    config,
-    `${config.apiUrl}/quote/contractCalls`,
+    client.config,
+    `${client.config.apiUrl}/quote/contractCalls`,
     {
       method: 'POST',
       headers: {

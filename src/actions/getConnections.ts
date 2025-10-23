@@ -3,22 +3,22 @@ import type {
   ConnectionsResponse,
   RequestOptions,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { request } from '../request.js'
 
 /**
  * Get all the available connections for swap/bridging tokens
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param connectionRequest ConnectionsRequest
  * @param options - Request options
  * @returns ConnectionsResponse
  */
 export const getConnections = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   connectionRequest: ConnectionsRequest,
   options?: RequestOptions
 ): Promise<ConnectionsResponse> => {
-  const url = new URL(`${config.apiUrl}/connections`)
+  const url = new URL(`${client.config.apiUrl}/connections`)
 
   const { fromChain, fromToken, toChain, toToken } = connectionRequest
 
@@ -51,5 +51,5 @@ export const getConnections = async (
       }
     }
   }
-  return await request<ConnectionsResponse>(config, url, options)
+  return await request<ConnectionsResponse>(client.config, url, options)
 }

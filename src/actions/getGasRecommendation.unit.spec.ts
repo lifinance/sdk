@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../request.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getGasRecommendation } from './getGasRecommendation.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
@@ -14,7 +14,7 @@ describe('getGasRecommendation', () => {
   describe('user input is invalid', () => {
     it('throw an error', async () => {
       await expect(
-        getGasRecommendation(config, {
+        getGasRecommendation(client, {
           chainId: undefined as unknown as number,
         })
       ).rejects.toThrowError(
@@ -29,7 +29,7 @@ describe('getGasRecommendation', () => {
   describe('user input is valid', () => {
     describe('and the backend call is successful', () => {
       it('call the server once', async () => {
-        await getGasRecommendation(config, {
+        await getGasRecommendation(client, {
           chainId: ChainId.OPT,
         })
 

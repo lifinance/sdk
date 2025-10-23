@@ -122,7 +122,7 @@ describe('getBalances integration tests', () => {
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
-      const { tokens } = await getTokens(client.config, {
+      const { tokens } = await getTokens(client, {
         chains: [ChainId.OPT],
       })
       expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { SDKError } from '../errors/SDKError.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { relayTransaction } from './relayTransaction.js'
 
 describe('relayTransaction', () => {
@@ -137,25 +137,25 @@ describe('relayTransaction', () => {
   describe('success scenarios', () => {
     it('should relay transaction successfully for advanced relayer', async () => {
       server.use(
-        http.post(`${config.apiUrl}/advanced/relay`, async () => {
+        http.post(`${client.config.apiUrl}/advanced/relay`, async () => {
           return HttpResponse.json(mockSuccessResponse)
         })
       )
 
-      const result = await relayTransaction(config, mockRelayRequest)
+      const result = await relayTransaction(client, mockRelayRequest)
 
       expect(result).toEqual(mockSuccessResponse.data)
     })
 
     it('should relay transaction successfully for gasless relayer', async () => {
       server.use(
-        http.post(`${config.apiUrl}/relayer/relay`, async () => {
+        http.post(`${client.config.apiUrl}/relayer/relay`, async () => {
           return HttpResponse.json(mockSuccessResponse)
         })
       )
 
       const result = await relayTransaction(
-        config,
+        client,
         mockRelayRequestWithPermitWitness
       )
 
@@ -166,17 +166,17 @@ describe('relayTransaction', () => {
   describe('error scenarios', () => {
     it('should throw BaseError when server returns error status', async () => {
       server.use(
-        http.post(`${config.apiUrl}/advanced/relay`, async () => {
+        http.post(`${client.config.apiUrl}/advanced/relay`, async () => {
           return HttpResponse.json(mockErrorResponse)
         })
       )
 
-      await expect(relayTransaction(config, mockRelayRequest)).rejects.toThrow(
+      await expect(relayTransaction(client, mockRelayRequest)).rejects.toThrow(
         BaseError
       )
 
       try {
-        await relayTransaction(config, mockRelayRequest)
+        await relayTransaction(client, mockRelayRequest)
       } catch (error) {
         expect(error).toBeInstanceOf(BaseError)
         expect((error as BaseError).name).toBe(ErrorName.ServerError)
@@ -187,19 +187,19 @@ describe('relayTransaction', () => {
 
     it('should throw SDKError when network request fails', async () => {
       server.use(
-        http.post(`${config.apiUrl}/advanced/relay`, async () => {
+        http.post(`${client.config.apiUrl}/advanced/relay`, async () => {
           return HttpResponse.error()
         })
       )
 
-      await expect(relayTransaction(config, mockRelayRequest)).rejects.toThrow(
+      await expect(relayTransaction(client, mockRelayRequest)).rejects.toThrow(
         SDKError
       )
     })
 
     it('should throw SDKError when request times out', async () => {
       server.use(
-        http.post(`${config.apiUrl}/advanced/relay`, async () => {
+        http.post(`${client.config.apiUrl}/advanced/relay`, async () => {
           // Simulate timeout by not responding
           await new Promise(() => {}) // Never resolves
         })
@@ -210,7 +210,7 @@ describe('relayTransaction', () => {
       }
 
       await expect(
-        relayTransaction(config, mockRelayRequest, timeoutOptions)
+        relayTransaction(client, mockRelayRequest, timeoutOptions)
       ).rejects.toThrow()
     })
   })
@@ -221,7 +221,7 @@ describe('relayTransaction', () => {
       // Remove typedData to test validation
       delete (invalidRequest as any).typedData
 
-      await expect(relayTransaction(config, invalidRequest)).rejects.toThrow(
+      await expect(relayTransaction(client, invalidRequest)).rejects.toThrow(
         SDKError
       )
     })

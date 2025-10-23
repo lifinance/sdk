@@ -4,14 +4,14 @@ import type {
   RequestOptions,
   TokenExtended,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 
 /**
  * Fetch information about a Token
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param chain - Id or key of the chain that contains the token
  * @param token - Address or symbol of the token on the requested chain
  * @param options - Request options
@@ -19,7 +19,7 @@ import { request } from '../request.js'
  * @returns Token information
  */
 export const getToken = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   chain: ChainKey | ChainId,
   token: string,
   options?: RequestOptions
@@ -35,8 +35,8 @@ export const getToken = async (
     )
   }
   return await request<TokenExtended>(
-    config,
-    `${config.apiUrl}/token?${new URLSearchParams({
+    client.config,
+    `${client.config.apiUrl}/token?${new URLSearchParams({
       chain,
       token,
     } as Record<string, string>)}`,

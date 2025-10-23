@@ -4,7 +4,7 @@ import type {
   RelayStatusResponseData,
   RequestOptions,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
@@ -13,14 +13,14 @@ import { request } from '../request.js'
 
 /**
  * Get the status of a relayed transaction
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - Parameters for the relay status request
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Status of the relayed transaction
  */
 export const getRelayedTransactionStatus = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: RelayStatusRequest,
   options?: RequestOptions
 ): Promise<RelayStatusResponseData> => {
@@ -35,8 +35,8 @@ export const getRelayedTransactionStatus = async (
     otherParams as unknown as Record<string, string>
   )
   const result = await request<RelayStatusResponse>(
-    config,
-    `${config.apiUrl}/relayer/status/${taskId}?${queryParams}`,
+    client.config,
+    `${client.config.apiUrl}/relayer/status/${taskId}?${queryParams}`,
     {
       signal: options?.signal,
     }

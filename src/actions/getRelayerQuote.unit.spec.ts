@@ -11,7 +11,7 @@ import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import type { QuoteRequestFromAmount } from '../types/actions.js'
-import { config, setupTestServer } from './actions.unit.handlers.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getRelayerQuote } from './getRelayerQuote.js'
 
 describe('getRelayerQuote', () => {
@@ -94,14 +94,14 @@ describe('getRelayerQuote', () => {
   describe('success scenarios', () => {
     it('should get relayer quote successfully', async () => {
       server.use(
-        http.get(`${config.apiUrl}/relayer/quote`, async () => {
+        http.get(`${client.config.apiUrl}/relayer/quote`, async () => {
           return HttpResponse.json(mockSuccessResponse)
         })
       )
 
       const request = createMockQuoteRequest()
 
-      const result = await getRelayerQuote(config, request)
+      const result = await getRelayerQuote(client, request)
 
       expect(result).toEqual(mockLiFiStep)
     })
@@ -114,15 +114,18 @@ describe('getRelayerQuote', () => {
 
       let capturedOptions: any
       server.use(
-        http.get(`${config.apiUrl}/relayer/quote`, async ({ request }) => {
-          capturedOptions = request
-          return HttpResponse.json(mockSuccessResponse)
-        })
+        http.get(
+          `${client.config.apiUrl}/relayer/quote`,
+          async ({ request }) => {
+            capturedOptions = request
+            return HttpResponse.json(mockSuccessResponse)
+          }
+        )
       )
 
       const request = createMockQuoteRequest()
 
-      await getRelayerQuote(config, request, options)
+      await getRelayerQuote(client, request, options)
 
       expect(capturedOptions.signal).toBeDefined()
       expect(capturedOptions.signal).toBeInstanceOf(AbortSignal)
@@ -145,12 +148,12 @@ describe('getRelayerQuote', () => {
           [testCase.param]: testCase.value,
         })
 
-        await expect(getRelayerQuote(config, invalidRequest)).rejects.toThrow(
+        await expect(getRelayerQuote(client, invalidRequest)).rejects.toThrow(
           SDKError
         )
 
         try {
-          await getRelayerQuote(config, invalidRequest)
+          await getRelayerQuote(client, invalidRequest)
         } catch (error) {
           expect(error).toBeInstanceOf(SDKError)
           expect((error as SDKError).cause).toBeInstanceOf(ValidationError)
@@ -165,17 +168,17 @@ describe('getRelayerQuote', () => {
   describe('error scenarios', () => {
     it('should throw BaseError when server returns error status', async () => {
       server.use(
-        http.get(`${config.apiUrl}/relayer/quote`, async () => {
+        http.get(`${client.config.apiUrl}/relayer/quote`, async () => {
           return HttpResponse.json(mockErrorResponse)
         })
       )
 
       const request = createMockQuoteRequest()
 
-      await expect(getRelayerQuote(config, request)).rejects.toThrow(BaseError)
+      await expect(getRelayerQuote(client, request)).rejects.toThrow(BaseError)
 
       try {
-        await getRelayerQuote(config, request)
+        await getRelayerQuote(client, request)
       } catch (error) {
         expect(error).toBeInstanceOf(BaseError)
         expect((error as BaseError).name).toBe(ErrorName.ServerError)
@@ -186,19 +189,19 @@ describe('getRelayerQuote', () => {
 
     it('should throw SDKError when network request fails', async () => {
       server.use(
-        http.get(`${config.apiUrl}/relayer/quote`, async () => {
+        http.get(`${client.config.apiUrl}/relayer/quote`, async () => {
           return HttpResponse.error()
         })
       )
 
       const request = createMockQuoteRequest()
 
-      await expect(getRelayerQuote(config, request)).rejects.toThrow(SDKError)
+      await expect(getRelayerQuote(client, request)).rejects.toThrow(SDKError)
     })
 
     it('should throw SDKError when request times out', async () => {
       server.use(
-        http.get(`${config.apiUrl}/relayer/quote`, async () => {
+        http.get(`${client.config.apiUrl}/relayer/quote`, async () => {
           // Simulate timeout by not responding
           await new Promise(() => {}) // Never resolves
         })
@@ -210,7 +213,7 @@ describe('getRelayerQuote', () => {
       }
 
       await expect(
-        getRelayerQuote(config, request, timeoutOptions)
+        getRelayerQuote(client, request, timeoutOptions)
       ).rejects.toThrow()
     })
   })

@@ -3,21 +3,21 @@ import type {
   GasRecommendationResponse,
   RequestOptions,
 } from '@lifi/types'
-import type { SDKBaseConfig } from '../core/types.js'
+import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 
 /**
  * Get gas recommendation for a certain chain
- * @param config - The SDK client configuration
+ * @param client - The SDK client
  * @param params - Configuration of the requested gas recommendation.
  * @param options - Request options
  * @throws {LiFiError} Throws a LiFiError if request fails.
  * @returns Gas recommendation response.
  */
 export const getGasRecommendation = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   params: GasRecommendationRequest,
   options?: RequestOptions
 ): Promise<GasRecommendationResponse> => {
@@ -27,7 +27,9 @@ export const getGasRecommendation = async (
     )
   }
 
-  const url = new URL(`${config.apiUrl}/gas/suggestion/${params.chainId}`)
+  const url = new URL(
+    `${client.config.apiUrl}/gas/suggestion/${params.chainId}`
+  )
   if (params.fromChain) {
     url.searchParams.append('fromChain', params.fromChain as unknown as string)
   }
@@ -35,7 +37,11 @@ export const getGasRecommendation = async (
     url.searchParams.append('fromToken', params.fromToken)
   }
 
-  return await request<GasRecommendationResponse>(config, url.toString(), {
-    signal: options?.signal,
-  })
+  return await request<GasRecommendationResponse>(
+    client.config,
+    url.toString(),
+    {
+      signal: options?.signal,
+    }
+  )
 }

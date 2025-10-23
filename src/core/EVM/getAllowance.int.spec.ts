@@ -103,7 +103,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should handle token lists with more than 10 tokens',
     { retry: retryTimes, timeout },
     async () => {
-      const { tokens } = await getTokens(client.config, {
+      const { tokens } = await getTokens(client, {
         chains: [ChainId.POL],
       })
       const filteredTokens = tokens[ChainId.POL]
