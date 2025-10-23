@@ -1,12 +1,12 @@
 import type { ChainId, ChainType } from '@lifi/types'
-import { checkPackageUpdates } from '../../utils/checkPackageUpdates.js'
-import { name, version } from '../../version.js'
 import type {
   SDKBaseConfig,
   SDKClient,
   SDKConfig,
   SDKProvider,
-} from '../types.js'
+} from '../types/core.js'
+import { checkPackageUpdates } from '../utils/checkPackageUpdates.js'
+import { name, version } from '../version.js'
 import { getClientStorage } from './getClientStorage.js'
 
 export function createClient(options: SDKConfig): SDKClient {

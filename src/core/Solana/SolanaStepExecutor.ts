@@ -4,15 +4,15 @@ import { withTimeout } from 'viem'
 import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
-import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import { checkBalance } from '../checkBalance.js'
-import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
+import { BaseStepExecutor } from '../BaseStepExecutor.js'
+import { checkBalance } from '../checkBalance.js'
+import { stepComparison } from '../stepComparison.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'

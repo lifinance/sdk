@@ -1,5 +1,4 @@
 import type { LiFiStep, RequestOptions } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
@@ -8,6 +7,7 @@ import type {
   QuoteRequestFromAmount,
   QuoteRequestToAmount,
 } from '../types/actions.js'
+import type { SDKClient } from '../types/core.js'
 
 /**
  * Get a quote for a token transfer

@@ -4,7 +4,7 @@ import type {
   TokenAmountExtended,
   TokenExtended,
 } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
+import type { SDKClient } from '../types/core.js'
 import { getTokenBalancesByChain } from './getTokenBalancesByChain.js'
 
 /**

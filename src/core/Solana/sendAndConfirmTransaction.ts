@@ -4,8 +4,8 @@ import type {
   VersionedTransaction,
 } from '@solana/web3.js'
 import bs58 from 'bs58'
+import type { SDKClient } from '../../types/core.js'
 import { sleep } from '../../utils/sleep.js'
-import type { SDKClient } from '../types.js'
 import { getSolanaConnections } from './connection.js'
 
 type ConfirmedTransactionResult = {

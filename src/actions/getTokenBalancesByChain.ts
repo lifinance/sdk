@@ -4,9 +4,9 @@ import type {
   TokenAmountExtended,
   TokenExtended,
 } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { isToken } from '../typeguards.js'
+import type { SDKClient } from '../types/core.js'
 
 /**
  * This method queries the balances of tokens for a specific list of chains for a given wallet.

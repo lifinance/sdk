@@ -1,7 +1,7 @@
 import { ChainId, ChainType, type ExtendedChain } from '@lifi/types'
-import { getChainsFromConfig } from '../../actions/getChains.js'
-import type { RPCUrls, SDKBaseConfig } from '../types.js'
-import { getRpcUrlsFromChains } from '../utils.js'
+import { getChainsFromConfig } from '../actions/getChains.js'
+import { getRpcUrlsFromChains } from '../core/utils.js'
+import type { RPCUrls, SDKBaseConfig } from '../types/core.js'
 
 export const getClientStorage = (config: SDKBaseConfig) => {
   let _chains = [] as ExtendedChain[]

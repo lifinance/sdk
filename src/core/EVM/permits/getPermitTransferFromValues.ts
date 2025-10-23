@@ -1,7 +1,7 @@
 import type { ExtendedChain } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
-import type { SDKClient } from '../../types.js'
+import type { SDKClient } from '../../../types/core.js'
 import { permit2ProxyAbi } from '../abi.js'
 import { getActionWithFallback } from '../getActionWithFallback.js'
 import type { PermitTransferFrom } from './signatureTransfer.js'

@@ -2,7 +2,7 @@ import { ChainId, ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import type { EVMProvider } from './types.js'
 import { UNS_PROXY_READER_ADDRESSES } from './uns/constants.js'
 

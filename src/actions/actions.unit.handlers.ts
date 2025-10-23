@@ -3,7 +3,7 @@ import { ChainId, CoinKey } from '@lifi/types'
 import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
-import { createClient } from '../core/client/createClient.js'
+import { createClient } from '../client/createClient.js'
 import { requestSettings } from '../request.js'
 
 const client = createClient({

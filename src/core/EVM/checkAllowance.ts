@@ -3,14 +3,14 @@ import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
-import type { StatusManager } from '../StatusManager.js'
 import type {
   ExecutionOptions,
   LiFiStepExtended,
   Process,
   ProcessType,
   SDKClient,
-} from '../types.js'
+} from '../../types/core.js'
+import type { StatusManager } from '../StatusManager.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'

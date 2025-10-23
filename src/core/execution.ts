@@ -1,14 +1,14 @@
 import type { Route } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { ProviderError } from '../errors/errors.js'
-import { executionState } from './executionState.js'
-import { prepareRestart } from './prepareRestart.js'
 import type {
   ExecutionOptions,
   RouteExtended,
   SDKClient,
   SDKProvider,
-} from './types.js'
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import { prepareRestart } from './prepareRestart.js'
 
 /**
  * Execute a route.

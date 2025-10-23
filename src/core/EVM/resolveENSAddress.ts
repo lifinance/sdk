@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { getEnsAddress, normalize } from 'viem/ens'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { getPublicClient } from './publicClient.js'
 
 export const resolveENSAddress = async (

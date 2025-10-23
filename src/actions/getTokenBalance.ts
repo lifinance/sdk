@@ -1,5 +1,5 @@
 import type { Token, TokenAmount } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
+import type { SDKClient } from '../types/core.js'
 import { getTokenBalances } from './getTokenBalances.js'
 
 /**

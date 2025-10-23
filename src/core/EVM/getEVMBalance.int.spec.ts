@@ -4,7 +4,7 @@ import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { describe, expect, it } from 'vitest'
 import { getTokens } from '../../actions/getTokens.js'
-import { createClient } from '../client/createClient.js'
+import { createClient } from '../../client/createClient.js'
 import { EVM } from './EVM.js'
 import { getEVMBalance } from './getEVMBalance.js'
 

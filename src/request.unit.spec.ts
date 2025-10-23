@@ -11,7 +11,7 @@ import {
   vi,
 } from 'vitest'
 import { handlers } from './actions/actions.unit.handlers.js'
-import { createClient } from './core/client/createClient.js'
+import { createClient } from './client/createClient.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'

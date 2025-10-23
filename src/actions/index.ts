@@ -31,11 +31,11 @@ import type {
   TransactionAnalyticsResponse,
   WalletTokenExtended,
 } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import type {
   GetStatusRequestExtended,
   QuoteRequestFromAmount,
 } from '../types/actions.js'
+import type { SDKClient } from '../types/core.js'
 import { getChains } from './getChains.js'
 import { getConnections } from './getConnections.js'
 import { getContractCallsQuote } from './getContractCallsQuote.js'

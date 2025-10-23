@@ -13,15 +13,15 @@ import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import { checkBalance } from '../checkBalance.js'
-import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
   StepExecutorOptions,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { BaseStepExecutor } from '../BaseStepExecutor.js'
+import { checkBalance } from '../checkBalance.js'
+import { stepComparison } from '../stepComparison.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'

@@ -22,7 +22,7 @@ export { getTransactionHistory } from './actions/getTransactionHistory.js'
 export { getWalletBalances } from './actions/getWalletBalances.js'
 export { actions } from './actions/index.js'
 export { relayTransaction } from './actions/relayTransaction.js'
-export { createClient } from './core/client/createClient.js'
+export { createClient } from './client/createClient.js'
 export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
 export {
@@ -74,6 +74,23 @@ export { StatusManager } from './core/StatusManager.js'
 export { Sui } from './core/Sui/Sui.js'
 export type { SuiProvider, SuiProviderOptions } from './core/Sui/types.js'
 export { isSui } from './core/Sui/types.js'
+export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
+export { isUTXO } from './core/UTXO/types.js'
+export { UTXO } from './core/UTXO/UTXO.js'
+export { BaseError } from './errors/baseError.js'
+export type { ErrorCode } from './errors/constants.js'
+export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
+export {
+  BalanceError,
+  ProviderError,
+  RPCError,
+  ServerError,
+  TransactionError,
+  UnknownError,
+  ValidationError,
+} from './errors/errors.js'
+export { HTTPError } from './errors/httpError.js'
+export { SDKError } from './errors/SDKError.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
@@ -104,24 +121,7 @@ export type {
   TransactionRequestParameters,
   TransactionRequestUpdateHook,
   UpdateRouteHook,
-} from './core/types.js'
-export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
-export { isUTXO } from './core/UTXO/types.js'
-export { UTXO } from './core/UTXO/UTXO.js'
-export { BaseError } from './errors/baseError.js'
-export type { ErrorCode } from './errors/constants.js'
-export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
-export {
-  BalanceError,
-  ProviderError,
-  RPCError,
-  ServerError,
-  TransactionError,
-  UnknownError,
-  ValidationError,
-} from './errors/errors.js'
-export { HTTPError } from './errors/httpError.js'
-export { SDKError } from './errors/SDKError.js'
+} from './types/core.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

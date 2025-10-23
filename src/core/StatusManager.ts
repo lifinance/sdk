@@ -1,6 +1,4 @@
 import type { ChainId, LiFiStep } from '@lifi/types'
-import { executionState } from './executionState.js'
-import { getProcessMessage } from './processMessages.js'
 import type {
   Execution,
   ExecutionStatus,
@@ -8,7 +6,9 @@ import type {
   Process,
   ProcessStatus,
   ProcessType,
-} from './types.js'
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import { getProcessMessage } from './processMessages.js'
 
 type FindOrCreateProcessProps = {
   step: LiFiStepExtended

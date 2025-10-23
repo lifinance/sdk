@@ -83,6 +83,16 @@ export interface StepExecutor {
   ): Promise<LiFiStepExtended>
 }
 
+export interface RouteExecutionData {
+  route: Route
+  executors: StepExecutor[]
+  executionOptions?: ExecutionOptions
+}
+
+export type RouteExecutionDataDictionary = Partial<
+  Record<string, RouteExecutionData>
+>
+
 export interface RouteExtended extends Omit<Route, 'steps'> {
   steps: LiFiStepExtended[]
 }
@@ -107,16 +117,6 @@ export type TransactionParameters = {
   maxFeePerGas?: bigint
   maxPriorityFeePerGas?: bigint
 }
-
-export interface RouteExecutionData {
-  route: Route
-  executors: StepExecutor[]
-  executionOptions?: ExecutionOptions
-}
-
-export type RouteExecutionDataDictionary = Partial<
-  Record<string, RouteExecutionData>
->
 
 export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 

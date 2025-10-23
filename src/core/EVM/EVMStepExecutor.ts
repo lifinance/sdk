@@ -21,10 +21,6 @@ import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { relayTransaction } from '../../actions/relayTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import { checkBalance } from '../checkBalance.js'
-import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   Process,
@@ -32,7 +28,11 @@ import type {
   StepExecutorOptions,
   TransactionMethodType,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
+import { BaseStepExecutor } from '../BaseStepExecutor.js'
+import { checkBalance } from '../checkBalance.js'
+import { stepComparison } from '../stepComparison.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { getActionWithFallback } from './getActionWithFallback.js'

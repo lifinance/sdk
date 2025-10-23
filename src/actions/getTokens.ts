@@ -4,8 +4,8 @@ import type {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import { request } from '../request.js'
+import type { SDKClient } from '../types/core.js'
 import { withDedupe } from '../utils/withDedupe.js'
 
 /**

@@ -3,8 +3,8 @@ import type { Hash } from 'viem'
 import { getRelayedTransactionStatus } from '../../actions/getRelayedTransactionStatus.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import type { SDKClient } from '../../types/core.js'
 import { waitForResult } from '../../utils/waitForResult.js'
-import type { SDKClient } from '../types.js'
 import type { WalletCallReceipt } from './types.js'
 
 export const waitForRelayedTransactionReceipt = async (

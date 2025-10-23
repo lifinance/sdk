@@ -2,12 +2,12 @@ import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import type {
   ExecutionOptions,
   SDKClient,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'

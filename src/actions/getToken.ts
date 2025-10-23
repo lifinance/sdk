@@ -4,10 +4,10 @@ import type {
   RequestOptions,
   TokenExtended,
 } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
+import type { SDKClient } from '../types/core.js'
 
 /**
  * Fetch information about a Token

@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
 import { buildStepObject } from '../../tests/fixtures.js'
+import type { ExecutionOptions, Process } from '../../types/core.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { ExecutionOptions, Process } from '../types.js'
 import { switchChain } from './switchChain.js'
 
 let client: Client

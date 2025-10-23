@@ -1,5 +1,5 @@
 import type { ChainId, ExtendedChain, LiFiStep } from '@lifi/types'
-import type { RPCUrls } from '../core/types.js'
+import type { RPCUrls } from '../types/core.js'
 
 // Standard threshold for destination amount difference (0.5%)
 const standardThreshold = 0.005

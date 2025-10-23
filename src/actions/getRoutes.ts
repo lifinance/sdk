@@ -1,9 +1,9 @@
 import type { RequestOptions, RoutesRequest, RoutesResponse } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest } from '../typeguards.js'
+import type { SDKClient } from '../types/core.js'
 
 /**
  * Get a set of routes for a request that describes a transfer of tokens.

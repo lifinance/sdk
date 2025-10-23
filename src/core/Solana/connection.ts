@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 
 const connections = new Map<string, Connection>()
 

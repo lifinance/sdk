@@ -1,6 +1,6 @@
 import type { ChainId, CoinKey } from '@lifi/types'
 import { ChainType } from '@lifi/types'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { resolveENSAddress } from './resolveENSAddress.js'
 import { resolveUNSAddress } from './uns/resolveUNSAddress.js'
 
