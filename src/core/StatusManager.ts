@@ -183,6 +183,8 @@ export class StatusManager {
         step.execution.status = 'PENDING'
         currentProcess.pendingAt = Date.now()
         break
+      case 'RESET_REQUIRED':
+      case 'MESSAGE_REQUIRED':
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
         currentProcess.actionRequiredAt = Date.now()

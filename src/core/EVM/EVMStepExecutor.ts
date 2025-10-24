@@ -461,7 +461,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       switch (allowanceResult.status) {
         case 'BATCH_APPROVAL':
-          calls.push(allowanceResult.data.call)
+          calls.push(...allowanceResult.data.calls)
           signedTypedData = allowanceResult.data.signedTypedData
           break
         case 'NATIVE_PERMIT':
