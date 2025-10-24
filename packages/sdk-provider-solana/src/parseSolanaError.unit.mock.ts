@@ -1,9 +1,7 @@
 // This file holds generator functions to create objects for testing purposes
 
 import { findDefaultToken } from '@lifi/data-types'
-import type { LiFiStepExtended } from '@lifi/sdk'
-import type { LiFiStep, Route, Token } from '@lifi/types'
-import { ChainId, CoinKey } from '@lifi/types'
+import { ChainId, CoinKey, type LiFiStepExtended, type Token } from '@lifi/sdk'
 
 const SOME_TOKEN: Token = {
   ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
@@ -147,29 +145,4 @@ export const buildStepObject = ({
         toAmount: '261490494702370',
       }
     : undefined,
-})
-
-export const buildRouteObject = ({
-  step = buildStepObject({}),
-}: {
-  step?: LiFiStep
-}): Route => ({
-  id: '0x433df53dbf6dbd7b946fc4f3b501c3ff32957d77d96c9d5ba1805b01eb6461cc',
-  fromChainId: 137,
-  fromAmountUSD: '1.00',
-  fromAmount: '1000000',
-  fromToken: SOME_TOKEN,
-  fromAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-  toChainId: 137,
-  toAmountUSD: '1.00',
-  toAmount: '260982615655554',
-  toAmountMin: '253153137185887',
-  toToken: SOME_OTHER_TOKEN,
-  toAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-  gasCostUSD: '0.01',
-  steps: [step],
-  insurance: {
-    feeAmountUsd: '0',
-    state: 'NOT_INSURABLE',
-  },
 })

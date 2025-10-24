@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import type { BaseToken, ChainId } from '@lifi/types'
+import type { BaseToken, ChainId, SDKClient } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
 import { allowanceAbi } from './abi.js'

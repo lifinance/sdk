@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import type { ExtendedChain } from '@lifi/types'
+import type { ExtendedChain, SDKClient } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { permit2ProxyAbi } from '../abi.js'

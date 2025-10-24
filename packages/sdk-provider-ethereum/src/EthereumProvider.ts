@@ -1,7 +1,6 @@
-import type { StepExecutorOptions } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { isAddress } from 'viem'
-import { EVMStepExecutor } from './EthereumStepExecutor.js'
+import { EthereumStepExecutor } from './EthereumStepExecutor.js'
 import { getEthereumBalance } from './getEthereumBalance.js'
 import { resolveEthereumAddress } from './resolveEthereumAddress.js'
 import type { EthereumProviderOptions, EthereumSDKProvider } from './types.js'
@@ -23,14 +22,14 @@ export function EthereumProvider(
     getWalletClient: _options.getWalletClient,
     async getStepExecutor(
       options: StepExecutorOptions
-    ): Promise<EVMStepExecutor> {
+    ): Promise<EthereumStepExecutor> {
       if (!_options.getWalletClient) {
         throw new Error('Client is not provided.')
       }
 
       const walletClient = await _options.getWalletClient()
 
-      const executor = new EVMStepExecutor({
+      const executor = new EthereumStepExecutor({
         client: walletClient,
         routeId: options.routeId,
         executionOptions: {

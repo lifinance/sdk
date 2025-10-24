@@ -3,11 +3,11 @@ import {
   BaseError,
   ErrorMessage,
   LiFiErrorCode,
+  type LiFiStep,
   SDKError,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
-import type { LiFiStep } from '@lifi/types'
 
 export const parseSolanaErrors = async (
   e: Error,

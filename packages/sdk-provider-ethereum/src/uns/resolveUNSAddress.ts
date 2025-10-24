@@ -1,5 +1,9 @@
-import type { SDKClient } from '@lifi/sdk'
-import { ChainId, type ChainType, type CoinKey } from '@lifi/types'
+import {
+  ChainId,
+  type ChainType,
+  type CoinKey,
+  type SDKClient,
+} from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
 import { namehash } from 'viem/ens'

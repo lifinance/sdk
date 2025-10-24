@@ -1,6 +1,9 @@
-import type { SDKClient } from '@lifi/sdk'
-import { withDedupe } from '@lifi/sdk'
-import type { Token, TokenAmount } from '@lifi/types'
+import {
+  type SDKClient,
+  type Token,
+  type TokenAmount,
+  withDedupe,
+} from '@lifi/sdk'
 import { callSuiWithRetry } from './suiClient.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
 

@@ -1,7 +1,11 @@
-import type { SDKBaseConfig, SDKClient } from '@lifi/sdk'
-import { getChainsFromConfig } from '@lifi/sdk'
-import type { ChainId, ExtendedChain } from '@lifi/types'
-import { ChainType } from '@lifi/types'
+import {
+  type ChainId,
+  ChainType,
+  type ExtendedChain,
+  getChainsFromConfig,
+  type SDKBaseConfig,
+  type SDKClient,
+} from '@lifi/sdk'
 import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
 import { getActionWithFallback } from './getActionWithFallback.js'

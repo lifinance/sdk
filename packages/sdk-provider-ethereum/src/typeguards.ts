@@ -1,9 +1,5 @@
-import type { LiFiStepExtended } from '@lifi/sdk'
-import type { ExtendedChain, LiFiStep } from '@lifi/types'
-
-type RelayerStep = (LiFiStepExtended | LiFiStep) & {
-  typedData: NonNullable<(LiFiStepExtended | LiFiStep)['typedData']>
-}
+import type { ExtendedChain, LiFiStep, LiFiStepExtended } from '@lifi/sdk'
+import type { RelayerStep } from './types.js'
 
 export function isRelayerStep(
   step: LiFiStepExtended | LiFiStep

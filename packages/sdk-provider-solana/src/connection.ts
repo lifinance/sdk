@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import { ChainId } from '@lifi/types'
+import { ChainId, type SDKClient } from '@lifi/sdk'
 import { Connection } from '@solana/web3.js'
 
 const connections = new Map<string, Connection>()

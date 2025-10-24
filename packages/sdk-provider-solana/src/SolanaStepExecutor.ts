@@ -1,9 +1,9 @@
-import type { LiFiStepExtended } from '@lifi/sdk'
 import {
   BaseStepExecutor,
   checkBalance,
   getStepTransaction,
   LiFiErrorCode,
+  type LiFiStepExtended,
   type SDKClient,
   stepComparison,
   TransactionError,

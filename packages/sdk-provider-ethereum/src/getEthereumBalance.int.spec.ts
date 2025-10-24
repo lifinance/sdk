@@ -1,16 +1,19 @@
 import { findDefaultToken } from '@lifi/data-types'
-import { createClient, getTokens } from '@lifi/sdk'
-import type { StaticToken, Token } from '@lifi/types'
-import { ChainId, CoinKey } from '@lifi/types'
+import {
+  ChainId,
+  CoinKey,
+  createClient,
+  getTokens,
+  type StaticToken,
+  type Token,
+} from '@lifi/sdk'
 import type { Address } from 'viem'
 import { describe, expect, it } from 'vitest'
 import { getEthereumBalance } from './getEthereumBalance.js'
-import { EthereumProvider } from './index.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
 })
-client.setProviders([EthereumProvider()])
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 

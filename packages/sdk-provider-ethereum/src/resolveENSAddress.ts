@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import { ChainId } from '@lifi/types'
+import { ChainId, type SDKClient } from '@lifi/sdk'
 import { getEnsAddress, normalize } from 'viem/ens'
 import { getPublicClient } from './publicClient.js'
 

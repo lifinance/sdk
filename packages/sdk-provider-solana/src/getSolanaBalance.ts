@@ -1,6 +1,10 @@
 import type { SDKClient } from '@lifi/sdk'
-import { withDedupe } from '@lifi/sdk'
-import type { ChainId, Token, TokenAmount } from '@lifi/types'
+import {
+  type ChainId,
+  type Token,
+  type TokenAmount,
+  withDedupe,
+} from '@lifi/sdk'
 import { PublicKey } from '@solana/web3.js'
 import { callSolanaWithRetry } from './connection.js'
 import { SolSystemProgram } from './constants.js'

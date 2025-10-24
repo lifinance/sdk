@@ -1,23 +1,23 @@
-import type {
-  LiFiStepExtended,
-  Process,
-  SDKClient,
-  StepExecutorOptions,
-  TransactionMethodType,
-  TransactionParameters,
-} from '@lifi/sdk'
 import {
   BaseStepExecutor,
   checkBalance,
+  type ExtendedChain,
   getRelayerQuote,
   getStepTransaction,
   LiFiErrorCode,
+  type LiFiStep,
+  type LiFiStepExtended,
+  type Process,
   relayTransaction,
+  type SDKClient,
+  type SignedTypedData,
+  type StepExecutorOptions,
   stepComparison,
   TransactionError,
+  type TransactionMethodType,
+  type TransactionParameters,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
-import type { ExtendedChain, LiFiStep, SignedTypedData } from '@lifi/types'
 import type {
   Address,
   Client,
@@ -59,14 +59,14 @@ import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
-interface EVMStepExecutorOptions extends StepExecutorOptions {
+interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
 }
 
-export class EVMStepExecutor extends BaseStepExecutor {
+export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
 
-  constructor(options: EVMStepExecutorOptions) {
+  constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
   }

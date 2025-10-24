@@ -1,6 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import { sleep } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import { ChainType, type SDKClient, sleep } from '@lifi/sdk'
 import type { Client } from 'viem'
 import { getCapabilities } from 'viem/actions'
 import { getAction } from 'viem/utils'

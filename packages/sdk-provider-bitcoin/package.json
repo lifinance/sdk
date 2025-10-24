@@ -21,9 +21,6 @@
   "types": "./src/_types/index.d.ts",
   "typings": "./src/_types/index.d.ts",
   "sideEffects": false,
-  "directories": {
-    "test": "tests"
-  },
   "files": [
     "src",
     "!src/**/*.test.ts",
@@ -52,7 +49,6 @@
   "dependencies": {
     "@bigmi/core": "^0.6.0",
     "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "^17.41.0",
     "@lifi/sdk": "workspace:*",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0"

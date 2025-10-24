@@ -1,6 +1,9 @@
-import type { SDKClient } from '@lifi/sdk'
-import type { ChainId, CoinKey } from '@lifi/types'
-import { ChainType } from '@lifi/types'
+import {
+  type ChainId,
+  ChainType,
+  type CoinKey,
+  type SDKClient,
+} from '@lifi/sdk'
 import { resolveENSAddress } from './resolveENSAddress.js'
 import { resolveUNSAddress } from './uns/resolveUNSAddress.js'
 

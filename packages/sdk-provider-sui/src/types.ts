@@ -1,5 +1,8 @@
-import type { SDKProvider, StepExecutorOptions } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import {
+  ChainType,
+  type SDKProvider,
+  type StepExecutorOptions,
+} from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 
 export interface SuiProviderOptions {

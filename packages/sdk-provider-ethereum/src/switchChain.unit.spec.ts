@@ -1,11 +1,16 @@
-import type { ExecutionOptions, Process, StatusManager } from '@lifi/sdk'
-import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
-import type { LiFiStep } from '@lifi/types'
+import {
+  type ExecutionOptions,
+  LiFiErrorCode,
+  type LiFiStep,
+  type Process,
+  ProviderError,
+  type StatusManager,
+} from '@lifi/sdk'
 import type { Client } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../tests/fixtures.js'
 import { switchChain } from './switchChain.js'
+import { buildStepObject } from './switchChain.unit.mock.js'
 
 let client: Client
 let step: LiFiStep

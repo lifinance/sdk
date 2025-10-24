@@ -21,9 +21,6 @@
   "types": "./src/_types/index.d.ts",
   "typings": "./src/_types/index.d.ts",
   "sideEffects": false,
-  "directories": {
-    "test": "tests"
-  },
   "files": [
     "src",
     "!src/**/*.test.ts",
@@ -51,7 +48,6 @@
   },
   "dependencies": {
     "bs58": "^6.0.0",
-    "@lifi/types": "^17.41.0",
     "@lifi/sdk": "workspace:*",
     "@noble/curves": "^1.9.7",
     "@solana/wallet-adapter-base": "^0.9.27",

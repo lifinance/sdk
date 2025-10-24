@@ -1,6 +1,5 @@
 import type { Client } from '@bigmi/core'
-import type { SDKProvider } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import { ChainType, type SDKProvider } from '@lifi/sdk'
 
 export interface BitcoinProviderOptions {
   getWalletClient?: () => Promise<Client>

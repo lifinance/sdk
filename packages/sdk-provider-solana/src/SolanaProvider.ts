@@ -1,5 +1,4 @@
-import type { StepExecutorOptions } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { getSolanaBalance } from './getSolanaBalance.js'
 import { isSolanaAddress } from './isSolanaAddress.js'
 import { resolveSolanaAddress } from './resolveSolanaAddress.js'

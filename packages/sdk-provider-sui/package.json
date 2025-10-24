@@ -21,9 +21,6 @@
   "types": "./src/_types/index.d.ts",
   "typings": "./src/_types/index.d.ts",
   "sideEffects": false,
-  "directories": {
-    "test": "tests"
-  },
   "files": [
     "src",
     "!src/**/*.test.ts",
@@ -50,7 +47,6 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@lifi/types": "^17.41.0",
     "@lifi/sdk": "workspace:*",
     "@mysten/sui": "^1.39.1",
     "@mysten/wallet-standard": "^0.18.1"

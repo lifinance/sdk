@@ -1,4 +1,4 @@
-import { ChainId, ChainType } from '@lifi/types'
+import { ChainId, ChainType } from '@lifi/sdk'
 import type { Address } from 'viem'
 
 export const UNS_PROXY_READER_ADDRESSES: Record<number, Address> = {

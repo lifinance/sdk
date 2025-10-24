@@ -1,12 +1,14 @@
 import type {
   ExecutionOptions,
+  ExtendedChain,
+  LiFiStep,
   LiFiStepExtended,
   Process,
   ProcessType,
   SDKClient,
+  SignedTypedData,
   StatusManager,
 } from '@lifi/sdk'
-import type { ExtendedChain, LiFiStep, SignedTypedData } from '@lifi/types'
 import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'

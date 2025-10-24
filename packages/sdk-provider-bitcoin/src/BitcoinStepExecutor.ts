@@ -8,22 +8,20 @@ import {
   withTimeout,
 } from '@bigmi/core'
 import * as ecc from '@bitcoinerlab/secp256k1'
-import type {
-  LiFiStepExtended,
-  SDKClient,
-  StepExecutorOptions,
-  TransactionParameters,
-} from '@lifi/sdk'
 import {
   BaseStepExecutor,
+  ChainId,
   checkBalance,
   getStepTransaction,
   LiFiErrorCode,
+  type LiFiStepExtended,
+  type SDKClient,
+  type StepExecutorOptions,
   stepComparison,
   TransactionError,
+  type TransactionParameters,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
-import { ChainId } from '@lifi/types'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { getBitcoinPublicClient } from './getBitcoinPublicClient.js'
 import { parseBitcoinErrors } from './parseBitcoinErrors.js'

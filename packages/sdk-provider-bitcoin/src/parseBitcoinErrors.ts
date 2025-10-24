@@ -1,13 +1,13 @@
-import type { Process } from '@lifi/sdk'
 import {
   BaseError,
   ErrorMessage,
   LiFiErrorCode,
+  type LiFiStep,
+  type Process,
   SDKError,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
-import type { LiFiStep } from '@lifi/types'
 
 export const parseBitcoinErrors = async (
   e: Error,

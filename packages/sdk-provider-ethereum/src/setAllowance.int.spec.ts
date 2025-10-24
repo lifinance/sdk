@@ -5,14 +5,12 @@ import { mnemonicToAccount } from 'viem/accounts'
 import { waitForTransactionReceipt } from 'viem/actions'
 import { polygon } from 'viem/chains'
 import { describe, expect, it } from 'vitest'
-import { EthereumProvider } from './EthereumProvider.js'
 import { revokeTokenApproval, setTokenAllowance } from './setAllowance.js'
 import { retryCount, retryDelay } from './utils.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
 })
-client.setProviders([EthereumProvider()])
 
 const defaultSpenderAddress = '0x9b11bc9FAc17c058CAB6286b0c785bE6a65492EF'
 const testToken = {

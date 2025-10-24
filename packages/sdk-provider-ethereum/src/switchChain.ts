@@ -1,10 +1,11 @@
-import type {
-  ExecutionOptions,
-  LiFiStepExtended,
-  Process,
-  StatusManager,
+import {
+  type ExecutionOptions,
+  LiFiErrorCode,
+  type LiFiStepExtended,
+  type Process,
+  ProviderError,
+  type StatusManager,
 } from '@lifi/sdk'
-import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'

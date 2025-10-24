@@ -1,11 +1,12 @@
 import type { SDKClient } from '@lifi/sdk'
 import {
+  type ExtendedTransactionInfo,
   getRelayedTransactionStatus,
   LiFiErrorCode,
+  type LiFiStep,
   TransactionError,
   waitForResult,
 } from '@lifi/sdk'
-import type { ExtendedTransactionInfo, LiFiStep } from '@lifi/types'
 import type { Hash } from 'viem'
 import type { WalletCallReceipt } from './types.js'
 

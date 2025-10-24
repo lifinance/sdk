@@ -1,5 +1,4 @@
-import type { StepExecutorOptions } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { isValidSuiAddress } from '@mysten/sui/utils'
 import { getSuiBalance } from './getSuiBalance.js'
 import { resolveSuiAddress } from './resolveSuiAddress.js'

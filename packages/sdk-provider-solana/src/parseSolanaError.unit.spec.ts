@@ -6,7 +6,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
-import { buildStepObject } from '../tests/fixtures.js'
+import { buildStepObject } from './parseSolanaError.unit.mock.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 
 describe('parseSolanaStepError', () => {

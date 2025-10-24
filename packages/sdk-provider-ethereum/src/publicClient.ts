@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import { ChainId, ChainType } from '@lifi/types'
+import { ChainId, ChainType, type SDKClient } from '@lifi/sdk'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'

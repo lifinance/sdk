@@ -1,4 +1,4 @@
 {
-  "ignore": ["examples/**", "scripts/**"],
+  "ignore": ["examples/**", "scripts/**", "packages/sdk-provider-ethereum/src/permits/allowanceTransfer.ts"],
   "ignoreDependencies": ["bech32", "@types/fs-extra", "fs-extra", "@types/ws"]
 }

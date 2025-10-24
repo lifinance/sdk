@@ -1,5 +1,9 @@
-import type { SDKClient } from '@lifi/sdk'
-import { ChainId, type Token, type TokenAmount } from '@lifi/types'
+import {
+  ChainId,
+  type SDKClient,
+  type Token,
+  type TokenAmount,
+} from '@lifi/sdk'
 import { getBitcoinPublicClient } from './getBitcoinPublicClient.js'
 
 export const getBitcoinBalance = async (

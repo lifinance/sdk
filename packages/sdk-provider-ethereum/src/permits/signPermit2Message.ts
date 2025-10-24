@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import type { ExtendedChain, SignedTypedData } from '@lifi/types'
+import type { ExtendedChain, SDKClient, SignedTypedData } from '@lifi/sdk'
 import type { Address, Client, Hex } from 'viem'
 import { keccak256 } from 'viem'
 import { signTypedData } from 'viem/actions'

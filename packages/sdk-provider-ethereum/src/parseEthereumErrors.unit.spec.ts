@@ -4,14 +4,14 @@ import {
   ErrorMessage,
   ErrorName,
   LiFiErrorCode,
+  type LiFiStep,
   type Process,
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
-import type { LiFiStep } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../tests/fixtures.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
+import { buildStepObject } from './switchChain.unit.mock.js'
 
 describe('parseEVMStepErrors', () => {
   describe('when a SDKError is passed', async () => {

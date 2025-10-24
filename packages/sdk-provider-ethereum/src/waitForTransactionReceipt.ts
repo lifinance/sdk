@@ -1,6 +1,9 @@
-import type { SDKClient } from '@lifi/sdk'
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
-import type { ChainId } from '@lifi/types'
+import {
+  type ChainId,
+  LiFiErrorCode,
+  type SDKClient,
+  TransactionError,
+} from '@lifi/sdk'
 import type {
   Chain,
   Client,

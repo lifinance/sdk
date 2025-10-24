@@ -124,9 +124,6 @@ importers:
       '@lifi/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@lifi/types':
-        specifier: ^17.41.0
-        version: 17.41.0(typescript@5.9.3)
       bech32:
         specifier: ^2.0.0
         version: 2.0.0
@@ -164,9 +161,6 @@ importers:
       '@lifi/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@lifi/types':
-        specifier: ^17.41.0
-        version: 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
       viem:
         specifier: ^2.38.0
         version: 2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.12)
@@ -201,9 +195,6 @@ importers:
       '@lifi/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@lifi/types':
-        specifier: ^17.41.0
-        version: 17.41.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@noble/curves':
         specifier: ^1.9.7
         version: 1.9.7
@@ -247,9 +238,6 @@ importers:
       '@lifi/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@lifi/types':
-        specifier: ^17.41.0
-        version: 17.41.0(typescript@5.9.3)
       '@mysten/sui':
         specifier: ^1.39.1
         version: 1.39.1(typescript@5.9.3)

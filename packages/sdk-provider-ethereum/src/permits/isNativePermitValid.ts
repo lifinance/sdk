@@ -1,4 +1,4 @@
-import type { SignedTypedData, TypedData } from '@lifi/types'
+import type { SignedTypedData, TypedData } from '@lifi/sdk'
 
 /**
  * Checks if an existing native permit is valid for the given requirements

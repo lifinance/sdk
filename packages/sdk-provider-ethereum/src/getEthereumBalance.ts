@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import type { Token, TokenAmount } from '@lifi/types'
+import type { SDKClient, Token, TokenAmount } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import {
   getBalance,

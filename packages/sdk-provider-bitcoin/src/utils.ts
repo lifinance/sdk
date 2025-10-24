@@ -1,5 +1,5 @@
 import { ChainId as BigmiChainId } from '@bigmi/core'
-import { ChainId } from '@lifi/types'
+import { ChainId } from '@lifi/sdk'
 import { type Psbt, payments } from 'bitcoinjs-lib'
 
 export function isPsbtFinalized(psbt: Psbt): boolean {

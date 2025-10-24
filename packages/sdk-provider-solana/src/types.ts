@@ -1,5 +1,8 @@
-import type { SDKProvider, StepExecutorOptions } from '@lifi/sdk'
-import { ChainType } from '@lifi/types'
+import {
+  ChainType,
+  type SDKProvider,
+  type StepExecutorOptions,
+} from '@lifi/sdk'
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 
 export interface SolanaProviderOptions {

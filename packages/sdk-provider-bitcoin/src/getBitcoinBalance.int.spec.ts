@@ -1,23 +1,25 @@
 import { findDefaultToken } from '@lifi/data-types'
-import type { SDKClient } from '@lifi/sdk'
-import { createClient } from '@lifi/sdk'
-import type { StaticToken, Token } from '@lifi/types'
-import { ChainId, CoinKey } from '@lifi/types'
+import {
+  ChainId,
+  CoinKey,
+  createClient,
+  type SDKClient,
+  type StaticToken,
+  type Token,
+} from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
-import { BitcoinProvider } from './BitcoinProvider.js'
 import { getBitcoinBalance } from './getBitcoinBalance.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
 })
-client.setProviders([BitcoinProvider()])
 
 const defaultWalletAddress = 'bc1q5hx26klsnyqqc9255vuh0s96guz79x0cc54896'
 
 const retryTimes = 2
 const timeout = 10000
 
-describe('getBalances integration tests', () => {
+describe('getBitcoinBalance integration tests', () => {
   const loadAndCompareTokenAmounts = async (
     client: SDKClient,
     walletAddress: string,

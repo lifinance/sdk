@@ -1,5 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
-import { sleep } from '@lifi/sdk'
+import { type SDKClient, sleep } from '@lifi/sdk'
 import type {
   SendOptions,
   SignatureResult,

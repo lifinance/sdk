@@ -1,5 +1,11 @@
-import type { SDKProvider, SwitchChainHook } from '@lifi/sdk'
-import { type BaseToken, ChainType } from '@lifi/types'
+import {
+  type BaseToken,
+  ChainType,
+  type LiFiStep,
+  type LiFiStepExtended,
+  type SDKProvider,
+  type SwitchChainHook,
+} from '@lifi/sdk'
 import type {
   WalletCallReceipt as _WalletCallReceipt,
   Address,
@@ -71,4 +77,8 @@ export type WalletCallReceipt = _WalletCallReceipt<
   'success' | 'reverted'
 > & {
   transactionLink?: string
+}
+
+export type RelayerStep = (LiFiStepExtended | LiFiStep) & {
+  typedData: NonNullable<(LiFiStepExtended | LiFiStep)['typedData']>
 }
