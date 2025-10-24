@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
 import { isValidSuiAddress } from '@mysten/sui/utils'
-import type { StepExecutorOptions } from '../types.js'
+import type { StepExecutorOptions } from '../../types/core.js'
 import { getSuiBalance } from './getSuiBalance.js'
 import { resolveSuiAddress } from './resolveSuiAddress.js'
 import { SuiStepExecutor } from './SuiStepExecutor.js'

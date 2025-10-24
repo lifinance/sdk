@@ -1,13 +1,15 @@
 import { ChainId } from '@lifi/types'
 import { getEnsAddress, normalize } from 'viem/ens'
+import type { SDKClient } from '../../types/core.js'
 import { getPublicClient } from './publicClient.js'
 
 export const resolveENSAddress = async (
+  client: SDKClient,
   name: string
 ): Promise<string | undefined> => {
   try {
-    const client = await getPublicClient(ChainId.ETH)
-    const address = await getEnsAddress(client, {
+    const viemClient = await getPublicClient(client, ChainId.ETH)
+    const address = await getEnsAddress(viemClient, {
       name: normalize(name),
     })
     return address as string | undefined

@@ -1,7 +1,7 @@
-import { config } from './config.js'
 import { ValidationError } from './errors/errors.js'
 import { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
+import type { SDKBaseConfig } from './types/core.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { sleep } from './utils/sleep.js'
 import { version } from './version.js'
@@ -18,12 +18,13 @@ const stripExtendRequestInitProperties = ({
 })
 
 export const request = async <T = Response>(
+  config: SDKBaseConfig,
   url: RequestInfo | URL,
   options: ExtendedRequestInit = {
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion, apiKey } = config.get()
+  const { userId, integrator, widgetVersion, apiKey } = config
 
   if (!integrator) {
     throw new SDKError(
@@ -83,7 +84,10 @@ export const request = async <T = Response>(
   } catch (error) {
     if (options.retries > 0 && (error as HTTPError).status === 500) {
       await sleep(500)
-      return request<T>(url, { ...options, retries: options.retries - 1 })
+      return request<T>(config, url, {
+        ...options,
+        retries: options.retries - 1,
+      })
     }
 
     await (error as HTTPError).buildAdditionalDetails?.()

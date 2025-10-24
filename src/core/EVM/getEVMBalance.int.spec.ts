@@ -2,17 +2,21 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { StaticToken, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
-import { getTokens } from '../../services/api.js'
+import { describe, expect, it } from 'vitest'
+import { getTokens } from '../../actions/getTokens.js'
+import { createClient } from '../../client/createClient.js'
+import { EVM } from './EVM.js'
 import { getEVMBalance } from './getEVMBalance.js'
+
+const client = createClient({
+  integrator: 'lifi-sdk',
+})
+client.setProviders([EVM()])
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 
 const retryTimes = 2
 const timeout = 10000
-
-beforeAll(setupTestEnvironment)
 
 describe('getBalances integration tests', () => {
   const loadAndCompareTokenAmounts = async (
@@ -20,6 +24,7 @@ describe('getBalances integration tests', () => {
     tokens: StaticToken[]
   ) => {
     const tokenBalances = await getEVMBalance(
+      client,
       walletAddress as Address,
       tokens as Token[]
     )
@@ -81,6 +86,7 @@ describe('getBalances integration tests', () => {
       const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
 
       const tokenBalances = await getEVMBalance(
+        client,
         walletAddress,
         tokens as Token[]
       )
@@ -116,7 +122,7 @@ describe('getBalances integration tests', () => {
     { retry: retryTimes, timeout },
     async () => {
       const walletAddress = defaultWalletAddress
-      const { tokens } = await getTokens({
+      const { tokens } = await getTokens(client, {
         chains: [ChainId.OPT],
       })
       expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)

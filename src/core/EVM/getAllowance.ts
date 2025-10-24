@@ -1,6 +1,7 @@
 import type { BaseToken, ChainId } from '@lifi/types'
 import type { Address, Client } from 'viem'
 import { multicall, readContract } from 'viem/actions'
+import type { SDKClient } from '../../types/core.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { allowanceAbi } from './abi.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
@@ -13,7 +14,8 @@ import type {
 import { getMulticallAddress } from './utils.js'
 
 export const getAllowance = async (
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   tokenAddress: Address,
   ownerAddress: Address,
   spenderAddress: Address
@@ -21,6 +23,7 @@ export const getAllowance = async (
   try {
     const approved = await getActionWithFallback(
       client,
+      viemClient,
       readContract,
       'readContract',
       {
@@ -37,7 +40,8 @@ export const getAllowance = async (
 }
 
 export const getAllowanceMulticall = async (
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   chainId: ChainId,
   tokens: TokenSpender[],
   ownerAddress: Address
@@ -45,11 +49,10 @@ export const getAllowanceMulticall = async (
   if (!tokens.length) {
     return []
   }
-  const multicallAddress = await getMulticallAddress(chainId)
+  const multicallAddress = await getMulticallAddress(client.config, chainId)
   if (!multicallAddress) {
     throw new Error(`No multicall address configured for chainId ${chainId}.`)
   }
-
   const contracts = tokens.map((token) => ({
     address: token.token.address as Address,
     abi: allowanceAbi,
@@ -57,10 +60,16 @@ export const getAllowanceMulticall = async (
     args: [ownerAddress, token.spenderAddress],
   }))
 
-  const results = await getActionWithFallback(client, multicall, 'multicall', {
-    contracts,
-    multicallAddress: multicallAddress as Address,
-  })
+  const results = await getActionWithFallback(
+    client,
+    viemClient,
+    multicall,
+    'multicall',
+    {
+      contracts,
+      multicallAddress: multicallAddress as Address,
+    }
+  )
 
   if (!results.length) {
     throw new Error(
@@ -77,12 +86,14 @@ export const getAllowanceMulticall = async (
 
 /**
  * Get the current allowance for a certain token.
+ * @param client - The SDK client
  * @param token - The token that should be checked
  * @param ownerAddress - The owner of the token
  * @param spenderAddress - The spender address that has to be approved
  * @returns Returns allowance
  */
 export const getTokenAllowance = async (
+  client: SDKClient,
   token: BaseToken,
   ownerAddress: Address,
   spenderAddress: Address
@@ -92,10 +103,11 @@ export const getTokenAllowance = async (
     return
   }
 
-  const client = await getPublicClient(token.chainId)
+  const viemClient = await getPublicClient(client, token.chainId)
 
   const approved = await getAllowance(
     client,
+    viemClient,
     token.address as Address,
     ownerAddress,
     spenderAddress
@@ -105,11 +117,13 @@ export const getTokenAllowance = async (
 
 /**
  * Get the current allowance for a list of token/spender address pairs.
+ * @param client - The SDK client
  * @param ownerAddress - The owner of the tokens
  * @param tokens - A list of token and spender address pairs
  * @returns Returns array of tokens and their allowance
  */
 export const getTokenAllowanceMulticall = async (
+  client: SDKClient,
   ownerAddress: Address,
   tokens: TokenSpender[]
 ): Promise<TokenAllowance[]> => {
@@ -132,10 +146,11 @@ export const getTokenAllowanceMulticall = async (
   const allowances = (
     await Promise.all(
       chainKeys.map(async (chainId) => {
-        const client = await getPublicClient(chainId)
+        const viemClient = await getPublicClient(client, chainId)
         // get allowances for current chain and token list
         return getAllowanceMulticall(
           client,
+          viemClient,
           chainId,
           tokenDataByChain[chainId],
           ownerAddress

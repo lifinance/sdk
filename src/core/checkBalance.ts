@@ -1,15 +1,21 @@
 import type { LiFiStep } from '@lifi/types'
 import { formatUnits } from 'viem'
+import { getTokenBalance } from '../actions/getTokenBalance.js'
 import { BalanceError } from '../errors/errors.js'
-import { getTokenBalance } from '../services/balance.js'
+import type { SDKClient } from '../types/core.js'
 import { sleep } from '../utils/sleep.js'
 
 export const checkBalance = async (
+  client: SDKClient,
   walletAddress: string,
   step: LiFiStep,
   depth = 0
 ): Promise<void> => {
-  const token = await getTokenBalance(walletAddress, step.action.fromToken)
+  const token = await getTokenBalance(
+    client,
+    walletAddress,
+    step.action.fromToken
+  )
   if (token) {
     const currentBalance = token.amount ?? 0n
     const neededBalance = BigInt(step.action.fromAmount)
@@ -17,7 +23,7 @@ export const checkBalance = async (
     if (currentBalance < neededBalance) {
       if (depth <= 3) {
         await sleep(200)
-        await checkBalance(walletAddress, step, depth + 1)
+        await checkBalance(client, walletAddress, step, depth + 1)
       } else if (
         (neededBalance *
           BigInt((1 - (step.action.slippage ?? 0)) * 1_000_000_000)) /

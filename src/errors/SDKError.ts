@@ -1,5 +1,5 @@
 import type { LiFiStep } from '@lifi/types'
-import type { Process } from '../core/types.js'
+import type { Process } from '../types/core.js'
 import { version } from '../version.js'
 import type { BaseError } from './baseError.js'
 import type { ErrorCode } from './constants.js'

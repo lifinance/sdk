@@ -3,7 +3,7 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { LiFiStep, Route, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import type { LiFiStepExtended } from '../src/index.js'
+import type { LiFiStepExtended } from '../index.js'
 
 const SOME_TOKEN: Token = {
   ...findDefaultToken(CoinKey.USDC, ChainId.DAI),

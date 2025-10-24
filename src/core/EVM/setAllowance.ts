@@ -2,15 +2,20 @@ import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import type {
+  ExecutionOptions,
+  SDKClient,
+  TransactionParameters,
+} from '../../types/core.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { ExecutionOptions, TransactionParameters } from '../types.js'
 import { approveAbi } from './abi.js'
 import { getAllowance } from './getAllowance.js'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from './types.js'
 import { getMaxPriorityFeePerGas } from './utils.js'
 
 export const setAllowance = async (
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   tokenAddress: Address,
   contractAddress: Address,
   amount: bigint,
@@ -31,8 +36,8 @@ export const setAllowance = async (
     to: tokenAddress,
     data,
     maxPriorityFeePerGas:
-      client.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(client)
+      viemClient.account?.type === 'local'
+        ? await getMaxPriorityFeePerGas(client, viemClient)
         : undefined,
   }
 
@@ -50,12 +55,12 @@ export const setAllowance = async (
   }
 
   return getAction(
-    client,
+    viemClient,
     sendTransaction,
     'sendTransaction'
   )({
     to: transactionRequest.to,
-    account: client.account!,
+    account: viemClient.account!,
     data: transactionRequest.data,
     gas: transactionRequest.gas,
     gasPrice: transactionRequest.gasPrice,
@@ -66,6 +71,7 @@ export const setAllowance = async (
 
 /**
  * Set approval for a certain token and amount.
+ * @param client - The SDK client
  * @param request - The approval request
  * @param request.walletClient - The Viem wallet client used to send the transaction
  * @param request.token - The token for which to set the allowance
@@ -73,17 +79,16 @@ export const setAllowance = async (
  * @param request.amount - The amount of tokens to approve
  * @returns Returns Hash or nothing
  */
-export const setTokenAllowance = async ({
-  walletClient,
-  token,
-  spenderAddress,
-  amount,
-}: ApproveTokenRequest): Promise<Hash | void> => {
+export const setTokenAllowance = async (
+  client: SDKClient,
+  { walletClient, token, spenderAddress, amount }: ApproveTokenRequest
+): Promise<Hash | void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(
+    client,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -92,6 +97,7 @@ export const setTokenAllowance = async ({
 
   if (amount > approvedAmount) {
     const approveTx = await setAllowance(
+      client,
       walletClient,
       token.address as Address,
       spenderAddress as Address,
@@ -104,22 +110,23 @@ export const setTokenAllowance = async ({
 
 /**
  * Revoke approval for a certain token.
+ * @param client - The SDK client
  * @param request - The revoke request
  * @param request.walletClient - The Viem wallet client used to send the transaction
  * @param request.token - The token for which to revoke the allowance
  * @param request.spenderAddress - The address of the spender
  * @returns Returns Hash or nothing
  */
-export const revokeTokenApproval = async ({
-  walletClient,
-  token,
-  spenderAddress,
-}: RevokeApprovalRequest): Promise<Hash | void> => {
+export const revokeTokenApproval = async (
+  client: SDKClient,
+  { walletClient, token, spenderAddress }: RevokeApprovalRequest
+): Promise<Hash | void> => {
   // native token don't need approval
   if (isZeroAddress(token.address)) {
     return
   }
   const approvedAmount = await getAllowance(
+    client,
     walletClient,
     token.address as Address,
     walletClient.account!.address,
@@ -127,6 +134,7 @@ export const revokeTokenApproval = async ({
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
+      client,
       walletClient,
       token.address as Address,
       spenderAddress as Address,

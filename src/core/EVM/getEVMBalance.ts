@@ -1,20 +1,22 @@
-import type { ChainId, Token, TokenAmount } from '@lifi/types'
-import type { Address } from 'viem'
+import type { Token, TokenAmount } from '@lifi/types'
+import type { Address, Client } from 'viem'
 import {
   getBalance,
   getBlockNumber,
   multicall,
   readContract,
 } from 'viem/actions'
+import type { SDKClient } from '../../types/core.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'
 
 export const getEVMBalance = async (
+  client: SDKClient,
   walletAddress: Address,
   tokens: Token[]
-): Promise<TokenAmount[]> => {
+) => {
   if (tokens.length === 0) {
     return []
   }
@@ -25,27 +27,26 @@ export const getEVMBalance = async (
     }
   }
 
-  const multicallAddress = await getMulticallAddress(chainId)
+  const multicallAddress = await getMulticallAddress(client.config, chainId)
 
+  const viemClient = await getPublicClient(client, chainId)
   if (multicallAddress && tokens.length > 1) {
     return getEVMBalanceMulticall(
-      chainId,
+      viemClient,
       tokens,
       walletAddress,
       multicallAddress
     )
   }
-  return getEVMBalanceDefault(chainId, tokens, walletAddress)
+  return getEVMBalanceDefault(viemClient, tokens, walletAddress)
 }
 
 const getEVMBalanceMulticall = async (
-  chainId: ChainId,
+  client: Client,
   tokens: Token[],
   walletAddress: string,
   multicallAddress: string
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(chainId)
-
   const contracts = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       return {
@@ -85,12 +86,10 @@ const getEVMBalanceMulticall = async (
 }
 
 const getEVMBalanceDefault = async (
-  chainId: ChainId,
+  client: Client,
   tokens: Token[],
   walletAddress: Address
 ): Promise<TokenAmount[]> => {
-  const client = await getPublicClient(chainId)
-
   const queue: Promise<bigint>[] = tokens.map((token) => {
     if (isZeroAddress(token.address)) {
       return getBalance(client, {

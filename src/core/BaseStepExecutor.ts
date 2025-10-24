@@ -1,11 +1,12 @@
 import type { LiFiStep } from '@lifi/types'
-import { StatusManager } from './StatusManager.js'
 import type {
   ExecutionOptions,
   InteractionSettings,
+  SDKClient,
   StepExecutor,
   StepExecutorOptions,
-} from './types.js'
+} from '../types/core.js'
+import { StatusManager } from './StatusManager.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
 const defaultInteractionSettings = {
@@ -36,5 +37,5 @@ export abstract class BaseStepExecutor implements StepExecutor {
     this.allowExecution = interactionSettings.allowExecution
   }
 
-  abstract executeStep(step: LiFiStep): Promise<LiFiStep>
+  abstract executeStep(client: SDKClient, step: LiFiStep): Promise<LiFiStep>
 }
