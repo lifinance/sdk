@@ -1,6 +1,6 @@
 import { ChainType, type ExtendedChain } from '@lifi/types'
 import type { Address } from 'viem'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'

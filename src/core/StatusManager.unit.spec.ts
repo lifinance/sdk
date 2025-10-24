@@ -5,14 +5,14 @@ import {
   buildRouteObject,
   buildStepObject,
   SOME_DATE,
-} from '../../tests/fixtures.js'
-import { executionState } from './executionState.js'
-import { StatusManager } from './StatusManager.js'
+} from '../tests/fixtures.js'
 import type {
   ExecutionStatus,
   LiFiStepExtended,
   ProcessStatus,
-} from './types.js'
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import { StatusManager } from './StatusManager.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 

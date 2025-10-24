@@ -2,17 +2,17 @@ import {
   signAndExecuteTransaction,
   type WalletWithRequiredFeatures,
 } from '@mysten/wallet-standard'
+import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { getStepTransaction } from '../../services/api.js'
-import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import { checkBalance } from '../checkBalance.js'
-import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { BaseStepExecutor } from '../BaseStepExecutor.js'
+import { checkBalance } from '../checkBalance.js'
+import { stepComparison } from '../stepComparison.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { parseSuiErrors } from './parseSuiErrors.js'
 import { callSuiWithRetry } from './suiClient.js'
@@ -73,7 +73,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
         if (!step.transactionRequest) {
           // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
-          const updatedStep = await getStepTransaction(client.config, stepBase)
+          const updatedStep = await getStepTransaction(client, stepBase)
           const comparedStep = await stepComparison(
             this.statusManager,
             step,

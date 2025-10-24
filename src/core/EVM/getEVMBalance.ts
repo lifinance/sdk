@@ -6,8 +6,8 @@ import {
   multicall,
   readContract,
 } from 'viem/actions'
+import type { SDKClient } from '../../types/core.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
-import type { SDKClient } from '../types.js'
 import { balanceOfAbi, getEthBalanceAbi } from './abi.js'
 import { getPublicClient } from './publicClient.js'
 import { getMulticallAddress } from './utils.js'

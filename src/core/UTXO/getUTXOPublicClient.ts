@@ -17,7 +17,7 @@ import {
   type WalletActions,
   walletActions,
 } from '@bigmi/core'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { toBigmiChainId } from './utils.js'
 
 type PublicClient = Client<

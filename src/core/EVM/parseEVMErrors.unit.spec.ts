@@ -1,6 +1,5 @@
 import type { LiFiStep } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../../../tests/fixtures.js'
 import { BaseError } from '../../errors/baseError.js'
 import {
   ErrorMessage,
@@ -9,8 +8,9 @@ import {
 } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import { SDKError } from '../../errors/SDKError.js'
+import { buildStepObject } from '../../tests/fixtures.js'
+import type { Process } from '../../types/core.js'
 import * as helpers from '../../utils/fetchTxErrorDetails.js'
-import type { Process } from '../types.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
 
 describe('parseEVMStepErrors', () => {

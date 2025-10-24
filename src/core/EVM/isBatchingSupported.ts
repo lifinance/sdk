@@ -2,8 +2,8 @@ import { ChainType } from '@lifi/types'
 import type { Client } from 'viem'
 import { getCapabilities } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import type { SDKClient } from '../../types/core.js'
 import { sleep } from '../../utils/sleep.js'
-import type { SDKClient } from '../types.js'
 import type { EVMProvider } from './types.js'
 
 export async function isBatchingSupported(

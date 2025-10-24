@@ -1,5 +1,5 @@
 import type { LiFiStep } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
+import type { SDKClient } from '../types/core.js'
 
 export const getTransactionFailedMessage = async (
   client: SDKClient,

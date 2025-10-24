@@ -2,8 +2,8 @@ import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
 import { describe, expect, it } from 'vitest'
-import { getTokens } from '../../services/api.js'
-import { createClient } from '../client/createClient.js'
+import { getTokens } from '../../actions/getTokens.js'
+import { createClient } from '../../client/createClient.js'
 import { EVM } from './EVM.js'
 import {
   getAllowance,
@@ -103,7 +103,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should handle token lists with more than 10 tokens',
     { retry: retryTimes, timeout },
     async () => {
-      const { tokens } = await getTokens(client.config, {
+      const { tokens } = await getTokens(client, {
         chains: [ChainId.POL],
       })
       const filteredTokens = tokens[ChainId.POL]

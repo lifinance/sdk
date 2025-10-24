@@ -10,18 +10,18 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import { ChainId } from '@lifi/types'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
+import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { getStepTransaction } from '../../services/api.js'
-import { BaseStepExecutor } from '../BaseStepExecutor.js'
-import { checkBalance } from '../checkBalance.js'
-import { stepComparison } from '../stepComparison.js'
 import type {
   LiFiStepExtended,
   SDKClient,
   StepExecutorOptions,
   TransactionParameters,
-} from '../types.js'
+} from '../../types/core.js'
+import { BaseStepExecutor } from '../BaseStepExecutor.js'
+import { checkBalance } from '../checkBalance.js'
+import { stepComparison } from '../stepComparison.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 import { parseUTXOErrors } from './parseUTXOErrors.js'
@@ -95,10 +95,7 @@ export class UTXOStepExecutor extends BaseStepExecutor {
           if (!step.transactionRequest) {
             // biome-ignore lint/correctness/noUnusedVariables: destructuring
             const { execution, ...stepBase } = step
-            const updatedStep = await getStepTransaction(
-              client.config,
-              stepBase
-            )
+            const updatedStep = await getStepTransaction(client, stepBase)
             const comparedStep = await stepComparison(
               this.statusManager,
               step,

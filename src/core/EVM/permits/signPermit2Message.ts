@@ -3,7 +3,7 @@ import type { Address, Client, Hex } from 'viem'
 import { keccak256 } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { SDKClient } from '../../types.js'
+import type { SDKClient } from '../../../types/core.js'
 import { getPermitTransferFromValues } from './getPermitTransferFromValues.js'
 import { getPermitData } from './signatureTransfer.js'
 

@@ -1,6 +1,13 @@
 import type { ChainType } from '@lifi/types'
-import type { SDKClient } from '../core/types.js'
+import type { SDKClient } from '../types/core.js'
 
+/**
+ * Get the address of a name service
+ * @param client - The SDK client
+ * @param name - The name to resolve
+ * @param chainType - The chain type to resolve the name on
+ * @returns The address of the name service
+ */
 export const getNameServiceAddress = async (
   client: SDKClient,
   name: string,

@@ -1,5 +1,5 @@
 import { ChainId, type Token, type TokenAmount } from '@lifi/types'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 
 export const getUTXOBalance = async (

@@ -8,7 +8,7 @@ import type {
   WalletActions,
 } from 'viem'
 import { getAction } from 'viem/utils'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 import { getPublicClient } from './publicClient.js'
 
 /**

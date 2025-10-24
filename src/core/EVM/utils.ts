@@ -2,9 +2,9 @@ import type { ChainId, ExtendedChain } from '@lifi/types'
 import { ChainType } from '@lifi/types'
 import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
-import { getChains } from '../../services/api.js'
+import { getChainsFromConfig } from '../../actions/getChains.js'
+import type { SDKBaseConfig, SDKClient } from '../../types/core.js'
 import { median } from '../../utils/median.js'
-import type { SDKBaseConfig, SDKClient } from '../types.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 
 type ChainBlockExplorer = {
@@ -100,7 +100,9 @@ export const getMulticallAddress = async (
   config: SDKBaseConfig,
   chainId: ChainId
 ): Promise<Address | undefined> => {
-  const chains = await getChains(config, { chainTypes: [ChainType.EVM] })
+  const chains = await getChainsFromConfig(config, {
+    chainTypes: [ChainType.EVM],
+  })
   return chains?.find((chain) => chain.id === chainId)
     ?.multicallAddress as Address
 }

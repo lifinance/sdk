@@ -1,15 +1,15 @@
 import type { FullStatusData, LiFiStep, StatusResponse } from '@lifi/types'
+import { getStatus } from '../actions/getStatus.js'
 import { ServerError } from '../errors/errors.js'
-import { getStatus } from '../services/api.js'
+import type { ProcessType, SDKClient } from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
 import type { StatusManager } from './StatusManager.js'
-import type { ProcessType, SDKBaseConfig } from './types.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
 export async function waitForTransactionStatus(
-  config: SDKBaseConfig,
+  client: SDKClient,
   statusManager: StatusManager,
   txHash: string,
   step: LiFiStep,
@@ -17,7 +17,7 @@ export async function waitForTransactionStatus(
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
-    return getStatus(config, {
+    return getStatus(client, {
       fromChain: step.action.fromChainId,
       fromAddress: step.action.fromAddress,
       toChain: step.action.toChainId,

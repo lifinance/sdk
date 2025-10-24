@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { SuiClient } from '@mysten/sui/client'
-import type { SDKClient } from '../types.js'
+import type { SDKClient } from '../../types/core.js'
 
 const clients = new Map<string, SuiClient>()
 
