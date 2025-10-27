@@ -2,7 +2,7 @@ import { findDefaultToken } from '@lifi/data-types'
 import type { RoutesRequest } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
-import * as request from '../request.js'
+import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getRoutes } from './getRoutes.js'
 

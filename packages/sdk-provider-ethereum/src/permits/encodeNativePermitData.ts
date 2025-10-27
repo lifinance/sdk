@@ -1,6 +1,6 @@
 import type { Address, Hash, Hex } from 'viem'
 import { encodeFunctionData, parseSignature } from 'viem'
-import { permit2ProxyAbi } from '../abi.js'
+import { permit2ProxyAbi } from '../utils/abi.js'
 
 export const encodeNativePermitData = (
   tokenAddress: Address,

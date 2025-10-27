@@ -1,8 +1,8 @@
 import type { ExtendedChain, SDKClient } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import { readContract } from 'viem/actions'
-import { permit2ProxyAbi } from '../abi.js'
-import { getActionWithFallback } from '../getActionWithFallback.js'
+import { permit2ProxyAbi } from '../utils/abi.js'
+import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import type { PermitTransferFrom } from './signatureTransfer.js'
 
 export const getPermitTransferFromValues = async (

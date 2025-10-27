@@ -35,29 +35,28 @@ import {
   signTypedData,
 } from 'viem/actions'
 import { getAction, isHex } from 'viem/utils'
-import { checkAllowance } from './checkAllowance.js'
-import { getActionWithFallback } from './getActionWithFallback.js'
-import { isBatchingSupported } from './isBatchingSupported.js'
-import { isZeroAddress } from './isZeroAddress.js'
+import { checkAllowance } from './actions/checkAllowance.js'
+import { getMaxPriorityFeePerGas } from './actions/getMaxPriorityFeePerGas.js'
+import { isBatchingSupported } from './actions/isBatchingSupported.js'
+import { switchChain } from './actions/switchChain.js'
+import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactionReceipt.js'
+import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
+import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
-} from './parseEthereumErrors.js'
+} from './errors/parseEthereumErrors.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
 import { isNativePermitValid } from './permits/isNativePermitValid.js'
 import { signPermit2Message } from './permits/signPermit2Message.js'
-import { switchChain } from './switchChain.js'
-import { isGaslessStep, isRelayerStep } from './typeguards.js'
 import type { Call, WalletCallReceipt } from './types.js'
-import {
-  convertExtendedChain,
-  getDomainChainId,
-  getMaxPriorityFeePerGas,
-} from './utils.js'
-import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt.js'
-import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
-import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
+import { convertExtendedChain } from './utils/convertExtendedChain.js'
+import { getActionWithFallback } from './utils/getActionWithFallback.js'
+import { getDomainChainId } from './utils/getDomainChainId.js'
+import { isGaslessStep } from './utils/isGaslessStep.js'
+import { isRelayerStep } from './utils/isRelayerStep.js'
+import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client

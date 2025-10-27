@@ -3,8 +3,8 @@ import type {
   ConnectionsResponse,
   RequestOptions,
 } from '@lifi/types'
-import { request } from '../request.js'
 import type { SDKClient } from '../types/core.js'
+import { request } from '../utils/request.js'
 
 /**
  * Get all the available connections for swap/bridging tokens

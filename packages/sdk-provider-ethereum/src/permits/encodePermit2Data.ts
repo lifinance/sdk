@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
 import { encodeFunctionData, type Hash } from 'viem'
-import { permit2ProxyAbi } from '../abi.js'
+import { permit2ProxyAbi } from '../utils/abi.js'
 
 export const encodePermit2Data = (
   tokenAddress: Address,

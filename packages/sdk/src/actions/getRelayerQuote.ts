@@ -7,9 +7,9 @@ import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { request } from '../request.js'
 import type { QuoteRequest, QuoteRequestFromAmount } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
+import { request } from '../utils/request.js'
 
 /**
  * Get a relayer quote for a token transfer

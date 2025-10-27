@@ -4,7 +4,7 @@ import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
-import { requestSettings } from '../request.js'
+import { requestSettings } from '../utils/request.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',

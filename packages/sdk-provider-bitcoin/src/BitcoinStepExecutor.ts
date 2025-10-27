@@ -23,9 +23,11 @@ import {
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
-import { getBitcoinPublicClient } from './getBitcoinPublicClient.js'
-import { parseBitcoinErrors } from './parseBitcoinErrors.js'
-import { generateRedeemScript, isPsbtFinalized, toXOnly } from './utils.js'
+import { getBitcoinPublicClient } from './client/publicClient.js'
+import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
+import { generateRedeemScript } from './utils/generateRedeemScript.js'
+import { isPsbtFinalized } from './utils/isPsbtFinalized.js'
+import { toXOnly } from './utils/toXOnly.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
   client: Client

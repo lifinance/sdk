@@ -12,11 +12,12 @@ import {
 } from '@lifi/sdk'
 import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
 import { VersionedTransaction } from '@solana/web3.js'
-import { callSolanaWithRetry } from './connection.js'
-import { parseSolanaErrors } from './parseSolanaErrors.js'
-import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
+import { sendAndConfirmTransaction } from './actions/sendAndConfirmTransaction.js'
+import { callSolanaWithRetry } from './client/connection.js'
+import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
 import type { SolanaStepExecutorOptions } from './types.js'
-import { base64ToUint8Array, withTimeout } from './utils.js'
+import { base64ToUint8Array } from './utils/base64ToUint8Array.js'
+import { withTimeout } from './utils/withTimeout.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter

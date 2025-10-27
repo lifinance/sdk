@@ -10,15 +10,16 @@ import {
   zeroHash,
 } from 'viem'
 import { getCode, multicall, readContract } from 'viem/actions'
-import { eip2612Abi } from '../abi.js'
-import { getActionWithFallback } from '../getActionWithFallback.js'
-import { getMulticallAddress, isDelegationDesignatorCode } from '../utils.js'
+import { getMulticallAddress } from '../actions/getMulticallAddress.js'
+import { eip2612Abi } from '../utils/abi.js'
+import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH_WITH_SALT,
   eip2612Types,
 } from './constants.js'
+import { isDelegationDesignatorCode } from './isDelegationDesignatorCode.js'
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {

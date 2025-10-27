@@ -1,6 +1,7 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { formatUnits, isHex, parseUnits } from 'viem/utils'
 export { getChains, getChainsFromConfig } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'

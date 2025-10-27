@@ -4,8 +4,8 @@ import type {
   TransactionAnalyticsResponse,
 } from '@lifi/types'
 import { ValidationError } from '../errors/errors.js'
-import { request } from '../request.js'
 import type { SDKClient } from '../types/core.js'
+import { request } from '../utils/request.js'
 
 /**
  * Get the transaction history for a wallet

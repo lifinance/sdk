@@ -22,6 +22,3 @@ export function isSolanaProvider(
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
 }
-
-export const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-export const Token2022ProgramId = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'

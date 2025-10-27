@@ -1,6 +1,6 @@
 import type { RequestOptions, ToolsRequest, ToolsResponse } from '@lifi/types'
-import { request } from '../request.js'
 import type { SDKClient } from '../types/core.js'
+import { request } from '../utils/request.js'
 
 /**
  * Get the available tools to bridge and swap tokens.

@@ -2,7 +2,7 @@ import { ChainId } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import * as request from '../request.js'
+import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getToken } from './getToken.js'
 

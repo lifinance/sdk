@@ -4,8 +4,8 @@ import type {
   WalletTokenExtended,
 } from '@lifi/types'
 import { ValidationError } from '../errors/errors.js'
-import { request } from '../request.js'
 import type { SDKClient } from '../types/core.js'
+import { request } from '../utils/request.js'
 
 /**
  * Returns the balances of tokens a wallet holds across EVM chains.

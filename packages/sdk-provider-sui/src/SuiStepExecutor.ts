@@ -14,8 +14,8 @@ import {
   signAndExecuteTransaction,
   type WalletWithRequiredFeatures,
 } from '@mysten/wallet-standard'
-import { parseSuiErrors } from './parseSuiErrors.js'
-import { callSuiWithRetry } from './suiClient.js'
+import { callSuiWithRetry } from './client/suiClient.js'
+import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {

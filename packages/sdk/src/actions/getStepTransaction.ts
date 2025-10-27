@@ -1,7 +1,7 @@
 import type { LiFiStep, RequestOptions, SignedLiFiStep } from '@lifi/types'
-import { request } from '../request.js'
-import { isStep } from '../typeguards.js'
 import type { SDKClient } from '../types/core.js'
+import { isStep } from '../utils/isStep.js'
+import { request } from '../utils/request.js'
 
 /**
  * Get the transaction data for a single step of a route
