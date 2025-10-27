@@ -133,6 +133,7 @@ export type ProcessStatus =
   | 'STARTED'
   | 'ACTION_REQUIRED'
   | 'MESSAGE_REQUIRED'
+  | 'RESET_REQUIRED'
   | 'PENDING'
   | 'FAILED'
   | 'DONE'
