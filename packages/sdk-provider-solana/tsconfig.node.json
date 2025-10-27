@@ -1,0 +1,12 @@
+{
+  // This configuration is used for local development and type checking of configuration and script files that are not part of the build.
+  "include": ["vitest.config.ts"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "strict": true,
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true
+  }
+}
