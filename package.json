@@ -20,6 +20,7 @@
     "check:types": "pnpm -r --parallel check:types",
     "check:circular-deps": "pnpm -r --parallel check:circular-deps",
     "test": "pnpm -r --parallel test",
+    "test:cov": "pnpm -r --parallel test:cov",
     "test:unit": "pnpm -r --parallel test:unit",
     "link:bigmi": "pnpm -r --parallel link:bigmi",
     "unlink:bigmi": "pnpm -r --parallel unlink:bigmi",
