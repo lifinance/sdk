@@ -3,11 +3,11 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  createConfig,
-  EVM,
+  createClient,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -36,26 +36,25 @@ const run = async () => {
 
     const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
 
-    createConfig({
+    const sdkClient = createClient({
       integrator: 'lifi-sdk-example',
-      providers: [
-        EVM({
-          getWalletClient: () => Promise.resolve(client),
-          switchChain: (chainId) =>
-            Promise.resolve(
-              createWalletClient({
-                account,
-                chain: switchChains.find((chain) => {
-                  if (chain.id === chainId) {
-                    return chain
-                  }
-                }) as Chain,
-                transport: http(),
-              })
-            ),
-        }),
-      ],
     })
+
+    sdkClient.setProviders([
+      EthereumProvider({
+        getWalletClient: () => Promise.resolve(client),
+        switchChain: (chainId) =>
+          Promise.resolve(
+            createWalletClient({
+              account,
+              chain: switchChains.find(
+                (chain) => chain.id === chainId
+              ) as Chain,
+              transport: http(),
+            })
+          ),
+      }),
+    ])
 
     // config for toAmount run
     const config = {
@@ -78,7 +77,10 @@ const run = async () => {
 
     console.info('>> get contract calls quote', quoteRequest)
 
-    const contactCallsQuoteResponse = await getContractCallsQuote(quoteRequest)
+    const contactCallsQuoteResponse = await getContractCallsQuote(
+      sdkClient,
+      quoteRequest
+    )
 
     console.info(
       '>> got contract calls quote response',
@@ -89,7 +91,12 @@ const run = async () => {
       return
     }
 
-    await checkTokenAllowance(contactCallsQuoteResponse, account, client)
+    await checkTokenAllowance(
+      sdkClient,
+      contactCallsQuoteResponse,
+      account,
+      client
+    )
 
     console.info(
       '>> Execute transaction',
@@ -120,7 +127,7 @@ const run = async () => {
         }, 5000)
       })
 
-      result = await getStatus({
+      result = await getStatus(sdkClient, {
         txHash: receipt.transactionHash,
         bridge: contactCallsQuoteResponse.tool,
         fromChain: contactCallsQuoteResponse.action.fromChainId,
