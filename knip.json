@@ -1,5 +1,4 @@
 {
-    "ignore": ["examples/**", "scripts/**", "src/core/EVM/permits/**", "src/errors/constants.ts"],
-    "ignoreDependencies": ["bech32", "@types/fs-extra", "fs-extra", "@types/ws"]
+  "ignore": ["examples/**", "scripts/**", "packages/sdk-provider-ethereum/src/permits/allowanceTransfer.ts"],
+  "ignoreDependencies": ["bech32", "@types/fs-extra", "fs-extra", "@types/ws", "@vitest/coverage-v8"]
 }
-  

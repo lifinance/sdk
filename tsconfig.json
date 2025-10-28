@@ -1,13 +1,23 @@
 {
-  // This configuration is used for local development and type checking.
-  "extends": "./tsconfig.base.json",
-  "include": [
-    "src"
-  ],
-  "exclude": [],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
+  "compilerOptions": {
+    // Incremental builds
+    // NOTE: Enabling incremental builds speeds up `tsc`. Keep in mind though that it does not reliably bust the cache when the `tsconfig.json` file changes.
+    "incremental": true,
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true,
+    "composite": true,
+    "esModuleInterop": false,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020"
+  },
+  "exclude": ["**/.*/", "**/build", "**/dist", "node_modules"]
 }
