@@ -12,10 +12,10 @@ import {
   vi,
 } from 'vitest'
 import { createClient } from '../client/createClient.js'
-import { buildRouteObject, buildStepObject } from '../tests/fixtures.js'
 import { requestSettings } from '../utils/request.js'
 import { executeRoute } from './execution.js'
 import { lifiHandlers } from './execution.unit.handlers.js'
+import { buildRouteObject, buildStepObject } from './execution.unit.mock.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',

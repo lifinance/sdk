@@ -1,7 +1,7 @@
 import { HttpResponse, http } from 'msw'
 import { createClient } from '../client/createClient.js'
-import { buildStepObject } from '../tests/fixtures.js'
 import {
+  buildStepObject,
   mockChainsResponse,
   mockStatus,
   mockStepTransactionWithTxRequest,
