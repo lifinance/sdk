@@ -100,37 +100,37 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.6.0",
+    "@bigmi/core": "^0.6.1",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/types": "17.45.0-alpha.0",
-    "@mysten/sui": "^1.43.1",
-    "@mysten/wallet-standard": "^0.19.4",
+    "@mysten/sui": "^1.43.2",
+    "@mysten/wallet-standard": "^0.19.5",
     "@noble/curves": "^1.9.7",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.4",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0",
     "bs58": "^6.0.0",
-    "viem": "^2.38.4"
+    "viem": "^2.38.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.1",
+    "@biomejs/biome": "^2.3.2",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@lifi/data-types": "^6.41.2",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.0.3",
+    "@vitest/coverage-v8": "^4.0.5",
     "fs-extra": "^11.3.2",
     "husky": "^9.1.7",
-    "knip": "^5.66.3",
+    "knip": "^5.66.4",
     "lint-staged": "^16.2.6",
     "madge": "^8.0.0",
     "msw": "^2.11.6",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.3"
+    "vitest": "^4.0.5"
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",
@@ -145,5 +145,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8"
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
 }
