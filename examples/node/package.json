@@ -7,7 +7,7 @@
   "author": "LI.FI <github@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^6.41.2",
+    "@lifi/data-types": "^6.42.0",
     "@lifi/sdk": "^3.12.14",
     "@wagmi/connectors": "^6.1.2",
     "@wagmi/core": "^2.22.1",

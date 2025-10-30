@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.13.0-beta.4",
+  "version": "3.13.0",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -102,7 +102,7 @@
   "dependencies": {
     "@bigmi/core": "^0.6.1",
     "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "17.45.0-alpha.0",
+    "@lifi/types": "17.45.0",
     "@mysten/sui": "^1.43.2",
     "@mysten/wallet-standard": "^0.19.5",
     "@noble/curves": "^1.9.7",
@@ -117,7 +117,7 @@
     "@biomejs/biome": "^2.3.2",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
-    "@lifi/data-types": "^6.41.2",
+    "@lifi/data-types": "^6.42.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.5",
