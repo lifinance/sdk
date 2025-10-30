@@ -23,7 +23,7 @@ const timeout = 3600000
 
 const MNEMONIC = ''
 
-describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
+describe.skipIf(!MNEMONIC)('Approval integration tests', { timeout }, () => {
   if (!MNEMONIC) {
     return
   }
@@ -37,48 +37,40 @@ describe.skipIf(!MNEMONIC)('Approval integration tests', () => {
 
   beforeAll(setupTestEnvironment)
 
-  it(
-    'should revoke allowance for ERC20 on POL',
-    async () => {
-      const revokeTxHash = await revokeTokenApproval({
-        walletClient: client,
-        token: testToken,
-        spenderAddress: defaultSpenderAddress,
+  it('should revoke allowance for ERC20 on POL', async () => {
+    const revokeTxHash = await revokeTokenApproval({
+      walletClient: client,
+      token: testToken,
+      spenderAddress: defaultSpenderAddress,
+    })
+
+    if (revokeTxHash) {
+      const transactionReceipt = await waitForTransactionReceipt(client, {
+        hash: revokeTxHash!,
+        retryCount,
+        retryDelay,
       })
 
-      if (revokeTxHash) {
-        const transactionReceipt = await waitForTransactionReceipt(client, {
-          hash: revokeTxHash!,
-          retryCount,
-          retryDelay,
-        })
+      expect(transactionReceipt.status).toBe('success')
+    }
+  })
 
-        expect(transactionReceipt.status).toBe('success')
-      }
-    },
-    { timeout }
-  )
+  it('should set allowance ERC20 on POL', async () => {
+    const approvalTxHash = await setTokenAllowance({
+      walletClient: client,
+      token: testToken,
+      spenderAddress: defaultSpenderAddress,
+      amount: defaultAllowance,
+    })
 
-  it(
-    'should set allowance ERC20 on POL',
-    async () => {
-      const approvalTxHash = await setTokenAllowance({
-        walletClient: client,
-        token: testToken,
-        spenderAddress: defaultSpenderAddress,
-        amount: defaultAllowance,
+    if (approvalTxHash) {
+      const transactionReceipt = await waitForTransactionReceipt(client, {
+        hash: approvalTxHash!,
+        retryCount,
+        retryDelay,
       })
 
-      if (approvalTxHash) {
-        const transactionReceipt = await waitForTransactionReceipt(client, {
-          hash: approvalTxHash!,
-          retryCount,
-          retryDelay,
-        })
-
-        expect(transactionReceipt.status).toBe('success')
-      }
-    },
-    { timeout }
-  )
+      expect(transactionReceipt.status).toBe('success')
+    }
+  })
 })

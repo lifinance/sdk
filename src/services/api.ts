@@ -40,6 +40,7 @@ import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
+import { decodeTaskId } from '../utils/decode.js'
 import { withDedupe } from '../utils/withDedupe.js'
 import type {
   GetStatusRequestExtended,
@@ -270,9 +271,14 @@ export const getStatus = async (
   params: GetStatusRequestExtended,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
-  if (!params.txHash) {
+  if (
+    !('taskId' in params && params.taskId) &&
+    !('txHash' in params && params.txHash)
+  ) {
     throw new SDKError(
-      new ValidationError('Required parameter "txHash" is missing.')
+      new ValidationError(
+        'Either "taskId" or "txHash" must be provided and non-empty.'
+      )
     )
   }
   const queryParams = new URLSearchParams(
@@ -434,6 +440,16 @@ export const getRelayedTransactionStatus = async (
   const queryParams = new URLSearchParams(
     otherParams as unknown as Record<string, string>
   )
+
+  const decodedTaskId = decodeTaskId(taskId)
+  // Temporary solution during the transition between status endpoints
+  if (decodedTaskId.length === 3) {
+    return (await getStatus(
+      params,
+      options
+    )) as unknown as RelayStatusResponseData
+  }
+
   const result = await request<RelayStatusResponse>(
     `${config.get().apiUrl}/relayer/status/${taskId}?${queryParams}`,
     {
