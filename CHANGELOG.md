@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.13.1](https://github.com/lifinance/sdk/compare/v3.13.0...v3.13.1) (2025-10-31)
+
+
+### Bug Fixes
+
+* disable EIP-2612 permits for tokens with non-ASCII names ([#324](https://github.com/lifinance/sdk/issues/324)) ([ad00ad4](https://github.com/lifinance/sdk/commit/ad00ad4fd1e61f3d2ca12671a4de8b14330524a8))
+
 ## [3.13.0](https://github.com/lifinance/sdk/compare/v3.13.0-beta.4...v3.13.0) (2025-10-30)
 
 ### [3.12.14](https://github.com/lifinance/sdk/compare/v3.12.13...v3.12.14) (2025-10-08)
