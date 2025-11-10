@@ -1,5 +1,5 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
-import { PublicKey } from '@solana/web3.js'
+import { address } from '@solana/kit'
 import { SolSystemProgram } from '../../constants.js'
 import { withDedupe } from '../../utils/withDedupe.js'
 import { callSolanaWithRetry } from './connection.js'
@@ -27,56 +27,72 @@ const getSolanaBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
-  const accountPublicKey = new PublicKey(walletAddress)
-  const tokenProgramIdPublicKey = new PublicKey(TokenProgramId)
-  const token2022ProgramIdPublicKey = new PublicKey(Token2022ProgramId)
+  // Convert addresses to Solana Kit's address type
+  const accountAddress = address(walletAddress)
+  const tokenProgramAddress = address(TokenProgramId)
+  const token2022ProgramAddress = address(Token2022ProgramId)
+
+  // Use Solana Kit's RPC API with the retry wrapper
   const [slot, balance, tokenAccountsByOwner, token2022AccountsByOwner] =
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) => connection.getSlot('confirmed')),
+          callSolanaWithRetry((rpc) =>
+            rpc.getSlot({ commitment: 'confirmed' }).send()
+          ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
-            connection.getBalance(accountPublicKey, 'confirmed')
+          callSolanaWithRetry((rpc) =>
+            rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: tokenProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaWithRetry((rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: tokenProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${TokenProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${TokenProgramId}`,
         }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: token2022ProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaWithRetry((rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: token2022ProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${Token2022ProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${Token2022ProgramId}`,
         }
       ),
     ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
-  const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
+  const solBalance =
+    balance.status === 'fulfilled' ? BigInt(balance.value.value) : 0n
 
   const walletTokenAmounts = [
     ...(tokenAccountsByOwner.status === 'fulfilled'

@@ -40,9 +40,9 @@ export {
 } from './core/execution.js'
 export { isSVMAddress } from './core/Solana/isSVMAddress.js'
 export {
-  KeypairWalletAdapter,
+  KeypairWallet,
   KeypairWalletName,
-} from './core/Solana/KeypairWalletAdapter.js'
+} from './core/Solana/KeypairWallet.js'
 export { Solana } from './core/Solana/Solana.js'
 export type {
   SolanaProvider,

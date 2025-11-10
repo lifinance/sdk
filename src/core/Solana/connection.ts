@@ -1,8 +1,10 @@
 import { ChainId } from '@lifi/types'
-import { Connection } from '@solana/web3.js'
+import { createSolanaRpc, createSolanaRpcSubscriptions } from '@solana/kit'
 import { getRpcUrls } from '../rpc.js'
 
-const connections = new Map<string, Connection>()
+type RpcType = ReturnType<typeof createSolanaRpc>
+const rpcs = new Map<string, RpcType>()
+const subscriptions = new Map<string, any>()
 
 /**
  * Initializes the Solana connections if they haven't been initialized yet.
@@ -11,10 +13,10 @@ const connections = new Map<string, Connection>()
 const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
-    if (!connections.get(rpcUrl)) {
-      const connection = new Connection(rpcUrl)
-      connections.set(rpcUrl, connection)
-    }
+    const rpc = createSolanaRpc(rpcUrl)
+    const subscription = createSolanaRpcSubscriptions(rpcUrl)
+    rpcs.set(rpcUrl, rpc)
+    subscriptions.set(rpcUrl, subscription)
   }
 }
 
@@ -22,9 +24,9 @@ const ensureConnections = async (): Promise<void> => {
  * Wrapper around getting the connection (RPC provider) for Solana
  * @returns - Solana RPC connections
  */
-export const getSolanaConnections = async (): Promise<Connection[]> => {
+export const getSolanaConnections = async (): Promise<RpcType[]> => {
   await ensureConnections()
-  return Array.from(connections.values())
+  return Array.from(rpcs.values())
 }
 
 /**
@@ -33,14 +35,14 @@ export const getSolanaConnections = async (): Promise<Connection[]> => {
  * @returns - The result of the function call.
  */
 export async function callSolanaWithRetry<R>(
-  fn: (connection: Connection) => Promise<R>
+  fn: (rpc: RpcType) => Promise<R>
 ): Promise<R> {
   // Ensure connections are initialized
   await ensureConnections()
   let lastError: any = null
-  for (const connection of connections.values()) {
+  for (const rpc of rpcs.values()) {
     try {
-      const result = await fn(connection)
+      const result = await fn(rpc)
       return result
     } catch (error) {
       lastError = error

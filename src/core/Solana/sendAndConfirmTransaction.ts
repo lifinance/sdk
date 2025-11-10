@@ -1,14 +1,23 @@
-import type {
-  SendOptions,
-  SignatureResult,
-  VersionedTransaction,
-} from '@solana/web3.js'
-import bs58 from 'bs58'
+import {
+  type Commitment,
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
+  type Transaction,
+  type TransactionError,
+} from '@solana/kit'
 import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
-type ConfirmedTransactionResult = {
-  signatureResult: SignatureResult | null
+type SignatureStatus = {
+  slot: bigint
+  confirmations: bigint | null
+  err: TransactionError | null
+  confirmationStatus: Commitment | null
+  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
+}
+
+export type ConfirmedTransactionResult = {
+  signatureResult: SignatureStatus | null
   txSignature: string
 }
 
@@ -19,26 +28,26 @@ type ConfirmedTransactionResult = {
  * @returns - The confirmation result of the transaction.
  */
 export async function sendAndConfirmTransaction(
-  signedTx: VersionedTransaction
+  signedTx: Transaction
 ): Promise<ConfirmedTransactionResult> {
   const connections = await getSolanaConnections()
 
-  const signedTxSerialized = signedTx.serialize()
+  const signedTxSerialized = getBase64EncodedWireTransaction(signedTx)
   // Create transaction hash (signature)
-  const txSignature = bs58.encode(signedTx.signatures[0])
+  const txSignature = getSignatureFromTransaction(signedTx)
 
   if (!txSignature) {
     throw new Error('Transaction signature is missing.')
   }
 
-  const rawTransactionOptions: SendOptions = {
+  const rawTransactionOptions = {
     // We can skip preflight check after the first transaction has been sent
     // https://solana.com/docs/advanced/retry#the-cost-of-skipping-preflight
     skipPreflight: true,
     // Setting max retries to 0 as we are handling retries manually
-    maxRetries: 0,
+    maxRetries: BigInt(0),
     // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
-    preflightCommitment: 'confirmed',
+    preflightCommitment: 'confirmed' as Commitment,
   }
 
   const abortController = new AbortController()
@@ -47,29 +56,38 @@ export async function sendAndConfirmTransaction(
     try {
       // Send initial transaction for this connection
       try {
-        await connection.sendRawTransaction(
-          signedTxSerialized,
-          rawTransactionOptions
-        )
+        await connection
+          .sendTransaction(signedTxSerialized, rawTransactionOptions)
+          .send()
       } catch (_) {
         // Continue with confirmation even if initial send fails
       }
 
-      const [blockhashResult, initialBlockHeight] = await Promise.all([
-        connection.getLatestBlockhash('confirmed'),
-        connection.getBlockHeight('confirmed'),
-      ])
-      let currentBlockHeight = initialBlockHeight
-      let signatureResult: SignatureResult | null = null
+      const [{ value: blockhashResult }, initialBlockHeight] =
+        await Promise.all([
+          connection
+            .getLatestBlockhash({
+              commitment: 'confirmed',
+            })
+            .send(),
+          connection
+            .getBlockHeight({
+              commitment: 'confirmed',
+            })
+            .send(),
+        ])
+
+      let signatureResult: SignatureStatus | null = null
 
       const pollingPromise = (async () => {
+        let blockHeight = initialBlockHeight
         while (
-          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          blockHeight < blockhashResult.lastValidBlockHeight &&
           !abortController.signal.aborted
         ) {
-          const statusResponse = await connection.getSignatureStatuses([
-            txSignature,
-          ])
+          const statusResponse = await connection
+            .getSignatureStatuses([txSignature])
+            .send()
 
           const status = statusResponse.value[0]
           if (
@@ -84,28 +102,40 @@ export async function sendAndConfirmTransaction(
           }
 
           await sleep(400)
+
+          if (!abortController.signal.aborted) {
+            blockHeight = await connection
+              .getBlockHeight({
+                commitment: 'confirmed',
+              })
+              .send()
+          }
         }
         return null
       })()
 
-      const sendingPromise = (async (): Promise<SignatureResult | null> => {
+      const sendingPromise = (async (): Promise<SignatureStatus | null> => {
+        let blockHeight = initialBlockHeight
         while (
-          currentBlockHeight < blockhashResult.lastValidBlockHeight &&
+          blockHeight < blockhashResult.lastValidBlockHeight &&
           !abortController.signal.aborted &&
           !signatureResult
         ) {
           try {
-            await connection.sendRawTransaction(
-              signedTxSerialized,
-              rawTransactionOptions
-            )
+            await connection
+              .sendTransaction(signedTxSerialized, rawTransactionOptions)
+              .send()
           } catch (_) {
             // Continue trying even if individual sends fail
           }
 
           await sleep(1000)
           if (!abortController.signal.aborted) {
-            currentBlockHeight = await connection.getBlockHeight('confirmed')
+            blockHeight = await connection
+              .getBlockHeight({
+                commitment: 'confirmed',
+              })
+              .send()
           }
         }
         return null
