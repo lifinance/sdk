@@ -1,5 +1,6 @@
 import { ChainType } from '@lifi/types'
 import type { WalletWithFeatures } from '@mysten/wallet-standard'
+import type { TransactionModifyingSigner } from '@solana/signers'
 import type {
   SolanaSignAndSendAllTransactionsFeature,
   SolanaSignAndSendTransactionFeature,
@@ -10,7 +11,7 @@ import type {
 import type { SDKProvider, StepExecutorOptions } from '../types.js'
 
 export interface SolanaProviderOptions {
-  getWallet?: () => Promise<WalletWithSolanaFeatures>
+  getTransactionSigner?: () => Promise<TransactionModifyingSigner<string>>
 }
 
 export interface SolanaProvider extends SDKProvider {
@@ -30,7 +31,7 @@ export type SolanaFeatures = SolanaSignAndSendTransactionFeature &
 export type WalletWithSolanaFeatures = WalletWithFeatures<SolanaFeatures>
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  wallet: WalletWithSolanaFeatures
+  transactionSigner: TransactionModifyingSigner<string>
 }
 
 export const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
