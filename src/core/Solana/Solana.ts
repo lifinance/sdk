@@ -18,14 +18,14 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SolanaStepExecutor> {
-      if (!_options.getTransactionSigner) {
-        throw new Error('getTransactionSigner is not provided.')
+      if (!_options.getSolanaClient) {
+        throw new Error('getSolanaClient is not provided.')
       }
 
-      const transactionSigner = await _options.getTransactionSigner()
+      const solanaClient = await _options.getSolanaClient()
 
       const executor = new SolanaStepExecutor({
-        transactionSigner,
+        solanaClient,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,

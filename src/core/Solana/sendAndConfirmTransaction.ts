@@ -16,7 +16,7 @@ type SignatureStatus = {
   status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
 }
 
-export type ConfirmedTransactionResult = {
+type ConfirmedTransactionResult = {
   signatureResult: SignatureStatus | null
   txSignature: string
 }
