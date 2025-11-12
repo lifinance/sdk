@@ -1,7 +1,7 @@
 import {
   getBase64EncodedWireTransaction,
   getTransactionCodec,
-  isSendableTransaction,
+  type SendableTransaction,
   type Transaction,
 } from '@solana/kit'
 import { withTimeout } from 'viem'
@@ -153,16 +153,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         const transactionCodec = getTransactionCodec()
         const transaction = transactionCodec.decode(transactionBytes)
 
-        if (!isSendableTransaction(transaction)) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
-            'Transaction is not sendable.'
-          )
-        }
-
         // We give users 2 minutes to sign the transaction or it should be considered expired
         const signedTransactions = await withTimeout<
-          readonly (Transaction & { lifetimeConstraint?: unknown })[]
+          readonly (Transaction & SendableTransaction)[]
         >(
           async () => {
             const signer = await this.getWalletSigner()
@@ -174,7 +167,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
               )
             }
 
-            return [await signer.signTransaction(transaction)]
+            return [
+              await signer.signTransaction(
+                transaction as SendableTransaction & Transaction
+              ),
+            ]
           },
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration

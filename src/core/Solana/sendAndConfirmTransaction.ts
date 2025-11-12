@@ -48,6 +48,7 @@ export async function sendAndConfirmTransaction(
     maxRetries: BigInt(0),
     // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
     preflightCommitment: 'confirmed' as Commitment,
+    encoding: 'base64' as const,
   }
 
   const abortController = new AbortController()
