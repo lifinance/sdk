@@ -1,10 +1,9 @@
 import { ChainId } from '@lifi/types'
-import { createSolanaRpc, createSolanaRpcSubscriptions } from '@solana/kit'
+import { createSolanaRpc } from '@solana/kit'
 import { getRpcUrls } from '../rpc.js'
 
 type RpcType = ReturnType<typeof createSolanaRpc>
 const rpcs = new Map<string, RpcType>()
-const subscriptions = new Map<string, any>()
 
 /**
  * Initializes the Solana connections if they haven't been initialized yet.
@@ -14,9 +13,7 @@ const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     const rpc = createSolanaRpc(rpcUrl)
-    const subscription = createSolanaRpcSubscriptions(rpcUrl)
     rpcs.set(rpcUrl, rpc)
-    subscriptions.set(rpcUrl, subscription)
   }
 }
 
