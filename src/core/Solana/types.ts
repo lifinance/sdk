@@ -1,5 +1,5 @@
 import { ChainType } from '@lifi/types'
-import type { SolanaClient } from '@solana/client-core'
+import type { SolanaClient } from '@solana/client'
 import type { SDKProvider, StepExecutorOptions } from '../types.js'
 
 export interface SolanaProviderOptions {
