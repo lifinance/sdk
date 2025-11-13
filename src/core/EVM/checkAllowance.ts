@@ -3,13 +3,14 @@ import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { MaxUint256 } from '../../constants.js'
-import type { StatusManager } from '../StatusManager.js'
 import type {
   ExecutionOptions,
   LiFiStepExtended,
   Process,
   ProcessType,
-} from '../types.js'
+  SDKClient,
+} from '../../types/core.js'
+import type { StatusManager } from '../StatusManager.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { parseEVMErrors } from './parseEVMErrors.js'
@@ -50,17 +51,20 @@ type AllowanceResult =
       data: SignedTypedData[]
     }
 
-export const checkAllowance = async ({
-  checkClient,
-  chain,
-  step,
-  statusManager,
-  executionOptions,
-  allowUserInteraction = false,
-  batchingSupported = false,
-  permit2Supported = false,
-  disableMessageSigning = false,
-}: CheckAllowanceParams): Promise<AllowanceResult> => {
+export const checkAllowance = async (
+  client: SDKClient,
+  {
+    checkClient,
+    chain,
+    step,
+    statusManager,
+    executionOptions,
+    allowUserInteraction = false,
+    batchingSupported = false,
+    permit2Supported = false,
+    disableMessageSigning = false,
+  }: CheckAllowanceParams
+): Promise<AllowanceResult> => {
   let sharedProcess: Process | undefined
   let signedTypedData: SignedTypedData[] = []
   try {
@@ -164,6 +168,7 @@ export const checkAllowance = async ({
     // Handle existing pending transaction
     if (sharedProcess.txHash && sharedProcess.status !== 'DONE') {
       await waitForApprovalTransaction(
+        client,
         updatedClient,
         sharedProcess.txHash as Address,
         sharedProcess.type,
@@ -184,6 +189,7 @@ export const checkAllowance = async ({
     const fromAmount = BigInt(step.action.fromAmount)
 
     const approved = await getAllowance(
+      client,
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
@@ -203,10 +209,13 @@ export const checkAllowance = async ({
     let nativePermitData: NativePermitData | undefined
     if (isNativePermitAvailable) {
       nativePermitData = await getActionWithFallback(
+        client,
         updatedClient,
         getNativePermit,
         'getNativePermit',
         {
+          client,
+          viemClient: updatedClient,
           chainId: chain.id,
           tokenAddress: step.action.fromToken.address as Address,
           spenderAddress: chain.permit2Proxy as Address,
@@ -280,6 +289,7 @@ export const checkAllowance = async ({
     let approvalResetTxHash: Hash | undefined
     if (shouldResetApproval) {
       approvalResetTxHash = await setAllowance(
+        client,
         updatedClient,
         step.action.fromToken.address as Address,
         spenderAddress as Address,
@@ -291,6 +301,7 @@ export const checkAllowance = async ({
       // If batching is NOT supported, wait for the reset transaction
       if (!batchingSupported) {
         await waitForApprovalTransaction(
+          client,
           updatedClient,
           approvalResetTxHash,
           sharedProcess.type,
@@ -318,6 +329,7 @@ export const checkAllowance = async ({
     // Set new allowance
     const approveAmount = permit2Supported ? MaxUint256 : fromAmount
     const approveTxHash = await setAllowance(
+      client,
       updatedClient,
       step.action.fromToken.address as Address,
       spenderAddress as Address,
@@ -360,6 +372,7 @@ export const checkAllowance = async ({
     }
 
     await waitForApprovalTransaction(
+      client,
       updatedClient,
       approveTxHash,
       sharedProcess.type,
@@ -390,7 +403,8 @@ export const checkAllowance = async ({
 }
 
 const waitForApprovalTransaction = async (
-  client: Client,
+  client: SDKClient,
+  viemClient: Client,
   txHash: Hash,
   processType: ProcessType,
   step: LiFiStep,
@@ -406,8 +420,8 @@ const waitForApprovalTransaction = async (
     txLink: getTxLink(txHash),
   })
 
-  const transactionReceipt = await waitForTransactionReceipt({
-    client,
+  const transactionReceipt = await waitForTransactionReceipt(client, {
+    client: viemClient,
     chainId: chain.id,
     txHash,
     onReplaced(response) {

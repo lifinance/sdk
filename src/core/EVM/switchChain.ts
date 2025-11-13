@@ -3,8 +3,12 @@ import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { ProviderError } from '../../errors/errors.js'
+import type {
+  ExecutionOptions,
+  LiFiStepExtended,
+  Process,
+} from '../../types/core.js'
 import type { StatusManager } from '../StatusManager.js'
-import type { ExecutionOptions, LiFiStepExtended, Process } from '../types.js'
 
 /**
  * This method checks whether the wallet client is configured for the correct chain.

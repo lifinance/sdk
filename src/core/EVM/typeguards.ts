@@ -1,5 +1,5 @@
 import type { ExtendedChain, LiFiStep } from '@lifi/types'
-import type { LiFiStepExtended } from '../types.js'
+import type { LiFiStepExtended } from '../../types/core.js'
 
 type RelayerStep = (LiFiStepExtended | LiFiStep) & {
   typedData: NonNullable<(LiFiStepExtended | LiFiStep)['typedData']>

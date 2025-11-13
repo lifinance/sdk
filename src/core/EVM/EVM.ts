@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
 import { isAddress } from 'viem'
-import type { StepExecutorOptions } from '../types.js'
+import type { StepExecutorOptions } from '../../types/core.js'
 import { EVMStepExecutor } from './EVMStepExecutor.js'
 import { getEVMBalance } from './getEVMBalance.js'
 import { resolveEVMAddress } from './resolveEVMAddress.js'

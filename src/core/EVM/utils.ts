@@ -1,7 +1,9 @@
 import type { ChainId, ExtendedChain } from '@lifi/types'
+import { ChainType } from '@lifi/types'
 import type { Address, Chain, Client, Transaction, TypedDataDomain } from 'viem'
 import { getBlock } from 'viem/actions'
-import { config } from '../../config.js'
+import { getChainsFromConfig } from '../../actions/getChains.js'
+import type { SDKBaseConfig, SDKClient } from '../../types/core.js'
 import { median } from '../../utils/median.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 
@@ -57,11 +59,18 @@ export function isExtendedChain(chain: any): chain is ExtendedChain {
 }
 
 export const getMaxPriorityFeePerGas = async (
-  client: Client
+  client: SDKClient,
+  viemClient: Client
 ): Promise<bigint | undefined> => {
-  const block = await getActionWithFallback(client, getBlock, 'getBlock', {
-    includeTransactions: true,
-  })
+  const block = await getActionWithFallback(
+    client,
+    viemClient,
+    getBlock,
+    'getBlock',
+    {
+      includeTransactions: true,
+    }
+  )
 
   const maxPriorityFeePerGasList = (block.transactions as Transaction[])
     .filter((tx) => tx.maxPriorityFeePerGas)
@@ -88,10 +97,13 @@ export const getMaxPriorityFeePerGas = async (
 
 // Multicall
 export const getMulticallAddress = async (
+  config: SDKBaseConfig,
   chainId: ChainId
 ): Promise<Address | undefined> => {
-  const chains = await config.getChains()
-  return chains.find((chain) => chain.id === chainId)
+  const chains = await getChainsFromConfig(config, {
+    chainTypes: [ChainType.EVM],
+  })
+  return chains?.find((chain) => chain.id === chainId)
     ?.multicallAddress as Address
 }
 

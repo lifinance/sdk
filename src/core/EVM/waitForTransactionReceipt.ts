@@ -10,6 +10,7 @@ import type {
 import { waitForTransactionReceipt as waitForTransactionReceiptInternal } from 'viem/actions'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
+import type { SDKClient } from '../../types/core.js'
 import { getPublicClient } from './publicClient.js'
 
 interface WaitForTransactionReceiptProps {
@@ -19,20 +20,23 @@ interface WaitForTransactionReceiptProps {
   onReplaced?: (response: ReplacementReturnType<Chain | undefined>) => void
 }
 
-export async function waitForTransactionReceipt({
-  client,
-  chainId,
-  txHash,
-  onReplaced,
-}: WaitForTransactionReceiptProps): Promise<TransactionReceipt | undefined> {
+export async function waitForTransactionReceipt(
+  client: SDKClient,
+  {
+    client: viemClient,
+    chainId,
+    txHash,
+    onReplaced,
+  }: WaitForTransactionReceiptProps
+): Promise<TransactionReceipt | undefined> {
   let { transactionReceipt, replacementReason } = await waitForReceipt(
-    client,
+    viemClient,
     txHash,
     onReplaced
   )
 
   if (!transactionReceipt?.status) {
-    const publicClient = await getPublicClient(chainId)
+    const publicClient = await getPublicClient(client, chainId)
     const result = await waitForReceipt(publicClient, txHash, onReplaced)
     transactionReceipt = result.transactionReceipt
     replacementReason = result.replacementReason

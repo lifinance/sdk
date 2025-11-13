@@ -3,7 +3,7 @@ import { BaseError } from '../../errors/baseError.js'
 import { ErrorMessage, LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError, UnknownError } from '../../errors/errors.js'
 import { SDKError } from '../../errors/SDKError.js'
-import type { Process } from '../types.js'
+import type { Process } from '../../types/core.js'
 
 export const parseUTXOErrors = async (
   e: Error,

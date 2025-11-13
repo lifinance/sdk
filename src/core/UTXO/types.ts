@@ -1,7 +1,7 @@
 import type { Client } from '@bigmi/core'
 
 import { ChainType } from '@lifi/types'
-import type { SDKProvider } from '../types.js'
+import type { SDKProvider } from '../../types/core.js'
 
 export interface UTXOProviderOptions {
   getWalletClient?: () => Promise<Client>

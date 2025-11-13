@@ -1,6 +1,6 @@
 import { ChainType } from '@lifi/types'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
-import type { SDKProvider, StepExecutorOptions } from '../types.js'
+import type { SDKProvider, StepExecutorOptions } from '../../types/core.js'
 
 export interface SuiProviderOptions {
   getWallet?: () => Promise<WalletWithRequiredFeatures>
