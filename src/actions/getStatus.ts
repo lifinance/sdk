@@ -18,9 +18,14 @@ export const getStatus = async (
   params: GetStatusRequestExtended,
   options?: RequestOptions
 ): Promise<StatusResponse> => {
-  if (!params.txHash) {
+  if (
+    !('taskId' in params && params.taskId) &&
+    !('txHash' in params && params.txHash)
+  ) {
     throw new SDKError(
-      new ValidationError('Required parameter "txHash" is missing.')
+      new ValidationError(
+        'Either "taskId" or "txHash" must be provided and non-empty.'
+      )
     )
   }
   const queryParams = new URLSearchParams(

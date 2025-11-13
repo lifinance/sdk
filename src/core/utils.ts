@@ -1,4 +1,4 @@
-import type { ChainId, ExtendedChain, LiFiStep } from '@lifi/types'
+import type { ChainId, ExtendedChain, LiFiStep, Token } from '@lifi/types'
 import type { RPCUrls } from '../types/core.js'
 
 // Standard threshold for destination amount difference (0.5%)
@@ -56,4 +56,16 @@ export function getRpcUrlsFromChains(
     }
   }
   return result
+}
+
+/**
+ * Checks whether a given token is eligible for message signing.
+ * Tokens with '₮' symbol in their name are disallowed,
+ * since such tokens may have non-standard signing requirements or compatibility issues with hardware wallets.
+ *
+ * @param token - The token object to check.
+ * @returns true if the token is allowed for message signing, false otherwise.
+ */
+export const isTokenMessageSigningAllowed = (token: Token): boolean => {
+  return !token.name?.includes('₮') && !token.symbol?.includes('₮')
 }

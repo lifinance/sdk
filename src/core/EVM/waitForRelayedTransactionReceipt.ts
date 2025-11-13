@@ -1,4 +1,8 @@
-import type { ExtendedTransactionInfo, LiFiStep } from '@lifi/types'
+import type {
+  ExtendedTransactionInfo,
+  FullStatusData,
+  LiFiStep,
+} from '@lifi/types'
 import type { Hash } from 'viem'
 import { getRelayedTransactionStatus } from '../../actions/getRelayedTransactionStatus.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
@@ -30,12 +34,14 @@ export const waitForRelayedTransactionReceipt = async (
         case 'PENDING':
           return undefined
         case 'DONE': {
-          const sending: ExtendedTransactionInfo | undefined = result
-            ?.transactionStatus?.sending as ExtendedTransactionInfo
+          const sending: ExtendedTransactionInfo | undefined =
+            (result?.transactionStatus?.sending as ExtendedTransactionInfo) ||
+            ((result as unknown as FullStatusData)
+              ?.sending as ExtendedTransactionInfo)
           return {
             status: 'success',
             gasUsed: sending?.gasUsed,
-            transactionHash: result?.metadata.txHash,
+            transactionHash: result?.metadata.txHash || sending?.txHash,
             transactionLink: sending?.txLink,
           } as unknown as WalletCallReceipt
         }

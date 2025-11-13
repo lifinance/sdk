@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "3.12.14",
+  "version": "3.13.2",
   "description": "LI.FI Any-to-Any Cross-Chain-Swap SDK",
   "keywords": [
     "bridge",
@@ -100,37 +100,37 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.6.0",
+    "@bigmi/core": "^0.6.1",
     "@bitcoinerlab/secp256k1": "^1.2.0",
-    "@lifi/types": "^17.41.0",
-    "@mysten/sui": "^1.39.1",
-    "@mysten/wallet-standard": "^0.18.1",
+    "@lifi/types": "17.46.0",
+    "@mysten/sui": "^1.44.0",
+    "@mysten/wallet-standard": "^0.19.6",
     "@noble/curves": "^1.9.7",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/web3.js": "^1.98.4",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0",
     "bs58": "^6.0.0",
-    "viem": "^2.38.0"
+    "viem": "^2.38.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.5",
+    "@biomejs/biome": "^2.3.2",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
-    "@lifi/data-types": "^6.40.0",
+    "@lifi/data-types": "^6.42.1",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^4.0.6",
     "fs-extra": "^11.3.2",
     "husky": "^9.1.7",
-    "knip": "^5.64.2",
-    "lint-staged": "^16.2.3",
+    "knip": "^5.66.4",
+    "lint-staged": "^16.2.6",
     "madge": "^8.0.0",
-    "msw": "^2.11.3",
+    "msw": "^2.11.6",
     "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.6"
   },
   "peerDependencies": {
     "@solana/wallet-adapter-base": "^0.9.0",
@@ -145,5 +145,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.18.1+sha512.77a884a165cbba2d8d1c19e3b4880eee6d2fcabd0d879121e282196b80042351d5eb3ca0935fa599da1dc51265cc68816ad2bddd2a2de5ea9fdf92adbec7cd34"
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
 }

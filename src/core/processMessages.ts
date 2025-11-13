@@ -7,6 +7,9 @@ const processMessages: Record<
 > = {
   TOKEN_ALLOWANCE: {
     STARTED: 'Setting token allowance',
+    ACTION_REQUIRED: 'Set token allowance',
+    RESET_REQUIRED: 'Resetting token allowance',
+    MESSAGE_REQUIRED: 'Sign token allowance message',
     PENDING: 'Waiting for token allowance',
     DONE: 'Token allowance set',
   },

@@ -33,6 +33,7 @@ import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import { BaseStepExecutor } from '../BaseStepExecutor.js'
 import { checkBalance } from '../checkBalance.js'
 import { stepComparison } from '../stepComparison.js'
+import { isTokenMessageSigningAllowed } from '../utils.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
@@ -430,7 +431,10 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
+      this.executionOptions?.disableMessageSigning ||
+      step.type !== 'lifi' ||
+      // We disable message signing for tokens with '₮' symbol
+      !isTokenMessageSigningAllowed(step.action.fromToken)
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -440,7 +444,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       !isFromNativeToken &&
       !disableMessageSigning &&
       // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
-      !!step.estimate.approvalAddress
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval
 
     const checkForAllowance =
       // No existing swap/bridge transaction is pending
@@ -450,7 +455,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
       // Token is not native (address is not zero)
       !isFromNativeToken &&
       // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
-      !!step.estimate.approvalAddress
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval
 
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
@@ -468,7 +474,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       switch (allowanceResult.status) {
         case 'BATCH_APPROVAL':
-          calls.push(allowanceResult.data.call)
+          calls.push(...allowanceResult.data.calls)
           signedTypedData = allowanceResult.data.signedTypedData
           break
         case 'NATIVE_PERMIT':
@@ -531,12 +537,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
       let { transactionRequest, isRelayerTransaction } =
         await this.prepareUpdatedStep(client, step, signedTypedData)
 
-      // Make sure that the chain is still correct
-      const updatedClient = await this.checkClient(step, process)
-      if (!updatedClient) {
-        return step
-      }
-
       process = this.statusManager.updateProcess(
         step,
         process.type,
@@ -553,6 +553,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
       let txLink: string | undefined
 
       if (batchingSupported && transactionRequest) {
+        // Make sure that the chain is still correct
+        const updatedClient = await this.checkClient(step, process)
+        if (!updatedClient) {
+          return step
+        }
         const transferCall: Call = {
           chainId: fromChain.id,
           data: transactionRequest.data as Hex,
@@ -635,6 +640,11 @@ export class EVMStepExecutor extends BaseStepExecutor {
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction. Transaction request is not found.'
           )
+        }
+        // Make sure that the chain is still correct
+        const updatedClient = await this.checkClient(step, process)
+        if (!updatedClient) {
+          return step
         }
         const signedNativePermitTypedData = signedTypedData.find(
           (p) =>

@@ -27,7 +27,9 @@ describe('getStatus', () => {
         })
       ).rejects.toThrowError(
         new SDKError(
-          new ValidationError('Required parameter "txHash" is missing.')
+          new ValidationError(
+            'Either "taskId" or "txHash" must be provided and non-empty.'
+          )
         )
       )
 

@@ -44,7 +44,7 @@ type AllowanceResult =
     }
   | {
       status: 'BATCH_APPROVAL'
-      data: { call: Call; signedTypedData: SignedTypedData[] }
+      data: { calls: Call[]; signedTypedData: SignedTypedData[] }
     }
   | {
       status: 'NATIVE_PERMIT' | 'DONE'
@@ -270,14 +270,60 @@ export const checkAllowance = async (
       }
     }
 
+    const shouldResetApproval = step.estimate.approvalReset && approved > 0n
+    const resetApprovalStatus = shouldResetApproval
+      ? 'RESET_REQUIRED'
+      : 'ACTION_REQUIRED'
+
     // Clear the txHash and txLink from potential previous approval transaction
-    statusManager.updateProcess(step, sharedProcess.type, 'ACTION_REQUIRED', {
+    statusManager.updateProcess(step, sharedProcess.type, resetApprovalStatus, {
       txHash: undefined,
       txLink: undefined,
     })
 
     if (!allowUserInteraction) {
       return { status: 'ACTION_REQUIRED' }
+    }
+
+    // Reset allowance to 0 if required
+    let approvalResetTxHash: Hash | undefined
+    if (shouldResetApproval) {
+      approvalResetTxHash = await setAllowance(
+        client,
+        updatedClient,
+        step.action.fromToken.address as Address,
+        spenderAddress as Address,
+        0n,
+        executionOptions,
+        batchingSupported
+      )
+
+      // If batching is NOT supported, wait for the reset transaction
+      if (!batchingSupported) {
+        await waitForApprovalTransaction(
+          client,
+          updatedClient,
+          approvalResetTxHash,
+          sharedProcess.type,
+          step,
+          chain,
+          statusManager
+        )
+
+        statusManager.updateProcess(
+          step,
+          sharedProcess.type,
+          'ACTION_REQUIRED',
+          {
+            txHash: undefined,
+            txLink: undefined,
+          }
+        )
+
+        if (!allowUserInteraction) {
+          return { status: 'ACTION_REQUIRED' }
+        }
+      }
     }
 
     // Set new allowance
@@ -298,14 +344,28 @@ export const checkAllowance = async (
     // because allowance was't set by standard approval transaction
     if (batchingSupported) {
       statusManager.updateProcess(step, sharedProcess.type, 'DONE')
+      const calls: Call[] = []
+
+      // Add reset call first if approval reset is required
+      if (shouldResetApproval && approvalResetTxHash) {
+        calls.push({
+          to: step.action.fromToken.address as Address,
+          data: approvalResetTxHash,
+          chainId: step.action.fromToken.chainId,
+        })
+      }
+
+      // Add approval call
+      calls.push({
+        to: step.action.fromToken.address as Address,
+        data: approveTxHash,
+        chainId: step.action.fromToken.chainId,
+      })
+
       return {
         status: 'BATCH_APPROVAL',
         data: {
-          call: {
-            to: step.action.fromToken.address as Address,
-            data: approveTxHash,
-            chainId: step.action.fromToken.chainId,
-          },
+          calls,
           signedTypedData,
         },
       }
@@ -349,7 +409,8 @@ const waitForApprovalTransaction = async (
   processType: ProcessType,
   step: LiFiStep,
   chain: ExtendedChain,
-  statusManager: StatusManager
+  statusManager: StatusManager,
+  approvalReset: boolean = false
 ) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
@@ -373,8 +434,10 @@ const waitForApprovalTransaction = async (
   })
 
   const finalHash = transactionReceipt?.transactionHash || txHash
-  statusManager.updateProcess(step, processType, 'DONE', {
-    txHash: finalHash,
-    txLink: getTxLink(finalHash),
-  })
+  if (!approvalReset) {
+    statusManager.updateProcess(step, processType, 'DONE', {
+      txHash: finalHash,
+      txLink: getTxLink(finalHash),
+    })
+  }
 }
