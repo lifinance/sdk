@@ -21,7 +21,7 @@ import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const apiUrl = config.get().apiUrl
+const apiUrl = config.getApiUrl()
 
 describe('request new', () => {
   const server = setupServer(...handlers)
