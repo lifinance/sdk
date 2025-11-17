@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.13.4](https://github.com/lifinance/sdk/compare/v3.13.3...v3.13.4) (2025-11-17)
+
+
+### Bug Fixes
+
+* align licenses ([7ea5937](https://github.com/lifinance/sdk/commit/7ea5937aaa5a1d5295e350fc35031389720b386b))
+
 ### [3.13.3](https://github.com/lifinance/sdk/compare/v3.13.2...v3.13.3) (2025-11-13)
 
 ### [3.13.2](https://github.com/lifinance/sdk/compare/v3.13.1...v3.13.2) (2025-10-31)
