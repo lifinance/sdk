@@ -1,2 +1,0 @@
-overrides:
-  '@solana/client': link:../../../Library/pnpm/global/5/node_modules/@solana/client
