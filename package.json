@@ -112,8 +112,7 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.0",
     "bs58": "^6.0.0",
-    "viem": "^2.38.5",
-    "@solana/client": "^0.0.1"
+    "viem": "^2.38.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",

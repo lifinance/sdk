@@ -1,7 +1,6 @@
 import {
   getBase64EncodedWireTransaction,
   getTransactionCodec,
-  type SendableTransaction,
   type Transaction,
 } from '@solana/kit'
 import { withTimeout } from 'viem'
@@ -18,33 +17,19 @@ import { waitForDestinationChainTransaction } from '../waitForDestinationChainTr
 import { callSolanaWithRetry } from './connection.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
-import type { SolanaStepExecutorOptions } from './types.js'
+import type { SolanaStepExecutorOptions, SolanaWallet } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
-  private solanaClient: SolanaStepExecutorOptions['solanaClient']
-
+  private wallet: SolanaWallet
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
-    this.solanaClient = options.solanaClient
-  }
-
-  getWalletSigner = async () => {
-    const { wallet } = await this.solanaClient.store.getState()
-
-    if (wallet.status !== 'connected' || !wallet.session) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'Wallet is not connected.'
-      )
-    }
-    return wallet.session
+    this.wallet = options.solanaWallet
   }
 
   checkWalletAdapter = async (step: LiFiStepExtended) => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    const { wallet } = await this.solanaClient.store.getState()
-    if (wallet.status === 'connected') {
-      const signerAddress = String(wallet.session.account.address)
+    if (this.wallet) {
+      const signerAddress = String(this.wallet.account.address)
 
       if (signerAddress !== step.action.fromAddress) {
         throw new TransactionError(
@@ -154,23 +139,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         const transaction = transactionCodec.decode(transactionBytes)
 
         // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTransactions = await withTimeout<
-          readonly (Transaction & SendableTransaction)[]
-        >(
+        const signedTransactions = await withTimeout<readonly Transaction[]>(
           async () => {
-            const signer = await this.getWalletSigner()
-
-            if (!signer.signTransaction) {
-              throw new TransactionError(
-                LiFiErrorCode.TransactionFailed,
-                'Wallet does not support transaction signing.'
-              )
-            }
-
             return [
-              await signer.signTransaction(
-                transaction as SendableTransaction & Transaction
-              ),
+              await this.wallet.signTransaction(transaction as Transaction),
             ]
           },
           {
