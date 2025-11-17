@@ -30,7 +30,7 @@
     "type": "git",
     "url": "https://github.com/lifinance/sdk.git"
   },
-  "license": "Apache-2.0",
+  "license": "LGPL-3.0",
   "author": "LI.FI <github@li.finance>",
   "type": "module",
   "exports": {
