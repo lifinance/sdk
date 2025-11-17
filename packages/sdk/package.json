@@ -62,7 +62,7 @@
     "build:version": "node ../../scripts/version.js",
     "clean": "rm -rf dist src/_esm src/_cjs src/_types",
     "coverage": "vitest run --coverage",
-    "package": "npm run build && npm pack",
+    "prepublishOnly": "pnpm node scripts/prepublishOnly.js",
     "release:build": "pnpm build",
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
     "test:cov": "pnpm test --coverage",
