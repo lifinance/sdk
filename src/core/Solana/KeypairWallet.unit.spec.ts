@@ -7,7 +7,8 @@ import {
 } from '@solana/wallet-standard-features'
 import bs58 from 'bs58'
 import { describe, expect, it } from 'vitest'
-import { KeypairWallet, KeypairWalletName } from './KeypairWallet.js'
+import { KeypairWallet, KeypairWalletName } from './KeypairWalletAdapter.js'
+import type { SolanaWallet } from './types.js'
 
 describe('KeypairWallet', () => {
   // Helper to generate a valid test keypair
@@ -282,6 +283,62 @@ describe('KeypairWallet', () => {
       ).rejects.toThrow(
         'signAndSendTransaction is not supported. Use signTransaction and send manually.'
       )
+    })
+  })
+
+  describe('SolanaWallet interface', () => {
+    it('should implement SolanaWallet interface', () => {
+      const { privateKey } = generateTestKeypair()
+      const wallet = new KeypairWallet(privateKey)
+
+      // Type check - should be assignable to SolanaWallet
+      const solanaWallet: SolanaWallet = wallet
+      expect(solanaWallet).toBeDefined()
+    })
+
+    it('should have account getter with correct properties', () => {
+      const {
+        privateKey,
+        publicKey,
+        address: expectedAddress,
+      } = generateTestKeypair()
+      const wallet = new KeypairWallet(privateKey)
+
+      const account = wallet.account
+
+      expect(account).toBeDefined()
+      expect(account.address).toBe(expectedAddress)
+      expect(account.publicKey).toEqual(publicKey)
+    })
+
+    it('should have signTransaction method', () => {
+      const { privateKey } = generateTestKeypair()
+      const wallet = new KeypairWallet(privateKey)
+
+      // Verify the method exists and has the correct signature
+      expect(typeof wallet.signTransaction).toBe('function')
+      expect(wallet.signTransaction.length).toBe(1) // Takes one parameter
+    })
+
+    it('should sign transaction using SolanaWallet interface', async () => {
+      const { privateKey } = generateTestKeypair()
+      const wallet = new KeypairWallet(privateKey)
+
+      // Verify the method exists and can be called
+      expect(typeof wallet.signTransaction).toBe('function')
+
+      // The method signature should match SolanaWallet interface
+      // signTransaction(transaction: Transaction): Promise<Transaction>
+      expect(wallet.signTransaction.length).toBe(1)
+    })
+
+    it('should use account address from SolanaWallet interface', () => {
+      const { privateKey, address: expectedAddress } = generateTestKeypair()
+      const wallet = new KeypairWallet(privateKey)
+
+      // Test that account.address matches the wallet's address
+      expect(wallet.account.address).toBe(expectedAddress)
+      expect(String(wallet.account.address)).toBe(String(expectedAddress))
     })
   })
 

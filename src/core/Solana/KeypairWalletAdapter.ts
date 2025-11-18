@@ -1,5 +1,10 @@
 import { ed25519 } from '@noble/curves/ed25519'
-import { address } from '@solana/kit'
+import {
+  type Address,
+  address,
+  getTransactionCodec,
+  type Transaction,
+} from '@solana/kit'
 import type {
   SolanaSignAndSendTransactionFeature,
   SolanaSignAndSendTransactionMethod,
@@ -15,14 +20,15 @@ import {
 } from '@solana/wallet-standard-features'
 import type { Wallet, WalletAccount } from '@wallet-standard/core'
 import bs58 from 'bs58'
+import type { SolanaWallet } from './types.js'
 
 export const KeypairWalletName = 'Keypair Wallet'
 
 /**
  * This keypair wallet is unsafe to use on the frontend and is only included to provide an easy way for applications to test
- * without using a third-party wallet. It implements the Wallet Standard interface.
+ * without using a third-party wallet. It implements the Wallet Standard interface and the SolanaWallet interface, and should work with the solana sdk as is.
  */
-export class KeypairWallet implements Wallet {
+export class KeypairWallet implements Wallet, SolanaWallet {
   readonly #privateKey: Uint8Array
   readonly #publicKey: Uint8Array
   readonly #address: string
@@ -53,6 +59,38 @@ export class KeypairWallet implements Wallet {
         icon: this.icon,
       },
     ]
+  }
+
+  // Implement SolanaWallet interface
+  get account(): { address: Address; publicKey: Uint8Array } {
+    return {
+      address: address(this.#address),
+      publicKey: this.#publicKey,
+    }
+  }
+
+  // Implement SolanaWallet interface
+  async signTransaction(transaction: Transaction): Promise<Transaction> {
+    const account = this.accounts[0]
+    const signFeature = this.features[SolanaSignTransaction]
+
+    if (!signFeature) {
+      throw new Error('Sign transaction feature not available')
+    }
+
+    // Convert Transaction to Uint8Array for Wallet Standard
+    const transactionCodec = getTransactionCodec()
+    const transactionBytes = transactionCodec.encode(transaction)
+
+    // Sign using Wallet Standard interface
+    const result = await signFeature.signTransaction({
+      account,
+      transaction: new Uint8Array(transactionBytes),
+    })
+
+    // Convert back to Transaction object
+    const signedBytes = result[0].signedTransaction
+    return transactionCodec.decode(signedBytes) as Transaction
   }
 
   readonly features: Wallet['features'] & {

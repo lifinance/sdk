@@ -42,7 +42,7 @@ export { isSVMAddress } from './core/Solana/isSVMAddress.js'
 export {
   KeypairWallet,
   KeypairWalletName,
-} from './core/Solana/KeypairWallet.js'
+} from './core/Solana/KeypairWalletAdapter.js'
 export { Solana } from './core/Solana/Solana.js'
 export type {
   SolanaProvider,
