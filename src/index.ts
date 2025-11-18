@@ -123,6 +123,12 @@ export {
   getWalletBalances,
 } from './services/balance.js'
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
+export type {
+  GetStatusRequestExtended,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './services/types.js'
 export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
