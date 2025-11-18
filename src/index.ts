@@ -93,6 +93,12 @@ export {
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
 export type {
+  GetStatusRequestExtended,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types/actions.js'
+export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
   AcceptSlippageUpdateHookParams,
