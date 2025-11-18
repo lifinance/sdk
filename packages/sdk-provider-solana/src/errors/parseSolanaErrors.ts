@@ -1,9 +1,9 @@
-import type { Process } from '@lifi/sdk'
 import {
   BaseError,
   ErrorMessage,
   LiFiErrorCode,
   type LiFiStep,
+  type Process,
   SDKError,
   TransactionError,
   UnknownError,
