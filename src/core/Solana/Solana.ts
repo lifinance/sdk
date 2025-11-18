@@ -18,14 +18,14 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SolanaStepExecutor> {
-      if (!_options.getSolanaWallet) {
-        throw new Error('getSolanaWallet is not provided.')
+      if (!_options.getWallet) {
+        throw new Error('getWallet is not provided.')
       }
 
-      const solanaWallet = await _options.getSolanaWallet()
+      const wallet = await _options.getWallet()
 
       const executor = new SolanaStepExecutor({
-        solanaWallet,
+        wallet,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,

@@ -3,7 +3,7 @@ import type { Address, Transaction } from '@solana/kit'
 import type { SDKProvider, StepExecutorOptions } from '../types.js'
 
 export interface SolanaProviderOptions {
-  getSolanaWallet?: () => Promise<SolanaWallet>
+  getWallet?: () => Promise<SolanaWallet>
 }
 
 export interface SolanaProvider extends SDKProvider {
@@ -23,7 +23,7 @@ export interface SolanaWallet {
 }
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  solanaWallet: SolanaWallet
+  wallet: SolanaWallet
 }
 
 export const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'

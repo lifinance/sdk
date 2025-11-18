@@ -23,24 +23,16 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   private wallet: SolanaWallet
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
-    this.wallet = options.solanaWallet
+    this.wallet = options.wallet
   }
 
   checkWalletAdapter = async (step: LiFiStepExtended) => {
-    // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (this.wallet) {
-      const signerAddress = String(this.wallet.account.address)
+    const signerAddress = this.wallet.account.address
 
-      if (signerAddress !== step.action.fromAddress) {
-        throw new TransactionError(
-          LiFiErrorCode.WalletChangedDuringExecution,
-          'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-        )
-      }
-    } else {
+    if (signerAddress !== step.action.fromAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet with the address that requested the quote is not connected, please reconnect and try again.'
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
     }
   }
@@ -163,18 +155,19 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const signedTx = signedTransactions[0] as Transaction
+        const signedTransaction = signedTransactions[0] as Transaction
 
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'PENDING'
         )
-        const encondedTxn = getBase64EncodedWireTransaction(signedTx)
+        const encodedTransaction =
+          getBase64EncodedWireTransaction(signedTransaction)
 
         const simulationResult = await callSolanaWithRetry((connection) =>
           connection
-            .simulateTransaction(encondedTxn, {
+            .simulateTransaction(encodedTransaction, {
               commitment: 'confirmed',
               replaceRecentBlockhash: true,
               encoding: 'base64',
@@ -189,7 +182,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const confirmedTx = await sendAndConfirmTransaction(signedTx)
+        const confirmedTx = await sendAndConfirmTransaction(signedTransaction)
 
         if (!confirmedTx.signatureResult) {
           throw new TransactionError(
