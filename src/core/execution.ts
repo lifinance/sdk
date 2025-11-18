@@ -1,19 +1,25 @@
 import type { Route } from '@lifi/types'
-import { config } from '../config.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { ProviderError } from '../errors/errors.js'
+import type {
+  ExecutionOptions,
+  RouteExtended,
+  SDKClient,
+  SDKProvider,
+} from '../types/core.js'
 import { executionState } from './executionState.js'
 import { prepareRestart } from './prepareRestart.js'
-import type { ExecutionOptions, RouteExtended } from './types.js'
 
 /**
  * Execute a route.
+ * @param client - The SDK client.
  * @param route - The route that should be executed. Cannot be an active route.
  * @param executionOptions - An object containing settings and callbacks.
  * @returns The executed route.
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const executeRoute = async (
+  client: SDKClient,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -27,7 +33,7 @@ export const executeRoute = async (
   }
 
   executionState.create({ route: clonedRoute, executionOptions })
-  executionPromise = executeSteps(clonedRoute)
+  executionPromise = executeSteps(client, clonedRoute)
   executionState.update({
     route: clonedRoute,
     promise: executionPromise,
@@ -38,12 +44,14 @@ export const executeRoute = async (
 
 /**
  * Resume the execution of a route that has been stopped or had an error while executing.
+ * @param client - The SDK client.
  * @param route - The route that is to be executed. Cannot be an active route.
  * @param executionOptions - An object containing settings and callbacks.
  * @returns The executed route.
  * @throws {LiFiError} Throws a LiFiError if the execution fails.
  */
 export const resumeRoute = async (
+  client: SDKClient,
   route: Route,
   executionOptions?: ExecutionOptions
 ): Promise<RouteExtended> => {
@@ -68,10 +76,13 @@ export const resumeRoute = async (
 
   prepareRestart(route)
 
-  return executeRoute(route, executionOptions)
+  return executeRoute(client, route, executionOptions)
 }
 
-const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
+const executeSteps = async (
+  client: SDKClient,
+  route: RouteExtended
+): Promise<RouteExtended> => {
   // Loop over steps and execute them
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
@@ -103,9 +114,9 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
         throw new Error('Action fromAddress is not specified.')
       }
 
-      const provider = config
-        .get()
-        .providers.find((provider) => provider.isAddress(fromAddress))
+      const provider = client.providers.find((provider: SDKProvider) =>
+        provider.isAddress(fromAddress)
+      )
 
       if (!provider) {
         throw new ProviderError(
@@ -125,7 +136,7 @@ const executeSteps = async (route: RouteExtended): Promise<RouteExtended> => {
         updateRouteExecution(route, execution.executionOptions)
       }
 
-      const executedStep = await stepExecutor.executeStep(step)
+      const executedStep = await stepExecutor.executeStep(client, step)
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
       if (executedStep.execution?.status !== 'DONE') {

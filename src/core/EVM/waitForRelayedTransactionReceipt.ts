@@ -4,19 +4,21 @@ import type {
   LiFiStep,
 } from '@lifi/types'
 import type { Hash } from 'viem'
+import { getRelayedTransactionStatus } from '../../actions/getRelayedTransactionStatus.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import { getRelayedTransactionStatus } from '../../services/api.js'
+import type { SDKClient } from '../../types/core.js'
 import { waitForResult } from '../../utils/waitForResult.js'
 import type { WalletCallReceipt } from './types.js'
 
 export const waitForRelayedTransactionReceipt = async (
+  client: SDKClient,
   taskId: Hash,
   step: LiFiStep
 ): Promise<WalletCallReceipt> => {
   return waitForResult(
     async () => {
-      const result = await getRelayedTransactionStatus({
+      const result = await getRelayedTransactionStatus(client, {
         taskId,
         fromChain: step.action.fromChainId,
         toChain: step.action.toChainId,

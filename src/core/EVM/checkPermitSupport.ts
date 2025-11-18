@@ -1,7 +1,6 @@
-import type { ExtendedChain } from '@lifi/types'
-import { ChainType } from '@lifi/types'
+import { ChainType, type ExtendedChain } from '@lifi/types'
 import type { Address } from 'viem'
-import { config } from '../../config.js'
+import type { SDKClient } from '../../types/core.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 import { getAllowance } from './getAllowance.js'
 import { getNativePermit } from './permits/getNativePermit.js'
@@ -21,36 +20,42 @@ type PermitSupport = {
  * 1. Native permit (EIP-2612) support
  * 2. Permit2 availability and allowance
  *
+ * @param client - The SDK client
  * @param chain - The chain to check permit support on
  * @param tokenAddress - The token address to check
  * @param ownerAddress - The address that would sign the permit
  * @param amount - The amount to check allowance against for Permit2
  * @returns Object indicating which permit types are supported
  */
-export const checkPermitSupport = async ({
-  chain,
-  tokenAddress,
-  ownerAddress,
-  amount,
-}: {
-  chain: ExtendedChain
-  tokenAddress: Address
-  ownerAddress: Address
-  amount: bigint
-}): Promise<PermitSupport> => {
-  const provider = config.getProvider(ChainType.EVM) as EVMProvider | undefined
+export const checkPermitSupport = async (
+  client: SDKClient,
+  {
+    chain,
+    tokenAddress,
+    ownerAddress,
+    amount,
+  }: {
+    chain: ExtendedChain
+    tokenAddress: Address
+    ownerAddress: Address
+    amount: bigint
+  }
+): Promise<PermitSupport> => {
+  const provider = client.getProvider(ChainType.EVM) as EVMProvider | undefined
+  let viemClient = await provider?.getWalletClient?.()
 
-  let client = await provider?.getWalletClient?.()
-
-  if (!client) {
-    client = await getPublicClient(chain.id)
+  if (!viemClient) {
+    viemClient = await getPublicClient(client, chain.id)
   }
 
   const nativePermit = await getActionWithFallback(
     client,
+    viemClient,
     getNativePermit,
     'getNativePermit',
     {
+      client,
+      viemClient,
       chainId: chain.id,
       tokenAddress,
       spenderAddress: chain.permit2Proxy as Address,
@@ -63,6 +68,7 @@ export const checkPermitSupport = async ({
   if (chain.permit2) {
     permit2Allowance = await getAllowance(
       client,
+      viemClient,
       tokenAddress,
       ownerAddress,
       chain.permit2 as Address

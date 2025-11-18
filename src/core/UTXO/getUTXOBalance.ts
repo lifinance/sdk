@@ -1,7 +1,9 @@
 import { ChainId, type Token, type TokenAmount } from '@lifi/types'
+import type { SDKClient } from '../../types/core.js'
 import { getUTXOPublicClient } from './getUTXOPublicClient.js'
 
 export const getUTXOBalance = async (
+  client: SDKClient,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -14,10 +16,10 @@ export const getUTXOBalance = async (
       console.warn('Requested tokens have to be on the same chain.')
     }
   }
-  const client = await getUTXOPublicClient(ChainId.BTC)
+  const bigmiClient = await getUTXOPublicClient(client, ChainId.BTC)
   const [balance, blockCount] = await Promise.all([
-    client.getBalance({ address: walletAddress }),
-    client.getBlockCount(),
+    bigmiClient.getBalance({ address: walletAddress }),
+    bigmiClient.getBlockCount(),
   ])
 
   return tokens.map((token) => ({

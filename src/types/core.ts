@@ -2,10 +2,12 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ExtendedChain,
   FeeCost,
   GasCost,
   LiFiStep,
   Route,
+  RouteOptions,
   Step,
   Substatus,
   Token,
@@ -13,16 +15,51 @@ import type {
 } from '@lifi/types'
 import type { Client } from 'viem'
 
+export interface SDKBaseConfig {
+  apiKey?: string
+  apiUrl: string
+  integrator: string
+  userId?: string
+  routeOptions?: RouteOptions
+  executionOptions?: ExecutionOptions
+  rpcUrls: RPCUrls
+  disableVersionCheck?: boolean
+  widgetVersion?: string
+  debug: boolean
+}
+
+export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
+  integrator: string
+}
+
+export type RPCUrls = Partial<Record<ChainId, string[]>>
+
 export interface SDKProvider {
   readonly type: ChainType
   isAddress(address: string): boolean
   resolveAddress(
     name: string,
+    client: SDKClient,
     chainId?: ChainId,
     token?: CoinKey
   ): Promise<string | undefined>
   getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor>
-  getBalance(walletAddress: string, tokens: Token[]): Promise<TokenAmount[]>
+  getBalance(
+    client: SDKClient,
+    walletAddress: string,
+    tokens: Token[]
+  ): Promise<TokenAmount[]>
+}
+
+export interface SDKClient {
+  config: SDKBaseConfig
+  providers: SDKProvider[]
+  getProvider(type: ChainType): SDKProvider | undefined
+  setProviders(providers: SDKProvider[]): void
+  getChains(): Promise<ExtendedChain[]>
+  getChainById(chainId: ChainId): Promise<ExtendedChain>
+  getRpcUrls(): Promise<RPCUrls>
+  getRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {
@@ -40,8 +77,21 @@ export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
-  executeStep(step: LiFiStepExtended): Promise<LiFiStepExtended>
+  executeStep(
+    client: SDKClient,
+    step: LiFiStepExtended
+  ): Promise<LiFiStepExtended>
 }
+
+export interface RouteExecutionData {
+  route: Route
+  executors: StepExecutor[]
+  executionOptions?: ExecutionOptions
+}
+
+export type RouteExecutionDataDictionary = Partial<
+  Record<string, RouteExecutionData>
+>
 
 export interface RouteExtended extends Omit<Route, 'steps'> {
   steps: LiFiStepExtended[]
@@ -67,16 +117,6 @@ export type TransactionParameters = {
   maxFeePerGas?: bigint
   maxPriorityFeePerGas?: bigint
 }
-
-export interface RouteExecutionData {
-  route: Route
-  executors: StepExecutor[]
-  executionOptions?: ExecutionOptions
-}
-
-export type RouteExecutionDataDictionary = Partial<
-  Record<string, RouteExecutionData>
->
 
 export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 

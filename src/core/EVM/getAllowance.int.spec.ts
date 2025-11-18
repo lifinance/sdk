@@ -1,9 +1,10 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
 import type { Address } from 'viem'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setupTestEnvironment } from '../../../tests/setup.js'
-import { getTokens } from '../../services/api.js'
+import { describe, expect, it } from 'vitest'
+import { getTokens } from '../../actions/getTokens.js'
+import { createClient } from '../../client/createClient.js'
+import { EVM } from './EVM.js'
 import {
   getAllowance,
   getAllowanceMulticall,
@@ -11,6 +12,11 @@ import {
 } from './getAllowance.js'
 import { getPublicClient } from './publicClient.js'
 import type { TokenSpender } from './types.js'
+
+const client = createClient({
+  integrator: 'lifi-sdk',
+})
+client.setProviders([EVM()])
 
 const defaultWalletAddress = '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
 const defaultSpenderAddress = '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'
@@ -27,13 +33,12 @@ const defaultMemeAllowance = 123000000000000000000n
 const retryTimes = 2
 const timeout = 10000
 
-beforeAll(setupTestEnvironment)
-
 describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
   it('should work for ERC20 on POL', async () => {
-    const client = await getPublicClient(memeToken.chainId)
+    const viemClient = await getPublicClient(client, memeToken.chainId)
     const allowance = await getAllowance(
       client,
+      viemClient,
       memeToken.address as Address,
       defaultWalletAddress,
       defaultSpenderAddress
@@ -47,9 +52,10 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     { retry: retryTimes, timeout },
     async () => {
       const token = findDefaultToken(CoinKey.POL, ChainId.POL)
-      const client = await getPublicClient(token.chainId)
+      const viemClient = await getPublicClient(client, token.chainId)
       const allowance = await getAllowance(
         client,
+        viemClient,
         token.address as Address,
         defaultWalletAddress,
         defaultSpenderAddress
@@ -65,9 +71,10 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     async () => {
       const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
       invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const client = await getPublicClient(invalidToken.chainId)
+      const viemClient = await getPublicClient(client, invalidToken.chainId)
       const allowance = await getAllowance(
         client,
+        viemClient,
         invalidToken.address as Address,
         defaultWalletAddress,
         defaultSpenderAddress
@@ -80,9 +87,10 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should handle empty lists with multicall',
     { retry: retryTimes, timeout },
     async () => {
-      const client = await getPublicClient(137)
+      const viemClient = await getPublicClient(client, 137)
       const allowances = await getAllowanceMulticall(
         client,
+        viemClient,
         137,
         [],
         defaultWalletAddress
@@ -95,7 +103,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     'should handle token lists with more than 10 tokens',
     { retry: retryTimes, timeout },
     async () => {
-      const { tokens } = await getTokens({
+      const { tokens } = await getTokens(client, {
         chains: [ChainId.POL],
       })
       const filteredTokens = tokens[ChainId.POL]
@@ -111,6 +119,7 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
 
       if (tokenSpenders?.length) {
         const tokens = await getTokenAllowanceMulticall(
+          client,
           defaultWalletAddress,
           tokenSpenders.slice(0, 10)
         )

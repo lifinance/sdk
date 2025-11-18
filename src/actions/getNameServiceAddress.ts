@@ -1,14 +1,26 @@
 import type { ChainType } from '@lifi/types'
-import { config } from '../config.js'
+import type { SDKClient } from '../types/core.js'
 
+/**
+ * Get the address of a name service
+ * @param client - The SDK client
+ * @param name - The name to resolve
+ * @param chainType - The chain type to resolve the name on
+ * @returns The address of the name service
+ */
 export const getNameServiceAddress = async (
+  client: SDKClient,
   name: string,
   chainType?: ChainType
 ): Promise<string | undefined> => {
   try {
-    let providers = config.get().providers
+    let providers = []
     if (chainType) {
-      providers = providers.filter((provider) => provider.type === chainType)
+      providers = client.providers.filter(
+        (provider) => provider.type === chainType
+      )
+    } else {
+      providers = client.providers
     }
     const resolvers = providers.map((provider) => provider.resolveAddress)
     if (!resolvers.length) {
@@ -16,7 +28,7 @@ export const getNameServiceAddress = async (
     }
     const result = await Promise.any(
       resolvers.map(async (resolve) => {
-        const address = await resolve(name)
+        const address = await resolve(name, client)
         if (!address) {
           throw undefined
         }
