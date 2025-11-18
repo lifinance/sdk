@@ -60,11 +60,8 @@ importers:
         specifier: ^6.42.1
         version: 6.42.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@lifi/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      '@lifi/sdk-provider-ethereum':
-        specifier: workspace:*
-        version: link:../../packages/sdk-provider-ethereum
+        specifier: ^3.13.2
+        version: 3.13.5(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)
       '@wagmi/connectors':
         specifier: ^6.1.4
         version: 6.1.4(@wagmi/core@2.22.1(typescript@5.9.3)(use-sync-external-store@1.2.0)(viem@2.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)))(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -941,6 +938,11 @@ packages:
 
   '@lifi/data-types@6.42.1':
     resolution: {integrity: sha512-v8doldP3diVfGXLTWlZuu1Fzne/wv0Cc9aCZkiGP2wlRmpkl1lTgV/utFRpTFYOJ+bkXJC8RD4Q5KtXgCHhcdw==}
+
+  '@lifi/sdk@3.13.5':
+    resolution: {integrity: sha512-/7+0OA+ZcbbvNGFDvVOVz6XvGTxYjUAdleLXP31t4/dS5NeQ7K4s+YbjKtOpegEPrGmlZgyicopJOLIpXaeing==}
+    peerDependencies:
+      viem: ^2.21.0
 
   '@lifi/types@17.46.0':
     resolution: {integrity: sha512-30vp/kkZbkV1ynxA1dJcoDszSK0xb928LShVOwKAneq3W3xpY1+mCYcoE/n1AAF7UnEsBXq+qUDrYYbT1r7sSQ==}
@@ -6869,6 +6871,33 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - typescript
+      - utf-8-validate
+      - zod
+
+  '@lifi/sdk@3.13.5(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)':
+    dependencies:
+      '@bigmi/core': 0.6.2(typescript@5.9.3)(use-sync-external-store@1.2.0)
+      '@bitcoinerlab/secp256k1': 1.2.0
+      '@lifi/types': 17.46.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      '@mysten/sui': 1.45.0(typescript@5.9.3)
+      '@mysten/wallet-standard': 0.19.7(typescript@5.9.3)
+      '@noble/curves': 1.9.7
+      '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10))
+      '@solana/web3.js': 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      bech32: 2.0.0
+      bitcoinjs-lib: 7.0.0(typescript@5.9.3)
+      bs58: 6.0.0
+      viem: 2.39.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+    transitivePeerDependencies:
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - '@types/react'
+      - bufferutil
+      - encoding
+      - immer
+      - react
+      - typescript
+      - use-sync-external-store
       - utf-8-validate
       - zod
 

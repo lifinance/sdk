@@ -2,7 +2,7 @@ import { ChainId, ChainType, type SDKClient } from '@lifi/sdk'
 import type { Client } from 'viem'
 import { type Address, createClient, fallback, http, webSocket } from 'viem'
 import { type Chain, mainnet } from 'viem/chains'
-import { UNS_PROXY_READER_ADDRESSES } from '../address/constants.js'
+import { UNS_PROXY_READER_ADDRESSES } from '../actions/constants.js'
 import type { EthereumSDKProvider } from '../types.js'
 
 // cached providers

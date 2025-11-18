@@ -1,5 +1,5 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
-export { isSolanaAddress } from './address/isSolanaAddress.js'
+export { isSolanaAddress } from './actions/isSolanaAddress.js'
 export { SolanaProvider } from './SolanaProvider.js'
 export type {
   SolanaProviderOptions,

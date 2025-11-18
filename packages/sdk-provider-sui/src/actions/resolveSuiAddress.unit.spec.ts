@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import * as getSuiNSAddress from './getSuiNSAddress.js'
-import { resolveSuiAddress } from './resolveSuiAddress.js'
+import * as getSuiNSAddress from '../actions/getSuiNSAddress.js'
+import { resolveSuiAddress } from '../actions/resolveSuiAddress.js'
 
 describe('resolveSuiAddress', () => {
   it('should resolve address', async () => {

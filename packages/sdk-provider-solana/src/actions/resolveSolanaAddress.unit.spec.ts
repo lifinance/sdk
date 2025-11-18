@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import * as getSNSAddress from './getSNSAddress.js'
-import { resolveSolanaAddress } from './resolveSolanaAddress.js'
+import * as getSNSAddress from '../actions/getSNSAddress.js'
+import { resolveSolanaAddress } from '../actions/resolveSolanaAddress.js'
 
 describe('resolveSolanaAddress', () => {
   it('should resolve address', async () => {

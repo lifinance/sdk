@@ -2,11 +2,11 @@ import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
-  createClient,
+  createConfig,
+  EVM,
   executeRoute,
   getRoutes,
 } from '@lifi/sdk'
-import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -33,23 +33,26 @@ async function run() {
 
   const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
 
-  const sdkClient = createClient({
+  createConfig({
     integrator: 'lifi-sdk-example',
+    providers: [
+      EVM({
+        getWalletClient: () => Promise.resolve(client),
+        switchChain: (chainId) =>
+          Promise.resolve(
+            createWalletClient({
+              account,
+              chain: switchChains.find((chain) => {
+                if (chain.id === chainId) {
+                  return chain
+                }
+              }) as Chain,
+              transport: http(),
+            })
+          ),
+      }),
+    ],
   })
-
-  sdkClient.setProviders([
-    EthereumProvider({
-      getWalletClient: () => Promise.resolve(client),
-      switchChain: (chainId) =>
-        Promise.resolve(
-          createWalletClient({
-            account,
-            chain: switchChains.find((chain) => chain.id === chainId) as Chain,
-            transport: http(),
-          })
-        ),
-    }),
-  ])
 
   const routeRequest = {
     toAddress: account.address,
@@ -66,7 +69,7 @@ async function run() {
 
   console.info('>> Requesting route', routeRequest)
 
-  const routeResponse = await getRoutes(sdkClient, routeRequest)
+  const routeResponse = await getRoutes(routeRequest)
   const route = routeResponse.routes[0]
 
   console.info('>> Got Route', routeResponse)
@@ -81,7 +84,7 @@ async function run() {
   const executionOptions = {
     updateRouteHook: reportStepsExecutionToTerminal,
   }
-  await executeRoute(sdkClient, route, executionOptions)
+  await executeRoute(route, executionOptions)
 
   console.info('>> Done')
 }
