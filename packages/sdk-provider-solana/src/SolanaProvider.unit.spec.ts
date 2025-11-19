@@ -22,7 +22,7 @@ describe('SolanaProvider', () => {
     } as any
 
     await expect(provider.getStepExecutor(mockOptions)).rejects.toThrowError(
-      'getWalletAdapter is not provided.'
+      'getWallet is not provided.'
     )
   })
 
