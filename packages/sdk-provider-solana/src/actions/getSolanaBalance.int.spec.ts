@@ -7,13 +7,11 @@ import {
   type Token,
 } from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
-import { SolanaProvider } from '../SolanaProvider.js'
 import { getSolanaBalance } from './getSolanaBalance.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
 })
-client.setProviders([SolanaProvider()])
 
 const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 
