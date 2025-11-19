@@ -35,7 +35,7 @@ describe('SolanaProvider', () => {
     const mockGetWalletAdapter = vi.fn().mockResolvedValue(mockWalletAdapter)
 
     const provider = SolanaProvider({
-      getWalletAdapter: mockGetWalletAdapter,
+      getWallet: mockGetWalletAdapter,
     })
 
     const mockOptions = {
