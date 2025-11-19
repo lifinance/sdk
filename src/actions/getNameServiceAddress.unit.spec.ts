@@ -35,7 +35,7 @@ describe('getNameServiceAddress', () => {
         .mockResolvedValue('0x2222222222222222222222222222222222222222')
 
       const provider1 = EVM({ getWalletClient: vi.fn() })
-      const provider2 = Solana({ getWalletAdapter: vi.fn() })
+      const provider2 = Solana({ getWallet: vi.fn() })
 
       vi.spyOn(provider1, 'resolveAddress').mockImplementation(
         mockResolveAddress1
@@ -59,7 +59,7 @@ describe('getNameServiceAddress', () => {
         .mockResolvedValue('0x1234567890123456789012345678901234567890')
 
       const evmProvider = EVM({ getWalletClient: vi.fn() })
-      const svmProvider = Solana({ getWalletAdapter: vi.fn() })
+      const svmProvider = Solana({ getWallet: vi.fn() })
 
       vi.spyOn(evmProvider, 'resolveAddress').mockImplementation(
         mockResolveAddress
@@ -85,7 +85,7 @@ describe('getNameServiceAddress', () => {
         .mockResolvedValue('0x1234567890123456789012345678901234567890')
 
       const evmProvider = EVM({ getWalletClient: vi.fn() })
-      const svmProvider = Solana({ getWalletAdapter: vi.fn() })
+      const svmProvider = Solana({ getWallet: vi.fn() })
       const utxoProvider = UTXO({ getWalletClient: vi.fn() })
 
       vi.spyOn(evmProvider, 'resolveAddress').mockImplementation(
@@ -133,7 +133,7 @@ describe('getNameServiceAddress', () => {
       const mockResolveAddress3 = vi.fn().mockResolvedValue(undefined)
 
       const provider1 = EVM({ getWalletClient: vi.fn() })
-      const provider2 = Solana({ getWalletAdapter: vi.fn() })
+      const provider2 = Solana({ getWallet: vi.fn() })
       const provider3 = UTXO({ getWalletClient: vi.fn() })
 
       vi.spyOn(provider1, 'resolveAddress').mockImplementation(
