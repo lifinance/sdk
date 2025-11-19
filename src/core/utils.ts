@@ -1,4 +1,5 @@
-import type { LiFiStep, Token } from '@lifi/types'
+import type { ChainId, ExtendedChain, LiFiStep, Token } from '@lifi/types'
+import type { RPCUrls } from '../types/core.js'
 
 // Standard threshold for destination amount difference (0.5%)
 const standardThreshold = 0.005
@@ -27,6 +28,34 @@ export function checkStepSlippageThreshold(
       1_000_000_000
   }
   return actualSlippage <= setSlippage
+}
+
+export function getRpcUrlsFromChains(
+  existingRpcUrls: RPCUrls,
+  chains: ExtendedChain[],
+  skipChains?: ChainId[]
+) {
+  const rpcUrlsFromChains = chains.reduce((rpcUrls, chain) => {
+    if (chain.metamask?.rpcUrls?.length) {
+      rpcUrls[chain.id as ChainId] = chain.metamask.rpcUrls
+    }
+    return rpcUrls
+  }, {} as RPCUrls)
+  const result = { ...existingRpcUrls }
+  for (const rpcUrlsKey in rpcUrlsFromChains) {
+    const chainId = Number(rpcUrlsKey) as ChainId
+    const urls = rpcUrlsFromChains[chainId]
+    if (!urls?.length) {
+      continue
+    }
+    if (!result[chainId]?.length) {
+      result[chainId] = Array.from(urls)
+    } else if (!skipChains?.includes(chainId)) {
+      const filteredUrls = urls.filter((url) => !result[chainId]?.includes(url))
+      result[chainId].push(...filteredUrls)
+    }
+  }
+  return result
 }
 
 /**

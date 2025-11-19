@@ -1,11 +1,13 @@
 import type { ChainId, Token, TokenAmount } from '@lifi/types'
 import { address } from '@solana/kit'
 import { SolSystemProgram } from '../../constants.js'
+import type { SDKClient } from '../../types/core.js'
 import { withDedupe } from '../../utils/withDedupe.js'
 import { callSolanaWithRetry } from './connection.js'
 import { Token2022ProgramId, TokenProgramId } from './types.js'
 
 export const getSolanaBalance = async (
+  client: SDKClient,
   walletAddress: string,
   tokens: Token[]
 ): Promise<TokenAmount[]> => {
@@ -19,10 +21,11 @@ export const getSolanaBalance = async (
     }
   }
 
-  return getSolanaBalanceDefault(chainId, tokens, walletAddress)
+  return getSolanaBalanceDefault(client, chainId, tokens, walletAddress)
 }
 
 const getSolanaBalanceDefault = async (
+  client: SDKClient,
   _chainId: ChainId,
   tokens: Token[],
   walletAddress: string
@@ -37,21 +40,21 @@ const getSolanaBalanceDefault = async (
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry((rpc) =>
+          callSolanaWithRetry(client, (rpc) =>
             rpc.getSlot({ commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((rpc) =>
+          callSolanaWithRetry(client, (rpc) =>
             rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((rpc) =>
+          callSolanaWithRetry(client, (rpc) =>
             rpc
               .getTokenAccountsByOwner(
                 accountAddress,
@@ -71,7 +74,7 @@ const getSolanaBalanceDefault = async (
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry((rpc) =>
+          callSolanaWithRetry(client, (rpc) =>
             rpc
               .getTokenAccountsByOwner(
                 accountAddress,

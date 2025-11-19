@@ -8,6 +8,7 @@ import type {
   WalletActions,
 } from 'viem'
 import { getAction } from 'viem/utils'
+import type { SDKClient } from '../../types/core.js'
 import { getPublicClient } from './publicClient.js'
 
 /**
@@ -17,6 +18,7 @@ import { getPublicClient } from './publicClient.js'
  * Note: Only falls back to public client if the initial client was a wallet client (has an account address).
  * If the initial client was already a public client, no fallback will occur.
  *
+ * @param client - The SDK client
  * @param walletClient - The wallet client to use primarily
  * @param action - The function or method to execute
  * @param actionName - The name of the action (used for error handling)
@@ -33,6 +35,7 @@ export const getActionWithFallback = async <
   parameters,
   returnType,
 >(
+  client: SDKClient,
   walletClient: client,
   actionFn: (_: client, parameters: parameters) => returnType,
   name: keyof PublicActions | keyof WalletActions | (string & {}),
@@ -52,7 +55,7 @@ export const getActionWithFallback = async <
       throw error
     }
 
-    const publicClient = await getPublicClient(chainId)
+    const publicClient = await getPublicClient(client, chainId)
     return await getAction(publicClient, actionFn, name)(params)
   }
 }

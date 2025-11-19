@@ -10,24 +10,25 @@ import {
   it,
   vi,
 } from 'vitest'
-import { setupTestEnvironment } from '../tests/setup.js'
-import { config } from './config.js'
+import { handlers } from './actions/actions.unit.handlers.js'
+import { createClient } from './client/createClient.js'
 import { ValidationError } from './errors/errors.js'
 import type { HTTPError } from './errors/httpError.js'
 import { SDKError } from './errors/SDKError.js'
 import { request } from './request.js'
-import { handlers } from './services/api.unit.handlers.js'
-import type { SDKBaseConfig } from './types/internal.js'
 import type { ExtendedRequestInit } from './types/request.js'
 import { version } from './version.js'
 
-const apiUrl = config.get().apiUrl
+const client = createClient({
+  integrator: 'lifi-sdk',
+})
+const config = client.config
+const apiUrl = client.config.apiUrl
 
 describe('request new', () => {
   const server = setupServer(...handlers)
 
   beforeAll(() => {
-    setupTestEnvironment()
     server.listen({
       onUnhandledRequest: 'warn',
     })
@@ -50,7 +51,7 @@ describe('request new', () => {
   it('should be able to successfully make a fetch request', async () => {
     const url = `${apiUrl}/advanced/routes`
 
-    const response = await request<{ message: string }>(url, {
+    const response = await request<{ message: string }>(config, url, {
       method: 'POST',
       retries: 0,
     })
@@ -79,7 +80,7 @@ describe('request new', () => {
       retries: 0,
     }
 
-    const response = await request<{ message: string }>(url, options)
+    const response = await request<{ message: string }>(config, url, options)
 
     expect(response).toEqual(successResponse)
   })
@@ -112,20 +113,20 @@ describe('request new', () => {
       },
     }
 
-    const response = await request<{ message: string }>(url, options)
+    const response = await request<{ message: string }>(config, url, options)
 
     expect(response).toEqual(successResponse)
   })
 
   describe('when dealing with errors', () => {
     it('should throw an error if the Integrator property is missing from the config', async () => {
-      const originalIntegrator = config.get().integrator
-      config.set({ integrator: '' } as SDKBaseConfig)
+      const originalIntegrator = config.integrator
+      config.integrator = ''
 
       const url = `${apiUrl}/advanced/routes`
 
       await expect(
-        request<{ message: string }>(url, {
+        request<{ message: string }>(config, url, {
           method: 'POST',
           retries: 0,
         })
@@ -137,7 +138,7 @@ describe('request new', () => {
         )
       )
 
-      config.set({ integrator: originalIntegrator } as SDKBaseConfig)
+      config.integrator = originalIntegrator
     })
     it('should throw a error with when the request fails', async () => {
       expect.assertions(2)
@@ -152,7 +153,10 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(url, { method: 'POST', retries: 0 })
+        await request<{ message: string }>(config, url, {
+          method: 'POST',
+          retries: 0,
+        })
       } catch (e) {
         expect((e as SDKError).name).toEqual('SDKError')
         expect(((e as SDKError).cause as HTTPError).status).toEqual(400)
@@ -171,7 +175,7 @@ describe('request new', () => {
       )
 
       try {
-        await request<{ message: string }>(url, {
+        await request<{ message: string }>(config, url, {
           method: 'POST',
           retries: 0,
         })

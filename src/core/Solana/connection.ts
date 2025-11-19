@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { createSolanaRpc } from '@solana/kit'
-import { getRpcUrls } from '../rpc.js'
+import type { SDKClient } from '../../types/core.js'
 
 type RpcType = ReturnType<typeof createSolanaRpc>
 const rpcs = new Map<string, RpcType>()
@@ -9,8 +9,8 @@ const rpcs = new Map<string, RpcType>()
  * Initializes the Solana connections if they haven't been initialized yet.
  * @returns - Promise that resolves when connections are initialized.
  */
-const ensureConnections = async (): Promise<void> => {
-  const rpcUrls = await getRpcUrls(ChainId.SOL)
+const ensureConnections = async (client: SDKClient): Promise<void> => {
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     const rpc = createSolanaRpc(rpcUrl)
     rpcs.set(rpcUrl, rpc)
@@ -21,21 +21,25 @@ const ensureConnections = async (): Promise<void> => {
  * Wrapper around getting the connection (RPC provider) for Solana
  * @returns - Solana RPC connections
  */
-export const getSolanaConnections = async (): Promise<RpcType[]> => {
-  await ensureConnections()
+export const getSolanaConnections = async (
+  client: SDKClient
+): Promise<RpcType[]> => {
+  await ensureConnections(client)
   return Array.from(rpcs.values())
 }
 
 /**
  * Calls a function on the Connection instances with retry logic.
+ * @param client - The SDK client
  * @param fn - The function to call, which receives a Connection instance.
  * @returns - The result of the function call.
  */
 export async function callSolanaWithRetry<R>(
+  client: SDKClient,
   fn: (rpc: RpcType) => Promise<R>
 ): Promise<R> {
   // Ensure connections are initialized
-  await ensureConnections()
+  await ensureConnections(client)
   let lastError: any = null
   for (const rpc of rpcs.values()) {
     try {

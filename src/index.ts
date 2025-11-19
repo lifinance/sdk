@@ -1,7 +1,28 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
-export { config } from './config.js'
+export { getChains } from './actions/getChains.js'
+export { getConnections } from './actions/getConnections.js'
+export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
+export { getGasRecommendation } from './actions/getGasRecommendation.js'
+export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
+export { getQuote } from './actions/getQuote.js'
+export { getRelayedTransactionStatus } from './actions/getRelayedTransactionStatus.js'
+export { getRelayerQuote } from './actions/getRelayerQuote.js'
+export { getRoutes } from './actions/getRoutes.js'
+export { getStatus } from './actions/getStatus.js'
+export { getStepTransaction } from './actions/getStepTransaction.js'
+export { getToken } from './actions/getToken.js'
+export { getTokenBalance } from './actions/getTokenBalance.js'
+export { getTokenBalances } from './actions/getTokenBalances.js'
+export { getTokenBalancesByChain } from './actions/getTokenBalancesByChain.js'
+export { getTokens } from './actions/getTokens.js'
+export { getTools } from './actions/getTools.js'
+export { getTransactionHistory } from './actions/getTransactionHistory.js'
+export { getWalletBalances } from './actions/getWalletBalances.js'
+export { actions } from './actions/index.js'
+export { relayTransaction } from './actions/relayTransaction.js'
+export { createClient } from './client/createClient.js'
 export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
 export {
@@ -53,6 +74,30 @@ export { StatusManager } from './core/StatusManager.js'
 export { Sui } from './core/Sui/Sui.js'
 export type { SuiProvider, SuiProviderOptions } from './core/Sui/types.js'
 export { isSui } from './core/Sui/types.js'
+export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
+export { isUTXO } from './core/UTXO/types.js'
+export { UTXO } from './core/UTXO/UTXO.js'
+export { isTokenMessageSigningAllowed } from './core/utils.js'
+export { BaseError } from './errors/baseError.js'
+export type { ErrorCode } from './errors/constants.js'
+export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
+export {
+  BalanceError,
+  ProviderError,
+  RPCError,
+  ServerError,
+  TransactionError,
+  UnknownError,
+  ValidationError,
+} from './errors/errors.js'
+export { HTTPError } from './errors/httpError.js'
+export { SDKError } from './errors/SDKError.js'
+export type {
+  GetStatusRequestExtended,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types/actions.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
@@ -70,6 +115,10 @@ export type {
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
   RouteExtended,
+  RPCUrls,
+  SDKBaseConfig,
+  SDKClient,
+  SDKConfig,
   SDKProvider,
   StepExecutor,
   StepExecutorOptions,
@@ -79,57 +128,7 @@ export type {
   TransactionRequestParameters,
   TransactionRequestUpdateHook,
   UpdateRouteHook,
-} from './core/types.js'
-export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
-export { isUTXO } from './core/UTXO/types.js'
-export { UTXO } from './core/UTXO/UTXO.js'
-export { isTokenMessageSigningAllowed } from './core/utils.js'
-export { createConfig } from './createConfig.js'
-export { BaseError } from './errors/baseError.js'
-export type { ErrorCode } from './errors/constants.js'
-export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
-export {
-  BalanceError,
-  ProviderError,
-  RPCError,
-  ServerError,
-  TransactionError,
-  UnknownError,
-  ValidationError,
-} from './errors/errors.js'
-export { HTTPError } from './errors/httpError.js'
-export { SDKError } from './errors/SDKError.js'
-export {
-  getChains,
-  getConnections,
-  getContractCallsQuote,
-  getGasRecommendation,
-  getQuote,
-  getRelayedTransactionStatus,
-  getRelayerQuote,
-  getRoutes,
-  getStatus,
-  getStepTransaction,
-  getToken,
-  getTokens,
-  getTools,
-  getTransactionHistory,
-  relayTransaction,
-} from './services/api.js'
-export {
-  getTokenBalance,
-  getTokenBalances,
-  getTokenBalancesByChain,
-  getWalletBalances,
-} from './services/balance.js'
-export { getNameServiceAddress } from './services/getNameServiceAddress.js'
-export type {
-  GetStatusRequestExtended,
-  QuoteRequest,
-  QuoteRequestFromAmount,
-  QuoteRequestToAmount,
-} from './services/types.js'
-export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
+} from './types/core.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

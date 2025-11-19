@@ -1,23 +1,20 @@
 import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildRouteObject,
   buildStepObject,
   SOME_DATE,
-} from '../../tests/fixtures.js'
-import { setupTestEnvironment } from '../../tests/setup.js'
-import { executionState } from './executionState.js'
-import { StatusManager } from './StatusManager.js'
+} from '../tests/fixtures.js'
 import type {
   ExecutionStatus,
   LiFiStepExtended,
   ProcessStatus,
-} from './types.js'
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import { StatusManager } from './StatusManager.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
-
-beforeAll(setupTestEnvironment)
 
 describe('StatusManager', () => {
   let statusManager: StatusManager

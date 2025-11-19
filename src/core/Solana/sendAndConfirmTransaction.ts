@@ -5,6 +5,7 @@ import {
   type Transaction,
   type TransactionError,
 } from '@solana/kit'
+import type { SDKClient } from '../../types/core.js'
 import { sleep } from '../../utils/sleep.js'
 import { getSolanaConnections } from './connection.js'
 
@@ -24,13 +25,15 @@ type ConfirmedTransactionResult = {
 /**
  * Sends a Solana transaction to multiple RPC endpoints and returns the confirmation
  * as soon as any of them confirm the transaction.
+ * @param client - The SDK client.
  * @param signedTx - The signed transaction to send.
  * @returns - The confirmation result of the transaction.
  */
 export async function sendAndConfirmTransaction(
+  client: SDKClient,
   signedTx: Transaction
 ): Promise<ConfirmedTransactionResult> {
-  const connections = await getSolanaConnections()
+  const connections = await getSolanaConnections(client)
 
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTx)
   // Create transaction hash (signature)
