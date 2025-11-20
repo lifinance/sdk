@@ -1,13 +1,31 @@
-import { ed25519 } from '@noble/curves/ed25519'
-import bs58 from 'bs58'
+import { getBase58Codec } from '@solana/kit'
+
+const nativeCrypto = globalThis.crypto
 
 // Helper to generate a valid test keypair
-export const generateTestKeypair = () => {
-  const privateKey = ed25519.utils.randomSecretKey()
-  const publicKey = ed25519.getPublicKey(privateKey)
-  const secretKey = new Uint8Array([...privateKey, ...publicKey])
+export const generateTestKeypair = async () => {
+  if (!nativeCrypto?.subtle) {
+    throw new Error('SubtleCrypto is not available in this environment')
+  }
+
+  const base58Codec = getBase58Codec()
+  const keyPair = await nativeCrypto.subtle.generateKey(
+    { name: 'Ed25519' },
+    true,
+    ['sign', 'verify']
+  )
+
+  const privateKeyPkcs8 = new Uint8Array(
+    await nativeCrypto.subtle.exportKey('pkcs8', keyPair.privateKey)
+  )
+  const privateKeyBytes = privateKeyPkcs8.slice(-32)
+  const publicKey = new Uint8Array(
+    await nativeCrypto.subtle.exportKey('raw', keyPair.publicKey)
+  )
+  const secretKey = new Uint8Array([...privateKeyBytes, ...publicKey])
+
   return {
-    privateKey: bs58.encode(secretKey),
+    secretKey: base58Codec.decode(secretKey),
     publicKey,
   }
 }

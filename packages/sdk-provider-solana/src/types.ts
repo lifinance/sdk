@@ -23,10 +23,11 @@ export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   wallet: SolanaWallet
 }
 
+export interface WalletAccount {
+  address: Address
+  publicKey: Uint8Array
+}
 export interface SolanaWallet {
   signTransaction(transaction: Transaction): Promise<Transaction>
-  account: {
-    address: Address
-    publicKey: Uint8Array
-  }
+  account: WalletAccount
 }

@@ -9,14 +9,19 @@ import { generateTestKeypair } from './test.js'
 const retryTimes = 2
 const timeout = 30000
 
-const { privateKey, publicKey } = generateTestKeypair()
-const testWallet = new KeypairWalletAdapter(privateKey)
+let testWallet: KeypairWalletAdapter
+let generatedPublicKey: Uint8Array
 
 const client = createClient({
   integrator: 'lifi-sdk-test',
 })
 
-beforeAll(() => {
+beforeAll(async () => {
+  const { secretKey, publicKey } = await generateTestKeypair()
+  generatedPublicKey = publicKey
+  testWallet = new KeypairWalletAdapter(secretKey)
+  await testWallet.connect()
+
   client.setProviders([
     SolanaProvider({
       getWallet: async () => testWallet,
@@ -43,7 +48,7 @@ describe.sequential('KeypairWallet Integration Tests', () => {
       expect(executor).toBeDefined()
       expect(executor).toHaveProperty('executeStep')
       expect(testWallet.account.address).toBeDefined()
-      expect(testWallet.account.publicKey).toEqual(publicKey)
+      expect(testWallet.account.publicKey).toEqual(generatedPublicKey)
     }
   )
 })

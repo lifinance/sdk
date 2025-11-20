@@ -1,161 +1,117 @@
-import { ed25519 } from '@noble/curves/ed25519'
 import {
-  type Address,
-  address,
-  getTransactionCodec,
+  assertIsTransactionWithBlockhashLifetime,
+  assertIsTransactionWithinSizeLimit,
+  createKeyPairSignerFromBytes,
+  createSignableMessage,
+  getBase58Codec,
+  type KeyPairSigner,
+  type ReadonlyUint8Array,
   type Transaction,
 } from '@solana/kit'
-import type {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignAndSendTransactionMethod,
-  SolanaSignMessageFeature,
-  SolanaSignMessageMethod,
-  SolanaSignTransactionFeature,
-  SolanaSignTransactionMethod,
-} from '@solana/wallet-standard-features'
-import {
-  SolanaSignAndSendTransaction,
-  SolanaSignMessage,
-  SolanaSignTransaction,
-} from '@solana/wallet-standard-features'
-import type { Wallet, WalletAccount } from '@wallet-standard/core'
-import bs58 from 'bs58'
-import type { SolanaWallet } from '../types.js'
-
-export const KeypairWalletName = 'Keypair Wallet'
+import type { SolanaWallet, WalletAccount } from '../types.js'
 
 /**
- * This keypair wallet is unsafe to use on the frontend and is only included to provide an easy way for applications to test
- * without using a third-party wallet. It implements the Wallet Standard interface and the SolanaWallet interface, and should work with the solana sdk as is.
+ * This keypair wallet adapter is unsafe to use on the frontend and is only included to provide an easy way for applications to test
+ * Wallet Adapter without using a third-party wallet.
  */
-export class KeypairWalletAdapter implements Wallet, SolanaWallet {
-  readonly #privateKey: Uint8Array
-  readonly #publicKey: Uint8Array
-  readonly #address: string
+export class KeypairWalletAdapter implements SolanaWallet {
+  /**
+   * Storing a keypair locally like this is not safe because any application using this adapter could retrieve the
+   * secret key, and because the keypair will be lost any time the wallet is disconnected or the window is refreshed.
+   */
+  private _signer: KeyPairSigner | undefined
+  private _account: WalletAccount | undefined
+  private readonly _secretKeyBytes: ReadonlyUint8Array
 
-  readonly version = '1.0.0' as const
-  readonly name = KeypairWalletName
-  readonly icon =
-    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48L3N2Zz4='
-
-  readonly chains = [
-    'solana:mainnet',
-    'solana:devnet',
-    'solana:testnet',
-  ] as const
-
-  get accounts(): readonly WalletAccount[] {
-    return [
-      {
-        address: this.#address,
-        publicKey: this.#publicKey,
-        chains: this.chains,
-        features: [
-          'solana:signAndSendTransaction' as const,
-          'solana:signTransaction' as const,
-          'solana:signMessage' as const,
-        ],
-        label: KeypairWalletName,
-        icon: this.icon,
-      },
-    ]
-  }
-
-  // Implement SolanaWallet interface
-  get account(): { address: Address; publicKey: Uint8Array } {
-    return {
-      address: address(this.#address),
-      publicKey: this.#publicKey,
-    }
-  }
-
-  // Implement SolanaWallet interface
-  async signTransaction(transaction: Transaction): Promise<Transaction> {
-    const account = this.accounts[0]
-    const signFeature = this.features[SolanaSignTransaction]
-
-    if (!signFeature) {
-      throw new Error('Sign transaction feature not available')
-    }
-
-    // Convert Transaction to Uint8Array for Wallet Standard
-    const transactionCodec = getTransactionCodec()
-    const transactionBytes = transactionCodec.encode(transaction)
-
-    // Sign using Wallet Standard interface
-    const result = await signFeature.signTransaction({
-      account,
-      transaction: new Uint8Array(transactionBytes),
-    })
-
-    // Convert back to Transaction object
-    const signedBytes = result[0].signedTransaction
-    return transactionCodec.decode(signedBytes) as Transaction
-  }
-
-  readonly features: Wallet['features'] & {
-    [SolanaSignAndSendTransaction]: SolanaSignAndSendTransactionFeature[typeof SolanaSignAndSendTransaction]
-    [SolanaSignTransaction]: SolanaSignTransactionFeature[typeof SolanaSignTransaction]
-    [SolanaSignMessage]: SolanaSignMessageFeature[typeof SolanaSignMessage]
-  }
-
-  constructor(privateKey: string) {
-    if (!privateKey) {
+  constructor(secretKeyBase58: string) {
+    if (!secretKeyBase58) {
       throw new Error('Private key is required')
     }
 
-    const secretKey = bs58.decode(privateKey)
-    if (secretKey.length !== 64) {
+    const base58Codec = getBase58Codec()
+    let encoded: ReadonlyUint8Array
+    try {
+      encoded = base58Codec.encode(secretKeyBase58)
+    } catch {
+      throw new Error('Invalid private key format')
+    }
+
+    if (encoded.length !== 64) {
       throw new Error('Invalid private key length. Expected 64 bytes.')
     }
 
-    this.#privateKey = secretKey.slice(0, 32)
-    this.#publicKey = secretKey.slice(32)
-    this.#address = address(bs58.encode(this.#publicKey))
+    this._secretKeyBytes = encoded
+  }
 
-    // Implement Wallet Standard features
-    const signTransaction: SolanaSignTransactionMethod = async (...inputs) => {
-      return inputs.map((input) => {
-        const { transaction } = input
+  get connecting() {
+    return false
+  }
 
-        // Sign the transaction using ed25519
-        const signature = ed25519.sign(transaction, this.#privateKey)
+  get publicKey() {
+    return this._signer?.keyPair.publicKey || null
+  }
 
-        return {
-          signedTransaction: new Uint8Array([...signature, ...transaction]),
-        }
-      })
+  get account() {
+    if (!this._account) {
+      throw new Error('Wallet is disconnected')
+    }
+    return this._account
+  }
+
+  async connect(): Promise<void> {
+    this._signer = await createKeyPairSignerFromBytes(this._secretKeyBytes)
+
+    const publicKeyBytes = new Uint8Array(
+      await crypto.subtle.exportKey('raw', this._signer.keyPair.publicKey)
+    )
+
+    this._account = {
+      address: this._signer.address,
+      publicKey: publicKeyBytes,
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    this._signer = undefined
+    this._account = undefined
+  }
+
+  async signTransaction(transaction: Transaction): Promise<Transaction> {
+    if (!this._signer) {
+      throw new Error('Wallet is not connected')
     }
 
-    const signMessage: SolanaSignMessageMethod = async (...inputs) => {
-      return inputs.map((input) => {
-        const signature = ed25519.sign(input.message, this.#privateKey)
-        return { signedMessage: input.message, signature }
-      })
+    assertIsTransactionWithinSizeLimit(transaction)
+    assertIsTransactionWithBlockhashLifetime(transaction)
+
+    const signatureDictionaries = await this._signer.signTransactions([
+      transaction,
+    ])
+
+    if (
+      signatureDictionaries.length === 0 ||
+      !signatureDictionaries[0][this._signer.address]
+    ) {
+      throw new Error('Failed to sign transaction')
     }
 
-    const signAndSendTransaction: SolanaSignAndSendTransactionMethod =
-      async () => {
-        throw new Error(
-          'signAndSendTransaction is not supported. Use signTransaction and send manually.'
-        )
-      }
+    return transaction
+  }
 
-    this.features = {
-      [SolanaSignTransaction]: {
-        version: '1.0.0',
-        supportedTransactionVersions: ['legacy', 0],
-        signTransaction,
-      },
-      [SolanaSignMessage]: {
-        version: '1.0.0',
-        signMessage,
-      },
-      [SolanaSignAndSendTransaction]: {
-        version: '1.0.0',
-        supportedTransactionVersions: ['legacy', 0],
-        signAndSendTransaction,
-      },
+  async signMessage(message: Uint8Array): Promise<Uint8Array> {
+    if (!this._signer) {
+      throw new Error('Wallet is not connected')
     }
+
+    const signatureDictionaries = await this._signer.signMessages([
+      createSignableMessage(message),
+    ])
+
+    const signature = signatureDictionaries[0]?.[this._signer.address]
+    if (!signature) {
+      throw new Error('Failed to sign message')
+    }
+
+    return signature
   }
 }
