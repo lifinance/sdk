@@ -6,6 +6,7 @@ export const reportStepsExecutionToTerminal = (updatedRoute: RouteExtended) => {
       if (step.execution) {
         return step.execution
       }
+      return _accum
     },
     undefined as undefined | Execution
   )

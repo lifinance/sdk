@@ -100,29 +100,26 @@ describe('HTTPError', () => {
           '[ValidationError] Request failed with status code 400 Bad Request',
       },
     ],
-  ])(
-    'should present correctly %s',
-    async (_, requestOptions, statusCode, statusText, expected) => {
-      const mockResponse = {
-        status: statusCode,
-        statusText,
-        json: expected.jsonFunc,
-      } as Response
+  ])('should present correctly %s', async (_, requestOptions, statusCode, statusText, expected) => {
+    const mockResponse = {
+      status: statusCode,
+      statusText,
+      json: expected.jsonFunc,
+    } as Response
 
-      const error = new HTTPError(mockResponse, url, requestOptions)
+    const error = new HTTPError(mockResponse, url, requestOptions)
 
-      expect(error.status).toEqual(statusCode)
-      expect(error.message).toEqual(expected.initialMessage)
-      expect(error.url).toEqual(url)
-      expect(error.fetchOptions).toEqual(requestOptions)
+    expect(error.status).toEqual(statusCode)
+    expect(error.message).toEqual(expected.initialMessage)
+    expect(error.url).toEqual(url)
+    expect(error.fetchOptions).toEqual(requestOptions)
 
-      expect(error.type).toEqual(expected.type)
-      expect(error.code).toEqual(expected.code)
+    expect(error.type).toEqual(expected.type)
+    expect(error.code).toEqual(expected.code)
 
-      await error.buildAdditionalDetails()
+    await error.buildAdditionalDetails()
 
-      expect(error.responseBody).toEqual(expected.responseBody)
-      expect(error.message).toEqual(expected.builtMessage)
-    }
-  )
+    expect(error.responseBody).toEqual(expected.responseBody)
+    expect(error.message).toEqual(expected.builtMessage)
+  })
 })

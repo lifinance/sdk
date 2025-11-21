@@ -42,11 +42,9 @@ async function run() {
           Promise.resolve(
             createWalletClient({
               account,
-              chain: switchChains.find((chain) => {
-                if (chain.id === chainId) {
-                  return chain
-                }
-              }) as Chain,
+              chain: switchChains.find(
+                (chain) => chain.id === chainId
+              ) as Chain,
               transport: http(),
             })
           ),
