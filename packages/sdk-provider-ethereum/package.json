@@ -1,43 +1,43 @@
 {
   "name": "@lifi/sdk-provider-ethereum",
   "version": "4.0.0-alpha.0",
-  "description": "LI.FI Ethereum SDK Provider",
-  "keywords": [
-    "lifi",
-    "sdk",
-    "ethereum"
-  ],
+  "description": "LI.FI Ethereum SDK Provider for Any-to-Any Cross-Chain-Swap",
+  "homepage": "https://github.com/lifinance/sdk",
+  "bugs": {
+    "url": "https://github.com/lifinance/sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lifinance/sdk.git",
+    "directory": "packages/sdk-provider-ethereum"
+  },
+  "license": "Apache-2.0",
+  "author": "Eugene Chybisov <eugene@li.finance>",
   "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "typings": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/_types/index.d.ts",
-      "import": "./src/_esm/index.js",
-      "default": "./src/_cjs/index.js"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/cjs/index.js"
     },
     "./package.json": "./package.json"
   },
-  "main": "./src/_cjs/index.js",
-  "module": "./src/_esm/index.js",
-  "types": "./src/_types/index.d.ts",
-  "typings": "./src/_types/index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "src",
-    "!src/**/*.test.ts",
-    "!src/**/*.mock.ts",
-    "!src/**/*.spec.ts",
-    "!src/**/*.handlers.ts",
-    "!src/**/*.tsbuildinfo"
-  ],
   "scripts": {
-    "build": "pnpm clean && pnpm build:cjs && pnpm build:esm && pnpm build:types",
-    "build:cjs": "tsc --project ./tsconfig.build.json --module commonjs --outDir ./src/_cjs --removeComments --verbatimModuleSyntax false && mkdir -p ./src/_cjs && printf '{\"type\":\"commonjs\"}' > ./src/_cjs/package.json",
-    "build:esm": "tsc --project ./tsconfig.build.json --module es2015 --outDir ./src/_esm && mkdir -p ./src/_esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./src/_esm/package.json",
-    "build:types": "tsc --project ./tsconfig.build.json --module esnext --declarationDir ./src/_types --emitDeclarationOnly --declaration --declarationMap",
-    "clean": "rm -rf dist src/_esm src/_cjs src/_types",
+    "build": "pnpm clean && pnpm build:version && pnpm build:cjs && pnpm build:esm && pnpm build:types && pnpm build:clean",
+    "build:cjs": "tsc --project ./tsconfig.json --module commonjs --outDir ./dist/cjs --removeComments --verbatimModuleSyntax false && mkdir -p ./dist/cjs && printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.json --module es2015 --outDir ./dist/esm && mkdir -p ./dist/esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json",
+    "build:types": "tsc --project ./tsconfig.json --module esnext --declarationDir ./dist/types --emitDeclarationOnly --declaration --declarationMap",
+    "build:prerelease": "node ../../scripts/prerelease.js && cpy '../../*.md' .",
+    "build:postrelease": "node ../../scripts/postrelease.js && rm -rf *.md",
+    "build:clean": "rm -rf tsconfig.tsbuildinfo ./dist/tsconfig.tsbuildinfo",
+    "build:version": "node ../../scripts/version.js",
+    "clean": "pnpm build:clean && rm -rf dist",
     "coverage": "vitest run --coverage",
-    "prepublishOnly": "pnpm node scripts/prepublishOnly.js",
-    "release:build": "pnpm build",
     "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
     "test:cov": "pnpm test --coverage",
     "test:unit": "pnpm test .unit.spec.ts --passWithNoTests",
@@ -52,15 +52,51 @@
   },
   "devDependencies": {
     "@lifi/data-types": "^6.40.0",
-    "@types/fs-extra": "^11.0.4",
-    "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.10",
-    "fs-extra": "^11.3.2",
+    "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.10"
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "files": [
+    "dist/**",
+    "!dist/**/*.tsbuildinfo",
+    "src/**/*.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo",
+    "!**/__mocks__/**",
+    "!*.tmp",
+    "!*.env",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "swap",
+    "bridge",
+    "bridge-aggregation",
+    "cross-chain",
+    "cross-chain-applications",
+    "cross-chain-bridge",
+    "dapp",
+    "defi",
+    "ethereum",
+    "bitcoin",
+    "solana",
+    "sui",
+    "tron",
+    "lifi",
+    "multi-chain",
+    "sdk",
+    "ethers",
+    "viem",
+    "wagmi",
+    "web3",
+    "web3-react"
+  ]
 }

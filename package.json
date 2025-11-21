@@ -9,11 +9,16 @@
     "clean:cache": "pnpm store prune",
     "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
     "clean:modules:trash": "find . -name \"node_modules\" -type d -prune -exec trash {} +",
-    "release": "pnpm release:version && pnpm release:build && pnpm standard-version -a -s",
-    "release:alpha": "pnpm release:version --preid alpha && pnpm release:build && pnpm standard-version -a -s --prerelease alpha --skip.changelog",
-    "release:beta": "pnpm release:version --preid beta && pnpm release:build && pnpm standard-version -a -s --prerelease beta --skip.changelog",
+    "regen": "rm -rf pnpm-lock.yaml && pnpm clean:modules && corepack use pnpm@latest",
+    "release": "pnpm release:version && pnpm build && pnpm standard-version -a -s",
+    "release:alpha": "pnpm release:version --preid alpha && pnpm build && pnpm standard-version -a -s --prerelease alpha --skip.changelog",
+    "release:beta": "pnpm release:version --preid beta && pnpm build && pnpm standard-version -a -s --prerelease beta --skip.changelog",
     "release:version": "lerna version --no-changelog --no-push --no-git-tag-version --no-private",
-    "release:build": "pnpm -r --parallel release:build",
+    "release:publish:build": "pnpm -r --parallel build:prerelease",
+    "release:publish": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag latest && pnpm release:clean",
+    "release:publish:alpha": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag alpha && pnpm release:clean",
+    "release:publish:beta": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag beta && pnpm release:clean",
+    "release:clean": "pnpm -r --parallel exec sh -c \"node ../../scripts/postrelease.js && rm -rf *.md\"",
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",
@@ -24,23 +29,13 @@
     "test:unit": "pnpm -r --parallel test:unit",
     "link:bigmi": "pnpm -r --parallel link:bigmi",
     "unlink:bigmi": "pnpm -r --parallel unlink:bigmi",
-    "pre-commit": "lint-staged",
-    "pre-push": "pnpm check:types && pnpm check:circular-deps && pnpm test:unit",
-    "prepare": "husky",
-    "postinstall": "husky",
-    "prepack": "pinst --disable",
-    "postpack": "pinst --enable",
     "knip:all": "knip",
     "knip:check": "knip --dependencies --files --no-config-hints --exclude binaries",
-    "knip:write": "pnpm knip:check --fix"
-  },
-  "lint-staged": {
-    "packages/**/*.{ts,tsx}": [
-      "pnpm check:write"
-    ],
-    "*": [
-      "bash -c 'pnpm knip:check'"
-    ]
+    "knip:write": "pnpm knip:check --fix",
+    "pre-commit": "pnpm check && pnpm check:types && pnpm check:circular-deps && pnpm knip:check",
+    "pre-push": "pnpm test:unit",
+    "prepare": "husky",
+    "postinstall": "husky"
   },
   "standard-version": {
     "scripts": {
@@ -51,15 +46,11 @@
     "@biomejs/biome": "^2.3.5",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
-    "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.10",
-    "fs-extra": "^11.3.2",
     "husky": "^9.1.7",
     "knip": "^5.69.1",
     "lerna": "^9.0.0",
-    "lint-staged": "^16.2.6",
-    "pinst": "^3.0.0",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.10"
@@ -67,5 +58,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c"
+  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b"
 }
