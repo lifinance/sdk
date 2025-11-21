@@ -14,7 +14,7 @@ const createWallet = async ({
   if (connect) {
     await wallet.connect()
   }
-  return { wallet, privateKey: secret }
+  return { wallet }
 }
 
 const {
