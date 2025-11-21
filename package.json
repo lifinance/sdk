@@ -39,7 +39,8 @@
   },
   "standard-version": {
     "scripts": {
-      "postbump": "node scripts/version.js && git add ."
+      "prerelease": "pnpm install && git add .",
+      "postbump": "pnpm check:write && git add ."
     }
   },
   "devDependencies": {
