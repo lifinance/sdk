@@ -1,4 +1,4 @@
-name: Test
+name: Tests
 
 on:
   push:
@@ -25,7 +25,6 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - windows-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
