@@ -2,6 +2,7 @@
   "name": "lifi-sdk-node-sample",
   "version": "0.0.1",
   "type": "module",
+  "private": true,
   "description": "Sample project to showcase the usage of @lifi/sdk",
   "main": "examples/swap.ts",
   "author": "LI.FI <github@li.finance>",
