@@ -228,7 +228,7 @@ describe('getClientStorage', () => {
       expect(rpcUrls).toEqual(mockRpcUrls)
     })
 
-    it('should return cached RPC URLs when not needReset and RPC URLs exist', async () => {
+    it('should cache RPC URLs after initial merge', async () => {
       const { getChainsFromConfig } = await import('../actions/getChains.js')
       const { getRpcUrlsFromChains } = await import('../core/utils.js')
 
@@ -237,17 +237,14 @@ describe('getClientStorage', () => {
 
       const storage = getClientStorage(mockConfig)
 
-      // First call getChains to set the timestamp and make needReset false
-      await storage.getChains()
-
-      // First call to getRpcUrls should merge config RPC URLs with chain RPC URLs
+      // First call should merge (because _rpcUrlsMerged is false)
       const rpcUrls1 = await storage.getRpcUrls()
-      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Should merge on first call
+      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1)
 
-      // Second call should return cached RPC URLs without calling getRpcUrlsFromChains again
+      // Second call should use cache (because _rpcUrlsMerged is now true)
       const rpcUrls2 = await storage.getRpcUrls()
       expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Still only called once
-      expect(rpcUrls1).toBe(rpcUrls2) // Same reference
+      expect(rpcUrls1).toBe(rpcUrls2) // Same reference, cached
     })
 
     it('should handle errors from getRpcUrlsFromChains', async () => {
@@ -358,30 +355,6 @@ describe('getClientStorage', () => {
         [ChainId.SOL]
       )
       expect(rpcUrls).toEqual({})
-    })
-
-    it('should preserve existing RPC URLs from config', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
-      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
-
-      const storage = getClientStorage(mockConfig)
-
-      // First call getChains to set the timestamp and make needReset false
-      await storage.getChains()
-
-      const rpcUrls = await storage.getRpcUrls()
-
-      // Should call getRpcUrlsFromChains to merge config RPC URLs with chain RPC URLs
-      expect(getRpcUrlsFromChains).toHaveBeenCalledWith(
-        mockConfig.rpcUrls,
-        mockChains,
-        [ChainId.SOL]
-      )
-      // Result should be the merged RPC URLs (which includes config RPC URLs)
-      expect(rpcUrls).toEqual(mockRpcUrls)
     })
   })
 })
