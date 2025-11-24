@@ -237,11 +237,11 @@ describe('getClientStorage', () => {
 
       const storage = getClientStorage(mockConfig)
 
-      // First call should merge (because _rpcUrlsMerged is false)
+      // First call fetches chains and merges RPC URLs
       const rpcUrls1 = await storage.getRpcUrls()
       expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1)
 
-      // Second call should use cache (because _rpcUrlsMerged is now true)
+      // Second call uses cached chains, so RPC URLs are not merged again
       const rpcUrls2 = await storage.getRpcUrls()
       expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Still only called once
       expect(rpcUrls1).toBe(rpcUrls2) // Same reference, cached
@@ -283,7 +283,7 @@ describe('getClientStorage', () => {
       }
       const storage = getClientStorage(configWithoutRpcUrls)
 
-      // First call
+      // First call - chains are fetched and RPC URLs are merged
       await storage.getChains()
       await storage.getRpcUrls()
 
@@ -291,12 +291,12 @@ describe('getClientStorage', () => {
       const originalDateNow = Date.now
       vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000)
 
-      // Should refetch when needReset is true
+      // Should refetch when needReset is true - chains are refreshed and RPC URLs are merged again
       await storage.getChains()
       await storage.getRpcUrls()
 
       expect(getChainsFromConfig).toHaveBeenCalledTimes(2)
-      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Only called once because we have existing RPC URLs
+      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(2) // Called once per chain refresh
 
       // Restore Date.now
       Date.now = originalDateNow
