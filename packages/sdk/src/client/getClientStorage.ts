@@ -7,7 +7,6 @@ export const getClientStorage = (config: SDKBaseConfig) => {
   let _chains = [] as ExtendedChain[]
   let _rpcUrls = { ...config.rpcUrls } as RPCUrls
   let _chainsUpdatedAt: number | undefined
-  let _rpcUrlsMerged = false
 
   return {
     get needReset() {
@@ -27,15 +26,15 @@ export const getClientStorage = (config: SDKBaseConfig) => {
           ],
         })
         _chainsUpdatedAt = Date.now()
+
+        // Reset dependent data
+        _rpcUrls = { ...config.rpcUrls }
+        _rpcUrls = getRpcUrlsFromChains(_rpcUrls, _chains, [ChainId.SOL])
       }
       return _chains
     },
     async getRpcUrls() {
-      if (this.needReset || !_rpcUrlsMerged) {
-        const chains = await this.getChains()
-        _rpcUrls = getRpcUrlsFromChains(_rpcUrls, chains, [ChainId.SOL])
-        _rpcUrlsMerged = true
-      }
+      await this.getChains() // _rpcUrls is updated when needed
       return _rpcUrls
     },
   }
