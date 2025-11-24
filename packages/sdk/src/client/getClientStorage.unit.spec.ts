@@ -240,13 +240,13 @@ describe('getClientStorage', () => {
       // First call getChains to set the timestamp and make needReset false
       await storage.getChains()
 
-      // Now getRpcUrls should use existing RPC URLs without calling getRpcUrlsFromChains
+      // First call to getRpcUrls should merge config RPC URLs with chain RPC URLs
       const rpcUrls1 = await storage.getRpcUrls()
-      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(0) // Should use existing RPC URLs
+      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Should merge on first call
 
-      // Second call should return cached RPC URLs
+      // Second call should return cached RPC URLs without calling getRpcUrlsFromChains again
       const rpcUrls2 = await storage.getRpcUrls()
-      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(0)
+      expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(1) // Still only called once
       expect(rpcUrls1).toBe(rpcUrls2) // Same reference
     })
 
@@ -374,9 +374,14 @@ describe('getClientStorage', () => {
 
       const rpcUrls = await storage.getRpcUrls()
 
-      // Should not call getRpcUrlsFromChains because we already have RPC URLs
-      expect(getRpcUrlsFromChains).not.toHaveBeenCalled()
-      expect(rpcUrls).toEqual(mockConfig.rpcUrls)
+      // Should call getRpcUrlsFromChains to merge config RPC URLs with chain RPC URLs
+      expect(getRpcUrlsFromChains).toHaveBeenCalledWith(
+        mockConfig.rpcUrls,
+        mockChains,
+        [ChainId.SOL]
+      )
+      // Result should be the merged RPC URLs (which includes config RPC URLs)
+      expect(rpcUrls).toEqual(mockRpcUrls)
     })
   })
 })
