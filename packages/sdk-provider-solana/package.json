@@ -54,12 +54,12 @@
     "bs58": "^6.0.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.40.0",
-    "@vitest/coverage-v8": "^4.0.10",
+    "@lifi/data-types": "^6.43.2",
+    "@vitest/coverage-v8": "^4.0.13",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.10"
+    "vitest": "^4.0.13"
   },
   "publishConfig": {
     "access": "public"
