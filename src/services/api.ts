@@ -246,9 +246,14 @@ export const getStepTransaction = async (
     // While the validation fails for some users we should not enforce it
     console.warn('SDK Validation: Invalid Step', step)
   }
-
+  const _config = config.get()
+  // TODO: add check to pass this only when transfering from Solana
+  const queryParams: Record<string, any> = {}
+  if (_config.routeOptions?.jitoBundle) {
+    queryParams.jitoBundle = true
+  }
   return await request<LiFiStep>(
-    `${config.get().apiUrl}/advanced/stepTransaction`,
+    `${_config.apiUrl}/advanced/stepTransaction?${new URLSearchParams(queryParams)}`,
     {
       method: 'POST',
       headers: {

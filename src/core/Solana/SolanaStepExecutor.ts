@@ -112,22 +112,32 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         }
 
-        if (!transactionRequest.data) {
+        if (!transactionRequest.data?.length) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'Unable to prepare transaction.'
           )
         }
 
-        const versionedTransaction = VersionedTransaction.deserialize(
-          base64ToUint8Array(transactionRequest.data)
-        )
+        let transactions: VersionedTransaction[] = []
+
+        if (Array.isArray(transactionRequest.data)) {
+          transactions = transactionRequest.data.map((tx) =>
+            VersionedTransaction.deserialize(base64ToUint8Array(tx))
+          )
+        } else {
+          transactions.push(
+            VersionedTransaction.deserialize(
+              base64ToUint8Array(transactionRequest.data)
+            )
+          )
+        }
 
         this.checkWalletAdapter(step)
 
         // We give users 2 minutes to sign the transaction or it should be considered expired
         const signedTx = await withTimeout<VersionedTransaction>(
-          () => this.walletAdapter.signTransaction(versionedTransaction),
+          () => this.walletAdapter.signAllTransactions(transactions),
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
             // Use 2 minutes to account for fluctuations
