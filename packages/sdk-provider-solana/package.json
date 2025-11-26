@@ -1,0 +1,105 @@
+{
+  "name": "@lifi/sdk-provider-solana",
+  "version": "4.0.0-alpha.3",
+  "description": "LI.FI Solana SDK Provider for Any-to-Any Cross-Chain-Swap",
+  "homepage": "https://github.com/lifinance/sdk",
+  "bugs": {
+    "url": "https://github.com/lifinance/sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lifinance/sdk.git",
+    "directory": "packages/sdk-provider-solana"
+  },
+  "license": "Apache-2.0",
+  "author": "Eugene Chybisov <eugene@li.finance>",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "typings": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "pnpm clean && pnpm build:version && pnpm build:cjs && pnpm build:esm && pnpm build:types && pnpm build:clean",
+    "build:cjs": "tsc --project ./tsconfig.json --module commonjs --outDir ./dist/cjs --removeComments --verbatimModuleSyntax false && mkdir -p ./dist/cjs && printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json",
+    "build:esm": "tsc --project ./tsconfig.json --module es2015 --outDir ./dist/esm && mkdir -p ./dist/esm && printf '{\"type\": \"module\",\"sideEffects\":false}' > ./dist/esm/package.json",
+    "build:types": "tsc --project ./tsconfig.json --module esnext --declarationDir ./dist/types --emitDeclarationOnly --declaration --declarationMap",
+    "build:prerelease": "node ../../scripts/prerelease.js && cpy '../../*.md' .",
+    "build:postrelease": "node ../../scripts/postrelease.js && rm -rf *.md",
+    "build:clean": "rm -rf tsconfig.tsbuildinfo ./dist/tsconfig.tsbuildinfo",
+    "build:version": "node ../../scripts/version.js",
+    "clean": "pnpm build:clean && rm -rf dist",
+    "coverage": "vitest run --coverage",
+    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test:cov": "pnpm test --coverage",
+    "test:unit": "pnpm test .unit.spec.ts --passWithNoTests",
+    "check:types": "tsc --noEmit",
+    "check:circular-deps": "madge --circular $(find ./src -name '*.ts')",
+    "check:circular-deps-graph": "madge --circular $(find ./src -name '*.ts') --image graph.svg",
+    "watch": "tsc -w -p ./tsconfig.json"
+  },
+  "dependencies": {
+    "@lifi/sdk": "workspace:*",
+    "@noble/curves": "^1.9.7",
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/web3.js": "^1.98.4",
+    "bs58": "^6.0.0"
+  },
+  "devDependencies": {
+    "@lifi/data-types": "^6.43.2",
+    "@vitest/coverage-v8": "^4.0.14",
+    "cpy-cli": "^6.0.0",
+    "madge": "^8.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/**",
+    "!dist/**/*.tsbuildinfo",
+    "src/**/*.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.mock.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.handlers.ts",
+    "!src/**/*.tsbuildinfo",
+    "!**/__mocks__/**",
+    "!*.tmp",
+    "!*.env",
+    "!tsconfig.json"
+  ],
+  "keywords": [
+    "swap",
+    "bridge",
+    "bridge-aggregation",
+    "cross-chain",
+    "cross-chain-applications",
+    "cross-chain-bridge",
+    "dapp",
+    "defi",
+    "ethereum",
+    "bitcoin",
+    "solana",
+    "sui",
+    "tron",
+    "lifi",
+    "multi-chain",
+    "sdk",
+    "ethers",
+    "viem",
+    "wagmi",
+    "web3",
+    "web3-react"
+  ]
+}

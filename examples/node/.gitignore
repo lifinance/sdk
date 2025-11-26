@@ -56,7 +56,7 @@ web_modules/
 
 # Microbundle cache
 .rpt2_cache/
-.rts2_cache_cjs/
+.rts2_cachecjs/
 .rts2_cache_es/
 .rts2_cache_umd/
 
