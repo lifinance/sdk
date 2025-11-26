@@ -38,6 +38,7 @@ import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import { ChainType } from '../index.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { decodeTaskId } from '../utils/decode.js'
@@ -246,23 +247,25 @@ export const getStepTransaction = async (
     // While the validation fails for some users we should not enforce it
     console.warn('SDK Validation: Invalid Step', step)
   }
+
   const _config = config.get()
-  // TODO: add check to pass this only when transfering from Solana
-  const queryParams: Record<string, any> = {}
-  if (_config.routeOptions?.jitoBundle) {
-    queryParams.jitoBundle = true
-  }
-  return await request<LiFiStep>(
-    `${_config.apiUrl}/advanced/stepTransaction?${new URLSearchParams(queryParams)}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(step),
-      signal: options?.signal,
+  let requestUrl = `${_config.apiUrl}/advanced/stepTransaction`
+  const fromChain = await config.getChainById(step.action.fromChainId)
+  if (fromChain.chainType === ChainType.SVM) {
+    const queryParams: Record<string, any> = {}
+    if (_config.routeOptions?.jitoBundle) {
+      queryParams.jitoBundle = true
+      requestUrl = `${requestUrl}?${new URLSearchParams(queryParams)}`
     }
-  )
+  }
+  return await request<LiFiStep>(requestUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(step),
+    signal: options?.signal,
+  })
 }
 
 /**

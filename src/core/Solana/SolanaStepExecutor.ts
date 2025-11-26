@@ -12,6 +12,7 @@ import { stepComparison } from '../stepComparison.js'
 import type { LiFiStepExtended, TransactionParameters } from '../types.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { callSolanaWithRetry } from './connection.js'
+import { sendAndConfirmBundle } from './jito/sendAndConfirmBundle.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 import { sendAndConfirmTransaction } from './sendAndConfirmTransaction.js'
 import type { SolanaStepExecutorOptions } from './types.js'
@@ -136,7 +137,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         this.checkWalletAdapter(step)
 
         // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTx = await withTimeout<VersionedTransaction>(
+        const signedTransactions = await withTimeout<VersionedTransaction[]>(
           () => this.walletAdapter.signAllTransactions(transactions),
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
@@ -155,21 +156,41 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
-        const simulationResult = await callSolanaWithRetry((connection) =>
-          connection.simulateTransaction(signedTx, {
-            commitment: 'confirmed',
-            replaceRecentBlockhash: true,
-          })
-        )
+        // Check if we should use Jito bundle (multiple transactions)
+        const shouldUseJitoBundle =
+          signedTransactions.length > 1 && config.get().routeOptions?.jitoBundle
 
-        if (simulationResult.value.err) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionSimulationFailed,
-            'Transaction simulation failed'
+        let confirmedTx: any
+
+        if (shouldUseJitoBundle) {
+          // Use Jito bundle for multiple transactions
+          const bundleResult = await sendAndConfirmBundle(signedTransactions)
+
+          confirmedTx = {
+            signatureResult: { err: null, confirmationStatus: 'confirmed' },
+            txSignature: bundleResult.txSignatures[0],
+            bundleId: bundleResult.bundleId,
+          }
+        } else {
+          // Use regular transaction for single transaction
+          const signedTx = signedTransactions[0]
+
+          const simulationResult = await callSolanaWithRetry((connection) =>
+            connection.simulateTransaction(signedTx, {
+              commitment: 'confirmed',
+              replaceRecentBlockhash: true,
+            })
           )
-        }
 
-        const confirmedTx = await sendAndConfirmTransaction(signedTx)
+          if (simulationResult.value.err) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionSimulationFailed,
+              'Transaction simulation failed'
+            )
+          }
+
+          confirmedTx = await sendAndConfirmTransaction(signedTx)
+        }
 
         if (!confirmedTx.signatureResult) {
           throw new TransactionError(

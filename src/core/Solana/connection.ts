@@ -1,8 +1,10 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
 import { getRpcUrls } from '../rpc.js'
+import { isJitoRpc } from './jito/isJitoRpc.js'
+import { JitoConnection } from './jito/JitoConnection.js'
 
-const connections = new Map<string, Connection>()
+const connections = new Map<string, Connection | JitoConnection>()
 
 /**
  * Initializes the Solana connections if they haven't been initialized yet.
@@ -12,7 +14,9 @@ const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
-      const connection = new Connection(rpcUrl)
+      const connection = (await isJitoRpc(rpcUrl))
+        ? new JitoConnection(rpcUrl)
+        : new Connection(rpcUrl)
       connections.set(rpcUrl, connection)
     }
   }
@@ -22,9 +26,22 @@ const ensureConnections = async (): Promise<void> => {
  * Wrapper around getting the connection (RPC provider) for Solana
  * @returns - Solana RPC connections
  */
-export const getSolanaConnections = async (): Promise<Connection[]> => {
+export const getSolanaConnections = async (): Promise<
+  (Connection | JitoConnection)[]
+> => {
   await ensureConnections()
   return Array.from(connections.values())
+}
+
+/**
+ * Get Jito-enabled connections only
+ * @returns - Array of JitoConnection instances
+ */
+export const getJitoConnections = async (): Promise<JitoConnection[]> => {
+  await ensureConnections()
+  return Array.from(connections.values()).filter(
+    (conn): conn is JitoConnection => conn instanceof JitoConnection
+  )
 }
 
 /**
