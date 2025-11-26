@@ -3,6 +3,7 @@ import {
   type ChainKey,
   type ChainsRequest,
   type ChainsResponse,
+  ChainType,
   type ConnectionsRequest,
   type ConnectionsResponse,
   type ContractCallsQuoteRequest,
@@ -38,7 +39,6 @@ import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import { ChainType } from '../index.js'
 import { request } from '../request.js'
 import { isRoutesRequest, isStep } from '../typeguards.js'
 import { decodeTaskId } from '../utils/decode.js'
