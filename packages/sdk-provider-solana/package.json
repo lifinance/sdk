@@ -55,11 +55,11 @@
   },
   "devDependencies": {
     "@lifi/data-types": "^6.43.2",
-    "@vitest/coverage-v8": "^4.0.13",
+    "@vitest/coverage-v8": "^4.0.14",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.13"
+    "vitest": "^4.0.14"
   },
   "publishConfig": {
     "access": "public"
