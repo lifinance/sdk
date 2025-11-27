@@ -125,6 +125,7 @@ export {
 export { getNameServiceAddress } from './services/getNameServiceAddress.js'
 export type {
   GetStatusRequestExtended,
+  GetStepTransactionRequest,
   QuoteRequest,
   QuoteRequestFromAmount,
   QuoteRequestToAmount,

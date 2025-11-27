@@ -156,9 +156,26 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           'PENDING'
         )
 
+        // Verify wallet adapter returned signed transactions
+        if (!signedTransactions.length) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionUnprepared,
+            'Wallet adapter did not return any signed transactions.'
+          )
+        }
+
         // Check if we should use Jito bundle (multiple transactions)
         const shouldUseJitoBundle =
           signedTransactions.length > 1 && config.get().routeOptions?.jitoBundle
+
+        // Defensive check: If we received multiple transactions but Jito is not enabled,
+        // this indicates an unexpected state (possibly an API error or misconfiguration)
+        if (signedTransactions.length > 1 && !shouldUseJitoBundle) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionUnprepared,
+            `Received ${signedTransactions.length} transactions but Jito bundle is not enabled. Multiple transactions require Jito bundle support. Please enable jitoBundle in routeOptions or contact support if this error persists.`
+          )
+        }
 
         let confirmedTx: any
 
@@ -166,8 +183,39 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           // Use Jito bundle for multiple transactions
           const bundleResult = await sendAndConfirmBundle(signedTransactions)
 
+          // Check if all transactions in the bundle were confirmed
+          // All transactions must succeed for the bundle to be considered successful
+          const allConfirmed = bundleResult.signatureResults.every(
+            (result) => result !== null
+          )
+
+          if (!allConfirmed) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionExpired,
+              'One or more bundle transactions were not confirmed within the expected time frame.'
+            )
+          }
+
+          // Check if any transaction in the bundle has an error
+          const failedResult = bundleResult.signatureResults.find(
+            (result) => result?.err !== null
+          )
+
+          if (failedResult) {
+            const reason =
+              typeof failedResult.err === 'object'
+                ? JSON.stringify(failedResult.err)
+                : failedResult.err
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              `Bundle transaction failed: ${reason}`
+            )
+          }
+
+          // Use the first transaction's signature result for reporting
+          // (all transactions succeeded if we reach here)
           confirmedTx = {
-            signatureResult: { err: null, confirmationStatus: 'confirmed' },
+            signatureResult: bundleResult.signatureResults[0],
             txSignature: bundleResult.txSignatures[0],
             bundleId: bundleResult.bundleId,
           }
