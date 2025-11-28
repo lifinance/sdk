@@ -1,5 +1,10 @@
-import { Connection, type VersionedTransaction } from '@solana/web3.js'
+import {
+  type Cluster,
+  Connection,
+  type VersionedTransaction,
+} from '@solana/web3.js'
 import { uint8ArrayToBase64 } from '../../../utils/uint8ArrayToBase64.js'
+import { JITO_TIP_ACCOUNTS } from './constants.js'
 
 export type SimulateBundleResult = {
   value: {
@@ -18,6 +23,12 @@ export type SimulateBundleResult = {
  */
 export class JitoConnection extends Connection {
   private tipAccountsCache: string[] | null = null
+  private cluster: Cluster
+
+  constructor(endpoint: string, cluster: Cluster = 'mainnet-beta') {
+    super(endpoint)
+    this.cluster = cluster
+  }
 
   /**
    * Makes a direct RPC request to the Jito-enabled endpoint
@@ -64,19 +75,9 @@ export class JitoConnection extends Connection {
       this.tipAccountsCache = accounts
       return accounts
     } catch (error) {
-      // Fallback tip accounts if RPC call fails
-      const fallbackAccounts = [
-        'Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY',
-        'DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL',
-        '96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5',
-        '3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT',
-        'HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe',
-        'ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49',
-        'ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt',
-        'DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh',
-      ]
+      const fallbackAccounts = JITO_TIP_ACCOUNTS[this.cluster]
       console.warn(
-        'Failed to fetch tip accounts from RPC, using fallback:',
+        `Failed to fetch tip accounts from RPC, using ${this.cluster} fallback:`,
         error
       )
       return fallbackAccounts
