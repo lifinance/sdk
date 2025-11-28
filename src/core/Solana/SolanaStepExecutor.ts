@@ -35,6 +35,57 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
   }
 
+  /**
+   * Deserializes base64-encoded transaction data into VersionedTransaction objects.
+   * Handles both single transactions and arrays of transactions.
+   *
+   * @param transactionRequest - Transaction parameters containing base64-encoded transaction data
+   * @returns {VersionedTransaction[]} Array of deserialized VersionedTransaction objects
+   * @throws {TransactionError} If transaction data is missing or empty
+   */
+  private deserializeTransactions(transactionRequest: TransactionParameters) {
+    if (!transactionRequest.data?.length) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction.'
+      )
+    }
+
+    if (Array.isArray(transactionRequest.data)) {
+      return transactionRequest.data.map((tx) =>
+        VersionedTransaction.deserialize(base64ToUint8Array(tx))
+      )
+    } else {
+      return [
+        VersionedTransaction.deserialize(
+          base64ToUint8Array(transactionRequest.data)
+        ),
+      ]
+    }
+  }
+
+  /**
+   * Determines whether to use Jito bundle submission for the given transactions.
+   * Multiple transactions require Jito bundle support to be enabled in config.
+   *
+   * @param transactions - Array of transactions to evaluate
+   * @returns {Boolean} True if Jito bundle should be used (multiple transactions + Jito enabled), false otherwise
+   * @throws {TransactionError} If multiple transactions are provided but Jito bundle is not enabled
+   */
+  private shouldUseJitoBundle(transactions: VersionedTransaction[]): boolean {
+    const isJitoBundleEnabled = Boolean(config.get().routeOptions?.jitoBundle)
+    // If we received multiple transactions but Jito is not enabled,
+    // this indicates an unexpected state (possibly an API error or misconfiguration)
+    if (transactions.length > 1 && !isJitoBundleEnabled) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        `Received ${transactions.length} transactions but Jito bundle is not enabled. Multiple transactions require Jito bundle support. Please enable jitoBundle in routeOptions.`
+      )
+    }
+
+    return transactions.length > 1 && isJitoBundleEnabled
+  }
+
   executeStep = async (step: LiFiStepExtended): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
@@ -113,26 +164,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         }
 
-        if (!transactionRequest.data?.length) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionUnprepared,
-            'Unable to prepare transaction.'
-          )
-        }
+        const transactions = this.deserializeTransactions(transactionRequest)
 
-        let transactions: VersionedTransaction[] = []
-
-        if (Array.isArray(transactionRequest.data)) {
-          transactions = transactionRequest.data.map((tx) =>
-            VersionedTransaction.deserialize(base64ToUint8Array(tx))
-          )
-        } else {
-          transactions.push(
-            VersionedTransaction.deserialize(
-              base64ToUint8Array(transactionRequest.data)
-            )
-          )
-        }
+        const shouldUseJitoBundle = this.shouldUseJitoBundle(transactions)
 
         this.checkWalletAdapter(step)
 
@@ -160,20 +194,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         if (!signedTransactions.length) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
-            'Wallet adapter did not return any signed transactions.'
-          )
-        }
-
-        // Check if we should use Jito bundle (multiple transactions)
-        const shouldUseJitoBundle =
-          signedTransactions.length > 1 && config.get().routeOptions?.jitoBundle
-
-        // Defensive check: If we received multiple transactions but Jito is not enabled,
-        // this indicates an unexpected state (possibly an API error or misconfiguration)
-        if (signedTransactions.length > 1 && !shouldUseJitoBundle) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionUnprepared,
-            `Received ${signedTransactions.length} transactions but Jito bundle is not enabled. Multiple transactions require Jito bundle support. Please enable jitoBundle in routeOptions or contact support if this error persists.`
+            'There was a problem signing the transactions. Wallet adapter did not return any signed transactions.'
           )
         }
 

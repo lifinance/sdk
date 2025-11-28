@@ -71,12 +71,6 @@ export async function sendAndConfirmBundle(
           failed: { error: any; tx_signature: string }
         }
 
-        // Log the full simulation result for debugging
-        console.error('Bundle simulation failed:', {
-          summary: simulationResult.value.summary,
-          transactionResults: simulationResult.value.transactionResults,
-        })
-
         // Extract readable error message from TransactionFailure
         const errorMsg =
           summary.failed?.error?.TransactionFailure?.[1] ||
@@ -159,7 +153,7 @@ export async function sendAndConfirmBundle(
             // Re-send bundle periodically
             await jitoConnection.sendBundle(signedTransactions)
           } catch (_) {
-            // Continue trying even if individual sends fail
+            // Silently retry on send failures - polling will detect success
           }
 
           await sleep(1000)
