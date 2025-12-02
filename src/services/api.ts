@@ -1,9 +1,8 @@
 import {
-  type ChainId,
+  ChainId,
   type ChainKey,
   type ChainsRequest,
   type ChainsResponse,
-  ChainType,
   type ConnectionsRequest,
   type ConnectionsResponse,
   type ContractCallsQuoteRequest,
@@ -250,11 +249,10 @@ export const getStepTransaction = async (
 
   const _config = config.get()
   let requestUrl = `${_config.apiUrl}/advanced/stepTransaction`
-  const fromChain = await config.getChainById(step.action.fromChainId)
-
   const isJitoBundleEnabled = Boolean(_config.routeOptions?.jitoBundle)
-  // add jitoBundle param to url if from chain is SVM and jitoBundle is enabled in config
-  if (fromChain.chainType === ChainType.SVM && isJitoBundleEnabled) {
+
+  if (isJitoBundleEnabled && step.action.fromChainId === ChainId.SOL) {
+    // add jitoBundle param to url if from chain is SVM and jitoBundle is enabled in config
     const queryParams = new URLSearchParams({ jitoBundle: 'true' })
     requestUrl = `${requestUrl}?${queryParams}`
   }

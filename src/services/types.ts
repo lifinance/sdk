@@ -7,10 +7,6 @@ export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
 }
 
-export type GetStepTransactionRequest = {
-  jitoBundle?: boolean
-}
-
 export type QuoteRequestFromAmount = QuoteRequestBase
 
 export type QuoteRequestToAmount = Omit<QuoteRequestBase, 'fromAmount'> & {

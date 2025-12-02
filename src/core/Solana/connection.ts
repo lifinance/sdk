@@ -38,17 +38,19 @@ const ensureConnections = async (): Promise<void> => {
 
 /**
  * Wrapper around getting the connection (RPC provider) for Solana
- * @returns - Solana RPC connections
+ * Returns only non-Jito RPC connections (excludes JitoConnection instances)
+ * @returns - Solana RPC connections (excluding Jito connections)
  */
-export const getSolanaConnections = async (): Promise<
-  (Connection | JitoConnection)[]
-> => {
+export const getSolanaConnections = async (): Promise<Connection[]> => {
   await ensureConnections()
-  return Array.from(connections.values())
+  return Array.from(connections.values()).filter(
+    (conn): conn is Connection =>
+      conn instanceof Connection && !(conn instanceof JitoConnection)
+  )
 }
 
 /**
- * Get Jito-enabled connections only
+ * Get Jito-enabled connections only.
  * @returns - Array of JitoConnection instances
  */
 export const getJitoConnections = async (): Promise<JitoConnection[]> => {

@@ -46,7 +46,11 @@ export class JitoConnection extends Connection {
         params,
       }),
     })
-
+    if (!response.ok) {
+      throw new Error(
+        `Jito RPC Error: ${response.status} ${response.statusText}`
+      )
+    }
     const data = await response.json()
     if (data.error) {
       throw new Error(`Jito RPC Error: ${data.error.message}`)
