@@ -26,14 +26,15 @@ export const getClientStorage = (config: SDKBaseConfig) => {
           ],
         })
         _chainsUpdatedAt = Date.now()
+
+        // Reset dependent data
+        _rpcUrls = { ...config.rpcUrls }
+        _rpcUrls = getRpcUrlsFromChains(_rpcUrls, _chains, [ChainId.SOL])
       }
       return _chains
     },
     async getRpcUrls() {
-      if (this.needReset || !Object.keys(_rpcUrls).length) {
-        const chains = await this.getChains()
-        _rpcUrls = getRpcUrlsFromChains(_rpcUrls, chains, [ChainId.SOL])
-      }
+      await this.getChains() // _rpcUrls is updated when needed
       return _rpcUrls
     },
   }
