@@ -3,7 +3,7 @@
 export * from '@lifi/types'
 export type { Client } from 'viem'
 export { formatUnits, isHex, parseUnits } from 'viem/utils'
-export { getChains, getChainsFromConfig } from './actions/getChains.js'
+export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
 export { getGasRecommendation } from './actions/getGasRecommendation.js'
