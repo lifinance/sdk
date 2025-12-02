@@ -198,7 +198,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        let confirmedTx: any
+        let confirmedTransaction: any
 
         if (shouldUseJitoBundle) {
           // Use Jito bundle for multiple transactions
@@ -235,17 +235,17 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
           // Use the first transaction's signature result for reporting
           // (all transactions succeeded if we reach here)
-          confirmedTx = {
+          confirmedTransaction = {
             signatureResult: bundleResult.signatureResults[0],
             txSignature: bundleResult.txSignatures[0],
             bundleId: bundleResult.bundleId,
           }
         } else {
           // Use regular transaction for single transaction
-          const signedTx = signedTransactions[0]
+          const signedTransaction = signedTransactions[0]
 
           const simulationResult = await callSolanaWithRetry((connection) =>
-            connection.simulateTransaction(signedTx, {
+            connection.simulateTransaction(signedTransaction, {
               commitment: 'confirmed',
               replaceRecentBlockhash: true,
             })
@@ -258,21 +258,22 @@ export class SolanaStepExecutor extends BaseStepExecutor {
             )
           }
 
-          confirmedTx = await sendAndConfirmTransaction(signedTx)
+          confirmedTransaction =
+            await sendAndConfirmTransaction(signedTransaction)
         }
 
-        if (!confirmedTx.signatureResult) {
+        if (!confirmedTransaction.signatureResult) {
           throw new TransactionError(
             LiFiErrorCode.TransactionExpired,
             'Transaction has expired: The block height has exceeded the maximum allowed limit.'
           )
         }
 
-        if (confirmedTx.signatureResult.err) {
+        if (confirmedTransaction.signatureResult.err) {
           const reason =
-            typeof confirmedTx.signatureResult.err === 'object'
-              ? JSON.stringify(confirmedTx.signatureResult.err)
-              : confirmedTx.signatureResult.err
+            typeof confirmedTransaction.signatureResult.err === 'object'
+              ? JSON.stringify(confirmedTransaction.signatureResult.err)
+              : confirmedTransaction.signatureResult.err
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             `Transaction failed: ${reason}`
@@ -285,8 +286,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           process.type,
           'PENDING',
           {
-            txHash: confirmedTx.txSignature,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTx.txSignature}`,
+            txHash: confirmedTransaction.txSignature,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
           }
         )
 
