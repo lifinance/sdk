@@ -12,7 +12,8 @@ export const getClientStorage = (config: SDKBaseConfig) => {
     get needReset() {
       return (
         !_chainsUpdatedAt ||
-        Date.now() - _chainsUpdatedAt >= 1000 * 60 * 60 * 24
+        Date.now() - _chainsUpdatedAt >=
+          (config.chainsRefetchInterval ?? 1000 * 60 * 60 * 24)
       )
     },
     async getChains() {
