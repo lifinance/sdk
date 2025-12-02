@@ -1,16 +1,11 @@
-import {
-  type ChainId,
-  ChainType,
-  getChainsFromConfig,
-  type SDKBaseConfig,
-} from '@lifi/sdk'
+import { type ChainId, ChainType, getChains, type SDKClient } from '@lifi/sdk'
 import type { Address } from 'viem'
 
 export const getMulticallAddress = async (
-  config: SDKBaseConfig,
+  client: SDKClient,
   chainId: ChainId
 ): Promise<Address | undefined> => {
-  const chains = await getChainsFromConfig(config, {
+  const chains = await getChains(client, {
     chainTypes: [ChainType.EVM],
   })
   return chains?.find((chain) => chain.id === chainId)
