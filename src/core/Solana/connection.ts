@@ -79,5 +79,5 @@ export async function callSolanaWithRetry<R>(
     }
   }
   // Throw the last encountered error
-  throw lastError
+  throw lastError || new Error('No Solana RPC connections available')
 }
