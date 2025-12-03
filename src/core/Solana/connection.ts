@@ -1,7 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { type Cluster, Connection } from '@solana/web3.js'
 import { getRpcUrls } from '../rpc.js'
-import { isJitoRpc } from './jito/isJitoRpc.js'
 import { JitoConnection } from './jito/JitoConnection.js'
 
 /**
@@ -28,7 +27,7 @@ const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
-      const connection = (await isJitoRpc(rpcUrl))
+      const connection = (await JitoConnection.isJitoRpc(rpcUrl))
         ? new JitoConnection(rpcUrl, detectCluster(rpcUrl))
         : new Connection(rpcUrl)
       connections.set(rpcUrl, connection)
