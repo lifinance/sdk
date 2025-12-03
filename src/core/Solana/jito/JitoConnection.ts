@@ -98,7 +98,6 @@ export class JitoConnection extends Connection {
     try {
       return await rpcRequest(this.rpcEndpoint, method, params)
     } catch (error) {
-      // Log more context for debugging
       console.error(`Jito RPC request failed: ${method}`, {
         endpoint: this.rpcEndpoint,
         params,
