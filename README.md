@@ -13,17 +13,22 @@
 
 [**LI.FI SDK**](https://docs.li.fi/sdk/overview) features include:
 
+- **Modular architecture** - Install only the provider packages you need for your supported blockchain ecosystems (EVM, Solana, Bitcoin, Sui)
 - All ecosystems, chains, bridges, exchanges, and solvers that [LI.FI](https://docs.li.fi/introduction/chains) supports
 - Complete functionality covering full-cycle from obtaining routes/quotes to executing transactions
 - Easy tracking of the route and quote execution through the robust event and hooks handling
 - Highly customizable settings to tailor the SDK to your specific needs including configuration of RPCs and options to allow or deny certain chains, tokens, bridges, exchanges, solvers
 - Supports widely adopted industry standards, including [EIP-5792](https://eips.ethereum.org/EIPS/eip-5792), [ERC-2612](https://eips.ethereum.org/EIPS/eip-2612), [EIP-712](https://eips.ethereum.org/EIPS/eip-712), and [Permit2](https://github.com/Uniswap/permit2)
-- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/), [Wallet Standard](https://github.com/wallet-standard/wallet-standard), [Bigmi](https://github.com/lifinance/bigmi))
+- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/) for EVM, [Wallet Standard](https://github.com/wallet-standard/wallet-standard) for Solana, [Bigmi](https://github.com/lifinance/bigmi) for Bitcoin)
 - Support for arbitrary contract calls on the destination chain
 - Designed for optimal performance with tree-shaking and dead-code elimination, ensuring minimal bundle sizes and faster page load times in front-end environments
 - Compatibility tested with Node.js and popular front-end tools like Vite
 
 ## Installation
+
+The LI.FI SDK follows a modular architecture. Install the core SDK package and the provider packages for the blockchain ecosystems you need:
+
+### Core SDK
 
 ```bash
 pnpm add @lifi/sdk
@@ -35,17 +40,86 @@ or
 npm install --save @lifi/sdk
 ```
 
+### Provider Packages
+
+Install provider packages based on the blockchain ecosystems you want to support:
+
+**EVM Chains (Ethereum, Polygon, Arbitrum, Optimism, etc.)**
+```bash
+pnpm add @lifi/sdk-provider-ethereum
+```
+
+**Solana**
+```bash
+pnpm add @lifi/sdk-provider-solana
+```
+
+**Bitcoin**
+```bash
+pnpm add @lifi/sdk-provider-bitcoin
+```
+
+**Sui**
+```bash
+pnpm add @lifi/sdk-provider-sui
+```
+
+## Architecture
+
+The LI.FI SDK uses a modular provider architecture:
+
+- **`@lifi/sdk`** - Core SDK package containing shared functionality, actions, and execution logic
+- **Provider packages** - Ecosystem-specific packages that handle wallet interactions and transaction execution for different blockchain types
+
+This architecture allows you to:
+- Install only the providers you need, reducing bundle size
+- Use ecosystem-specific libraries (Viem for EVM, Wallet Standard for Solana, etc.)
+- Maintain clean separation between core SDK logic and blockchain-specific implementations
+
 ## Quick Start
 
 ### Set up the SDK
 
-Firstly, create SDK config with your integrator string.
+Create SDK config with your integrator string and configure the providers for the blockchain ecosystems you want to support.
 
+**For EVM chains:**
 ```ts
-import { createConfig } from '@lifi/sdk'
+import { createClient } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
+import { createWalletClient, http } from 'viem'
+import { mainnet } from 'viem/chains'
 
-createConfig({
+const walletClient = createWalletClient({
+  chain: mainnet,
+  transport: http(),
+})
+
+const client = createClient({
   integrator: 'Your dApp/company name',
+  providers: [
+    EthereumProvider({
+      getWalletClient: () => Promise.resolve(walletClient),
+    }),
+  ],
+})
+```
+
+**For multiple ecosystems:**
+```ts
+import { createClient } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
+import { SolanaProvider } from '@lifi/sdk-provider-solana'
+import { BitcoinProvider } from '@lifi/sdk-provider-bitcoin'
+import { SuiProvider } from '@lifi/sdk-provider-sui'
+
+const client = createClient({
+  integrator: 'Your dApp/company name',
+  providers: [
+    EthereumProvider({ /* options */ }),
+    SolanaProvider({ /* options */ }),
+    BitcoinProvider({ /* options */ }),
+    SuiProvider({ /* options */ }),
+  ],
 })
 ```
 
