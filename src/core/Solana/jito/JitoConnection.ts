@@ -218,8 +218,8 @@ export class JitoConnection extends Connection {
         if (statusResult?.value?.[0]) {
           const status = statusResult.value[0]
 
-          // Check if bundle has an error (transaction failed on-chain)
-          if (status.err && !('Ok' in status.err)) {
+          // Check if bundle transaction failed on-chain
+          if (status.err && status.err.Ok !== null) {
             console.error('Bundle transaction failed:', status.err)
             return false
           }
