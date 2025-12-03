@@ -19,10 +19,14 @@ export type SimulateBundleResult = {
 
 export type BundleStatus = {
   bundle_id: string
-  confirmation_status: 'pending' | 'confirmed' | 'finalized' | 'failed'
-  slot?: number
-  transactions?: string[]
-  err?: any
+  transactions: string[]
+  slot: number
+  confirmation_status: 'processed' | 'confirmed' | 'finalized'
+  err:
+    | {
+        Ok: null
+      }
+    | any
 }
 
 export type BundleStatusResult = {
@@ -213,17 +217,24 @@ export class JitoConnection extends Connection {
 
         if (statusResult?.value?.[0]) {
           const status = statusResult.value[0]
+
+          // Check if bundle has an error (transaction failed on-chain)
+          if (status.err && !('Ok' in status.err)) {
+            console.error('Bundle transaction failed:', status.err)
+            return false
+          }
+
+          // Check if bundle is confirmed or finalized
           if (
             status.confirmation_status === 'confirmed' ||
             status.confirmation_status === 'finalized'
           ) {
             return true
           }
-          if (status.confirmation_status === 'failed') {
-            console.error('Bundle failed:', status.err)
-            return false
-          }
+
+          // Otherwise keep polling (status is 'processed' or still pending)
         }
+        // If value is null/empty, bundle hasn't landed yet - continue polling
       } catch (error) {
         // Continue polling even if status check fails
         console.warn('Bundle status check failed, retrying...', error)
