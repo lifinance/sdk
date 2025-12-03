@@ -1,6 +1,5 @@
 import type { SignatureResult, VersionedTransaction } from '@solana/web3.js'
 import bs58 from 'bs58'
-import { sleep } from '../../../utils/sleep.js'
 import { getJitoConnections } from '../connection.js'
 
 export type BundleResult = {
@@ -95,90 +94,41 @@ export async function sendAndConfirmBundle(
     throw new Error('Failed to send bundle to any Jito connection')
   }
 
-  // Now confirm the bundle across all Jito connections in parallel
+  // Calculate timeout based on blockhash validity
+  const blockhashResult =
+    await jitoConnections[0].getLatestBlockhash('confirmed')
+  const currentBlockHeight =
+    await jitoConnections[0].getBlockHeight('confirmed')
+  const blocksRemaining =
+    blockhashResult.lastValidBlockHeight - currentBlockHeight
+  // Assume ~400ms per slot, add buffer
+  const timeoutMs = Math.min(blocksRemaining * 400 + 10000, 60000)
+
+  // Confirm bundle across all Jito connections in parallel
+  // Each connection polls for bundle status independently
   const confirmPromises = jitoConnections.map(async (jitoConnection) => {
     try {
-      // Get initial blockhash and block height
-      const [blockhashResult, initialBlockHeight] = await Promise.all([
-        jitoConnection.getLatestBlockhash('confirmed'),
-        jitoConnection.getBlockHeight('confirmed'),
-      ])
-      let signatureResults: (SignatureResult | null)[] = txSignatures.map(
-        () => null
-      )
+      // Use the new confirmBundle method which polls for status
+      const confirmed = await jitoConnection.confirmBundle(bundleId, timeoutMs)
 
-      const pollingPromise = (async () => {
-        let pollingBlockHeight = initialBlockHeight
-        while (
-          pollingBlockHeight < blockhashResult.lastValidBlockHeight &&
-          !abortController.signal.aborted
-        ) {
-          const statusResponse =
-            await jitoConnection.getSignatureStatuses(txSignatures)
+      if (confirmed && !abortController.signal.aborted) {
+        // Bundle confirmed, fetch signature statuses
+        const statusResponse =
+          await jitoConnection.getSignatureStatuses(txSignatures)
+        abortController.abort()
+        return statusResponse.value
+      }
 
-          const allConfirmed = statusResponse.value.every(
-            (status) =>
-              status &&
-              (status.confirmationStatus === 'confirmed' ||
-                status.confirmationStatus === 'finalized')
-          )
-
-          if (allConfirmed) {
-            signatureResults = statusResponse.value
-            // Immediately abort all other connections when we find results
-            abortController.abort()
-            return signatureResults
-          }
-
-          await sleep(400)
-          // Update block height independently to avoid stale reads
-          if (!abortController.signal.aborted) {
-            pollingBlockHeight =
-              await jitoConnection.getBlockHeight('confirmed')
-          }
-        }
-        return null
-      })()
-
-      const sendingPromise = (async (): Promise<
-        (SignatureResult | null)[] | null
-      > => {
-        let sendingBlockHeight = initialBlockHeight
-        while (
-          sendingBlockHeight < blockhashResult.lastValidBlockHeight &&
-          !abortController.signal.aborted &&
-          signatureResults.every((r) => r === null)
-        ) {
-          try {
-            // Re-send bundle periodically
-            await jitoConnection.sendBundle(signedTransactions)
-          } catch (_) {
-            // Silently retry on send failures - polling will detect success
-          }
-
-          await sleep(1000)
-          if (!abortController.signal.aborted) {
-            sendingBlockHeight =
-              await jitoConnection.getBlockHeight('confirmed')
-          }
-        }
-        return null
-      })()
-
-      // Wait for polling to find the results
-      const result = await Promise.race([pollingPromise, sendingPromise])
-      return result
+      return null
     } catch (error) {
       if (abortController.signal.aborted) {
-        return null // Don't treat abortion as an error
+        return null
       }
       throw error
     }
   })
 
-  // Wait for the first connection to return (either success or timeout)
-  // If a connection finds confirmation, it aborts all others via abortController
-  // If all connections reject (throw errors), catch and return null array
+  // Wait for first successful confirmation
   const signatureResults =
     (await Promise.any(confirmPromises).catch(() => null)) ??
     txSignatures.map(() => null)

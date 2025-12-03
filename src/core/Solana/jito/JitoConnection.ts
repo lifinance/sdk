@@ -17,6 +17,21 @@ export type SimulateBundleResult = {
   }
 }
 
+export type BundleStatus = {
+  bundle_id: string
+  confirmation_status: 'pending' | 'confirmed' | 'finalized' | 'failed'
+  slot?: number
+  transactions?: string[]
+  err?: any
+}
+
+export type BundleStatusResult = {
+  context: {
+    slot: number
+  }
+  value: BundleStatus[]
+}
+
 /**
  * Makes a direct RPC request to an endpoint
  *
@@ -80,7 +95,17 @@ export class JitoConnection extends Connection {
    * Makes a direct RPC request to the Jito-enabled endpoint
    */
   protected async rpcRequest<T>(method: string, params: any[]): Promise<T> {
-    return rpcRequest(this.rpcEndpoint, method, params)
+    try {
+      return await rpcRequest(this.rpcEndpoint, method, params)
+    } catch (error) {
+      // Log more context for debugging
+      console.error(`Jito RPC request failed: ${method}`, {
+        endpoint: this.rpcEndpoint,
+        params,
+        error,
+      })
+      throw error
+    }
   }
 
   /**
@@ -102,7 +127,7 @@ export class JitoConnection extends Connection {
     try {
       const accounts = await this.rpcRequest<string[]>('getTipAccounts', [])
       if (!accounts.length) {
-        throw new Error('RPC has not tip accounts')
+        throw new Error('RPC has no tip accounts')
       }
       this.tipAccountsCache = accounts
       return accounts
@@ -122,6 +147,15 @@ export class JitoConnection extends Connection {
   async getRandomTipAccount(): Promise<string> {
     const accounts = await this.getTipAccounts()
     return accounts[Math.floor(Math.random() * accounts.length)]
+  }
+
+  /**
+   * Manually refresh the tip accounts cache
+   * Useful for long-running processes that may need updated tip accounts
+   */
+  async refreshTipAccounts(): Promise<string[]> {
+    this.tipAccountsCache = null
+    return this.getTipAccounts()
   }
 
   /**
@@ -150,5 +184,55 @@ export class JitoConnection extends Connection {
       this.serializeTransaction(tx)
     )
     return this.rpcRequest<string>('sendBundle', [encodedTransactions])
+  }
+
+  /**
+   * Get the status of submitted bundles
+   * @param bundleIds - Array of bundle UUIDs to check
+   * @returns Bundle status information
+   */
+  async getBundleStatuses(bundleIds: string[]): Promise<BundleStatusResult> {
+    return this.rpcRequest<BundleStatusResult>('getBundleStatuses', [bundleIds])
+  }
+
+  /**
+   * Confirm a bundle by polling its status until confirmed or timeout
+   * @param bundleId - The bundle UUID to confirm
+   * @param timeoutMs - Maximum time to wait in milliseconds (default: 60000)
+   * @returns true if bundle was confirmed, false if timeout
+   */
+  async confirmBundle(
+    bundleId: string,
+    timeoutMs: number = 60000
+  ): Promise<boolean> {
+    const startTime = Date.now()
+    const pollInterval = 2000
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const statusResult = await this.getBundleStatuses([bundleId])
+
+        if (statusResult?.value?.[0]) {
+          const status = statusResult.value[0]
+          if (
+            status.confirmation_status === 'confirmed' ||
+            status.confirmation_status === 'finalized'
+          ) {
+            return true
+          }
+          if (status.confirmation_status === 'failed') {
+            console.error('Bundle failed:', status.err)
+            return false
+          }
+        }
+      } catch (error) {
+        // Continue polling even if status check fails
+        console.warn('Bundle status check failed, retrying...', error)
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollInterval))
+    }
+
+    return false
   }
 }
