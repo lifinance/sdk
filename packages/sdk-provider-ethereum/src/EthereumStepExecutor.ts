@@ -227,6 +227,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
   private prepareUpdatedStep = async (
     client: SDKClient,
+    viemClient: Client,
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
@@ -285,6 +286,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     let transactionRequest: TransactionParameters | undefined
     if (step.transactionRequest) {
       transactionRequest = {
+        chainId: step.transactionRequest.chainId,
         to: step.transactionRequest.to,
         from: step.transactionRequest.from,
         data: step.transactionRequest.data,
@@ -301,8 +303,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
         //   : undefined,
         maxPriorityFeePerGas:
-          this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(client, this.client)
+          viemClient.account?.type === 'local'
+            ? await getMaxPriorityFeePerGas(client, viemClient)
             : step.transactionRequest.maxPriorityFeePerGas
               ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
               : undefined,
@@ -534,9 +536,20 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       await checkBalance(client, this.client.account!.address, step)
 
+      // Make sure that the client and chain is still correct
+      const updatedClient = await this.checkClient(step, process)
+      if (!updatedClient) {
+        return step
+      }
+
       // Try to prepare a new transaction request and update the step with typed data
       let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(client, step, signedTypedData)
+        await this.prepareUpdatedStep(
+          client,
+          updatedClient,
+          step,
+          signedTypedData
+        )
 
       process = this.statusManager.updateProcess(
         step,
