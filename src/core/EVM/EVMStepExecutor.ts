@@ -222,6 +222,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
   }
 
   private prepareUpdatedStep = async (
+    client: Client,
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
@@ -280,6 +281,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     let transactionRequest: TransactionParameters | undefined
     if (step.transactionRequest) {
       transactionRequest = {
+        chainId: step.transactionRequest.chainId,
         to: step.transactionRequest.to,
         from: step.transactionRequest.from,
         data: step.transactionRequest.data,
@@ -296,8 +298,8 @@ export class EVMStepExecutor extends BaseStepExecutor {
         //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
         //   : undefined,
         maxPriorityFeePerGas:
-          this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(this.client)
+          client.account?.type === 'local'
+            ? await getMaxPriorityFeePerGas(client)
             : step.transactionRequest.maxPriorityFeePerGas
               ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
               : undefined,
@@ -525,9 +527,15 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
       await checkBalance(this.client.account!.address, step)
 
+      // Make sure that the client and chain is still correct
+      const updatedClient = await this.checkClient(step, process)
+      if (!updatedClient) {
+        return step
+      }
+
       // Try to prepare a new transaction request and update the step with typed data
       let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(step, signedTypedData)
+        await this.prepareUpdatedStep(updatedClient, step, signedTypedData)
 
       process = this.statusManager.updateProcess(
         step,
