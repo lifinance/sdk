@@ -81,9 +81,8 @@ export async function sendAndConfirmTransaction(
         ])
 
       let signatureResult: SignatureStatus | null = null
-
+      let blockHeight = initialBlockHeight
       const pollingPromise = (async () => {
-        let blockHeight = initialBlockHeight
         while (
           blockHeight < blockhashResult.lastValidBlockHeight &&
           !abortController.signal.aborted
@@ -105,20 +104,11 @@ export async function sendAndConfirmTransaction(
           }
 
           await sleep(400)
-
-          if (!abortController.signal.aborted) {
-            blockHeight = await connection
-              .getBlockHeight({
-                commitment: 'confirmed',
-              })
-              .send()
-          }
         }
         return null
       })()
 
-      const sendingPromise = (async (): Promise<SignatureStatus | null> => {
-        let blockHeight = initialBlockHeight
+      const sendingPromise = (async () => {
         while (
           blockHeight < blockhashResult.lastValidBlockHeight &&
           !abortController.signal.aborted &&
