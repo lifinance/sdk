@@ -26,6 +26,7 @@ export interface SDKBaseConfig {
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean
+  chainsRefetchInterval?: number
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

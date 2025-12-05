@@ -186,7 +186,7 @@ const getEIP712DomainData = async (
   tokenAddress: Address
 ) => {
   try {
-    const multicallAddress = await getMulticallAddress(client.config, chainId)
+    const multicallAddress = await getMulticallAddress(client, chainId)
 
     const contractCalls = [
       {
@@ -347,7 +347,7 @@ const getContractData = async (
     }
 
     // Fallback to legacy approach - validates and returns domain object
-    const multicallAddress = await getMulticallAddress(client.config, chainId)
+    const multicallAddress = await getMulticallAddress(client, chainId)
 
     const contractCalls = [
       {
