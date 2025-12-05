@@ -1,8 +1,4 @@
-import {
-  type Cluster,
-  Connection,
-  type VersionedTransaction,
-} from '@solana/web3.js'
+import { Connection, type VersionedTransaction } from '@solana/web3.js'
 import { uint8ArrayToBase64 } from '../../../utils/uint8ArrayToBase64.js'
 import { JITO_TIP_ACCOUNTS } from './constants.js'
 
@@ -73,12 +69,6 @@ async function rpcRequest<T>(
  */
 export class JitoConnection extends Connection {
   private tipAccountsCache: string[] | null = null
-  private cluster: Cluster
-
-  constructor(endpoint: string, cluster: Cluster = 'mainnet-beta') {
-    super(endpoint)
-    this.cluster = cluster
-  }
 
   /**
    * Check if an RPC endpoint supports Jito bundles
@@ -135,9 +125,9 @@ export class JitoConnection extends Connection {
       this.tipAccountsCache = accounts
       return accounts
     } catch (error) {
-      const fallbackAccounts = JITO_TIP_ACCOUNTS[this.cluster]
+      const fallbackAccounts = JITO_TIP_ACCOUNTS
       console.warn(
-        `Failed to fetch tip accounts from RPC, using ${this.cluster} fallback:`,
+        `Failed to fetch tip accounts from RPC, using  fallback`,
         error
       )
       return fallbackAccounts

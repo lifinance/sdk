@@ -1,21 +1,7 @@
 import { ChainId } from '@lifi/types'
-import { type Cluster, Connection } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
 import { getRpcUrls } from '../rpc.js'
 import { JitoConnection } from './jito/JitoConnection.js'
-
-/**
- * Detect the cluster (network) from an RPC URL
- */
-const detectCluster = (rpcUrl: string): Cluster => {
-  const url = rpcUrl.toLowerCase()
-  if (url.includes('devnet')) {
-    return 'devnet'
-  }
-  if (url.includes('testnet')) {
-    return 'testnet'
-  }
-  return 'mainnet-beta'
-}
 
 const connections = new Map<string, Connection | JitoConnection>()
 
@@ -28,7 +14,7 @@ const ensureConnections = async (): Promise<void> => {
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
       const connection = (await JitoConnection.isJitoRpc(rpcUrl))
-        ? new JitoConnection(rpcUrl, detectCluster(rpcUrl))
+        ? new JitoConnection(rpcUrl)
         : new Connection(rpcUrl)
       connections.set(rpcUrl, connection)
     }
