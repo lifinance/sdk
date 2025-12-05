@@ -1,6 +1,6 @@
 import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
+import { isAddress } from '@solana/kit'
 import { getSolanaBalance } from './actions/getSolanaBalance.js'
-import { isSolanaAddress } from './actions/isSolanaAddress.js'
 import { resolveSolanaAddress } from './actions/resolveSolanaAddress.js'
 import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import type { SolanaProviderOptions, SolanaSDKProvider } from './types.js'
@@ -13,7 +13,7 @@ export function SolanaProvider(
     get type() {
       return ChainType.SVM
     },
-    isAddress: isSolanaAddress,
+    isAddress,
     resolveAddress: resolveSolanaAddress,
     getBalance: getSolanaBalance,
     async getStepExecutor(
