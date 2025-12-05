@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-bitcoin",
-  "version": "4.0.0-alpha.4",
+  "version": "4.0.0-alpha.5",
   "description": "LI.FI Bitcoin SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -54,12 +54,12 @@
     "bitcoinjs-lib": "^7.0.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.43.2",
-    "@vitest/coverage-v8": "^4.0.14",
+    "@lifi/data-types": "^6.47.0",
+    "@vitest/coverage-v8": "^4.0.15",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.15"
   },
   "publishConfig": {
     "access": "public"
