@@ -9,9 +9,8 @@
   "license": "MIT",
   "dependencies": {
     "@lifi/data-types": "^6.47.0",
-    "@lifi/sdk": "^3.13.7",
-    "@wagmi/connectors": "^6.1.4",
-    "@wagmi/core": "^2.22.1",
+    "@lifi/sdk": "^4.0.0-alpha.5",
+    "@lifi/sdk-provider-ethereum": "^4.0.0-alpha.5",
     "dotenv": "^17.2.3",
     "viem": "^2.41.2"
   },

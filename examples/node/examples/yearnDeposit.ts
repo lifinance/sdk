@@ -3,11 +3,11 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  createConfig,
-  EVM,
+  createClient,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import {
   createWalletClient,
@@ -34,7 +34,7 @@ const run = async () => {
     // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
     const account = privateKeyToAccount(privateKey)
 
-    const client = createWalletClient({
+    const walletClient = createWalletClient({
       account,
       chain: arbitrum,
       transport: http(),
@@ -42,24 +42,25 @@ const run = async () => {
 
     const switchChains = [mainnet, arbitrum, optimism, polygon]
 
-    createConfig({
+    const client = createClient({
       integrator: 'lifi-sdk-example',
-      providers: [
-        EVM({
-          getWalletClient: () => Promise.resolve(client),
-          switchChain: (chainId) =>
-            Promise.resolve(
-              createWalletClient({
-                account,
-                chain: switchChains.find(
-                  (chain) => chain.id === chainId
-                ) as Chain,
-                transport: http(),
-              })
-            ),
-        }),
-      ],
     })
+
+    client.setProviders([
+      EthereumProvider({
+        getWalletClient: () => Promise.resolve(walletClient),
+        switchChain: (chainId) =>
+          Promise.resolve(
+            createWalletClient({
+              account,
+              chain: switchChains.find(
+                (chain) => chain.id === chainId
+              ) as Chain,
+              transport: http(),
+            })
+          ),
+      }),
+    ])
 
     const config = {
       fromChain: ChainId.ARB,
@@ -103,6 +104,7 @@ const run = async () => {
     )
 
     const contactCallsQuoteResponse = await getContractCallsQuote(
+      client,
       contractCallsQuoteRequest
     )
     console.info('>> Contract Calls Quote', contactCallsQuoteResponse)
@@ -111,22 +113,27 @@ const run = async () => {
       return
     }
 
-    await checkTokenAllowance(contactCallsQuoteResponse, account, client)
+    await checkTokenAllowance(
+      client,
+      contactCallsQuoteResponse,
+      account,
+      walletClient
+    )
 
     console.info(
       '>> Execute transaction',
       contactCallsQuoteResponse.transactionRequest
     )
 
-    const hash = await client.sendTransaction(
+    const hash = await walletClient.sendTransaction(
       transformTxRequestToSendTxParams(
-        client.account,
+        walletClient.account,
         contactCallsQuoteResponse.transactionRequest
       )
     )
     console.info('>> Transaction sent', hash)
 
-    const receipt = await client.waitForTransactionReceipt({
+    const receipt = await walletClient.waitForTransactionReceipt({
       hash,
     })
     console.info('>> Transaction receipt', receipt)
@@ -141,7 +148,7 @@ const run = async () => {
           }, 5000)
         })
 
-        result = await getStatus({
+        result = await getStatus(client, {
           txHash: receipt.transactionHash,
           bridge: contactCallsQuoteResponse.tool,
           fromChain: contactCallsQuoteResponse.action.fromChainId,
