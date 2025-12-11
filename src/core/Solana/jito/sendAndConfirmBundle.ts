@@ -12,8 +12,8 @@ export type BundleResult = {
  * Send and confirm a bundle of transactions using Jito
  * Automatically selects a Jito-enabled RPC connection and polls for confirmation
  * across multiple Jito RPCs in parallel
- * @param signedTransactions - Array of signed transactions
- * @returns Bundle ID, transaction signatures, and confirmation results
+ * @param signedTransactions - an Array of signed transactions
+ * @returns - {@link BundleResult} object containing Bundle ID, transaction signatures, and confirmation results
  */
 export async function sendAndConfirmBundle(
   signedTransactions: VersionedTransaction[]
