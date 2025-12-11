@@ -2,6 +2,9 @@
 cjs
 esm
 types
+_esm/
+_cjs/
+_types/
 
 # idea
 .idea/

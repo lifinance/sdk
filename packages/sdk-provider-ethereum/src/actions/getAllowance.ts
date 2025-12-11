@@ -48,7 +48,7 @@ export const getAllowanceMulticall = async (
   if (!tokens.length) {
     return []
   }
-  const multicallAddress = await getMulticallAddress(client.config, chainId)
+  const multicallAddress = await getMulticallAddress(client, chainId)
   if (!multicallAddress) {
     throw new Error(`No multicall address configured for chainId ${chainId}.`)
   }

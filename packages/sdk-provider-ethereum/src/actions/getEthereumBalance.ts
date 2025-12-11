@@ -26,7 +26,7 @@ export const getEthereumBalance = async (
     }
   }
 
-  const multicallAddress = await getMulticallAddress(client.config, chainId)
+  const multicallAddress = await getMulticallAddress(client, chainId)
 
   const viemClient = await getPublicClient(client, chainId)
   if (multicallAddress && tokens.length > 1) {

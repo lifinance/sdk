@@ -21,10 +21,10 @@ export const getChains = async (
   params?: ChainsRequest,
   options?: RequestOptions
 ): Promise<ExtendedChain[]> => {
-  return await getChainsFromConfig(client.config, params, options)
+  return await _getChains(client.config, params, options)
 }
 
-export const getChainsFromConfig = async (
+export const _getChains = async (
   config: SDKBaseConfig,
   params?: ChainsRequest,
   options?: RequestOptions
