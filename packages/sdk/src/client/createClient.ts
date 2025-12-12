@@ -1,4 +1,4 @@
-import type { ChainId, ChainType } from '@lifi/types'
+import type { ChainId, ChainType, ExtendedChain } from '@lifi/types'
 import type {
   SDKBaseConfig,
   SDKClient,
@@ -49,6 +49,9 @@ export function createClient(options: SDKConfig): SDKClient {
         providerMap.set(provider.type, provider)
       }
       _providers = Array.from(providerMap.values())
+    },
+    setChains(chains: ExtendedChain[]) {
+      _storage.setChains(chains)
     },
     async getChains() {
       return await _storage.getChains()
