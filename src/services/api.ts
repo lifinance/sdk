@@ -1,5 +1,5 @@
 import {
-  type ChainId,
+  ChainId,
   type ChainKey,
   type ChainsRequest,
   type ChainsResponse,
@@ -247,17 +247,24 @@ export const getStepTransaction = async (
     console.warn('SDK Validation: Invalid Step', step)
   }
 
-  return await request<LiFiStep>(
-    `${config.get().apiUrl}/advanced/stepTransaction`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(step),
-      signal: options?.signal,
-    }
-  )
+  const _config = config.get()
+  let requestUrl = `${_config.apiUrl}/advanced/stepTransaction`
+  const isJitoBundleEnabled = Boolean(_config.routeOptions?.jitoBundle)
+
+  if (isJitoBundleEnabled && step.action.fromChainId === ChainId.SOL) {
+    // add jitoBundle param to url if from chain is SVM and jitoBundle is enabled in config
+    const queryParams = new URLSearchParams({ jitoBundle: 'true' })
+    requestUrl = `${requestUrl}?${queryParams}`
+  }
+
+  return await request<LiFiStep>(requestUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(step),
+    signal: options?.signal,
+  })
 }
 
 /**
