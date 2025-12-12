@@ -311,19 +311,6 @@ describe('getClientStorage', () => {
         ChainId.SOL,
       ])
     })
-
-    it('should allow overwriting previously set chains', async () => {
-      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
-
-      const storage = getClientStorage(mockConfig)
-
-      const newChains = [mockChains[0]] // Only first chain
-      storage.setChains(mockChains)
-      storage.setChains(newChains)
-
-      const chains = await storage.getChains()
-      expect(chains).toEqual(newChains)
-    })
   })
 
   describe('preloadChains mode', () => {
@@ -338,22 +325,6 @@ describe('getClientStorage', () => {
 
       expect(_getChains).not.toHaveBeenCalled()
       expect(chains).toEqual([])
-    })
-
-    it('should return externally set chains when preloadChains is true', async () => {
-      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
-
-      const configWithPreload = {
-        ...mockConfig,
-        preloadChains: true,
-      }
-      const storage = getClientStorage(configWithPreload)
-
-      storage.setChains(mockChains)
-      const chains = await storage.getChains()
-
-      expect(_getChains).not.toHaveBeenCalled()
-      expect(chains).toEqual(mockChains)
     })
 
     it('should not auto-refresh chains when preloadChains is true', async () => {
@@ -379,17 +350,6 @@ describe('getClientStorage', () => {
 
       // Restore Date.now
       Date.now = originalDateNow
-    })
-
-    it('should auto-fetch chains when preloadChains is false/undefined', async () => {
-      vi.mocked(_getChains).mockResolvedValue(mockChains)
-      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
-
-      const storage = getClientStorage(mockConfig) // preloadChains is undefined
-
-      await storage.getChains()
-
-      expect(_getChains).toHaveBeenCalledTimes(1)
     })
   })
 

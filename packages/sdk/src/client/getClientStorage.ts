@@ -4,7 +4,7 @@ import { getRpcUrlsFromChains } from '../core/utils.js'
 import type { RPCUrls, SDKBaseConfig } from '../types/core.js'
 
 // 6 hours in milliseconds
-const CHAINS_REFRESH_INTERVAL = 1000 * 60 * 60 * 6
+const chainsRefreshInterval = 1000 * 60 * 60 * 6
 
 export const getClientStorage = (config: SDKBaseConfig) => {
   let _chains = [] as ExtendedChain[]
@@ -20,7 +20,7 @@ export const getClientStorage = (config: SDKBaseConfig) => {
     get needReset() {
       return (
         !_chainsUpdatedAt ||
-        Date.now() - _chainsUpdatedAt >= CHAINS_REFRESH_INTERVAL
+        Date.now() - _chainsUpdatedAt >= chainsRefreshInterval
       )
     },
     setChains(chains: ExtendedChain[]) {
