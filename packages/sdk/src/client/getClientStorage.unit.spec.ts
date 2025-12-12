@@ -111,7 +111,7 @@ describe('getClientStorage', () => {
       expect(storage.needReset).toBe(true) // Because _chainsUpdatedAt is undefined
     })
 
-    it('should return true when chains are older than 24 hours', async () => {
+    it('should return true when chains are older than 6 hours', async () => {
       vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
@@ -120,9 +120,9 @@ describe('getClientStorage', () => {
       // First call to getChains sets the timestamp
       await storage.getChains()
 
-      // Mock Date.now to return a time 25 hours later
+      // Mock Date.now to return a time 7 hours later
       const originalDateNow = Date.now
-      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
 
       expect(storage.needReset).toBe(true)
 
@@ -263,9 +263,9 @@ describe('getClientStorage', () => {
       await storage.getChains()
       await storage.getRpcUrls()
 
-      // Mock Date.now to return a time 25 hours later
+      // Mock Date.now to return a time 7 hours later (beyond 6h refresh interval)
       const originalDateNow = Date.now
-      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
 
       // Should refetch when needReset is true - chains are refreshed and RPC URLs are merged again
       await storage.getChains()
@@ -276,6 +276,120 @@ describe('getClientStorage', () => {
 
       // Restore Date.now
       Date.now = originalDateNow
+    })
+  })
+
+  describe('setChains method', () => {
+    it('should set chains and update timestamp', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const storage = getClientStorage(mockConfig)
+
+      // Set chains externally
+      storage.setChains(mockChains)
+
+      // Should return the set chains without fetching
+      const chains = await storage.getChains()
+
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual(mockChains)
+      expect(storage.needReset).toBe(false)
+    })
+
+    it('should update RPC URLs when setChains is called', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const configWithoutRpcUrls = {
+        ...mockConfig,
+        rpcUrls: {},
+      }
+      const storage = getClientStorage(configWithoutRpcUrls)
+
+      storage.setChains(mockChains)
+
+      expect(getRpcUrlsFromChains).toHaveBeenCalledWith({}, mockChains, [
+        ChainId.SOL,
+      ])
+    })
+
+    it('should allow overwriting previously set chains', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const storage = getClientStorage(mockConfig)
+
+      const newChains = [mockChains[0]] // Only first chain
+      storage.setChains(mockChains)
+      storage.setChains(newChains)
+
+      const chains = await storage.getChains()
+      expect(chains).toEqual(newChains)
+    })
+  })
+
+  describe('preloadChains mode', () => {
+    it('should not auto-fetch chains when preloadChains is true', async () => {
+      const configWithPreload = {
+        ...mockConfig,
+        preloadChains: true,
+      }
+      const storage = getClientStorage(configWithPreload)
+
+      const chains = await storage.getChains()
+
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual([])
+    })
+
+    it('should return externally set chains when preloadChains is true', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const configWithPreload = {
+        ...mockConfig,
+        preloadChains: true,
+      }
+      const storage = getClientStorage(configWithPreload)
+
+      storage.setChains(mockChains)
+      const chains = await storage.getChains()
+
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual(mockChains)
+    })
+
+    it('should not auto-refresh chains when preloadChains is true', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const configWithPreload = {
+        ...mockConfig,
+        preloadChains: true,
+      }
+      const storage = getClientStorage(configWithPreload)
+
+      storage.setChains(mockChains)
+
+      // Mock Date.now to return a time 7 hours later (beyond 6h refresh interval)
+      const originalDateNow = Date.now
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
+
+      const chains = await storage.getChains()
+
+      // Should still not fetch, even though cache is "stale"
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual(mockChains)
+
+      // Restore Date.now
+      Date.now = originalDateNow
+    })
+
+    it('should auto-fetch chains when preloadChains is false/undefined', async () => {
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const storage = getClientStorage(mockConfig) // preloadChains is undefined
+
+      await storage.getChains()
+
+      expect(_getChains).toHaveBeenCalledTimes(1)
     })
   })
 
