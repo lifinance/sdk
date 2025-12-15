@@ -129,7 +129,12 @@ export type {
   QuoteRequestFromAmount,
   QuoteRequestToAmount,
 } from './services/types.js'
-export type { RPCUrls, SDKBaseConfig, SDKConfig } from './types/internal.js'
+export type {
+  RequestInterceptor,
+  RPCUrls,
+  SDKBaseConfig,
+  SDKConfig,
+} from './types/internal.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
