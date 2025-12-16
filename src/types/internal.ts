@@ -1,5 +1,10 @@
 import type { ChainId, ExtendedChain, RouteOptions } from '@lifi/types'
 import type { SDKProvider } from '../core/types.js'
+import type { ExtendedRequestInit } from './request.js'
+
+export type RequestInterceptor = (
+  request: ExtendedRequestInit
+) => ExtendedRequestInit | Promise<ExtendedRequestInit>
 
 export interface SDKBaseConfig {
   apiKey?: string
@@ -14,6 +19,7 @@ export interface SDKBaseConfig {
   widgetVersion?: string
   preloadChains: boolean
   debug: boolean
+  requestInterceptor?: RequestInterceptor
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

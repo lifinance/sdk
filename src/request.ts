@@ -23,7 +23,8 @@ export const request = async <T = Response>(
     retries: requestSettings.retries,
   }
 ): Promise<T> => {
-  const { userId, integrator, widgetVersion, apiKey } = config.get()
+  const { userId, integrator, widgetVersion, apiKey, requestInterceptor } =
+    config.get()
 
   if (!integrator) {
     throw new SDKError(
@@ -70,6 +71,10 @@ export const request = async <T = Response>(
       'x-lifi-integrator': integrator,
     }
 
+    if (requestInterceptor) {
+      options = await requestInterceptor(options)
+    }
+
     const response: Response = await fetch(
       url,
       stripExtendRequestInitProperties(options)
@@ -81,9 +86,10 @@ export const request = async <T = Response>(
 
     return await response.json()
   } catch (error) {
-    if (options.retries > 0 && (error as HTTPError).status === 500) {
+    const retries = options.retries ?? 0
+    if (retries > 0 && (error as HTTPError).status === 500) {
       await sleep(500)
-      return request<T>(url, { ...options, retries: options.retries - 1 })
+      return request<T>(url, { ...options, retries: retries - 1 })
     }
 
     await (error as HTTPError).buildAdditionalDetails?.()
