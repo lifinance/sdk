@@ -4,7 +4,6 @@ import {
   type ExtendedChain,
   getRelayerQuote,
   getStepTransaction,
-  isTokenMessageSigningAllowed,
   LiFiErrorCode,
   type LiFiStep,
   type LiFiStepExtended,
@@ -434,10 +433,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning ||
-      step.type !== 'lifi' ||
-      // We disable message signing for tokens with '₮' symbol
-      !isTokenMessageSigningAllowed(step.action.fromToken)
+      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
