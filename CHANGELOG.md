@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.14.1](https://github.com/lifinance/sdk/compare/v3.14.0...v3.14.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* remove USDT0 Ledger check ([aaf717d](https://github.com/lifinance/sdk/commit/aaf717d81b04f8c54439563bf9fb3b4c6ccd85cf))
+
 ## [3.14.0](https://github.com/lifinance/sdk/compare/v3.13.7...v3.14.0) (2025-12-16)
 
 
