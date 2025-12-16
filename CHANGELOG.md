@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.14.0](https://github.com/lifinance/sdk/compare/v3.13.7...v3.14.0) (2025-12-16)
+
+
+### Features
+
+* add request interceptor ([#337](https://github.com/lifinance/sdk/issues/337)) ([13ca0df](https://github.com/lifinance/sdk/commit/13ca0dfcec3ab8cce267a450db1d7243e3b69ba7))
+* **v3-solana:** add support for jito bundles ([#329](https://github.com/lifinance/sdk/issues/329)) ([1557f06](https://github.com/lifinance/sdk/commit/1557f0619d919f7a210eb4418b6637a07d6ef1a9))
+
 ### [3.13.7](https://github.com/lifinance/sdk/compare/v3.13.6...v3.13.7) (2025-12-04)
 
 
