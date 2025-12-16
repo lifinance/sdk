@@ -35,7 +35,6 @@ import type {
   TransactionMethodType,
   TransactionParameters,
 } from '../types.js'
-import { isTokenMessageSigningAllowed } from '../utils.js'
 import { waitForDestinationChainTransaction } from '../waitForDestinationChainTransaction.js'
 import { checkAllowance } from './checkAllowance.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
@@ -427,9 +426,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // We also disable message signing for custom steps
     const disableMessageSigning =
       this.executionOptions?.disableMessageSigning ||
-      step.type !== 'lifi' ||
-      // We disable message signing for tokens with '₮' symbol
-      !isTokenMessageSigningAllowed(step.action.fromToken)
+      step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =

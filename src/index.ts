@@ -83,7 +83,6 @@ export type {
 export type { UTXOProvider, UTXOProviderOptions } from './core/UTXO/types.js'
 export { isUTXO } from './core/UTXO/types.js'
 export { UTXO } from './core/UTXO/UTXO.js'
-export { isTokenMessageSigningAllowed } from './core/utils.js'
 export { createConfig } from './createConfig.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'

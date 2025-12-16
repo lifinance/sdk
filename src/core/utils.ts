@@ -1,4 +1,4 @@
-import type { LiFiStep, Token } from '@lifi/types'
+import type { LiFiStep } from '@lifi/types'
 
 // Standard threshold for destination amount difference (0.5%)
 const standardThreshold = 0.005
@@ -27,16 +27,4 @@ export function checkStepSlippageThreshold(
       1_000_000_000
   }
   return actualSlippage <= setSlippage
-}
-
-/**
- * Checks whether a given token is eligible for message signing.
- * Tokens with '₮' symbol in their name are disallowed,
- * since such tokens may have non-standard signing requirements or compatibility issues with hardware wallets.
- *
- * @param token - The token object to check.
- * @returns true if the token is allowed for message signing, false otherwise.
- */
-export const isTokenMessageSigningAllowed = (token: Token): boolean => {
-  return !token.name?.includes('₮') && !token.symbol?.includes('₮')
 }
