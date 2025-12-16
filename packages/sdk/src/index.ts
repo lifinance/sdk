@@ -66,6 +66,7 @@ export type {
   Process,
   ProcessStatus,
   ProcessType,
+  RequestInterceptor,
   RouteExecutionData,
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
