@@ -1,7 +1,8 @@
 import { ChainId, type SDKClient } from '@lifi/sdk'
 import { Connection } from '@solana/web3.js'
+import { JitoConnection } from '../jito/JitoConnection.js'
 
-const connections = new Map<string, Connection>()
+const connections = new Map<string, Connection | JitoConnection>()
 
 /**
  * Initializes the Solana connections if they haven't been initialized yet.
@@ -11,7 +12,9 @@ const ensureConnections = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
-      const connection = new Connection(rpcUrl)
+      const connection = (await JitoConnection.isJitoRpc(rpcUrl))
+        ? new JitoConnection(rpcUrl)
+        : new Connection(rpcUrl)
       connections.set(rpcUrl, connection)
     }
   }
@@ -19,13 +22,36 @@ const ensureConnections = async (client: SDKClient): Promise<void> => {
 
 /**
  * Wrapper around getting the connection (RPC provider) for Solana
- * @returns - Solana RPC connections
+ * Returns only non-Jito RPC connections (excludes JitoConnection instances)
+ * @param client - The SDK client
+ * @returns - Solana RPC connections (excluding Jito connections)
  */
 export const getSolanaConnections = async (
   client: SDKClient
 ): Promise<Connection[]> => {
   await ensureConnections(client)
-  return Array.from(connections.values())
+  return Array.from(connections.values()).filter(
+    (conn): conn is Connection =>
+      conn instanceof Connection && !(conn instanceof JitoConnection)
+  )
+}
+
+/**
+ * Get Jito-enabled connections only.
+ * @param client - The SDK client
+ * @returns - Array of JitoConnection instances
+ */
+export const getJitoConnections = async (
+  client?: SDKClient
+): Promise<JitoConnection[]> => {
+  // If client is provided, ensure connections are initialized
+  // Otherwise, return from existing cache (used by sendAndConfirmBundle)
+  if (client) {
+    await ensureConnections(client)
+  }
+  return Array.from(connections.values()).filter(
+    (conn): conn is JitoConnection => conn instanceof JitoConnection
+  )
 }
 
 /**
@@ -50,5 +76,5 @@ export async function callSolanaWithRetry<R>(
     }
   }
   // Throw the last encountered error
-  throw lastError
+  throw lastError || new Error('No Solana RPC connections available')
 }
