@@ -25,6 +25,7 @@ export function createClient(options: SDKConfig): SDKClient {
     apiUrl: options?.apiUrl ?? 'https://li.quest/v1',
     rpcUrls: options?.rpcUrls ?? {},
     debug: options?.debug ?? false,
+    preloadChains: options?.preloadChains ?? true,
     integrator: options?.integrator ?? 'lifi-sdk',
   }
 

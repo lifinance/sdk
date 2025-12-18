@@ -79,6 +79,7 @@ describe('createClient', () => {
         userId: 'user-123',
         debug: true,
         disableVersionCheck: true,
+        preloadChains: true,
         widgetVersion: '1.0.0',
         rpcUrls: {
           [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
