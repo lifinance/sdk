@@ -30,6 +30,7 @@ describe('getClientStorage', () => {
       integrator: 'test-app',
       apiUrl: 'https://li.quest/v1',
       debug: false,
+      preloadChains: true,
       rpcUrls: {
         [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
       },
@@ -314,42 +315,20 @@ describe('getClientStorage', () => {
   })
 
   describe('preloadChains mode', () => {
-    it('should not auto-fetch chains when preloadChains is true', async () => {
-      const configWithPreload = {
-        ...mockConfig,
-        preloadChains: true,
+    it('should not auto-fetch chains when preloadChains is false', async () => {
+      const configWithoutPreload: SDKBaseConfig = {
+        integrator: 'test-app',
+        apiUrl: 'https://li.quest/v1',
+        preloadChains: false,
+        rpcUrls: {},
+        debug: false,
       }
-      const storage = getClientStorage(configWithPreload)
+      const storage = getClientStorage(configWithoutPreload)
 
       const chains = await storage.getChains()
 
       expect(_getChains).not.toHaveBeenCalled()
       expect(chains).toEqual([])
-    })
-
-    it('should not auto-refresh chains when preloadChains is true', async () => {
-      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
-
-      const configWithPreload = {
-        ...mockConfig,
-        preloadChains: true,
-      }
-      const storage = getClientStorage(configWithPreload)
-
-      storage.setChains(mockChains)
-
-      // Mock Date.now to return a time 7 hours later (beyond 6h refresh interval)
-      const originalDateNow = Date.now
-      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
-
-      const chains = await storage.getChains()
-
-      // Should still not fetch, even though cache is "stale"
-      expect(_getChains).not.toHaveBeenCalled()
-      expect(chains).toEqual(mockChains)
-
-      // Restore Date.now
-      Date.now = originalDateNow
     })
   })
 

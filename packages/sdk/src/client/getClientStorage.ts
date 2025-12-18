@@ -29,9 +29,9 @@ export const getClientStorage = (config: SDKBaseConfig) => {
       updateRpcUrls()
     },
     async getChains() {
-      // In preloadChains mode, SDK does not auto-fetch chains
+      // When preloadChains is false, SDK does not auto-fetch chains
       // External consumer is responsible for calling setChains
-      if (config.preloadChains) {
+      if (!config.preloadChains) {
         return _chains
       }
 
