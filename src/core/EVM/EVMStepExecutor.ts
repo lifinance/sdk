@@ -425,8 +425,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning ||
-      step.type !== 'lifi'
+      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -530,9 +529,19 @@ export class EVMStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      // Try to prepare a new transaction request and update the step with typed data
-      let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(updatedClient, step, signedTypedData)
+      let transactionRequest = step.transactionRequest as
+        | TransactionParameters
+        | undefined
+      let isRelayerTransaction: boolean = false
+      if (!step.transactionRequest) {
+        // Try to prepare a new transaction request and update the step with typed data
+        const {
+          transactionRequest: newTransactionRequest,
+          isRelayerTransaction: newIsRelayerTransaction,
+        } = await this.prepareUpdatedStep(updatedClient, step, signedTypedData)
+        transactionRequest = newTransactionRequest
+        isRelayerTransaction = newIsRelayerTransaction
+      }
 
       process = this.statusManager.updateProcess(
         step,
