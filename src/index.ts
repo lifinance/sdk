@@ -2,6 +2,7 @@
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
 export { config } from './config.js'
+export { PatcherMagicNumber } from './constants.js'
 export { checkPermitSupport } from './core/EVM/checkPermitSupport.js'
 export { EVM } from './core/EVM/EVM.js'
 export {
@@ -113,6 +114,7 @@ export {
   getTokens,
   getTools,
   getTransactionHistory,
+  patchContractCalls,
   relayTransaction,
 } from './services/api.js'
 export {

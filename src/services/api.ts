@@ -726,9 +726,6 @@ export type PatchContractCallsRequest = {
   callDataToPatch: string
   patches: {
     amountToReplace: string
-    getAmount: {
-      owner: string
-    }
   }[]
   value?: string
   delegateCall?: boolean

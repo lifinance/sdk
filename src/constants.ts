@@ -8,3 +8,5 @@ export const MaxUint48 = BigInt('0xffffffffffff')
 export const MaxUint160 = BigInt('0xffffffffffffffffffffffffffffffffffffffff')
 export const MaxUint256 =
   BigInt(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn)
+
+export const PatcherMagicNumber = 314159265359n
