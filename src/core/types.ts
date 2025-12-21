@@ -2,6 +2,7 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ContractCall,
   FeeCost,
   GasCost,
   LiFiStep,
@@ -114,11 +115,40 @@ export type AcceptExchangeRateUpdateHook = (
   params: ExchangeRateUpdateParams
 ) => Promise<boolean | undefined>
 
+export interface ContractCallParams {
+  fromChainId: number
+  toChainId: number
+  fromTokenAddress: string
+  toTokenAddress: string
+  fromAddress: string
+  toAddress?: string
+  fromAmount: bigint
+  toAmount: bigint
+  slippage?: number
+}
+
+export interface ContractTool {
+  name: string
+  logoURI: string
+}
+
+export interface GetContractCallsResult {
+  contractCalls: ContractCall[]
+  patcher?: boolean
+  contractTool?: ContractTool
+}
+
+export type GetContractCallsHook = (
+  params: ContractCallParams
+) => Promise<GetContractCallsResult>
+
 export interface ExecutionOptions {
   acceptExchangeRateUpdateHook?: AcceptExchangeRateUpdateHook
   switchChainHook?: SwitchChainHook
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
+  getContractCalls?: GetContractCallsHook
+  adjustZeroOutputFromPreviousStep?: boolean
   executeInBackground?: boolean
   disableMessageSigning?: boolean
   /**
