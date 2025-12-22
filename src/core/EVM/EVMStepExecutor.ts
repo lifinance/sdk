@@ -17,12 +17,14 @@ import {
 } from 'viem/actions'
 import { getAction, isHex } from 'viem/utils'
 import { config } from '../../config.js'
+import { PatcherMagicNumber } from '../../constants.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import {
   getContractCallsQuote,
   getRelayerQuote,
   getStepTransaction,
+  patchContractCalls,
   relayTransaction,
 } from '../../services/api.js'
 import { convertQuoteToRoute } from '../../utils/convertQuoteToRoute.js'
@@ -231,6 +233,7 @@ export class EVMStepExecutor extends BaseStepExecutor {
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
+    // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
     const relayerStep = isRelayerStep(step)
     const gaslessStep = isGaslessStep(step)
@@ -257,26 +260,25 @@ export class EVMStepExecutor extends BaseStepExecutor {
         )
       }
 
-      // const patchedContractCalls = await patchContractCalls(
-      //   contractCallsResult.map((call) => ({
-      //     chainId: toChainId,
-      //     fromTokenAddress: call.fromTokenAddress,
-      //     targetContractAddress: call.toContractAddress,
-      //     callDataToPatch: call.toContractCallData,
-      //     delegateCall: false,
-      //     patches: [
-      //       {
-      //         amountToReplace: PatcherMagicNumber.toString(),
-      //       },
-      //     ],
-      //   })),
-      //   { signal }
-      // )
+      const patchedContractCalls = await patchContractCalls(
+        contractCallsResult.contractCalls.map((call) => ({
+          chainId: stepBase.action.toChainId,
+          fromTokenAddress: call.fromTokenAddress,
+          targetContractAddress: call.toContractAddress,
+          callDataToPatch: call.toContractCallData,
+          delegateCall: false,
+          patches: [
+            {
+              amountToReplace: PatcherMagicNumber.toString(),
+            },
+          ],
+        }))
+      )
 
-      // contractCallsResult.forEach((call, index) => {
-      //   call.toContractAddress = patchedContractCalls[index].target
-      //   call.toContractCallData = patchedContractCalls[index].callData
-      // })
+      contractCallsResult.contractCalls.forEach((call, index) => {
+        call.toContractAddress = patchedContractCalls[index].target
+        call.toContractCallData = patchedContractCalls[index].callData
+      })
 
       /**
        * Limitations of the retry logic for contract calls:

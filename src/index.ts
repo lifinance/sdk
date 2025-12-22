@@ -143,3 +143,4 @@ export type {
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
+export { isZeroAddress } from './utils/isZeroAddress.js'
