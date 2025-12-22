@@ -14,6 +14,11 @@ import type {
   TokenAmount,
 } from '@lifi/types'
 import type { Client } from 'viem'
+import type { ExtendedRequestInit } from './request.js'
+
+export type RequestInterceptor = (
+  request: ExtendedRequestInit
+) => ExtendedRequestInit | Promise<ExtendedRequestInit>
 
 export interface SDKBaseConfig {
   apiKey?: string
@@ -27,6 +32,8 @@ export interface SDKBaseConfig {
   widgetVersion?: string
   debug: boolean
   preloadChains?: boolean
+  chainsRefetchInterval?: number
+  requestInterceptor?: RequestInterceptor
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

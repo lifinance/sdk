@@ -4,7 +4,6 @@ import {
   type ExtendedChain,
   getRelayerQuote,
   getStepTransaction,
-  isTokenMessageSigningAllowed,
   LiFiErrorCode,
   type LiFiStep,
   type LiFiStepExtended,
@@ -227,6 +226,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
   private prepareUpdatedStep = async (
     client: SDKClient,
+    viemClient: Client,
     step: LiFiStepExtended,
     signedTypedData?: SignedTypedData[]
   ) => {
@@ -285,6 +285,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     let transactionRequest: TransactionParameters | undefined
     if (step.transactionRequest) {
       transactionRequest = {
+        chainId: step.transactionRequest.chainId,
         to: step.transactionRequest.to,
         from: step.transactionRequest.from,
         data: step.transactionRequest.data,
@@ -301,8 +302,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
         //   : undefined,
         maxPriorityFeePerGas:
-          this.client.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(client, this.client)
+          viemClient.account?.type === 'local'
+            ? await getMaxPriorityFeePerGas(client, viemClient)
             : step.transactionRequest.maxPriorityFeePerGas
               ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
               : undefined,
@@ -432,10 +433,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning ||
-      step.type !== 'lifi' ||
-      // We disable message signing for tokens with '₮' symbol
-      !isTokenMessageSigningAllowed(step.action.fromToken)
+      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -534,9 +532,20 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       await checkBalance(client, this.client.account!.address, step)
 
+      // Make sure that the client and chain is still correct
+      const updatedClient = await this.checkClient(step, process)
+      if (!updatedClient) {
+        return step
+      }
+
       // Try to prepare a new transaction request and update the step with typed data
       let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(client, step, signedTypedData)
+        await this.prepareUpdatedStep(
+          client,
+          updatedClient,
+          step,
+          signedTypedData
+        )
 
       process = this.statusManager.updateProcess(
         step,
