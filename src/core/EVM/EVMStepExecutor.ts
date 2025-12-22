@@ -260,25 +260,27 @@ export class EVMStepExecutor extends BaseStepExecutor {
         )
       }
 
-      const patchedContractCalls = await patchContractCalls(
-        contractCallsResult.contractCalls.map((call) => ({
-          chainId: stepBase.action.toChainId,
-          fromTokenAddress: call.fromTokenAddress,
-          targetContractAddress: call.toContractAddress,
-          callDataToPatch: call.toContractCallData,
-          delegateCall: false,
-          patches: [
-            {
-              amountToReplace: PatcherMagicNumber.toString(),
-            },
-          ],
-        }))
-      )
+      if (contractCallsResult.patcher) {
+        const patchedContractCalls = await patchContractCalls(
+          contractCallsResult.contractCalls.map((call) => ({
+            chainId: stepBase.action.toChainId,
+            fromTokenAddress: call.fromTokenAddress,
+            targetContractAddress: call.toContractAddress,
+            callDataToPatch: call.toContractCallData,
+            delegateCall: false,
+            patches: [
+              {
+                amountToReplace: PatcherMagicNumber.toString(),
+              },
+            ],
+          }))
+        )
 
-      contractCallsResult.contractCalls.forEach((call, index) => {
-        call.toContractAddress = patchedContractCalls[index].target
-        call.toContractCallData = patchedContractCalls[index].callData
-      })
+        contractCallsResult.contractCalls.forEach((call, index) => {
+          call.toContractAddress = patchedContractCalls[index].target
+          call.toContractCallData = patchedContractCalls[index].callData
+        })
+      }
 
       /**
        * Limitations of the retry logic for contract calls:
