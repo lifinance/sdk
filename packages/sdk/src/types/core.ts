@@ -31,6 +31,7 @@ export interface SDKBaseConfig {
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean
+  preloadChains?: boolean
   chainsRefetchInterval?: number
   requestInterceptor?: RequestInterceptor
 }
@@ -63,6 +64,7 @@ export interface SDKClient {
   providers: SDKProvider[]
   getProvider(type: ChainType): SDKProvider | undefined
   setProviders(providers: SDKProvider[]): void
+  setChains(chains: ExtendedChain[]): void
   getChains(): Promise<ExtendedChain[]>
   getChainById(chainId: ChainId): Promise<ExtendedChain>
   getRpcUrls(): Promise<RPCUrls>
