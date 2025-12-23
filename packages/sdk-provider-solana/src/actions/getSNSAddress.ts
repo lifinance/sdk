@@ -1,4 +1,4 @@
-import { isSolanaAddress } from './isSolanaAddress.js'
+import { isAddress } from '@solana/kit'
 
 interface SNSResult {
   s: 'ok' | 'error'
@@ -20,7 +20,7 @@ export const getSNSAddress = async (name: string) => {
 
     const data: SNSResult = await response.json()
 
-    if (!isSolanaAddress(data.result)) {
+    if (!isAddress(data.result)) {
       return
     }
 

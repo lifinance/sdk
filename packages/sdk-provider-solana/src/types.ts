@@ -3,10 +3,10 @@ import {
   type SDKProvider,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
+import type { Wallet } from '@wallet-standard/base'
 
 export interface SolanaProviderOptions {
-  getWalletAdapter?: () => Promise<SignerWalletAdapter>
+  getWallet?: () => Promise<Wallet>
 }
 
 export interface SolanaSDKProvider extends SDKProvider {
@@ -20,5 +20,5 @@ export function isSolanaProvider(
 }
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
-  walletAdapter: SignerWalletAdapter
+  wallet: Wallet
 }
