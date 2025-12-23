@@ -3,38 +3,20 @@ import { _getChains } from '../actions/getChains.js'
 import { getRpcUrlsFromChains } from '../core/utils.js'
 import type { RPCUrls, SDKBaseConfig } from '../types/core.js'
 
-// 6 hours in milliseconds
-const chainsRefreshInterval = 1000 * 60 * 60 * 6
-
 export const getClientStorage = (config: SDKBaseConfig) => {
   let _chains = [] as ExtendedChain[]
   let _rpcUrls = { ...config.rpcUrls } as RPCUrls
   let _chainsUpdatedAt: number | undefined
 
-  const updateRpcUrls = () => {
-    _rpcUrls = { ...config.rpcUrls }
-    _rpcUrls = getRpcUrlsFromChains(_rpcUrls, _chains, [ChainId.SOL])
-  }
-
   return {
     get needReset() {
       return (
         !_chainsUpdatedAt ||
-        Date.now() - _chainsUpdatedAt >= chainsRefreshInterval
+        Date.now() - _chainsUpdatedAt >=
+          (config.chainsRefetchInterval ?? 1000 * 60 * 60 * 24)
       )
     },
-    setChains(chains: ExtendedChain[]) {
-      _chains = chains
-      _chainsUpdatedAt = Date.now()
-      updateRpcUrls()
-    },
     async getChains() {
-      // When preloadChains is false, SDK does not auto-fetch chains
-      // External consumer is responsible for calling setChains
-      if (!config.preloadChains) {
-        return _chains
-      }
-
       if (this.needReset || !_chains.length) {
         _chains = await _getChains(config, {
           chainTypes: [
@@ -45,7 +27,10 @@ export const getClientStorage = (config: SDKBaseConfig) => {
           ],
         })
         _chainsUpdatedAt = Date.now()
-        updateRpcUrls()
+
+        // Reset dependent data
+        _rpcUrls = { ...config.rpcUrls }
+        _rpcUrls = getRpcUrlsFromChains(_rpcUrls, _chains, [ChainId.SOL])
       }
       return _chains
     },

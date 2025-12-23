@@ -1,7 +1,8 @@
 import { ChainId, type SDKClient } from '@lifi/sdk'
-import { Connection } from '@solana/web3.js'
+import { createSolanaRpc } from '@solana/kit'
 
-const connections = new Map<string, Connection>()
+type RpcType = ReturnType<typeof createSolanaRpc>
+const rpcs = new Map<string, RpcType>()
 
 /**
  * Initializes the Solana connections if they haven't been initialized yet.
@@ -10,10 +11,8 @@ const connections = new Map<string, Connection>()
 const ensureConnections = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
-    if (!connections.get(rpcUrl)) {
-      const connection = new Connection(rpcUrl)
-      connections.set(rpcUrl, connection)
-    }
+    const rpc = createSolanaRpc(rpcUrl)
+    rpcs.set(rpcUrl, rpc)
   }
 }
 
@@ -23,9 +22,9 @@ const ensureConnections = async (client: SDKClient): Promise<void> => {
  */
 export const getSolanaConnections = async (
   client: SDKClient
-): Promise<Connection[]> => {
+): Promise<RpcType[]> => {
   await ensureConnections(client)
-  return Array.from(connections.values())
+  return Array.from(rpcs.values())
 }
 
 /**
@@ -36,14 +35,14 @@ export const getSolanaConnections = async (
  */
 export async function callSolanaWithRetry<R>(
   client: SDKClient,
-  fn: (connection: Connection) => Promise<R>
+  fn: (rpc: RpcType) => Promise<R>
 ): Promise<R> {
   // Ensure connections are initialized
   await ensureConnections(client)
   let lastError: any = null
-  for (const connection of connections.values()) {
+  for (const rpc of rpcs.values()) {
     try {
-      const result = await fn(connection)
+      const result = await fn(rpc)
       return result
     } catch (error) {
       lastError = error

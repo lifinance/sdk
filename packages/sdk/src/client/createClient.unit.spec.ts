@@ -1,5 +1,5 @@
 import { ChainId, ChainType } from '@lifi/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { SDKConfig } from '../types/core.js'
 import { createClient } from './createClient.js'
 
@@ -23,7 +23,6 @@ vi.mock('../utils/checkPackageUpdates.js', () => ({
 }))
 
 // Mock the client storage
-const mockSetChains = vi.fn()
 vi.mock('./getClientStorage.js', () => ({
   getClientStorage: vi.fn(() => ({
     getChains: vi.fn().mockResolvedValue([
@@ -34,15 +33,10 @@ vi.mock('./getClientStorage.js', () => ({
       [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
       [ChainId.POL]: ['https://polygon-rpc.com'],
     }),
-    setChains: mockSetChains,
   })),
 }))
 
 describe('createClient', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('basic functionality', () => {
     it('should create a client with minimal config', () => {
       const client = createClient({
@@ -79,7 +73,6 @@ describe('createClient', () => {
         userId: 'user-123',
         debug: true,
         disableVersionCheck: true,
-        preloadChains: true,
         widgetVersion: '1.0.0',
         rpcUrls: {
           [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
@@ -178,15 +171,6 @@ describe('createClient', () => {
         'ChainId 999 not found'
       )
     })
-
-    it('should set chains via storage', () => {
-      const client = createClient({ integrator: 'test-app' })
-      const chains = [{ id: 1, name: 'Ethereum', type: ChainType.EVM }] as any
-
-      client.setChains(chains)
-
-      expect(mockSetChains).toHaveBeenCalledWith(chains)
-    })
   })
 
   describe('RPC URL management', () => {
@@ -279,7 +263,6 @@ describe('createClient', () => {
         needReset: false,
         getChains: vi.fn().mockRejectedValue(new Error('Storage error')),
         getRpcUrls: vi.fn().mockRejectedValue(new Error('Storage error')),
-        setChains: vi.fn(),
       })
 
       const newClient = createClient({ integrator: 'test-app' })

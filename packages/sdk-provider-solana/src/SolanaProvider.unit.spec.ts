@@ -22,7 +22,7 @@ describe('SolanaProvider', () => {
     } as any
 
     await expect(provider.getStepExecutor(mockOptions)).rejects.toThrowError(
-      'getWalletAdapter is not provided.'
+      'getWallet is not provided.'
     )
   })
 
@@ -35,7 +35,7 @@ describe('SolanaProvider', () => {
     const mockGetWalletAdapter = vi.fn().mockResolvedValue(mockWalletAdapter)
 
     const provider = SolanaProvider({
-      getWalletAdapter: mockGetWalletAdapter,
+      getWallet: mockGetWalletAdapter,
     })
 
     const mockOptions = {

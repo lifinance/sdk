@@ -10,26 +10,29 @@ import {
   type TransactionParameters,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
-import type { SignerWalletAdapter } from '@solana/wallet-adapter-base'
-import { VersionedTransaction } from '@solana/web3.js'
+import {
+  getBase64EncodedWireTransaction,
+  getTransactionCodec,
+  type Transaction,
+} from '@solana/kit'
 import { sendAndConfirmTransaction } from './actions/sendAndConfirmTransaction.js'
 import { callSolanaWithRetry } from './client/connection.js'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
-import type { SolanaStepExecutorOptions } from './types.js'
+import type { SolanaStepExecutorOptions, SolanaWallet } from './types.js'
 import { base64ToUint8Array } from './utils/base64ToUint8Array.js'
 import { withTimeout } from './utils/withTimeout.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
-  private walletAdapter: SignerWalletAdapter
-
+  private wallet: SolanaWallet
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
-    this.walletAdapter = options.walletAdapter
+    this.wallet = options.wallet
   }
 
-  checkWalletAdapter = (step: LiFiStepExtended) => {
-    // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (this.walletAdapter.publicKey!.toString() !== step.action.fromAddress) {
+  checkWalletAdapter = async (step: LiFiStepExtended) => {
+    const signerAddress = this.wallet.account.address
+
+    if (signerAddress !== step.action.fromAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -64,11 +67,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(
-          client,
-          this.walletAdapter.publicKey!.toString(),
-          step
-        )
+        await checkBalance(client, this.wallet.account.address, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
@@ -129,15 +128,21 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const versionedTransaction = VersionedTransaction.deserialize(
-          base64ToUint8Array(transactionRequest.data)
-        )
+        const transactionBytes = base64ToUint8Array(transactionRequest.data)
 
-        this.checkWalletAdapter(step)
+        await this.checkWalletAdapter(step)
+
+        // Decode transaction bytes to Transaction object
+        const transactionCodec = getTransactionCodec()
+        const transaction = transactionCodec.decode(transactionBytes)
 
         // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTx = await withTimeout<VersionedTransaction>(
-          () => this.walletAdapter.signTransaction(versionedTransaction),
+        const signedTransactions = await withTimeout<readonly Transaction[]>(
+          async () => {
+            return [
+              await this.wallet.signTransaction(transaction as Transaction),
+            ]
+          },
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
             // Use 2 minutes to account for fluctuations
@@ -149,19 +154,33 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         )
 
+        if (signedTransactions.length === 0) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionUnprepared,
+            'No signed transaction returned from signer.'
+          )
+        }
+
+        const signedTransaction = signedTransactions[0] as Transaction
+
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'PENDING'
         )
+        const encodedTransaction =
+          getBase64EncodedWireTransaction(signedTransaction)
 
         const simulationResult = await callSolanaWithRetry(
           client,
           (connection) =>
-            connection.simulateTransaction(signedTx, {
-              commitment: 'confirmed',
-              replaceRecentBlockhash: true,
-            })
+            connection
+              .simulateTransaction(encodedTransaction, {
+                commitment: 'confirmed',
+                replaceRecentBlockhash: true,
+                encoding: 'base64',
+              })
+              .send()
         )
 
         if (simulationResult.value.err) {
@@ -171,7 +190,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const confirmedTx = await sendAndConfirmTransaction(client, signedTx)
+        const confirmedTx = await sendAndConfirmTransaction(
+          client,
+          signedTransaction
+        )
 
         if (!confirmedTx.signatureResult) {
           throw new TransactionError(
