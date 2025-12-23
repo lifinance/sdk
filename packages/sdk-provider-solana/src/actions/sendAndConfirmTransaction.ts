@@ -25,18 +25,18 @@ type ConfirmedTransactionResult = {
  * Sends a Solana transaction to multiple RPC endpoints and returns the confirmation
  * as soon as any of them confirm the transaction.
  * @param client - The SDK client.
- * @param signedTx - The signed transaction to send.
+ * @param signedTransaction - The signed transaction to send.
  * @returns - The confirmation result of the transaction.
  */
 export async function sendAndConfirmTransaction(
   client: SDKClient,
-  signedTx: Transaction
+  signedTransaction: Transaction
 ): Promise<ConfirmedTransactionResult> {
   const connections = await getSolanaConnections(client)
 
-  const signedTxSerialized = getBase64EncodedWireTransaction(signedTx)
+  const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
   // Create transaction hash (signature)
-  const txSignature = getSignatureFromTransaction(signedTx)
+  const txSignature = getSignatureFromTransaction(signedTransaction)
 
   if (!txSignature) {
     throw new Error('Transaction signature is missing.')

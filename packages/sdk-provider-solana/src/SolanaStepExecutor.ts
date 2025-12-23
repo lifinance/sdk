@@ -13,26 +13,37 @@ import {
 import {
   getBase64EncodedWireTransaction,
   getTransactionCodec,
-  type Transaction,
 } from '@solana/kit'
+import { SolanaSignTransaction } from '@solana/wallet-standard-features'
+import type { Wallet } from '@wallet-standard/base'
 import { sendAndConfirmTransaction } from './actions/sendAndConfirmTransaction.js'
 import { callSolanaWithRetry } from './client/connection.js'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
-import type { SolanaStepExecutorOptions, SolanaWallet } from './types.js'
+import type { SolanaStepExecutorOptions } from './types.js'
 import { base64ToUint8Array } from './utils/base64ToUint8Array.js'
+import { getWalletFeature } from './utils/getWalletFeature.js'
 import { withTimeout } from './utils/withTimeout.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
-  private wallet: SolanaWallet
+  private wallet: Wallet
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
   }
 
   checkWalletAdapter = async (step: LiFiStepExtended) => {
-    const signerAddress = this.wallet.account.address
+    if (!this.wallet.features[SolanaSignTransaction]) {
+      throw new TransactionError(
+        LiFiErrorCode.ProviderUnavailable,
+        'Wallet does not support signing transactions.'
+      )
+    }
 
-    if (signerAddress !== step.action.fromAddress) {
+    const accountWithSignerAddress = this.wallet.accounts.find(
+      (account) => account.address === step.action.fromAddress
+    )
+
+    if (!accountWithSignerAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -52,6 +63,17 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
+    const walletAccount = this.wallet.accounts.find(
+      (account) => account.address === step.action.fromAddress
+    )
+
+    if (!walletAccount) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'Wallet account not found for the specified address.'
+      )
+    }
+
     let process = this.statusManager.findOrCreateProcess({
       step,
       type: currentProcessType,
@@ -67,7 +89,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         // Check balance
-        await checkBalance(client, this.wallet.account.address, step)
+        await checkBalance(client, walletAccount.address, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
@@ -132,16 +154,16 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         await this.checkWalletAdapter(step)
 
-        // Decode transaction bytes to Transaction object
-        const transactionCodec = getTransactionCodec()
-        const transaction = transactionCodec.decode(transactionBytes)
-
-        // We give users 2 minutes to sign the transaction or it should be considered expired
-        const signedTransactions = await withTimeout<readonly Transaction[]>(
+        const signedTransactionOutputs = await withTimeout(
           async () => {
-            return [
-              await this.wallet.signTransaction(transaction as Transaction),
-            ]
+            const { signTransaction } = getWalletFeature(
+              this.wallet,
+              SolanaSignTransaction
+            )
+            return signTransaction({
+              account: walletAccount,
+              transaction: transactionBytes,
+            })
           },
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
@@ -154,20 +176,25 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         )
 
-        if (signedTransactions.length === 0) {
+        if (signedTransactionOutputs.length === 0) {
           throw new TransactionError(
             LiFiErrorCode.TransactionUnprepared,
             'No signed transaction returned from signer.'
           )
         }
 
-        const signedTransaction = signedTransactions[0] as Transaction
-
         process = this.statusManager.updateProcess(
           step,
           process.type,
           'PENDING'
         )
+
+        const transactionCodec = getTransactionCodec()
+
+        const signedTransaction = transactionCodec.decode(
+          signedTransactionOutputs[0].signedTransaction
+        )
+
         const encodedTransaction =
           getBase64EncodedWireTransaction(signedTransaction)
 
@@ -190,23 +217,23 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const confirmedTx = await sendAndConfirmTransaction(
+        const confirmedTransaction = await sendAndConfirmTransaction(
           client,
           signedTransaction
         )
 
-        if (!confirmedTx.signatureResult) {
+        if (!confirmedTransaction.signatureResult) {
           throw new TransactionError(
             LiFiErrorCode.TransactionExpired,
             'Transaction has expired: The block height has exceeded the maximum allowed limit.'
           )
         }
 
-        if (confirmedTx.signatureResult.err) {
+        if (confirmedTransaction.signatureResult.err) {
           const reason =
-            typeof confirmedTx.signatureResult.err === 'object'
-              ? JSON.stringify(confirmedTx.signatureResult.err)
-              : confirmedTx.signatureResult.err
+            typeof confirmedTransaction.signatureResult.err === 'object'
+              ? JSON.stringify(confirmedTransaction.signatureResult.err)
+              : confirmedTransaction.signatureResult.err
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             `Transaction failed: ${reason}`
@@ -219,8 +246,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           process.type,
           'PENDING',
           {
-            txHash: confirmedTx.txSignature,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTx.txSignature}`,
+            txHash: confirmedTransaction.txSignature,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
           }
         )
 

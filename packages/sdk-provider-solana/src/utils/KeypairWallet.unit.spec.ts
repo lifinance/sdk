@@ -21,29 +21,27 @@ const {
   encodeSpy,
   assertIsTransactionWithinSizeLimitMock,
   assertIsTransactionWithBlockhashLifetimeMock,
-  createSignableMessageMock,
   createKeyPairSignerFromBytesMock,
   signTransactionsMock,
-  signMessagesMock,
+  getTransactionCodecMock,
+  getBase64EncodedWireTransactionMock,
 } = vi.hoisted(() => {
   const encodeSpy = vi.fn<(value: string) => void>()
   const assertIsTransactionWithinSizeLimitMock = vi.fn()
   const assertIsTransactionWithBlockhashLifetimeMock = vi.fn()
-  const createSignableMessageMock = vi.fn((message: Uint8Array) => ({
-    message,
-  }))
   const createKeyPairSignerFromBytesMock = vi.fn()
   const signTransactionsMock = vi.fn()
-  const signMessagesMock = vi.fn()
+  const getTransactionCodecMock = vi.fn()
+  const getBase64EncodedWireTransactionMock = vi.fn()
 
   return {
     encodeSpy,
     assertIsTransactionWithinSizeLimitMock,
     assertIsTransactionWithBlockhashLifetimeMock,
-    createSignableMessageMock,
     createKeyPairSignerFromBytesMock,
     signTransactionsMock,
-    signMessagesMock,
+    getTransactionCodecMock,
+    getBase64EncodedWireTransactionMock,
   }
 })
 
@@ -56,7 +54,8 @@ vi.mock('@solana/kit', async () => {
     assertIsTransactionWithBlockhashLifetime:
       assertIsTransactionWithBlockhashLifetimeMock,
     createKeyPairSignerFromBytes: createKeyPairSignerFromBytesMock,
-    createSignableMessage: createSignableMessageMock,
+    getTransactionCodec: getTransactionCodecMock,
+    getBase64EncodedWireTransaction: getBase64EncodedWireTransactionMock,
     getBase58Codec: () => {
       const codec = actual.getBase58Codec()
       return {
@@ -69,6 +68,10 @@ vi.mock('@solana/kit', async () => {
     },
   }
 })
+
+vi.mock('./base64ToUint8Array.js', () => ({
+  base64ToUint8Array: vi.fn(() => new Uint8Array([1, 2, 3])),
+}))
 
 const exportKeyMock = vi.fn(async () => new Uint8Array([1, 2, 3, 4]).buffer)
 
@@ -89,7 +92,6 @@ describe('KeypairWalletAdapter', () => {
       keyPair: {
         publicKey: {} as CryptoKey,
       },
-      signMessages: signMessagesMock,
       signTransactions: signTransactionsMock,
     })
 
@@ -98,11 +100,14 @@ describe('KeypairWalletAdapter', () => {
         'test-address': new Uint8Array(64),
       },
     ])
-    signMessagesMock.mockResolvedValue([
-      {
-        'test-address': new Uint8Array(64),
-      },
-    ])
+
+    getTransactionCodecMock.mockReturnValue({
+      decode: vi.fn((bytes: Uint8Array) => ({ decoded: true, bytes })),
+    })
+
+    getBase64EncodedWireTransactionMock.mockReturnValue(
+      'base64EncodedTransaction'
+    )
   })
 
   afterEach(() => {
@@ -142,73 +147,72 @@ describe('KeypairWalletAdapter', () => {
   })
 
   describe('connection lifecycle', () => {
-    it('throws when accessing account before connecting', async () => {
+    it('has empty accounts array before connecting', async () => {
       const { wallet } = await createWallet()
 
-      expect(() => wallet.account).toThrow('Wallet is disconnected')
+      expect(wallet.accounts).toEqual([])
     })
 
-    it('populates account after connect', async () => {
+    it('populates accounts array after connect', async () => {
       const { wallet } = await createWallet({ connect: true })
 
-      expect(wallet.account.address).toBe('test-address')
-      expect(wallet.account.publicKey).toEqual(new Uint8Array([1, 2, 3, 4]))
+      expect(wallet.accounts).toHaveLength(1)
+      expect(wallet.accounts[0].address).toBe('test-address')
+      expect(wallet.accounts[0].publicKey).toEqual(new Uint8Array([1, 2, 3, 4]))
       expect(exportKeyMock).toHaveBeenCalledTimes(1)
     })
 
-    it('clears state on disconnect', async () => {
+    it('clears accounts on disconnect', async () => {
       const { wallet } = await createWallet({ connect: true })
       await wallet.disconnect()
 
-      expect(() => wallet.account).toThrow('Wallet is disconnected')
+      expect(wallet.accounts).toEqual([])
     })
   })
 
-  describe('signing', () => {
+  describe('Wallet Standard features', () => {
+    it('exposes SolanaSignTransaction feature', async () => {
+      const { wallet } = await createWallet({ connect: true })
+
+      expect(wallet.features['solana:signTransaction']).toBeDefined()
+      expect(wallet.features['solana:signTransaction'].version).toBe('1.0.0')
+      expect(
+        wallet.features['solana:signTransaction'].supportedTransactionVersions
+      ).toEqual(['legacy', 0])
+    })
+
     it('throws when signing transaction while disconnected', async () => {
       const { wallet } = await createWallet()
 
-      await expect(wallet.signTransaction({} as never)).rejects.toThrow(
-        'Wallet is not connected'
-      )
+      const signTransaction =
+        wallet.features['solana:signTransaction'].signTransaction
+
+      // Create a mock account since we can't access wallet.account when disconnected
+      const mockAccount = {
+        address: 'test-address' as any,
+        publicKey: new Uint8Array(),
+        chains: ['solana:mainnet'] as const,
+        features: ['solana:signTransaction'] as const,
+      }
+
+      await expect(
+        signTransaction({ account: mockAccount, transaction: new Uint8Array() })
+      ).rejects.toThrow('Wallet is not connected')
     })
 
     it('signs transaction when connected', async () => {
       const { wallet } = await createWallet({ connect: true })
 
-      const transaction = { test: true } as never
-      const result = await wallet.signTransaction(transaction)
+      const transactionBytes = new Uint8Array([1, 2, 3])
+      const signTransaction =
+        wallet.features['solana:signTransaction'].signTransaction
 
-      expect(result).toBe(transaction)
-      expect(assertIsTransactionWithinSizeLimitMock).toHaveBeenCalledWith(
-        transaction
-      )
-      expect(assertIsTransactionWithBlockhashLifetimeMock).toHaveBeenCalledWith(
-        transaction
-      )
-      expect(signTransactionsMock).toHaveBeenCalledWith([transaction])
-    })
+      await signTransaction({
+        account: wallet.accounts[0],
+        transaction: transactionBytes,
+      })
 
-    it('throws when signing message while disconnected', async () => {
-      const { wallet } = await createWallet()
-
-      await expect(
-        wallet.signMessage(new Uint8Array([1, 2, 3]))
-      ).rejects.toThrow('Wallet is not connected')
-    })
-
-    it('signs message when connected', async () => {
-      const { wallet } = await createWallet({ connect: true })
-
-      const message = new Uint8Array([4, 5, 6])
-      await wallet.signMessage(message)
-
-      expect(createSignableMessageMock).toHaveBeenCalledWith(message)
-      expect(signMessagesMock).toHaveBeenCalledWith([
-        {
-          message,
-        },
-      ])
+      expect(signTransactionsMock).toHaveBeenCalled()
     })
   })
 })
