@@ -67,14 +67,17 @@ const runWalletScenario = ({ name, setup }: WalletScenario) => {
         expect(executor).toBeDefined()
         expect(executor).toHaveProperty('executeStep')
 
+        expect(wallet.accounts).toHaveLength(1)
+        const account = wallet.accounts[0]
+
         if (expectedAddress) {
-          expect(wallet.account.address).toEqual(expectedAddress)
+          expect(account.address).toEqual(expectedAddress)
         } else {
-          expect(wallet.account.address).toBeDefined()
+          expect(account.address).toBeDefined()
         }
 
         if (expectedPublicKey) {
-          expect(wallet.account.publicKey).toEqual(expectedPublicKey)
+          expect(account.publicKey).toEqual(expectedPublicKey)
         }
       }
     )
