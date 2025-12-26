@@ -72,9 +72,11 @@ export const checkAllowance = async (
       (typedData) => typedData.primaryType === 'Permit'
     )
     if (!disableMessageSigning && permitTypedData?.length) {
-      step = statusManager.transitionExecutionType(step, 'PERMIT', {
-        chainId: step.action.fromChainId,
-      })
+      step = statusManager.transitionExecutionType(
+        step,
+        'PERMIT',
+        step.action.fromChainId
+      )
       signedTypedData = step.execution?.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
         // Check if we already have a valid permit for this chain and requirements
@@ -142,9 +144,11 @@ export const checkAllowance = async (
     }
 
     // Find existing or create new allowance process
-    step = statusManager.transitionExecutionType(step, 'TOKEN_ALLOWANCE', {
-      chainId: step.action.fromChainId,
-    })
+    step = statusManager.transitionExecutionType(
+      step,
+      'TOKEN_ALLOWANCE',
+      step.action.fromChainId
+    )
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
@@ -382,9 +386,11 @@ export const checkAllowance = async (
       (t) => t.type === step.execution!.type
     )
     if (!transaction) {
-      step = statusManager.transitionExecutionType(step, 'TOKEN_ALLOWANCE', {
-        chainId: step.action.fromChainId,
-      })
+      step = statusManager.transitionExecutionType(
+        step,
+        'TOKEN_ALLOWANCE',
+        step.action.fromChainId
+      )
     }
     const error = await parseEthereumErrors(e, step)
     step = statusManager.transitionExecutionStatus(step, 'FAILED', {

@@ -31,10 +31,11 @@ export async function waitForDestinationChainTransaction(
 
     const isBridgeExecution = fromChain.id !== toChain.id
     if (isBridgeExecution) {
-      step = statusManager.transitionExecutionType(step, 'RECEIVING_CHAIN', {
-        chainId: toChain.id,
-        startedAt: step.execution?.doneAt,
-      })
+      step = statusManager.transitionExecutionType(
+        step,
+        'RECEIVING_CHAIN',
+        toChain.id
+      )
     }
 
     const statusResponse = (await waitForTransactionStatus(

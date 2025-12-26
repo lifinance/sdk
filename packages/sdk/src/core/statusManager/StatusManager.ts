@@ -2,33 +2,15 @@ import type { LiFiStep } from '@lifi/types'
 import type {
   Execution,
   ExecutionStatus,
+  ExecutionStatusUpdate,
   LiFiStepExtended,
-  Transaction,
+  LiFiStepWithExecution,
   TransactionType,
 } from '../../types/core.js'
 import { executionState } from '../executionState.js'
 import { getProcessMessage } from '../processMessages.js'
-import { onStatusTransition } from './sideEffects.js'
+import { onStatusTransition } from './onStatusTransition.js'
 import { statusTransitions, transactionTransitions } from './transitions.js'
-
-export type ExecutionStatusUpdate = Partial<
-  Pick<
-    Execution,
-    | 'error'
-    | 'signedTypedData'
-    | 'substatus'
-    | 'substatusMessage'
-    | 'fromAmount'
-    | 'toAmount'
-    | 'toToken'
-    | 'internalTxLink'
-    | 'externalTxLink'
-    | 'gasCosts'
-    | 'feeCosts'
-  >
-> & {
-  transaction?: Transaction
-}
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
@@ -47,91 +29,90 @@ export class StatusManager {
     step: LiFiStepExtended,
     newStatus: ExecutionStatus,
     execution?: ExecutionStatusUpdate
-  ): LiFiStep {
-    if (execution) {
-      const { transaction, ...executionUpdate } = execution
+  ): LiFiStepWithExecution {
+    const currentStatus = step.execution?.status
+    const isSameStatus = currentStatus && currentStatus === newStatus
 
-      step.execution = {
-        ...(step.execution ? { ...step.execution } : { transactions: [] }),
-        ...executionUpdate,
-      } as Execution
-
-      if (transaction) {
-        const index = step.execution.transactions.findIndex(
-          (t) => t.type === transaction.type
-        )
-        if (index >= 0) {
-          step.execution.transactions[index] = transaction
-        } else {
-          step.execution.transactions.push(transaction)
-        }
-      }
+    // Early return only if same status AND no execution updates to apply
+    if (isSameStatus && !execution) {
+      return step as LiFiStepWithExecution
     }
 
-    const currentStatus = step.execution?.status ?? 'PENDING'
-
-    if (currentStatus === newStatus) {
-      this.updateStepInRoute(step)
-
-      return step
-    }
-
-    // Validate status transition
-    if (!statusTransitions[currentStatus].includes(newStatus)) {
+    // Validate status transition (skip if same status with updates)
+    if (
+      !isSameStatus &&
+      currentStatus &&
+      !statusTransitions[currentStatus].includes(newStatus)
+    ) {
       throw new Error(`Invalid transition: ${currentStatus} → ${newStatus}`)
     }
 
-    // Update status
-    step.execution!.status = newStatus
+    if (!currentStatus && !execution?.type) {
+      throw new Error('Execution must have type to transition status')
+    }
 
-    // Execute side effects
-    onStatusTransition[newStatus](step.execution!)
+    // Initialize execution or update timestamp
+    const timestampUpdateOrInit = onStatusTransition[newStatus](currentStatus)
+    step.execution = {
+      ...step.execution,
+      ...timestampUpdateOrInit,
+    } as Execution
 
-    // Update message
-    step.execution!.message = getProcessMessage(step.execution!.type, newStatus)
+    if (execution) {
+      const { transaction, ...executionUpdate } = execution
+
+      // Update execution with new properties
+      step.execution = {
+        ...step.execution,
+        ...executionUpdate,
+      } as Execution
+
+      // Override transaction or add a new transaction
+      if (transaction) {
+        const existingIndex = step.execution.transactions.findIndex(
+          (t) => t.type === transaction.type
+        )
+        step.execution = {
+          ...step.execution,
+          transactions:
+            existingIndex >= 0
+              ? step.execution.transactions.with(existingIndex, transaction)
+              : [...step.execution.transactions, transaction],
+        } as Execution
+      }
+    }
+
+    // Update status and message
+    step.execution = {
+      ...step.execution,
+      status: newStatus,
+      message: getProcessMessage(step.execution!.type, newStatus),
+    } as Execution
 
     this.updateStepInRoute(step)
 
-    return step
+    return step as LiFiStepWithExecution
   }
 
   transitionExecutionType(
     step: LiFiStepExtended,
     newType: TransactionType,
-    execution?: Omit<Partial<Execution>, 'type'>
-  ): LiFiStep {
-    if (!step.execution) {
-      throw new Error('Execution must be initialized before transitioning')
-    }
-
-    // Merge additional properties if provided
-    if (execution) {
-      step.execution = {
-        ...step.execution,
-        ...execution,
-      } as Execution
-    }
-
-    const currentType = step.execution.type
-
-    if (currentType === newType) {
-      this.updateStepInRoute(step)
-
-      return step
+    chainId: number
+  ): LiFiStepWithExecution {
+    const currentType = step.execution?.type
+    if (currentType && currentType === newType) {
+      return step as LiFiStepWithExecution
     }
 
     // Validate type transition
-    if (!transactionTransitions[currentType].includes(newType)) {
+    if (currentType && !transactionTransitions[currentType].includes(newType)) {
       throw new Error(`Invalid type transition: ${currentType} → ${newType}`)
     }
 
-    // Update type
-    step.execution.type = newType
-    step.execution.message = getProcessMessage(newType, 'PENDING')
-
-    this.updateStepInRoute(step)
-
-    return step
+    return this.transitionExecutionStatus(step, 'PENDING', {
+      type: newType,
+      chainId,
+    })
   }
 
   updateStepInRoute = (step: LiFiStep): LiFiStep => {

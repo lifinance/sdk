@@ -45,10 +45,27 @@ describe('StatusManager', () => {
         statusManager = initializeStatusManager({ includingExecution: false })
       })
 
-      it('should throw when no execution update is provided', () => {
+      it('should throw when no type is provided in execution update', () => {
         expect(() =>
-          statusManager.transitionExecutionStatus(structuredClone(step), 'DONE')
-        ).toThrow()
+          statusManager.transitionExecutionStatus(
+            structuredClone(step),
+            'PENDING'
+          )
+        ).toThrow('Execution must have type to transition status')
+      })
+
+      it('should create execution when type is provided', () => {
+        const result = statusManager.transitionExecutionStatus(
+          structuredClone(step),
+          'PENDING',
+          { type: 'SWAP' }
+        )
+
+        expect(result.execution.status).toBe('PENDING')
+        expect(result.execution.type).toBe('SWAP')
+        expect(result.execution.startedAt).toBe(SOME_DATE)
+        expect(result.execution.transactions).toEqual([])
+        expect(updateRouteHookMock).toHaveBeenCalled()
       })
     })
 
@@ -63,9 +80,10 @@ describe('StatusManager', () => {
           const result = statusManager.transitionExecutionStatus(
             structuredClone(step),
             'DONE'
-          ) as LiFiStepExtended
+          )
 
-          expect(result.execution?.status).toBe('DONE')
+          expect(result.execution.status).toBe('DONE')
+          expect(result.execution.doneAt).toBe(SOME_DATE)
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
 
@@ -77,11 +95,11 @@ describe('StatusManager', () => {
               fromAmount: '123',
               toAmount: '456',
             }
-          ) as LiFiStepExtended
+          )
 
-          expect(result.execution?.status).toBe('DONE')
-          expect(result.execution?.fromAmount).toBe('123')
-          expect(result.execution?.toAmount).toBe('456')
+          expect(result.execution.status).toBe('DONE')
+          expect(result.execution.fromAmount).toBe('123')
+          expect(result.execution.toAmount).toBe('456')
         })
 
         it('should add a transaction when provided', () => {
@@ -95,14 +113,34 @@ describe('StatusManager', () => {
                 txLink: 'https://example.com/tx/0xabc123',
               },
             }
-          ) as LiFiStepExtended
+          )
 
-          expect(result.execution?.status).toBe('DONE')
+          expect(result.execution.status).toBe('DONE')
           // Should update existing SWAP transaction
-          const swapTx = result.execution?.transactions.find(
+          const swapTx = result.execution.transactions.find(
             (t: Transaction) => t.type === 'SWAP'
           )
           expect(swapTx?.txHash).toBe('0xabc123')
+        })
+
+        it('should add a new transaction when type does not exist', () => {
+          const result = statusManager.transitionExecutionStatus(
+            structuredClone(step),
+            'DONE',
+            {
+              transaction: {
+                type: 'RECEIVING_CHAIN',
+                txHash: '0xdef456',
+                txLink: 'https://example.com/tx/0xdef456',
+              },
+            }
+          )
+
+          expect(result.execution.status).toBe('DONE')
+          const receivingTx = result.execution.transactions.find(
+            (t: Transaction) => t.type === 'RECEIVING_CHAIN'
+          )
+          expect(receivingTx?.txHash).toBe('0xdef456')
         })
       })
 
@@ -119,13 +157,25 @@ describe('StatusManager', () => {
       })
 
       describe('and transitioning to the same status', () => {
-        it('should not throw and still call callbacks', () => {
+        it('should return early without calling updateStepInRoute when no execution update provided', () => {
           const result = statusManager.transitionExecutionStatus(
             structuredClone(step),
             'PENDING'
-          ) as LiFiStepExtended
+          )
 
-          expect(result.execution?.status).toBe('PENDING')
+          expect(result.execution.status).toBe('PENDING')
+          expect(updateRouteHookMock).not.toHaveBeenCalled()
+        })
+
+        it('should still apply execution updates when provided', () => {
+          const result = statusManager.transitionExecutionStatus(
+            structuredClone(step),
+            'PENDING',
+            { fromAmount: '555' }
+          )
+
+          expect(result.execution.status).toBe('PENDING')
+          expect(result.execution.fromAmount).toBe('555')
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
@@ -138,13 +188,18 @@ describe('StatusManager', () => {
         statusManager = initializeStatusManager({ includingExecution: false })
       })
 
-      it('should throw an error', () => {
-        expect(() =>
-          statusManager.transitionExecutionType(
-            structuredClone(step),
-            'CROSS_CHAIN'
-          )
-        ).toThrow('Execution must be initialized before transitioning')
+      it('should create execution with the new type', () => {
+        const result = statusManager.transitionExecutionType(
+          structuredClone(step),
+          'SWAP',
+          137
+        )
+
+        expect(result.execution.type).toBe('SWAP')
+        expect(result.execution.chainId).toBe(137)
+        expect(result.execution.status).toBe('PENDING')
+        expect(result.execution.startedAt).toBe(SOME_DATE)
+        expect(updateRouteHookMock).toHaveBeenCalled()
       })
     })
 
@@ -154,28 +209,17 @@ describe('StatusManager', () => {
       })
 
       describe('and transitioning to a valid type', () => {
-        it('should update the type and call the callbacks', () => {
+        it('should update the type and chainId', () => {
           // SWAP -> RECEIVING_CHAIN is valid
           const result = statusManager.transitionExecutionType(
             structuredClone(step),
-            'RECEIVING_CHAIN'
-          ) as LiFiStepExtended
-
-          expect(result.execution?.type).toBe('RECEIVING_CHAIN')
-          expect(updateRouteHookMock).toHaveBeenCalled()
-        })
-
-        it('should update additional execution properties when provided', () => {
-          const result = statusManager.transitionExecutionType(
-            structuredClone(step),
             'RECEIVING_CHAIN',
-            {
-              chainId: 42161,
-            }
-          ) as LiFiStepExtended
+            42161
+          )
 
-          expect(result.execution?.type).toBe('RECEIVING_CHAIN')
-          expect(result.execution?.chainId).toBe(42161)
+          expect(result.execution.type).toBe('RECEIVING_CHAIN')
+          expect(result.execution.chainId).toBe(42161)
+          expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
 
@@ -185,21 +229,23 @@ describe('StatusManager', () => {
           expect(() =>
             statusManager.transitionExecutionType(
               structuredClone(step),
-              'TOKEN_ALLOWANCE'
+              'TOKEN_ALLOWANCE',
+              137
             )
           ).toThrow('Invalid type transition: SWAP → TOKEN_ALLOWANCE')
         })
       })
 
       describe('and transitioning to the same type', () => {
-        it('should not throw and still call callbacks', () => {
+        it('should return early without calling updateStepInRoute', () => {
           const result = statusManager.transitionExecutionType(
             structuredClone(step),
-            'SWAP'
-          ) as LiFiStepExtended
+            'SWAP',
+            137
+          )
 
-          expect(result.execution?.type).toBe('SWAP')
-          expect(updateRouteHookMock).toHaveBeenCalled()
+          expect(result.execution.type).toBe('SWAP')
+          expect(updateRouteHookMock).not.toHaveBeenCalled()
         })
       })
     })

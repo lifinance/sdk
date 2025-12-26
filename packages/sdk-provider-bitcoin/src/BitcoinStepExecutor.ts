@@ -65,9 +65,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     step = this.statusManager.transitionExecutionType(
       step,
       currentProcessType,
-      {
-        chainId: fromChain.id,
-      }
+      fromChain.id
     )
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)

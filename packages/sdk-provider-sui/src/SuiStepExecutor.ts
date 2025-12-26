@@ -53,9 +53,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     step = this.statusManager.transitionExecutionType(
       step,
       currentProcessType,
-      {
-        chainId: fromChain.id,
-      }
+      fromChain.id
     )
 
     if (step.execution?.status !== 'DONE') {

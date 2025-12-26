@@ -525,9 +525,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       step = this.statusManager.transitionExecutionType(
         step,
         currentProcessType,
-        {
-          chainId: fromChain.id,
-        }
+        fromChain.id
       )
       step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
 

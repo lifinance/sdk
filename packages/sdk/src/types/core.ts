@@ -229,3 +229,7 @@ export interface Execution {
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
+
+export type ExecutionStatusUpdate = Partial<Execution> & {
+  transaction?: Transaction
+}
