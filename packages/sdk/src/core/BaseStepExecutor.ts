@@ -6,7 +6,7 @@ import type {
   StepExecutor,
   StepExecutorOptions,
 } from '../types/core.js'
-import { StatusManager } from './StatusManager.js'
+import { StatusManager } from './statusManager/StatusManager.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
 const defaultInteractionSettings = {

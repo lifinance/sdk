@@ -35,7 +35,7 @@ export {
   stopRouteExecution,
   updateRouteExecution,
 } from './core/execution.js'
-export { StatusManager } from './core/StatusManager.js'
+export { StatusManager } from './core/statusManager/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
 export { isTokenMessageSigningAllowed } from './core/utils.js'
 export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
@@ -63,9 +63,6 @@ export type {
   ExecutionStatus,
   InteractionSettings,
   LiFiStepExtended,
-  Process,
-  ProcessStatus,
-  ProcessType,
   RouteExecutionData,
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
@@ -79,10 +76,12 @@ export type {
   StepExecutorOptions,
   StepExtended,
   SwitchChainHook,
+  Transaction,
   TransactionMethodType,
   TransactionParameters,
   TransactionRequestParameters,
   TransactionRequestUpdateHook,
+  TransactionType,
   UpdateRouteHook,
 } from './types/core.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'

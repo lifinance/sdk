@@ -1,10 +1,10 @@
-import type { FullStatusData, LiFiStep, StatusResponse } from '@lifi/types'
+import type { FullStatusData, StatusResponse } from '@lifi/types'
 import { getStatus } from '../actions/getStatus.js'
 import { ServerError } from '../errors/errors.js'
-import type { ProcessType, SDKClient } from '../types/core.js'
+import type { LiFiStepExtended, SDKClient } from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
-import type { StatusManager } from './StatusManager.js'
+import type { StatusManager } from './statusManager/StatusManager.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
@@ -12,8 +12,7 @@ export async function waitForTransactionStatus(
   client: SDKClient,
   statusManager: StatusManager,
   txHash: string,
-  step: LiFiStep,
-  processType: ProcessType,
+  step: LiFiStepExtended,
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
@@ -29,7 +28,7 @@ export async function waitForTransactionStatus(
           case 'DONE':
             return statusResponse
           case 'PENDING':
-            statusManager?.updateProcess(step, processType, 'PENDING', {
+            step = statusManager?.transitionExecutionStatus(step, 'PENDING', {
               substatus: statusResponse.substatus,
               substatusMessage:
                 statusResponse.substatusMessage ||
@@ -37,7 +36,10 @@ export async function waitForTransactionStatus(
                   statusResponse.status,
                   statusResponse.substatus
                 ),
-              txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
+              transaction: {
+                type: step.execution!.type,
+                txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
+              },
             })
             return undefined
           case 'NOT_FOUND':

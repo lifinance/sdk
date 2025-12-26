@@ -2,7 +2,6 @@ import {
   type ExecutionOptions,
   LiFiErrorCode,
   type LiFiStepExtended,
-  type Process,
   ProviderError,
   type StatusManager,
 } from '@lifi/sdk'
@@ -31,7 +30,6 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
-  process: Process,
   targetChainId: number,
   allowUserInteraction: boolean,
   executionOptions?: ExecutionOptions
@@ -75,13 +73,12 @@ export const switchChain = async (
 
     return updatedClient
   } catch (error: any) {
-    statusManager.updateProcess(step, process.type, 'FAILED', {
+    statusManager.transitionExecutionStatus(step, 'FAILED', {
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,
       },
     })
-    statusManager.updateExecution(step, 'FAILED')
     throw error
   }
 }

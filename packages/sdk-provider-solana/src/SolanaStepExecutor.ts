@@ -41,27 +41,23 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
-
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    let process = this.statusManager.findOrCreateProcess({
+    step = this.statusManager.transitionExecutionType(
       step,
-      type: currentProcessType,
-      chainId: fromChain.id,
-    })
+      currentProcessType,
+      {
+        chainId: fromChain.id,
+      }
+    )
 
-    if (process.status !== 'DONE') {
+    if (step.execution?.status !== 'DONE') {
       try {
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'STARTED'
-        )
+        step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
 
         // Check balance
         await checkBalance(
@@ -95,9 +91,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        process = this.statusManager.updateProcess(
+        step = this.statusManager.transitionExecutionStatus(
           step,
-          process.type,
           'ACTION_REQUIRED'
         )
 
@@ -106,7 +101,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         let transactionRequest: TransactionParameters = {
-          data: step.transactionRequest.data,
+          data: step.transactionRequest?.data,
         }
 
         if (this.executionOptions?.updateTransactionRequestHook) {
@@ -149,11 +144,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           }
         )
 
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'PENDING'
-        )
+        step = this.statusManager.transitionExecutionStatus(step, 'PENDING')
 
         const simulationResult = await callSolanaWithRetry(
           client,
@@ -192,33 +183,26 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         // Transaction has been confirmed and we can update the process
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'PENDING',
-          {
+        step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+          transaction: {
+            type: step.execution!.type,
             txHash: confirmedTx.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTx.txSignature}`,
-          }
-        )
+            chainId: fromChain.id,
+          },
+        })
 
         if (isBridgeExecution) {
-          process = this.statusManager.updateProcess(step, process.type, 'DONE')
+          step = this.statusManager.transitionExecutionStatus(step, 'DONE')
         }
       } catch (e: any) {
-        const error = await parseSolanaErrors(e, step, process)
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'FAILED',
-          {
-            error: {
-              message: error.cause.message,
-              code: error.code,
-            },
-          }
-        )
-        this.statusManager.updateExecution(step, 'FAILED')
+        const error = await parseSolanaErrors(e, step)
+        step = this.statusManager.transitionExecutionStatus(step, 'FAILED', {
+          error: {
+            message: error.cause.message,
+            code: error.code,
+          },
+        })
         throw error
       }
     }
@@ -226,7 +210,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     await waitForDestinationChainTransaction(
       client,
       step,
-      process,
       fromChain,
       toChain,
       this.statusManager

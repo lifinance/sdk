@@ -4,8 +4,6 @@ import {
   ErrorMessage,
   ErrorName,
   LiFiErrorCode,
-  type LiFiStep,
-  type Process,
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
@@ -29,12 +27,11 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
     })
   })
 
-  describe('when step and process is passed', () => {
-    it('should return the original error with step and process added', async () => {
+  describe('when step is passed', () => {
+    it('should return the original error with step added', async () => {
       const error = new SDKError(
         new BaseError(
           ErrorName.UnknownError,
@@ -44,21 +41,18 @@ describe('parseEVMStepErrors', () => {
       )
 
       const step = buildStepObject({ includingExecution: true })
-      const process = step.execution!.process[0]
 
-      const parsedError = await parseEthereumErrors(error, step, process)
+      const parsedError = await parseEthereumErrors(error, step)
 
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBe(step)
-      expect(parsedError.process).toBe(process)
     })
   })
 
-  describe('when the SDKError already has a step and process', () => {
-    it('should return the original error with teh existing step and process specified', async () => {
+  describe('when the SDKError already has a step', () => {
+    it('should return the original error with the existing step', async () => {
       const expectedStep = buildStepObject({ includingExecution: true })
-      const expectedProcess = expectedStep.execution!.process[0]
 
       const error = new SDKError(
         new BaseError(
@@ -66,19 +60,16 @@ describe('parseEVMStepErrors', () => {
           LiFiErrorCode.InternalError,
           'there was an error'
         ),
-        expectedStep,
-        expectedProcess
+        expectedStep
       )
 
       const step = buildStepObject({ includingExecution: true })
-      const process = step.execution!.process[0]
 
-      const parsedError = await parseEthereumErrors(error, step, process)
+      const parsedError = await parseEthereumErrors(error, step)
 
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBe(expectedStep)
-      expect(parsedError.process).toBe(expectedProcess)
     })
   })
 
@@ -94,12 +85,11 @@ describe('parseEVMStepErrors', () => {
 
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
       expect(parsedError.cause).toBe(error)
     })
 
-    describe('when step and process is passed', () => {
-      it('should return the SDKError with step and process added', async () => {
+    describe('when step is passed', () => {
+      it('should return the SDKError with step added', async () => {
         const error = new BaseError(
           ErrorName.BalanceError,
           LiFiErrorCode.BalanceError,
@@ -107,26 +97,23 @@ describe('parseEVMStepErrors', () => {
         )
 
         const step = buildStepObject({ includingExecution: true })
-        const process = step.execution!.process[0]
 
-        const parsedError = await parseEthereumErrors(error, step, process)
+        const parsedError = await parseEthereumErrors(error, step)
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
-        expect(parsedError.process).toBe(process)
         expect(parsedError.cause).toBe(error)
       })
     })
   })
 
   describe('when a generic Error is passed', () => {
-    it('should return the Error as he cause on a BaseError which is wrapped in an SDKError', async () => {
+    it('should return the Error as the cause on a BaseError which is wrapped in an SDKError', async () => {
       const error = new Error('Somethings fishy')
 
       const parsedError = await parseEthereumErrors(error)
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
 
       const baseError = parsedError.cause
       expect(baseError).toBeInstanceOf(BaseError)
@@ -135,17 +122,15 @@ describe('parseEVMStepErrors', () => {
       expect(causeError).toBe(error)
     })
 
-    describe('when step and process is passed', () => {
-      it('should return an SDKError with step and process added', async () => {
+    describe('when step is passed', () => {
+      it('should return an SDKError with step added', async () => {
         const error = new Error('Somethings fishy')
 
         const step = buildStepObject({ includingExecution: true })
-        const process = step.execution?.process[0]
 
-        const parsedError = await parseEthereumErrors(error, step, process)
+        const parsedError = await parseEthereumErrors(error, step)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
-        expect(parsedError.process).toBe(process)
       })
     })
   })
@@ -182,21 +167,17 @@ describe('parseEVMStepErrors', () => {
         ErrorMessage.TransactionReverted
       )
 
-      const mockStep = {
-        action: {
-          fromChainId: 10,
-        },
-      } as LiFiStep
-
-      const mockProcess = {
-        txHash:
-          '0x5c73f72a72a75d8b716ed42cd620042f53b958f028d0c9ad772908b7791c017b',
-      } as Process
+      const mockStep = buildStepObject({ includingExecution: true })
+      // Set txHash on the SWAP transaction (which matches execution.type)
+      const swapTransaction = mockStep.execution!.transactions.find(
+        (t) => t.type === mockStep.execution!.type
+      )
+      swapTransaction!.txHash =
+        '0x5c73f72a72a75d8b716ed42cd620042f53b958f028d0c9ad772908b7791c017b'
 
       const parsedError = await parseEthereumErrors(
         mockTransactionError,
-        mockStep,
-        mockProcess
+        mockStep
       )
 
       expect(parsedError).toBeInstanceOf(SDKError)

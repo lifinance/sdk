@@ -1,8 +1,7 @@
 import {
   type ExecutionOptions,
   LiFiErrorCode,
-  type LiFiStep,
-  type Process,
+  type LiFiStepExtended,
   ProviderError,
   type StatusManager,
 } from '@lifi/sdk'
@@ -13,15 +12,12 @@ import { switchChain } from './switchChain.js'
 import { buildStepObject } from './switchChain.unit.mock.js'
 
 let client: Client
-let step: LiFiStep
+let step: LiFiStepExtended
 let statusManager: StatusManager
 let hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
-let findOrCreateProcessMock: Mock
-let updateExecutionMock: Mock
-let updateProcessMock: Mock
-let mockProcess: Process
+let transitionExecutionStatusMock: Mock
 
 describe('switchChain', () => {
   beforeEach(() => {
@@ -30,27 +26,16 @@ describe('switchChain', () => {
       switchChainHook: switchChainHookMock,
     } as unknown as ExecutionOptions
 
-    step = buildStepObject({ includingExecution: false })
+    step = buildStepObject({ includingExecution: true })
 
     requestMock = vi.fn(() => 1)
     client = {
       request: requestMock,
     } as unknown as Client
 
-    findOrCreateProcessMock = vi.fn()
-    updateExecutionMock = vi.fn()
-    updateProcessMock = vi.fn()
-    mockProcess = {
-      type: 'SWAP',
-      status: 'STARTED',
-      startedAt: Date.now(),
-    }
+    transitionExecutionStatusMock = vi.fn()
     statusManager = {
-      initExecutionObject: vi.fn(),
-      findOrCreateProcess: findOrCreateProcessMock,
-      removeProcess: vi.fn(),
-      updateExecution: updateExecutionMock,
-      updateProcess: updateProcessMock,
+      transitionExecutionStatus: transitionExecutionStatusMock,
     } as unknown as StatusManager
   })
 
@@ -64,14 +49,13 @@ describe('switchChain', () => {
         client,
         statusManager,
         step,
-        mockProcess,
         step.action.fromChainId,
         true,
         hooks
       )
 
       expect(updatedClient).toEqual(client)
-      expect(statusManager.initExecutionObject).not.toHaveBeenCalled()
+      expect(transitionExecutionStatusMock).not.toHaveBeenCalled()
       expect(hooks.switchChainHook).not.toHaveBeenCalled()
     })
   })
@@ -79,16 +63,14 @@ describe('switchChain', () => {
   describe('when the chain is not correct', () => {
     beforeEach(() => {
       requestMock.mockResolvedValueOnce(1)
-      findOrCreateProcessMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
     })
 
     describe('when allowUserInteraction is false', () => {
-      it('should initialize the status manager and abort', async () => {
+      it('should return undefined and abort', async () => {
         const updatedClient = await switchChain(
           client,
           statusManager,
           step,
-          mockProcess,
           step.action.fromChainId,
           false,
           hooks
@@ -113,7 +95,6 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
-              mockProcess,
               step.action.fromChainId,
               true,
               hooks
@@ -123,7 +104,16 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(updateExecutionMock).toHaveBeenCalledWith(step, 'FAILED')
+          expect(transitionExecutionStatusMock).toHaveBeenCalledWith(
+            step,
+            'FAILED',
+            {
+              error: {
+                message: 'something went wrong',
+                code: LiFiErrorCode.ChainSwitchError,
+              },
+            }
+          )
         })
       })
 
@@ -138,7 +128,6 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
-              mockProcess,
               step.action.fromChainId,
               true,
               hooks
@@ -153,7 +142,16 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(updateExecutionMock).toHaveBeenCalledWith(step, 'FAILED')
+          expect(transitionExecutionStatusMock).toHaveBeenCalledWith(
+            step,
+            'FAILED',
+            {
+              error: {
+                message: 'Chain switch required.',
+                code: LiFiErrorCode.ChainSwitchError,
+              },
+            }
+          )
         })
       })
 
@@ -173,7 +171,6 @@ describe('switchChain', () => {
             client,
             statusManager,
             step,
-            mockProcess,
             step.action.fromChainId,
             true,
             hooks

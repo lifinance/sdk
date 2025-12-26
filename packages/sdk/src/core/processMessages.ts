@@ -1,9 +1,9 @@
 import type { StatusMessage, Substatus } from '@lifi/types'
-import type { ProcessStatus, ProcessType } from '../types/core.js'
+import type { ExecutionStatus, TransactionType } from '../types/core.js'
 
 const processMessages: Record<
-  ProcessType,
-  Partial<Record<ProcessStatus, string>>
+  TransactionType,
+  Partial<Record<ExecutionStatus, string>>
 > = {
   TOKEN_ALLOWANCE: {
     STARTED: 'Setting token allowance',
@@ -64,8 +64,8 @@ const substatusMessages: Record<
 }
 
 export function getProcessMessage(
-  type: ProcessType,
-  status: ProcessStatus
+  type: TransactionType,
+  status: ExecutionStatus
 ): string | undefined {
   const processMessage = processMessages[type][status]
   return processMessage

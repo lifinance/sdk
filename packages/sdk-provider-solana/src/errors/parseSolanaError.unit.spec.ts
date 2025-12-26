@@ -25,11 +25,10 @@ describe('parseSolanaStepError', () => {
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
     })
 
-    describe('when step and process is passed', () => {
-      it('should return the original error with step and process added', async () => {
+    describe('when step is passed', () => {
+      it('should return the original error with step added', async () => {
         const error = new SDKError(
           new BaseError(
             ErrorName.UnknownError,
@@ -39,20 +38,17 @@ describe('parseSolanaStepError', () => {
         )
 
         const step = buildStepObject({ includingExecution: true })
-        const process = step.execution!.process[0]
 
-        const parsedError = await parseSolanaErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step)
 
         expect(parsedError).toBe(error)
 
         expect(parsedError.step).toBe(step)
-        expect(parsedError.process).toBe(process)
       })
 
-      describe('when the SDKError already has a step and process', () => {
-        it('should return the original error with teh existing step and process specified', async () => {
+      describe('when the SDKError already has a step', () => {
+        it('should return the original error with the existing step', async () => {
           const expectedStep = buildStepObject({ includingExecution: true })
-          const expectedProcess = expectedStep.execution!.process[0]
 
           const error = new SDKError(
             new BaseError(
@@ -60,19 +56,16 @@ describe('parseSolanaStepError', () => {
               LiFiErrorCode.InternalError,
               'there was an error'
             ),
-            expectedStep,
-            expectedProcess
+            expectedStep
           )
 
           const step = buildStepObject({ includingExecution: true })
-          const process = step.execution!.process[0]
 
-          const parsedError = await parseSolanaErrors(error, step, process)
+          const parsedError = await parseSolanaErrors(error, step)
 
           expect(parsedError).toBe(error)
 
           expect(parsedError.step).toBe(expectedStep)
-          expect(parsedError.process).toBe(expectedProcess)
         })
       })
     })
@@ -90,12 +83,11 @@ describe('parseSolanaStepError', () => {
 
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
       expect(parsedError.cause).toBe(error)
     })
 
-    describe('when step and process is passed', () => {
-      it('should return the SDKError with step and process added', async () => {
+    describe('when step is passed', () => {
+      it('should return the SDKError with step added', async () => {
         const error = new BaseError(
           ErrorName.BalanceError,
           LiFiErrorCode.BalanceError,
@@ -103,26 +95,23 @@ describe('parseSolanaStepError', () => {
         )
 
         const step = buildStepObject({ includingExecution: true })
-        const process = step.execution!.process[0]
 
-        const parsedError = await parseSolanaErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step)
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
-        expect(parsedError.process).toBe(process)
         expect(parsedError.cause).toBe(error)
       })
     })
   })
 
   describe('when a generic Error is passed', () => {
-    it('should return the Error as he cause on a BaseError which is wrapped in an SDKError', async () => {
+    it('should return the Error as the cause on a BaseError which is wrapped in an SDKError', async () => {
       const error = new Error('Somethings fishy')
 
       const parsedError = await parseSolanaErrors(error)
       expect(parsedError).toBeInstanceOf(SDKError)
       expect(parsedError.step).toBeUndefined()
-      expect(parsedError.process).toBeUndefined()
 
       const baseError = parsedError.cause
       expect(baseError).toBeInstanceOf(BaseError)
@@ -131,17 +120,15 @@ describe('parseSolanaStepError', () => {
       expect(causeError).toBe(error)
     })
 
-    describe('when step and process is passed', () => {
-      it('should return an SDKError with step and process added', async () => {
+    describe('when step is passed', () => {
+      it('should return an SDKError with step added', async () => {
         const error = new Error('Somethings fishy')
 
         const step = buildStepObject({ includingExecution: true })
-        const process = step.execution?.process[0]
 
-        const parsedError = await parseSolanaErrors(error, step, process)
+        const parsedError = await parseSolanaErrors(error, step)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
-        expect(parsedError.process).toBe(process)
       })
     })
   })

@@ -8,7 +8,6 @@ import {
   LiFiErrorCode,
   type LiFiStep,
   type LiFiStepExtended,
-  type Process,
   relayTransaction,
   type SDKClient,
   type SignedTypedData,
@@ -72,16 +71,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (
-    step: LiFiStepExtended,
-    process: Process,
-    targetChainId?: number
-  ) => {
+  checkClient = async (step: LiFiStepExtended, targetChainId?: number) => {
     const updatedClient = await switchChain(
       this.client,
       this.statusManager,
       step,
-      process,
       targetChainId ?? step.action.fromChainId,
       this.allowUserInteraction,
       this.executionOptions
@@ -105,20 +99,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     ) {
       const errorMessage =
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      this.statusManager.updateProcess(step, process.type, 'FAILED', {
+      step = this.statusManager.transitionExecutionStatus(step, 'FAILED', {
         error: {
           code: LiFiErrorCode.WalletChangedDuringExecution,
           message: errorMessage,
         },
       })
-      this.statusManager.updateExecution(step, 'FAILED')
       throw await parseEthereumErrors(
         new TransactionError(
           LiFiErrorCode.WalletChangedDuringExecution,
           errorMessage
         ),
-        step,
-        process
+        step
       )
     }
     return updatedClient
@@ -128,26 +120,28 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     {
       step,
-      process,
       fromChain,
       toChain,
       isBridgeExecution,
     }: {
       step: LiFiStepExtended
-      process: Process
       fromChain: ExtendedChain
       toChain: ExtendedChain
       isBridgeExecution: boolean
     }
   ) => {
+    const transaction = step.execution?.transactions.find(
+      (t) => t.type === step.execution!.type
+    )
     const updateProcessWithReceipt = (
       transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
     ) => {
       // Update pending process if the transaction hash from the receipt is different.
       // This might happen if the transaction was replaced or we used taskId instead of txHash.
       if (
+        transaction &&
         transactionReceipt?.transactionHash &&
-        transactionReceipt.transactionHash !== process.txHash
+        transactionReceipt.transactionHash !== transaction.txHash
       ) {
         // Validate if transaction hash is a valid hex string that can be used on-chain
         // Some custom integrations may return non-hex identifiers to support custom status tracking
@@ -156,28 +150,26 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         })
           ? transactionReceipt.transactionHash
           : undefined
-        process = this.statusManager.updateProcess(
-          step,
-          process.type,
-          'PENDING',
-          {
+        step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+          transaction: {
+            type: transaction.type,
             txHash: txHash,
             txLink:
               (transactionReceipt as WalletCallReceipt).transactionLink ||
               (txHash
                 ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
                 : undefined),
-          }
-        )
+          },
+        })
       }
     }
 
     let transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
-    switch (process.txType) {
+    switch (transaction?.txType) {
       case 'batched':
         transactionReceipt = await waitForBatchTransactionReceipt(
           this.client,
-          process.taskId as Hash,
+          transaction?.taskId as Hash,
           (result) => {
             const receipt = result.receipts?.find(
               (r) => r.status === 'reverted'
@@ -191,7 +183,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       case 'relayed':
         transactionReceipt = await waitForRelayedTransactionReceipt(
           client,
-          process.taskId as Hash,
+          transaction?.taskId as Hash,
           step
         )
         break
@@ -199,12 +191,19 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         transactionReceipt = await waitForTransactionReceipt(client, {
           client: this.client,
           chainId: fromChain.id,
-          txHash: process.txHash as Hash,
+          txHash: transaction?.txHash as Hash,
           onReplaced: (response) => {
-            this.statusManager.updateProcess(step, process.type, 'PENDING', {
-              txHash: response.transaction.hash,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-            })
+            step = this.statusManager.transitionExecutionStatus(
+              step,
+              'PENDING',
+              {
+                transaction: {
+                  type: step.execution!.type,
+                  txHash: response.transaction.hash,
+                  txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+                },
+              }
+            )
           },
         })
     }
@@ -212,13 +211,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     updateProcessWithReceipt(transactionReceipt)
 
     if (isBridgeExecution) {
-      process = this.statusManager.updateProcess(step, process.type, 'DONE')
+      step = this.statusManager.transitionExecutionStatus(step, 'DONE')
     }
 
     await waitForDestinationChainTransaction(
       client,
       step,
-      process,
       fromChain,
       toChain,
       this.statusManager
@@ -373,10 +371,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
   ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
+    if (step.execution) {
+      step = this.statusManager.transitionExecutionStatus(step, 'PENDING')
+    }
 
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
-    const destinationChainProcess = step.execution?.process.find(
+    const destinationChainProcess = step.execution?.transactions.find(
       (process) => process.type === 'RECEIVING_CHAIN'
     )
 
@@ -386,12 +386,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Return the step
     if (
       destinationChainProcess &&
-      destinationChainProcess.substatus !== 'WAIT_DESTINATION_TRANSACTION'
+      step.execution!.substatus !== 'WAIT_DESTINATION_TRANSACTION'
     ) {
-      const updatedClient = await this.checkClient(
-        step,
-        destinationChainProcess
-      )
+      const updatedClient = await this.checkClient(step)
       if (!updatedClient) {
         return step
       }
@@ -421,7 +418,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     // Find existing swap/bridge process
-    const existingProcess = step.execution.process.find(
+    const existingProcess = step?.execution?.transactions.find(
       (p) => p.type === currentProcessType
     )
 
@@ -492,13 +489,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       }
     }
 
-    let process = this.statusManager.findProcess(step, currentProcessType)
     try {
-      if (process?.status === 'DONE') {
+      if (step.execution?.status === 'DONE') {
         await waitForDestinationChainTransaction(
           client,
           step,
-          process,
           fromChain,
           toChain,
           this.statusManager
@@ -507,16 +502,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      if (process?.txHash || process?.taskId) {
+      const transaction = step.execution?.transactions.find(
+        (t) => t.type === step.execution!.type
+      )
+      if (transaction?.txHash || transaction?.taskId) {
         // Make sure that the chain is still correct
-        const updatedClient = await this.checkClient(step, process)
+        const updatedClient = await this.checkClient(step)
         if (!updatedClient) {
           return step
         }
 
         await this.waitForTransaction(client, {
           step,
-          process,
           fromChain,
           toChain,
           isBridgeExecution,
@@ -525,12 +522,14 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      process = this.statusManager.findOrCreateProcess({
+      step = this.statusManager.transitionExecutionType(
         step,
-        type: currentProcessType,
-        status: 'STARTED',
-        chainId: fromChain.id,
-      })
+        currentProcessType,
+        {
+          chainId: fromChain.id,
+        }
+      )
+      step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
 
       await checkBalance(client, this.client.account!.address, step)
 
@@ -538,9 +537,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       let { transactionRequest, isRelayerTransaction } =
         await this.prepareUpdatedStep(client, step, signedTypedData)
 
-      process = this.statusManager.updateProcess(
+      step = this.statusManager.transitionExecutionStatus(
         step,
-        process.type,
         'ACTION_REQUIRED'
       )
 
@@ -555,7 +553,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       if (batchingSupported && transactionRequest) {
         // Make sure that the chain is still correct
-        const updatedClient = await this.checkClient(step, process)
+        const updatedClient = await this.checkClient(step)
         if (!updatedClient) {
           return step
         }
@@ -591,7 +589,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             'Unable to prepare transaction. Typed data for transfer is not found.'
           )
         }
-        this.statusManager.updateProcess(step, process.type, 'MESSAGE_REQUIRED')
+        step = this.statusManager.transitionExecutionStatus(
+          step,
+          'MESSAGE_REQUIRED'
+        )
         for (const typedData of intentTypedData) {
           if (!this.allowUserInteraction) {
             return step
@@ -599,11 +600,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           const typedDataChainId =
             getDomainChainId(typedData.domain) || fromChain.id
           // Switch to the typed data's chain if needed
-          const updatedClient = await this.checkClient(
-            step,
-            process,
-            typedDataChainId
-          )
+          const updatedClient = await this.checkClient(step, typedDataChainId)
           if (!updatedClient) {
             return step
           }
@@ -624,7 +621,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           })
         }
 
-        this.statusManager.updateProcess(step, process.type, 'PENDING')
+        step = this.statusManager.transitionExecutionStatus(step, 'PENDING')
 
         // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
@@ -643,7 +640,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           )
         }
         // Make sure that the chain is still correct
-        const updatedClient = await this.checkClient(step, process)
+        const updatedClient = await this.checkClient(step)
         if (!updatedClient) {
           return step
         }
@@ -661,9 +658,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             transactionRequest.data as Hex
           )
         } else if (permit2Supported) {
-          this.statusManager.updateProcess(
+          step = this.statusManager.transitionExecutionStatus(
             step,
-            process.type,
             'MESSAGE_REQUIRED'
           )
           const permit2Signature = await signPermit2Message(client, {
@@ -681,9 +677,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             transactionRequest.data as Hex,
             permit2Signature.signature
           )
-          this.statusManager.updateProcess(
+          step = this.statusManager.transitionExecutionStatus(
             step,
-            process.type,
             'ACTION_REQUIRED'
           )
         }
@@ -713,12 +708,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         } as SendTransactionParameters)
       }
 
-      process = this.statusManager.updateProcess(
-        step,
-        process.type,
-        'PENDING',
-        // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
-        {
+      // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
+      step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+        transaction: {
+          type: step.execution!.type,
           txHash,
           taskId,
           txType,
@@ -726,12 +719,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             txType === 'standard' && txHash
               ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
               : txLink,
-        }
-      )
+        },
+      })
 
       await this.waitForTransaction(client, {
         step,
-        process,
         fromChain,
         toChain,
         isBridgeExecution,
@@ -745,19 +737,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step.execution = undefined
         return this.executeStep(client, step, true)
       }
-      const error = await parseEthereumErrors(e, step, process)
-      process = this.statusManager.updateProcess(
-        step,
-        process?.type || currentProcessType,
-        'FAILED',
-        {
-          error: {
-            message: error.cause.message,
-            code: error.code,
-          },
-        }
-      )
-      this.statusManager.updateExecution(step, 'FAILED')
+      const error = await parseEthereumErrors(e, step)
+      step = this.statusManager.transitionExecutionStatus(step, 'FAILED', {
+        error: {
+          message: error.cause.message,
+          code: error.code,
+        },
+      })
 
       throw error
     }

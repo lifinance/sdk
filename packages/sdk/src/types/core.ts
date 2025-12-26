@@ -103,6 +103,10 @@ export interface LiFiStepExtended extends LiFiStep {
   execution?: Execution
 }
 
+export type LiFiStepWithExecution = Omit<LiFiStepExtended, 'execution'> & {
+  execution: Execution
+}
+
 export type StepExtended = Step & {
   execution?: Execution
 }
@@ -169,9 +173,8 @@ export interface ExecutionOptions {
   infiniteApproval?: boolean
 }
 
-export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
 
-export type ProcessStatus =
+export type ExecutionStatus =
   | 'STARTED'
   | 'ACTION_REQUIRED'
   | 'MESSAGE_REQUIRED'
@@ -181,43 +184,38 @@ export type ProcessStatus =
   | 'DONE'
   | 'CANCELLED'
 
-export type ProcessType =
+export type TransactionType =
   | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
-export type Process = {
-  type: ProcessType
-  status: ProcessStatus
-  substatus?: Substatus
+export type Transaction = {
+  type: TransactionType
   chainId?: number
   txHash?: string
   taskId?: string
   txLink?: string
   txType?: TransactionMethodType
+  txHex?: string
+}
+
+export interface Execution {
+  type: TransactionType
+  startedAt: number
+  pendingAt?: number   
   actionRequiredAt?: number
   doneAt?: number
-  failedAt?: number
-  pendingAt?: number
-  startedAt: number
+  status: ExecutionStatus
+  substatus?: Substatus
   message?: string
   error?: {
     code: string | number
     message: string
     htmlMessage?: string
   }
-
-  // additional information
-  [key: string]: any
-}
-
-export interface Execution {
-  startedAt: number
-  doneAt?: number
-  status: ExecutionStatus
-  process: Array<Process>
+  transactions: Array<Transaction>
   fromAmount?: string
   toAmount?: string
   toToken?: Token
@@ -225,6 +223,9 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+
+  // additional information
+  [key: string]: any
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
