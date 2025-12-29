@@ -5,7 +5,8 @@ import {
   type TokenAmount,
   withDedupe,
 } from '@lifi/sdk'
-import { PublicKey } from '@solana/web3.js'
+import { address, type JsonParsedTokenAccount } from '@solana/kit'
+
 import { callSolanaWithRetry } from '../client/connection.js'
 
 const SolSystemProgram = '11111111111111111111111111111111'
@@ -36,58 +37,72 @@ const getSolanaBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
-  const accountPublicKey = new PublicKey(walletAddress)
-  const tokenProgramIdPublicKey = new PublicKey(TokenProgramId)
-  const token2022ProgramIdPublicKey = new PublicKey(Token2022ProgramId)
+  // Convert addresses to Solana Kit's address type
+  const accountAddress = address(walletAddress)
+  const tokenProgramAddress = address(TokenProgramId)
+  const token2022ProgramAddress = address(Token2022ProgramId)
+
+  // Use Solana Kit's RPC API with the retry wrapper
   const [slot, balance, tokenAccountsByOwner, token2022AccountsByOwner] =
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getSlot('confirmed')
+          callSolanaWithRetry(client, (rpc) =>
+            rpc.getSlot({ commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getBalance(accountPublicKey, 'confirmed')
+          callSolanaWithRetry(client, (rpc) =>
+            rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: tokenProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaWithRetry(client, (rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: tokenProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${TokenProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${TokenProgramId}`,
         }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: token2022ProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaWithRetry(client, (rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: token2022ProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${Token2022ProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${Token2022ProgramId}`,
         }
       ),
     ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
-  const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
+  const solBalance =
+    balance.status === 'fulfilled' ? BigInt(balance.value.value) : 0n
 
   const walletTokenAmounts = [
     ...(tokenAccountsByOwner.status === 'fulfilled'
@@ -97,10 +112,12 @@ const getSolanaBalanceDefault = async (
       ? token2022AccountsByOwner.value.value
       : []),
   ].reduce(
-    (tokenAmounts: Record<string, bigint>, value: any) => {
-      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
+    (tokenAmounts: Record<string, bigint>, value) => {
+      const tokenAccount: JsonParsedTokenAccount =
+        value.account.data.parsed.info
+      const amount = BigInt(tokenAccount.tokenAmount.amount)
       if (amount > 0n) {
-        tokenAmounts[value.account.data.parsed.info.mint] = amount
+        tokenAmounts[tokenAccount.mint] = amount
       }
       return tokenAmounts
     },
