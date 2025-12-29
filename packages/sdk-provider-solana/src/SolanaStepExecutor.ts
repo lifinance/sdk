@@ -31,24 +31,19 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  checkWalletAdapter = async (step: LiFiStepExtended) => {
-    if (!this.wallet.features[SolanaSignTransaction]) {
-      throw new TransactionError(
-        LiFiErrorCode.ProviderUnavailable,
-        'Wallet does not support signing transactions.'
-      )
-    }
-
-    const accountWithSignerAddress = this.wallet.accounts.find(
+  getWalletAccount = async (step: LiFiStepExtended) => {
+    const account = this.wallet.accounts.find(
       (account) => account.address === step.action.fromAddress
     )
 
-    if (!accountWithSignerAddress) {
+    if (!account) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
     }
+
+    return account
   }
 
   executeStep = async (
@@ -63,16 +58,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    const walletAccount = this.wallet.accounts.find(
-      (account) => account.address === step.action.fromAddress
-    )
-
-    if (!walletAccount) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'Wallet account not found for the specified address.'
-      )
-    }
+    const walletAccount = await this.getWalletAccount(step)
 
     let process = this.statusManager.findOrCreateProcess({
       step,
@@ -152,8 +138,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         const transactionBytes = base64ToUint8Array(transactionRequest.data)
 
-        await this.checkWalletAdapter(step)
-
         const signedTransactionOutputs = await withTimeout(
           async () => {
             const { signTransaction } = getWalletFeature(
@@ -211,9 +195,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         )
 
         if (simulationResult.value.err) {
+          const errorMessage =
+            typeof simulationResult.value.err === 'object'
+              ? JSON.stringify(simulationResult.value.err)
+              : simulationResult.value.err
           throw new TransactionError(
             LiFiErrorCode.TransactionSimulationFailed,
-            'Transaction simulation failed'
+            `Transaction simulation failed: ${errorMessage}`,
+            new Error(errorMessage)
           )
         }
 

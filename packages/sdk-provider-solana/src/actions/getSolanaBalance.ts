@@ -5,7 +5,7 @@ import {
   type TokenAmount,
   withDedupe,
 } from '@lifi/sdk'
-import { address } from '@solana/kit'
+import { address, type JsonParsedTokenAccount } from '@solana/kit'
 
 import { callSolanaWithRetry } from '../client/connection.js'
 
@@ -112,10 +112,12 @@ const getSolanaBalanceDefault = async (
       ? token2022AccountsByOwner.value.value
       : []),
   ].reduce(
-    (tokenAmounts: Record<string, bigint>, value: any) => {
-      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
+    (tokenAmounts: Record<string, bigint>, value) => {
+      const tokenAccount: JsonParsedTokenAccount =
+        value.account.data.parsed.info
+      const amount = BigInt(tokenAccount.tokenAmount.amount)
       if (amount > 0n) {
-        tokenAmounts[value.account.data.parsed.info.mint] = amount
+        tokenAmounts[tokenAccount.mint] = amount
       }
       return tokenAmounts
     },
