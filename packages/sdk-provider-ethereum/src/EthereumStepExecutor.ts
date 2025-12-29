@@ -131,7 +131,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     }
   ) => {
     const transaction = step.execution?.transactions.find(
-      (t) => t.type === step.execution!.type
+      (t) => t.type === step.execution?.type
     )
     const updateProcessWithReceipt = (
       transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
@@ -152,7 +152,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           : undefined
         step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
           transaction: {
-            type: transaction.type,
             txHash: txHash,
             txLink:
               (transactionReceipt as WalletCallReceipt).transactionLink ||
@@ -198,7 +197,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
               'PENDING',
               {
                 transaction: {
-                  type: step.execution!.type,
                   txHash: response.transaction.hash,
                   txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
                 },
@@ -386,7 +384,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Return the step
     if (
       destinationChainProcess &&
-      step.execution!.substatus !== 'WAIT_DESTINATION_TRANSACTION'
+      step.execution?.substatus !== 'WAIT_DESTINATION_TRANSACTION'
     ) {
       const updatedClient = await this.checkClient(step)
       if (!updatedClient) {
@@ -503,7 +501,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       }
 
       const transaction = step.execution?.transactions.find(
-        (t) => t.type === step.execution!.type
+        (t) => t.type === step.execution?.type
       )
       if (transaction?.txHash || transaction?.taskId) {
         // Make sure that the chain is still correct
@@ -709,7 +707,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       // When atomic batch or relayer are supported, txHash represents the batch hash or taskId rather than an individual transaction hash
       step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
         transaction: {
-          type: step.execution!.type,
           txHash,
           taskId,
           txType,

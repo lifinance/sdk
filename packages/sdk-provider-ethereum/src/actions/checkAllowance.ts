@@ -156,7 +156,7 @@ export const checkAllowance = async (
     }
 
     const transaction = step.execution?.transactions.find(
-      (t) => t.type === step.execution!.type
+      (t) => t.type === step.execution?.type
     )
 
     // Handle existing pending transaction
@@ -272,7 +272,6 @@ export const checkAllowance = async (
     // Clear the txHash and txLink from potential previous approval transaction
     step = statusManager.transitionExecutionStatus(step, resetApprovalStatus, {
       transaction: {
-        type: step.execution!.type,
         txHash: undefined,
         txLink: undefined,
       },
@@ -301,7 +300,7 @@ export const checkAllowance = async (
           client,
           updatedClient,
           approvalResetTxHash,
-          step.execution!.type,
+          step.execution?.type ?? 'TOKEN_ALLOWANCE',
           step,
           chain,
           statusManager
@@ -312,7 +311,6 @@ export const checkAllowance = async (
           'ACTION_REQUIRED',
           {
             transaction: {
-              type: step.execution!.type,
               txHash: undefined,
               txLink: undefined,
             },
@@ -374,7 +372,7 @@ export const checkAllowance = async (
       client,
       updatedClient,
       approveTxHash,
-      step.execution!.type,
+      step.execution?.type ?? 'TOKEN_ALLOWANCE',
       step,
       chain,
       statusManager
@@ -383,7 +381,7 @@ export const checkAllowance = async (
     return { status: 'DONE', data: signedTypedData }
   } catch (e: any) {
     const transaction = step.execution?.transactions.find(
-      (t) => t.type === step.execution!.type
+      (t) => t.type === step.execution?.type
     )
     if (!transaction) {
       step = statusManager.transitionExecutionType(
@@ -407,7 +405,7 @@ const waitForApprovalTransaction = async (
   client: SDKClient,
   viemClient: Client,
   txHash: Hash,
-  processType: TransactionType,
+  _processType: TransactionType,
   step: LiFiStep,
   chain: ExtendedChain,
   statusManager: StatusManager,
@@ -418,7 +416,6 @@ const waitForApprovalTransaction = async (
 
   step = statusManager.transitionExecutionStatus(step, 'PENDING', {
     transaction: {
-      type: processType,
       txHash,
       txLink: getTxLink(txHash),
     },
@@ -432,7 +429,6 @@ const waitForApprovalTransaction = async (
       const newHash = response.transaction.hash
       step = statusManager.transitionExecutionStatus(step, 'PENDING', {
         transaction: {
-          type: processType,
           txHash: newHash,
           txLink: getTxLink(newHash),
         },
@@ -444,7 +440,6 @@ const waitForApprovalTransaction = async (
   if (!approvalReset) {
     step = statusManager.transitionExecutionStatus(step, 'DONE', {
       transaction: {
-        type: processType,
         txHash: finalHash,
         txLink: getTxLink(finalHash),
       },

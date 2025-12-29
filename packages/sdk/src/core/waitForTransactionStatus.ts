@@ -37,7 +37,6 @@ export async function waitForTransactionStatus(
                   statusResponse.substatus
                 ),
               transaction: {
-                type: step.execution!.type,
                 txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
               },
             })

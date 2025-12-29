@@ -71,7 +71,6 @@ export async function waitForDestinationChainTransaction(
         },
       ],
       transaction: {
-        type: step.execution!.type,
         txHash: statusReceiving?.txHash,
         txLink:
           statusReceiving?.txLink ||

@@ -4,7 +4,7 @@ import type {
   ExecutionStatus,
   ExecutionStatusUpdate,
   LiFiStepExtended,
-  LiFiStepWithExecution,
+  Transaction,
   TransactionType,
 } from '../../types/core.js'
 import { executionState } from '../executionState.js'
@@ -29,13 +29,13 @@ export class StatusManager {
     step: LiFiStepExtended,
     newStatus: ExecutionStatus,
     execution?: ExecutionStatusUpdate
-  ): LiFiStepWithExecution {
+  ): LiFiStepExtended {
     const currentStatus = step.execution?.status
     const isSameStatus = currentStatus && currentStatus === newStatus
 
     // Early return only if same status AND no execution updates to apply
     if (isSameStatus && !execution) {
-      return step as LiFiStepWithExecution
+      return step
     }
 
     // Validate status transition (skip if same status with updates)
@@ -69,15 +69,24 @@ export class StatusManager {
 
       // Override transaction or add a new transaction
       if (transaction) {
+        const transactionType = step.execution?.type
         const existingIndex = step.execution.transactions.findIndex(
-          (t) => t.type === transaction.type
+          (t) => t.type === transactionType
         )
+        const transactionWithType = {
+          ...transaction,
+          type: transactionType,
+        } as Transaction
+
         step.execution = {
           ...step.execution,
           transactions:
             existingIndex >= 0
-              ? step.execution.transactions.with(existingIndex, transaction)
-              : [...step.execution.transactions, transaction],
+              ? step.execution.transactions.with(
+                  existingIndex,
+                  transactionWithType
+                )
+              : [...step.execution.transactions, transactionWithType],
         } as Execution
       }
     }
@@ -86,22 +95,22 @@ export class StatusManager {
     step.execution = {
       ...step.execution,
       status: newStatus,
-      message: getProcessMessage(step.execution!.type, newStatus),
+      message: getProcessMessage(step.execution.type, newStatus),
     } as Execution
 
     this.updateStepInRoute(step)
 
-    return step as LiFiStepWithExecution
+    return step
   }
 
   transitionExecutionType(
     step: LiFiStepExtended,
     newType: TransactionType,
     chainId: number
-  ): LiFiStepWithExecution {
+  ): LiFiStepExtended {
     const currentType = step.execution?.type
     if (currentType && currentType === newType) {
-      return step as LiFiStepWithExecution
+      return step
     }
 
     // Validate type transition

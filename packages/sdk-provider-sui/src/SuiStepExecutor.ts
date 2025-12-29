@@ -157,7 +157,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
         // Transaction has been confirmed and we can update the execution
         step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
           transaction: {
-            type: currentProcessType,
             txHash: result.digest,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
             chainId: fromChain.id,

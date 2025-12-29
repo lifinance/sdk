@@ -103,10 +103,6 @@ export interface LiFiStepExtended extends LiFiStep {
   execution?: Execution
 }
 
-export type LiFiStepWithExecution = Omit<LiFiStepExtended, 'execution'> & {
-  execution: Execution
-}
-
 export type StepExtended = Step & {
   execution?: Execution
 }
@@ -231,5 +227,5 @@ export interface Execution {
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
 
 export type ExecutionStatusUpdate = Partial<Execution> & {
-  transaction?: Transaction
+  transaction?: Omit<Transaction, 'type'>
 }

@@ -183,7 +183,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         // Transaction has been confirmed and we can update the process
         step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
           transaction: {
-            type: step.execution!.type,
             txHash: confirmedTx.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTx.txSignature}`,
             chainId: fromChain.id,

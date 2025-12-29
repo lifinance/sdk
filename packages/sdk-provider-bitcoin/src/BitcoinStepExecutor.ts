@@ -70,20 +70,20 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)
 
-    if (step.execution!.status !== 'DONE') {
+    if (step.execution?.status !== 'DONE') {
       try {
         let txHash: string
         let txHex: string
-        const process = step.execution!.transactions.find(
-          (p) => p.type === currentProcessType
+        const currentTransaction = step.execution?.transactions.find(
+          (t) => t.type === currentProcessType
         )
-        if (process?.txHash) {
+        if (currentTransaction?.txHash) {
           // Make sure that the chain is still correct
           this.checkClient(step)
 
           // Wait for exiting transaction
-          txHash = process.txHash
-          txHex = process.txHex ?? ''
+          txHash = currentTransaction.txHash
+          txHex = currentTransaction.txHex ?? ''
         } else {
           step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
 
@@ -255,7 +255,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
           step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
             transaction: {
-              type: step.execution!.type,
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               txHex,
@@ -275,7 +274,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
               'PENDING',
               {
                 transaction: {
-                  type: step.execution!.type,
                   txHash: response.transaction.txid,
                   txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
                 },
@@ -294,7 +292,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         if (transaction.txid !== txHash) {
           step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
             transaction: {
-              type: step.execution!.type,
               txHash: transaction.txid,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
             },

@@ -61,10 +61,10 @@ describe('StatusManager', () => {
           { type: 'SWAP' }
         )
 
-        expect(result.execution.status).toBe('PENDING')
-        expect(result.execution.type).toBe('SWAP')
-        expect(result.execution.startedAt).toBe(SOME_DATE)
-        expect(result.execution.transactions).toEqual([])
+        expect(result.execution!.status).toBe('PENDING')
+        expect(result.execution!.type).toBe('SWAP')
+        expect(result.execution!.startedAt).toBe(SOME_DATE)
+        expect(result.execution!.transactions).toEqual([])
         expect(updateRouteHookMock).toHaveBeenCalled()
       })
     })
@@ -82,8 +82,8 @@ describe('StatusManager', () => {
             'DONE'
           )
 
-          expect(result.execution.status).toBe('DONE')
-          expect(result.execution.doneAt).toBe(SOME_DATE)
+          expect(result.execution!.status).toBe('DONE')
+          expect(result.execution!.doneAt).toBe(SOME_DATE)
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
 
@@ -97,9 +97,9 @@ describe('StatusManager', () => {
             }
           )
 
-          expect(result.execution.status).toBe('DONE')
-          expect(result.execution.fromAmount).toBe('123')
-          expect(result.execution.toAmount).toBe('456')
+          expect(result.execution!.status).toBe('DONE')
+          expect(result.execution!.fromAmount).toBe('123')
+          expect(result.execution!.toAmount).toBe('456')
         })
 
         it('should add a transaction when provided', () => {
@@ -108,36 +108,41 @@ describe('StatusManager', () => {
             'DONE',
             {
               transaction: {
-                type: 'SWAP',
                 txHash: '0xabc123',
                 txLink: 'https://example.com/tx/0xabc123',
               },
             }
           )
 
-          expect(result.execution.status).toBe('DONE')
+          expect(result.execution!.status).toBe('DONE')
           // Should update existing SWAP transaction
-          const swapTx = result.execution.transactions.find(
+          const swapTx = result.execution!.transactions.find(
             (t: Transaction) => t.type === 'SWAP'
           )
           expect(swapTx?.txHash).toBe('0xabc123')
         })
 
-        it('should add a new transaction when type does not exist', () => {
-          const result = statusManager.transitionExecutionStatus(
+        it('should add a new transaction after type transition', () => {
+          // First transition to RECEIVING_CHAIN type
+          const stepWithNewType = statusManager.transitionExecutionType(
             structuredClone(step),
+            'RECEIVING_CHAIN',
+            42161
+          )
+
+          const result = statusManager.transitionExecutionStatus(
+            stepWithNewType,
             'DONE',
             {
               transaction: {
-                type: 'RECEIVING_CHAIN',
                 txHash: '0xdef456',
                 txLink: 'https://example.com/tx/0xdef456',
               },
             }
           )
 
-          expect(result.execution.status).toBe('DONE')
-          const receivingTx = result.execution.transactions.find(
+          expect(result.execution!.status).toBe('DONE')
+          const receivingTx = result.execution!.transactions.find(
             (t: Transaction) => t.type === 'RECEIVING_CHAIN'
           )
           expect(receivingTx?.txHash).toBe('0xdef456')
@@ -163,7 +168,7 @@ describe('StatusManager', () => {
             'PENDING'
           )
 
-          expect(result.execution.status).toBe('PENDING')
+          expect(result.execution!.status).toBe('PENDING')
           expect(updateRouteHookMock).not.toHaveBeenCalled()
         })
 
@@ -174,8 +179,8 @@ describe('StatusManager', () => {
             { fromAmount: '555' }
           )
 
-          expect(result.execution.status).toBe('PENDING')
-          expect(result.execution.fromAmount).toBe('555')
+          expect(result.execution!.status).toBe('PENDING')
+          expect(result.execution!.fromAmount).toBe('555')
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
@@ -195,10 +200,10 @@ describe('StatusManager', () => {
           137
         )
 
-        expect(result.execution.type).toBe('SWAP')
-        expect(result.execution.chainId).toBe(137)
-        expect(result.execution.status).toBe('PENDING')
-        expect(result.execution.startedAt).toBe(SOME_DATE)
+        expect(result.execution!.type).toBe('SWAP')
+        expect(result.execution!.chainId).toBe(137)
+        expect(result.execution!.status).toBe('PENDING')
+        expect(result.execution!.startedAt).toBe(SOME_DATE)
         expect(updateRouteHookMock).toHaveBeenCalled()
       })
     })
@@ -217,8 +222,8 @@ describe('StatusManager', () => {
             42161
           )
 
-          expect(result.execution.type).toBe('RECEIVING_CHAIN')
-          expect(result.execution.chainId).toBe(42161)
+          expect(result.execution!.type).toBe('RECEIVING_CHAIN')
+          expect(result.execution!.chainId).toBe(42161)
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
@@ -244,7 +249,7 @@ describe('StatusManager', () => {
             137
           )
 
-          expect(result.execution.type).toBe('SWAP')
+          expect(result.execution!.type).toBe('SWAP')
           expect(updateRouteHookMock).not.toHaveBeenCalled()
         })
       })
