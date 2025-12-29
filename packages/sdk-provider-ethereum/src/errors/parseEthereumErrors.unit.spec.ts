@@ -71,7 +71,7 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBe(expectedStep)
-      expect(parsedError.execution).toBe(expectedStep.execution)
+      expect(parsedError.execution).toBe(step.execution)
     })
   })
 
