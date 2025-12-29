@@ -73,6 +73,11 @@ export const resumeRoute = async (
     }
   }
 
+  // Prepare restart
+  for (const step of route.steps) {
+    step.transactionRequest = undefined
+  }
+
   return executeRoute(client, route, executionOptions)
 }
 

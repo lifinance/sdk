@@ -369,13 +369,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
   ): Promise<LiFiStepExtended> => {
-    if (step.execution) {
-      step = this.statusManager.transitionExecutionStatus(step, 'PENDING')
-    }
-
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
-    const destinationChainProcess = step.execution?.transactions.find(
-      (process) => process.type === 'RECEIVING_CHAIN'
+    const destinationChainTransaction = step.execution?.transactions.find(
+      (t) => t.type === 'RECEIVING_CHAIN'
     )
 
     // Make sure that the chain is still correct
@@ -383,7 +379,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // All changes are already done from the source chain
     // Return the step
     if (
-      destinationChainProcess &&
+      destinationChainTransaction &&
       step.execution?.substatus !== 'WAIT_DESTINATION_TRANSACTION'
     ) {
       const updatedClient = await this.checkClient(step)

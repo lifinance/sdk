@@ -269,12 +269,9 @@ export const checkAllowance = async (
       ? 'RESET_REQUIRED'
       : 'ACTION_REQUIRED'
 
-    // Clear the txHash and txLink from potential previous approval transaction
+    // Clear the transaction from potential previous approval transaction
     step = statusManager.transitionExecutionStatus(step, resetApprovalStatus, {
-      transaction: {
-        txHash: undefined,
-        txLink: undefined,
-      },
+      transaction: null,
     })
 
     if (!allowUserInteraction) {
@@ -310,10 +307,7 @@ export const checkAllowance = async (
           step,
           'ACTION_REQUIRED',
           {
-            transaction: {
-              txHash: undefined,
-              txLink: undefined,
-            },
+            transaction: null,
           }
         )
 

@@ -147,6 +147,36 @@ describe('StatusManager', () => {
           )
           expect(receivingTx?.txHash).toBe('0xdef456')
         })
+
+        it('should remove a transaction when null is provided', () => {
+          const clonedStep = structuredClone(step)
+          // Verify SWAP transaction exists before removal
+          expect(
+            clonedStep.execution!.transactions.find(
+              (t: Transaction) => t.type === 'SWAP'
+            )
+          ).toBeDefined()
+
+          const result = statusManager.transitionExecutionStatus(
+            clonedStep,
+            'PENDING',
+            {
+              transaction: null,
+            }
+          )
+
+          // SWAP transaction should be removed
+          const swapTx = result.execution!.transactions.find(
+            (t: Transaction) => t.type === 'SWAP'
+          )
+          expect(swapTx).toBeUndefined()
+
+          // TOKEN_ALLOWANCE transaction should still exist
+          const allowanceTx = result.execution!.transactions.find(
+            (t: Transaction) => t.type === 'TOKEN_ALLOWANCE'
+          )
+          expect(allowanceTx).toBeDefined()
+        })
       })
 
       describe('and transitioning to an invalid status', () => {

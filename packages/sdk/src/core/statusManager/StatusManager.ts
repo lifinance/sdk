@@ -67,8 +67,16 @@ export class StatusManager {
         ...executionUpdate,
       } as Execution
 
-      // Override transaction or add a new transaction
-      if (transaction) {
+      // Handle transaction: null = remove, object = update/add, undefined = skip
+      if (transaction === null) {
+        const transactionType = step.execution?.type
+        step.execution = {
+          ...step.execution,
+          transactions: step.execution.transactions.filter(
+            (t) => t.type !== transactionType
+          ),
+        } as Execution
+      } else if (transaction) {
         const transactionType = step.execution?.type
         const existingIndex = step.execution.transactions.findIndex(
           (t) => t.type === transactionType

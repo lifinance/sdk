@@ -4,11 +4,11 @@ export const transactionTransitions: Record<
   TransactionType,
   TransactionType[]
 > = {
-  TOKEN_ALLOWANCE: ['PERMIT', 'SWAP', 'CROSS_CHAIN'], // After approval
-  PERMIT: ['SWAP', 'CROSS_CHAIN'], // After permit signed
-  SWAP: ['RECEIVING_CHAIN'], // For bridge, wait for dest
-  CROSS_CHAIN: ['RECEIVING_CHAIN'], // Wait for destination
-  RECEIVING_CHAIN: [], // Terminal
+  TOKEN_ALLOWANCE: ['PERMIT', 'SWAP', 'CROSS_CHAIN'],
+  PERMIT: ['SWAP', 'CROSS_CHAIN'],
+  SWAP: ['RECEIVING_CHAIN'],
+  CROSS_CHAIN: ['RECEIVING_CHAIN'],
+  RECEIVING_CHAIN: [],
 }
 
 export const statusTransitions: Record<ExecutionStatus, ExecutionStatus[]> = {
@@ -17,7 +17,7 @@ export const statusTransitions: Record<ExecutionStatus, ExecutionStatus[]> = {
   MESSAGE_REQUIRED: ['PENDING', 'ACTION_REQUIRED', 'FAILED', 'CANCELLED'],
   RESET_REQUIRED: ['PENDING', 'ACTION_REQUIRED', 'FAILED', 'CANCELLED'],
   PENDING: ['STARTED', 'DONE', 'FAILED', 'ACTION_REQUIRED'],
-  FAILED: ['PENDING'], // Resume from failed
-  DONE: [], // Terminal state
-  CANCELLED: [], // Terminal state
+  FAILED: ['PENDING'],
+  DONE: [],
+  CANCELLED: [],
 }
