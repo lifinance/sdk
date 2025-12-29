@@ -1,4 +1,4 @@
-import { ChainType } from '@lifi/sdk'
+import { ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { SolanaProvider } from './SolanaProvider.js'
 
@@ -22,7 +22,7 @@ describe('SolanaProvider', () => {
     } as any
 
     await expect(provider.getStepExecutor(mockOptions)).rejects.toThrowError(
-      'getWallet is not provided.'
+      ProviderError
     )
   })
 
