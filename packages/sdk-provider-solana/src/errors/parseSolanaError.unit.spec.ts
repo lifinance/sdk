@@ -44,6 +44,7 @@ describe('parseSolanaStepError', () => {
         expect(parsedError).toBe(error)
 
         expect(parsedError.step).toBe(step)
+        expect(parsedError.execution).toBe(step.execution)
       })
 
       describe('when the SDKError already has a step', () => {
@@ -66,6 +67,7 @@ describe('parseSolanaStepError', () => {
           expect(parsedError).toBe(error)
 
           expect(parsedError.step).toBe(expectedStep)
+          expect(parsedError.execution).toBe(expectedStep.execution)
         })
       })
     })
@@ -100,6 +102,7 @@ describe('parseSolanaStepError', () => {
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
+        expect(parsedError.execution).toBe(step.execution)
         expect(parsedError.cause).toBe(error)
       })
     })
@@ -129,6 +132,7 @@ describe('parseSolanaStepError', () => {
         const parsedError = await parseSolanaErrors(error, step)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
+        expect(parsedError.execution).toBe(step.execution)
       })
     })
   })

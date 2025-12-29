@@ -3,7 +3,6 @@ import {
   ErrorMessage,
   fetchTxErrorDetails,
   LiFiErrorCode,
-  type LiFiStep,
   type LiFiStepExtended,
   SDKError,
   TransactionError,
@@ -13,16 +12,17 @@ import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 
 export const parseEthereumErrors = async (
   e: Error,
-  step?: LiFiStep
+  step?: LiFiStepExtended
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     e.step = e.step ?? step
+    e.execution = e.execution ?? step?.execution
     return e
   }
 
   const baseError = await handleSpecificErrors(e, step)
 
-  return new SDKError(baseError, step)
+  return new SDKError(baseError, step, step?.execution)
 }
 
 const handleSpecificErrors = async (e: any, step?: LiFiStepExtended) => {

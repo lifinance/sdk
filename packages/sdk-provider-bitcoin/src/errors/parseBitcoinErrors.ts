@@ -2,7 +2,7 @@ import {
   BaseError,
   ErrorMessage,
   LiFiErrorCode,
-  type LiFiStep,
+  type LiFiStepExtended,
   SDKError,
   TransactionError,
   UnknownError,
@@ -10,16 +10,17 @@ import {
 
 export const parseBitcoinErrors = async (
   e: Error,
-  step?: LiFiStep
+  step?: LiFiStepExtended
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     e.step = e.step ?? step
+    e.execution = e.execution ?? step?.execution
     return e
   }
 
   const baseError = handleSpecificErrors(e)
 
-  return new SDKError(baseError, step)
+  return new SDKError(baseError, step, step?.execution)
 }
 
 const handleSpecificErrors = (e: any) => {

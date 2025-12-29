@@ -47,6 +47,7 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBe(step)
+      expect(parsedError.execution).toBe(step.execution)
     })
   })
 
@@ -70,6 +71,7 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError).toBe(error)
 
       expect(parsedError.step).toBe(expectedStep)
+      expect(parsedError.execution).toBe(expectedStep.execution)
     })
   })
 
@@ -102,6 +104,7 @@ describe('parseEVMStepErrors', () => {
 
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
+        expect(parsedError.execution).toBe(step.execution)
         expect(parsedError.cause).toBe(error)
       })
     })
@@ -131,6 +134,7 @@ describe('parseEVMStepErrors', () => {
         const parsedError = await parseEthereumErrors(error, step)
         expect(parsedError).toBeInstanceOf(SDKError)
         expect(parsedError.step).toBe(step)
+        expect(parsedError.execution).toBe(step.execution)
       })
     })
   })
