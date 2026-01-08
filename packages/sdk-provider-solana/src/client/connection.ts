@@ -11,8 +11,10 @@ const rpcs = new Map<string, RpcType>()
 const ensureConnections = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
-    const rpc = createSolanaRpc(rpcUrl)
-    rpcs.set(rpcUrl, rpc)
+    if (!rpcs.has(rpcUrl)) {
+      const rpc = createSolanaRpc(rpcUrl)
+      rpcs.set(rpcUrl, rpc)
+    }
   }
 }
 

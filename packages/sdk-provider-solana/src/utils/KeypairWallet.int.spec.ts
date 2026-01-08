@@ -3,8 +3,8 @@ import { getBase58Encoder, type ReadonlyUint8Array } from '@solana/kit'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { SolanaProvider } from '../SolanaProvider.js'
 import { isSolanaProvider } from '../types.js'
+import { generateTestKeypair } from './KeypairWallet.unit.helpers.js'
 import { KeypairWalletAdapter } from './KeypairWalletAdapter.js'
-import { generateTestKeypair } from './test.js'
 
 const retryTimes = 2
 const timeout = 30000

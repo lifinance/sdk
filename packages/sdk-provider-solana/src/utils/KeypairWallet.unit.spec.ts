@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { generateTestKeypair } from './KeypairWallet.unit.helpers.js'
 import { KeypairWalletAdapter } from './KeypairWalletAdapter.js'
-import { generateTestKeypair } from './test.js'
 
 const createWallet = async ({
   secretKey,
