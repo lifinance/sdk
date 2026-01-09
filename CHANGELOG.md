@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.15.0](https://github.com/lifinance/sdk/compare/v3.14.1...v3.15.0) (2026-01-09)
+
+
+### Features
+
+* add contract calls patcher ([#341](https://github.com/lifinance/sdk/issues/341)) ([173c06b](https://github.com/lifinance/sdk/commit/173c06be002ae61ae242665d27bf60f89f908d4d))
+
 ### [3.14.1](https://github.com/lifinance/sdk/compare/v3.14.0...v3.14.1) (2025-12-16)
 
 
