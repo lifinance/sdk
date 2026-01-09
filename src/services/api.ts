@@ -12,6 +12,7 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
+  type PatchCallDataRequest,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -740,7 +741,7 @@ export interface PatchContractCallsResponse {
 }
 
 export const patchContractCalls = async (
-  params: PatchContractCallsRequest[],
+  params: PatchCallDataRequest,
   options?: RequestOptions
 ): Promise<PatchContractCallsResponse[]> => {
   return await request<PatchContractCallsResponse[]>(
