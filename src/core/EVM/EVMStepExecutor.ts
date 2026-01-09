@@ -625,20 +625,9 @@ export class EVMStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      let transactionRequest = step.transactionRequest
-        ? structuredClone(step.transactionRequest as TransactionParameters)
-        : undefined
-      let isRelayerTransaction: boolean = false
-      if (!transactionRequest) {
-        // Try to prepare a new transaction request and update the step with typed data
-        const result = await this.prepareUpdatedStep(
-          updatedClient,
-          step,
-          signedTypedData
-        )
-        transactionRequest = result.transactionRequest
-        isRelayerTransaction = result.isRelayerTransaction
-      }
+      // Try to prepare a new transaction request and update the step with typed data
+      let { transactionRequest, isRelayerTransaction } =
+        await this.prepareUpdatedStep(updatedClient, step, signedTypedData)
 
       process = this.statusManager.updateProcess(
         step,
