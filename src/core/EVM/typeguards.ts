@@ -24,3 +24,7 @@ export function isGaslessStep(
     )
   )
 }
+
+export function isContractCallStep(step: LiFiStepExtended | LiFiStep): boolean {
+  return step.includedSteps.some((s) => s.type === 'custom')
+}

@@ -12,6 +12,7 @@ import {
   isContractCallsRequestWithFromAmount,
   isContractCallsRequestWithToAmount,
   type LiFiStep,
+  type PatchCallDataRequest,
   type RelayerQuoteResponse,
   type RelayRequest,
   type RelayResponse,
@@ -717,4 +718,41 @@ export const getTransactionHistory = async (
   }
 
   return await request<TransactionAnalyticsResponse>(url, options)
+}
+
+export type PatchContractCallsRequest = {
+  chainId: ChainId
+  fromTokenAddress: string
+  targetContractAddress: string
+  callDataToPatch: string
+  patches: {
+    amountToReplace: string
+  }[]
+  value?: string
+  delegateCall?: boolean
+}
+
+export interface PatchContractCallsResponse {
+  target: string
+  value: bigint
+  callData: string
+  allowFailure: boolean
+  isDelegateCall: boolean
+}
+
+export const patchContractCalls = async (
+  params: PatchCallDataRequest,
+  options?: RequestOptions
+): Promise<PatchContractCallsResponse[]> => {
+  return await request<PatchContractCallsResponse[]>(
+    `${config.get().apiUrl}/patcher`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal: options?.signal,
+    }
+  )
 }
