@@ -1,100 +1,133 @@
-import { ed25519 } from '@noble/curves/ed25519'
-import type {
-  SignerWalletAdapter,
-  WalletName,
-} from '@solana/wallet-adapter-base'
 import {
-  BaseSignerWalletAdapter,
-  isVersionedTransaction,
-  WalletConfigError,
-  WalletNotConnectedError,
-  WalletReadyState,
-} from '@solana/wallet-adapter-base'
-import type {
-  Transaction,
-  TransactionVersion,
-  VersionedTransaction,
-} from '@solana/web3.js'
-import { Keypair } from '@solana/web3.js'
-import bs58 from 'bs58'
-
-export const KeypairWalletName =
-  'Keypair Wallet' as WalletName<'Keypair Wallet'>
+  assertIsTransactionWithBlockhashLifetime,
+  assertIsTransactionWithinSizeLimit,
+  createKeyPairSignerFromBytes,
+  getBase58Codec,
+  getBase64EncodedWireTransaction,
+  getTransactionCodec,
+  type KeyPairSigner,
+  type ReadonlyUint8Array,
+} from '@solana/kit'
+import {
+  SolanaSignTransaction,
+  type SolanaSignTransactionFeature,
+  type SolanaSignTransactionInput,
+  type SolanaSignTransactionOutput,
+} from '@solana/wallet-standard-features'
+import type { Wallet, WalletAccount } from '@wallet-standard/base'
+import { base64ToUint8Array } from './base64ToUint8Array.js'
 
 /**
  * This keypair wallet adapter is unsafe to use on the frontend and is only included to provide an easy way for applications to test
  * Wallet Adapter without using a third-party wallet.
  */
-export class KeypairWalletAdapter
-  extends BaseSignerWalletAdapter
-  implements SignerWalletAdapter
-{
-  name = KeypairWalletName
-  url = 'https://github.com/anza-xyz/wallet-adapter'
-  icon = ''
-  supportedTransactionVersions: ReadonlySet<TransactionVersion> = new Set([
-    'legacy',
-    0,
-  ])
-
+export class KeypairWalletAdapter implements Wallet {
   /**
    * Storing a keypair locally like this is not safe because any application using this adapter could retrieve the
    * secret key, and because the keypair will be lost any time the wallet is disconnected or the window is refreshed.
    */
-  private _keypair: Keypair | undefined
+  private _signer: KeyPairSigner | undefined
+  private _account: WalletAccount | undefined
+  private readonly _secretKeyBytes: ReadonlyUint8Array
 
-  constructor(privateKey: string) {
-    if (!privateKey) {
-      throw new WalletConfigError()
+  readonly version = '1.0.0' as const
+  readonly name = 'Keypair Wallet' as const
+  readonly icon =
+    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48L3N2Zz4=' as const
+
+  constructor(secretKeyBase58: string) {
+    if (!secretKeyBase58) {
+      throw new Error('Private key is required')
     }
-    super()
-    this._keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
-  }
 
-  get connecting() {
-    return false
-  }
-
-  get publicKey() {
-    return this._keypair?.publicKey || null
-  }
-
-  get readyState() {
-    return WalletReadyState.Loadable
-  }
-
-  async connect(privateKey?: string): Promise<void> {
-    if (!privateKey) {
-      throw new WalletConfigError()
+    const base58Codec = getBase58Codec()
+    let encoded: ReadonlyUint8Array
+    try {
+      encoded = base58Codec.encode(secretKeyBase58)
+    } catch {
+      throw new Error('Invalid private key format')
     }
-    this._keypair = Keypair.fromSecretKey(bs58.decode(privateKey))
+
+    if (encoded.length !== 64) {
+      throw new Error('Invalid private key length. Expected 64 bytes.')
+    }
+
+    this._secretKeyBytes = encoded
+  }
+
+  // Wallet Standard interface properties
+  get chains() {
+    return ['solana:mainnet', 'solana:devnet', 'solana:testnet'] as const
+  }
+
+  get accounts(): readonly WalletAccount[] {
+    return this._account ? [this._account] : []
+  }
+
+  get features(): SolanaSignTransactionFeature {
+    return {
+      [SolanaSignTransaction]: {
+        version: '1.0.0' as const,
+        supportedTransactionVersions: ['legacy', 0] as const,
+        signTransaction: this._signTransactionFeature.bind(this),
+      },
+    }
+  }
+
+  async connect(): Promise<void> {
+    this._signer = await createKeyPairSignerFromBytes(this._secretKeyBytes)
+
+    const publicKeyBytes = new Uint8Array(
+      await crypto.subtle.exportKey('raw', this._signer.keyPair.publicKey)
+    )
+
+    this._account = {
+      address: this._signer.address,
+      publicKey: publicKeyBytes,
+      chains: this.chains,
+      features: [SolanaSignTransaction],
+    }
   }
 
   async disconnect(): Promise<void> {
-    this._keypair = undefined
+    this._signer = undefined
+    this._account = undefined
   }
 
-  async signTransaction<T extends Transaction | VersionedTransaction>(
-    transaction: T
-  ): Promise<T> {
-    if (!this._keypair) {
-      throw new WalletNotConnectedError()
+  // Wallet Standard feature implementations
+  private async _signTransactionFeature(
+    ...inputs: readonly SolanaSignTransactionInput[]
+  ): Promise<readonly SolanaSignTransactionOutput[]> {
+    if (!this._signer) {
+      throw new Error('Wallet is not connected')
     }
 
-    if (isVersionedTransaction(transaction)) {
-      transaction.sign([this._keypair])
-    } else {
-      transaction.partialSign(this._keypair)
+    const results: SolanaSignTransactionOutput[] = []
+
+    for (const input of inputs) {
+      const transaction = getTransactionCodec().decode(input.transaction)
+
+      assertIsTransactionWithinSizeLimit(transaction)
+      assertIsTransactionWithBlockhashLifetime(transaction)
+
+      const signatureDictionaries = await this._signer.signTransactions([
+        transaction,
+      ])
+
+      if (
+        signatureDictionaries.length === 0 ||
+        !signatureDictionaries[0][this._signer.address]
+      ) {
+        throw new Error('Failed to sign transaction')
+      }
+
+      const signedTransaction = getBase64EncodedWireTransaction(transaction)
+
+      results.push({
+        signedTransaction: base64ToUint8Array(signedTransaction),
+      })
     }
 
-    return transaction
-  }
-
-  async signMessage(message: Uint8Array): Promise<Uint8Array> {
-    if (!this._keypair) {
-      throw new WalletNotConnectedError()
-    }
-
-    return ed25519.sign(message, this._keypair.secretKey.slice(0, 32))
+    return results
   }
 }
