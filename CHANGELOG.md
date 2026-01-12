@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.15.1](https://github.com/lifinance/sdk/compare/v3.15.0...v3.15.1) (2026-01-12)
+
+
+### Bug Fixes
+
+* update maxPriorityFeePerGas calculation and client check ([#342](https://github.com/lifinance/sdk/issues/342)) ([a3f1ab9](https://github.com/lifinance/sdk/commit/a3f1ab9c2148dfdcba8aba2eed5e708ab4fee2ed))
+
 ## [3.15.0](https://github.com/lifinance/sdk/compare/v3.14.1...v3.15.0) (2026-01-09)
 
 
