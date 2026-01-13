@@ -7,12 +7,16 @@ import {
   type RpcTransport,
 } from '@solana/kit'
 
+import type { GetBundleStatusesApi } from './api/getBundleStatuses.js'
 import type { GetTipAccountsApi } from './api/getTipAccounts.js'
 import type { SendBundleApi } from './api/sendBundle.js'
 import type { SimulateBundleApi } from './api/simulateBundle.js'
 
 // Jito-only API type (no Solana base methods)
-export type JitoRpcApi = GetTipAccountsApi & SendBundleApi & SimulateBundleApi
+export type JitoRpcApi = GetBundleStatusesApi &
+  GetTipAccountsApi &
+  SendBundleApi &
+  SimulateBundleApi
 
 // Create the Jito RPC API
 function createJitoRpcApi() {

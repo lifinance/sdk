@@ -1,19 +1,45 @@
 import { ChainId, type SDKClient } from '@lifi/sdk'
-import { createSolanaRpc } from '@solana/kit'
+import { createSolanaRpc, type Rpc } from '@solana/kit'
+import { callWithRetry } from '../utils/callWithRetry.js'
+import { createJitoRpc, type JitoRpcApi } from './jito/createJitoRpc.js'
 
-type RpcType = ReturnType<typeof createSolanaRpc>
-const rpcs = new Map<string, RpcType>()
+type SolanaRpcType = ReturnType<typeof createSolanaRpc>
+type JitoRpcType = Rpc<JitoRpcApi>
+
+const solanaRpcs = new Map<string, SolanaRpcType>()
+const jitoRpcs = new Map<string, JitoRpcType>()
 
 /**
- * Initializes the Solana connections if they haven't been initialized yet.
+ * Checks if an RPC URL supports Jito methods by calling getTipAccounts.
+ */
+const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
+  try {
+    const rpc = createJitoRpc(rpcUrl)
+    await rpc.getTipAccounts().send()
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Initializes the Solana and Jito connections if they haven't been initialized yet.
+ * Detects Jito RPCs by checking if they support the getTipAccounts method.
  * @returns - Promise that resolves when connections are initialized.
  */
 const ensureConnections = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
-    if (!rpcs.has(rpcUrl)) {
-      const rpc = createSolanaRpc(rpcUrl)
-      rpcs.set(rpcUrl, rpc)
+    // Skip if already categorized
+    if (solanaRpcs.has(rpcUrl) || jitoRpcs.has(rpcUrl)) {
+      continue
+    }
+
+    // Check if it's a Jito RPC
+    if (await isJitoRpc(rpcUrl)) {
+      jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
+    } else {
+      solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
     }
   }
 }
@@ -24,32 +50,46 @@ const ensureConnections = async (client: SDKClient): Promise<void> => {
  */
 export const getSolanaConnections = async (
   client: SDKClient
-): Promise<RpcType[]> => {
+): Promise<SolanaRpcType[]> => {
   await ensureConnections(client)
-  return Array.from(rpcs.values())
+  return Array.from(solanaRpcs.values())
 }
 
 /**
- * Calls a function on the Connection instances with retry logic.
+ * Wrapper around getting the Jito RPC connections
+ * @returns - Jito RPC connections
+ */
+export const getJitoConnections = async (
+  client: SDKClient
+): Promise<JitoRpcType[]> => {
+  await ensureConnections(client)
+  return Array.from(jitoRpcs.values())
+}
+
+/**
+ * Calls a function on the Solana Connection instances with retry logic.
  * @param client - The SDK client
  * @param fn - The function to call, which receives a Connection instance.
  * @returns - The result of the function call.
  */
 export async function callSolanaWithRetry<R>(
   client: SDKClient,
-  fn: (rpc: RpcType) => Promise<R>
+  fn: (rpc: SolanaRpcType) => Promise<R>
 ): Promise<R> {
-  // Ensure connections are initialized
   await ensureConnections(client)
-  let lastError: any = null
-  for (const rpc of rpcs.values()) {
-    try {
-      const result = await fn(rpc)
-      return result
-    } catch (error) {
-      lastError = error
-    }
-  }
-  // Throw the last encountered error
-  throw lastError
+  return callWithRetry(solanaRpcs, fn)
+}
+
+/**
+ * Calls a function on the Jito RPC instances with retry logic.
+ * @param client - The SDK client
+ * @param fn - The function to call, which receives a Jito RPC instance.
+ * @returns - The result of the function call.
+ */
+export async function callJitoWithRetry<R>(
+  client: SDKClient,
+  fn: (rpc: JitoRpcType) => Promise<R>
+): Promise<R> {
+  await ensureConnections(client)
+  return callWithRetry(jitoRpcs, fn)
 }
