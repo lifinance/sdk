@@ -20,7 +20,8 @@ export function isGaslessStep(
       (p) => p.primaryType === 'PermitWitnessTransferFrom'
     ) ||
     !!(
-      chain && step.typedData?.some((p) => p.message.spender === chain?.permit2)
+      chain?.permit2 &&
+      step.typedData?.some((p) => p.message.spender === chain.permit2)
     )
   )
 }

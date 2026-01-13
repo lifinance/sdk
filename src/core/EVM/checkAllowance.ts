@@ -198,7 +198,10 @@ export const checkAllowance = async ({
 
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
-      !!chain.permit2Proxy && !batchingSupported && !disableMessageSigning
+      !!chain.permit2Proxy &&
+      !batchingSupported &&
+      !disableMessageSigning &&
+      !step.estimate.skipPermit
 
     let nativePermitData: NativePermitData | undefined
     if (isNativePermitAvailable) {
