@@ -226,8 +226,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
   private prepareUpdatedStep = async (
     client: SDKClient,
-    viemClient: Client,
     step: LiFiStepExtended,
+    process: Process,
     signedTypedData?: SignedTypedData[]
   ) => {
     // biome-ignore lint/correctness/noUnusedVariables: destructuring
@@ -284,6 +284,22 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
     let transactionRequest: TransactionParameters | undefined
     if (step.transactionRequest) {
+      // Only call checkClient for local accounts when we need to get maxPriorityFeePerGas
+      let maxPriorityFeePerGas: bigint | undefined
+      if (this.client.account?.type === 'local') {
+        const updatedClient = await this.checkClient(step, process)
+        if (!updatedClient) {
+          return null
+        }
+        maxPriorityFeePerGas = await getMaxPriorityFeePerGas(
+          client,
+          updatedClient
+        )
+      } else {
+        maxPriorityFeePerGas = step.transactionRequest.maxPriorityFeePerGas
+          ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
+          : undefined
+      }
       transactionRequest = {
         chainId: step.transactionRequest.chainId,
         to: step.transactionRequest.to,
@@ -301,12 +317,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         // maxFeePerGas: step.transactionRequest.maxFeePerGas
         //   ? BigInt(step.transactionRequest.maxFeePerGas as string)
         //   : undefined,
-        maxPriorityFeePerGas:
-          viemClient.account?.type === 'local'
-            ? await getMaxPriorityFeePerGas(client, viemClient)
-            : step.transactionRequest.maxPriorityFeePerGas
-              ? BigInt(step.transactionRequest.maxPriorityFeePerGas)
-              : undefined,
+        maxPriorityFeePerGas,
       }
     }
 
@@ -532,20 +543,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       await checkBalance(client, this.client.account!.address, step)
 
-      // Make sure that the client and chain is still correct
-      const updatedClient = await this.checkClient(step, process)
-      if (!updatedClient) {
+      // Try to prepare a new transaction request and update the step with typed data
+      const preparedStep = await this.prepareUpdatedStep(
+        client,
+        step,
+        process,
+        signedTypedData
+      )
+      if (!preparedStep) {
         return step
       }
 
-      // Try to prepare a new transaction request and update the step with typed data
-      let { transactionRequest, isRelayerTransaction } =
-        await this.prepareUpdatedStep(
-          client,
-          updatedClient,
-          step,
-          signedTypedData
-        )
+      let { transactionRequest, isRelayerTransaction } = preparedStep
 
       process = this.statusManager.updateProcess(
         step,
