@@ -10,6 +10,7 @@ import type {
   GasRecommendationRequest,
   GasRecommendationResponse,
   LiFiStep,
+  PatchCallDataRequest,
   RelayRequest,
   RelayResponseData,
   RelayStatusRequest,
@@ -55,6 +56,10 @@ import { getTokens } from './getTokens.js'
 import { getTools } from './getTools.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
 import { getWalletBalances } from './getWalletBalances.js'
+import {
+  type PatchContractCallsResponse,
+  patchContractCalls,
+} from './patchContractCalls.js'
 import { relayTransaction } from './relayTransaction.js'
 
 export type Actions = {
@@ -287,6 +292,17 @@ export type Actions = {
     params: RelayRequest,
     options?: RequestOptions
   ) => Promise<RelayResponseData>
+
+  /**
+   * Patch contract calls
+   * @param params - The configuration for the patch contract calls request
+   * @param options - Request options
+   * @returns Patched contract calls
+   */
+  patchContractCalls: (
+    params: PatchCallDataRequest,
+    options?: RequestOptions
+  ) => Promise<PatchContractCallsResponse[]>
 }
 
 export function actions(client: SDKClient): Actions {
@@ -325,5 +341,7 @@ export function actions(client: SDKClient): Actions {
       getWalletBalances(client, walletAddress, options),
     relayTransaction: (params, options) =>
       relayTransaction(client, params, options),
+    patchContractCalls: (params, options) =>
+      patchContractCalls(client, params, options),
   }
 }

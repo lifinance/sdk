@@ -11,6 +11,7 @@ export {
   setTokenAllowance,
 } from './actions/setAllowance.js'
 export { EthereumProvider } from './EthereumProvider.js'
+export { PatcherMagicNumber } from './permits/constants.js'
 export { getNativePermit } from './permits/getNativePermit.js'
 export { isDelegationDesignatorCode } from './permits/isDelegationDesignatorCode.js'
 export type {
@@ -20,6 +21,8 @@ export type {
 } from './types.js'
 export { isEthereumProvider } from './types.js'
 export { convertExtendedChain } from './utils/convertExtendedChain.js'
+export { isContractCallStep } from './utils/isContractCallStep.js'
 export { isExtendedChain } from './utils/isExtendedChain.js'
 export { isGaslessStep } from './utils/isGaslessStep.js'
 export { isRelayerStep } from './utils/isRelayerStep.js'
+export { isZeroAddress } from './utils/isZeroAddress.js'

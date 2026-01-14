@@ -2,6 +2,7 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ContractCall,
   ExtendedChain,
   FeeCost,
   GasCost,
@@ -13,7 +14,6 @@ import type {
   Token,
   TokenAmount,
 } from '@lifi/types'
-import type { Client } from 'viem'
 import type { ExtendedRequestInit } from './request.js'
 
 export type RequestInterceptor = (
@@ -139,8 +139,6 @@ export type TransactionRequestUpdateHook = (
   updatedTxRequest: TransactionRequestParameters
 ) => Promise<TransactionParameters>
 
-export type SwitchChainHook = (chainId: number) => Promise<Client | undefined>
-
 export interface AcceptSlippageUpdateHookParams {
   toToken: Token
   oldToAmount: string
@@ -163,11 +161,39 @@ export type AcceptExchangeRateUpdateHook = (
   params: ExchangeRateUpdateParams
 ) => Promise<boolean | undefined>
 
+export interface ContractCallParams {
+  fromChainId: number
+  toChainId: number
+  fromTokenAddress: string
+  toTokenAddress: string
+  fromAddress: string
+  toAddress?: string
+  fromAmount: bigint
+  toAmount: bigint
+  slippage?: number
+}
+
+export interface ContractTool {
+  name: string
+  logoURI: string
+}
+
+export interface GetContractCallsResult {
+  contractCalls: ContractCall[]
+  patcher?: boolean
+  contractTool?: ContractTool
+}
+
+export type GetContractCallsHook = (
+  params: ContractCallParams
+) => Promise<GetContractCallsResult>
+
 export interface ExecutionOptions {
   acceptExchangeRateUpdateHook?: AcceptExchangeRateUpdateHook
-  switchChainHook?: SwitchChainHook
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
+  getContractCalls?: GetContractCallsHook
+  adjustZeroOutputFromPreviousStep?: boolean
   executeInBackground?: boolean
   disableMessageSigning?: boolean
   /**

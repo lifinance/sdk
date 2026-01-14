@@ -15,7 +15,7 @@ import { buildStepObject } from './switchChain.unit.mock.js'
 let client: Client
 let step: LiFiStep
 let statusManager: StatusManager
-let hooks: ExecutionOptions
+let _hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
 let findOrCreateProcessMock: Mock
@@ -26,7 +26,7 @@ let mockProcess: Process
 describe('switchChain', () => {
   beforeEach(() => {
     switchChainHookMock = vi.fn()
-    hooks = {
+    _hooks = {
       switchChainHook: switchChainHookMock,
     } as unknown as ExecutionOptions
 
@@ -67,12 +67,12 @@ describe('switchChain', () => {
         mockProcess,
         step.action.fromChainId,
         true,
-        hooks
+        switchChainHookMock
       )
 
       expect(updatedClient).toEqual(client)
       expect(statusManager.initExecutionObject).not.toHaveBeenCalled()
-      expect(hooks.switchChainHook).not.toHaveBeenCalled()
+      expect(switchChainHookMock).not.toHaveBeenCalled()
     })
   })
 
@@ -91,11 +91,11 @@ describe('switchChain', () => {
           mockProcess,
           step.action.fromChainId,
           false,
-          hooks
+          switchChainHookMock
         )
 
         expect(updatedClient).toBeUndefined()
-        expect(hooks.switchChainHook).not.toHaveBeenCalled()
+        expect(switchChainHookMock).not.toHaveBeenCalled()
       })
     })
 
@@ -116,7 +116,7 @@ describe('switchChain', () => {
               mockProcess,
               step.action.fromChainId,
               true,
-              hooks
+              switchChainHookMock
             )
           ).rejects.toThrowError(new Error('something went wrong'))
 
@@ -141,7 +141,7 @@ describe('switchChain', () => {
               mockProcess,
               step.action.fromChainId,
               true,
-              hooks
+              switchChainHookMock
             )
           ).rejects.toThrowError(
             new ProviderError(
@@ -176,7 +176,7 @@ describe('switchChain', () => {
             mockProcess,
             step.action.fromChainId,
             true,
-            hooks
+            switchChainHookMock
           )
 
           expect(switchChainHookMock).toHaveBeenCalledWith(

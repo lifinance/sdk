@@ -77,14 +77,11 @@ importers:
     dependencies:
       '@lifi/types':
         specifier: ^17.56.0
-        version: 17.56.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
-      viem:
-        specifier: ^2.44.2
-        version: 2.44.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
+        version: 17.56.0(typescript@5.9.3)
     devDependencies:
       '@lifi/data-types':
         specifier: ^6.54.0
-        version: 6.54.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
+        version: 6.54.0(typescript@5.9.3)
       '@vitest/coverage-v8':
         specifier: ^4.0.17
         version: 4.0.17(vitest@4.0.17(@types/node@25.0.8)(jiti@2.6.1)(msw@2.12.7(@types/node@25.0.8)(typescript@5.9.3))(tsx@4.21.0)(yaml@2.8.2))

@@ -31,11 +31,10 @@ export function EthereumProvider(
 
       const executor = new EthereumStepExecutor({
         client: walletClient,
+        switchChain: _options.switchChain,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,
-          switchChainHook:
-            _options.switchChain ?? options.executionOptions?.switchChainHook,
         },
       })
 

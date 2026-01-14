@@ -47,8 +47,7 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@lifi/types": "^17.56.0",
-    "viem": "^2.44.2"
+    "@lifi/types": "^17.56.0"
   },
   "devDependencies": {
     "@lifi/data-types": "^6.54.0",
