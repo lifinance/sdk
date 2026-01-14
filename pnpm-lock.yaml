@@ -15,7 +15,7 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@lifi/types':
-        specifier: 17.57.0-alpha.0
+        specifier: ^17.57.0-alpha.0
         version: 17.57.0-alpha.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.5)
       '@mysten/sui':
         specifier: ^1.45.2
