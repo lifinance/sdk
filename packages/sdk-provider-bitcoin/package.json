@@ -47,19 +47,19 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@bigmi/core": "^0.6.3",
+    "@bigmi/core": "^0.6.5",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/sdk": "workspace:*",
     "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^7.0.0"
+    "bitcoinjs-lib": "^7.0.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.47.0",
-    "@vitest/coverage-v8": "^4.0.15",
+    "@lifi/data-types": "^6.54.0",
+    "@vitest/coverage-v8": "^4.0.17",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.17"
   },
   "publishConfig": {
     "access": "public"

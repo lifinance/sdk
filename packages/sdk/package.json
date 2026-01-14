@@ -47,17 +47,17 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@lifi/types": "^17.51.0",
-    "viem": "^2.41.2"
+    "@lifi/types": "^17.56.0",
+    "viem": "^2.44.2"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.47.0",
-    "@vitest/coverage-v8": "^4.0.15",
+    "@lifi/data-types": "^6.54.0",
+    "@vitest/coverage-v8": "^4.0.17",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
-    "msw": "^2.12.4",
+    "msw": "^2.12.7",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.17"
   },
   "publishConfig": {
     "access": "public"
