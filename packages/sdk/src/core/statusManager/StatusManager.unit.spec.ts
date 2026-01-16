@@ -181,13 +181,13 @@ describe('StatusManager', () => {
 
       describe('and transitioning to an invalid status', () => {
         it('should throw an error', () => {
-          // PENDING -> STARTED is not valid in the transitions
+          // PENDING -> MESSAGE_REQUIRED is not valid in the transitions
           expect(() =>
             statusManager.transitionExecutionStatus(
               structuredClone(step),
-              'STARTED'
+              'MESSAGE_REQUIRED'
             )
-          ).toThrow('Invalid transition: PENDING → STARTED')
+          ).toThrow('Invalid transition: PENDING → MESSAGE_REQUIRED')
         })
       })
 
