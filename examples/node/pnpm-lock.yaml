@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^6.51.0
-        version: 6.51.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: ^6.55.0
+        version: 6.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@lifi/sdk':
-        specifier: ^3.15.0
-        version: 3.15.0(bufferutil@4.1.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)
+        specifier: ^3.15.1
+        version: 3.15.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@wagmi/connectors':
         specifier: ^6.1.4
         version: 6.1.4(@wagmi/core@2.22.1(typescript@5.9.3)(use-sync-external-store@1.2.0)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)))(bufferutil@4.1.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@3.25.76)
@@ -24,12 +24,12 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       viem:
-        specifier: ^2.44.1
-        version: 2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: ^2.44.4
+        version: 2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/node':
-        specifier: ^25.0.6
-        version: 25.0.6
+        specifier: ^25.0.9
+        version: 25.0.9
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -58,6 +58,10 @@ packages:
 
   '@babel/runtime@7.28.4':
     resolution: {integrity: sha512-Q/N6JNWvIvPnLDvjlE1OUBLPQHH6l3CltCEsHIujp45zQUSSh8K+gHnaEX45yAT1nyngnINhvWtzN+Nb9D8RAQ==}
+    engines: {node: '>=6.9.0'}
+
+  '@babel/runtime@7.28.6':
+    resolution: {integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==}
     engines: {node: '>=6.9.0'}
 
   '@base-org/account@2.4.0':
@@ -285,19 +289,19 @@ packages:
     peerDependencies:
       graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
-  '@lifi/data-types@6.51.0':
-    resolution: {integrity: sha512-A+cjiGJIqj+h47OntT1xLzRPhjYTHL+qpr3YjNiRgygOLtTd0nwJjdHB9ScmmnLjZmAcrZlelYB81f+kdHOCHw==}
+  '@lifi/data-types@6.55.0':
+    resolution: {integrity: sha512-b4qRn4vCWvo6VPBffVe7CtdycgjO2KwLI/chVH1Dv5oyaobeOv/oiHotsdm/IDUdpAAqDxanzrqS7biIxic8Ig==}
 
-  '@lifi/sdk@3.15.0':
-    resolution: {integrity: sha512-Gxm0VBquyp4xh61uEbTG7gzC61GsCH+IQLuR7vRKk9d3HuE5gPmwHQruEp2xBPk1omkRTUt5nRQePfnEvuEkjA==}
+  '@lifi/sdk@3.15.1':
+    resolution: {integrity: sha512-vjMu335bfaftYU23ZmDKgOjql3upwAcXPoNgJ1IQg57SrvW6O6KMBAg1j8uVP7THMwbamK86cTQ8PuOfgcJuMA==}
     peerDependencies:
       viem: ^2.21.0
 
-  '@lifi/types@17.54.0':
-    resolution: {integrity: sha512-gwF+JqrwlJRytCGlGCW24PFBJkbrfx5jjoObJD9zuNAY5+Qob5rqpIoyftQCRDyjyVAZVrOPXZVKjG8x6Na5zQ==}
-
   '@lifi/types@17.55.0':
     resolution: {integrity: sha512-dsQQhZ7PsWDBayHrcELCvsHwqS9r4j2zcWeXby+IvU3HQqUz/LDjflptU+OenwsTCj/SWHtWpARrl/84GbKQ/w==}
+
+  '@lifi/types@17.57.0':
+    resolution: {integrity: sha512-zfLyJIJfNr9dvIxfsVkhXRZvh7+rZ9o1gUTgHs2MPtf5dLMhUrHY6DdE1qejw7ckBRkJCZ2wXM5sQ19yRsPOUw==}
 
   '@lit-labs/ssr-dom-shim@1.4.0':
     resolution: {integrity: sha512-ficsEARKnmmW5njugNYKipTm4SFnbik7CXtoencDZzmzo/dQ+2Q0bgkzJuoJP20Aj0F+izzJjOqsnkd6F/o1bw==}
@@ -811,8 +815,8 @@ packages:
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
 
-  '@types/node@25.0.6':
-    resolution: {integrity: sha512-NNu0sjyNxpoiW3YuVFfNz7mxSQ+S4X2G28uqg2s+CzoqoQjLPsWSbsFFyztIAqt2vb8kfEAsJNepMGPTxFDx3Q==}
+  '@types/node@25.0.9':
+    resolution: {integrity: sha512-/rpCXHlCWeqClNBwUhDcusJxXYDjZTyE8v5oTO7WbL8eij2nKhUeU89/6xgjU7N4/Vh3He0BtyhJdQbDyhiXAw==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -2071,6 +2075,14 @@ packages:
       typescript:
         optional: true
 
+  viem@2.44.4:
+    resolution: {integrity: sha512-sJDLVl2EsS5Fo7GSWZME5CXEV7QRYkUJPeBw7ac+4XI3D4ydvMw/gjulTsT5pgqcpu70BploFnOAC6DLpan1Yg==}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   webextension-polyfill@0.10.0:
     resolution: {integrity: sha512-c5s35LgVa5tFaHhrZDnr3FpQpjj1BB+RXhLTYUxGqBVN460HkbM8TBtEqdXWbpTKfzwCcjAZVF7zXCYSKtcp9g==}
 
@@ -2270,6 +2282,8 @@ snapshots:
 
   '@babel/runtime@7.28.4': {}
 
+  '@babel/runtime@7.28.6': {}
+
   '@base-org/account@2.4.0(bufferutil@4.1.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@3.25.76)':
     dependencies:
       '@coinbase/cdp-sdk': 1.38.5(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))
@@ -2295,14 +2309,14 @@ snapshots:
       - ws
       - zod
 
-  '@bigmi/core@0.6.5(typescript@5.9.3)(use-sync-external-store@1.2.0)':
+  '@bigmi/core@0.6.5(typescript@5.9.3)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
       bitcoinjs-lib: 7.0.1(typescript@5.9.3)
       bs58: 6.0.0
       eventemitter3: 5.0.1
-      zustand: 5.0.10(use-sync-external-store@1.2.0)
+      zustand: 5.0.10
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -2498,20 +2512,20 @@ snapshots:
     dependencies:
       graphql: 16.12.0
 
-  '@lifi/data-types@6.51.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@lifi/data-types@6.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
-      '@lifi/types': 17.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      '@lifi/types': 17.57.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@3.15.0(bufferutil@4.1.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)':
+  '@lifi/sdk@3.15.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10))':
     dependencies:
-      '@bigmi/core': 0.6.5(typescript@5.9.3)(use-sync-external-store@1.2.0)
+      '@bigmi/core': 0.6.5(typescript@5.9.3)
       '@bitcoinerlab/secp256k1': 1.2.0
-      '@lifi/types': 17.54.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      '@lifi/types': 17.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
       '@mysten/sui': 1.45.2(typescript@5.9.3)
       '@mysten/wallet-standard': 0.19.9(typescript@5.9.3)
       '@noble/curves': 1.9.7
@@ -2520,7 +2534,7 @@ snapshots:
       bech32: 2.0.0
       bitcoinjs-lib: 7.0.1(typescript@5.9.3)
       bs58: 6.0.0
-      viem: 2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      viem: 2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - '@gql.tada/svelte-support'
       - '@gql.tada/vue-support'
@@ -2534,18 +2548,18 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.54.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@lifi/types@17.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
-      viem: 2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      viem: 2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/types@17.55.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@lifi/types@17.57.0(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
-      viem: 2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      viem: 2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -3560,7 +3574,7 @@ snapshots:
 
   '@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
-      '@babel/runtime': 7.28.4
+      '@babel/runtime': 7.28.6
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@solana/buffer-layout': 4.0.1
@@ -3587,7 +3601,7 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 25.0.6
+      '@types/node': 25.0.9
 
   '@types/debug@4.1.12':
     dependencies:
@@ -3599,7 +3613,7 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@25.0.6':
+  '@types/node@25.0.9':
     dependencies:
       undici-types: 7.16.0
 
@@ -3609,11 +3623,11 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 25.0.6
+      '@types/node': 25.0.9
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 25.0.6
+      '@types/node': 25.0.9
 
   '@wagmi/connectors@6.1.4(@wagmi/core@2.22.1(typescript@5.9.3)(use-sync-external-store@1.2.0)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)))(bufferutil@4.1.0)(typescript@5.9.3)(use-sync-external-store@1.2.0)(utf-8-validate@5.0.10)(viem@2.44.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(ws@8.19.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@3.25.76)':
     dependencies:
@@ -4256,6 +4270,10 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
       zod: 3.25.76
+
+  abitype@1.2.3(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   abitype@1.2.3(typescript@5.9.3)(zod@3.22.4):
     optionalDependencies:
@@ -4931,6 +4949,21 @@ snapshots:
 
   openapi-typescript-helpers@0.0.15: {}
 
+  ox@0.11.3(typescript@5.9.3):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.1
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.3)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - zod
+
   ox@0.11.3(typescript@5.9.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
@@ -5376,6 +5409,23 @@ snapshots:
       - utf-8-validate
       - zod
 
+  viem@2.44.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10):
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.3)
+      isows: 1.0.7(ws@8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10))
+      ox: 0.11.3(typescript@5.9.3)
+      ws: 8.18.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
   webextension-polyfill@0.10.0: {}
 
   webidl-conversions@3.0.1: {}
@@ -5465,9 +5515,7 @@ snapshots:
     optionalDependencies:
       use-sync-external-store: 1.2.0
 
-  zustand@5.0.10(use-sync-external-store@1.2.0):
-    optionalDependencies:
-      use-sync-external-store: 1.2.0
+  zustand@5.0.10: {}
 
   zustand@5.0.3(use-sync-external-store@1.2.0):
     optionalDependencies:
