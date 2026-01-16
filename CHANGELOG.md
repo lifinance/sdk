@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.15.3](https://github.com/lifinance/sdk/compare/v3.15.1...v3.15.3) (2026-01-16)
+
+
+### Bug Fixes
+
+* add skip permit parameter ([#344](https://github.com/lifinance/sdk/issues/344)) ([e78bc1a](https://github.com/lifinance/sdk/commit/e78bc1acd2720b878a4534dca7f4ed0c5c77b109))
+
 ### [3.15.2](https://github.com/lifinance/sdk/compare/v3.15.1...v3.15.2) (2026-01-16)
 
 ### [3.15.1](https://github.com/lifinance/sdk/compare/v3.15.0...v3.15.1) (2026-01-12)
