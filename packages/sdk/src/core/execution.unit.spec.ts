@@ -1,13 +1,10 @@
 import { setupServer } from 'msw/node'
-import type { Client } from 'viem'
-import { sendTransaction } from 'viem/actions'
 import {
   afterAll,
   afterEach,
   beforeAll,
   beforeEach,
   describe,
-  expect,
   it,
   vi,
 } from 'vitest'
@@ -21,7 +18,7 @@ const client = createClient({
   integrator: 'lifi-sdk',
 })
 
-let viemClient: Partial<Client>
+let viemClient: any
 
 vi.mock('../balance', () => ({
   checkBalance: vi.fn(() => Promise.resolve([])),
@@ -53,7 +50,7 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
       getChainId: () => Promise.resolve(137),
       getAddresses: () =>
         Promise.resolve(['0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0']),
-    } as Partial<Client>
+    }
   })
 
   afterEach(() => server.resetHandlers())
@@ -68,19 +65,19 @@ describe.skip('Should pick up gas from wallet client estimation', () => {
 
     await executeRoute(client, route)
 
-    expect(sendTransaction).toHaveBeenCalledWith(viemClient, {
-      gasLimit: 125000n,
-      gasPrice: 100000n,
-      // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
-      transactionRequest: {
-        chainId: 137,
-        data: '0xdata',
-        from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
-        gasLimit: '682701',
-        gasPrice: '0x27c01c1727',
-        to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
-        value: '0x0600830dbc7f5bf7',
-      },
-    })
+    // expect(sendTransaction).toHaveBeenCalledWith(viemClient, {
+    //   gasLimit: 125000n,
+    //   gasPrice: 100000n,
+    //   // TODO: Check the cause for gasLimit being outside transactionRequest. Currently working as expected in widget
+    //   transactionRequest: {
+    //     chainId: 137,
+    //     data: '0xdata',
+    //     from: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+    //     gasLimit: '682701',
+    //     gasPrice: '0x27c01c1727',
+    //     to: '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE',
+    //     value: '0x0600830dbc7f5bf7',
+    //   },
+    // })
   })
 })

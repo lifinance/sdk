@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-ethereum",
-  "version": "4.0.0-alpha.5",
+  "version": "4.0.0-alpha.8",
   "description": "LI.FI Ethereum SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -48,15 +48,15 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "viem": "^2.41.2"
+    "viem": "^2.44.2"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.47.0",
-    "@vitest/coverage-v8": "^4.0.15",
+    "@lifi/data-types": "^6.54.0",
+    "@vitest/coverage-v8": "^4.0.17",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.17"
   },
   "publishConfig": {
     "access": "public"

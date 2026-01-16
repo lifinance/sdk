@@ -18,6 +18,8 @@ export const InstantExpiration = 0n
 export const EIP_2612_PERMIT_SELECTOR = '0xd505accf'
 export const DAI_PERMIT_SELECTOR = '0x8fcbaf0c'
 
+export const PatcherMagicNumber = 314159265359n
+
 /**
  * EIP-712 domain typehash with chainId
  * @link https://eips.ethereum.org/EIPS/eip-712#specification

@@ -1,8 +1,6 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
-export type { Client } from 'viem'
-export { formatUnits, isHex, parseUnits } from 'viem/utils'
 export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
@@ -23,6 +21,7 @@ export { getTools } from './actions/getTools.js'
 export { getTransactionHistory } from './actions/getTransactionHistory.js'
 export { getWalletBalances } from './actions/getWalletBalances.js'
 export { actions } from './actions/index.js'
+export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './client/createClient.js'
 export { BaseStepExecutor } from './core/BaseStepExecutor.js'
@@ -37,7 +36,6 @@ export {
 } from './core/execution.js'
 export { StatusManager } from './core/statusManager/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
-export { isTokenMessageSigningAllowed } from './core/utils.js'
 export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
@@ -57,12 +55,17 @@ export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
   AcceptSlippageUpdateHookParams,
+  ContractCallParams,
+  ContractTool,
   ExchangeRateUpdateParams,
   Execution,
   ExecutionOptions,
   ExecutionStatus,
+  GetContractCallsHook,
+  GetContractCallsResult,
   InteractionSettings,
   LiFiStepExtended,
+  RequestInterceptor,
   RouteExecutionData,
   RouteExecutionDataDictionary,
   RouteExecutionDictionary,
@@ -75,7 +78,6 @@ export type {
   StepExecutor,
   StepExecutorOptions,
   StepExtended,
-  SwitchChainHook,
   Transaction,
   TransactionMethodType,
   TransactionParameters,
@@ -87,6 +89,9 @@ export type {
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
+export { formatUnits } from './utils/formatUnits.js'
+export { isHex } from './utils/isHex.js'
+export { parseUnits } from './utils/parseUnits.js'
 export { sleep } from './utils/sleep.js'
 export { waitForResult } from './utils/waitForResult.js'
 export { withDedupe } from './utils/withDedupe.js'

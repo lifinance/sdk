@@ -4,7 +4,6 @@ import {
   type LiFiStep,
   type LiFiStepExtended,
   type SDKProvider,
-  type SwitchChainHook,
 } from '@lifi/sdk'
 import type {
   WalletCallReceipt as _WalletCallReceipt,
@@ -16,7 +15,7 @@ import type {
 
 export interface EthereumProviderOptions {
   getWalletClient?: () => Promise<Client>
-  switchChain?: SwitchChainHook
+  switchChain?: (chainId: number) => Promise<Client | undefined>
   fallbackTransportConfig?: FallbackTransportConfig
 }
 

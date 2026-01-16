@@ -1,6 +1,11 @@
-import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
+import {
+  ChainType,
+  LiFiErrorCode,
+  ProviderError,
+  type StepExecutorOptions,
+} from '@lifi/sdk'
+import { isAddress } from '@solana/kit'
 import { getSolanaBalance } from './actions/getSolanaBalance.js'
-import { isSolanaAddress } from './actions/isSolanaAddress.js'
 import { resolveSolanaAddress } from './actions/resolveSolanaAddress.js'
 import { SolanaStepExecutor } from './SolanaStepExecutor.js'
 import type { SolanaProviderOptions, SolanaSDKProvider } from './types.js'
@@ -13,20 +18,23 @@ export function SolanaProvider(
     get type() {
       return ChainType.SVM
     },
-    isAddress: isSolanaAddress,
+    isAddress,
     resolveAddress: resolveSolanaAddress,
     getBalance: getSolanaBalance,
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SolanaStepExecutor> {
-      if (!_options.getWalletAdapter) {
-        throw new Error('getWalletAdapter is not provided.')
+      if (!_options.getWallet) {
+        throw new ProviderError(
+          LiFiErrorCode.ConfigError,
+          'SolanaProvider requires a getWallet function'
+        )
       }
 
-      const walletAdapter = await _options.getWalletAdapter()
+      const wallet = await _options.getWallet()
 
       const executor = new SolanaStepExecutor({
-        walletAdapter,
+        wallet,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,
