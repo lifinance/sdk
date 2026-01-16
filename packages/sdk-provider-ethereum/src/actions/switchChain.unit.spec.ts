@@ -56,7 +56,7 @@ describe('switchChain', () => {
 
       expect(updatedClient).toEqual(client)
       expect(transitionExecutionStatusMock).not.toHaveBeenCalled()
-      expect(_hooks.switchChainHook).not.toHaveBeenCalled()
+      expect(switchChainHookMock).not.toHaveBeenCalled()
     })
   })
 
