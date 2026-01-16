@@ -28,7 +28,4 @@ export const onStatusTransition: Record<
   FAILED: () => ({
     doneAt: Date.now(),
   }),
-  CANCELLED: () => ({
-    doneAt: Date.now(),
-  }),
 }

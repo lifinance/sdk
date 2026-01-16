@@ -37,26 +37,21 @@ stateDiagram-v2
     STARTED --> PENDING
     STARTED --> RESET_REQUIRED
     STARTED --> FAILED
-    STARTED --> CANCELLED
     STARTED --> DONE
     
     ACTION_REQUIRED --> PENDING
     ACTION_REQUIRED --> MESSAGE_REQUIRED
     ACTION_REQUIRED --> RESET_REQUIRED
     ACTION_REQUIRED --> FAILED
-    ACTION_REQUIRED --> CANCELLED
     
     MESSAGE_REQUIRED --> PENDING
     MESSAGE_REQUIRED --> ACTION_REQUIRED
     MESSAGE_REQUIRED --> FAILED
-    MESSAGE_REQUIRED --> CANCELLED
     
     RESET_REQUIRED --> PENDING
     RESET_REQUIRED --> ACTION_REQUIRED
     RESET_REQUIRED --> FAILED
-    RESET_REQUIRED --> CANCELLED
     
-    PENDING --> STARTED
     PENDING --> DONE
     PENDING --> ACTION_REQUIRED
     PENDING --> RESET_REQUIRED
@@ -65,7 +60,6 @@ stateDiagram-v2
     FAILED --> PENDING
     
     DONE --> [*]
-    CANCELLED --> [*]
 ```
 
 | Status | Description |
@@ -77,7 +71,6 @@ stateDiagram-v2
 | `PENDING` | Waiting for transaction confirmation |
 | `DONE` | Transaction completed successfully |
 | `FAILED` | Transaction failed (can retry) |
-| `CANCELLED` | Execution was cancelled by user |
 
 ## Status Messages by Transaction Type
 

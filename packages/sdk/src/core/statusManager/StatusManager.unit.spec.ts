@@ -181,13 +181,13 @@ describe('StatusManager', () => {
 
       describe('and transitioning to an invalid status', () => {
         it('should throw an error', () => {
-          // PENDING -> CANCELLED is not valid in the transitions
+          // PENDING -> STARTED is not valid in the transitions
           expect(() =>
             statusManager.transitionExecutionStatus(
               structuredClone(step),
-              'CANCELLED'
+              'STARTED'
             )
-          ).toThrow('Invalid transition: PENDING → CANCELLED')
+          ).toThrow('Invalid transition: PENDING → STARTED')
         })
       })
 

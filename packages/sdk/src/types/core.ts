@@ -211,7 +211,6 @@ export type ExecutionStatus =
   | 'PENDING'
   | 'FAILED'
   | 'DONE'
-  | 'CANCELLED'
 
 export type TransactionType =
   | 'TOKEN_ALLOWANCE'
