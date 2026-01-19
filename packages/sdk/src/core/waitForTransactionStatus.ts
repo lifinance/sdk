@@ -28,7 +28,8 @@ export async function waitForTransactionStatus(
           case 'DONE':
             return statusResponse
           case 'PENDING':
-            step = statusManager?.transitionExecutionStatus(step, 'PENDING', {
+            step = statusManager?.updateExecution(step, {
+              status: 'PENDING',
               substatus: statusResponse.substatus,
               substatusMessage:
                 statusResponse.substatusMessage ||

@@ -72,11 +72,11 @@ export const checkAllowance = async (
       (typedData) => typedData.primaryType === 'Permit'
     )
     if (!disableMessageSigning && permitTypedData?.length) {
-      step = statusManager.transitionExecutionType(
-        step,
-        'PERMIT',
-        step.action.fromChainId
-      )
+      step = statusManager.updateExecution(step, {
+        type: 'PERMIT',
+        status: 'PENDING',
+        chainId: step.action.fromChainId,
+      })
       signedTypedData = step.execution?.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
         // Check if we already have a valid permit for this chain and requirements
@@ -89,7 +89,9 @@ export const checkAllowance = async (
           continue
         }
 
-        step = statusManager.transitionExecutionStatus(step, 'ACTION_REQUIRED')
+        step = statusManager.updateExecution(step, {
+          status: 'ACTION_REQUIRED',
+        })
         if (!allowUserInteraction) {
           return { status: 'ACTION_REQUIRED' }
         }
@@ -118,16 +120,14 @@ export const checkAllowance = async (
           signature,
         }
         signedTypedData.push(signedPermit)
-        step = statusManager.transitionExecutionStatus(
-          step,
-          'ACTION_REQUIRED',
-          {
-            signedTypedData,
-          }
-        )
+        step = statusManager.updateExecution(step, {
+          status: 'ACTION_REQUIRED',
+          signedTypedData,
+        })
       }
 
-      step = statusManager.transitionExecutionStatus(step, 'DONE', {
+      step = statusManager.updateExecution(step, {
+        status: 'DONE',
         signedTypedData,
       })
       // Check if there's a signed permit for the source transaction chain
@@ -144,11 +144,11 @@ export const checkAllowance = async (
     }
 
     // Find existing or create new allowance process
-    step = statusManager.transitionExecutionType(
-      step,
-      'TOKEN_ALLOWANCE',
-      step.action.fromChainId
-    )
+    step = statusManager.updateExecution(step, {
+      type: 'TOKEN_ALLOWANCE',
+      status: 'PENDING',
+      chainId: step.action.fromChainId,
+    })
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
@@ -174,7 +174,7 @@ export const checkAllowance = async (
     }
 
     // Start new allowance check
-    step = statusManager.transitionExecutionStatus(step, 'STARTED')
+    step = statusManager.updateExecution(step, { status: 'STARTED' })
 
     const spenderAddress = permit2Supported
       ? chain.permit2
@@ -192,7 +192,7 @@ export const checkAllowance = async (
 
     // Return early if already approved
     if (fromAmount <= approved) {
-      step = statusManager.transitionExecutionStatus(step, 'DONE')
+      step = statusManager.updateExecution(step, { status: 'DONE' })
       return { status: 'DONE', data: signedTypedData }
     }
 
@@ -228,7 +228,9 @@ export const checkAllowance = async (
       )
 
       if (!signedTypedDataForChain) {
-        step = statusManager.transitionExecutionStatus(step, 'ACTION_REQUIRED')
+        step = statusManager.updateExecution(step, {
+          status: 'ACTION_REQUIRED',
+        })
 
         if (!allowUserInteraction) {
           return { status: 'ACTION_REQUIRED' }
@@ -255,7 +257,8 @@ export const checkAllowance = async (
         signedTypedData.push(signedPermit)
       }
 
-      step = statusManager.transitionExecutionStatus(step, 'DONE', {
+      step = statusManager.updateExecution(step, {
+        status: 'DONE',
         signedTypedData,
       })
       return {
@@ -270,7 +273,8 @@ export const checkAllowance = async (
       : 'ACTION_REQUIRED'
 
     // Clear the transaction from potential previous approval transaction
-    step = statusManager.transitionExecutionStatus(step, resetApprovalStatus, {
+    step = statusManager.updateExecution(step, {
+      status: resetApprovalStatus,
       transaction: null,
     })
 
@@ -303,13 +307,10 @@ export const checkAllowance = async (
           statusManager
         )
 
-        step = statusManager.transitionExecutionStatus(
-          step,
-          'ACTION_REQUIRED',
-          {
-            transaction: null,
-          }
-        )
+        step = statusManager.updateExecution(step, {
+          status: 'ACTION_REQUIRED',
+          transaction: null,
+        })
 
         if (!allowUserInteraction) {
           return { status: 'ACTION_REQUIRED' }
@@ -334,7 +335,7 @@ export const checkAllowance = async (
     // If batching is supported, we need to return the batch approval data
     // because allowance was't set by standard approval transaction
     if (batchingSupported) {
-      step = statusManager.transitionExecutionStatus(step, 'DONE')
+      step = statusManager.updateExecution(step, { status: 'DONE' })
       const calls: Call[] = []
 
       // Add reset call first if approval reset is required
@@ -378,14 +379,15 @@ export const checkAllowance = async (
       (t) => t.type === step.execution?.type
     )
     if (!transaction) {
-      step = statusManager.transitionExecutionType(
-        step,
-        'TOKEN_ALLOWANCE',
-        step.action.fromChainId
-      )
+      step = statusManager.updateExecution(step, {
+        type: 'TOKEN_ALLOWANCE',
+        status: 'PENDING',
+        chainId: step.action.fromChainId,
+      })
     }
     const error = await parseEthereumErrors(e, step)
-    step = statusManager.transitionExecutionStatus(step, 'FAILED', {
+    step = statusManager.updateExecution(step, {
+      status: 'FAILED',
       error: {
         message: error.cause.message,
         code: error.code,
@@ -408,7 +410,8 @@ const waitForApprovalTransaction = async (
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
 
-  step = statusManager.transitionExecutionStatus(step, 'PENDING', {
+  step = statusManager.updateExecution(step, {
+    status: 'PENDING',
     transaction: {
       txHash,
       txLink: getTxLink(txHash),
@@ -421,7 +424,8 @@ const waitForApprovalTransaction = async (
     txHash,
     onReplaced(response) {
       const newHash = response.transaction.hash
-      step = statusManager.transitionExecutionStatus(step, 'PENDING', {
+      step = statusManager.updateExecution(step, {
+        status: 'PENDING',
         transaction: {
           txHash: newHash,
           txLink: getTxLink(newHash),
@@ -432,7 +436,8 @@ const waitForApprovalTransaction = async (
 
   const finalHash = transactionReceipt?.transactionHash || txHash
   if (!approvalReset) {
-    step = statusManager.transitionExecutionStatus(step, 'DONE', {
+    step = statusManager.updateExecution(step, {
+      status: 'DONE',
       transaction: {
         txHash: finalHash,
         txLink: getTxLink(finalHash),

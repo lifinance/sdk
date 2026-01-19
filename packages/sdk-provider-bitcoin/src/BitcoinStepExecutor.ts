@@ -62,11 +62,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = fromChain.id !== toChain.id
     const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    step = this.statusManager.transitionExecutionType(
-      step,
-      currentProcessType,
-      fromChain.id
-    )
+    step = this.statusManager.updateExecution(step, {
+      type: currentProcessType,
+      status: 'PENDING',
+      chainId: fromChain.id,
+    })
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)
 
@@ -85,14 +85,13 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           txHash = currentTransaction.txHash
           txHex = currentTransaction.txHex ?? ''
         } else {
-          step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
+          step = this.statusManager.updateExecution(step, { status: 'STARTED' })
 
           // Check balance
           await checkBalance(client, this.client.account!.address, step)
 
           // Create new transaction
           if (!step.transactionRequest) {
-            // biome-ignore lint/correctness/noUnusedVariables: destructuring
             const { execution, ...stepBase } = step
             const updatedStep = await getStepTransaction(client, stepBase)
             const comparedStep = await stepComparison(
@@ -115,10 +114,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             )
           }
 
-          step = this.statusManager.transitionExecutionStatus(
-            step,
-            'ACTION_REQUIRED'
-          )
+          step = this.statusManager.updateExecution(step, {
+            status: 'ACTION_REQUIRED',
+          })
 
           if (!this.allowUserInteraction) {
             return step
@@ -253,7 +251,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             hex: txHex,
           })
 
-          step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+          step = this.statusManager.updateExecution(step, {
+            status: 'PENDING',
             transaction: {
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
@@ -269,16 +268,13 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           senderAddress: this.client.account?.address,
           onReplaced: (response) => {
             replacementReason = response.reason
-            step = this.statusManager.transitionExecutionStatus(
-              step,
-              'PENDING',
-              {
-                transaction: {
-                  txHash: response.transaction.txid,
-                  txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
-                },
-              }
-            )
+            step = this.statusManager.updateExecution(step, {
+              status: 'PENDING',
+              transaction: {
+                txHash: response.transaction.txid,
+                txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
+              },
+            })
           },
         })
 
@@ -290,7 +286,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         }
 
         if (transaction.txid !== txHash) {
-          step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+          step = this.statusManager.updateExecution(step, {
+            status: 'PENDING',
             transaction: {
               txHash: transaction.txid,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
@@ -299,11 +296,12 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         }
 
         if (isBridgeExecution) {
-          step = this.statusManager.transitionExecutionStatus(step, 'DONE')
+          step = this.statusManager.updateExecution(step, { status: 'DONE' })
         }
       } catch (e: any) {
         const error = await parseBitcoinErrors(e, step)
-        step = this.statusManager.transitionExecutionStatus(step, 'FAILED', {
+        step = this.statusManager.updateExecution(step, {
+          status: 'FAILED',
           error: {
             message: error.cause.message,
             code: error.code,

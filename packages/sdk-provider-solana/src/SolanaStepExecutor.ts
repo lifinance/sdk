@@ -58,22 +58,21 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
     const walletAccount = await this.getWalletAccount(step)
 
-    step = this.statusManager.transitionExecutionType(
-      step,
-      currentProcessType,
-      fromChain.id
-    )
+    step = this.statusManager.updateExecution(step, {
+      type: currentProcessType,
+      status: 'PENDING',
+      chainId: fromChain.id,
+    })
 
     if (step.execution?.status !== 'DONE') {
       try {
-        step = this.statusManager.transitionExecutionStatus(step, 'STARTED')
+        step = this.statusManager.updateExecution(step, { status: 'STARTED' })
 
         // Check balance
         await checkBalance(client, walletAccount.address, step)
 
         // Create new transaction
         if (!step.transactionRequest) {
-          // biome-ignore lint/correctness/noUnusedVariables: destructuring
           const { execution, ...stepBase } = step
           const updatedStep = await getStepTransaction(client, stepBase)
           const comparedStep = await stepComparison(
@@ -96,10 +95,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        step = this.statusManager.transitionExecutionStatus(
-          step,
-          'ACTION_REQUIRED'
-        )
+        step = this.statusManager.updateExecution(step, {
+          status: 'ACTION_REQUIRED',
+        })
 
         if (!this.allowUserInteraction) {
           return step
@@ -160,7 +158,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        step = this.statusManager.transitionExecutionStatus(step, 'PENDING')
+        step = this.statusManager.updateExecution(step, { status: 'PENDING' })
 
         const transactionCodec = getTransactionCodec()
 
@@ -219,7 +217,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         // Transaction has been confirmed and we can update the process
-        step = this.statusManager.transitionExecutionStatus(step, 'PENDING', {
+        step = this.statusManager.updateExecution(step, {
+          status: 'PENDING',
           transaction: {
             txHash: confirmedTransaction.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
@@ -228,11 +227,12 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         })
 
         if (isBridgeExecution) {
-          step = this.statusManager.transitionExecutionStatus(step, 'DONE')
+          step = this.statusManager.updateExecution(step, { status: 'DONE' })
         }
       } catch (e: any) {
         const error = await parseSolanaErrors(e, step)
-        step = this.statusManager.transitionExecutionStatus(step, 'FAILED', {
+        step = this.statusManager.updateExecution(step, {
+          status: 'FAILED',
           error: {
             message: error.cause.message,
             code: error.code,

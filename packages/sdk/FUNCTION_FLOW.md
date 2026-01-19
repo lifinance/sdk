@@ -47,16 +47,16 @@ executeStep(client, step)
 │   │   ┌─────────────────────────────────────────────────────────────┐
 │   │   │ TOKEN_ALLOWANCE Flow                                        │
 │   │   ├─────────────────────────────────────────────────────────────┤
-│   │   │ transitionExecutionType(step, 'TOKEN_ALLOWANCE')            │
-│   │   │ transitionExecutionStatus(step, 'STARTED')                  │
+│   │   │ updateExecution(step, { type: 'TOKEN_ALLOWANCE', ... })     │
+│   │   │ updateExecution(step, { status: 'STARTED' })                │
 │   │   │         │                                                   │
 │   │   │         ├─► getAllowance()                                  │
 │   │   │         │   └─► If approved → status: DONE (skip approval)  │
 │   │   │         │                                                   │
-│   │   │         ├─► transitionExecutionStatus(step, 'RESET_REQUIRED')│
+│   │   │         ├─► updateExecution(step, { status: 'RESET_REQUIRED' })│
 │   │   │         │   └─► setAllowance(0)  // Reset if needed         │
 │   │   │         │                                                   │
-│   │   │         ├─► transitionExecutionStatus(step, 'ACTION_REQUIRED')│
+│   │   │         ├─► updateExecution(step, { status: 'ACTION_REQUIRED' })│
 │   │   │         │   └─► setAllowance()   // User signs approval tx  │
 │   │   │         │                                                   │
 │   │   │         └─► waitForTransactionReceipt()                     │
@@ -66,16 +66,16 @@ executeStep(client, step)
 │   │   ┌─────────────────────────────────────────────────────────────┐
 │   │   │ PERMIT Flow (if native permit available)                    │
 │   │   ├─────────────────────────────────────────────────────────────┤
-│   │   │ transitionExecutionType(step, 'PERMIT')                     │
-│   │   │ transitionExecutionStatus(step, 'ACTION_REQUIRED')          │
+│   │   │ updateExecution(step, { type: 'PERMIT', ... })              │
+│   │   │ updateExecution(step, { status: 'ACTION_REQUIRED' })        │
 │   │   │         │                                                   │
 │   │   │         └─► signTypedData()  // User signs permit message   │
 │   │   │             └─► status: DONE                                │
 │   │   └─────────────────────────────────────────────────────────────┘
 │
-├─► transitionExecutionType(step, 'SWAP' | 'CROSS_CHAIN')
+├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
 │
-├─► transitionExecutionStatus(step, 'STARTED')
+├─► updateExecution(step, { status: 'STARTED' })
 │
 ├─► checkBalance()                         // Verify sufficient balance
 │
@@ -84,7 +84,7 @@ executeStep(client, step)
 │   ├─► getContractCallsQuote()            // For contract calls
 │   └─► getRelayerQuote()                  // For relayer transactions
 │
-├─► transitionExecutionStatus(step, 'ACTION_REQUIRED')
+├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
 │
 ├─► [User Interaction Required]
 │   │
@@ -102,7 +102,7 @@ executeStep(client, step)
 │       │   └─► status: MESSAGE_REQUIRED → ACTION_REQUIRED
 │       └─► sendTransaction()              // User signs & submits
 │
-├─► transitionExecutionStatus(step, 'PENDING', { txHash })
+├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
 │
 └─► waitForTransaction()
     │
@@ -111,7 +111,7 @@ executeStep(client, step)
     │
     └─► waitForDestinationChainTransaction()  // For bridges only
         │
-        ├─► transitionExecutionType(step, 'RECEIVING_CHAIN')
+        ├─► updateExecution(step, { type: 'RECEIVING_CHAIN', status: 'PENDING', ... })
         │
         └─► waitForTransactionStatus()     // Poll API for bridge status
             │
@@ -128,26 +128,26 @@ executeStep(client, step)
 ```
 executeStep(client, step)
 │
-├─► transitionExecutionType(step, 'SWAP' | 'CROSS_CHAIN')
+├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
 │
-├─► transitionExecutionStatus(step, 'STARTED')
+├─► updateExecution(step, { status: 'STARTED' })
 │
 ├─► checkBalance()                         // Verify SOL/token balance
 │
 ├─► getStepTransaction()                   // Get transaction from API
 │
-├─► transitionExecutionStatus(step, 'ACTION_REQUIRED')
+├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
 │
 ├─► getWalletFeature(wallet, SolanaSignTransaction)
 │   └─► signTransaction()                  // User signs in wallet
 │
-├─► transitionExecutionStatus(step, 'PENDING')
+├─► updateExecution(step, { status: 'PENDING' })
 │
 ├─► sendAndConfirmTransaction()            // Submit to Solana network
 │   ├─► rpc.sendTransaction()
 │   └─► waitForTransactionConfirmation()
 │
-├─► transitionExecutionStatus(step, 'PENDING', { txHash })
+├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
 │
 └─► [If Bridge]
     └─► waitForDestinationChainTransaction()
@@ -161,23 +161,23 @@ executeStep(client, step)
 ```
 executeStep(client, step)
 │
-├─► transitionExecutionType(step, 'SWAP' | 'CROSS_CHAIN')
+├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
 │
-├─► transitionExecutionStatus(step, 'STARTED')
+├─► updateExecution(step, { status: 'STARTED' })
 │
 ├─► checkBalance()                         // Verify SUI/token balance
 │
 ├─► getStepTransaction()                   // Get transaction from API
 │
-├─► transitionExecutionStatus(step, 'ACTION_REQUIRED')
+├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
 │
 ├─► wallet.signAndExecuteTransaction()     // User signs & executes
 │
-├─► transitionExecutionStatus(step, 'PENDING')
+├─► updateExecution(step, { status: 'PENDING' })
 │
 ├─► client.waitForTransaction()            // Wait for confirmation
 │
-├─► transitionExecutionStatus(step, 'PENDING', { txHash })
+├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
 │
 └─► [If Bridge]
     └─► waitForDestinationChainTransaction()
@@ -229,8 +229,7 @@ executeStep(client, step)
 | `executeSteps()` | `core/execution.ts` | Loop through route steps |
 | `stopRouteExecution()` | `core/execution.ts` | Stop active execution |
 | `getActiveRoutes()` | `core/execution.ts` | Get currently executing routes |
-| `StatusManager.transitionExecutionStatus()` | `core/statusManager/StatusManager.ts` | Change execution status |
-| `StatusManager.transitionExecutionType()` | `core/statusManager/StatusManager.ts` | Change transaction type |
+| `StatusManager.updateExecution()` | `core/statusManager/StatusManager.ts` | Update execution status/type/properties |
 | `waitForTransactionStatus()` | `core/waitForTransactionStatus.ts` | Poll API for tx status |
 | `waitForDestinationChainTransaction()` | `core/waitForDestinationChainTransaction.ts` | Wait for bridge completion |
 | `checkBalance()` | `core/checkBalance.ts` | Verify token balance |
@@ -279,7 +278,7 @@ ExecutionOptions {
 ### When updateRouteHook is Called
 
 ```
-transitionExecutionStatus()
+updateExecution()
     │
     └─► updateStepInRoute()
         │

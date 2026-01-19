@@ -31,11 +31,11 @@ export async function waitForDestinationChainTransaction(
 
     const isBridgeExecution = fromChain.id !== toChain.id
     if (isBridgeExecution) {
-      step = statusManager.transitionExecutionType(
-        step,
-        'RECEIVING_CHAIN',
-        toChain.id
-      )
+      step = statusManager.updateExecution(step, {
+        type: 'RECEIVING_CHAIN',
+        status: 'PENDING',
+        chainId: toChain.id,
+      })
     }
 
     const statusResponse = (await waitForTransactionStatus(
@@ -49,7 +49,8 @@ export async function waitForDestinationChainTransaction(
     const statusReceiving = statusResponse.receiving as ExtendedTransactionInfo
 
     // Update execution status
-    step = statusManager.transitionExecutionStatus(step, 'DONE', {
+    step = statusManager.updateExecution(step, {
+      status: 'DONE',
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       ...(statusResponse.sending.amount && {
@@ -86,7 +87,8 @@ export async function waitForDestinationChainTransaction(
       `${toChain.metamask.blockExplorerUrls[0]}tx/${transactionHash}`
     )
 
-    step = statusManager.transitionExecutionStatus(step, 'FAILED', {
+    step = statusManager.updateExecution(step, {
+      status: 'FAILED',
       error: {
         code: LiFiErrorCode.TransactionFailed,
         message:

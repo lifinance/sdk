@@ -39,7 +39,7 @@ describe('StatusManager', () => {
     vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE)
   })
 
-  describe('transitionExecutionStatus', () => {
+  describe('updateExecution', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })
@@ -47,24 +47,36 @@ describe('StatusManager', () => {
 
       it('should throw when no type is provided in execution update', () => {
         expect(() =>
-          statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'PENDING'
-          )
-        ).toThrow('Execution must have type to transition status')
+          statusManager.updateExecution(structuredClone(step), {
+            status: 'PENDING',
+          })
+        ).toThrow('Execution must have type to initialize')
       })
 
       it('should create execution when type is provided', () => {
-        const result = statusManager.transitionExecutionStatus(
-          structuredClone(step),
-          'PENDING',
-          { type: 'SWAP' }
-        )
+        const result = statusManager.updateExecution(structuredClone(step), {
+          status: 'PENDING',
+          type: 'SWAP',
+        })
 
         expect(result.execution!.status).toBe('PENDING')
         expect(result.execution!.type).toBe('SWAP')
         expect(result.execution!.startedAt).toBe(SOME_DATE)
         expect(result.execution!.transactions).toEqual([])
+        expect(updateRouteHookMock).toHaveBeenCalled()
+      })
+
+      it('should create execution with the new type and chainId', () => {
+        const result = statusManager.updateExecution(structuredClone(step), {
+          type: 'SWAP',
+          chainId: 137,
+          status: 'PENDING',
+        })
+
+        expect(result.execution!.type).toBe('SWAP')
+        expect(result.execution!.chainId).toBe(137)
+        expect(result.execution!.status).toBe('PENDING')
+        expect(result.execution!.startedAt).toBe(SOME_DATE)
         expect(updateRouteHookMock).toHaveBeenCalled()
       })
     })
@@ -74,13 +86,11 @@ describe('StatusManager', () => {
         statusManager = initializeStatusManager({ includingExecution: true })
       })
 
-      describe('and transitioning to a valid status', () => {
+      describe('and updating status', () => {
         it('should update the status and call the callbacks', () => {
-          // PENDING -> DONE is valid
-          const result = statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'DONE'
-          )
+          const result = statusManager.updateExecution(structuredClone(step), {
+            status: 'DONE',
+          })
 
           expect(result.execution!.status).toBe('DONE')
           expect(result.execution!.doneAt).toBe(SOME_DATE)
@@ -88,14 +98,11 @@ describe('StatusManager', () => {
         })
 
         it('should update additional execution properties when provided', () => {
-          const result = statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'DONE',
-            {
-              fromAmount: '123',
-              toAmount: '456',
-            }
-          )
+          const result = statusManager.updateExecution(structuredClone(step), {
+            status: 'DONE',
+            fromAmount: '123',
+            toAmount: '456',
+          })
 
           expect(result.execution!.status).toBe('DONE')
           expect(result.execution!.fromAmount).toBe('123')
@@ -103,16 +110,13 @@ describe('StatusManager', () => {
         })
 
         it('should add a transaction when provided', () => {
-          const result = statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'DONE',
-            {
-              transaction: {
-                txHash: '0xabc123',
-                txLink: 'https://example.com/tx/0xabc123',
-              },
-            }
-          )
+          const result = statusManager.updateExecution(structuredClone(step), {
+            status: 'DONE',
+            transaction: {
+              txHash: '0xabc123',
+              txLink: 'https://example.com/tx/0xabc123',
+            },
+          })
 
           expect(result.execution!.status).toBe('DONE')
           // Should update existing SWAP transaction
@@ -124,22 +128,22 @@ describe('StatusManager', () => {
 
         it('should add a new transaction after type transition', () => {
           // First transition to RECEIVING_CHAIN type
-          const stepWithNewType = statusManager.transitionExecutionType(
+          const stepWithNewType = statusManager.updateExecution(
             structuredClone(step),
-            'RECEIVING_CHAIN',
-            42161
-          )
-
-          const result = statusManager.transitionExecutionStatus(
-            stepWithNewType,
-            'DONE',
             {
-              transaction: {
-                txHash: '0xdef456',
-                txLink: 'https://example.com/tx/0xdef456',
-              },
+              type: 'RECEIVING_CHAIN',
+              chainId: 42161,
+              status: 'PENDING',
             }
           )
+
+          const result = statusManager.updateExecution(stepWithNewType, {
+            status: 'DONE',
+            transaction: {
+              txHash: '0xdef456',
+              txLink: 'https://example.com/tx/0xdef456',
+            },
+          })
 
           expect(result.execution!.status).toBe('DONE')
           const receivingTx = result.execution!.transactions.find(
@@ -157,13 +161,10 @@ describe('StatusManager', () => {
             )
           ).toBeDefined()
 
-          const result = statusManager.transitionExecutionStatus(
-            clonedStep,
-            'PENDING',
-            {
-              transaction: null,
-            }
-          )
+          const result = statusManager.updateExecution(clonedStep, {
+            status: 'PENDING',
+            transaction: null,
+          })
 
           // SWAP transaction should be removed
           const swapTx = result.execution!.transactions.find(
@@ -179,78 +180,35 @@ describe('StatusManager', () => {
         })
       })
 
-      describe('and transitioning to an invalid status', () => {
-        it('should throw an error', () => {
-          // PENDING -> MESSAGE_REQUIRED is not valid in the transitions
-          expect(() =>
-            statusManager.transitionExecutionStatus(
-              structuredClone(step),
-              'MESSAGE_REQUIRED'
-            )
-          ).toThrow('Invalid transition: PENDING → MESSAGE_REQUIRED')
-        })
-      })
-
       describe('and transitioning to the same status', () => {
-        it('should return early without calling updateStepInRoute when no execution update provided', () => {
-          const result = statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'PENDING'
-          )
+        it('should still update and call updateStepInRoute', () => {
+          const result = statusManager.updateExecution(structuredClone(step), {
+            status: 'PENDING',
+          })
 
           expect(result.execution!.status).toBe('PENDING')
-          expect(updateRouteHookMock).not.toHaveBeenCalled()
+          expect(updateRouteHookMock).toHaveBeenCalled()
         })
 
-        it('should still apply execution updates when provided', () => {
-          const result = statusManager.transitionExecutionStatus(
-            structuredClone(step),
-            'PENDING',
-            { fromAmount: '555' }
-          )
+        it('should apply execution updates when provided', () => {
+          const result = statusManager.updateExecution(structuredClone(step), {
+            status: 'PENDING',
+            fromAmount: '555',
+          })
 
           expect(result.execution!.status).toBe('PENDING')
           expect(result.execution!.fromAmount).toBe('555')
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
-    })
-  })
 
-  describe('transitionExecutionType', () => {
-    describe('when no execution is defined yet', () => {
-      beforeEach(() => {
-        statusManager = initializeStatusManager({ includingExecution: false })
-      })
-
-      it('should create execution with the new type', () => {
-        const result = statusManager.transitionExecutionType(
-          structuredClone(step),
-          'SWAP',
-          137
-        )
-
-        expect(result.execution!.type).toBe('SWAP')
-        expect(result.execution!.chainId).toBe(137)
-        expect(result.execution!.status).toBe('PENDING')
-        expect(result.execution!.startedAt).toBe(SOME_DATE)
-        expect(updateRouteHookMock).toHaveBeenCalled()
-      })
-    })
-
-    describe('when an execution is defined', () => {
-      beforeEach(() => {
-        statusManager = initializeStatusManager({ includingExecution: true })
-      })
-
-      describe('and transitioning to a valid type', () => {
+      describe('and updating type', () => {
         it('should update the type and chainId', () => {
-          // SWAP -> RECEIVING_CHAIN is valid
-          const result = statusManager.transitionExecutionType(
-            structuredClone(step),
-            'RECEIVING_CHAIN',
-            42161
-          )
+          const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'RECEIVING_CHAIN',
+            chainId: 42161,
+            status: 'PENDING',
+          })
 
           expect(result.execution!.type).toBe('RECEIVING_CHAIN')
           expect(result.execution!.chainId).toBe(42161)
@@ -258,29 +216,15 @@ describe('StatusManager', () => {
         })
       })
 
-      describe('and transitioning to an invalid type', () => {
-        it('should throw an error', () => {
-          // SWAP -> TOKEN_ALLOWANCE is not valid
-          expect(() =>
-            statusManager.transitionExecutionType(
-              structuredClone(step),
-              'TOKEN_ALLOWANCE',
-              137
-            )
-          ).toThrow('Invalid type transition: SWAP → TOKEN_ALLOWANCE')
-        })
-      })
+      describe('and updating without status', () => {
+        it('should update execution properties without changing status', () => {
+          const result = statusManager.updateExecution(structuredClone(step), {
+            fromAmount: '999',
+          })
 
-      describe('and transitioning to the same type', () => {
-        it('should return early without calling updateStepInRoute', () => {
-          const result = statusManager.transitionExecutionType(
-            structuredClone(step),
-            'SWAP',
-            137
-          )
-
-          expect(result.execution!.type).toBe('SWAP')
-          expect(updateRouteHookMock).not.toHaveBeenCalled()
+          expect(result.execution!.status).toBe('PENDING')
+          expect(result.execution!.fromAmount).toBe('999')
+          expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
     })

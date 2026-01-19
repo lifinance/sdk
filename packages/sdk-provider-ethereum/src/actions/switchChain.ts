@@ -72,7 +72,8 @@ export const switchChain = async (
 
     return updatedClient
   } catch (error: any) {
-    statusManager.transitionExecutionStatus(step, 'FAILED', {
+    statusManager.updateExecution(step, {
+      status: 'FAILED',
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,

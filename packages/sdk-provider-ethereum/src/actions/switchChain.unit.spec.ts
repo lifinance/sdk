@@ -17,7 +17,7 @@ let statusManager: StatusManager
 let _hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
-let transitionExecutionStatusMock: Mock
+let updateExecutionMock: Mock
 
 describe('switchChain', () => {
   beforeEach(() => {
@@ -33,9 +33,9 @@ describe('switchChain', () => {
       request: requestMock,
     } as unknown as Client
 
-    transitionExecutionStatusMock = vi.fn()
+    updateExecutionMock = vi.fn()
     statusManager = {
-      transitionExecutionStatus: transitionExecutionStatusMock,
+      updateExecution: updateExecutionMock,
     } as unknown as StatusManager
   })
 
@@ -55,7 +55,7 @@ describe('switchChain', () => {
       )
 
       expect(updatedClient).toEqual(client)
-      expect(transitionExecutionStatusMock).not.toHaveBeenCalled()
+      expect(updateExecutionMock).not.toHaveBeenCalled()
       expect(switchChainHookMock).not.toHaveBeenCalled()
     })
   })
@@ -104,16 +104,13 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(transitionExecutionStatusMock).toHaveBeenCalledWith(
-            step,
-            'FAILED',
-            {
-              error: {
-                message: 'something went wrong',
-                code: LiFiErrorCode.ChainSwitchError,
-              },
-            }
-          )
+          expect(updateExecutionMock).toHaveBeenCalledWith(step, {
+            status: 'FAILED',
+            error: {
+              message: 'something went wrong',
+              code: LiFiErrorCode.ChainSwitchError,
+            },
+          })
         })
       })
 
@@ -142,16 +139,13 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(transitionExecutionStatusMock).toHaveBeenCalledWith(
-            step,
-            'FAILED',
-            {
-              error: {
-                message: 'Chain switch required.',
-                code: LiFiErrorCode.ChainSwitchError,
-              },
-            }
-          )
+          expect(updateExecutionMock).toHaveBeenCalledWith(step, {
+            status: 'FAILED',
+            error: {
+              message: 'Chain switch required.',
+              code: LiFiErrorCode.ChainSwitchError,
+            },
+          })
         })
       })
 
