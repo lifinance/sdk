@@ -3,9 +3,9 @@ import type {
   Execution,
   ExecutionUpdate,
   LiFiStepExtended,
-} from '../../types/core.js'
-import { executionState } from '../executionState.js'
-import { getProcessMessage } from '../processMessages.js'
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import { getProcessMessage } from './processMessages.js'
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes

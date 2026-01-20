@@ -16,13 +16,12 @@ export const parseEthereumErrors = async (
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.execution = e.execution ?? step?.execution
     return e
   }
 
   const baseError = await handleSpecificErrors(e, step)
 
-  return new SDKError(baseError, step, step?.execution)
+  return new SDKError(baseError, step)
 }
 
 const handleSpecificErrors = async (e: any, step?: LiFiStepExtended) => {

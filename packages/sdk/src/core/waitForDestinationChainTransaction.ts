@@ -6,7 +6,7 @@ import type {
 import { LiFiErrorCode } from '../errors/constants.js'
 import type { LiFiStepExtended, SDKClient } from '../types/core.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
-import type { StatusManager } from './statusManager/StatusManager.js'
+import type { StatusManager } from './StatusManager.js'
 import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 
 export async function waitForDestinationChainTransaction(

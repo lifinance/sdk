@@ -9,6 +9,7 @@ import type {
   LiFiStep,
   Route,
   RouteOptions,
+  SignedTypedData,
   Step,
   Substatus,
   Token,
@@ -211,6 +212,7 @@ export type ExecutionStatus =
   | 'PENDING'
   | 'FAILED'
   | 'DONE'
+  | 'CANCELLED'
 
 export type TransactionType =
   | 'TOKEN_ALLOWANCE'
@@ -232,11 +234,12 @@ export type Transaction = {
 export interface Execution {
   type: TransactionType
   startedAt: number
-  pendingAt?: number   
+  pendingAt?: number
   actionRequiredAt?: number
   doneAt?: number
   status: ExecutionStatus
   substatus?: Substatus
+  substatusMessage?: string
   message?: string
   error?: {
     code: string | number
@@ -251,9 +254,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
-
-  // additional information
-  [key: string]: any
+  chainId?: number
+  signedTypedData?: SignedTypedData[]
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

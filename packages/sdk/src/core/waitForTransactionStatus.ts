@@ -4,7 +4,7 @@ import { ServerError } from '../errors/errors.js'
 import type { LiFiStepExtended, SDKClient } from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
-import type { StatusManager } from './statusManager/StatusManager.js'
+import type { StatusManager } from './StatusManager.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 

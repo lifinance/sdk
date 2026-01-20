@@ -34,7 +34,7 @@ export {
   stopRouteExecution,
   updateRouteExecution,
 } from './core/execution.js'
-export { StatusManager } from './core/statusManager/StatusManager.js'
+export { StatusManager } from './core/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
 export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
