@@ -50,11 +50,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
+    const isBridgeExecution = step.action.fromChainId !== step.action.toChainId
+    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+
+    step = this.statusManager.initExecution(step, executionType)
+
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
-
-    const isBridgeExecution = fromChain.id !== toChain.id
-    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     const walletAccount = await this.getWalletAccount(step)
 
@@ -62,16 +64,16 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       type: executionType,
       status: 'PENDING',
       chainId: fromChain.id,
-      startedAt: Date.now(),
-      transactions: [],
     })
 
-    if (step.execution?.status !== 'DONE') {
+    const transaction = step.execution?.transactions.find(
+      (t) => t.type === executionType
+    )
+    if (!transaction?.doneAt) {
       try {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'STARTED',
-          startedAt: Date.now(),
         })
 
         // Check balance
@@ -234,7 +236,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
             type: executionType,
             txHash: confirmedTransaction.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
-            chainId: fromChain.id,
           },
         })
 

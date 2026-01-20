@@ -49,6 +49,7 @@ describe('switchChain', () => {
         client,
         statusManager,
         step,
+        step.execution!.type,
         step.action.fromChainId,
         true,
         switchChainHookMock
@@ -71,6 +72,7 @@ describe('switchChain', () => {
           client,
           statusManager,
           step,
+          step.execution!.type,
           step.action.fromChainId,
           false,
           switchChainHookMock
@@ -95,6 +97,7 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
+              step.execution!.type,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -126,6 +129,7 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
+              step.execution!.type,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -167,6 +171,7 @@ describe('switchChain', () => {
             client,
             statusManager,
             step,
+            step.execution!.type,
             step.action.fromChainId,
             true,
             switchChainHookMock

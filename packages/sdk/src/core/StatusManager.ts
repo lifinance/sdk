@@ -4,6 +4,7 @@ import type {
   ExecutionUpdate,
   LiFiStepExtended,
   Transaction,
+  TransactionType,
 } from '../types/core.js'
 import { executionState } from './executionState.js'
 import { getProcessMessage } from './processMessages.js'
@@ -21,22 +22,40 @@ export class StatusManager {
     this.routeId = routeId
   }
 
+  initExecution(
+    step: LiFiStepExtended,
+    type: TransactionType
+  ): LiFiStepExtended {
+    if (!step.execution) {
+      return this.updateExecution(step, {
+        type,
+        status: 'STARTED',
+        transactions: [],
+      })
+    }
+
+    if (step.execution.status === 'FAILED') {
+      return this.updateExecution(step, {
+        type,
+        status: 'STARTED',
+      })
+    }
+
+    return step
+  }
+
   updateExecution(
     step: LiFiStepExtended,
     execution: ExecutionUpdate
   ): LiFiStepExtended {
-    const { status, transaction, ...executionUpdate } = execution
-
-    const type = executionUpdate?.type ?? step.execution?.type
+    const { status, type, transaction, ...executionUpdate } = execution
 
     step.execution = {
       ...step.execution,
       ...executionUpdate,
-      ...(status &&
-        type && {
-          status,
-          message: getProcessMessage(type, status),
-        }),
+      type,
+      status,
+      message: getProcessMessage(type, status),
     } as Execution
 
     if (transaction) {
@@ -51,7 +70,7 @@ export class StatusManager {
       case 'FAILED':
       case 'DONE': {
         step.execution.doneAt = Date.now()
-        const transactionToUpdate = step.execution?.transactions.find(
+        const transactionToUpdate = step.execution.transactions.find(
           (t) => t.type === type
         )
         if (transactionToUpdate) {

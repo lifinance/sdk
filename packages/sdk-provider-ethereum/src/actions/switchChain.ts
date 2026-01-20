@@ -3,6 +3,7 @@ import {
   type LiFiStepExtended,
   ProviderError,
   type StatusManager,
+  type TransactionType,
 } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
@@ -29,6 +30,7 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
+  type: TransactionType,
   targetChainId: number,
   allowUserInteraction: boolean,
   switchChain?: (chainId: number) => Promise<Client | undefined>
@@ -73,7 +75,7 @@ export const switchChain = async (
     return updatedClient
   } catch (error: any) {
     statusManager.updateExecution(step, {
-      type: step.execution!.type,
+      type,
       status: 'FAILED',
       error: {
         message: error.message,

@@ -221,10 +221,11 @@ describe('StatusManager', () => {
         })
       })
 
-      describe('and updating without status', () => {
-        it('should update execution properties without changing status', () => {
+      describe('and updating with additional properties', () => {
+        it('should update execution properties along with status', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
             type: 'SWAP',
+            status: 'PENDING',
             fromAmount: '999',
           })
 

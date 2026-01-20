@@ -44,26 +44,28 @@ export class SuiStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
+    const isBridgeExecution = step.action.fromChainId !== step.action.toChainId
+    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+
+    step = this.statusManager.initExecution(step, executionType)
+
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
-
-    const isBridgeExecution = fromChain.id !== toChain.id
-    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     step = this.statusManager.updateExecution(step, {
       type: executionType,
       chainId: fromChain.id,
       status: 'PENDING',
-      startedAt: Date.now(),
-      transactions: [],
     })
 
-    if (step.execution?.status !== 'DONE') {
+    const transaction = step.execution?.transactions.find(
+      (t) => t.type === executionType
+    )
+    if (!transaction?.doneAt) {
       try {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'STARTED',
-          startedAt: Date.now(),
         })
 
         // Check balance
@@ -170,7 +172,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
             type: executionType,
             txHash: result.digest,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
-            chainId: fromChain.id,
           },
         })
 

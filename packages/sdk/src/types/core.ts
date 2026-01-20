@@ -223,7 +223,6 @@ export type TransactionType =
 
 export type Transaction = {
   type: TransactionType
-  chainId?: number
   txHash?: string
   taskId?: string
   txLink?: string
@@ -261,4 +260,8 @@ export interface Execution {
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
 
-export type ExecutionUpdate = Partial<Execution> & { transaction?: Transaction }
+export type ExecutionUpdate = Partial<Omit<Execution, 'type' | 'status'>> & {
+  type: TransactionType
+  status: ExecutionStatus
+  transaction?: Transaction
+}
