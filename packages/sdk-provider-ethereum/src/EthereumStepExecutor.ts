@@ -443,20 +443,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
   private estimateTransactionRequest = async (
     client: SDKClient,
-    transactionRequest: TransactionParameters,
-    fromChain: ExtendedChain
+    viemClient: Client,
+    transactionRequest: TransactionParameters
   ) => {
-    // Target address should be the Permit2 proxy contract in case of native permit or Permit2
-    transactionRequest.to = fromChain.permit2Proxy
     try {
       // Try to re-estimate the gas due to additional Permit data
       const estimatedGas = await getActionWithFallback(
         client,
-        this.client,
+        viemClient,
         estimateGas,
         'estimateGas',
         {
-          account: this.client.account!,
+          account: viemClient.account!,
           to: transactionRequest.to as Address,
           data: transactionRequest.data as Hex,
           value: transactionRequest.value,
@@ -552,7 +550,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       !disableMessageSigning &&
       // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
       !!step.estimate.approvalAddress &&
-      !step.estimate.skipApproval
+      !step.estimate.skipApproval &&
+      !step.estimate.skipPermit
 
     const checkForAllowance =
       // No existing swap/bridge transaction is pending
@@ -782,7 +781,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             'MESSAGE_REQUIRED'
           )
           const permit2Signature = await signPermit2Message(client, {
-            client: this.client,
+            client: updatedClient,
             chain: fromChain,
             tokenAddress: step.action.fromToken.address as Address,
             amount: BigInt(step.action.fromAmount),
@@ -804,20 +803,22 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         }
 
         if (signedNativePermitTypedData || permit2Supported) {
+          // Target address should be the Permit2 proxy contract in case of native permit or Permit2
+          transactionRequest.to = fromChain.permit2Proxy as Address
           transactionRequest = await this.estimateTransactionRequest(
             client,
-            transactionRequest,
-            fromChain
+            updatedClient,
+            transactionRequest
           )
         }
 
         txHash = await getAction(
-          this.client,
+          updatedClient,
           sendTransaction,
           'sendTransaction'
         )({
           to: transactionRequest.to as Address,
-          account: this.client.account!,
+          account: updatedClient.account!,
           data: transactionRequest.data as Hex,
           value: transactionRequest.value,
           gas: transactionRequest.gas,

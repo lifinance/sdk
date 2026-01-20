@@ -47,10 +47,10 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@lifi/types": "^17.56.0"
+    "@lifi/types": "^17.57.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.54.0",
+    "@lifi/data-types": "^6.55.0",
     "@vitest/coverage-v8": "^4.0.17",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
