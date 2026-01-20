@@ -66,6 +66,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       type: currentProcessType,
       status: 'PENDING',
       chainId: fromChain.id,
+      pendingAt: Date.now(),
+      startedAt: Date.now(),
+      transactions: [],
     })
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)
@@ -85,7 +88,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           txHash = currentTransaction.txHash
           txHex = currentTransaction.txHex ?? ''
         } else {
-          step = this.statusManager.updateExecution(step, { status: 'STARTED' })
+          step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
+            status: 'STARTED',
+            startedAt: Date.now(),
+          })
 
           // Check balance
           await checkBalance(client, this.client.account!.address, step)
@@ -115,7 +122,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           }
 
           step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
             status: 'ACTION_REQUIRED',
+            actionRequiredAt: Date.now(),
           })
 
           if (!this.allowUserInteraction) {
@@ -252,8 +261,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           })
 
           step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
             status: 'PENDING',
+            pendingAt: Date.now(),
             transaction: {
+              type: currentProcessType,
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               txHex,
@@ -269,8 +281,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           onReplaced: (response) => {
             replacementReason = response.reason
             step = this.statusManager.updateExecution(step, {
+              type: currentProcessType,
               status: 'PENDING',
+              pendingAt: Date.now(),
               transaction: {
+                type: currentProcessType,
                 txHash: response.transaction.txid,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
               },
@@ -287,8 +302,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
         if (transaction.txid !== txHash) {
           step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
             status: 'PENDING',
+            pendingAt: Date.now(),
             transaction: {
+              type: currentProcessType,
               txHash: transaction.txid,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
             },
@@ -296,12 +314,18 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         }
 
         if (isBridgeExecution) {
-          step = this.statusManager.updateExecution(step, { status: 'DONE' })
+          step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
+            status: 'DONE',
+            doneAt: Date.now(),
+          })
         }
       } catch (e: any) {
         const error = await parseBitcoinErrors(e, step)
         step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
           status: 'FAILED',
+          doneAt: Date.now(),
           error: {
             message: error.cause.message,
             code: error.code,

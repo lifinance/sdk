@@ -1,17 +1,15 @@
 import type { LiFiStep } from '@lifi/types'
 import type {
   Execution,
-  ExecutionStatusUpdate,
+  ExecutionUpdate,
   LiFiStepExtended,
-  Transaction,
 } from '../../types/core.js'
 import { executionState } from '../executionState.js'
 import { getProcessMessage } from '../processMessages.js'
-import { onStatusTransition } from './onStatusTransition.js'
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
- * @param {string} routeId The route dd this StatusManger belongs to.
+ * @param {string} routeId The route id this StatusManager belongs to.
  * @returns {StatusManager} An instance of StatusManager.
  */
 export class StatusManager {
@@ -24,61 +22,33 @@ export class StatusManager {
 
   updateExecution(
     step: LiFiStepExtended,
-    execution: ExecutionStatusUpdate
+    execution: ExecutionUpdate
   ): LiFiStepExtended {
-    const currentStatus = step.execution?.status
-    const { transaction, status, ...executionUpdate } = execution
+    const { status, type, transaction, ...executionUpdate } = execution
 
-    // Require type for initialization
-    if (!step.execution && !execution.type) {
-      throw new Error('Execution must have type to initialize')
-    }
-
-    // Update execution with new properties first (to ensure type is available)
+    // Update execution with all properties
     step.execution = {
       ...step.execution,
       ...executionUpdate,
+      ...(type && { type }),
+      ...(status && {
+        status,
+        message: getProcessMessage(step.execution?.type ?? type!, status),
+      }),
     } as Execution
 
-    // Handle status transition with timestamps
-    if (status) {
-      const timestampUpdate = onStatusTransition[status](currentStatus)
-      step.execution = {
-        ...step.execution,
-        ...timestampUpdate,
-        status,
-        message: getProcessMessage(step.execution.type, status),
-      } as Execution
-    }
-
-    // Handle transaction: null = remove, object = update/add, undefined = skip
-    if (transaction === null) {
-      const transactionType = step.execution.type
-      step.execution = {
-        ...step.execution,
-        transactions: step.execution.transactions.filter(
-          (t) => t.type !== transactionType
-        ),
-      } as Execution
-    } else if (transaction) {
-      const transactionType = step.execution.type
+    // Handle transaction: add or update in transactions array
+    if (transaction) {
       const existingIndex = step.execution.transactions.findIndex(
-        (t) => t.type === transactionType
+        (t) => t.type === transaction.type
       )
-      const transactionWithType = {
-        ...transaction,
-        type: transactionType,
-      } as Transaction
 
       step.execution = {
         ...step.execution,
         transactions:
           existingIndex >= 0
-            ? step.execution.transactions.with(
-                existingIndex,
-                transactionWithType
-              )
-            : [...step.execution.transactions, transactionWithType],
+            ? step.execution.transactions.with(existingIndex, transaction)
+            : [...step.execution.transactions, transaction],
       } as Execution
     }
 

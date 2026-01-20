@@ -29,7 +29,9 @@ export async function waitForTransactionStatus(
             return statusResponse
           case 'PENDING':
             step = statusManager?.updateExecution(step, {
+              type: step.execution!.type,
               status: 'PENDING',
+              pendingAt: Date.now(),
               substatus: statusResponse.substatus,
               substatusMessage:
                 statusResponse.substatusMessage ||
@@ -38,6 +40,7 @@ export async function waitForTransactionStatus(
                   statusResponse.substatus
                 ),
               transaction: {
+                type: step.execution!.type,
                 txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
               },
             })

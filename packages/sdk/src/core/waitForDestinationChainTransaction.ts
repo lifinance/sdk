@@ -35,6 +35,7 @@ export async function waitForDestinationChainTransaction(
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
         chainId: toChain.id,
+        pendingAt: Date.now(),
       })
     }
 
@@ -50,7 +51,9 @@ export async function waitForDestinationChainTransaction(
 
     // Update execution status
     step = statusManager.updateExecution(step, {
+      type: 'RECEIVING_CHAIN',
       status: 'DONE',
+      doneAt: Date.now(),
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       ...(statusResponse.sending.amount && {
@@ -72,6 +75,7 @@ export async function waitForDestinationChainTransaction(
         },
       ],
       transaction: {
+        type: 'RECEIVING_CHAIN',
         txHash: statusReceiving?.txHash,
         txLink:
           statusReceiving?.txLink ||
@@ -88,7 +92,9 @@ export async function waitForDestinationChainTransaction(
     )
 
     step = statusManager.updateExecution(step, {
+      type: step.execution!.type,
       status: 'FAILED',
+      doneAt: Date.now(),
       error: {
         code: LiFiErrorCode.TransactionFailed,
         message:

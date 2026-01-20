@@ -45,18 +45,12 @@ describe('StatusManager', () => {
         statusManager = initializeStatusManager({ includingExecution: false })
       })
 
-      it('should throw when no type is provided in execution update', () => {
-        expect(() =>
-          statusManager.updateExecution(structuredClone(step), {
-            status: 'PENDING',
-          })
-        ).toThrow('Execution must have type to initialize')
-      })
-
       it('should create execution when type is provided', () => {
         const result = statusManager.updateExecution(structuredClone(step), {
-          status: 'PENDING',
           type: 'SWAP',
+          status: 'PENDING',
+          startedAt: Date.now(),
+          transactions: [],
         })
 
         expect(result.execution!.status).toBe('PENDING')
@@ -71,6 +65,8 @@ describe('StatusManager', () => {
           type: 'SWAP',
           chainId: 137,
           status: 'PENDING',
+          startedAt: Date.now(),
+          transactions: [],
         })
 
         expect(result.execution!.type).toBe('SWAP')
@@ -89,7 +85,9 @@ describe('StatusManager', () => {
       describe('and updating status', () => {
         it('should update the status and call the callbacks', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             status: 'DONE',
+            doneAt: Date.now(),
           })
 
           expect(result.execution!.status).toBe('DONE')
@@ -99,6 +97,7 @@ describe('StatusManager', () => {
 
         it('should update additional execution properties when provided', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             status: 'DONE',
             fromAmount: '123',
             toAmount: '456',
@@ -109,17 +108,18 @@ describe('StatusManager', () => {
           expect(result.execution!.toAmount).toBe('456')
         })
 
-        it('should add a transaction when provided', () => {
+        it('should update a transaction when provided', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             status: 'DONE',
             transaction: {
+              type: 'SWAP',
               txHash: '0xabc123',
               txLink: 'https://example.com/tx/0xabc123',
             },
           })
 
           expect(result.execution!.status).toBe('DONE')
-          // Should update existing SWAP transaction
           const swapTx = result.execution!.transactions.find(
             (t: Transaction) => t.type === 'SWAP'
           )
@@ -128,18 +128,18 @@ describe('StatusManager', () => {
 
         it('should add a new transaction after type transition', () => {
           // First transition to RECEIVING_CHAIN type
-          const stepWithNewType = statusManager.updateExecution(
-            structuredClone(step),
-            {
-              type: 'RECEIVING_CHAIN',
-              chainId: 42161,
-              status: 'PENDING',
-            }
-          )
+          const clonedStep = structuredClone(step)
+          const stepWithNewType = statusManager.updateExecution(clonedStep, {
+            type: 'RECEIVING_CHAIN',
+            chainId: 42161,
+            status: 'PENDING',
+          })
 
           const result = statusManager.updateExecution(stepWithNewType, {
+            type: 'RECEIVING_CHAIN',
             status: 'DONE',
             transaction: {
+              type: 'RECEIVING_CHAIN',
               txHash: '0xdef456',
               txLink: 'https://example.com/tx/0xdef456',
             },
@@ -152,7 +152,7 @@ describe('StatusManager', () => {
           expect(receivingTx?.txHash).toBe('0xdef456')
         })
 
-        it('should remove a transaction when null is provided', () => {
+        it('should remove a transaction when filtered transactions array is provided', () => {
           const clonedStep = structuredClone(step)
           // Verify SWAP transaction exists before removal
           expect(
@@ -162,8 +162,11 @@ describe('StatusManager', () => {
           ).toBeDefined()
 
           const result = statusManager.updateExecution(clonedStep, {
+            type: 'SWAP',
             status: 'PENDING',
-            transaction: null,
+            transactions: clonedStep.execution!.transactions.filter(
+              (t: Transaction) => t.type !== 'SWAP'
+            ),
           })
 
           // SWAP transaction should be removed
@@ -183,6 +186,7 @@ describe('StatusManager', () => {
       describe('and transitioning to the same status', () => {
         it('should still update and call updateStepInRoute', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             status: 'PENDING',
           })
 
@@ -192,6 +196,7 @@ describe('StatusManager', () => {
 
         it('should apply execution updates when provided', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             status: 'PENDING',
             fromAmount: '555',
           })
@@ -219,6 +224,7 @@ describe('StatusManager', () => {
       describe('and updating without status', () => {
         it('should update execution properties without changing status', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
+            type: 'SWAP',
             fromAmount: '999',
           })
 

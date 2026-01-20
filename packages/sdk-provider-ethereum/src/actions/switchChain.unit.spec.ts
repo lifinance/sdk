@@ -105,7 +105,9 @@ describe('switchChain', () => {
             step.action.fromChainId
           )
           expect(updateExecutionMock).toHaveBeenCalledWith(step, {
+            type: step.execution!.type,
             status: 'FAILED',
+            doneAt: expect.any(Number),
             error: {
               message: 'something went wrong',
               code: LiFiErrorCode.ChainSwitchError,
@@ -140,7 +142,9 @@ describe('switchChain', () => {
             step.action.fromChainId
           )
           expect(updateExecutionMock).toHaveBeenCalledWith(step, {
+            type: step.execution!.type,
             status: 'FAILED',
+            doneAt: expect.any(Number),
             error: {
               message: 'Chain switch required.',
               code: LiFiErrorCode.ChainSwitchError,

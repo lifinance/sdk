@@ -62,11 +62,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       type: currentProcessType,
       status: 'PENDING',
       chainId: fromChain.id,
+      pendingAt: Date.now(),
+      startedAt: Date.now(),
+      transactions: [],
     })
 
     if (step.execution?.status !== 'DONE') {
       try {
-        step = this.statusManager.updateExecution(step, { status: 'STARTED' })
+        step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
+          status: 'STARTED',
+          startedAt: Date.now(),
+        })
 
         // Check balance
         await checkBalance(client, walletAccount.address, step)
@@ -96,7 +103,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
           status: 'ACTION_REQUIRED',
+          actionRequiredAt: Date.now(),
         })
 
         if (!this.allowUserInteraction) {
@@ -158,7 +167,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        step = this.statusManager.updateExecution(step, { status: 'PENDING' })
+        step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
+          status: 'PENDING',
+          pendingAt: Date.now(),
+        })
 
         const transactionCodec = getTransactionCodec()
 
@@ -218,8 +231,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         // Transaction has been confirmed and we can update the process
         step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
           status: 'PENDING',
+          pendingAt: Date.now(),
           transaction: {
+            type: currentProcessType,
             txHash: confirmedTransaction.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
             chainId: fromChain.id,
@@ -227,12 +243,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         })
 
         if (isBridgeExecution) {
-          step = this.statusManager.updateExecution(step, { status: 'DONE' })
+          step = this.statusManager.updateExecution(step, {
+            type: currentProcessType,
+            status: 'DONE',
+            doneAt: Date.now(),
+          })
         }
       } catch (e: any) {
         const error = await parseSolanaErrors(e, step)
         step = this.statusManager.updateExecution(step, {
+          type: currentProcessType,
           status: 'FAILED',
+          doneAt: Date.now(),
           error: {
             message: error.cause.message,
             code: error.code,

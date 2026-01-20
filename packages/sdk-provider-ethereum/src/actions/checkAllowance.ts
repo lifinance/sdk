@@ -76,6 +76,9 @@ export const checkAllowance = async (
         type: 'PERMIT',
         status: 'PENDING',
         chainId: step.action.fromChainId,
+        pendingAt: Date.now(),
+        startedAt: Date.now(),
+        transactions: [],
       })
       signedTypedData = step.execution?.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
@@ -90,7 +93,9 @@ export const checkAllowance = async (
         }
 
         step = statusManager.updateExecution(step, {
+          type: 'PERMIT',
           status: 'ACTION_REQUIRED',
+          actionRequiredAt: Date.now(),
         })
         if (!allowUserInteraction) {
           return { status: 'ACTION_REQUIRED' }
@@ -121,13 +126,17 @@ export const checkAllowance = async (
         }
         signedTypedData.push(signedPermit)
         step = statusManager.updateExecution(step, {
+          type: 'PERMIT',
           status: 'ACTION_REQUIRED',
+          actionRequiredAt: Date.now(),
           signedTypedData,
         })
       }
 
       step = statusManager.updateExecution(step, {
+        type: 'PERMIT',
         status: 'DONE',
+        doneAt: Date.now(),
         signedTypedData,
       })
       // Check if there's a signed permit for the source transaction chain
@@ -148,6 +157,9 @@ export const checkAllowance = async (
       type: 'TOKEN_ALLOWANCE',
       status: 'PENDING',
       chainId: step.action.fromChainId,
+      pendingAt: Date.now(),
+      startedAt: Date.now(),
+      transactions: [],
     })
 
     const updatedClient = await checkClient(step)
@@ -174,7 +186,11 @@ export const checkAllowance = async (
     }
 
     // Start new allowance check
-    step = statusManager.updateExecution(step, { status: 'STARTED' })
+    step = statusManager.updateExecution(step, {
+      type: 'TOKEN_ALLOWANCE',
+      status: 'STARTED',
+      startedAt: Date.now(),
+    })
 
     const spenderAddress = permit2Supported
       ? chain.permit2
@@ -192,7 +208,11 @@ export const checkAllowance = async (
 
     // Return early if already approved
     if (fromAmount <= approved) {
-      step = statusManager.updateExecution(step, { status: 'DONE' })
+      step = statusManager.updateExecution(step, {
+        type: 'TOKEN_ALLOWANCE',
+        status: 'DONE',
+        doneAt: Date.now(),
+      })
       return { status: 'DONE', data: signedTypedData }
     }
 
@@ -229,7 +249,9 @@ export const checkAllowance = async (
 
       if (!signedTypedDataForChain) {
         step = statusManager.updateExecution(step, {
+          type: 'TOKEN_ALLOWANCE',
           status: 'ACTION_REQUIRED',
+          actionRequiredAt: Date.now(),
         })
 
         if (!allowUserInteraction) {
@@ -258,7 +280,9 @@ export const checkAllowance = async (
       }
 
       step = statusManager.updateExecution(step, {
+        type: 'TOKEN_ALLOWANCE',
         status: 'DONE',
+        doneAt: Date.now(),
         signedTypedData,
       })
       return {
@@ -274,8 +298,12 @@ export const checkAllowance = async (
 
     // Clear the transaction from potential previous approval transaction
     step = statusManager.updateExecution(step, {
+      type: 'TOKEN_ALLOWANCE',
       status: resetApprovalStatus,
-      transaction: null,
+      actionRequiredAt: Date.now(),
+      transactions: step.execution!.transactions.filter(
+        (t) => t.type !== 'TOKEN_ALLOWANCE'
+      ),
     })
 
     if (!allowUserInteraction) {
@@ -308,8 +336,12 @@ export const checkAllowance = async (
         )
 
         step = statusManager.updateExecution(step, {
+          type: 'TOKEN_ALLOWANCE',
           status: 'ACTION_REQUIRED',
-          transaction: null,
+          actionRequiredAt: Date.now(),
+          transactions: step.execution!.transactions.filter(
+            (t) => t.type !== 'TOKEN_ALLOWANCE'
+          ),
         })
 
         if (!allowUserInteraction) {
@@ -335,7 +367,11 @@ export const checkAllowance = async (
     // If batching is supported, we need to return the batch approval data
     // because allowance was't set by standard approval transaction
     if (batchingSupported) {
-      step = statusManager.updateExecution(step, { status: 'DONE' })
+      step = statusManager.updateExecution(step, {
+        type: 'TOKEN_ALLOWANCE',
+        status: 'DONE',
+        doneAt: Date.now(),
+      })
       const calls: Call[] = []
 
       // Add reset call first if approval reset is required
@@ -383,11 +419,16 @@ export const checkAllowance = async (
         type: 'TOKEN_ALLOWANCE',
         status: 'PENDING',
         chainId: step.action.fromChainId,
+        pendingAt: Date.now(),
+        startedAt: Date.now(),
+        transactions: [],
       })
     }
     const error = await parseEthereumErrors(e, step)
     step = statusManager.updateExecution(step, {
+      type: step.execution!.type,
       status: 'FAILED',
+      doneAt: Date.now(),
       error: {
         message: error.cause.message,
         code: error.code,
@@ -411,8 +452,11 @@ const waitForApprovalTransaction = async (
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
 
   step = statusManager.updateExecution(step, {
+    type: 'TOKEN_ALLOWANCE',
     status: 'PENDING',
+    pendingAt: Date.now(),
     transaction: {
+      type: 'TOKEN_ALLOWANCE',
       txHash,
       txLink: getTxLink(txHash),
     },
@@ -425,8 +469,11 @@ const waitForApprovalTransaction = async (
     onReplaced(response) {
       const newHash = response.transaction.hash
       step = statusManager.updateExecution(step, {
+        type: 'TOKEN_ALLOWANCE',
         status: 'PENDING',
+        pendingAt: Date.now(),
         transaction: {
+          type: 'TOKEN_ALLOWANCE',
           txHash: newHash,
           txLink: getTxLink(newHash),
         },
@@ -437,8 +484,11 @@ const waitForApprovalTransaction = async (
   const finalHash = transactionReceipt?.transactionHash || txHash
   if (!approvalReset) {
     step = statusManager.updateExecution(step, {
+      type: 'TOKEN_ALLOWANCE',
       status: 'DONE',
+      doneAt: Date.now(),
       transaction: {
+        type: 'TOKEN_ALLOWANCE',
         txHash: finalHash,
         txLink: getTxLink(finalHash),
       },
