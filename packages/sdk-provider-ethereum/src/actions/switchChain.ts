@@ -75,7 +75,6 @@ export const switchChain = async (
     statusManager.updateExecution(step, {
       type: step.execution!.type,
       status: 'FAILED',
-      doneAt: Date.now(),
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,

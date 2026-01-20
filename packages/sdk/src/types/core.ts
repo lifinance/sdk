@@ -229,6 +229,7 @@ export type Transaction = {
   txLink?: string
   txType?: TransactionMethodType
   txHex?: string
+  doneAt?: number
 }
 
 export interface Execution {

@@ -60,13 +60,12 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
-    const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     step = this.statusManager.updateExecution(step, {
-      type: currentProcessType,
+      type: executionType,
       status: 'PENDING',
       chainId: fromChain.id,
-      pendingAt: Date.now(),
       startedAt: Date.now(),
       transactions: [],
     })
@@ -78,7 +77,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         let txHash: string
         let txHex: string
         const currentTransaction = step.execution?.transactions.find(
-          (t) => t.type === currentProcessType
+          (t) => t.type === executionType
         )
         if (currentTransaction?.txHash) {
           // Make sure that the chain is still correct
@@ -89,7 +88,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           txHex = currentTransaction.txHex ?? ''
         } else {
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'STARTED',
             startedAt: Date.now(),
           })
@@ -122,9 +121,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           }
 
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'ACTION_REQUIRED',
-            actionRequiredAt: Date.now(),
           })
 
           if (!this.allowUserInteraction) {
@@ -261,11 +259,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           })
 
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'PENDING',
-            pendingAt: Date.now(),
             transaction: {
-              type: currentProcessType,
+              type: executionType,
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               txHex,
@@ -281,11 +278,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           onReplaced: (response) => {
             replacementReason = response.reason
             step = this.statusManager.updateExecution(step, {
-              type: currentProcessType,
+              type: executionType,
               status: 'PENDING',
-              pendingAt: Date.now(),
               transaction: {
-                type: currentProcessType,
+                type: executionType,
                 txHash: response.transaction.txid,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
               },
@@ -302,11 +298,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
         if (transaction.txid !== txHash) {
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'PENDING',
-            pendingAt: Date.now(),
             transaction: {
-              type: currentProcessType,
+              type: executionType,
               txHash: transaction.txid,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
             },
@@ -315,17 +310,15 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
         if (isBridgeExecution) {
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'DONE',
-            doneAt: Date.now(),
           })
         }
       } catch (e: any) {
-        const error = await parseBitcoinErrors(e, step)
+        const error = await parseBitcoinErrors(e, step, executionType)
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'FAILED',
-          doneAt: Date.now(),
           error: {
             message: error.cause.message,
             code: error.code,
@@ -338,6 +331,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     await waitForDestinationChainTransaction(
       client,
       step,
+      executionType,
       fromChain,
       toChain,
       this.statusManager,

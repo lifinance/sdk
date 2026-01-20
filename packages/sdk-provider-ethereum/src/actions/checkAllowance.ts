@@ -76,7 +76,6 @@ export const checkAllowance = async (
         type: 'PERMIT',
         status: 'PENDING',
         chainId: step.action.fromChainId,
-        pendingAt: Date.now(),
         startedAt: Date.now(),
         transactions: [],
       })
@@ -95,7 +94,6 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: 'PERMIT',
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
         })
         if (!allowUserInteraction) {
           return { status: 'ACTION_REQUIRED' }
@@ -128,7 +126,6 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: 'PERMIT',
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
           signedTypedData,
         })
       }
@@ -136,7 +133,6 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: 'PERMIT',
         status: 'DONE',
-        doneAt: Date.now(),
         signedTypedData,
       })
       // Check if there's a signed permit for the source transaction chain
@@ -157,7 +153,6 @@ export const checkAllowance = async (
       type: 'TOKEN_ALLOWANCE',
       status: 'PENDING',
       chainId: step.action.fromChainId,
-      pendingAt: Date.now(),
       startedAt: Date.now(),
       transactions: [],
     })
@@ -211,7 +206,6 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: 'TOKEN_ALLOWANCE',
         status: 'DONE',
-        doneAt: Date.now(),
       })
       return { status: 'DONE', data: signedTypedData }
     }
@@ -251,7 +245,6 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: 'TOKEN_ALLOWANCE',
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
         })
 
         if (!allowUserInteraction) {
@@ -282,7 +275,6 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: 'TOKEN_ALLOWANCE',
         status: 'DONE',
-        doneAt: Date.now(),
         signedTypedData,
       })
       return {
@@ -300,7 +292,6 @@ export const checkAllowance = async (
     step = statusManager.updateExecution(step, {
       type: 'TOKEN_ALLOWANCE',
       status: resetApprovalStatus,
-      actionRequiredAt: Date.now(),
       transactions: step.execution!.transactions.filter(
         (t) => t.type !== 'TOKEN_ALLOWANCE'
       ),
@@ -338,7 +329,6 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: 'TOKEN_ALLOWANCE',
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
           transactions: step.execution!.transactions.filter(
             (t) => t.type !== 'TOKEN_ALLOWANCE'
           ),
@@ -370,7 +360,6 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: 'TOKEN_ALLOWANCE',
         status: 'DONE',
-        doneAt: Date.now(),
       })
       const calls: Call[] = []
 
@@ -419,16 +408,14 @@ export const checkAllowance = async (
         type: 'TOKEN_ALLOWANCE',
         status: 'PENDING',
         chainId: step.action.fromChainId,
-        pendingAt: Date.now(),
         startedAt: Date.now(),
         transactions: [],
       })
     }
-    const error = await parseEthereumErrors(e, step)
+    const error = await parseEthereumErrors(e, step, 'TOKEN_ALLOWANCE')
     step = statusManager.updateExecution(step, {
       type: step.execution!.type,
       status: 'FAILED',
-      doneAt: Date.now(),
       error: {
         message: error.cause.message,
         code: error.code,
@@ -454,7 +441,6 @@ const waitForApprovalTransaction = async (
   step = statusManager.updateExecution(step, {
     type: 'TOKEN_ALLOWANCE',
     status: 'PENDING',
-    pendingAt: Date.now(),
     transaction: {
       type: 'TOKEN_ALLOWANCE',
       txHash,
@@ -471,7 +457,6 @@ const waitForApprovalTransaction = async (
       step = statusManager.updateExecution(step, {
         type: 'TOKEN_ALLOWANCE',
         status: 'PENDING',
-        pendingAt: Date.now(),
         transaction: {
           type: 'TOKEN_ALLOWANCE',
           txHash: newHash,
@@ -486,7 +471,6 @@ const waitForApprovalTransaction = async (
     step = statusManager.updateExecution(step, {
       type: 'TOKEN_ALLOWANCE',
       status: 'DONE',
-      doneAt: Date.now(),
       transaction: {
         type: 'TOKEN_ALLOWANCE',
         txHash: finalHash,

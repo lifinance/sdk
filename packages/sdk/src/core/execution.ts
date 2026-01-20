@@ -8,6 +8,7 @@ import type {
   SDKProvider,
 } from '../types/core.js'
 import { executionState } from './executionState.js'
+import { prepareRestart } from './prepareRestart.js'
 
 /**
  * Execute a route.
@@ -73,10 +74,7 @@ export const resumeRoute = async (
     }
   }
 
-  // Prepare restart
-  for (const step of route.steps) {
-    step.transactionRequest = undefined
-  }
+  prepareRestart(route)
 
   return executeRoute(client, route, executionOptions)
 }

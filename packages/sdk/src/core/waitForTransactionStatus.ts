@@ -1,7 +1,11 @@
 import type { FullStatusData, StatusResponse } from '@lifi/types'
 import { getStatus } from '../actions/getStatus.js'
 import { ServerError } from '../errors/errors.js'
-import type { LiFiStepExtended, SDKClient } from '../types/core.js'
+import type {
+  LiFiStepExtended,
+  SDKClient,
+  TransactionType,
+} from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './processMessages.js'
 import type { StatusManager } from './StatusManager.js'
@@ -13,6 +17,7 @@ export async function waitForTransactionStatus(
   statusManager: StatusManager,
   txHash: string,
   step: LiFiStepExtended,
+  type: TransactionType,
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
@@ -29,9 +34,8 @@ export async function waitForTransactionStatus(
             return statusResponse
           case 'PENDING':
             step = statusManager?.updateExecution(step, {
-              type: step.execution!.type,
+              type,
               status: 'PENDING',
-              pendingAt: Date.now(),
               substatus: statusResponse.substatus,
               substatusMessage:
                 statusResponse.substatusMessage ||
@@ -40,7 +44,7 @@ export async function waitForTransactionStatus(
                   statusResponse.substatus
                 ),
               transaction: {
-                type: step.execution!.type,
+                type,
                 txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
               },
             })

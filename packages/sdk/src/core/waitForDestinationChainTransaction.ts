@@ -4,7 +4,11 @@ import type {
   FullStatusData,
 } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
-import type { LiFiStepExtended, SDKClient } from '../types/core.js'
+import type {
+  LiFiStepExtended,
+  SDKClient,
+  TransactionType,
+} from '../types/core.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
 import { waitForTransactionStatus } from './waitForTransactionStatus.js'
@@ -12,14 +16,13 @@ import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 export async function waitForDestinationChainTransaction(
   client: SDKClient,
   step: LiFiStepExtended,
+  type: TransactionType,
   fromChain: ExtendedChain,
   toChain: ExtendedChain,
   statusManager: StatusManager,
   pollingInterval?: number
 ): Promise<LiFiStepExtended> {
-  const transaction = step.execution?.transactions.find(
-    (t) => t.type === step.execution?.type
-  )
+  const transaction = step.execution?.transactions.find((t) => t.type === type)
   // At this point, we should have a txHash or taskId
   // taskId is used for custom integrations that don't use the standard transaction hash
   const transactionHash = transaction?.txHash || transaction?.taskId
@@ -35,8 +38,9 @@ export async function waitForDestinationChainTransaction(
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
         chainId: toChain.id,
-        pendingAt: Date.now(),
+        startedAt: transaction?.doneAt ?? Date.now(),
       })
+      type = 'RECEIVING_CHAIN'
     }
 
     const statusResponse = (await waitForTransactionStatus(
@@ -44,6 +48,7 @@ export async function waitForDestinationChainTransaction(
       statusManager,
       transactionHash,
       step,
+      type,
       pollingInterval
     )) as FullStatusData
 
@@ -51,9 +56,8 @@ export async function waitForDestinationChainTransaction(
 
     // Update execution status
     step = statusManager.updateExecution(step, {
-      type: 'RECEIVING_CHAIN',
+      type,
       status: 'DONE',
-      doneAt: Date.now(),
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       ...(statusResponse.sending.amount && {
@@ -75,7 +79,7 @@ export async function waitForDestinationChainTransaction(
         },
       ],
       transaction: {
-        type: 'RECEIVING_CHAIN',
+        type,
         txHash: statusReceiving?.txHash,
         txLink:
           statusReceiving?.txLink ||
@@ -92,9 +96,8 @@ export async function waitForDestinationChainTransaction(
     )
 
     step = statusManager.updateExecution(step, {
-      type: step.execution!.type,
+      type,
       status: 'FAILED',
-      doneAt: Date.now(),
       error: {
         code: LiFiErrorCode.TransactionFailed,
         message:

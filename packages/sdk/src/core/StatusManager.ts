@@ -3,6 +3,7 @@ import type {
   Execution,
   ExecutionUpdate,
   LiFiStepExtended,
+  Transaction,
 } from '../types/core.js'
 import { executionState } from './executionState.js'
 import { getProcessMessage } from './processMessages.js'
@@ -24,37 +25,88 @@ export class StatusManager {
     step: LiFiStepExtended,
     execution: ExecutionUpdate
   ): LiFiStepExtended {
-    const { status, type, transaction, ...executionUpdate } = execution
+    const { status, transaction, ...executionUpdate } = execution
 
-    // Update execution with all properties
+    const type = executionUpdate?.type ?? step.execution?.type
+
     step.execution = {
       ...step.execution,
       ...executionUpdate,
-      ...(type && { type }),
-      ...(status && {
-        status,
-        message: getProcessMessage(step.execution?.type ?? type!, status),
-      }),
+      ...(status &&
+        type && {
+          status,
+          message: getProcessMessage(type, status),
+        }),
     } as Execution
 
-    // Handle transaction: add or update in transactions array
     if (transaction) {
-      const existingIndex = step.execution.transactions.findIndex(
-        (t) => t.type === transaction.type
-      )
+      step.execution.transactions = this.updateTransactions(step, transaction)
+    }
 
-      step.execution = {
-        ...step.execution,
-        transactions:
-          existingIndex >= 0
-            ? step.execution.transactions.with(existingIndex, transaction)
-            : [...step.execution.transactions, transaction],
-      } as Execution
+    switch (status) {
+      case 'STARTED':
+        step.execution.startedAt = Date.now()
+        break
+      case 'CANCELLED':
+      case 'FAILED':
+      case 'DONE': {
+        step.execution.doneAt = Date.now()
+        const transactionToUpdate = step.execution?.transactions.find(
+          (t) => t.type === type
+        )
+        if (transactionToUpdate) {
+          transactionToUpdate.doneAt = step.execution.doneAt
+          step.execution.transactions = this.updateTransactions(
+            step,
+            transactionToUpdate
+          )
+        }
+        break
+      }
+      case 'PENDING':
+        step.execution.pendingAt = Date.now()
+        break
+      case 'RESET_REQUIRED':
+      case 'MESSAGE_REQUIRED':
+      case 'ACTION_REQUIRED':
+        step.execution.actionRequiredAt = Date.now()
+        break
+      default:
+        break
     }
 
     this.updateStepInRoute(step)
 
     return step
+  }
+
+  updateTransactions = (
+    step: LiFiStepExtended,
+    transactionUpdate: Partial<Transaction>
+  ): Transaction[] => {
+    if (!step.execution || !transactionUpdate.type) {
+      return step.execution?.transactions || []
+    }
+
+    const existingIndex = step.execution.transactions.findIndex(
+      (t) => t.type === transactionUpdate.type
+    )
+
+    if (existingIndex >= 0) {
+      const updatedTransaction = {
+        ...step.execution.transactions[existingIndex],
+        ...transactionUpdate,
+      }
+      return step.execution.transactions.with(existingIndex, updatedTransaction)
+    }
+
+    return [
+      ...step.execution.transactions,
+      {
+        type: transactionUpdate.type,
+        ...transactionUpdate,
+      },
+    ]
   }
 
   updateStepInRoute = (step: LiFiStep): LiFiStep => {

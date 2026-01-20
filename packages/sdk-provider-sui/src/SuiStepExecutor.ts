@@ -48,13 +48,12 @@ export class SuiStepExecutor extends BaseStepExecutor {
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
-    const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     step = this.statusManager.updateExecution(step, {
-      type: currentProcessType,
+      type: executionType,
       chainId: fromChain.id,
       status: 'PENDING',
-      pendingAt: Date.now(),
       startedAt: Date.now(),
       transactions: [],
     })
@@ -62,7 +61,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     if (step.execution?.status !== 'DONE') {
       try {
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'STARTED',
           startedAt: Date.now(),
         })
@@ -95,9 +94,8 @@ export class SuiStepExecutor extends BaseStepExecutor {
         }
 
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
         })
 
         if (!this.allowUserInteraction) {
@@ -144,9 +142,8 @@ export class SuiStepExecutor extends BaseStepExecutor {
         })
 
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'PENDING',
-          pendingAt: Date.now(),
         })
 
         const result = await callSuiWithRetry(client, (client) =>
@@ -167,11 +164,10 @@ export class SuiStepExecutor extends BaseStepExecutor {
 
         // Transaction has been confirmed and we can update the execution
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'PENDING',
-          pendingAt: Date.now(),
           transaction: {
-            type: currentProcessType,
+            type: executionType,
             txHash: result.digest,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
             chainId: fromChain.id,
@@ -180,17 +176,15 @@ export class SuiStepExecutor extends BaseStepExecutor {
 
         if (isBridgeExecution) {
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'DONE',
-            doneAt: Date.now(),
           })
         }
       } catch (e: any) {
-        const error = await parseSuiErrors(e, step)
+        const error = await parseSuiErrors(e, step, executionType)
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'FAILED',
-          doneAt: Date.now(),
           error: {
             message: error.cause.message,
             code: error.code,
@@ -203,6 +197,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     await waitForDestinationChainTransaction(
       client,
       step,
+      executionType,
       fromChain,
       toChain,
       this.statusManager

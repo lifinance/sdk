@@ -177,7 +177,8 @@ describe('parseEVMStepErrors', () => {
 
       const parsedError = await parseEthereumErrors(
         mockTransactionError,
-        mockStep
+        mockStep,
+        mockStep.execution!.type
       )
 
       expect(parsedError).toBeInstanceOf(SDKError)

@@ -54,15 +54,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
-    const currentProcessType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
     const walletAccount = await this.getWalletAccount(step)
 
     step = this.statusManager.updateExecution(step, {
-      type: currentProcessType,
+      type: executionType,
       status: 'PENDING',
       chainId: fromChain.id,
-      pendingAt: Date.now(),
       startedAt: Date.now(),
       transactions: [],
     })
@@ -70,7 +69,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     if (step.execution?.status !== 'DONE') {
       try {
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'STARTED',
           startedAt: Date.now(),
         })
@@ -103,9 +102,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'ACTION_REQUIRED',
-          actionRequiredAt: Date.now(),
         })
 
         if (!this.allowUserInteraction) {
@@ -168,9 +166,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'PENDING',
-          pendingAt: Date.now(),
         })
 
         const transactionCodec = getTransactionCodec()
@@ -231,11 +228,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         // Transaction has been confirmed and we can update the process
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'PENDING',
-          pendingAt: Date.now(),
           transaction: {
-            type: currentProcessType,
+            type: executionType,
             txHash: confirmedTransaction.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
             chainId: fromChain.id,
@@ -244,17 +240,15 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         if (isBridgeExecution) {
           step = this.statusManager.updateExecution(step, {
-            type: currentProcessType,
+            type: executionType,
             status: 'DONE',
-            doneAt: Date.now(),
           })
         }
       } catch (e: any) {
-        const error = await parseSolanaErrors(e, step)
+        const error = await parseSolanaErrors(e, step, executionType)
         step = this.statusManager.updateExecution(step, {
-          type: currentProcessType,
+          type: executionType,
           status: 'FAILED',
-          doneAt: Date.now(),
           error: {
             message: error.cause.message,
             code: error.code,
@@ -267,6 +261,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     await waitForDestinationChainTransaction(
       client,
       step,
+      executionType,
       fromChain,
       toChain,
       this.statusManager
