@@ -53,6 +53,7 @@ export async function waitForDestinationChainTransaction(
 
     // Update process status
     statusManager.updateProcess(step, processType, 'DONE', {
+      chainId: statusReceiving?.chainId || toChain.id,
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       txHash: statusReceiving?.txHash,
