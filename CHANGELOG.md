@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.15.4](https://github.com/lifinance/sdk/compare/v3.15.3...v3.15.4) (2026-01-20)
+
+
+### Bug Fixes
+
+* include chainId in process status update for transaction monitoring ([6083060](https://github.com/lifinance/sdk/commit/6083060d031fadeeb3d0e0b795d1de838a799cfa))
+
 ### [3.15.3](https://github.com/lifinance/sdk/compare/v3.15.1...v3.15.3) (2026-01-16)
 
 
