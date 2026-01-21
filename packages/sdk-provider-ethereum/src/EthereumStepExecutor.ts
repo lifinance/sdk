@@ -152,7 +152,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       (t) => t.type === type
     )
     const updateProcessWithReceipt = (
-      transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined
+      transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined,
+      isBridgeExecution: boolean
     ) => {
       // Update pending process if the transaction hash from the receipt is different.
       // This might happen if the transaction was replaced or we used taskId instead of txHash.
@@ -172,12 +173,14 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           status: 'PENDING',
           transaction: {
             type,
+            chainId: fromChain.id,
             txHash: txHash,
             txLink:
               (transactionReceipt as WalletCallReceipt).transactionLink ||
               (txHash
                 ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
                 : undefined),
+            isDone: isBridgeExecution,
           },
         })
       }
@@ -194,7 +197,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
               (r) => r.status === 'reverted'
             ) as WalletCallReceipt | undefined
             if (receipt) {
-              updateProcessWithReceipt(receipt)
+              updateProcessWithReceipt(receipt, isBridgeExecution)
             }
           }
         )
@@ -217,22 +220,17 @@ export class EthereumStepExecutor extends BaseStepExecutor {
               status: 'PENDING',
               transaction: {
                 type,
+                chainId: fromChain.id,
                 txHash: response.transaction.hash,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+                isDone: isBridgeExecution,
               },
             })
           },
         })
     }
 
-    updateProcessWithReceipt(transactionReceipt)
-
-    if (isBridgeExecution) {
-      step = this.statusManager.updateExecution(step, {
-        type,
-        status: 'DONE',
-      })
-    }
+    updateProcessWithReceipt(transactionReceipt, isBridgeExecution)
 
     await waitForDestinationChainTransaction(
       client,
@@ -610,7 +608,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       const transaction = step.execution?.transactions.find(
         (t) => t.type === executionType
       )
-      if (transaction?.doneAt) {
+      if (transaction?.isDone) {
         await waitForDestinationChainTransaction(
           client,
           step,
@@ -643,7 +641,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       step = this.statusManager.updateExecution(step, {
         type: executionType,
-        status: 'STARTED',
+        status: 'PENDING',
         chainId: fromChain.id,
       })
 
@@ -845,6 +843,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         status: 'PENDING',
         transaction: {
           type: executionType,
+          chainId: fromChain.id,
           txHash,
           taskId,
           txType,
@@ -852,6 +851,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             txType === 'standard' && txHash
               ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
               : txLink,
+          isDone: false,
         },
       })
 

@@ -136,7 +136,7 @@ export const checkAllowance = async (
 
       step = statusManager.updateExecution(step, {
         type: executionType,
-        status: 'DONE',
+        status: 'PENDING',
         signedTypedData,
       })
       // Check if there's a signed permit for the source transaction chain
@@ -169,7 +169,7 @@ export const checkAllowance = async (
       (t) => t.type === executionType
     )
     // Handle existing pending transaction
-    if (transaction?.txHash && !transaction?.doneAt) {
+    if (transaction?.txHash && !transaction?.isDone) {
       await waitForApprovalTransaction(
         client,
         updatedClient,
@@ -185,7 +185,7 @@ export const checkAllowance = async (
     // Start new allowance check
     step = statusManager.updateExecution(step, {
       type: executionType,
-      status: 'STARTED',
+      status: 'PENDING',
     })
 
     const spenderAddress = permit2Supported
@@ -206,7 +206,7 @@ export const checkAllowance = async (
     if (fromAmount <= approved) {
       step = statusManager.updateExecution(step, {
         type: executionType,
-        status: 'DONE',
+        status: 'PENDING',
       })
       return { status: 'DONE', data: signedTypedData }
     }
@@ -275,7 +275,7 @@ export const checkAllowance = async (
 
       step = statusManager.updateExecution(step, {
         type: executionType,
-        status: 'DONE',
+        status: 'PENDING',
         signedTypedData,
       })
       return {
@@ -360,7 +360,7 @@ export const checkAllowance = async (
     if (batchingSupported) {
       step = statusManager.updateExecution(step, {
         type: executionType,
-        status: 'DONE',
+        status: 'PENDING',
       })
       const calls: Call[] = []
 
@@ -432,8 +432,10 @@ const waitForApprovalTransaction = async (
     status: 'PENDING',
     transaction: {
       type,
+      chainId: chain.id,
       txHash,
       txLink: getTxLink(txHash),
+      isDone: false,
     },
   })
 
@@ -448,8 +450,10 @@ const waitForApprovalTransaction = async (
         status: 'PENDING',
         transaction: {
           type,
+          chainId: chain.id,
           txHash: newHash,
           txLink: getTxLink(newHash),
+          isDone: false,
         },
       })
     },
@@ -459,11 +463,13 @@ const waitForApprovalTransaction = async (
   if (!approvalReset) {
     step = statusManager.updateExecution(step, {
       type,
-      status: 'DONE',
+      status: 'PENDING',
       transaction: {
         type,
+        chainId: chain.id,
         txHash: finalHash,
         txLink: getTxLink(finalHash),
+        isDone: true,
       },
     })
   }

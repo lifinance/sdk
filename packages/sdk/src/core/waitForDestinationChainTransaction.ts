@@ -38,7 +38,6 @@ export async function waitForDestinationChainTransaction(
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
         chainId: toChain.id,
-        startedAt: transaction?.doneAt ?? Date.now(),
       })
       type = 'RECEIVING_CHAIN'
     }
@@ -80,10 +79,12 @@ export async function waitForDestinationChainTransaction(
       ],
       transaction: {
         type,
+        chainId: toChain.id,
         txHash: statusReceiving?.txHash,
         txLink:
           statusReceiving?.txLink ||
           `${toChain.metamask.blockExplorerUrls[0]}tx/${statusReceiving?.txHash}`,
+        isDone: true,
       },
     })
 

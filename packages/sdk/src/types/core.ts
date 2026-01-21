@@ -223,12 +223,13 @@ export type TransactionType =
 
 export type Transaction = {
   type: TransactionType
+  chainId?: number
+  isDone?: boolean
   txHash?: string
   taskId?: string
   txLink?: string
   txType?: TransactionMethodType
   txHex?: string
-  doneAt?: number
 }
 
 export interface Execution {

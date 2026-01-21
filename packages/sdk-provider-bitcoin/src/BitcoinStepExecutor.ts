@@ -66,7 +66,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
     step = this.statusManager.updateExecution(step, {
       type: executionType,
-      status: 'STARTED',
+      status: 'PENDING',
       chainId: fromChain.id,
     })
 
@@ -75,7 +75,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const currentTransaction = step.execution?.transactions.find(
       (t) => t.type === executionType
     )
-    if (!currentTransaction?.doneAt) {
+    if (!currentTransaction?.isDone) {
       try {
         let txHash: string
         let txHex: string
@@ -90,7 +90,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         } else {
           step = this.statusManager.updateExecution(step, {
             type: executionType,
-            status: 'STARTED',
+            status: 'PENDING',
           })
 
           // Check balance
@@ -263,9 +263,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             status: 'PENDING',
             transaction: {
               type: executionType,
+              chainId: fromChain.id,
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               txHex,
+              isDone: false,
             },
           })
         }
@@ -282,8 +284,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
               status: 'PENDING',
               transaction: {
                 type: executionType,
+                chainId: fromChain.id,
                 txHash: response.transaction.txid,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
+                isDone: false,
               },
             })
           },
@@ -302,16 +306,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             status: 'PENDING',
             transaction: {
               type: executionType,
+              chainId: fromChain.id,
               txHash: transaction.txid,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
+              isDone: isBridgeExecution,
             },
-          })
-        }
-
-        if (isBridgeExecution) {
-          step = this.statusManager.updateExecution(step, {
-            type: executionType,
-            status: 'DONE',
           })
         }
       } catch (e: any) {

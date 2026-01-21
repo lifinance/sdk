@@ -69,11 +69,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const transaction = step.execution?.transactions.find(
       (t) => t.type === executionType
     )
-    if (!transaction?.doneAt) {
+    if (!transaction?.isDone) {
       try {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
-          status: 'STARTED',
+          status: 'PENDING',
         })
 
         // Check balance
@@ -234,17 +234,12 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           status: 'PENDING',
           transaction: {
             type: executionType,
+            chainId: fromChain.id,
             txHash: confirmedTransaction.txSignature,
             txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
+            isDone: isBridgeExecution,
           },
         })
-
-        if (isBridgeExecution) {
-          step = this.statusManager.updateExecution(step, {
-            type: executionType,
-            status: 'DONE',
-          })
-        }
       } catch (e: any) {
         const error = await parseSolanaErrors(e, step, executionType)
         step = this.statusManager.updateExecution(step, {

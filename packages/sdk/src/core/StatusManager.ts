@@ -37,7 +37,8 @@ export class StatusManager {
     if (step.execution.status === 'FAILED') {
       return this.updateExecution(step, {
         type,
-        status: 'STARTED',
+        status: 'PENDING',
+        error: undefined,
       })
     }
 
@@ -49,6 +50,11 @@ export class StatusManager {
     execution: ExecutionUpdate
   ): LiFiStepExtended {
     const { status, type, transaction, ...executionUpdate } = execution
+    const previousStatus = step.execution?.status
+
+    // Clear substatus if status changed and no new substatus provided
+    const shouldClearSubstatus =
+      status !== previousStatus && !('substatus' in executionUpdate)
 
     step.execution = {
       ...step.execution,
@@ -56,6 +62,10 @@ export class StatusManager {
       type,
       status,
       message: getProcessMessage(type, status),
+      ...(shouldClearSubstatus && {
+        substatus: undefined,
+        substatusMessage: undefined,
+      }),
     } as Execution
 
     if (transaction) {
@@ -70,16 +80,6 @@ export class StatusManager {
       case 'FAILED':
       case 'DONE': {
         step.execution.doneAt = Date.now()
-        const transactionToUpdate = step.execution.transactions.find(
-          (t) => t.type === type
-        )
-        if (transactionToUpdate) {
-          transactionToUpdate.doneAt = step.execution.doneAt
-          step.execution.transactions = this.updateTransactions(
-            step,
-            transactionToUpdate
-          )
-        }
         break
       }
       case 'PENDING':
