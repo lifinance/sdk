@@ -57,6 +57,7 @@ export async function waitForDestinationChainTransaction(
     step = statusManager.updateExecution(step, {
       type,
       status: 'DONE',
+      chainId: statusReceiving?.chainId || toChain.id,
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       ...(statusResponse.sending.amount && {
@@ -79,7 +80,7 @@ export async function waitForDestinationChainTransaction(
       ],
       transaction: {
         type,
-        chainId: toChain.id,
+        chainId: statusReceiving?.chainId || toChain.id,
         txHash: statusReceiving?.txHash,
         txLink:
           statusReceiving?.txLink ||

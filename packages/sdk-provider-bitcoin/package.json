@@ -54,7 +54,7 @@
     "bitcoinjs-lib": "^7.0.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.54.0",
+    "@lifi/data-types": "^6.55.0",
     "@vitest/coverage-v8": "^4.0.17",
     "cpy-cli": "^6.0.0",
     "madge": "^8.0.0",
