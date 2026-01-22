@@ -214,15 +214,21 @@ export type ExecutionStatus =
   | 'DONE'
   | 'CANCELLED'
 
-export type TransactionType =
+export type StepExecutionType =
   | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
-export type Transaction = {
-  type: TransactionType
+export type ExecutionActionType =
+  | 'TOKEN_ALLOWANCE'
+  | 'SWAP'
+  | 'CROSS_CHAIN'
+  | 'RECEIVING_CHAIN'
+
+export type ExecutionAction = {
+  type: ExecutionActionType
   chainId?: number
   isDone?: boolean
   txHash?: string
@@ -233,11 +239,9 @@ export type Transaction = {
 }
 
 export interface Execution {
-  type: TransactionType
+  type: StepExecutionType
   startedAt: number
-  pendingAt?: number
-  actionRequiredAt?: number
-  doneAt?: number
+  signedAt?: number
   status: ExecutionStatus
   substatus?: Substatus
   substatusMessage?: string
@@ -247,7 +251,7 @@ export interface Execution {
     message: string
     htmlMessage?: string
   }
-  transactions: Array<Transaction>
+  actions: Array<ExecutionAction>
   fromAmount?: string
   toAmount?: string
   toToken?: Token
@@ -262,7 +266,7 @@ export interface Execution {
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
 
 export type ExecutionUpdate = Partial<Omit<Execution, 'type' | 'status'>> & {
-  type: TransactionType
+  type: StepExecutionType
   status: ExecutionStatus
-  transaction?: Transaction
+  action?: ExecutionAction
 }

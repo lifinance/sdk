@@ -169,7 +169,7 @@ describe('parseEVMStepErrors', () => {
 
       const mockStep = buildStepObject({ includingExecution: true })
       // Set txHash on the SWAP transaction (which matches execution.type)
-      const swapTransaction = mockStep.execution!.transactions.find(
+      const swapTransaction = mockStep.execution!.actions.find(
         (t) => t.type === mockStep.execution!.type
       )
       swapTransaction!.txHash =

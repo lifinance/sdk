@@ -66,7 +66,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       chainId: fromChain.id,
     })
 
-    const transaction = step.execution?.transactions.find(
+    const transaction = step.execution?.actions.find(
       (t) => t.type === executionType
     )
     if (!transaction?.isDone) {
@@ -170,6 +170,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'PENDING',
+          signedAt: Date.now(),
         })
 
         const transactionCodec = getTransactionCodec()
@@ -232,7 +233,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'PENDING',
-          transaction: {
+          action: {
             type: executionType,
             chainId: fromChain.id,
             txHash: confirmedTransaction.txSignature,

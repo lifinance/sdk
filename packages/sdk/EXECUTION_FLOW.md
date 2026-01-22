@@ -1,6 +1,6 @@
 # SDK Execution Flow
 
-This document explains how route execution works in the LI.FI SDK, including status transitions and transaction types.
+This document explains how route execution works in the LI.FI SDK, including status transitions, transaction types, and function flows.
 
 ## Transaction Types
 
@@ -13,17 +13,18 @@ flowchart LR
     TA --> CC[CROSS_CHAIN]
     P --> S
     P --> CC
-    S --> RC[RECEIVING_CHAIN]
-    CC --> RC
+    S --> D1[DONE]
+    CC --> RC[RECEIVING_CHAIN]
+    RC --> D2[DONE]
 ```
 
-| Type | Description |
-|------|-------------|
-| `TOKEN_ALLOWANCE` | Setting ERC-20 token approval for the contract |
-| `PERMIT` | Signing a gasless permit message (ERC-2612) |
-| `SWAP` | On-chain swap transaction |
-| `CROSS_CHAIN` | Bridge transaction to another chain |
-| `RECEIVING_CHAIN` | Waiting for tokens on destination chain |
+| Type | Description | Chains |
+|------|-------------|--------|
+| `TOKEN_ALLOWANCE` | Setting ERC-20 token approval for the contract | EVM only |
+| `PERMIT` | Signing a gasless permit message (ERC-2612) | EVM only |
+| `SWAP` | On-chain swap transaction | All |
+| `CROSS_CHAIN` | Bridge transaction to another chain | All |
+| `RECEIVING_CHAIN` | Waiting for tokens on destination chain | All (bridges) |
 
 ### Transaction Object
 
@@ -46,18 +47,29 @@ The `isDone` flag is the source of truth for transaction completion:
 - `isDone: false` — Transaction submitted but not confirmed
 - `isDone: true` — Transaction confirmed on-chain
 
+## Status Flows by Transaction Type
 
-## Status Messages by Transaction Type
-
-### TOKEN_ALLOWANCE
+### TOKEN_ALLOWANCE (EVM only)
 ```mermaid
 flowchart LR
-    S[STARTED<br/><i>Setting token allowance</i>] --> AR[ACTION_REQUIRED<br/><i>Set token allowance</i>]
-    S --> RR[RESET_REQUIRED<br/><i>Resetting token allowance</i>]
-    AR --> P[PENDING<br/><i>Waiting for token allowance</i>]
-    RR --> P
-    P --> D[DONE<br/><i>Token allowance set</i>]
+    P1[PENDING<br/><i>Checking allowance</i>] --> AR[ACTION_REQUIRED<br/><i>Set token allowance</i>]
+    P1 --> RR[RESET_REQUIRED<br/><i>Resetting token allowance</i>]
+    P1 --> P2[PENDING<br/><i>Already approved</i>]
+    AR --> P2
+    RR --> AR
+    P2 --> Done[transaction.isDone: true]
 ```
+
+> **Note:** `TOKEN_ALLOWANCE` does not use `STARTED` status. It begins with `PENDING`.
+
+### PERMIT (EVM only)
+```mermaid
+flowchart LR
+    P1[PENDING<br/><i>Checking permit</i>] --> AR[ACTION_REQUIRED<br/><i>Sign permit message</i>]
+    AR --> P2[PENDING<br/><i>Permit signed</i>]
+```
+
+> **Note:** `PERMIT` does not use `STARTED` status. It begins with `PENDING`.
 
 ### SWAP
 ```mermaid
@@ -76,7 +88,7 @@ flowchart LR
     AR --> MR[MESSAGE_REQUIRED<br/><i>Sign bridge message</i>]
     AR --> P[PENDING<br/><i>Waiting for bridge transaction</i>]
     MR --> P
-    P --> D[DONE<br/><i>Bridge transaction confirmed</i>]
+    P --> RC[RECEIVING_CHAIN]
 ```
 
 ### RECEIVING_CHAIN
@@ -87,66 +99,195 @@ flowchart LR
 
 > **Note:** `RECEIVING_CHAIN` has no `STARTED` status because it's a passive waiting phase.
 
-### PERMIT
-```mermaid
-flowchart LR
-    S[STARTED<br/><i>Preparing transaction</i>] --> AR[ACTION_REQUIRED<br/><i>Sign permit message</i>]
-    AR --> P[PENDING<br/><i>Waiting for permit message</i>]
-    P --> D[DONE<br/><i>Permit message signed</i>]
+## Simplified Flow with Status Transitions
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ executeRoute()                                                                │
+│   └── executeSteps()                                                          │
+│         └── for each step:                                                    │
+│               └── stepExecutor.executeStep()                                  │
+│                     │                                                         │
+│                     ├─► initExecution(step, type)  // Initialize/reset        │
+│                     │   └─► Sets status: STARTED for main type                │
+│                     │                                                         │
+│                     │  ┌────────────────────────────────────────────────────┐ │
+│                     ├─►│ TOKEN_ALLOWANCE (EVM only, no STARTED)             │ │
+│                     │  │   PENDING → ACTION_REQUIRED → PENDING              │ │
+│                     │  │   transaction: { isDone: true }                    │ │
+│                     │  │   (or PENDING → PENDING if already approved)       │ │
+│                     │  │   (or PENDING → RESET_REQUIRED → ... → PENDING)    │ │
+│                     │  └────────────────────────────────────────────────────┘ │
+│                     │                                                         │
+│                     │  ┌────────────────────────────────────────────────────┐ │
+│                     ├─►│ PERMIT (EVM only, optional, no STARTED)            │ │
+│                     │  │   PENDING → ACTION_REQUIRED → PENDING              │ │
+│                     │  └────────────────────────────────────────────────────┘ │
+│                     │                                                         │
+│                     │  ┌────────────────────────────────────────────────────┐ │
+│                     ├─►│ SWAP or CROSS_CHAIN                                │ │
+│                     │  │   STARTED → ACTION_REQUIRED → PENDING              │ │
+│                     │  │   (or → MESSAGE_REQUIRED → PENDING)                │ │
+│                     │  │   transaction: { isDone: true } for swaps          │ │
+│                     │  │   transaction: { isDone: false } for bridges       │ │
+│                     │  └────────────────────────────────────────────────────┘ │
+│                     │                                                         │
+│                     │  ┌────────────────────────────────────────────────────┐ │
+│                     └─►│ RECEIVING_CHAIN (bridges only, no STARTED)         │ │
+│                        │   PENDING → DONE                                   │ │
+│                        │   transaction: { isDone: true }                    │ │
+│                        └────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Full Execution Flow
+> **Note:** Only `SWAP` and `CROSS_CHAIN` use `STARTED` status (set by `initExecution`). `TOKEN_ALLOWANCE`, `PERMIT`, and `RECEIVING_CHAIN` skip `STARTED` and begin with `PENDING`.
 
-A typical cross-chain swap execution:
+> **Note:** `DONE` status is only set once at the end of the entire step execution. Individual transactions track completion via the `isDone` flag.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant SDK
-    participant Wallet
-    participant Blockchain
-    participant Bridge
+## Ethereum Execution Flow
 
-    User->>SDK: executeRoute(route)
-    
-    Note over SDK: Step 1: Token Allowance
-    SDK->>SDK: STARTED
-    SDK->>Wallet: Request approval signature
-    SDK->>SDK: ACTION_REQUIRED
-    Wallet-->>User: Sign approval?
-    User->>Wallet: Confirm
-    Wallet-->>SDK: Signed transaction
-    SDK->>Blockchain: Submit approval tx
-    SDK->>SDK: PENDING
-    Blockchain-->>SDK: Transaction confirmed
-    SDK->>SDK: DONE
-    
-    Note over SDK: Step 2: Bridge Transaction
-    SDK->>SDK: STARTED
-    SDK->>Wallet: Request bridge signature
-    SDK->>SDK: ACTION_REQUIRED
-    Wallet-->>User: Sign bridge?
-    User->>Wallet: Confirm
-    Wallet-->>SDK: Signed transaction
-    SDK->>Blockchain: Submit bridge tx
-    SDK->>SDK: PENDING (CROSS_CHAIN)
-    Blockchain-->>SDK: Transaction confirmed
-    SDK->>SDK: DONE (CROSS_CHAIN)
-    
-    Note over SDK: Step 3: Receiving Chain
-    SDK->>SDK: PENDING (RECEIVING_CHAIN)
-    SDK->>Bridge: Poll status
-    Bridge-->>SDK: Transfer complete
-    SDK->>SDK: DONE (RECEIVING_CHAIN)
-    
-    SDK-->>User: Route execution complete
+### EthereumStepExecutor.executeStep()
+
+```
+executeStep(client, step)
+│
+├─► initExecution(step, executionType)     // Initialize or reset execution
+│   └─► Sets status: 'STARTED', clears state if FAILED
+│
+├─► checkClient()                          // Ensure correct chain & wallet
+│   └─► switchChain()                      // Switch if needed
+│
+├─► checkAllowance()                       // TOKEN_ALLOWANCE phase
+│   │
+│   │   ┌─────────────────────────────────────────────────────────────┐
+│   │   │ TOKEN_ALLOWANCE Flow (no STARTED status)                    │
+│   │   ├─────────────────────────────────────────────────────────────┤
+│   │   │ updateExecution(step, { type: 'TOKEN_ALLOWANCE', status: 'PENDING' })│
+│   │   │         │                                                   │
+│   │   │         ├─► getAllowance()                                  │
+│   │   │         │   └─► If approved → status: PENDING (skip)        │
+│   │   │         │                                                   │
+│   │   │         ├─► updateExecution(step, { status: 'RESET_REQUIRED' })│
+│   │   │         │   └─► setAllowance(0)  // Reset if needed         │
+│   │   │         │                                                   │
+│   │   │         ├─► updateExecution(step, { status: 'ACTION_REQUIRED' })│
+│   │   │         │   └─► setAllowance()   // User signs approval tx  │
+│   │   │         │                                                   │
+│   │   │         └─► waitForTransactionReceipt()                     │
+│   │   │             └─► status: PENDING, transaction: { isDone: true }│
+│   │   └─────────────────────────────────────────────────────────────┘
+│   │
+│   │   ┌─────────────────────────────────────────────────────────────┐
+│   │   │ PERMIT Flow (no STARTED status)                             │
+│   │   ├─────────────────────────────────────────────────────────────┤
+│   │   │ updateExecution(step, { type: 'PERMIT', status: 'PENDING' })│
+│   │   │ updateExecution(step, { status: 'ACTION_REQUIRED' })        │
+│   │   │         │                                                   │
+│   │   │         └─► signTypedData()  // User signs permit message   │
+│   │   │             └─► status: PENDING                             │
+│   │   └─────────────────────────────────────────────────────────────┘
+│
+├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'STARTED' })
+│
+├─► checkBalance()                         // Verify sufficient balance
+│
+├─► prepareUpdatedStep()                   // Get transaction request
+│   ├─► getStepTransaction()               // API call for tx data
+│   ├─► getContractCallsQuote()            // For contract calls
+│   └─► getRelayerQuote()                  // For relayer transactions
+│
+├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
+│
+├─► [User Interaction Required]
+│   │
+│   ├─► For Batched Transactions (EIP-5792):
+│   │   └─► sendCalls()
+│   │
+│   ├─► For Relayer Transactions:
+│   │   ├─► status: MESSAGE_REQUIRED
+│   │   ├─► signTypedData()                // Sign intent
+│   │   ├─► status: PENDING
+│   │   └─► relayTransaction()             // Submit to relayer
+│   │
+│   └─► For Standard Transactions:
+│       ├─► signPermit2Message()           // If permit2 supported
+│       │   └─► status: MESSAGE_REQUIRED → ACTION_REQUIRED
+│       └─► sendTransaction()              // User signs & submits
+│
+├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
+│
+└─► waitForTransaction()
+    │
+    ├─► waitForTransactionReceipt()        // Wait for source chain confirm
+    │   └─► For non-bridge: status: DONE
+    │
+    └─► waitForDestinationChainTransaction()  // For bridges only
+        │
+        ├─► updateExecution(step, { type: 'RECEIVING_CHAIN', status: 'PENDING', ... })
+        │
+        └─► waitForTransactionStatus()     // Poll API for bridge status
+            │
+            ├─► getStatus()                // API call
+            │   └─► Loop until DONE or FAILED
+            │
+            └─► status: DONE or FAILED
 ```
 
+## Solana Execution Flow
 
-### Preserving Completed Transactions
+### SolanaStepExecutor.executeStep()
 
-When resuming a non-FAILED execution (e.g., `PENDING`, `ACTION_REQUIRED`):
+```
+executeStep(client, step)
+│
+├─► initExecution(step, executionType)     // Initialize or reset execution
+│
+├─► checkBalance()                         // Verify SOL/token balance
+│
+├─► getStepTransaction()                   // Get transaction from API
+│
+├─► updateExecution(step, { type, status: 'ACTION_REQUIRED' })
+│
+├─► getWalletFeature(wallet, SolanaSignTransaction)
+│   └─► signTransaction()                  // User signs in wallet
+│
+├─► updateExecution(step, { type, status: 'PENDING' })
+│
+├─► sendAndConfirmTransaction()            // Submit to Solana network
+│   ├─► rpc.sendTransaction()
+│   └─► waitForTransactionConfirmation()
+│
+├─► updateExecution(step, { type, status: 'PENDING', transaction: { txHash, isDone } })
+│
+└─► [If Bridge]
+    └─► waitForDestinationChainTransaction()
+        └─► status: DONE, transaction: { type: 'RECEIVING_CHAIN', isDone: true }
+```
 
-1. `prepareRestart()` filters transactions to keep only `isDone: true`
-2. `initExecution()` returns early (no reset)
-3. Incomplete transactions are discarded, completed ones preserved
+## Sui Execution Flow
+
+### SuiStepExecutor.executeStep()
+
+```
+executeStep(client, step)
+│
+├─► initExecution(step, executionType)     // Initialize or reset execution
+│
+├─► checkBalance()                         // Verify SUI/token balance
+│
+├─► getStepTransaction()                   // Get transaction from API
+│
+├─► updateExecution(step, { type, status: 'ACTION_REQUIRED' })
+│
+├─► wallet.signAndExecuteTransaction()     // User signs & executes
+│
+├─► updateExecution(step, { type, status: 'PENDING' })
+│
+├─► client.waitForTransaction()            // Wait for confirmation
+│
+├─► updateExecution(step, { type, status: 'PENDING', transaction: { txHash, isDone } })
+│
+└─► [If Bridge]
+    └─► waitForDestinationChainTransaction()
+        └─► status: DONE, transaction: { type: 'RECEIVING_CHAIN', isDone: true }
+```

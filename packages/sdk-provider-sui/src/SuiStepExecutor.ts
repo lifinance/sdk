@@ -58,7 +58,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
       status: 'PENDING',
     })
 
-    const transaction = step.execution?.transactions.find(
+    const transaction = step.execution?.actions.find(
       (t) => t.type === executionType
     )
     if (!transaction?.isDone) {
@@ -146,6 +146,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'PENDING',
+          signedAt: Date.now(),
         })
 
         const result = await callSuiWithRetry(client, (client) =>
@@ -168,7 +169,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'PENDING',
-          transaction: {
+          action: {
             type: executionType,
             chainId: fromChain.id,
             txHash: result.digest,

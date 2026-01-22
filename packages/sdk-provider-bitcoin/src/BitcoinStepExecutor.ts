@@ -72,7 +72,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)
 
-    const currentTransaction = step.execution?.transactions.find(
+    const currentTransaction = step.execution?.actions.find(
       (t) => t.type === executionType
     )
     if (!currentTransaction?.isDone) {
@@ -261,7 +261,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           step = this.statusManager.updateExecution(step, {
             type: executionType,
             status: 'PENDING',
-            transaction: {
+            signedAt: Date.now(),
+            action: {
               type: executionType,
               chainId: fromChain.id,
               txHash: txHash,
@@ -282,7 +283,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             step = this.statusManager.updateExecution(step, {
               type: executionType,
               status: 'PENDING',
-              transaction: {
+              action: {
                 type: executionType,
                 chainId: fromChain.id,
                 txHash: response.transaction.txid,
@@ -304,7 +305,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           step = this.statusManager.updateExecution(step, {
             type: executionType,
             status: 'PENDING',
-            transaction: {
+            action: {
               type: executionType,
               chainId: fromChain.id,
               txHash: transaction.txid,

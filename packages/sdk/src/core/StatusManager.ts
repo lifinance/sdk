@@ -1,13 +1,13 @@
 import type { LiFiStep } from '@lifi/types'
 import type {
   Execution,
+  ExecutionAction,
   ExecutionUpdate,
   LiFiStepExtended,
-  Transaction,
-  TransactionType,
+  StepExecutionType,
 } from '../types/core.js'
+import { getExecutionMessage } from './executionMessages.js'
 import { executionState } from './executionState.js'
-import { getProcessMessage } from './processMessages.js'
 
 /**
  * Manages status updates of a route and provides various functions for tracking processes
@@ -24,20 +24,17 @@ export class StatusManager {
 
   initExecution(
     step: LiFiStepExtended,
-    type: TransactionType
+    type: StepExecutionType
   ): LiFiStepExtended {
     if (!step.execution || step.execution.status === 'FAILED') {
       return this.updateExecution(step, {
         type,
         status: 'STARTED',
-        transactions: [],
+        startedAt: Date.now(),
+        actions: [],
         // Reset from previous (failed) execution
         error: undefined,
-        doneAt: undefined,
-        pendingAt: undefined,
-        actionRequiredAt: undefined,
-        substatus: undefined,
-        substatusMessage: undefined,
+        signedAt: undefined,
       })
     }
     return step
@@ -47,7 +44,7 @@ export class StatusManager {
     step: LiFiStepExtended,
     execution: ExecutionUpdate
   ): LiFiStepExtended {
-    const { status, type, transaction, ...executionUpdate } = execution
+    const { status, type, action, ...executionUpdate } = execution
     const previousStatus = step.execution?.status
 
     // Clear substatus if status changed and no new substatus provided
@@ -59,37 +56,15 @@ export class StatusManager {
       ...executionUpdate,
       type,
       status,
-      message: getProcessMessage(type, status),
+      message: getExecutionMessage(type, status),
       ...(shouldClearSubstatus && {
         substatus: undefined,
         substatusMessage: undefined,
       }),
     } as Execution
 
-    if (transaction) {
-      step.execution.transactions = this.updateTransactions(step, transaction)
-    }
-
-    switch (status) {
-      case 'STARTED':
-        step.execution.startedAt = Date.now()
-        break
-      case 'CANCELLED':
-      case 'FAILED':
-      case 'DONE': {
-        step.execution.doneAt = Date.now()
-        break
-      }
-      case 'PENDING':
-        step.execution.pendingAt = Date.now()
-        break
-      case 'RESET_REQUIRED':
-      case 'MESSAGE_REQUIRED':
-      case 'ACTION_REQUIRED':
-        step.execution.actionRequiredAt = Date.now()
-        break
-      default:
-        break
+    if (action) {
+      step.execution.actions = this.updateActions(step, action)
     }
 
     this.updateStepInRoute(step)
@@ -97,31 +72,31 @@ export class StatusManager {
     return step
   }
 
-  updateTransactions = (
+  updateActions = (
     step: LiFiStepExtended,
-    transactionUpdate: Partial<Transaction>
-  ): Transaction[] => {
-    if (!step.execution || !transactionUpdate.type) {
-      return step.execution?.transactions || []
+    actionUpdate: Partial<ExecutionAction>
+  ): ExecutionAction[] => {
+    if (!step.execution || !actionUpdate.type) {
+      return step.execution?.actions || []
     }
 
-    const existingIndex = step.execution.transactions.findIndex(
-      (t) => t.type === transactionUpdate.type
+    const existingIndex = step.execution.actions.findIndex(
+      (t) => t.type === actionUpdate.type
     )
 
     if (existingIndex >= 0) {
-      const updatedTransaction = {
-        ...step.execution.transactions[existingIndex],
-        ...transactionUpdate,
+      const updatedAction = {
+        ...step.execution.actions[existingIndex],
+        ...actionUpdate,
       }
-      return step.execution.transactions.with(existingIndex, updatedTransaction)
+      return step.execution.actions.with(existingIndex, updatedAction)
     }
 
     return [
-      ...step.execution.transactions,
+      ...step.execution.actions,
       {
-        type: transactionUpdate.type,
-        ...transactionUpdate,
+        type: actionUpdate.type,
+        ...actionUpdate,
       },
     ]
   }

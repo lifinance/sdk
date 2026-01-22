@@ -5,9 +5,10 @@ import type {
 } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
 import type {
+  ExecutionActionType,
   LiFiStepExtended,
   SDKClient,
-  TransactionType,
+  StepExecutionType,
 } from '../types/core.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
@@ -16,13 +17,13 @@ import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 export async function waitForDestinationChainTransaction(
   client: SDKClient,
   step: LiFiStepExtended,
-  type: TransactionType,
+  type: StepExecutionType,
   fromChain: ExtendedChain,
   toChain: ExtendedChain,
   statusManager: StatusManager,
   pollingInterval?: number
 ): Promise<LiFiStepExtended> {
-  const transaction = step.execution?.transactions.find((t) => t.type === type)
+  const transaction = step.execution?.actions.find((t) => t.type === type)
   // At this point, we should have a txHash or taskId
   // taskId is used for custom integrations that don't use the standard transaction hash
   const transactionHash = transaction?.txHash || transaction?.taskId
@@ -78,8 +79,8 @@ export async function waitForDestinationChainTransaction(
           type: 'SEND',
         },
       ],
-      transaction: {
-        type,
+      action: {
+        type: type as ExecutionActionType,
         chainId: statusReceiving?.chainId || toChain.id,
         txHash: statusReceiving?.txHash,
         txLink:

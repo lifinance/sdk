@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   checkBalance,
   convertQuoteToRoute,
+  type ExecutionActionType,
   type ExtendedChain,
   getContractCallsQuote,
   getRelayerQuote,
@@ -13,12 +14,12 @@ import {
   relayTransaction,
   type SDKClient,
   type SignedTypedData,
+  type StepExecutionType,
   type StepExecutorOptions,
   stepComparison,
   TransactionError,
   type TransactionMethodType,
   type TransactionParameters,
-  type TransactionType,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
 import type {
@@ -81,7 +82,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   // Ensure that we are using the right chain and wallet when executing transactions.
   checkClient = async (
     step: LiFiStepExtended,
-    type: TransactionType,
+    type: StepExecutionType,
     targetChainId?: number
   ) => {
     const updatedClient = await switchChain(
@@ -142,15 +143,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       isBridgeExecution,
     }: {
       step: LiFiStepExtended
-      type: TransactionType
+      type: StepExecutionType
       fromChain: ExtendedChain
       toChain: ExtendedChain
       isBridgeExecution: boolean
     }
   ) => {
-    const transaction = step.execution?.transactions.find(
-      (t) => t.type === type
-    )
+    const transaction = step.execution?.actions.find((t) => t.type === type)
     const updateProcessWithReceipt = (
       transactionReceipt: TransactionReceipt | WalletCallReceipt | undefined,
       isBridgeExecution: boolean
@@ -171,8 +170,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step = this.statusManager.updateExecution(step, {
           type,
           status: 'PENDING',
-          transaction: {
-            type,
+          action: {
+            type: type as ExecutionActionType,
             chainId: fromChain.id,
             txHash: txHash,
             txLink:
@@ -218,8 +217,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             step = this.statusManager.updateExecution(step, {
               type,
               status: 'PENDING',
-              transaction: {
-                type,
+              action: {
+                type: type as ExecutionActionType,
                 chainId: fromChain.id,
                 txHash: response.transaction.hash,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
@@ -245,7 +244,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   private prepareUpdatedStep = async (
     client: SDKClient,
     step: LiFiStepExtended,
-    type: TransactionType,
+    type: StepExecutionType,
     signedTypedData?: SignedTypedData[]
   ) => {
     const { execution, ...stepBase } = step
@@ -495,7 +494,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     step = this.statusManager.initExecution(step, executionType)
 
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
-    const destinationChainTransaction = step.execution?.transactions.find(
+    const destinationChainTransaction = step.execution?.actions.find(
       (t) => t.type === 'RECEIVING_CHAIN'
     )
 
@@ -534,7 +533,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           })
 
     // Find existing swap/bridge process
-    const existingProcess = step?.execution?.transactions.find(
+    const existingProcess = step?.execution?.actions.find(
       (p) => p.type === executionType
     )
 
@@ -604,7 +603,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     }
 
     try {
-      const transaction = step.execution?.transactions.find(
+      const transaction = step.execution?.actions.find(
         (t) => t.type === executionType
       )
       if (transaction?.isDone) {
@@ -842,7 +841,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       step = this.statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
-        transaction: {
+        signedAt: Date.now(),
+        action: {
           type: executionType,
           chainId: fromChain.id,
           txHash,

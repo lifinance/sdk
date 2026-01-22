@@ -204,7 +204,7 @@ export const buildStepObject = ({
         status: 'PENDING',
         startedAt: SOME_DATE,
         message: 'Preparing swap transaction.',
-        transactions: [
+        actions: [
           {
             type: 'TOKEN_ALLOWANCE',
             txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',

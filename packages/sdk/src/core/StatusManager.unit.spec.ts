@@ -1,7 +1,7 @@
 import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LiFiStepExtended, Transaction } from '../types/core.js'
+import type { ExecutionAction, LiFiStepExtended } from '../types/core.js'
 import {
   buildRouteObject,
   buildStepObject,
@@ -50,13 +50,13 @@ describe('StatusManager', () => {
           type: 'SWAP',
           status: 'PENDING',
           startedAt: Date.now(),
-          transactions: [],
+          actions: [],
         })
 
         expect(result.execution!.status).toBe('PENDING')
         expect(result.execution!.type).toBe('SWAP')
         expect(result.execution!.startedAt).toBe(SOME_DATE)
-        expect(result.execution!.transactions).toEqual([])
+        expect(result.execution!.actions).toEqual([])
         expect(updateRouteHookMock).toHaveBeenCalled()
       })
 
@@ -66,7 +66,7 @@ describe('StatusManager', () => {
           chainId: 137,
           status: 'PENDING',
           startedAt: Date.now(),
-          transactions: [],
+          actions: [],
         })
 
         expect(result.execution!.type).toBe('SWAP')
@@ -87,11 +87,9 @@ describe('StatusManager', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
             type: 'SWAP',
             status: 'DONE',
-            doneAt: Date.now(),
           })
 
           expect(result.execution!.status).toBe('DONE')
-          expect(result.execution!.doneAt).toBe(SOME_DATE)
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
 
@@ -112,7 +110,7 @@ describe('StatusManager', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
             type: 'SWAP',
             status: 'DONE',
-            transaction: {
+            action: {
               type: 'SWAP',
               txHash: '0xabc123',
               txLink: 'https://example.com/tx/0xabc123',
@@ -120,8 +118,8 @@ describe('StatusManager', () => {
           })
 
           expect(result.execution!.status).toBe('DONE')
-          const swapTx = result.execution!.transactions.find(
-            (t: Transaction) => t.type === 'SWAP'
+          const swapTx = result.execution!.actions.find(
+            (t: ExecutionAction) => t.type === 'SWAP'
           )
           expect(swapTx?.txHash).toBe('0xabc123')
         })
@@ -138,7 +136,7 @@ describe('StatusManager', () => {
           const result = statusManager.updateExecution(stepWithNewType, {
             type: 'RECEIVING_CHAIN',
             status: 'DONE',
-            transaction: {
+            action: {
               type: 'RECEIVING_CHAIN',
               txHash: '0xdef456',
               txLink: 'https://example.com/tx/0xdef456',
@@ -146,8 +144,8 @@ describe('StatusManager', () => {
           })
 
           expect(result.execution!.status).toBe('DONE')
-          const receivingTx = result.execution!.transactions.find(
-            (t: Transaction) => t.type === 'RECEIVING_CHAIN'
+          const receivingTx = result.execution!.actions.find(
+            (t: ExecutionAction) => t.type === 'RECEIVING_CHAIN'
           )
           expect(receivingTx?.txHash).toBe('0xdef456')
         })
@@ -156,28 +154,28 @@ describe('StatusManager', () => {
           const clonedStep = structuredClone(step)
           // Verify SWAP transaction exists before removal
           expect(
-            clonedStep.execution!.transactions.find(
-              (t: Transaction) => t.type === 'SWAP'
+            clonedStep.execution!.actions.find(
+              (t: ExecutionAction) => t.type === 'SWAP'
             )
           ).toBeDefined()
 
           const result = statusManager.updateExecution(clonedStep, {
             type: 'SWAP',
             status: 'PENDING',
-            transactions: clonedStep.execution!.transactions.filter(
-              (t: Transaction) => t.type !== 'SWAP'
+            actions: clonedStep.execution!.actions.filter(
+              (t: ExecutionAction) => t.type !== 'SWAP'
             ),
           })
 
           // SWAP transaction should be removed
-          const swapTx = result.execution!.transactions.find(
-            (t: Transaction) => t.type === 'SWAP'
+          const swapTx = result.execution!.actions.find(
+            (t: ExecutionAction) => t.type === 'SWAP'
           )
           expect(swapTx).toBeUndefined()
 
           // TOKEN_ALLOWANCE transaction should still exist
-          const allowanceTx = result.execution!.transactions.find(
-            (t: Transaction) => t.type === 'TOKEN_ALLOWANCE'
+          const allowanceTx = result.execution!.actions.find(
+            (t: ExecutionAction) => t.type === 'TOKEN_ALLOWANCE'
           )
           expect(allowanceTx).toBeDefined()
         })

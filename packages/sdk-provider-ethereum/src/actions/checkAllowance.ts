@@ -1,4 +1,5 @@
 import type {
+  ExecutionActionType,
   ExecutionOptions,
   ExtendedChain,
   LiFiStep,
@@ -6,7 +7,7 @@ import type {
   SDKClient,
   SignedTypedData,
   StatusManager,
-  TransactionType,
+  StepExecutionType,
 } from '@lifi/sdk'
 import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
@@ -26,7 +27,7 @@ import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 type CheckAllowanceParams = {
   checkClient(
     step: LiFiStepExtended,
-    type: TransactionType,
+    type: StepExecutionType,
     targetChainId?: number
   ): Promise<Client | undefined>
   chain: ExtendedChain
@@ -66,7 +67,7 @@ export const checkAllowance = async (
     disableMessageSigning = false,
   }: CheckAllowanceParams
 ): Promise<AllowanceResult> => {
-  let executionType: TransactionType = 'PERMIT'
+  let executionType: StepExecutionType = 'PERMIT'
   let signedTypedData: SignedTypedData[] = []
   try {
     // First, try to sign all permits in step.typedData
@@ -165,7 +166,7 @@ export const checkAllowance = async (
       return { status: 'ACTION_REQUIRED' }
     }
 
-    const transaction = step.execution?.transactions.find(
+    const transaction = step.execution?.actions.find(
       (t) => t.type === executionType
     )
     // Handle existing pending transaction
@@ -296,9 +297,7 @@ export const checkAllowance = async (
     step = statusManager.updateExecution(step, {
       type: executionType,
       status: resetApprovalStatus,
-      transactions: step.execution!.transactions.filter(
-        (t) => t.type !== executionType
-      ),
+      actions: step.execution!.actions.filter((t) => t.type !== executionType),
     })
 
     if (!allowUserInteraction) {
@@ -333,7 +332,7 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: executionType,
           status: 'ACTION_REQUIRED',
-          transactions: step.execution!.transactions.filter(
+          actions: step.execution!.actions.filter(
             (t) => t.type !== executionType
           ),
         })
@@ -421,7 +420,7 @@ const waitForApprovalTransaction = async (
   client: SDKClient,
   viemClient: Client,
   txHash: Hash,
-  type: TransactionType,
+  type: StepExecutionType,
   step: LiFiStep,
   chain: ExtendedChain,
   statusManager: StatusManager,
@@ -433,8 +432,8 @@ const waitForApprovalTransaction = async (
   step = statusManager.updateExecution(step, {
     type,
     status: 'PENDING',
-    transaction: {
-      type,
+    action: {
+      type: type as ExecutionActionType,
       chainId: chain.id,
       txHash,
       txLink: getTxLink(txHash),
@@ -451,8 +450,8 @@ const waitForApprovalTransaction = async (
       step = statusManager.updateExecution(step, {
         type,
         status: 'PENDING',
-        transaction: {
-          type,
+        action: {
+          type: type as ExecutionActionType,
           chainId: chain.id,
           txHash: newHash,
           txLink: getTxLink(newHash),
@@ -467,8 +466,8 @@ const waitForApprovalTransaction = async (
     step = statusManager.updateExecution(step, {
       type,
       status: 'PENDING',
-      transaction: {
-        type,
+      action: {
+        type: type as ExecutionActionType,
         chainId: chain.id,
         txHash: finalHash,
         txLink: getTxLink(finalHash),

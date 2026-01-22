@@ -1,4 +1,4 @@
-import type { LiFiStepExtended, TransactionType } from '../types/core.js'
+import type { LiFiStepExtended, StepExecutionType } from '../types/core.js'
 import { version } from '../version.js'
 import type { BaseError } from './baseError.js'
 import type { ErrorCode } from './constants.js'
@@ -7,7 +7,7 @@ import type { ErrorCode } from './constants.js'
 // Where opportunity allows we also add the step related to the error
 export class SDKError extends Error {
   step?: LiFiStepExtended
-  type?: TransactionType
+  type?: StepExecutionType
   code: ErrorCode
   override name = 'SDKError'
   override cause: BaseError
@@ -15,7 +15,7 @@ export class SDKError extends Error {
   constructor(
     cause: BaseError,
     step?: LiFiStepExtended,
-    type?: TransactionType
+    type?: StepExecutionType
   ) {
     const errorMessage = `${cause.message ? `[${cause.name}] ${cause.message}` : 'Unknown error occurred'}\nLI.FI SDK version: ${version}`
     super(errorMessage)
