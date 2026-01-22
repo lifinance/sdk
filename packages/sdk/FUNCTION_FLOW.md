@@ -39,6 +39,9 @@ This document shows how execution flows through functions in the LI.FI SDK codeb
 ```
 executeStep(client, step)
 │
+├─► initExecution(step, executionType)     // Initialize or reset execution
+│   └─► Sets status: 'STARTED', clears state if FAILED
+│
 ├─► checkClient()                          // Ensure correct chain & wallet
 │   └─► switchChain()                      // Switch if needed
 │
@@ -47,11 +50,10 @@ executeStep(client, step)
 │   │   ┌─────────────────────────────────────────────────────────────┐
 │   │   │ TOKEN_ALLOWANCE Flow                                        │
 │   │   ├─────────────────────────────────────────────────────────────┤
-│   │   │ updateExecution(step, { type: 'TOKEN_ALLOWANCE', ... })     │
-│   │   │ updateExecution(step, { status: 'STARTED' })                │
+│   │   │ updateExecution(step, { type: 'TOKEN_ALLOWANCE', status: 'STARTED' })│
 │   │   │         │                                                   │
 │   │   │         ├─► getAllowance()                                  │
-│   │   │         │   └─► If approved → status: DONE (skip approval)  │
+│   │   │         │   └─► If approved → status: PENDING (skip)        │
 │   │   │         │                                                   │
 │   │   │         ├─► updateExecution(step, { status: 'RESET_REQUIRED' })│
 │   │   │         │   └─► setAllowance(0)  // Reset if needed         │
@@ -60,22 +62,20 @@ executeStep(client, step)
 │   │   │         │   └─► setAllowance()   // User signs approval tx  │
 │   │   │         │                                                   │
 │   │   │         └─► waitForTransactionReceipt()                     │
-│   │   │             └─► status: DONE                                │
+│   │   │             └─► status: PENDING, transaction: { isDone: true }│
 │   │   └─────────────────────────────────────────────────────────────┘
 │   │
 │   │   ┌─────────────────────────────────────────────────────────────┐
 │   │   │ PERMIT Flow (if native permit available)                    │
 │   │   ├─────────────────────────────────────────────────────────────┤
-│   │   │ updateExecution(step, { type: 'PERMIT', ... })              │
+│   │   │ updateExecution(step, { type: 'PERMIT', status: 'STARTED' })│
 │   │   │ updateExecution(step, { status: 'ACTION_REQUIRED' })        │
 │   │   │         │                                                   │
 │   │   │         └─► signTypedData()  // User signs permit message   │
-│   │   │             └─► status: DONE                                │
+│   │   │             └─► status: PENDING                             │
 │   │   └─────────────────────────────────────────────────────────────┘
 │
-├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
-│
-├─► updateExecution(step, { status: 'STARTED' })
+├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'STARTED' })
 │
 ├─► checkBalance()                         // Verify sufficient balance
 │
@@ -128,30 +128,28 @@ executeStep(client, step)
 ```
 executeStep(client, step)
 │
-├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
-│
-├─► updateExecution(step, { status: 'STARTED' })
+├─► initExecution(step, executionType)     // Initialize or reset execution
 │
 ├─► checkBalance()                         // Verify SOL/token balance
 │
 ├─► getStepTransaction()                   // Get transaction from API
 │
-├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
+├─► updateExecution(step, { type, status: 'ACTION_REQUIRED' })
 │
 ├─► getWalletFeature(wallet, SolanaSignTransaction)
 │   └─► signTransaction()                  // User signs in wallet
 │
-├─► updateExecution(step, { status: 'PENDING' })
+├─► updateExecution(step, { type, status: 'PENDING' })
 │
 ├─► sendAndConfirmTransaction()            // Submit to Solana network
 │   ├─► rpc.sendTransaction()
 │   └─► waitForTransactionConfirmation()
 │
-├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
+├─► updateExecution(step, { type, status: 'PENDING', transaction: { txHash, isDone } })
 │
 └─► [If Bridge]
     └─► waitForDestinationChainTransaction()
-        └─► status: DONE
+        └─► status: DONE, transaction: { type: 'RECEIVING_CHAIN', isDone: true }
 ```
 
 ## Sui Execution Flow
@@ -161,27 +159,25 @@ executeStep(client, step)
 ```
 executeStep(client, step)
 │
-├─► updateExecution(step, { type: 'SWAP' | 'CROSS_CHAIN', status: 'PENDING', ... })
-│
-├─► updateExecution(step, { status: 'STARTED' })
+├─► initExecution(step, executionType)     // Initialize or reset execution
 │
 ├─► checkBalance()                         // Verify SUI/token balance
 │
 ├─► getStepTransaction()                   // Get transaction from API
 │
-├─► updateExecution(step, { status: 'ACTION_REQUIRED' })
+├─► updateExecution(step, { type, status: 'ACTION_REQUIRED' })
 │
 ├─► wallet.signAndExecuteTransaction()     // User signs & executes
 │
-├─► updateExecution(step, { status: 'PENDING' })
+├─► updateExecution(step, { type, status: 'PENDING' })
 │
 ├─► client.waitForTransaction()            // Wait for confirmation
 │
-├─► updateExecution(step, { status: 'PENDING', transaction: { txHash } })
+├─► updateExecution(step, { type, status: 'PENDING', transaction: { txHash, isDone } })
 │
 └─► [If Bridge]
     └─► waitForDestinationChainTransaction()
-        └─► status: DONE
+        └─► status: DONE, transaction: { type: 'RECEIVING_CHAIN', isDone: true }
 ```
 
 ## Simplified Flow with Status Transitions
@@ -193,30 +189,38 @@ executeStep(client, step)
 │         └── for each step:                                                    │
 │               └── stepExecutor.executeStep()                                  │
 │                     │                                                         │
+│                     ├─► initExecution(step, type)  // Initialize/reset        │
+│                     │                                                         │
 │                     │  ┌────────────────────────────────────────────────────┐ │
 │                     ├─►│ TOKEN_ALLOWANCE (EVM only)                         │ │
-│                     │  │   STARTED → ACTION_REQUIRED → PENDING → DONE      │ │
-│                     │  │   (or STARTED → DONE if already approved)         │ │
-│                     │  │   (or STARTED → RESET_REQUIRED → ... → DONE)      │ │
+│                     │  │   STARTED → ACTION_REQUIRED → PENDING              │ │
+│                     │  │   transaction: { isDone: true }                    │ │
+│                     │  │   (or STARTED → PENDING if already approved)       │ │
+│                     │  │   (or STARTED → RESET_REQUIRED → ... → PENDING)    │ │
 │                     │  └────────────────────────────────────────────────────┘ │
 │                     │                                                         │
 │                     │  ┌────────────────────────────────────────────────────┐ │
 │                     ├─►│ PERMIT (EVM only, optional)                        │ │
-│                     │  │   STARTED → ACTION_REQUIRED → PENDING → DONE      │ │
+│                     │  │   STARTED → ACTION_REQUIRED → PENDING              │ │
 │                     │  └────────────────────────────────────────────────────┘ │
 │                     │                                                         │
 │                     │  ┌────────────────────────────────────────────────────┐ │
 │                     ├─►│ SWAP or CROSS_CHAIN                                │ │
-│                     │  │   STARTED → ACTION_REQUIRED → PENDING → DONE      │ │
-│                     │  │   (or → MESSAGE_REQUIRED → PENDING → DONE)        │ │
+│                     │  │   STARTED → ACTION_REQUIRED → PENDING              │ │
+│                     │  │   (or → MESSAGE_REQUIRED → PENDING)                │ │
+│                     │  │   transaction: { isDone: true } for swaps          │ │
+│                     │  │   transaction: { isDone: false } for bridges       │ │
 │                     │  └────────────────────────────────────────────────────┘ │
 │                     │                                                         │
 │                     │  ┌────────────────────────────────────────────────────┐ │
 │                     └─►│ RECEIVING_CHAIN (bridges only)                     │ │
 │                        │   PENDING → DONE                                   │ │
+│                        │   transaction: { isDone: true }                    │ │
 │                        └────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **Note:** `DONE` status is only set once at the end of the entire step execution (in `waitForDestinationChainTransaction` for bridges, or after the main transaction for swaps). Individual transactions track completion via the `isDone` flag.
 
 ## Key Functions Reference
 
@@ -229,56 +233,48 @@ executeStep(client, step)
 | `executeSteps()` | `core/execution.ts` | Loop through route steps |
 | `stopRouteExecution()` | `core/execution.ts` | Stop active execution |
 | `getActiveRoutes()` | `core/execution.ts` | Get currently executing routes |
-| `StatusManager.updateExecution()` | `core/statusManager/StatusManager.ts` | Update execution status/type/properties |
+| `prepareRestart()` | `core/prepareRestart.ts` | Prepare route for restart (filter incomplete transactions) |
+| `StatusManager.initExecution()` | `core/StatusManager.ts` | Initialize or reset step execution |
+| `StatusManager.updateExecution()` | `core/StatusManager.ts` | Update execution status/type/properties |
 | `waitForTransactionStatus()` | `core/waitForTransactionStatus.ts` | Poll API for tx status |
 | `waitForDestinationChainTransaction()` | `core/waitForDestinationChainTransaction.ts` | Wait for bridge completion |
 | `checkBalance()` | `core/checkBalance.ts` | Verify token balance |
 | `getStepTransaction()` | `actions/getStepTransaction.ts` | Get transaction data from API |
 | `getStatus()` | `actions/getStatus.ts` | Get transaction status from API |
 
-### @lifi/sdk-provider-ethereum
+### StatusManager API
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `EthereumStepExecutor.executeStep()` | `EthereumStepExecutor.ts` | Execute single EVM step |
-| `checkAllowance()` | `actions/checkAllowance.ts` | Handle token approvals |
-| `setAllowance()` | `actions/setAllowance.ts` | Set ERC-20 allowance |
-| `getAllowance()` | `actions/getAllowance.ts` | Check current allowance |
-| `switchChain()` | `actions/switchChain.ts` | Switch wallet chain |
-| `waitForTransactionReceipt()` | `actions/waitForTransactionReceipt.ts` | Wait for tx confirmation |
-| `signPermit2Message()` | `permits/signPermit2Message.ts` | Sign Permit2 message |
+```typescript
+class StatusManager {
+  // Initialize execution for a step (or reset if FAILED)
+  initExecution(step: LiFiStepExtended, type: TransactionType): LiFiStepExtended
 
-### @lifi/sdk-provider-solana
+  // Update execution with new status, type, transaction, etc.
+  updateExecution(step: LiFiStepExtended, execution: ExecutionUpdate): LiFiStepExtended
+}
 
-| Function | File | Purpose |
-|----------|------|---------|
-| `SolanaStepExecutor.executeStep()` | `SolanaStepExecutor.ts` | Execute single Solana step |
-| `sendAndConfirmTransaction()` | `actions/sendAndConfirmTransaction.ts` | Submit and confirm tx |
-| `getSolanaBalance()` | `actions/getSolanaBalance.ts` | Get token balances |
-
-### @lifi/sdk-provider-sui
-
-| Function | File | Purpose |
-|----------|------|---------|
-| `SuiStepExecutor.executeStep()` | `SuiStepExecutor.ts` | Execute single Sui step |
-
-## Callback Hooks
-
-The SDK provides hooks for UI updates during execution:
-
-```
-ExecutionOptions {
-  updateRouteHook?: (route: RouteExtended) => void    // Called on every status change
-  acceptExchangeRateUpdateHook?: (...)                // Called when rate changes
-  infiniteApproval?: boolean                          // Set max approval amount
-  executeInBackground?: boolean                       // Continue without user interaction
+type ExecutionUpdate = {
+  type: TransactionType        // Required: current transaction type
+  status: ExecutionStatus      // Required: new status
+  transaction?: Transaction    // Optional: add/update a transaction
+  // ... other optional Execution fields
 }
 ```
+
+**initExecution behavior:**
+- No execution exists → Create new with `status: 'STARTED'`
+- Status is `FAILED` → Reset to `STARTED`, clear error/timestamps/transactions
+- Otherwise → Filter transactions to keep only `isDone: true`, return step
+
+**updateExecution behavior:**
+- Automatically sets timestamps based on status
+- Automatically clears `substatus`/`substatusMessage` when status changes (unless explicitly provided)
+- Adds/updates transaction in `transactions` array if `transaction` is provided
 
 ### When updateRouteHook is Called
 
 ```
-updateExecution()
+initExecution() / updateExecution()
     │
     └─► updateStepInRoute()
         │
@@ -288,10 +284,6 @@ updateExecution()
 Every status transition triggers `updateRouteHook`, allowing your UI to react to:
 - Status changes (STARTED, ACTION_REQUIRED, PENDING, DONE, FAILED)
 - Transaction type changes (TOKEN_ALLOWANCE, SWAP, CROSS_CHAIN, etc.)
-- Transaction hash updates
+- Transaction updates (txHash, chainId, isDone)
 - Error information
-
-## Related Documentation
-
-- [EXECUTION_FLOW.md](./EXECUTION_FLOW.md) - Status transitions and state diagrams
-- [SDK Documentation](https://docs.li.fi/sdk/overview) - Official documentation
+- Substatus updates (for bridge progress tracking)

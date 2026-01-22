@@ -25,53 +25,27 @@ flowchart LR
 | `CROSS_CHAIN` | Bridge transaction to another chain |
 | `RECEIVING_CHAIN` | Waiting for tokens on destination chain |
 
-## Execution Statuses
+### Transaction Object
 
-Each transaction type goes through these statuses:
+Each transaction in `execution.transactions` has:
 
-```mermaid
-stateDiagram-v2
-    [*] --> STARTED
-    
-    STARTED --> ACTION_REQUIRED
-    STARTED --> PENDING
-    STARTED --> RESET_REQUIRED
-    STARTED --> FAILED
-    STARTED --> DONE
-    
-    ACTION_REQUIRED --> PENDING
-    ACTION_REQUIRED --> MESSAGE_REQUIRED
-    ACTION_REQUIRED --> RESET_REQUIRED
-    ACTION_REQUIRED --> FAILED
-    
-    MESSAGE_REQUIRED --> PENDING
-    MESSAGE_REQUIRED --> ACTION_REQUIRED
-    MESSAGE_REQUIRED --> FAILED
-    
-    RESET_REQUIRED --> PENDING
-    RESET_REQUIRED --> ACTION_REQUIRED
-    RESET_REQUIRED --> FAILED
-    
-    PENDING --> STARTED
-    PENDING --> DONE
-    PENDING --> ACTION_REQUIRED
-    PENDING --> RESET_REQUIRED
-    PENDING --> FAILED
-    
-    FAILED --> PENDING
-    
-    DONE --> [*]
+```typescript
+type Transaction = {
+  type: TransactionType      // Which phase this transaction belongs to
+  chainId?: number           // Chain where the transaction was submitted
+  isDone?: boolean           // Whether this transaction is complete
+  txHash?: string            // On-chain transaction hash
+  taskId?: string            // Relayer task ID (for relayed transactions)
+  txLink?: string            // Block explorer link
+  txType?: TransactionMethodType  // 'standard' | 'relayed' | 'batched'
+  txHex?: string             // Raw transaction hex (Bitcoin)
+}
 ```
 
-| Status | Description |
-|--------|-------------|
-| `STARTED` | Transaction is being prepared |
-| `ACTION_REQUIRED` | User needs to sign a transaction |
-| `MESSAGE_REQUIRED` | User needs to sign a message |
-| `RESET_REQUIRED` | Token approval needs to be reset to 0 first |
-| `PENDING` | Waiting for transaction confirmation |
-| `DONE` | Transaction completed successfully |
-| `FAILED` | Transaction failed (can retry) |
+The `isDone` flag is the source of truth for transaction completion:
+- `isDone: false` — Transaction submitted but not confirmed
+- `isDone: true` — Transaction confirmed on-chain
+
 
 ## Status Messages by Transaction Type
 
@@ -168,29 +142,11 @@ sequenceDiagram
     SDK-->>User: Route execution complete
 ```
 
-## Error Recovery
 
-```mermaid
-flowchart TD
-    F[FAILED] --> R{Retry?}
-    R -->|Yes| P[PENDING]
-    R -->|No| C[CANCELLED]
-    P --> S{Success?}
-    S -->|Yes| D[DONE]
-    S -->|No| F
-```
+### Preserving Completed Transactions
 
-When a transaction fails:
-1. Status moves to `FAILED`
-2. User can retry with `resumeRoute()`
-3. Status transitions back to `PENDING`
-4. If successful, moves to `DONE`
-5. If it fails again, returns to `FAILED`
+When resuming a non-FAILED execution (e.g., `PENDING`, `ACTION_REQUIRED`):
 
-## Related Files
-
-- `src/core/execution.ts` - Main execution logic
-- `src/core/statusManager/StatusManager.ts` - Status management
-- `src/core/statusManager/transitions.ts` - Valid state transitions
-- `src/core/processMessages.ts` - Status messages
-- `src/types/core.ts` - Type definitions
+1. `prepareRestart()` filters transactions to keep only `isDone: true`
+2. `initExecution()` returns early (no reset)
+3. Incomplete transactions are discarded, completed ones preserved

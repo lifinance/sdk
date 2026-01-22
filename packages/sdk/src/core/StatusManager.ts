@@ -26,22 +26,20 @@ export class StatusManager {
     step: LiFiStepExtended,
     type: TransactionType
   ): LiFiStepExtended {
-    if (!step.execution) {
+    if (!step.execution || step.execution.status === 'FAILED') {
       return this.updateExecution(step, {
         type,
         status: 'STARTED',
         transactions: [],
-      })
-    }
-
-    if (step.execution.status === 'FAILED') {
-      return this.updateExecution(step, {
-        type,
-        status: 'PENDING',
+        // Reset from previous (failed) execution
         error: undefined,
+        doneAt: undefined,
+        pendingAt: undefined,
+        actionRequiredAt: undefined,
+        substatus: undefined,
+        substatusMessage: undefined,
       })
     }
-
     return step
   }
 
