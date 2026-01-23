@@ -416,7 +416,7 @@ export const checkAllowance = async (
 
     return { status: 'DONE', data: signedTypedData }
   } catch (e: any) {
-    const error = await parseEthereumErrors(e, step, executionType)
+    const error = await parseEthereumErrors(e, step)
     step = statusManager.updateExecution(step, {
       type: executionType,
       status: 'FAILED',

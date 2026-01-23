@@ -126,8 +126,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           LiFiErrorCode.WalletChangedDuringExecution,
           errorMessage
         ),
-        step,
-        type
+        step
       )
     }
     return updatedClient
@@ -871,7 +870,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step.execution = undefined
         return this.executeStep(client, step, true)
       }
-      const error = await parseEthereumErrors(e, step, executionType)
+      const error = await parseEthereumErrors(e, step)
       step = this.statusManager.updateExecution(step, {
         type: executionType,
         status: 'FAILED',

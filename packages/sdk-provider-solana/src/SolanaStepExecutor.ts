@@ -241,7 +241,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           },
         })
       } catch (e: any) {
-        const error = await parseSolanaErrors(e, step, executionType)
+        const error = await parseSolanaErrors(e, step)
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'FAILED',

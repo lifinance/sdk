@@ -314,7 +314,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           })
         }
       } catch (e: any) {
-        const error = await parseBitcoinErrors(e, step, executionType)
+        const error = await parseBitcoinErrors(e, step)
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'FAILED',

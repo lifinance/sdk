@@ -177,7 +177,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
           },
         })
       } catch (e: any) {
-        const error = await parseSuiErrors(e, step, executionType)
+        const error = await parseSuiErrors(e, step)
         step = this.statusManager.updateExecution(step, {
           type: executionType,
           status: 'FAILED',

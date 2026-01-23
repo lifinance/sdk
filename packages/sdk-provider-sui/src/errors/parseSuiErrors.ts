@@ -4,25 +4,22 @@ import {
   LiFiErrorCode,
   type LiFiStepExtended,
   SDKError,
-  type StepExecutionType,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
 
 export const parseSuiErrors = async (
   e: Error,
-  step?: LiFiStepExtended,
-  type?: StepExecutionType
+  step?: LiFiStepExtended
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.type = e.type ?? type
     return e
   }
 
   const baseError = handleSpecificErrors(e)
 
-  return new SDKError(baseError, step, type)
+  return new SDKError(baseError, step)
 }
 
 const handleSpecificErrors = (e: any) => {
