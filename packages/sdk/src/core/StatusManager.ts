@@ -4,7 +4,6 @@ import type {
   ExecutionAction,
   ExecutionUpdate,
   LiFiStepExtended,
-  StepExecutionType,
 } from '../types/core.js'
 import { getExecutionMessage } from './executionMessages.js'
 import { executionState } from './executionState.js'
@@ -20,24 +19,6 @@ export class StatusManager {
 
   constructor(routeId: string) {
     this.routeId = routeId
-  }
-
-  initExecution(
-    step: LiFiStepExtended,
-    type: StepExecutionType
-  ): LiFiStepExtended {
-    if (!step.execution || step.execution.status === 'FAILED') {
-      return this.updateExecution(step, {
-        type,
-        status: 'STARTED',
-        startedAt: Date.now(),
-        actions: [],
-        // Reset from previous (failed) execution
-        error: undefined,
-        signedAt: undefined,
-      })
-    }
-    return step
   }
 
   updateExecution(

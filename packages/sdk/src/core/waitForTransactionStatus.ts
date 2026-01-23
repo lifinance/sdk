@@ -5,7 +5,6 @@ import type {
   ExecutionActionType,
   LiFiStepExtended,
   SDKClient,
-  StepExecutionType,
 } from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
 import { getSubstatusMessage } from './executionMessages.js'
@@ -18,7 +17,7 @@ export async function waitForTransactionStatus(
   statusManager: StatusManager,
   txHash: string,
   step: LiFiStepExtended,
-  type: StepExecutionType,
+  type: ExecutionActionType,
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
@@ -45,7 +44,7 @@ export async function waitForTransactionStatus(
                   statusResponse.substatus
                 ),
               action: {
-                type: type as ExecutionActionType,
+                type,
                 txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
               },
             })

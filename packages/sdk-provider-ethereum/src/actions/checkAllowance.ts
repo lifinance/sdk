@@ -7,7 +7,6 @@ import type {
   SDKClient,
   SignedTypedData,
   StatusManager,
-  StepExecutionType,
 } from '@lifi/sdk'
 import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
@@ -27,7 +26,7 @@ import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 type CheckAllowanceParams = {
   checkClient(
     step: LiFiStepExtended,
-    type: StepExecutionType,
+    type: ExecutionActionType,
     targetChainId?: number
   ): Promise<Client | undefined>
   chain: ExtendedChain
@@ -67,7 +66,7 @@ export const checkAllowance = async (
     disableMessageSigning = false,
   }: CheckAllowanceParams
 ): Promise<AllowanceResult> => {
-  let executionType: StepExecutionType = 'PERMIT'
+  let executionType: ExecutionActionType = 'PERMIT'
   let signedTypedData: SignedTypedData[] = []
   try {
     // First, try to sign all permits in step.typedData
@@ -75,12 +74,15 @@ export const checkAllowance = async (
       (typedData) => typedData.primaryType === 'Permit'
     )
     if (!disableMessageSigning && permitTypedData?.length) {
-      step = statusManager.updateExecution(step, {
-        type: executionType,
-        status: 'PENDING',
-      })
+      const isNewProcess = step.execution?.type !== executionType
+      if (isNewProcess) {
+        step = statusManager.updateExecution(step, {
+          type: executionType,
+          status: 'STARTED',
+        })
+      }
       const permitAction = step.execution?.actions.find(
-        (a) => a.type === 'TOKEN_ALLOWANCE'
+        (a) => a.type === executionType
       )
       signedTypedData = permitAction?.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
@@ -134,7 +136,7 @@ export const checkAllowance = async (
           type: executionType,
           status: 'ACTION_REQUIRED',
           action: {
-            type: 'TOKEN_ALLOWANCE',
+            type: executionType,
             signedTypedData,
           },
         })
@@ -144,8 +146,9 @@ export const checkAllowance = async (
         type: executionType,
         status: 'PENDING',
         action: {
-          type: 'TOKEN_ALLOWANCE',
+          type: executionType,
           signedTypedData,
+          isDone: true,
         },
       })
       // Check if there's a signed permit for the source transaction chain
@@ -165,7 +168,7 @@ export const checkAllowance = async (
     executionType = 'TOKEN_ALLOWANCE'
     step = statusManager.updateExecution(step, {
       type: executionType,
-      status: 'PENDING',
+      status: 'STARTED',
     })
 
     const updatedClient = await checkClient(step, executionType)
@@ -193,7 +196,7 @@ export const checkAllowance = async (
     // Start new allowance check
     step = statusManager.updateExecution(step, {
       type: executionType,
-      status: 'PENDING',
+      status: 'STARTED',
     })
 
     const spenderAddress = permit2Supported
@@ -215,6 +218,11 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
+        action: {
+          type: executionType,
+          signedTypedData,
+          isDone: true,
+        },
       })
       return { status: 'DONE', data: signedTypedData }
     }
@@ -246,7 +254,7 @@ export const checkAllowance = async (
 
     if (isNativePermitAvailable && nativePermitData) {
       const existingPermitAction = step.execution?.actions.find(
-        (a) => a.type === 'TOKEN_ALLOWANCE'
+        (a) => a.type === executionType
       )
       signedTypedData = signedTypedData.length
         ? signedTypedData
@@ -291,8 +299,9 @@ export const checkAllowance = async (
         type: executionType,
         status: 'PENDING',
         action: {
-          type: 'TOKEN_ALLOWANCE',
+          type: executionType,
           signedTypedData,
+          isDone: true,
         },
       })
       return {
@@ -310,7 +319,12 @@ export const checkAllowance = async (
     step = statusManager.updateExecution(step, {
       type: executionType,
       status: resetApprovalStatus,
-      actions: step.execution!.actions.filter((t) => t.type !== executionType),
+      action: {
+        type: executionType,
+        txHash: undefined,
+        txLink: undefined,
+        isDone: false,
+      },
     })
 
     if (!allowUserInteraction) {
@@ -345,9 +359,12 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: executionType,
           status: 'ACTION_REQUIRED',
-          actions: step.execution!.actions.filter(
-            (t) => t.type !== executionType
-          ),
+          action: {
+            type: executionType,
+            txHash: undefined,
+            txLink: undefined,
+            isDone: false,
+          },
         })
 
         if (!allowUserInteraction) {
@@ -376,6 +393,10 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
+        action: {
+          type: executionType,
+          isDone: true,
+        },
       })
       const calls: Call[] = []
 
@@ -433,7 +454,7 @@ const waitForApprovalTransaction = async (
   client: SDKClient,
   viemClient: Client,
   txHash: Hash,
-  type: StepExecutionType,
+  type: ExecutionActionType,
   step: LiFiStep,
   chain: ExtendedChain,
   statusManager: StatusManager,
@@ -446,7 +467,7 @@ const waitForApprovalTransaction = async (
     type,
     status: 'PENDING',
     action: {
-      type: type as ExecutionActionType,
+      type,
       chainId: chain.id,
       txHash,
       txLink: getTxLink(txHash),
@@ -464,7 +485,7 @@ const waitForApprovalTransaction = async (
         type,
         status: 'PENDING',
         action: {
-          type: type as ExecutionActionType,
+          type,
           chainId: chain.id,
           txHash: newHash,
           txLink: getTxLink(newHash),
@@ -480,7 +501,7 @@ const waitForApprovalTransaction = async (
       type,
       status: 'PENDING',
       action: {
-        type: type as ExecutionActionType,
+        type,
         chainId: chain.id,
         txHash: finalHash,
         txLink: getTxLink(finalHash),

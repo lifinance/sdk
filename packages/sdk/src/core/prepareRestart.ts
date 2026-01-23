@@ -7,18 +7,20 @@ export const prepareRestart = (route: RouteExtended) => {
       // Find the index of the last transaction that has tx hash or taskId
       const lastValidIndex = step.execution.actions.findLastIndex(
         (action) =>
-          (!!action.txHash || !!action.taskId || !!action.signedTypedData) &&
+          (!!action.txHash ||
+            !!action.taskId ||
+            !!action.signedTypedData?.length) &&
           step.execution?.status !== 'FAILED'
       )
 
-      // Keep all transactions up to the one with tx hash
+      // Keep all actions up to the one with tx hash
       if (lastValidIndex >= 0) {
         step.execution.actions = step.execution.actions.slice(
           0,
           lastValidIndex + 1
         )
       } else {
-        // If no tx hash exists, reset the transactions array
+        // If no tx hash exists, reset the actions array
         step.execution.actions = []
       }
     }

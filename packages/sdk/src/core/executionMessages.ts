@@ -1,8 +1,8 @@
 import type { StatusMessage, Substatus } from '@lifi/types'
-import type { ExecutionStatus, StepExecutionType } from '../types/core.js'
+import type { ExecutionActionType, ExecutionStatus } from '../types/core.js'
 
 const executionMessages: Record<
-  StepExecutionType,
+  ExecutionActionType,
   Partial<Record<ExecutionStatus, string>>
 > = {
   TOKEN_ALLOWANCE: {
@@ -64,7 +64,7 @@ const substatusMessages: Record<
 }
 
 export function getExecutionMessage(
-  type: StepExecutionType,
+  type: ExecutionActionType,
   status: ExecutionStatus
 ): string | undefined {
   return executionMessages[type][status]

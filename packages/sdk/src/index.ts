@@ -77,7 +77,6 @@ export type {
   SDKClient,
   SDKConfig,
   SDKProvider,
-  StepExecutionType,
   StepExecutor,
   StepExecutorOptions,
   StepExtended,

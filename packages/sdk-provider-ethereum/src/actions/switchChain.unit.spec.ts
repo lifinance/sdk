@@ -1,5 +1,4 @@
 import {
-  type ExecutionOptions,
   LiFiErrorCode,
   type LiFiStepExtended,
   ProviderError,
@@ -14,7 +13,6 @@ import { buildStepObject } from './switchChain.unit.mock.js'
 let client: Client
 let step: LiFiStepExtended
 let statusManager: StatusManager
-let _hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
 let updateExecutionMock: Mock
@@ -22,11 +20,7 @@ let updateExecutionMock: Mock
 describe('switchChain', () => {
   beforeEach(() => {
     switchChainHookMock = vi.fn()
-    _hooks = {
-      switchChainHook: switchChainHookMock,
-    } as unknown as ExecutionOptions
-
-    step = buildStepObject({ includingExecution: true })
+    step = buildStepObject()
 
     requestMock = vi.fn(() => 1)
     client = {

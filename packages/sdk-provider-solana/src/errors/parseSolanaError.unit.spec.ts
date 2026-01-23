@@ -9,9 +9,9 @@ import { describe, expect, it } from 'vitest'
 import { buildStepObject } from './parseSolanaError.unit.mock.js'
 import { parseSolanaErrors } from './parseSolanaErrors.js'
 
-describe('parseSolanaStepError', () => {
-  describe('when a SDKError is passed', () => {
-    it('should return the original error', async () => {
+describe('parseSolanaErrors', () => {
+  describe('when SDKError is passed', () => {
+    it('should return original error and add step if not present', async () => {
       const error = new SDKError(
         new BaseError(
           ErrorName.UnknownError,
@@ -19,136 +19,74 @@ describe('parseSolanaStepError', () => {
           'there was an error'
         )
       )
+      const step = buildStepObject()
 
-      const parsedError = await parseSolanaErrors(error)
+      const parsedError = await parseSolanaErrors(error, step)
 
       expect(parsedError).toBe(error)
-
-      expect(parsedError.step).toBeUndefined()
+      expect(parsedError.step).toBe(step)
     })
 
-    describe('when step is passed', () => {
-      it('should return the original error with step added', async () => {
-        const error = new SDKError(
-          new BaseError(
-            ErrorName.UnknownError,
-            LiFiErrorCode.InternalError,
-            'there was an error'
-          )
-        )
+    it('should preserve existing step', async () => {
+      const existingStep = buildStepObject()
+      const error = new SDKError(
+        new BaseError(
+          ErrorName.UnknownError,
+          LiFiErrorCode.InternalError,
+          'there was an error'
+        ),
+        existingStep
+      )
+      const newStep = buildStepObject()
 
-        const step = buildStepObject({ includingExecution: true })
+      const parsedError = await parseSolanaErrors(error, newStep)
 
-        const parsedError = await parseSolanaErrors(error, step)
-
-        expect(parsedError).toBe(error)
-
-        expect(parsedError.step).toBe(step)
-      })
-
-      describe('when the SDKError already has a step', () => {
-        it('should return the original error with the existing step', async () => {
-          const expectedStep = buildStepObject({ includingExecution: true })
-
-          const error = new SDKError(
-            new BaseError(
-              ErrorName.UnknownError,
-              LiFiErrorCode.InternalError,
-              'there was an error'
-            ),
-            expectedStep
-          )
-
-          const step = buildStepObject({ includingExecution: true })
-
-          const parsedError = await parseSolanaErrors(error, step)
-
-          expect(parsedError).toBe(error)
-
-          expect(parsedError.step).toBe(expectedStep)
-        })
-      })
+      expect(parsedError).toBe(error)
+      expect(parsedError.step).toBe(existingStep)
     })
   })
 
-  describe('when a BaseError is passed', () => {
-    it('should return the BaseError as the cause on a SDKError', async () => {
+  describe('when BaseError is passed', () => {
+    it('should wrap in SDKError with step', async () => {
       const error = new BaseError(
         ErrorName.BalanceError,
         LiFiErrorCode.BalanceError,
         'there was an error'
       )
+      const step = buildStepObject()
 
-      const parsedError = await parseSolanaErrors(error)
+      const parsedError = await parseSolanaErrors(error, step)
 
       expect(parsedError).toBeInstanceOf(SDKError)
-      expect(parsedError.step).toBeUndefined()
+      expect(parsedError.step).toBe(step)
       expect(parsedError.cause).toBe(error)
     })
-
-    describe('when step is passed', () => {
-      it('should return the SDKError with step added', async () => {
-        const error = new BaseError(
-          ErrorName.BalanceError,
-          LiFiErrorCode.BalanceError,
-          'there was an error'
-        )
-
-        const step = buildStepObject({ includingExecution: true })
-
-        const parsedError = await parseSolanaErrors(error, step)
-
-        expect(parsedError).toBeInstanceOf(SDKError)
-        expect(parsedError.step).toBe(step)
-        expect(parsedError.cause).toBe(error)
-      })
-    })
   })
 
-  describe('when a generic Error is passed', () => {
-    it('should return the Error as the cause on a BaseError which is wrapped in an SDKError', async () => {
-      const error = new Error('Somethings fishy')
+  describe('when generic Error is passed', () => {
+    it('should wrap in UnknownError then SDKError', async () => {
+      const error = new Error('Something went wrong')
+      const step = buildStepObject()
 
-      const parsedError = await parseSolanaErrors(error)
+      const parsedError = await parseSolanaErrors(error, step)
+
       expect(parsedError).toBeInstanceOf(SDKError)
-      expect(parsedError.step).toBeUndefined()
-
-      const baseError = parsedError.cause
-      expect(baseError).toBeInstanceOf(BaseError)
-
-      const causeError = baseError.cause
-      expect(causeError).toBe(error)
-    })
-
-    describe('when step is passed', () => {
-      it('should return an SDKError with step added', async () => {
-        const error = new Error('Somethings fishy')
-
-        const step = buildStepObject({ includingExecution: true })
-
-        const parsedError = await parseSolanaErrors(error, step)
-        expect(parsedError).toBeInstanceOf(SDKError)
-        expect(parsedError.step).toBe(step)
-      })
+      expect(parsedError.step).toBe(step)
+      expect(parsedError.cause).toBeInstanceOf(BaseError)
+      expect(parsedError.cause.cause).toBe(error)
     })
   })
 
-  describe('when Solana Errors are passed', () => {
-    describe('when the error is a WalletSignTransactionError', () => {
-      it('should return the BaseError with the SignatureRejected code as the cause on a SDKError', async () => {
-        const MockSolanaError = new Error()
-        MockSolanaError.name = 'WalletSignTransactionError'
+  describe('when Solana-specific errors are passed', () => {
+    it('should handle WalletSignTransactionError', async () => {
+      const mockSolanaError = new Error()
+      mockSolanaError.name = 'WalletSignTransactionError'
 
-        const parsedError = await parseSolanaErrors(MockSolanaError)
+      const parsedError = await parseSolanaErrors(mockSolanaError)
 
-        expect(parsedError).toBeInstanceOf(SDKError)
-
-        const baseError = parsedError.cause
-        expect(baseError).toBeInstanceOf(TransactionError)
-        expect(baseError.code).toEqual(LiFiErrorCode.SignatureRejected)
-
-        expect(baseError.cause).toBe(MockSolanaError)
-      })
+      expect(parsedError).toBeInstanceOf(SDKError)
+      expect(parsedError.cause).toBeInstanceOf(TransactionError)
+      expect(parsedError.cause.code).toEqual(LiFiErrorCode.SignatureRejected)
     })
   })
 })

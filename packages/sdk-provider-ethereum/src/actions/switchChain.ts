@@ -1,9 +1,9 @@
 import {
+  type ExecutionActionType,
   LiFiErrorCode,
   type LiFiStepExtended,
   ProviderError,
   type StatusManager,
-  type StepExecutionType,
 } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
@@ -30,7 +30,7 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
-  type: StepExecutionType,
+  type: ExecutionActionType,
   targetChainId: number,
   allowUserInteraction: boolean,
   switchChain?: (chainId: number) => Promise<Client | undefined>

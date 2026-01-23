@@ -59,37 +59,51 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = step.action.fromChainId !== step.action.toChainId
     const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    step = this.statusManager.initExecution(step, executionType)
+    const isNewExecution = !step.execution || step.execution.status === 'FAILED'
+    const isNewProcess =
+      isNewExecution || step.execution?.type !== executionType
+
+    if (isNewExecution) {
+      step = this.statusManager.updateExecution(step, {
+        type: executionType,
+        status: 'PENDING',
+        startedAt: Date.now(),
+        actions: [],
+        // Reset from previous (failed) execution
+        error: undefined,
+        signedAt: undefined,
+      })
+    }
 
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
 
-    step = this.statusManager.updateExecution(step, {
-      type: executionType,
-      status: 'PENDING',
-    })
+    if (isNewProcess) {
+      step = this.statusManager.updateExecution(step, {
+        type: executionType,
+        status: 'STARTED',
+      })
+    }
 
     const publicClient = await getBitcoinPublicClient(client, ChainId.BTC)
 
-    const currentTransaction = step.execution?.actions.find(
-      (t) => t.type === executionType
-    )
-    if (!currentTransaction?.isDone) {
+    const action = step.execution?.actions.find((t) => t.type === executionType)
+    if (!action?.isDone) {
       try {
         let txHash: string
         let txHex: string
 
-        if (currentTransaction?.txHash) {
+        if (action?.txHash) {
           // Make sure that the chain is still correct
           this.checkClient(step)
 
           // Wait for exiting transaction
-          txHash = currentTransaction.txHash
-          txHex = currentTransaction.txHex ?? ''
+          txHash = action.txHash
+          txHex = action.txHex ?? ''
         } else {
           step = this.statusManager.updateExecution(step, {
             type: executionType,
-            status: 'PENDING',
+            status: 'STARTED',
           })
 
           // Check balance

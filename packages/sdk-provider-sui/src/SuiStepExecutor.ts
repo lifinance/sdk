@@ -47,24 +47,38 @@ export class SuiStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = step.action.fromChainId !== step.action.toChainId
     const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    step = this.statusManager.initExecution(step, executionType)
+    const isNewExecution = !step.execution || step.execution.status === 'FAILED'
+    const isNewProcess =
+      isNewExecution || step.execution?.type !== executionType
+
+    if (isNewExecution) {
+      step = this.statusManager.updateExecution(step, {
+        type: executionType,
+        status: 'PENDING',
+        startedAt: Date.now(),
+        actions: [],
+        // Reset from previous (failed) execution
+        error: undefined,
+        signedAt: undefined,
+      })
+    }
 
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
 
-    step = this.statusManager.updateExecution(step, {
-      type: executionType,
-      status: 'PENDING',
-    })
+    if (isNewProcess) {
+      step = this.statusManager.updateExecution(step, {
+        type: executionType,
+        status: 'STARTED',
+      })
+    }
 
-    const transaction = step.execution?.actions.find(
-      (t) => t.type === executionType
-    )
-    if (!transaction?.isDone) {
+    const action = step.execution?.actions.find((t) => t.type === executionType)
+    if (!action?.isDone) {
       try {
         step = this.statusManager.updateExecution(step, {
           type: executionType,
-          status: 'PENDING',
+          status: 'STARTED',
         })
 
         // Check balance

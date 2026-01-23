@@ -207,11 +207,14 @@ export const buildStepObject = ({
         actions: [
           {
             type: 'TOKEN_ALLOWANCE',
+            chainId: 137,
             txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
             txLink: 'https://example.com',
+            isDone: true,
           },
           {
             type: 'SWAP',
+            chainId: 137,
           },
         ],
         fromAmount: '1000000',

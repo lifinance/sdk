@@ -14,7 +14,6 @@ import {
   relayTransaction,
   type SDKClient,
   type SignedTypedData,
-  type StepExecutionType,
   type StepExecutorOptions,
   stepComparison,
   TransactionError,
@@ -82,7 +81,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   // Ensure that we are using the right chain and wallet when executing transactions.
   checkClient = async (
     step: LiFiStepExtended,
-    type: StepExecutionType,
+    type: ExecutionActionType,
     targetChainId?: number
   ) => {
     const updatedClient = await switchChain(
@@ -142,7 +141,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       isBridgeExecution,
     }: {
       step: LiFiStepExtended
-      type: StepExecutionType
+      type: ExecutionActionType
       fromChain: ExtendedChain
       toChain: ExtendedChain
       isBridgeExecution: boolean
@@ -170,7 +169,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           type,
           status: 'PENDING',
           action: {
-            type: type as ExecutionActionType,
+            type,
             chainId: fromChain.id,
             txHash: txHash,
             txLink:
@@ -217,7 +216,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
               type,
               status: 'PENDING',
               action: {
-                type: type as ExecutionActionType,
+                type,
                 chainId: fromChain.id,
                 txHash: response.transaction.hash,
                 txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
@@ -243,7 +242,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   private prepareUpdatedStep = async (
     client: SDKClient,
     step: LiFiStepExtended,
-    type: StepExecutionType,
+    type: ExecutionActionType,
     signedTypedData?: SignedTypedData[]
   ) => {
     const { execution, ...stepBase } = step
@@ -490,22 +489,32 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const isBridgeExecution = step.action.fromChainId !== step.action.toChainId
     const executionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
-    step = this.statusManager.initExecution(step, executionType)
+    const isNewExecution = !step.execution || step.execution.status === 'FAILED'
+    const isNewProcess =
+      isNewExecution || step.execution?.type !== executionType
+
+    if (isNewExecution) {
+      step = this.statusManager.updateExecution(step, {
+        type: executionType,
+        status: 'PENDING',
+        startedAt: Date.now(),
+        actions: [],
+        // Reset from previous (failed) execution
+        error: undefined,
+        signedAt: undefined,
+      })
+    }
 
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
-    const destinationChainTransaction = step.execution?.actions.find(
-      (t) => t.type === 'RECEIVING_CHAIN'
-    )
-
     // Make sure that the chain is still correct
     // If the step is waiting for a transaction on the destination chain, we do not switch the chain
     // All changes are already done from the source chain
     // Return the step
     if (
-      destinationChainTransaction &&
+      step.execution?.type === 'RECEIVING_CHAIN' &&
       step.execution?.substatus !== 'WAIT_DESTINATION_TRANSACTION'
     ) {
-      const updatedClient = await this.checkClient(step, executionType)
+      const updatedClient = await this.checkClient(step, 'RECEIVING_CHAIN')
       if (!updatedClient) {
         return step
       }
@@ -531,11 +540,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             chainId: fromChain.id,
           })
 
-    // Find existing swap/bridge process
-    const existingProcess = step?.execution?.actions.find(
-      (p) => p.type === executionType
-    )
-
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
@@ -557,11 +561,16 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       !step.estimate.skipApproval &&
       !step.estimate.skipPermit
 
+    // Find existing swap/bridge process
+    const existingAction = step?.execution?.actions.find(
+      (p) => p.type === executionType
+    )
+
     const checkForAllowance =
       // No existing swap/bridge transaction is pending
-      !existingProcess?.txHash &&
+      !existingAction?.txHash &&
       // No existing swap/bridge batch/order is pending
-      !existingProcess?.taskId &&
+      !existingAction?.taskId &&
       // Token is not native (address is not zero)
       !isFromNativeToken &&
       // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
@@ -602,10 +611,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     }
 
     try {
-      const transaction = step.execution?.actions.find(
+      const action = step.execution?.actions.find(
         (t) => t.type === executionType
       )
-      if (transaction?.isDone) {
+      if (action?.isDone) {
         await waitForDestinationChainTransaction(
           client,
           step,
@@ -618,7 +627,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      if (transaction?.txHash || transaction?.taskId) {
+      if (action?.txHash || action?.taskId) {
         // Make sure that the chain is still correct
         const updatedClient = await this.checkClient(step, executionType)
         if (!updatedClient) {
@@ -636,10 +645,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
-      step = this.statusManager.updateExecution(step, {
-        type: executionType,
-        status: 'PENDING',
-      })
+      if (isNewProcess) {
+        step = this.statusManager.updateExecution(step, {
+          type: executionType,
+          status: 'STARTED',
+        })
+      }
 
       await checkBalance(client, this.client.account!.address, step)
 

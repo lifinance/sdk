@@ -8,7 +8,6 @@ import type {
   ExecutionActionType,
   LiFiStepExtended,
   SDKClient,
-  StepExecutionType,
 } from '../types/core.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import type { StatusManager } from './StatusManager.js'
@@ -17,7 +16,7 @@ import { waitForTransactionStatus } from './waitForTransactionStatus.js'
 export async function waitForDestinationChainTransaction(
   client: SDKClient,
   step: LiFiStepExtended,
-  type: StepExecutionType,
+  type: ExecutionActionType,
   fromChain: ExtendedChain,
   toChain: ExtendedChain,
   statusManager: StatusManager,
@@ -78,7 +77,7 @@ export async function waitForDestinationChainTransaction(
         },
       ],
       action: {
-        type: type as ExecutionActionType,
+        type,
         chainId: statusReceiving?.chainId || toChain.id,
         txHash: statusReceiving?.txHash,
         txLink:

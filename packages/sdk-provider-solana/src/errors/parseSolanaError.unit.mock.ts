@@ -1,5 +1,3 @@
-// This file holds generator functions to create objects for testing purposes
-
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey, type LiFiStepExtended, type Token } from '@lifi/sdk'
 
@@ -12,13 +10,9 @@ const SOME_OTHER_TOKEN: Token = {
   priceUSD: '',
 }
 
-export const SOME_DATE = new Date('2021-04-10').getTime()
+const SOME_DATE = new Date('2021-04-10').getTime()
 
-export const buildStepObject = ({
-  includingExecution = true,
-}: {
-  includingExecution?: boolean
-}): LiFiStepExtended => ({
+export const buildStepObject = (): LiFiStepExtended => ({
   id: '8d3a0474-4ee3-4a7a-90c7-2a2264b7f3a9',
   type: 'lifi',
   tool: '1inch',
@@ -119,24 +113,25 @@ export const buildStepObject = ({
       },
     },
   ],
-  execution: includingExecution
-    ? {
+  execution: {
+    type: 'SWAP',
+    status: 'PENDING',
+    startedAt: SOME_DATE,
+    message: 'Preparing swap transaction.',
+    actions: [
+      {
+        type: 'TOKEN_ALLOWANCE',
+        chainId: 137,
+        txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
+        txLink: 'https://example.com',
+        isDone: true,
+      },
+      {
         type: 'SWAP',
-        status: 'PENDING',
-        startedAt: SOME_DATE,
-        message: 'Preparing swap transaction.',
-        actions: [
-          {
-            type: 'TOKEN_ALLOWANCE',
-            txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
-            txLink: 'https://example.com',
-          },
-          {
-            type: 'SWAP',
-          },
-        ],
-        fromAmount: '1000000',
-        toAmount: '261490494702370',
-      }
-    : undefined,
+        chainId: 137,
+      },
+    ],
+    fromAmount: '1000000',
+    toAmount: '261490494702370',
+  },
 })
