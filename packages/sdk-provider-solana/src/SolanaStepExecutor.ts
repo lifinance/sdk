@@ -63,7 +63,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     step = this.statusManager.updateExecution(step, {
       type: executionType,
       status: 'PENDING',
-      chainId: fromChain.id,
     })
 
     const transaction = step.execution?.actions.find(

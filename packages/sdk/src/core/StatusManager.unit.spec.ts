@@ -60,17 +60,15 @@ describe('StatusManager', () => {
         expect(updateRouteHookMock).toHaveBeenCalled()
       })
 
-      it('should create execution with the new type and chainId', () => {
+      it('should create execution with startedAt timestamp', () => {
         const result = statusManager.updateExecution(structuredClone(step), {
           type: 'SWAP',
-          chainId: 137,
           status: 'PENDING',
           startedAt: Date.now(),
           actions: [],
         })
 
         expect(result.execution!.type).toBe('SWAP')
-        expect(result.execution!.chainId).toBe(137)
         expect(result.execution!.status).toBe('PENDING')
         expect(result.execution!.startedAt).toBe(SOME_DATE)
         expect(updateRouteHookMock).toHaveBeenCalled()
@@ -129,7 +127,6 @@ describe('StatusManager', () => {
           const clonedStep = structuredClone(step)
           const stepWithNewType = statusManager.updateExecution(clonedStep, {
             type: 'RECEIVING_CHAIN',
-            chainId: 42161,
             status: 'PENDING',
           })
 
@@ -206,15 +203,13 @@ describe('StatusManager', () => {
       })
 
       describe('and updating type', () => {
-        it('should update the type and chainId', () => {
+        it('should update the type', () => {
           const result = statusManager.updateExecution(structuredClone(step), {
             type: 'RECEIVING_CHAIN',
-            chainId: 42161,
             status: 'PENDING',
           })
 
           expect(result.execution!.type).toBe('RECEIVING_CHAIN')
-          expect(result.execution!.chainId).toBe(42161)
           expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })

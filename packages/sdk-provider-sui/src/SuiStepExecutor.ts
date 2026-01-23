@@ -54,7 +54,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
 
     step = this.statusManager.updateExecution(step, {
       type: executionType,
-      chainId: fromChain.id,
       status: 'PENDING',
     })
 

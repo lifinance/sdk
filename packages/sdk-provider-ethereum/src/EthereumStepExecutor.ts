@@ -640,7 +640,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       step = this.statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
-        chainId: fromChain.id,
       })
 
       await checkBalance(client, this.client.account!.address, step)

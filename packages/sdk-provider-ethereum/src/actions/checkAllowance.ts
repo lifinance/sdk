@@ -78,9 +78,11 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
-        chainId: step.action.fromChainId,
       })
-      signedTypedData = step.execution?.signedTypedData ?? signedTypedData
+      const permitAction = step.execution?.actions.find(
+        (a) => a.type === 'TOKEN_ALLOWANCE'
+      )
+      signedTypedData = permitAction?.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
         // Check if we already have a valid permit for this chain and requirements
         const signedTypedDataForChain = signedTypedData.find(
@@ -131,14 +133,20 @@ export const checkAllowance = async (
         step = statusManager.updateExecution(step, {
           type: executionType,
           status: 'ACTION_REQUIRED',
-          signedTypedData,
+          action: {
+            type: 'TOKEN_ALLOWANCE',
+            signedTypedData,
+          },
         })
       }
 
       step = statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
-        signedTypedData,
+        action: {
+          type: 'TOKEN_ALLOWANCE',
+          signedTypedData,
+        },
       })
       // Check if there's a signed permit for the source transaction chain
       const matchingPermit = signedTypedData.find(
@@ -158,7 +166,6 @@ export const checkAllowance = async (
     step = statusManager.updateExecution(step, {
       type: executionType,
       status: 'PENDING',
-      chainId: step.action.fromChainId,
     })
 
     const updatedClient = await checkClient(step, executionType)
@@ -238,9 +245,12 @@ export const checkAllowance = async (
     }
 
     if (isNativePermitAvailable && nativePermitData) {
+      const existingPermitAction = step.execution?.actions.find(
+        (a) => a.type === 'TOKEN_ALLOWANCE'
+      )
       signedTypedData = signedTypedData.length
         ? signedTypedData
-        : step.execution?.signedTypedData || []
+        : existingPermitAction?.signedTypedData || []
       // Check if we already have a valid permit for this chain and requirements
       const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
         isNativePermitValid(signedTypedData, nativePermitData)
@@ -280,7 +290,10 @@ export const checkAllowance = async (
       step = statusManager.updateExecution(step, {
         type: executionType,
         status: 'PENDING',
-        signedTypedData,
+        action: {
+          type: 'TOKEN_ALLOWANCE',
+          signedTypedData,
+        },
       })
       return {
         status: 'NATIVE_PERMIT',

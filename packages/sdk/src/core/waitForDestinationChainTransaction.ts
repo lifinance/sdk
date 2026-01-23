@@ -38,7 +38,6 @@ export async function waitForDestinationChainTransaction(
       step = statusManager.updateExecution(step, {
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
-        chainId: toChain.id,
       })
       type = 'RECEIVING_CHAIN'
     }
@@ -58,7 +57,6 @@ export async function waitForDestinationChainTransaction(
     step = statusManager.updateExecution(step, {
       type,
       status: 'DONE',
-      chainId: statusReceiving?.chainId || toChain.id,
       substatus: statusResponse.substatus,
       substatusMessage: statusResponse.substatusMessage,
       ...(statusResponse.sending.amount && {

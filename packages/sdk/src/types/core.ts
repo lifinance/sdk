@@ -236,6 +236,7 @@ export type ExecutionAction = {
   txLink?: string
   txType?: TransactionMethodType
   txHex?: string
+  signedTypedData?: SignedTypedData[]
 }
 
 export interface Execution {
@@ -243,9 +244,9 @@ export interface Execution {
   startedAt: number
   signedAt?: number
   status: ExecutionStatus
+  message?: string
   substatus?: Substatus
   substatusMessage?: string
-  message?: string
   error?: {
     code: string | number
     message: string
@@ -259,12 +260,11 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
-  chainId?: number
-  signedTypedData?: SignedTypedData[]
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
 
+// Always set type and status when updating the execution
 export type ExecutionUpdate = Partial<Omit<Execution, 'type' | 'status'>> & {
   type: StepExecutionType
   status: ExecutionStatus
