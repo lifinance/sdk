@@ -15,7 +15,6 @@ type FindOrCreateActionProps = {
   type: ExecutionActionType
   chainId?: ChainId
   status?: ExecutionActionStatus
-  startedAt?: number
 }
 
 /**
@@ -39,9 +38,9 @@ export class StatusManager {
   initExecutionObject = (step: LiFiStepExtended): Execution => {
     if (!step.execution) {
       step.execution = {
+        startedAt: Date.now(),
         status: 'PENDING',
         actions: [],
-        startedAt: Date.now(),
       }
       this.updateStepInRoute(step)
     }
@@ -72,9 +71,6 @@ export class StatusManager {
       throw Error("Can't update empty execution.")
     }
     step.execution.status = status
-    if (status === 'DONE') {
-      step.execution.doneAt = Date.now()
-    }
     if (execution) {
       step.execution = {
         ...step.execution,
@@ -124,7 +120,6 @@ export class StatusManager {
     type,
     chainId,
     status,
-    startedAt,
   }: FindOrCreateActionProps): ExecutionAction => {
     const action = this.findAction(step, type, status)
 
@@ -134,7 +129,6 @@ export class StatusManager {
 
     const newAction: ExecutionAction = {
       type: type,
-      startedAt: startedAt ?? Date.now(),
       message: getActionMessage(type, status ?? 'STARTED'),
       status: status ?? 'STARTED',
       chainId: chainId,
@@ -170,24 +164,19 @@ export class StatusManager {
 
     switch (status) {
       case 'CANCELLED':
-        currentAction.doneAt = Date.now()
         break
       case 'FAILED':
-        currentAction.doneAt = Date.now()
         step.execution.status = 'FAILED'
         break
       case 'DONE':
-        currentAction.doneAt = Date.now()
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
-        currentAction.pendingAt = Date.now()
         break
       case 'RESET_REQUIRED':
       case 'MESSAGE_REQUIRED':
       case 'ACTION_REQUIRED':
         step.execution.status = 'ACTION_REQUIRED'
-        currentAction.actionRequiredAt = Date.now()
         break
       default:
         break

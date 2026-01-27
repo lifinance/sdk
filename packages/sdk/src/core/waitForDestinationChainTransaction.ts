@@ -39,7 +39,6 @@ export async function waitForDestinationChainTransaction(
         type: 'RECEIVING_CHAIN',
         status: 'PENDING',
         chainId: toChain.id,
-        startedAt: action.doneAt,
       })
       actionType = receivingChainAction.type
     }

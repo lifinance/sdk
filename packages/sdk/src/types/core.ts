@@ -230,11 +230,6 @@ export type ExecutionAction = {
   taskId?: string
   txLink?: string
   txType?: TransactionMethodType
-  actionRequiredAt?: number
-  doneAt?: number
-  failedAt?: number
-  pendingAt?: number
-  startedAt: number
   message?: string
   error?: {
     code: string | number
@@ -248,7 +243,6 @@ export type ExecutionAction = {
 
 export interface Execution {
   startedAt: number
-  doneAt?: number
   status: ExecutionStatus
   actions: Array<ExecutionAction>
   fromAmount?: string

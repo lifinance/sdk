@@ -215,11 +215,11 @@ describe('StatusManager', () => {
       const statuses = [
         { status: 'ACTION_REQUIRED' },
         { status: 'PENDING' },
-        { status: 'FAILED', doneAt: true },
-        { status: 'DONE', doneAt: true },
-        { status: 'CANCELLED', doneAt: true },
+        { status: 'FAILED' },
+        { status: 'DONE' },
+        { status: 'CANCELLED' },
       ]
-      for (const { status, doneAt } of statuses) {
+      for (const { status } of statuses) {
         describe(`and the status is ${status}`, () => {
           it('should update the action and call the callbacks', () => {
             const action = statusManager.updateAction(
@@ -233,9 +233,6 @@ describe('StatusManager', () => {
             // expect(action.message).toEqual(
             //   getActionMessage('SWAP', status as Status)
             // )
-            doneAt
-              ? expect(action.doneAt).toBeDefined()
-              : expect(action.doneAt).toBeUndefined()
 
             const notUpdateableStatus =
               status === 'DONE' || status === 'CANCELLED'
