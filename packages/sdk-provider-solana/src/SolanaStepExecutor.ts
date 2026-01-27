@@ -163,10 +163,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         }
 
         action = this.statusManager.updateAction(step, action.type, 'PENDING')
-        // Record the time when the user has signed the transaction
-        step = this.statusManager.updateExecution(step, 'PENDING', {
-          signedAt: Date.now(),
-        })
 
         const transactionCodec = getTransactionCodec()
 

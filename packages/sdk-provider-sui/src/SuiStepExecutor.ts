@@ -139,10 +139,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
         })
 
         action = this.statusManager.updateAction(step, action.type, 'PENDING')
-        // Record the time when the user has signed the transaction
-        step = this.statusManager.updateExecution(step, 'PENDING', {
-          signedAt: Date.now(),
-        })
 
         const result = await callSuiWithRetry(client, (client) =>
           client.waitForTransaction({

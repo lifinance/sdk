@@ -825,10 +825,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
               : txLink,
         }
       )
-      // Record the time when the user has signed the transaction
-      step = this.statusManager.updateExecution(step, 'PENDING', {
-        signedAt: Date.now(),
-      })
 
       await this.waitForTransaction(client, {
         step,
