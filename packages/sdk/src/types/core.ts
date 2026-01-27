@@ -243,6 +243,7 @@ export type ExecutionAction = {
 
 export interface Execution {
   startedAt: number
+  signedAt?: number
   status: ExecutionStatus
   actions: Array<ExecutionAction>
   fromAmount?: string

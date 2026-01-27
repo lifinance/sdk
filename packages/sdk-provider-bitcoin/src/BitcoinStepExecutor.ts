@@ -262,6 +262,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
               txHex,
             }
           )
+          // Record the time when the user has signed the transaction
+          step = this.statusManager.updateExecution(step, 'PENDING', {
+            signedAt: Date.now(),
+          })
         }
 
         let replacementReason: ReplacementReason | undefined

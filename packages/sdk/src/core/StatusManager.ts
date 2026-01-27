@@ -49,6 +49,7 @@ export class StatusManager {
     if (step.execution.status === 'FAILED') {
       step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
+      step.execution.signedAt = undefined
       this.updateStepInRoute(step)
     }
 
