@@ -80,7 +80,6 @@ export const switchChain = async (
         code: LiFiErrorCode.ChainSwitchError,
       },
     })
-    statusManager.updateExecution(step, 'FAILED')
     throw error
   }
 }

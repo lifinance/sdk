@@ -397,7 +397,6 @@ export const checkAllowance = async (
         code: error.code,
       },
     })
-    statusManager.updateExecution(step, 'FAILED')
     throw error
   }
 }

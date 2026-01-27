@@ -118,7 +118,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           message: errorMessage,
         },
       })
-      this.statusManager.updateExecution(step, 'FAILED')
       throw await parseEthereumErrors(
         new TransactionError(
           LiFiErrorCode.WalletChangedDuringExecution,
@@ -859,8 +858,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           },
         }
       )
-      this.statusManager.updateExecution(step, 'FAILED')
-
       throw error
     }
   }

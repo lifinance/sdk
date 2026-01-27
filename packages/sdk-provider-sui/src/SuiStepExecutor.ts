@@ -177,7 +177,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
             code: error.code,
           },
         })
-        this.statusManager.updateExecution(step, 'FAILED')
         throw error
       }
     }

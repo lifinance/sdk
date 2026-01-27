@@ -103,8 +103,6 @@ export async function waitForDestinationChainTransaction(
         htmlMessage,
       },
     })
-
-    statusManager.updateExecution(step, 'FAILED')
     throw e
   }
 }
