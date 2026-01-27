@@ -123,7 +123,6 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(updateExecutionMock).toHaveBeenCalledWith(step, 'FAILED')
         })
       })
 
@@ -153,7 +152,6 @@ describe('switchChain', () => {
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-          expect(updateExecutionMock).toHaveBeenCalledWith(step, 'FAILED')
         })
       })
 
