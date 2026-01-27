@@ -1,8 +1,8 @@
 import {
+  type ExecutionAction,
   type ExecutionOptions,
   LiFiErrorCode,
   type LiFiStep,
-  type Process,
   ProviderError,
   type StatusManager,
 } from '@lifi/sdk'
@@ -18,10 +18,10 @@ let statusManager: StatusManager
 let _hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
-let findOrCreateProcessMock: Mock
+let findOrCreateActionMock: Mock
 let updateExecutionMock: Mock
-let updateProcessMock: Mock
-let mockProcess: Process
+let updateActionMock: Mock
+let mockAction: ExecutionAction
 
 describe('switchChain', () => {
   beforeEach(() => {
@@ -37,20 +37,20 @@ describe('switchChain', () => {
       request: requestMock,
     } as unknown as Client
 
-    findOrCreateProcessMock = vi.fn()
+    findOrCreateActionMock = vi.fn()
     updateExecutionMock = vi.fn()
-    updateProcessMock = vi.fn()
-    mockProcess = {
+    updateActionMock = vi.fn()
+    mockAction = {
       type: 'SWAP',
       status: 'STARTED',
       startedAt: Date.now(),
     }
     statusManager = {
       initExecutionObject: vi.fn(),
-      findOrCreateProcess: findOrCreateProcessMock,
-      removeProcess: vi.fn(),
+      findOrCreateAction: findOrCreateActionMock,
+      removeAction: vi.fn(),
       updateExecution: updateExecutionMock,
-      updateProcess: updateProcessMock,
+      updateAction: updateActionMock,
     } as unknown as StatusManager
   })
 
@@ -64,7 +64,7 @@ describe('switchChain', () => {
         client,
         statusManager,
         step,
-        mockProcess,
+        mockAction,
         step.action.fromChainId,
         true,
         switchChainHookMock
@@ -79,7 +79,7 @@ describe('switchChain', () => {
   describe('when the chain is not correct', () => {
     beforeEach(() => {
       requestMock.mockResolvedValueOnce(1)
-      findOrCreateProcessMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
+      findOrCreateActionMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
     })
 
     describe('when allowUserInteraction is false', () => {
@@ -88,7 +88,7 @@ describe('switchChain', () => {
           client,
           statusManager,
           step,
-          mockProcess,
+          mockAction,
           step.action.fromChainId,
           false,
           switchChainHookMock
@@ -113,7 +113,7 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
-              mockProcess,
+              mockAction,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -138,7 +138,7 @@ describe('switchChain', () => {
               client,
               statusManager,
               step,
-              mockProcess,
+              mockAction,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -173,7 +173,7 @@ describe('switchChain', () => {
             client,
             statusManager,
             step,
-            mockProcess,
+            mockAction,
             step.action.fromChainId,
             true,
             switchChainHookMock

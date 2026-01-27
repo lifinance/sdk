@@ -1,10 +1,10 @@
 import {
   BaseError,
   ErrorMessage,
+  type ExecutionAction,
   fetchTxErrorDetails,
   LiFiErrorCode,
   type LiFiStep,
-  type Process,
   SDKError,
   TransactionError,
   UnknownError,
@@ -14,23 +14,23 @@ import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 export const parseEthereumErrors = async (
   e: Error,
   step?: LiFiStep,
-  process?: Process
+  action?: ExecutionAction
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.process = e.process ?? process
+    e.action = e.action ?? action
     return e
   }
 
-  const baseError = await handleSpecificErrors(e, step, process)
+  const baseError = await handleSpecificErrors(e, step, action)
 
-  return new SDKError(baseError, step, process)
+  return new SDKError(baseError, step, action)
 }
 
 const handleSpecificErrors = async (
   e: any,
   step?: LiFiStep,
-  process?: Process
+  action?: ExecutionAction
 ) => {
   if (
     e.name === 'UserRejectedRequestError' ||
@@ -83,12 +83,12 @@ const handleSpecificErrors = async (
 
   if (
     step &&
-    process?.txHash &&
+    action?.txHash &&
     e.code === LiFiErrorCode.TransactionFailed &&
     e.message === ErrorMessage.TransactionReverted
   ) {
     const response = await fetchTxErrorDetails(
-      process.txHash,
+      action.txHash,
       step.action.fromChainId
     )
 

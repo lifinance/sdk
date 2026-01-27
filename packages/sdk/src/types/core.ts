@@ -204,7 +204,7 @@ export interface ExecutionOptions {
 
 export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
 
-export type ProcessStatus =
+export type ExecutionActionStatus =
   | 'STARTED'
   | 'ACTION_REQUIRED'
   | 'MESSAGE_REQUIRED'
@@ -214,16 +214,16 @@ export type ProcessStatus =
   | 'DONE'
   | 'CANCELLED'
 
-export type ProcessType =
+export type ExecutionActionType =
   | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
-export type Process = {
-  type: ProcessType
-  status: ProcessStatus
+export type ExecutionAction = {
+  type: ExecutionActionType
+  status: ExecutionActionStatus
   substatus?: Substatus
   chainId?: number
   txHash?: string
@@ -250,7 +250,7 @@ export interface Execution {
   startedAt: number
   doneAt?: number
   status: ExecutionStatus
-  process: Array<Process>
+  actions: Array<ExecutionAction>
   fromAmount?: string
   toAmount?: string
   toToken?: Token

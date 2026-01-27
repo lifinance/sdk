@@ -2,9 +2,9 @@ import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
+  ExecutionActionStatus,
   ExecutionStatus,
   LiFiStepExtended,
-  ProcessStatus,
 } from '../types/core.js'
 import {
   buildRouteObject,
@@ -60,7 +60,7 @@ describe('StatusManager', () => {
         const updatedStep = Object.assign({}, step, {
           execution: {
             status: 'PENDING',
-            process: [],
+            actions: [],
             startedAt: SOME_DATE,
           },
         })
@@ -131,7 +131,7 @@ describe('StatusManager', () => {
     })
   })
 
-  describe('findOrCreateProcess', () => {
+  describe('findOrCreateAction', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })
@@ -139,7 +139,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateProcess({
+          statusManager.findOrCreateAction({
             step: structuredClone(step),
             type: 'SWAP',
           })
@@ -152,32 +152,32 @@ describe('StatusManager', () => {
         statusManager = initializeStatusManager({ includingExecution: true })
       })
 
-      describe('and the process already exists', () => {
-        it('should return the process and not call the callbacks', () => {
-          const process = statusManager.findOrCreateProcess({
+      describe('and the action already exists', () => {
+        it('should return the action and not call the callbacks', () => {
+          const action = statusManager.findOrCreateAction({
             step: structuredClone(step),
             type: 'TOKEN_ALLOWANCE',
           })
 
-          expect(process).toEqual(step.execution?.process[0])
+          expect(action).toEqual(step.execution?.actions[0])
 
           expect(updateRouteHookMock).not.toHaveBeenCalled()
         })
       })
 
-      describe("and the process doesn't exist", () => {
-        it('should create a process and call the callbacks with the updated route', () => {
-          const process = statusManager.findOrCreateProcess({
+      describe("and the action doesn't exist", () => {
+        it('should create a new action and call the callbacks with the updated route', () => {
+          const action = statusManager.findOrCreateAction({
             step: structuredClone(step),
             type: 'CROSS_CHAIN',
           })
 
-          expect(process.type).toEqual('CROSS_CHAIN')
-          expect(process.status).toEqual('STARTED')
-          expect(process.message).toEqual('Preparing bridge transaction')
+          expect(action.type).toEqual('CROSS_CHAIN')
+          expect(action.status).toEqual('STARTED')
+          expect(action.message).toEqual('Preparing bridge transaction')
 
           const updatedExecution = Object.assign({}, step.execution, {
-            process: [...step.execution!.process, process],
+            actions: [...step.execution!.actions, action],
           })
 
           const updatedStep = Object.assign({}, step, {
@@ -194,24 +194,24 @@ describe('StatusManager', () => {
     })
   })
 
-  describe('updateProcess', () => {
+  describe('updateAction', () => {
     beforeEach(() => {
       statusManager = initializeStatusManager({ includingExecution: true })
     })
 
-    describe('when no process can be found', () => {
+    describe('when no action can be found', () => {
       it('should throw an error', () => {
         expect(() =>
-          statusManager.updateProcess(
+          statusManager.updateAction(
             structuredClone(step),
             'CROSS_CHAIN',
             'CANCELLED'
           )
-        ).toThrow("Can't find a process for the given type.")
+        ).toThrow("Can't find an action for the given type.")
       })
     })
 
-    describe('when a process is found', () => {
+    describe('when an action is found', () => {
       const statuses = [
         { status: 'ACTION_REQUIRED' },
         { status: 'PENDING' },
@@ -221,26 +221,26 @@ describe('StatusManager', () => {
       ]
       for (const { status, doneAt } of statuses) {
         describe(`and the status is ${status}`, () => {
-          it('should update the process and call the callbacks', () => {
-            const process = statusManager.updateProcess(
+          it('should update the action and call the callbacks', () => {
+            const action = statusManager.updateAction(
               structuredClone(step),
               'SWAP',
-              status as ProcessStatus
+              status as ExecutionActionStatus
             )
 
-            expect(process.type).toEqual('SWAP')
-            expect(process.status).toEqual(status)
-            // expect(process.message).toEqual(
-            //   getProcessMessage('SWAP', status as Status)
+            expect(action.type).toEqual('SWAP')
+            expect(action.status).toEqual(status)
+            // expect(action.message).toEqual(
+            //   getActionMessage('SWAP', status as Status)
             // )
             doneAt
-              ? expect(process.doneAt).toBeDefined()
-              : expect(process.doneAt).toBeUndefined()
+              ? expect(action.doneAt).toBeDefined()
+              : expect(action.doneAt).toBeUndefined()
 
             const notUpdateableStatus =
               status === 'DONE' || status === 'CANCELLED'
             const updatedExecution = Object.assign({}, step.execution, {
-              process: [step.execution!.process[0], process],
+              actions: [step.execution!.actions[0], action],
               status: notUpdateableStatus
                 ? step.execution!.status
                 : (status as ExecutionStatus),
@@ -259,7 +259,7 @@ describe('StatusManager', () => {
     })
   })
 
-  describe('removeProcess', () => {
+  describe('removeAction', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })
@@ -267,7 +267,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.removeProcess(structuredClone(step), 'TOKEN_ALLOWANCE')
+          statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -275,12 +275,12 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeProcess(structuredClone(step), 'TOKEN_ALLOWANCE')
+        statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
       })
 
-      it('should remove the process and call the callbacks', () => {
+      it('should remove the action and call the callbacks', () => {
         const updatedExecution = Object.assign({}, step.execution, {
-          process: [step.execution!.process[1]],
+          actions: [step.execution!.actions[1]],
         })
 
         const updatedStep = Object.assign({}, step, {
