@@ -1,9 +1,9 @@
 import type { FullStatusData, LiFiStep, StatusResponse } from '@lifi/types'
 import { getStatus } from '../actions/getStatus.js'
 import { ServerError } from '../errors/errors.js'
-import type { ProcessType, SDKClient } from '../types/core.js'
+import type { ExecutionActionType, SDKClient } from '../types/core.js'
 import { waitForResult } from '../utils/waitForResult.js'
-import { getSubstatusMessage } from './processMessages.js'
+import { getSubstatusMessage } from './actionMessages.js'
 import type { StatusManager } from './StatusManager.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
@@ -13,7 +13,7 @@ export async function waitForTransactionStatus(
   statusManager: StatusManager,
   txHash: string,
   step: LiFiStep,
-  processType: ProcessType,
+  actionType: ExecutionActionType,
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
@@ -29,7 +29,7 @@ export async function waitForTransactionStatus(
           case 'DONE':
             return statusResponse
           case 'PENDING':
-            statusManager?.updateProcess(step, processType, 'PENDING', {
+            statusManager?.updateAction(step, actionType, 'PENDING', {
               substatus: statusResponse.substatus,
               substatusMessage:
                 statusResponse.substatusMessage ||

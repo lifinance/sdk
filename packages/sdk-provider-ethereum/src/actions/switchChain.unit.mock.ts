@@ -121,14 +121,12 @@ export const buildStepObject = ({
     ? {
         status: 'PENDING',
         startedAt: SOME_DATE,
-        doneAt: SOME_DATE + 10,
-        process: [
+        actions: [
           {
             type: 'TOKEN_ALLOWANCE',
             startedAt: SOME_DATE,
             message: 'Somethings done',
             status: 'DONE',
-            doneAt: SOME_DATE + 10,
             txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
             txLink: 'https://example.com',
           },
