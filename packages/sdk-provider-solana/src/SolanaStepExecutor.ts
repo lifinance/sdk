@@ -31,6 +31,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
+  // --- TASK: SolanaCheckWalletTask (helper) ---
+  // Resolve wallet account for step.fromAddress; fail if wallet/address mismatch (like Bitcoin checkClient).
   getWalletAccount = async (step: LiFiStepExtended) => {
     const account = this.wallet.accounts.find(
       (account) => account.address === step.action.fromAddress
@@ -50,6 +52,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
+    // Task-split overview:
+    // 1. SolanaStartActionTask      – init execution, get wallet account (SolanaCheckWalletTask), find/create action, STARTED
+    // 2. SolanaCheckBalanceTask     – check balance before preparing tx
+    // 3. SolanaPrepareTransactionTask – getStepTransaction, stepComparison, transactionRequest + hook
+    // 4. SolanaAwaitUserSignatureTask – ACTION_REQUIRED; PAUSED if !allowUserInteraction
+    // 5. SolanaSignAndExecuteTask   – sign tx (with timeout), decode, simulate, sendAndConfirm, update PENDING, DONE for bridge
+    // 6. WaitForDestinationChainTask – waitForDestinationChainTransaction
+    // --- TASK: SolanaStartActionTask ---
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await client.getChainById(step.action.fromChainId)
@@ -68,11 +78,15 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
     if (action.status !== 'DONE') {
       try {
+        // --- TASK: SolanaStartActionTask (status update) ---
         action = this.statusManager.updateAction(step, action.type, 'STARTED')
 
+        // --- TASK: SolanaCheckBalanceTask ---
         // Check balance
         await checkBalance(client, walletAccount.address, step)
 
+        // --- TASK: SolanaPrepareTransactionTask ---
+        // Fetch step transaction via getStepTransaction, run stepComparison, ensure transactionRequest.data exists.
         // Create new transaction
         if (!step.transactionRequest) {
           const { execution, ...stepBase } = step
@@ -97,6 +111,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
+        // --- TASK: SolanaAwaitUserSignatureTask (pause boundary) ---
+        // Set action to ACTION_REQUIRED. If !allowUserInteraction, return PAUSED (saveState for resume).
         action = this.statusManager.updateAction(
           step,
           action.type,
@@ -107,6 +123,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           return step
         }
 
+        // --- TASK: SolanaPrepareTransactionTask (request + hook) ---
+        // Build transactionRequest from step, apply updateTransactionRequestHook if present.
         let transactionRequest: TransactionParameters = {
           data: step.transactionRequest.data,
         }
@@ -131,6 +149,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
+        // --- TASK: SolanaSignAndExecuteTask ---
+        // Decode tx bytes, sign via wallet (with timeout), decode signed tx, simulate (callSolanaWithRetry),
+        // sendAndConfirmTransaction, validate signatureResult, update action PENDING with txHash/txLink, DONE for bridge.
         const transactionBytes = base64ToUint8Array(transactionRequest.data)
 
         const signedTransactionOutputs = await withTimeout(
@@ -220,6 +241,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
+        // --- End SolanaSignAndExecuteTask: persist txHash/txLink ---
         // Transaction has been confirmed and we can update the action
         action = this.statusManager.updateAction(step, action.type, 'PENDING', {
           txHash: confirmedTransaction.txSignature,
@@ -241,6 +263,8 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       }
     }
 
+    // --- TASK: WaitForDestinationChainTask (or common helper) ---
+    // Wait for destination-chain transaction confirmation; update statusManager as needed.
     await waitForDestinationChainTransaction(
       client,
       step,

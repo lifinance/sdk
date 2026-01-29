@@ -56,6 +56,18 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
+    // Task-split overview:
+    // 1. BitcoinStartActionTask   – init execution, find/create action, set action type
+    // 2. BitcoinCheckWalletTask   – verify wallet matches quote (resume path or before sign)
+    // 3. BitcoinCheckBalanceTask  – check balance before preparing tx
+    // 4. BitcoinPrepareTransactionTask – getStepTransaction, stepComparison, transactionRequest + hook
+    // 5. BitcoinAwaitUserSignatureTask – ACTION_REQUIRED; PAUSED if !allowUserInteraction
+    // 6. BitcoinSignAndExecuteTask – sign PSBT, finalize, send, update PENDING
+    // 7. BitcoinWaitForTransactionTask – waitForTransaction, onReplaced, DONE for bridge
+    // 8. WaitForDestinationChainTask – waitForDestinationChainTransaction
+    // --- TASK: BitcoinStartActionTask ---
+    // Init execution object, resolve chains, determine action type (CROSS_CHAIN vs SWAP),
+    // findOrCreateAction. Skip if action already DONE or we have txHash (resume path).
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await client.getChainById(step.action.fromChainId)
@@ -77,6 +89,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         let txHash: string
         let txHex: string
         if (action.txHash) {
+          // --- TASK: BitcoinCheckWalletTask (resume path) ---
+          // When we already have txHash, only verify wallet and then jump to wait.
           // Make sure that the chain is still correct
           this.checkClient(step)
 
@@ -84,11 +98,18 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           txHash = action.txHash
           txHex = action.txHex
         } else {
+          // --- TASK: BitcoinStartActionTask (status update) ---
+          // Update action to STARTED.
           action = this.statusManager.updateAction(step, action.type, 'STARTED')
 
+          // --- TASK: BitcoinCheckBalanceTask ---
+          // Ensure user has sufficient balance before preparing/signing.
           // Check balance
           await checkBalance(client, this.client.account!.address, step)
 
+          // --- TASK: BitcoinPrepareTransactionTask ---
+          // Fetch step transaction via getStepTransaction, run stepComparison,
+          // ensure step.transactionRequest.data exists. Fail if transaction cannot be prepared.
           // Create new transaction
           if (!step.transactionRequest) {
             const { execution, ...stepBase } = step
@@ -113,6 +134,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             )
           }
 
+          // --- TASK: BitcoinAwaitUserSignatureTask (pause boundary) ---
+          // Set action to ACTION_REQUIRED. If !allowUserInteraction, return PAUSED
+          // (saveState for resume). Pipeline would resume here after user is ready to sign.
           action = this.statusManager.updateAction(
             step,
             action.type,
@@ -123,6 +147,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             return step
           }
 
+          // --- TASK: BitcoinPrepareTransactionTask (request + hook) ---
+          // Build transactionRequest from step, apply updateTransactionRequestHook if present.
           let transactionRequest: TransactionParameters = {
             data: step.transactionRequest.data,
           }
@@ -147,10 +173,16 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             )
           }
 
+          // --- TASK: BitcoinCheckWalletTask ---
+          // Verify wallet matches quote before signing.
           this.checkClient(step)
 
           const psbtHex = transactionRequest.data
 
+          // --- TASK: BitcoinSignAndExecuteTask ---
+          // Init ECC, parse PSBT, enrich inputs (tapInternalKey, sighashType, redeemScript),
+          // build inputsToSign, call signPsbt (with timeout), finalize, extract txHex,
+          // send via publicClient.sendUTXOTransaction, then update action to PENDING with txHash/txLink/txHex.
           // Initialize ECC library required for Taproot operations
           // https://github.com/bitcoinjs/bitcoinjs-lib?tab=readme-ov-file#using-taproot
           initEccLib(ecc)
@@ -252,6 +284,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             hex: txHex,
           })
 
+          // --- End BitcoinSignAndExecuteTask: persist txHash/txLink/txHex ---
           action = this.statusManager.updateAction(
             step,
             action.type,
@@ -264,6 +297,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
           )
         }
 
+        // --- TASK: BitcoinWaitForTransactionTask ---
+        // Wait for on-chain confirmation via waitForTransaction; handle onReplaced
+        // (update action with new txid), treat replacementReason === 'cancelled' as user cancel,
+        // sync action txHash if final txid differs. For bridge, mark action DONE.
         let replacementReason: ReplacementReason | undefined
         const transaction = await waitForTransaction(publicClient, {
           txId: txHash,
@@ -317,6 +354,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       }
     }
 
+    // --- TASK: WaitForDestinationChainTask (or common helper) ---
+    // Wait for destination-chain transaction confirmation; update statusManager as needed.
     await waitForDestinationChainTransaction(
       client,
       step,

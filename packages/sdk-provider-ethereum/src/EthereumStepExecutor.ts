@@ -78,6 +78,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.switchChain = options.switchChain
   }
 
+  // --- TASK: EthereumCheckWalletTask / EthereumSwitchChainTask (helper) ---
+  // Switch chain if needed (switchChain), then verify wallet address matches step.fromAddress; fail or update client.
   // Ensure that we are using the right chain and wallet when executing transactions.
   checkClient = async (
     step: LiFiStepExtended,
@@ -130,6 +132,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     return updatedClient
   }
 
+  // --- TASK: EthereumWaitForTransactionTask (helper) ---
+  // Wait for receipt (batch / relayed / standard via waitForTransactionReceipt), update action with txHash/txLink,
+  // mark DONE for bridge, then waitForDestinationChainTransaction.
   waitForTransaction = async (
     client: SDKClient,
     {
@@ -226,6 +231,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     )
   }
 
+  // --- TASK: EthereumPrepareTransactionTask (helper) ---
+  // Resolve step: contract call (getContractCalls, patchContractCalls, getContractCallsQuote), relayer (getRelayerQuote),
+  // or getStepTransaction; stepComparison; build transactionRequest (maxPriorityFeePerGas, updateTransactionRequestHook).
   private prepareUpdatedStep = async (
     client: SDKClient,
     step: LiFiStepExtended,
@@ -434,6 +442,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     }
   }
 
+  // --- TASK: EthereumSignAndExecuteTask (helper) ---
+  // Re-estimate gas for permit flows; add 80k buffer on failure.
   private estimateTransactionRequest = async (
     client: SDKClient,
     viemClient: Client,
@@ -473,6 +483,16 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
   ): Promise<LiFiStepExtended> => {
+    // Task-split overview:
+    // 1. EthereumStartActionTask     – init execution, resolve chains, checkClient (destination-chain path), batching/permit2 flags, find/create action
+    // 2. EthereumCheckAllowanceTask  – checkAllowance (approval / permit / batch approval); PAUSED if !allowUserInteraction and needs interaction
+    // 3. Resume path                 – if action.txHash/taskId: checkClient, waitForTransaction (wait + destination chain)
+    // 4. EthereumCheckBalanceTask    – checkBalance
+    // 5. EthereumPrepareTransactionTask – prepareUpdatedStep (contract call / relayer / getStepTransaction, stepComparison, transactionRequest + hook)
+    // 6. EthereumAwaitUserSignatureTask – ACTION_REQUIRED; PAUSED if !allowUserInteraction
+    // 7. EthereumSignAndExecuteTask – branch: batched (sendCalls), relayer (sign typed data, relayTransaction), or standard (permit encode, signPermit2, sendTransaction)
+    // 8. EthereumWaitForTransactionTask – waitForTransaction (batch / relayed / standard receipt, DONE for bridge, waitForDestinationChainTransaction)
+    // --- TASK: EthereumStartActionTask ---
     step.execution = this.statusManager.initExecutionObject(step)
 
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
@@ -480,6 +500,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       (action) => action.type === 'RECEIVING_CHAIN'
     )
 
+    // --- TASK: EthereumStartActionTask (destination-chain / switch chain) ---
+    // If step has RECEIVING_CHAIN action and not yet WAIT_DESTINATION_TRANSACTION, checkClient (switch/verify) and return if needed.
     // Make sure that the chain is still correct
     // If the step is waiting for a transaction on the destination chain, we do not switch the chain
     // All changes are already done from the source chain
@@ -497,6 +519,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
 
+    // --- TASK: EthereumStartActionTask (batching / permit2 flags) ---
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
     // Signed typed data for native permits and other messages
@@ -554,6 +577,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       !!step.estimate.approvalAddress &&
       !step.estimate.skipApproval
 
+    // --- TASK: EthereumCheckAllowanceTask ---
+    // If checkForAllowance: checkAllowance (approval / permit / batch); handle BATCH_APPROVAL, NATIVE_PERMIT, DONE, or PAUSED if !allowUserInteraction.
     if (checkForAllowance) {
       // Check if token needs approval and get approval transaction or message data when available
       const allowanceResult = await checkAllowance(client, {
@@ -589,6 +614,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
     let action = this.statusManager.findAction(step, currentActionType)
     try {
+      // --- TASK: early exit if action already DONE ---
       if (action?.status === 'DONE') {
         await waitForDestinationChainTransaction(
           client,
@@ -602,6 +628,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
+      // --- TASK: Resume path (already have txHash or taskId) ---
+      // checkClient, then waitForTransaction (wait for receipt + waitForDestinationChainTransaction).
       if (action?.txHash || action?.taskId) {
         // Make sure that the chain is still correct
         const updatedClient = await this.checkClient(step, action)
@@ -620,6 +648,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
+      // --- TASK: EthereumStartActionTask (status update) ---
       action = this.statusManager.findOrCreateAction({
         step,
         type: currentActionType,
@@ -627,8 +656,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         chainId: fromChain.id,
       })
 
+      // --- TASK: EthereumCheckBalanceTask ---
       await checkBalance(client, this.client.account!.address, step)
 
+      // --- TASK: EthereumPrepareTransactionTask ---
       // Try to prepare a new transaction request and update the step with typed data
       const preparedStep = await this.prepareUpdatedStep(
         client,
@@ -642,6 +673,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
       let { transactionRequest, isRelayerTransaction } = preparedStep
 
+      // --- TASK: EthereumAwaitUserSignatureTask (pause boundary) ---
+      // Set action to ACTION_REQUIRED. If !allowUserInteraction, return PAUSED.
       action = this.statusManager.updateAction(
         step,
         action.type,
@@ -652,11 +685,14 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         return step
       }
 
+      // --- TASK: EthereumSignAndExecuteTask ---
+      // Branch: batched (sendCalls), relayer (sign typed data loop, relayTransaction), or standard (permit encode, signPermit2, estimateTransactionRequest, sendTransaction).
       let txHash: Hash | undefined
       let taskId: Hash | undefined
       let txType: TransactionMethodType = 'standard'
       let txLink: string | undefined
 
+      // --- EthereumSignAndExecuteTask: batched path (EIP-5792 sendCalls) ---
       if (batchingSupported && transactionRequest) {
         // Make sure that the chain is still correct
         const updatedClient = await this.checkClient(step, action)
@@ -682,6 +718,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         })
         taskId = id as Hash
         txType = 'batched'
+        // --- EthereumSignAndExecuteTask: relayer path (sign typed data, relayTransaction) ---
       } else if (isRelayerTransaction) {
         const intentTypedData = step.typedData?.filter(
           (typedData) =>
@@ -738,6 +775,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         taskId = relayedTransaction.taskId as Hash
         txType = 'relayed'
         txLink = relayedTransaction.txLink
+        // --- EthereumSignAndExecuteTask: standard path (permit encode, signPermit2, sendTransaction) ---
       } else {
         if (!transactionRequest) {
           throw new TransactionError(
@@ -810,6 +848,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         } as SendTransactionParameters)
       }
 
+      // --- End EthereumSignAndExecuteTask: persist txHash / taskId / txType / txLink ---
       action = this.statusManager.updateAction(
         step,
         action.type,
@@ -826,6 +865,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         }
       )
 
+      // --- TASK: EthereumWaitForTransactionTask ---
       await this.waitForTransaction(client, {
         step,
         action,

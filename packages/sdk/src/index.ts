@@ -36,6 +36,7 @@ export {
 } from './core/execution.js'
 export { StatusManager } from './core/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
+export { TaskPipeline } from './core/TaskPipeline.js'
 export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
@@ -87,6 +88,16 @@ export type {
   TransactionRequestUpdateHook,
   UpdateRouteHook,
 } from './types/core.js'
+export type {
+  ExecutionTask,
+  PipelineContext,
+  PipelineSavedState,
+  TaskContext,
+  TaskPipelineObserver,
+  TaskResult,
+  TaskState,
+  TaskStatus,
+} from './types/tasks.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
