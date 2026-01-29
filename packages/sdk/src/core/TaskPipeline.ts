@@ -49,15 +49,13 @@ export class TaskPipeline {
       pipelineContext,
     }
     const result = await pausedTask.execute(context)
+
     if (result.status === 'PAUSED') {
       return {
         status: 'PAUSED',
         pausedAtTask: pausedTask.type,
         pipelineContext,
       }
-    }
-    if (result.data && typeof result.data === 'object') {
-      Object.assign(pipelineContext, result.data as Record<string, unknown>)
     }
 
     const remainingTasks = this.tasks.slice(pausedIndex + 1)
@@ -91,11 +89,6 @@ export class TaskPipeline {
           pausedAtTask: task.type,
           pipelineContext,
         }
-      }
-
-      // Set data passed between tasks
-      if (result.data && typeof result.data === 'object') {
-        Object.assign(pipelineContext, result.data as Record<string, unknown>)
       }
     }
 
