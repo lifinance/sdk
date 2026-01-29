@@ -3,13 +3,19 @@ import type {
   ExecutionActionType,
   ExecutionOptions,
   ExtendedChain,
+  LiFiStepExtended,
   SignedTypedData,
   StatusManager,
   TransactionParameters,
 } from '@lifi/sdk'
 import type { Client } from 'viem'
 import type { Call } from '../types.js'
-import type { CheckClientDeps } from './helpers/checkClient.js'
+
+export type CheckClientFn = (
+  step: LiFiStepExtended,
+  action: ExecutionAction,
+  targetChainId?: number
+) => Promise<Client | undefined>
 
 export interface EthereumTaskExtra {
   statusManager: StatusManager
@@ -36,6 +42,6 @@ export interface EthereumTaskExtra {
   /** Viem client for signing/sending. */
   ethereumClient: Client
 
-  /** Params for checkClient helper (tasks import helper and pass this). */
-  checkClientDeps: CheckClientDeps
+  /** Switch chain if needed and verify wallet; returns updated client or undefined. */
+  checkClient: CheckClientFn
 }

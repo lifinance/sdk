@@ -15,11 +15,11 @@ export class EthereumAwaitUserSignatureTask
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { step, statusManager, actionType, allowUserInteraction } = context
+    const { step, statusManager, action, allowUserInteraction } = context
 
     context.action = statusManager.updateAction(
       step,
-      actionType,
+      action.type,
       'ACTION_REQUIRED'
     )
 

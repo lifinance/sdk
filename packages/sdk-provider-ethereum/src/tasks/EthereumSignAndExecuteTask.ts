@@ -14,7 +14,6 @@ import { isNativePermitValid } from '../permits/isNativePermitValid.js'
 import { signPermit2Message } from '../permits/signPermit2Message.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
-import { checkClient as checkClientHelper } from './helpers/checkClient.js'
 import { estimateTransactionRequest as estimateTransactionRequestHelper } from './helpers/estimateTransactionRequest.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -39,9 +38,7 @@ export class EthereumSignAndExecuteTask
       action,
       actionType,
       statusManager,
-      checkClientDeps,
-    } = context
-    const {
+      checkClient,
       calls,
       signedTypedData,
       batchingSupported,
@@ -49,12 +46,6 @@ export class EthereumSignAndExecuteTask
       transactionRequest,
       isRelayerTransaction,
     } = context
-
-    const checkClient = (
-      s: typeof step,
-      a: typeof action,
-      targetChainId?: number
-    ) => checkClientHelper(s, a, targetChainId, checkClientDeps)
 
     let txHash: Hash | undefined
     let taskId: Hash | undefined
@@ -73,6 +64,7 @@ export class EthereumSignAndExecuteTask
         value: transactionRequest.value,
       }
       calls.push(transferCall)
+
       const { id } = await getAction(
         updatedClient,
         sendCalls,
@@ -96,7 +88,11 @@ export class EthereumSignAndExecuteTask
           'Unable to prepare transaction. Typed data for transfer is not found.'
         )
       }
-      statusManager.updateAction(step, actionType, 'MESSAGE_REQUIRED')
+      context.action = statusManager.updateAction(
+        step,
+        actionType,
+        'MESSAGE_REQUIRED'
+      )
       for (const typedData of intentTypedData) {
         const typedDataChainId =
           getDomainChainId(typedData.domain) || fromChain.id
@@ -120,7 +116,7 @@ export class EthereumSignAndExecuteTask
           signature,
         })
       }
-      statusManager.updateAction(step, actionType, 'PENDING')
+      context.action = statusManager.updateAction(step, actionType, 'PENDING')
       const { execution, ...stepBase } = step
       const relayedTransaction = await relayTransaction(client, {
         ...stepBase,
@@ -158,7 +154,11 @@ export class EthereumSignAndExecuteTask
           ),
         }
       } else if (permit2Supported) {
-        statusManager.updateAction(step, actionType, 'MESSAGE_REQUIRED')
+        context.action = statusManager.updateAction(
+          step,
+          actionType,
+          'MESSAGE_REQUIRED'
+        )
         const permit2Signature = await signPermit2Message(client, {
           client: updatedClient,
           chain: fromChain,
@@ -177,7 +177,11 @@ export class EthereumSignAndExecuteTask
             permit2Signature.signature
           ),
         }
-        statusManager.updateAction(step, actionType, 'ACTION_REQUIRED')
+        context.action = statusManager.updateAction(
+          step,
+          actionType,
+          'ACTION_REQUIRED'
+        )
       }
       if (signedNativePermitTypedData || permit2Supported) {
         request.to = fromChain.permit2Proxy as Address

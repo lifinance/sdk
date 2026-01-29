@@ -5,6 +5,7 @@ import {
   type SDKClient,
   type StepExecutorOptions,
   TaskPipeline,
+  waitForDestinationChainTransaction,
 } from '@lifi/sdk'
 import type { Client } from 'viem'
 import {
@@ -12,7 +13,6 @@ import {
   parseEthereumErrors,
 } from './errors/parseEthereumErrors.js'
 import { createEthereumTaskPipeline } from './tasks/createEthereumTaskPipeline.js'
-import { checkClient as checkClientHelper } from './tasks/helpers/checkClient.js'
 import { getEthereumPipelineContext } from './tasks/helpers/getEthereumPipelineContext.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
@@ -33,6 +33,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   executeStep = async (
     client: SDKClient,
     step: LiFiStepExtended,
+    // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
     atomicityNotReady = false
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
@@ -45,24 +46,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       statusManager: this.statusManager,
       allowUserInteraction: this.allowUserInteraction,
       switchChain: this.switchChain,
-    }
-
-    const destinationChainAction = step.execution?.actions.find(
-      (a) => a.type === 'RECEIVING_CHAIN'
-    )
-    if (
-      destinationChainAction &&
-      destinationChainAction.substatus !== 'WAIT_DESTINATION_TRANSACTION'
-    ) {
-      const updatedClient = await checkClientHelper(
-        step,
-        destinationChainAction,
-        undefined,
-        checkClientDeps
-      )
-      if (!updatedClient) {
-        return step
-      }
     }
 
     const pipelineInput = await getEthereumPipelineContext(
@@ -114,6 +97,15 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       })
       throw error
     }
+
+    await waitForDestinationChainTransaction(
+      client,
+      step,
+      baseContext.action,
+      baseContext.fromChain,
+      baseContext.toChain,
+      this.statusManager
+    )
 
     return step
   }

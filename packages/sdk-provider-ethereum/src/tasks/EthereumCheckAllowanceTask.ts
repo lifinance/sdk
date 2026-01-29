@@ -1,7 +1,6 @@
 import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
 import { checkAllowance } from '../actions/checkAllowance.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
-import { checkClient as checkClientHelper } from './helpers/checkClient.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumCheckAllowanceTask
@@ -12,27 +11,31 @@ export class EthereumCheckAllowanceTask
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
     const { step, action, fromChain } = context
-    if (action.txHash || action.taskId) {
-      return false
-    }
+
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
-    if (isFromNativeToken) {
-      return false
-    }
-    return !!step.estimate.approvalAddress && !step.estimate.skipApproval
+
+    return (
+      // No existing swap/bridge transaction is pending
+      !action?.txHash &&
+      // No existing swap/bridge batch/order is pending
+      !action?.taskId &&
+      // Token is not native (address is not zero)
+      !isFromNativeToken &&
+      // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval &&
+      action.status !== 'DONE'
+    )
   }
 
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, action, allowUserInteraction, checkClientDeps } =
-      context
+    const { client, step, allowUserInteraction, checkClient } = context
 
-    const checkClient = (s: typeof step, a: typeof action, tid?: number) =>
-      checkClientHelper(s, a, tid, checkClientDeps)
-
+    // Check if token needs approval and get approval transaction or message data when available
     const allowanceResult = await checkAllowance(client, {
       checkClient,
       chain: context.fromChain,

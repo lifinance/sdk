@@ -10,10 +10,7 @@ export class EthereumCheckBalanceTask
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
     const { action } = context
-    if (action.txHash) {
-      return false
-    }
-    return action.status !== 'DONE'
+    return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
   async execute(

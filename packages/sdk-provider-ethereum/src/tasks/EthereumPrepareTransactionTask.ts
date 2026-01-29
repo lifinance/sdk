@@ -1,11 +1,4 @@
-import type {
-  ExecutionAction,
-  ExecutionTask,
-  LiFiStepExtended,
-  TaskContext,
-  TaskResult,
-} from '@lifi/sdk'
-import { checkClient as checkClientHelper } from './helpers/checkClient.js'
+import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
 import { prepareUpdatedStep as prepareUpdatedStepHelper } from './helpers/prepareUpdatedStep.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -17,7 +10,7 @@ export class EthereumPrepareTransactionTask
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
     const { action } = context
-    return !action.txHash && !action.taskId
+    return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
   async execute(
@@ -29,14 +22,8 @@ export class EthereumPrepareTransactionTask
       action,
       signedTypedData,
       allowUserInteraction,
-      checkClientDeps,
+      checkClient,
     } = context
-
-    const checkClient = (
-      s: LiFiStepExtended,
-      a: ExecutionAction,
-      targetChainId?: number
-    ) => checkClientHelper(s, a, targetChainId, checkClientDeps)
 
     const prepared = await prepareUpdatedStepHelper(
       client,

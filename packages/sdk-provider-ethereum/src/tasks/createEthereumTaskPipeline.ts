@@ -9,8 +9,8 @@ import { EthereumWaitForTransactionTask } from './EthereumWaitForTransactionTask
 
 export function createEthereumTaskPipeline(): ExecutionTask[] {
   return [
-    new EthereumStartActionTask(),
     new EthereumCheckAllowanceTask(),
+    new EthereumStartActionTask(),
     new EthereumCheckBalanceTask(),
     new EthereumPrepareTransactionTask(),
     new EthereumAwaitUserSignatureTask(),

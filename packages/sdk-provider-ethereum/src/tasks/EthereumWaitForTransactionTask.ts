@@ -9,14 +9,8 @@ export class EthereumWaitForTransactionTask
   readonly displayName = 'Confirm transaction'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action, isBridgeExecution } = context
-    if (!action.txHash && !action.taskId) {
-      return false
-    }
-    if (isBridgeExecution && action.status === 'DONE') {
-      return false
-    }
-    return true
+    const { action } = context
+    return !!(action.txHash || action.taskId) && action.status !== 'DONE'
   }
 
   async execute(
@@ -31,7 +25,13 @@ export class EthereumWaitForTransactionTask
       isBridgeExecution,
       statusManager,
       ethereumClient,
+      checkClient,
     } = context
+
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'PAUSED' }
+    }
 
     await waitForTransactionHelper(
       client,
@@ -44,7 +44,7 @@ export class EthereumWaitForTransactionTask
       },
       {
         statusManager,
-        ethereumClient,
+        ethereumClient: updatedClient ?? ethereumClient,
       }
     )
 

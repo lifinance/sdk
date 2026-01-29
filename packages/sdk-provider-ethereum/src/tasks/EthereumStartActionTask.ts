@@ -9,16 +9,14 @@ export class EthereumStartActionTask
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
     const { action } = context
-    if (action.txHash) {
-      return false
-    }
-    return action.status !== 'DONE'
+    return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
   async execute(
-    _context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    // Action is already findOrCreateAction(STARTED) by executor before pipeline
+    const { step, statusManager, actionType } = context
+    context.action = statusManager.updateAction(step, actionType, 'STARTED')
     return { status: 'COMPLETED' }
   }
 }
