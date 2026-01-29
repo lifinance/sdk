@@ -93,7 +93,6 @@ export type {
   PipelineContext,
   PipelineSavedState,
   TaskContext,
-  TaskPipelineObserver,
   TaskResult,
   TaskState,
   TaskStatus,

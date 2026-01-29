@@ -247,7 +247,7 @@ export type ExecutionAction = {
  */
 export interface ExecutionPipelineSavedState {
   pausedAtTask: string
-  taskState?: { taskType: string; phase: string; data: Record<string, unknown> }
+  taskState?: { taskType: string; phase?: string; data?: Record<string, unknown> }
   pipelineContext: Record<string, unknown>
 }
 

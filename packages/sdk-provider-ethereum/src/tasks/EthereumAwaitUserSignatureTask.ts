@@ -1,18 +1,20 @@
 import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
-import type { SuiTaskExtra } from './types.js'
+import type { EthereumTaskExtra } from './types.js'
 
-export class SuiAwaitUserSignatureTask
-  implements ExecutionTask<SuiTaskExtra, void>
+export class EthereumAwaitUserSignatureTask
+  implements ExecutionTask<EthereumTaskExtra, void>
 {
-  readonly type = 'SUI_AWAIT_SIGNATURE'
+  readonly type = 'ETHEREUM_AWAIT_SIGNATURE'
   readonly displayName = 'Sign transaction'
 
-  async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
+  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
     const { action } = context.extra
-    return !action.txHash && action.status !== 'DONE'
+    return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
-  async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
+  async execute(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<TaskResult<void>> {
     const { step, extra, allowUserInteraction } = context
 
     extra.action = extra.statusManager.updateAction(

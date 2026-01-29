@@ -10,7 +10,7 @@ The **TaskPipeline** runs a list of **ExecutionTask**s in order. Each task can:
 - **Complete** and optionally write data into **PipelineContext** for later tasks
 - **Pause** and return `saveState` so execution can be resumed later with `pipeline.resume()`
 
-The pipeline accepts an optional **TaskPipelineObserver** for lifecycle events (started, completed, skipped). Step executors currently use the default noop observer; status is updated inside tasks via e.g. **StatusManager** in context.extra.
+Status is updated inside tasks via e.g. **StatusManager** in context.extra.
 
 ---
 
@@ -19,7 +19,7 @@ The pipeline accepts an optional **TaskPipelineObserver** for lifecycle events (
 | Type | Role |
 |------|------|
 | **ExecutionTask** | `type`, `displayName`, `shouldRun`, `execute` |
-| **TaskContext** | `client`, `step`, `chain`, `observer`, `allowUserInteraction`, `pipelineContext`, `extra` |
+| **TaskContext** | `client`, `step`, `chain`, `allowUserInteraction`, `pipelineContext`, `extra` |
 | **TaskResult** | `status: 'COMPLETED' \| 'PAUSED'`, optional `data`, optional `saveState` |
 | **TaskState** | `taskType`, `phase`, `data` — persisted when pausing |
 | **PipelineContext** | Accumulated key-value data from completed tasks (e.g. `signedPermits`, `preparedTransaction`) |
@@ -36,7 +36,7 @@ The pipeline accepts an optional **TaskPipelineObserver** for lifecycle events (
 flowchart TD
     A[run baseContext] --> B[runTaskLoop all tasks, context = empty]
     B --> C[for each task in tasksToRun]
-    C --> D[context = baseContext + pipelineContext + observer]
+    C --> D[context = baseContext + pipelineContext]
     D --> E["shouldRun(context)"]
     E -->|false| F[onTaskSkipped, continue]
     F --> C
@@ -190,9 +190,8 @@ Ecosystems differ in **extra** (wallet, statusManager, relayer/batch/permit flag
   allowUserInteraction                 ← T3: preparedTransaction
   extra (e.g. SuiTaskExtra)            ← T4: (none)
                                        ← T5: suiTxDigest
-  observer (TaskPipelineObserver)      ← T6: (none)
   ─────────────────────────           ──────────────────────────
-  TaskContext = baseContext + pipelineContext + observer
+  TaskContext = baseContext + pipelineContext
   Each task receives TaskContext; can read step, extra, pipelineContext; can return data to merge.
 ```
 
