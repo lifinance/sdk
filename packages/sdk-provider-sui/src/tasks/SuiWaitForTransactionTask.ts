@@ -10,20 +10,21 @@ export class SuiWaitForTransactionTask
   readonly displayName = 'Confirm transaction'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    const { action, isBridgeExecution } = context.extra
-    if (!action.txHash) {
-      return false
-    }
-    // For bridge steps we mark the source action as DONE after finality
-    if (isBridgeExecution && action.status === 'DONE') {
-      return false
-    }
-    return true
+    const { action } = context
+    return !!action.txHash && action.status !== 'DONE'
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
-    const { client, step, extra } = context
-    const digest = extra.action.txHash
+    const {
+      client,
+      step,
+      action,
+      statusManager,
+      actionType,
+      fromChain,
+      isBridgeExecution,
+    } = context
+    const digest = action.txHash
 
     if (!digest) {
       throw new TransactionError(
@@ -48,23 +49,14 @@ export class SuiWaitForTransactionTask
       )
     }
 
-    // Ensure tx details are present
-    extra.action = extra.statusManager.updateAction(
-      step,
-      extra.actionType,
-      'PENDING',
-      {
-        txHash: result.digest,
-        txLink: `${extra.fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
-      }
-    )
+    //  Transaction has been confirmed
+    context.action = statusManager.updateAction(step, actionType, 'PENDING', {
+      txHash: result.digest,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
+    })
 
-    if (extra.isBridgeExecution) {
-      extra.action = extra.statusManager.updateAction(
-        step,
-        extra.actionType,
-        'DONE'
-      )
+    if (isBridgeExecution) {
+      context.action = statusManager.updateAction(step, actionType, 'DONE')
     }
 
     return { status: 'COMPLETED' }

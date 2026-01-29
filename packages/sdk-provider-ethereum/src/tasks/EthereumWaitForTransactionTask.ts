@@ -9,7 +9,7 @@ export class EthereumWaitForTransactionTask
   readonly displayName = 'Confirm transaction'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action, isBridgeExecution } = context.extra
+    const { action, isBridgeExecution } = context
     if (!action.txHash && !action.taskId) {
       return false
     }
@@ -22,20 +22,29 @@ export class EthereumWaitForTransactionTask
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, extra } = context
+    const {
+      client,
+      step,
+      action,
+      fromChain,
+      toChain,
+      isBridgeExecution,
+      statusManager,
+      ethereumClient,
+    } = context
 
     await waitForTransactionHelper(
       client,
       {
         step,
-        action: extra.action,
-        fromChain: extra.fromChain,
-        toChain: extra.toChain,
-        isBridgeExecution: extra.isBridgeExecution,
+        action,
+        fromChain,
+        toChain,
+        isBridgeExecution,
       },
       {
-        statusManager: extra.statusManager,
-        ethereumClient: extra.ethereumClient,
+        statusManager,
+        ethereumClient,
       }
     )
 

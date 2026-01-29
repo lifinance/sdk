@@ -14,24 +14,31 @@ export class SuiPrepareTransactionTask
   readonly displayName = 'Prepare transaction'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    const { step, extra } = context
-    if (extra.action.txHash) {
-      return false
-    }
-    return !step.transactionRequest?.data
+    const { step, action } = context
+    return (
+      !action.txHash &&
+      !step.transactionRequest?.data &&
+      action.status !== 'DONE'
+    )
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
-    const { client, step, extra, allowUserInteraction } = context
+    const {
+      client,
+      step,
+      statusManager,
+      allowUserInteraction,
+      executionOptions,
+    } = context
 
     const { execution, ...stepBase } = step
     const updatedStep = await getStepTransaction(client, stepBase)
     const comparedStep = await stepComparison(
-      extra.statusManager,
+      statusManager,
       step,
       updatedStep,
       allowUserInteraction,
-      extra.executionOptions
+      executionOptions
     )
 
     Object.assign(step, {

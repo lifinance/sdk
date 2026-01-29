@@ -81,7 +81,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       return step
     }
 
-    const { baseContext, extra } = pipelineInput
+    const { baseContext } = pipelineInput
     const pipeline = new TaskPipeline(createEthereumTaskPipeline())
 
     try {
@@ -95,7 +95,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       if (result.status === 'PAUSED') {
         step.execution.pipelineSavedState = {
           pausedAtTask: result.pausedAtTask,
-          taskState: result.taskState,
           pipelineContext: result.pipelineContext,
         }
         return step
@@ -109,8 +108,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step.execution = undefined
         return this.executeStep(client, step, true)
       }
-      const error = await parseEthereumErrors(e, step, extra.action)
-      this.statusManager.updateAction(step, extra.actionType, 'FAILED', {
+      const error = await parseEthereumErrors(e, step, baseContext.action)
+      this.statusManager.updateAction(step, baseContext.actionType, 'FAILED', {
         error: { message: error.cause.message, code: error.code },
       })
       throw error

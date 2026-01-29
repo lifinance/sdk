@@ -8,7 +8,7 @@ export class EthereumStartActionTask
   readonly displayName = 'Start action'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
+    const { action } = context
     if (action.txHash) {
       return false
     }

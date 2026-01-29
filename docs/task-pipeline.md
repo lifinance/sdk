@@ -10,7 +10,7 @@ The **TaskPipeline** runs a list of **ExecutionTask**s in order. Each task can:
 - **Complete** and optionally write data into **PipelineContext** for later tasks
 - **Pause** and return `saveState` so execution can be resumed later with `pipeline.resume()`
 
-Status is updated inside tasks via e.g. **StatusManager** in context.extra.
+Status is updated inside tasks via e.g. **StatusManager** on the context (ecosystem-specific fields are merged at top level).
 
 ---
 
@@ -19,12 +19,12 @@ Status is updated inside tasks via e.g. **StatusManager** in context.extra.
 | Type | Role |
 |------|------|
 | **ExecutionTask** | `type`, `displayName`, `shouldRun`, `execute` |
-| **TaskContext** | `client`, `step`, `chain`, `allowUserInteraction`, `pipelineContext`, `extra` |
+| **TaskContext** | `TaskContextBase & TExtra`: base fields + ecosystem fields at top level (no `extra` key) |
 | **TaskResult** | `status: 'COMPLETED' \| 'PAUSED'`, optional `data`, optional `saveState` |
-| **TaskState** | `taskType`, `phase`, `data` — persisted when pausing |
+| **TaskState** | `taskType`, `phase`, `data` — optional state a task can return when pausing (not persisted) |
 | **PipelineContext** | Accumulated key-value data from completed tasks (e.g. `signedPermits`, `preparedTransaction`) |
-| **PipelineSavedState** | `pausedAtTask`, `taskState?`, `pipelineContext` — input to `resume()` |
-| **PipelineResult** | Either `{ status: 'COMPLETED', pipelineContext }` or `{ status: 'PAUSED', pausedAtTask, taskState?, pipelineContext }` |
+| **PipelineSavedState** | `pausedAtTask`, `pipelineContext` — input to `resume()` |
+| **PipelineResult** | Either `{ status: 'COMPLETED', pipelineContext }` or `{ status: 'PAUSED', pausedAtTask, pipelineContext }` |
 
 ---
 
@@ -43,7 +43,7 @@ flowchart TD
     E -->|true| G[onTaskStarted]
     G --> H[result = task.execute context]
     H --> I["result.status?"]
-    I -->|PAUSED| J[return PAUSED with pausedAtTask, taskState, pipelineContext]
+    I -->|PAUSED| J[return PAUSED with pausedAtTask, pipelineContext]
     I -->|COMPLETED| K[merge result.data into pipelineContext]
     K --> L[onTaskCompleted]
     L --> C
@@ -79,7 +79,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph Executor["SuiStepExecutor.executeStep()"]
-        E1[extra, pipeline = TaskPipeline createSuiTaskPipeline]
+        E1[baseContext, pipeline = TaskPipeline createSuiTaskPipeline]
         E2[result = pipeline.run ...]
     end
 
@@ -126,7 +126,7 @@ All ecosystems share a similar sequence:
 7. **WaitForTransaction** – Wait for confirmation; handle replacement/cancel; mark action DONE for bridge.
 8. **WaitForDestinationChain** – waitForDestinationChainTransaction (can be last task or called after pipeline).
 
-Ecosystems differ in **extra** (wallet, statusManager, relayer/batch/permit flags), **resume path** (e.g. when `action.txHash` already exists), and **SignAndExecute** (single tx vs batched vs relayer).
+Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/permit flags at top level), **resume path** (e.g. when `action.txHash` already exists), and **SignAndExecute** (single tx vs batched vs relayer).
 
 ---
 
@@ -175,7 +175,7 @@ Ecosystems differ in **extra** (wallet, statusManager, relayer/batch/permit flag
 | 7 | EthereumSignAndExecuteTask | Three branches: **batched** (sendCalls), **relayer** (sign typed data, relayTransaction), **standard** (permit encode, signPermit2, estimateTransactionRequest, sendTransaction). |
 | 8 | EthereumWaitForTransactionTask | waitForTransaction (batch / relayed / standard receipt), DONE for bridge, then waitForDestinationChainTransaction inside the same helper. |
 
-**Ecosystem specifics:** Allowance/permit and relayer/batch logic make the task list longer; **extra** carries batchingSupported, permit2Supported, signedTypedData, etc. Resume path is “already have txHash/taskId → checkClient + waitForTransaction”.
+**Ecosystem specifics:** Allowance/permit and relayer/batch logic make the task list longer; **context** carries batchingSupported, permit2Supported, signedTypedData, etc. at top level. Resume path is “already have txHash/taskId → checkClient + waitForTransaction”.
 
 ---
 
@@ -188,11 +188,11 @@ Ecosystems differ in **extra** (wallet, statusManager, relayer/batch/permit flag
   step                                 ← T1: (none)
   chain                                ← T2: (none)
   allowUserInteraction                 ← T3: preparedTransaction
-  extra (e.g. SuiTaskExtra)            ← T4: (none)
+  ecosystem fields (e.g. SuiTaskExtra) ← T4: (none)
                                        ← T5: suiTxDigest
   ─────────────────────────           ──────────────────────────
   TaskContext = baseContext + pipelineContext
-  Each task receives TaskContext; can read step, extra, pipelineContext; can return data to merge.
+  Each task receives TaskContext; can read step, ecosystem fields, pipelineContext; can return data to merge.
 ```
 
 ---

@@ -56,18 +56,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
-    // Task-split overview:
-    // 1. BitcoinStartActionTask   – init execution, find/create action, set action type
-    // 2. BitcoinCheckWalletTask   – verify wallet matches quote (resume path or before sign)
-    // 3. BitcoinCheckBalanceTask  – check balance before preparing tx
-    // 4. BitcoinPrepareTransactionTask – getStepTransaction, stepComparison, transactionRequest + hook
-    // 5. BitcoinAwaitUserSignatureTask – ACTION_REQUIRED; PAUSED if !allowUserInteraction
-    // 6. BitcoinSignAndExecuteTask – sign PSBT, finalize, send, update PENDING
-    // 7. BitcoinWaitForTransactionTask – waitForTransaction, onReplaced, DONE for bridge
-    // 8. WaitForDestinationChainTask – waitForDestinationChainTransaction
-    // --- TASK: BitcoinStartActionTask ---
-    // Init execution object, resolve chains, determine action type (CROSS_CHAIN vs SWAP),
-    // findOrCreateAction. Skip if action already DONE or we have txHash (resume path).
+    // getBitcoinPipelineContext()
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await client.getChainById(step.action.fromChainId)
@@ -284,7 +273,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
             hex: txHex,
           })
 
-          // --- End BitcoinSignAndExecuteTask: persist txHash/txLink/txHex ---
           action = this.statusManager.updateAction(
             step,
             action.type,
@@ -354,8 +342,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // --- TASK: WaitForDestinationChainTask (or common helper) ---
-    // Wait for destination-chain transaction confirmation; update statusManager as needed.
     await waitForDestinationChainTransaction(
       client,
       step,
@@ -366,7 +352,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       10_000
     )
 
-    // DONE
     return step
   }
 }

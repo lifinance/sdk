@@ -9,7 +9,7 @@ import {
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import { createSuiTaskPipeline } from './tasks/createSuiTaskPipeline.js'
-import type { SuiTaskExtra } from './tasks/types.js'
+import { getSuiPipelineContext } from './tasks/helpers/getSuiPipelineContext.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
@@ -26,36 +26,12 @@ export class SuiStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const fromChain = await client.getChainById(step.action.fromChainId)
-    const toChain = await client.getChainById(step.action.toChainId)
-
-    const isBridgeExecution = fromChain.id !== toChain.id
-    const currentActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-
-    const action = this.statusManager.findOrCreateAction({
-      step,
-      type: currentActionType,
-      chainId: fromChain.id,
-    })
-
-    const extra: SuiTaskExtra = {
+    const baseContext = await getSuiPipelineContext(client, step, {
       wallet: this.wallet,
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,
-      fromChain,
-      toChain,
-      isBridgeExecution,
-      actionType: currentActionType,
-      action,
-    }
-
-    const baseContext = {
-      client,
-      step,
-      chain: fromChain,
       allowUserInteraction: this.allowUserInteraction,
-      extra,
-    }
+    })
 
     const pipeline = new TaskPipeline(createSuiTaskPipeline())
 
@@ -70,7 +46,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
       if (result.status === 'PAUSED') {
         step.execution.pipelineSavedState = {
           pausedAtTask: result.pausedAtTask,
-          taskState: result.taskState,
           pipelineContext: result.pipelineContext,
         }
         return step
@@ -80,10 +55,10 @@ export class SuiStepExecutor extends BaseStepExecutor {
         delete step.execution.pipelineSavedState
       }
     } catch (e: any) {
-      const error = await parseSuiErrors(e, step, extra.action)
-      extra.action = this.statusManager.updateAction(
+      const error = await parseSuiErrors(e, step, baseContext.action)
+      baseContext.action = this.statusManager.updateAction(
         step,
-        extra.actionType,
+        baseContext.actionType,
         'FAILED',
         {
           error: {
@@ -95,13 +70,12 @@ export class SuiStepExecutor extends BaseStepExecutor {
       throw error
     }
 
-    // TODO: Add this to the pipeline?
     await waitForDestinationChainTransaction(
       client,
       step,
-      extra.action,
-      fromChain,
-      toChain,
+      baseContext.action,
+      baseContext.fromChain,
+      baseContext.toChain,
       this.statusManager
     )
 

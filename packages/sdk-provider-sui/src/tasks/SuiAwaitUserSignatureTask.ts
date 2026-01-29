@@ -8,16 +8,16 @@ export class SuiAwaitUserSignatureTask
   readonly displayName = 'Sign transaction'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
+    const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
-    const { step, extra, allowUserInteraction } = context
+    const { step, statusManager, actionType, allowUserInteraction } = context
 
-    extra.action = extra.statusManager.updateAction(
+    context.action = statusManager.updateAction(
       step,
-      extra.actionType,
+      actionType,
       'ACTION_REQUIRED'
     )
 

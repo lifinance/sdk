@@ -6,21 +6,13 @@ export class SuiStartActionTask implements ExecutionTask<SuiTaskExtra, void> {
   readonly displayName = 'Start action'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
-    // Don't reset status if we already have a broadcasted tx
-    if (action.txHash) {
-      return false
-    }
-    return action.status !== 'DONE'
+    const { action } = context
+    return !action.txHash && action.status !== 'DONE'
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
-    const { step, extra } = context
-    extra.action = extra.statusManager.updateAction(
-      step,
-      extra.actionType,
-      'STARTED'
-    )
+    const { step, statusManager, actionType } = context
+    context.action = statusManager.updateAction(step, actionType, 'STARTED')
     return { status: 'COMPLETED' }
   }
 }

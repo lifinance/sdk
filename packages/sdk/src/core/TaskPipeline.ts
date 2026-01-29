@@ -3,7 +3,6 @@ import type {
   PipelineContext,
   PipelineSavedState,
   TaskContext,
-  TaskState,
 } from '../types/tasks.js'
 
 type PipelineResult =
@@ -14,7 +13,6 @@ type PipelineResult =
   | {
       status: 'PAUSED'
       pausedAtTask: string
-      taskState?: TaskState
       pipelineContext: PipelineContext
     }
 
@@ -55,7 +53,6 @@ export class TaskPipeline {
       return {
         status: 'PAUSED',
         pausedAtTask: pausedTask.type,
-        taskState: result.saveState,
         pipelineContext,
       }
     }
@@ -92,11 +89,11 @@ export class TaskPipeline {
         return {
           status: 'PAUSED',
           pausedAtTask: task.type,
-          taskState: result.saveState,
           pipelineContext,
         }
       }
 
+      // Set data passed between tasks
       if (result.data && typeof result.data === 'object') {
         Object.assign(pipelineContext, result.data as Record<string, unknown>)
       }

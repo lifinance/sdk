@@ -7,12 +7,8 @@ export class SuiCheckBalanceTask implements ExecutionTask<SuiTaskExtra, void> {
   readonly displayName = 'Check balance'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
-    // Once a tx is broadcasted, balance is no longer relevant for this step
-    if (action.txHash) {
-      return false
-    }
-    return action.status !== 'DONE'
+    const { action } = context
+    return !action.txHash && action.status !== 'DONE'
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {

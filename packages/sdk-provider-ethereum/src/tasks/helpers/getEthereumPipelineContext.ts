@@ -1,4 +1,5 @@
 import {
+  type ExecutionActionType,
   type ExecutionOptions,
   type LiFiStepExtended,
   type SDKClient,
@@ -35,10 +36,7 @@ export async function getEthereumPipelineContext(
   atomicityNotReady: boolean,
   deps: GetEthereumPipelineContextDeps
 ): Promise<
-  | {
-      baseContext: Omit<TaskContext<EthereumTaskExtra>, 'pipelineContext'>
-      extra: EthereumTaskExtra
-    }
+  | { baseContext: Omit<TaskContext<EthereumTaskExtra>, 'pipelineContext'> }
   | { earlyExit: true }
 > {
   const fromChain = await client.getChainById(step.action.fromChainId)
@@ -55,7 +53,9 @@ export async function getEthereumPipelineContext(
         })
 
   const isBridgeExecution = fromChain.id !== toChain.id
-  const currentActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+  const currentActionType: ExecutionActionType = isBridgeExecution
+    ? 'CROSS_CHAIN'
+    : 'SWAP'
   const isFromNativeToken =
     fromChain.nativeToken.address === step.action.fromToken.address &&
     isZeroAddress(step.action.fromToken.address)
@@ -118,7 +118,11 @@ export async function getEthereumPipelineContext(
     chainId: fromChain.id,
   })
 
-  const extra: EthereumTaskExtra = {
+  const baseContext = {
+    client,
+    step,
+    chain: fromChain,
+    allowUserInteraction: deps.allowUserInteraction,
     statusManager: deps.statusManager,
     executionOptions: deps.executionOptions,
     fromChain,
@@ -134,13 +138,5 @@ export async function getEthereumPipelineContext(
     ethereumClient: deps.ethereumClient,
     checkClientDeps: deps.checkClientDeps,
   }
-
-  const baseContext = {
-    client,
-    step,
-    chain: fromChain,
-    allowUserInteraction: deps.allowUserInteraction,
-    extra,
-  }
-  return { baseContext, extra }
+  return { baseContext }
 }

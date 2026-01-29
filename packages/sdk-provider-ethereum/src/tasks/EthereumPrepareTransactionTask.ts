@@ -16,32 +16,39 @@ export class EthereumPrepareTransactionTask
   readonly displayName = 'Prepare transaction'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
+    const { action } = context
     return !action.txHash && !action.taskId
   }
 
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, extra, allowUserInteraction } = context
+    const {
+      client,
+      step,
+      action,
+      signedTypedData,
+      allowUserInteraction,
+      checkClientDeps,
+    } = context
 
     const checkClient = (
       s: LiFiStepExtended,
       a: ExecutionAction,
       targetChainId?: number
-    ) => checkClientHelper(s, a, targetChainId, extra.checkClientDeps)
+    ) => checkClientHelper(s, a, targetChainId, checkClientDeps)
 
     const prepared = await prepareUpdatedStepHelper(
       client,
       step,
-      extra.action,
-      extra.signedTypedData,
+      action,
+      signedTypedData,
       {
-        statusManager: extra.statusManager,
-        executionOptions: extra.executionOptions,
+        statusManager: context.statusManager,
+        executionOptions: context.executionOptions,
         checkClient,
         allowUserInteraction,
-        ethereumClient: extra.ethereumClient,
+        ethereumClient: context.ethereumClient,
       }
     )
 
@@ -49,8 +56,8 @@ export class EthereumPrepareTransactionTask
       return { status: 'PAUSED' }
     }
 
-    extra.transactionRequest = prepared.transactionRequest
-    extra.isRelayerTransaction = prepared.isRelayerTransaction
+    context.transactionRequest = prepared.transactionRequest
+    context.isRelayerTransaction = prepared.isRelayerTransaction
     return { status: 'COMPLETED' }
   }
 }

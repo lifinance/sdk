@@ -9,7 +9,7 @@ export class EthereumCheckBalanceTask
   readonly displayName = 'Check balance'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
+    const { action } = context
     if (action.txHash) {
       return false
     }
@@ -19,8 +19,8 @@ export class EthereumCheckBalanceTask
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, extra } = context
-    await checkBalance(client, extra.ethereumClient.account!.address, step)
+    const { client, step, ethereumClient } = context
+    await checkBalance(client, ethereumClient.account!.address, step)
     return { status: 'COMPLETED' }
   }
 }

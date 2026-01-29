@@ -52,14 +52,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     client: SDKClient,
     step: LiFiStepExtended
   ): Promise<LiFiStepExtended> => {
-    // Task-split overview:
-    // 1. SolanaStartActionTask      – init execution, get wallet account (SolanaCheckWalletTask), find/create action, STARTED
-    // 2. SolanaCheckBalanceTask     – check balance before preparing tx
-    // 3. SolanaPrepareTransactionTask – getStepTransaction, stepComparison, transactionRequest + hook
-    // 4. SolanaAwaitUserSignatureTask – ACTION_REQUIRED; PAUSED if !allowUserInteraction
-    // 5. SolanaSignAndExecuteTask   – sign tx (with timeout), decode, simulate, sendAndConfirm, update PENDING, DONE for bridge
-    // 6. WaitForDestinationChainTask – waitForDestinationChainTransaction
-    // --- TASK: SolanaStartActionTask ---
+    // getSolanaPipelineContext()
     step.execution = this.statusManager.initExecutionObject(step)
 
     const fromChain = await client.getChainById(step.action.fromChainId)
@@ -194,6 +187,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         const encodedTransaction =
           getBase64EncodedWireTransaction(signedTransaction)
 
+        // --- TASK: SolanaWaitForTransactionTask ---
         const simulationResult = await callSolanaWithRetry(
           client,
           (connection) =>
@@ -241,8 +235,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        // --- End SolanaSignAndExecuteTask: persist txHash/txLink ---
-        // Transaction has been confirmed and we can update the action
         action = this.statusManager.updateAction(step, action.type, 'PENDING', {
           txHash: confirmedTransaction.txSignature,
           txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
@@ -263,8 +255,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       }
     }
 
-    // --- TASK: WaitForDestinationChainTask (or common helper) ---
-    // Wait for destination-chain transaction confirmation; update statusManager as needed.
     await waitForDestinationChainTransaction(
       client,
       step,
@@ -274,7 +264,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       this.statusManager
     )
 
-    // DONE
     return step
   }
 }

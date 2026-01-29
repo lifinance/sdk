@@ -27,21 +27,18 @@ function getWalletAccountForStep(
 }
 
 export class SuiSignAndExecuteTask
-  implements ExecutionTask<SuiTaskExtra, { suiTxDigest: string }>
+  implements ExecutionTask<SuiTaskExtra, void>
 {
   readonly type = 'SUI_SIGN_AND_EXECUTE'
   readonly displayName = 'Send transaction'
 
   async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
-    return (
-      !context.extra.action.txHash && context.extra.action.status !== 'DONE'
-    )
+    const { action } = context
+    return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(
-    context: TaskContext<SuiTaskExtra>
-  ): Promise<TaskResult<{ suiTxDigest: string }>> {
-    const { step, extra } = context
+  async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
+    const { step, wallet, statusManager, actionType, fromChain } = context
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
@@ -54,9 +51,9 @@ export class SuiSignAndExecuteTask
       data: step.transactionRequest.data,
     }
 
-    if (extra.executionOptions?.updateTransactionRequestHook) {
+    if (context.executionOptions?.updateTransactionRequestHook) {
       const customizedTransactionRequest: TransactionParameters =
-        await extra.executionOptions.updateTransactionRequestHook({
+        await context.executionOptions.updateTransactionRequestHook({
           requestType: 'transaction',
           ...transactionRequest,
         })
@@ -76,14 +73,11 @@ export class SuiSignAndExecuteTask
       )
     }
 
-    const account = getWalletAccountForStep(
-      extra.wallet,
-      step.action.fromAddress!
-    )
+    const account = getWalletAccountForStep(wallet, step.action.fromAddress!)
 
-    const signedTx = await signAndExecuteTransaction(extra.wallet, {
+    // We give users 2 minutes to sign the transaction
+    const signedTx = await signAndExecuteTransaction(wallet, {
       account,
-      // Keep current behavior (mainnet). Can be made dynamic later.
       chain: 'sui:mainnet',
       transaction: {
         toJSON: async () => transactionRequestData,
@@ -91,16 +85,11 @@ export class SuiSignAndExecuteTask
     })
 
     // Persist txHash immediately so we can resume waiting if needed.
-    extra.action = extra.statusManager.updateAction(
-      step,
-      extra.actionType,
-      'PENDING',
-      {
-        txHash: signedTx.digest,
-        txLink: `${extra.fromChain.metamask.blockExplorerUrls[0]}txblock/${signedTx.digest}`,
-      }
-    )
+    context.action = statusManager.updateAction(step, actionType, 'PENDING', {
+      txHash: signedTx.digest,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${signedTx.digest}`,
+    })
 
-    return { status: 'COMPLETED', data: { suiTxDigest: signedTx.digest } }
+    return { status: 'COMPLETED' }
   }
 }

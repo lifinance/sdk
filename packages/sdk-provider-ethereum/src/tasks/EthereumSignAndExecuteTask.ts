@@ -25,32 +25,36 @@ export class EthereumSignAndExecuteTask
   readonly displayName = 'Send transaction'
 
   async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const { action } = context.extra
+    const { action } = context
     return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, extra } = context
     const {
+      client,
+      step,
       fromChain,
       action,
       actionType,
       statusManager,
+      checkClientDeps,
+    } = context
+    const {
       calls,
       signedTypedData,
       batchingSupported,
       permit2Supported,
       transactionRequest,
       isRelayerTransaction,
-    } = extra
+    } = context
 
     const checkClient = (
       s: typeof step,
       a: typeof action,
       targetChainId?: number
-    ) => checkClientHelper(s, a, targetChainId, extra.checkClientDeps)
+    ) => checkClientHelper(s, a, targetChainId, checkClientDeps)
 
     let txHash: Hash | undefined
     let taskId: Hash | undefined
@@ -200,7 +204,7 @@ export class EthereumSignAndExecuteTask
       } as SendTransactionParameters)
     }
 
-    extra.action = statusManager.updateAction(step, actionType, 'PENDING', {
+    context.action = statusManager.updateAction(step, actionType, 'PENDING', {
       txHash,
       taskId,
       txType,
