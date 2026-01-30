@@ -10,14 +10,9 @@ export class EthereumDestinationChainCheckTask
   readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
   readonly displayName = 'Check destination chain'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    const destinationChainAction = context.step.execution?.actions.find(
-      (a) => a.type === 'RECEIVING_CHAIN'
-    )
-    return (
-      !!destinationChainAction &&
-      destinationChainAction.substatus !== 'WAIT_DESTINATION_TRANSACTION'
-    )
+  async shouldRun(_context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+    // Destination chain check is always run
+    return true
   }
 
   async execute(

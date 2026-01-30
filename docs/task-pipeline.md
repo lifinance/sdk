@@ -147,14 +147,12 @@ Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/per
 
 | # | Task (conceptual) | Notes |
 |---|--------------------|--------|
-| 1 | SolanaStartActionTask | Init execution, get wallet account (SolanaCheckWalletTask), find/create action, STARTED. |
-| 2 | SolanaCheckBalanceTask | checkBalance. |
-| 3 | SolanaPrepareTransactionTask | getStepTransaction, stepComparison, transactionRequest + hook. |
-| 4 | SolanaAwaitUserSignatureTask | ACTION_REQUIRED; **PAUSED** if `!allowUserInteraction`. |
-| 5 | SolanaSignAndExecuteTask | base64 decode, sign (with timeout), decode signed tx, simulate (callSolanaWithRetry), sendAndConfirmTransaction, update PENDING (txHash, txLink), DONE for bridge. |
-| 6 | WaitForDestinationChainTask | waitForDestinationChainTransaction. |
+| 1 | SolanaCheckBalanceTask | updateAction(..., 'STARTED'); checkBalance(...). Context from **getSolanaPipelineContext()** (chains, wallet account, find/create action). |
+| 2 | SolanaPrepareTransactionTask | getStepTransaction, stepComparison; updateAction(..., 'ACTION_REQUIRED'); if !allowUserInteraction → **PAUSED**. |
+| 3 | SolanaSignAndExecuteTask | updateTransactionRequestHook; base64 decode, sign (with timeout), decode signed tx, simulate (callSolanaWithRetry), sendAndConfirmTransaction; update PENDING (txHash, txLink), DONE for bridge. |
+| (after pipeline) | SolanaStepExecutor | Calls **waitForDestinationChainTransaction(...)** after pipeline completes, then returns step. |
 
-**Resume path:** No explicit “already have txHash” shortcut in the current Solana executor; a pipeline version could skip to a “wait” task when `action.txHash` exists (similar to Bitcoin).
+**Ecosystem specifics:** **baseContext** from **getSolanaPipelineContext()** (returns context with walletAccount). Resume: executor persists **pipelineSavedState** and calls **pipeline.resume()** on next executeStep. “already have txHash” shortcut in the current Solana executor; a pipeline version could skip to a “wait” task when `action.txHash` exists (similar to Bitcoin).
 
 ---
 
@@ -195,7 +193,8 @@ Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/per
 - **SuiStepExecutor** and **EthereumStepExecutor** wire resume by persisting `PipelineSavedState` on **`step.execution.pipelineSavedState`** when `run()` returns `status: 'PAUSED'`, and on the next `executeStep` they call **`pipeline.resume(savedState, baseContext)`** when that field is set, then clear it after a successful run.
 - **Ethereum:** **baseContext** is obtained via **`getEthereumPipelineContext(client, step, atomicityNotReady, deps)`**, which returns the context object directly (no wrapper).
 - **`prepareRestart(route)`** does **not** clear `step.execution.pipelineSavedState`, so resume state survives across restart/resume.
-- Solana and Bitcoin executors still only use **`pipeline.run(...)`** and do not yet persist or use pipeline saved state.
+- **SolanaStepExecutor** wires resume the same way (persists **pipelineSavedState**, calls **pipeline.resume()** on next executeStep); **baseContext** from **getSolanaPipelineContext()**.
+- Bitcoin executor still only uses **`pipeline.run(...)`** and does not yet persist or use pipeline saved state.
 
 ### Call chain (current)
 
