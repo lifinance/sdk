@@ -84,28 +84,24 @@ flowchart LR
     end
 
     subgraph Pipeline["createSuiTaskPipeline()"]
-        T1[T1: SuiStartAction]
-        T2[T2: SuiCheckBalance]
-        T3[T3: SuiPrepareTransaction]
-        T4[T4: SuiAwaitUserSignature]
-        T5[T5: SuiSignAndExecute]
-        T6[T6: SuiWaitForTransaction]
+        T1[T1: SuiCheckBalance]
+        T2[T2: SuiPrepareTransaction]
+        T3[T3: SuiSignAndExecute]
+        T4[T4: SuiWaitForTransaction]
     end
 
     E1 --> E2
-    E2 --> T1 --> T2 --> T3 --> T4 --> T5 --> T6
-    T6 --> Done[COMPLETED]
-    T4 -.->|!allowUserInteraction| Pause[PAUSED; return step]
+    E2 --> T1 --> T2 --> T3 --> T4
+    T4 --> Done[COMPLETED]
+    T2 -.->|!allowUserInteraction| Pause[PAUSED; return step]
 ```
 
 | Task | type | shouldRun | execute / writes |
 |------|------|-----------|-------------------|
-| T1 | SuiStartAction | !txHash && status !== DONE | updateAction(..., 'STARTED') |
-| T2 | SuiCheckBalance | !txHash && status !== DONE | checkBalance(...) |
-| T3 | SuiPrepareTransaction | !txHash && status !== DONE | getStepTransaction, stepComparison → **preparedTransaction** |
-| T4 | SuiAwaitUserSignature | !txHash && status !== DONE | updateAction(..., 'ACTION_REQUIRED'); if !allowUserInteraction → **PAUSED** + saveState |
-| T5 | SuiSignAndExecute | !txHash && status !== DONE | sign + execute → **suiTxDigest** |
-| T6 | SuiWaitForTransaction | txHash present, status !== DONE | wait confirmation; DONE for bridge |
+| T1 | SuiCheckBalance | !txHash && status !== DONE | updateAction(..., 'STARTED'); checkBalance(...) |
+| T2 | SuiPrepareTransaction | !txHash && status !== DONE | getStepTransaction, stepComparison → **preparedTransaction**; updateAction(..., 'ACTION_REQUIRED'); if !allowUserInteraction → **PAUSED** |
+| T3 | SuiSignAndExecute | !txHash && status !== DONE | sign + execute → **suiTxDigest** |
+| T4 | SuiWaitForTransaction | txHash present, status !== DONE | wait confirmation; DONE for bridge |
 
 After the pipeline completes, **SuiStepExecutor** calls `waitForDestinationChainTransaction(...)` outside the pipeline, then returns the step.
 
@@ -168,12 +164,10 @@ Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/per
 |---|--------------------|--------|
 | 1 | EthereumDestinationChainCheckTask | When RECEIVING_CHAIN action exists and not WAIT_DESTINATION_TRANSACTION: checkClient(step, destinationChainAction). |
 | 2 | EthereumCheckAllowanceTask | checkAllowance (approval / permit / batch); can return PAUSED if `!allowUserInteraction` and interaction needed. |
-| 3 | EthereumStartActionTask | updateAction(..., 'STARTED'). Context from **getEthereumPipelineContext()** (chains, batching/permit2 flags, find/create action). |
-| 4 | EthereumCheckBalanceTask | checkBalance. |
-| 5 | EthereumPrepareTransactionTask | prepareUpdatedStep; returns **result.data** (transactionRequest, isRelayerTransaction) merged into pipelineContext. |
-| 6 | EthereumAwaitUserSignatureTask | ACTION_REQUIRED; **PAUSED** if `!allowUserInteraction`. |
-| 7 | EthereumSignAndExecuteTask | Batched (sendCalls), relayer (sign typed data, relayTransaction), or standard (permit, signPermit2, estimateTransactionRequest, sendTransaction). Reads transactionRequest/isRelayerTransaction from context (from pipelineContext merge). |
-| 8 | EthereumWaitForTransactionTask | waitForTransaction (batch / relayed / standard receipt), DONE for bridge. |
+| 3 | EthereumCheckBalanceTask | updateAction(..., 'STARTED'); checkBalance(...). Context from **getEthereumPipelineContext()** (chains, batching/permit2 flags, find/create action). |
+| 4 | EthereumPrepareTransactionTask | prepareUpdatedStep; updateAction(..., 'ACTION_REQUIRED'); if !allowUserInteraction → **PAUSED**; else returns **result.data** (transactionRequest, isRelayerTransaction) merged into pipelineContext. |
+| 5 | EthereumSignAndExecuteTask | Batched (sendCalls), relayer (sign typed data, relayTransaction), or standard (permit, signPermit2, estimateTransactionRequest, sendTransaction). Reads transactionRequest/isRelayerTransaction from context (from pipelineContext merge). |
+| 6 | EthereumWaitForTransactionTask | waitForTransaction (batch / relayed / standard receipt), DONE for bridge. |
 | (after pipeline) | EthereumStepExecutor | Calls **waitForDestinationChainTransaction(...)** after pipeline completes, then returns step. |
 
 **Ecosystem specifics:** **baseContext** is built by **getEthereumPipelineContext()** (returns context object directly). Context carries batchingSupported, permit2Supported, signedTypedData, toChain, isBridgeExecution, action (from statusManager), etc. Resume: executor persists **pipelineSavedState** on step and calls **pipeline.resume()** on next executeStep. 

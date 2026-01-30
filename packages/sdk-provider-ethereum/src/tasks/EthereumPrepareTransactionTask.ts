@@ -30,9 +30,11 @@ export class EthereumPrepareTransactionTask
       client,
       step,
       action,
+      actionType,
       signedTypedData,
       allowUserInteraction,
       checkClient,
+      statusManager,
     } = context
 
     const prepared = await prepareUpdatedStepHelper(
@@ -50,6 +52,16 @@ export class EthereumPrepareTransactionTask
     )
 
     if (!prepared) {
+      return { status: 'PAUSED' }
+    }
+
+    context.action = statusManager.updateAction(
+      step,
+      actionType,
+      'ACTION_REQUIRED'
+    )
+
+    if (!allowUserInteraction) {
       return { status: 'PAUSED' }
     }
 

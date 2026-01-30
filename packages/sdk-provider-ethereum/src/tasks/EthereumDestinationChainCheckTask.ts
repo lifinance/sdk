@@ -30,11 +30,7 @@ export class EthereumDestinationChainCheckTask
     if (!destinationChainAction) {
       return { status: 'COMPLETED' }
     }
-    const updatedClient = await checkClient(
-      step,
-      destinationChainAction,
-      undefined
-    )
+    const updatedClient = await checkClient(step, destinationChainAction)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

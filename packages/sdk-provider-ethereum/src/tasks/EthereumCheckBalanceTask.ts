@@ -16,7 +16,8 @@ export class EthereumCheckBalanceTask
   async execute(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { client, step, ethereumClient } = context
+    const { client, step, statusManager, actionType, ethereumClient } = context
+    context.action = statusManager.updateAction(step, actionType, 'STARTED')
     await checkBalance(client, ethereumClient.account!.address, step)
     return { status: 'COMPLETED' }
   }

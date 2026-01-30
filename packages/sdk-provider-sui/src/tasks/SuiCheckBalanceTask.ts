@@ -12,7 +12,8 @@ export class SuiCheckBalanceTask implements ExecutionTask<SuiTaskExtra, void> {
   }
 
   async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
-    const { client, step } = context
+    const { client, step, statusManager, actionType } = context
+    context.action = statusManager.updateAction(step, actionType, 'STARTED')
     await checkBalance(client, step.action.fromAddress!, step)
     return { status: 'COMPLETED' }
   }
