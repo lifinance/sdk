@@ -1,10 +1,11 @@
 import {
   type ClusterUrl,
   createDefaultRpcTransport,
-  createJsonRpcApi,
   createRpc,
+  createSolanaRpcApi,
   type Rpc,
   type RpcTransport,
+  type SolanaRpcApi,
 } from '@solana/kit'
 
 import type { GetBundleStatusesApi } from './api/getBundleStatuses.js'
@@ -12,15 +13,18 @@ import type { GetTipAccountsApi } from './api/getTipAccounts.js'
 import type { SendBundleApi } from './api/sendBundle.js'
 import type { SimulateBundleApi } from './api/simulateBundle.js'
 
-// Jito-only API type (no Solana base methods)
-export type JitoRpcApi = GetBundleStatusesApi &
+// Jito-specific methods API type
+export type JitoBundleApi = GetBundleStatusesApi &
   GetTipAccountsApi &
   SendBundleApi &
   SimulateBundleApi
 
-// Create the Jito RPC API
+// Combined Jito RPC API type (Jito methods + standard Solana methods)
+export type JitoRpcApi = JitoBundleApi & SolanaRpcApi
+
+// Create the Jito RPC API with Solana transforms
 function createJitoRpcApi() {
-  return createJsonRpcApi<JitoRpcApi>()
+  return createSolanaRpcApi<JitoRpcApi>()
 }
 
 // Create Jito RPC from a custom transport

@@ -7,10 +7,7 @@ import {
   type TransactionError,
 } from '@solana/kit'
 
-import {
-  getJitoConnections,
-  getSolanaConnections,
-} from '../client/connection.js'
+import { getJitoConnections } from '../client/connection.js'
 
 type SignatureStatus = {
   slot: bigint
@@ -38,10 +35,7 @@ export async function sendAndConfirmBundle(
   client: SDKClient,
   signedTransactions: Transaction[]
 ): Promise<BundleResult> {
-  const [jitoConnections, solanaConnections] = await Promise.all([
-    getJitoConnections(client),
-    getSolanaConnections(client),
-  ])
+  const jitoConnections = await getJitoConnections(client)
 
   if (jitoConnections.length === 0) {
     throw new Error(
@@ -49,40 +43,31 @@ export async function sendAndConfirmBundle(
     )
   }
 
-  if (solanaConnections.length === 0) {
-    throw new Error('No Solana RPC connection available')
-  }
-
   // Serialize transactions to base64
   const serializedTransactions = signedTransactions.map((tx) =>
     getBase64EncodedWireTransaction(tx)
   )
 
-  // Use first Solana connection for blockhash/blockheight queries
-  const solanaRpc = solanaConnections[0]
-
   const abortController = new AbortController()
 
-  const confirmPromises = jitoConnections.map(async (jitoConnection) => {
+  const confirmPromises = jitoConnections.map(async (jitoRpc) => {
     try {
       // Send bundle to Jito
       let bundleId: string
       try {
-        bundleId = await jitoConnection
-          .sendBundle(serializedTransactions)
-          .send()
+        bundleId = await jitoRpc.sendBundle(serializedTransactions).send()
       } catch (_) {
         return null
       }
 
       const [{ value: blockhashResult }, initialBlockHeight] =
         await Promise.all([
-          solanaRpc
+          jitoRpc
             .getLatestBlockhash({
               commitment: 'confirmed',
             })
             .send(),
-          solanaRpc
+          jitoRpc
             .getBlockHeight({
               commitment: 'confirmed',
             })
@@ -95,7 +80,7 @@ export async function sendAndConfirmBundle(
         currentBlockHeight < blockhashResult.lastValidBlockHeight &&
         !abortController.signal.aborted
       ) {
-        const statusResponse = await jitoConnection
+        const statusResponse = await jitoRpc
           .getBundleStatuses([bundleId])
           .send()
 
@@ -110,8 +95,8 @@ export async function sendAndConfirmBundle(
           // Bundle confirmed! Extract transaction signatures from bundle status
           const txSignatures = bundleStatus.transactions
 
-          // Fetch individual signature results from Solana RPC
-          const sigResponse = await solanaRpc
+          // Fetch individual signature results from Jito RPC
+          const sigResponse = await jitoRpc
             .getSignatureStatuses(txSignatures)
             .send()
 
@@ -132,7 +117,7 @@ export async function sendAndConfirmBundle(
 
         await sleep(400)
         if (!abortController.signal.aborted) {
-          currentBlockHeight = await solanaRpc
+          currentBlockHeight = await jitoRpc
             .getBlockHeight({
               commitment: 'confirmed',
             })
