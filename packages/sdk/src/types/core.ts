@@ -241,6 +241,15 @@ export type ExecutionAction = {
   [key: string]: any
 }
 
+/**
+ * Saved state when a task pipeline pauses.
+ * Executors persist this on the step so they can call pipeline.resume() on the next executeStep.
+ */
+export interface ExecutionPipelineSavedState {
+  pausedAtTask: string
+  pipelineContext: Record<string, unknown>
+}
+
 export interface Execution {
   startedAt: number
   signedAt?: number
@@ -253,6 +262,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+  /** Set by step executors when TaskPipeline returns PAUSED; used to call pipeline.resume() on next run. */
+  pipelineSavedState?: ExecutionPipelineSavedState
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
