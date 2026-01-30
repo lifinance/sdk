@@ -157,7 +157,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const transactionBytes = base64ToUint8Array(transactionRequest.data)
+        // Handle both single transaction (string) and multiple transactions (array)
+        const transactionDataArray = Array.isArray(transactionRequest.data)
+          ? transactionRequest.data
+          : [transactionRequest.data]
+
+        const transactionBytesArray = transactionDataArray.map((data) =>
+          base64ToUint8Array(data)
+        )
 
         const signedTransactionOutputs = await withTimeout(
           async () => {
@@ -165,10 +172,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
               this.wallet,
               SolanaSignTransaction
             )
-            return signTransaction({
-              account: walletAccount,
-              transaction: transactionBytes,
-            })
+            // Spread the inputs to sign all transactions at once
+            return signTransaction(
+              ...transactionBytesArray.map((transaction) => ({
+                account: walletAccount,
+                transaction,
+              }))
+            )
           },
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
