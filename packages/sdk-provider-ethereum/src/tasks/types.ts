@@ -33,7 +33,6 @@ export interface EthereumTaskExtra {
 
   batchingSupported: boolean
   permit2Supported: boolean
-  disableMessageSigning: boolean
 
   /** Set by PrepareTransaction task. */
   transactionRequest?: TransactionParameters

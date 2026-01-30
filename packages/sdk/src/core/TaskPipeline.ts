@@ -46,9 +46,14 @@ export class TaskPipeline {
     const pausedTask = this.tasks[pausedIndex]
     const context: TaskContext = {
       ...(baseContext as TaskContext),
+      ...pipelineContext,
       pipelineContext,
     }
     const result = await pausedTask.execute(context)
+
+    if (result.data && typeof result.data === 'object') {
+      Object.assign(pipelineContext, result.data)
+    }
 
     if (result.status === 'PAUSED') {
       return {
@@ -73,6 +78,7 @@ export class TaskPipeline {
     for (const task of tasksToRun) {
       const context: TaskContext = {
         ...(baseContext as TaskContext),
+        ...pipelineContext,
         pipelineContext,
       }
 
@@ -82,6 +88,10 @@ export class TaskPipeline {
       }
 
       const result = await task.execute(context)
+
+      if (result.data && typeof result.data === 'object') {
+        Object.assign(pipelineContext, result.data)
+      }
 
       if (result.status === 'PAUSED') {
         return {

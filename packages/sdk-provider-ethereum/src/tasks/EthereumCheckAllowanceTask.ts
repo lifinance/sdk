@@ -35,6 +35,9 @@ export class EthereumCheckAllowanceTask
   ): Promise<TaskResult<void>> {
     const { client, step, allowUserInteraction, checkClient } = context
 
+    const disableMessageSigning =
+      context.executionOptions?.disableMessageSigning || step.type !== 'lifi'
+
     // Check if token needs approval and get approval transaction or message data when available
     const allowanceResult = await checkAllowance(client, {
       checkClient,
@@ -45,7 +48,7 @@ export class EthereumCheckAllowanceTask
       allowUserInteraction,
       batchingSupported: context.batchingSupported,
       permit2Supported: context.permit2Supported,
-      disableMessageSigning: context.disableMessageSigning,
+      disableMessageSigning,
     })
 
     switch (allowanceResult.status) {

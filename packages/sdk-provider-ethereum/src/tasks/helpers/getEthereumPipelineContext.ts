@@ -38,29 +38,6 @@ export async function getEthereumPipelineContext(
   | { baseContext: Omit<TaskContext<EthereumTaskExtra>, 'pipelineContext'> }
   | { earlyExit: true }
 > {
-  // Find if it's bridging and the step is waiting for a transaction on the destination chain
-  const destinationChainAction = step.execution?.actions.find(
-    (a) => a.type === 'RECEIVING_CHAIN'
-  )
-
-  // Make sure that the chain is still correct
-  // If the step is waiting for a transaction on the destination chain, we do not switch the chain
-  // All changes are already done from the source chain
-  if (
-    destinationChainAction &&
-    destinationChainAction.substatus !== 'WAIT_DESTINATION_TRANSACTION'
-  ) {
-    const updatedClient = await checkClientHelper(
-      step,
-      destinationChainAction,
-      undefined,
-      deps.checkClientDeps
-    )
-    if (!updatedClient) {
-      return { earlyExit: true }
-    }
-  }
-
   const fromChain = await client.getChainById(step.action.fromChainId)
   const toChain = await client.getChainById(step.action.toChainId)
 
@@ -107,9 +84,11 @@ export async function getEthereumPipelineContext(
     !step.estimate.skipApproval &&
     !step.estimate.skipPermit
 
-  const action = step.execution?.actions.find(
-    (p) => p.type === currentActionType
-  )
+  const action = deps.statusManager.findOrCreateAction({
+    step,
+    type: currentActionType,
+    chainId: fromChain.id,
+  })
 
   const baseContext = {
     client,
@@ -127,7 +106,6 @@ export async function getEthereumPipelineContext(
     signedTypedData,
     batchingSupported,
     permit2Supported,
-    disableMessageSigning,
     ethereumClient: deps.ethereumClient,
     checkClient: (
       s: LiFiStepExtended,
