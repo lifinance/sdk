@@ -6,7 +6,7 @@ import {
   type Transaction,
   type TransactionError,
 } from '@solana/kit'
-import { getSolanaConnections } from '../client/connection.js'
+import { getSolanaRpcs } from '../rpc/registry.js'
 
 type SignatureStatus = {
   slot: bigint
@@ -32,7 +32,7 @@ export async function sendAndConfirmTransaction(
   client: SDKClient,
   signedTransaction: Transaction
 ): Promise<ConfirmedTransactionResult> {
-  const connections = await getSolanaConnections(client)
+  const solanaRpcs = await getSolanaRpcs(client)
 
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
   // Create transaction hash (signature)
@@ -55,11 +55,11 @@ export async function sendAndConfirmTransaction(
 
   const abortController = new AbortController()
 
-  const confirmPromises = connections.map(async (connection) => {
+  const confirmPromises = solanaRpcs.map(async (rpc) => {
     try {
-      // Send initial transaction for this connection
+      // Send initial transaction for this RPC
       try {
-        await connection
+        await rpc
           .sendTransaction(signedTxSerialized, rawTransactionOptions)
           .send()
       } catch (_) {
@@ -68,12 +68,12 @@ export async function sendAndConfirmTransaction(
 
       const [{ value: blockhashResult }, initialBlockHeight] =
         await Promise.all([
-          connection
+          rpc
             .getLatestBlockhash({
               commitment: 'confirmed',
             })
             .send(),
-          connection
+          rpc
             .getBlockHeight({
               commitment: 'confirmed',
             })
@@ -87,7 +87,7 @@ export async function sendAndConfirmTransaction(
           blockHeight < blockhashResult.lastValidBlockHeight &&
           !abortController.signal.aborted
         ) {
-          const statusResponse = await connection
+          const statusResponse = await rpc
             .getSignatureStatuses([txSignature])
             .send()
 
@@ -98,7 +98,7 @@ export async function sendAndConfirmTransaction(
               status.confirmationStatus === 'finalized')
           ) {
             signatureResult = status
-            // Immediately abort all other connections when we find a result
+            // Immediately abort all other RPCs when we find a result
             abortController.abort()
             return status
           }
@@ -115,7 +115,7 @@ export async function sendAndConfirmTransaction(
           !signatureResult
         ) {
           try {
-            await connection
+            await rpc
               .sendTransaction(signedTxSerialized, rawTransactionOptions)
               .send()
           } catch (_) {
@@ -124,7 +124,7 @@ export async function sendAndConfirmTransaction(
 
           await sleep(1000)
           if (!abortController.signal.aborted) {
-            blockHeight = await connection
+            blockHeight = await rpc
               .getBlockHeight({
                 commitment: 'confirmed',
               })
