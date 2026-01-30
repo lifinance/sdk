@@ -27,17 +27,13 @@ export interface GetEthereumPipelineContextDeps {
 
 /**
  * Resolves chains, batching/permit2 flags, and pipeline context.
- * Initializes step.execution, runs destination-chain checkClient if needed, then handles early exits (action DONE or txHash/taskId) by performing the wait and returning 'earlyExit'.
  */
 export async function getEthereumPipelineContext(
   client: SDKClient,
   step: LiFiStepExtended,
   atomicityNotReady: boolean,
   deps: GetEthereumPipelineContextDeps
-): Promise<
-  | { baseContext: Omit<TaskContext<EthereumTaskExtra>, 'pipelineContext'> }
-  | { earlyExit: true }
-> {
+): Promise<Omit<TaskContext<EthereumTaskExtra>, 'pipelineContext'>> {
   const fromChain = await client.getChainById(step.action.fromChainId)
   const toChain = await client.getChainById(step.action.toChainId)
 
@@ -90,7 +86,7 @@ export async function getEthereumPipelineContext(
     chainId: fromChain.id,
   })
 
-  const baseContext = {
+  return {
     client,
     step,
     chain: fromChain,
@@ -101,7 +97,7 @@ export async function getEthereumPipelineContext(
     toChain,
     isBridgeExecution,
     actionType: currentActionType,
-    action: action!,
+    action,
     calls,
     signedTypedData,
     batchingSupported,
@@ -113,5 +109,4 @@ export async function getEthereumPipelineContext(
       targetChainId?: number
     ) => checkClientHelper(s, a, targetChainId, deps.checkClientDeps),
   }
-  return { baseContext }
 }

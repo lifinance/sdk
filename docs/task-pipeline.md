@@ -1,14 +1,14 @@
 # Task Pipeline
 
-How the task pipeline works in the SDK: types, flow, and current implementation (Sui).
+How the task pipeline works in the SDK: types, flow, and current implementation (Sui, Ethereum).
 
 ## Overview
 
 The **TaskPipeline** runs a list of **ExecutionTask**s in order. Each task can:
 
 - **Skip** itself via `shouldRun(context) → false`
-- **Complete** and optionally write data into **PipelineContext** for later tasks
-- **Pause** and return `saveState` so execution can be resumed later with `pipeline.resume()`
+- **Complete** and optionally return `result.data` (merged into **PipelineContext** for later tasks)
+- **Pause** and return `status: 'PAUSED'` so execution can be resumed later with `pipeline.resume()`
 
 Status is updated inside tasks via e.g. **StatusManager** on the context (ecosystem-specific fields are merged at top level).
 
@@ -36,7 +36,7 @@ Status is updated inside tasks via e.g. **StatusManager** on the context (ecosys
 flowchart TD
     A[run baseContext] --> B[runTaskLoop all tasks, context = empty]
     B --> C[for each task in tasksToRun]
-    C --> D[context = baseContext + pipelineContext]
+    C --> D[context = { ...baseContext, ...pipelineContext, pipelineContext }]
     D --> E["shouldRun(context)"]
     E -->|false| F[onTaskSkipped, continue]
     F --> C
@@ -166,17 +166,17 @@ Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/per
 
 | # | Task (conceptual) | Notes |
 |---|--------------------|--------|
-| 1 | EthereumStartActionTask | Init execution, destination-chain checkClient, resolve chains, batching/permit2 flags, find/create action, STARTED. |
+| 1 | EthereumDestinationChainCheckTask | When RECEIVING_CHAIN action exists and not WAIT_DESTINATION_TRANSACTION: checkClient(step, destinationChainAction). |
 | 2 | EthereumCheckAllowanceTask | checkAllowance (approval / permit / batch); can return PAUSED if `!allowUserInteraction` and interaction needed. |
-| 3 | (Resume path) | When `action.txHash` or `action.taskId`: checkClient, then waitForTransaction (batch / relayed / standard). |
+| 3 | EthereumStartActionTask | updateAction(..., 'STARTED'). Context from **getEthereumPipelineContext()** (chains, batching/permit2 flags, find/create action). |
 | 4 | EthereumCheckBalanceTask | checkBalance. |
-| 5 | EthereumPrepareTransactionTask | prepareUpdatedStep: contract call (getContractCalls, getContractCallsQuote), relayer (getRelayerQuote), or getStepTransaction; stepComparison; transactionRequest + maxPriorityFeePerGas + hook. |
+| 5 | EthereumPrepareTransactionTask | prepareUpdatedStep; returns **result.data** (transactionRequest, isRelayerTransaction) merged into pipelineContext. |
 | 6 | EthereumAwaitUserSignatureTask | ACTION_REQUIRED; **PAUSED** if `!allowUserInteraction`. |
-| 7 | EthereumSignAndExecuteTask | Three branches: **batched** (sendCalls), **relayer** (sign typed data, relayTransaction), **standard** (permit encode, signPermit2, estimateTransactionRequest, sendTransaction). |
-| 8 | EthereumWaitForTransactionTask | waitForTransaction (batch / relayed / standard receipt), DONE for bridge, then waitForDestinationChainTransaction inside the same helper. |
+| 7 | EthereumSignAndExecuteTask | Batched (sendCalls), relayer (sign typed data, relayTransaction), or standard (permit, signPermit2, estimateTransactionRequest, sendTransaction). Reads transactionRequest/isRelayerTransaction from context (from pipelineContext merge). |
+| 8 | EthereumWaitForTransactionTask | waitForTransaction (batch / relayed / standard receipt), DONE for bridge. |
+| (after pipeline) | EthereumStepExecutor | Calls **waitForDestinationChainTransaction(...)** after pipeline completes, then returns step. |
 
-**Ecosystem specifics:** Allowance/permit and relayer/batch logic make the task list longer; **context** carries batchingSupported, permit2Supported, signedTypedData, etc. at top level. Resume path is “already have txHash/taskId → checkClient + waitForTransaction”.
-
+**Ecosystem specifics:** **baseContext** is built by **getEthereumPipelineContext()** (returns context object directly). Context carries batchingSupported, permit2Supported, signedTypedData, toChain, isBridgeExecution, action (from statusManager), etc. Resume: executor persists **pipelineSavedState** on step and calls **pipeline.resume()** on next executeStep. 
 ---
 
 ## Data flow
@@ -185,23 +185,23 @@ Ecosystems differ in **context shape** (wallet, statusManager, relayer/batch/per
   baseContext (from executor)          pipelineContext (internal)
   ─────────────────────────           ──────────────────────────
   client                               {} at start
-  step                                 ← T1: (none)
-  chain                                ← T2: (none)
-  allowUserInteraction                 ← T3: preparedTransaction
-  ecosystem fields (e.g. SuiTaskExtra) ← T4: (none)
-                                       ← T5: suiTxDigest
+  step                                 ← task result.data merged here
+  chain                                (e.g. transactionRequest, isRelayerTransaction)
+  allowUserInteraction
+  ecosystem fields (e.g. EthereumTaskExtra / SuiTaskExtra)
   ─────────────────────────           ──────────────────────────
-  TaskContext = baseContext + pipelineContext
-  Each task receives TaskContext; can read step, ecosystem fields, pipelineContext; can return data to merge.
+  TaskContext = { ...baseContext, ...pipelineContext, pipelineContext }
+  So merged result.data is at top level; each task receives TaskContext and can return data to merge.
 ```
 
 ---
 
-## Current usage: resume wired (Sui)
+## Current usage: resume wired (Sui, Ethereum)
 
-- **SuiStepExecutor** wires resume by persisting `PipelineSavedState` on **`step.execution.pipelineSavedState`** when `run()` returns `status: 'PAUSED'`, and on the next `executeStep` it calls **`pipeline.resume(savedState, baseContext)`** when that field is set, then clears it after a successful run.
+- **SuiStepExecutor** and **EthereumStepExecutor** wire resume by persisting `PipelineSavedState` on **`step.execution.pipelineSavedState`** when `run()` returns `status: 'PAUSED'`, and on the next `executeStep` they call **`pipeline.resume(savedState, baseContext)`** when that field is set, then clear it after a successful run.
+- **Ethereum:** **baseContext** is obtained via **`getEthereumPipelineContext(client, step, atomicityNotReady, deps)`**, which returns the context object directly (no wrapper).
 - **`prepareRestart(route)`** does **not** clear `step.execution.pipelineSavedState`, so resume state survives across restart/resume.
-- Other executors (Ethereum, Solana, Bitcoin) still only use **`pipeline.run(...)`** and do not yet persist or use pipeline saved state.
+- Solana and Bitcoin executors still only use **`pipeline.run(...)`** and do not yet persist or use pipeline saved state.
 
 ### Call chain (current)
 

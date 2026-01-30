@@ -48,7 +48,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       switchChain: this.switchChain,
     }
 
-    const pipelineInput = await getEthereumPipelineContext(
+    const baseContext = await getEthereumPipelineContext(
       client,
       step,
       atomicityNotReady,
@@ -60,11 +60,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         checkClientDeps,
       }
     )
-    if ('earlyExit' in pipelineInput) {
-      return step
-    }
-
-    const { baseContext } = pipelineInput
     const pipeline = new TaskPipeline(createEthereumTaskPipeline())
 
     try {
