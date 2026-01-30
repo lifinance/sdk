@@ -19,8 +19,8 @@ import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { Wallet } from '@wallet-standard/base'
 import { sendAndConfirmBundle } from './actions/sendAndConfirmBundle.js'
 import { sendAndConfirmTransaction } from './actions/sendAndConfirmTransaction.js'
-import { callSolanaWithRetry } from './client/connection.js'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
+import { callSolanaRpcsWithRetry } from './rpc/utils.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 import { base64ToUint8Array } from './utils/base64ToUint8Array.js'
 import { getWalletFeature } from './utils/getWalletFeature.js'
@@ -248,7 +248,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           const encodedTransaction =
             getBase64EncodedWireTransaction(signedTransaction)
 
-          const simulationResult = await callSolanaWithRetry(
+          const simulationResult = await callSolanaRpcsWithRetry(
             client,
             (connection) =>
               connection

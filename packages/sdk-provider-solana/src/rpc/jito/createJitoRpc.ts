@@ -1,3 +1,4 @@
+import type { SolanaRpcApi } from '@solana/kit'
 import {
   type ClusterUrl,
   createDefaultRpcTransport,
@@ -5,9 +6,7 @@ import {
   createSolanaRpcApi,
   type Rpc,
   type RpcTransport,
-  type SolanaRpcApi,
 } from '@solana/kit'
-
 import type { GetBundleStatusesApi } from './api/getBundleStatuses.js'
 import type { GetTipAccountsApi } from './api/getTipAccounts.js'
 import type { SendBundleApi } from './api/sendBundle.js'
