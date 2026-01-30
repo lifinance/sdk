@@ -7,7 +7,7 @@ import {
   type TransactionError,
 } from '@solana/kit'
 
-import { getJitoConnections } from '../client/connection.js'
+import { getJitoRpcs } from '../rpc/registry.js'
 
 type SignatureStatus = {
   slot: bigint
@@ -35,9 +35,9 @@ export async function sendAndConfirmBundle(
   client: SDKClient,
   signedTransactions: Transaction[]
 ): Promise<BundleResult> {
-  const jitoConnections = await getJitoConnections(client)
+  const jitoRpcs = await getJitoRpcs(client)
 
-  if (jitoConnections.length === 0) {
+  if (jitoRpcs.length === 0) {
     throw new Error(
       'No Jito-enabled RPC connection available for bundle submission'
     )
@@ -50,7 +50,7 @@ export async function sendAndConfirmBundle(
 
   const abortController = new AbortController()
 
-  const confirmPromises = jitoConnections.map(async (jitoRpc) => {
+  const confirmPromises = jitoRpcs.map(async (jitoRpc) => {
     try {
       // Send bundle to Jito
       let bundleId: string

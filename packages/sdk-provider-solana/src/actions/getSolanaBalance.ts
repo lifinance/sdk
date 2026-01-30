@@ -7,7 +7,7 @@ import {
 } from '@lifi/sdk'
 import { address, type JsonParsedTokenAccount } from '@solana/kit'
 
-import { callSolanaWithRetry } from '../client/connection.js'
+import { callSolanaRpcsWithRetry } from '../rpc/utils.js'
 
 const SolSystemProgram = '11111111111111111111111111111111'
 const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -47,21 +47,21 @@ const getSolanaBalanceDefault = async (
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (rpc) =>
+          callSolanaRpcsWithRetry(client, (rpc) =>
             rpc.getSlot({ commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (rpc) =>
+          callSolanaRpcsWithRetry(client, (rpc) =>
             rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (rpc) =>
+          callSolanaRpcsWithRetry(client, (rpc) =>
             rpc
               .getTokenAccountsByOwner(
                 accountAddress,
@@ -81,7 +81,7 @@ const getSolanaBalanceDefault = async (
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (rpc) =>
+          callSolanaRpcsWithRetry(client, (rpc) =>
             rpc
               .getTokenAccountsByOwner(
                 accountAddress,
