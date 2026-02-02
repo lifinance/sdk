@@ -9,7 +9,7 @@ import {
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import { createSuiTaskPipeline } from './tasks/createSuiTaskPipeline.js'
-import { getSuiPipelineContext } from './tasks/helpers/getSuiPipelineContext.js'
+import { getSuiPipelineContext } from './tasks/getSuiPipelineContext.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {

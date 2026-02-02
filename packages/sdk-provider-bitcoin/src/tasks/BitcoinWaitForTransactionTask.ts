@@ -29,10 +29,7 @@ export class BitcoinWaitForTransactionTask
     } = context
 
     // txHex from pipeline (Sign task) or from action when we already have txHash (resume)
-    const txHex =
-      ((context as unknown as Record<string, unknown>).txHex as
-        | string
-        | undefined) ?? context.action.txHex
+    const txHex = context.txHex ?? context.action.txHex
 
     if (!txHex) {
       throw new TransactionError(

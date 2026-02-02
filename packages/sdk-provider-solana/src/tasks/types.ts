@@ -5,6 +5,7 @@ import type {
   ExtendedChain,
   StatusManager,
 } from '@lifi/sdk'
+import type { Transaction } from '@solana/kit'
 import type { Wallet, WalletAccount } from '@wallet-standard/base'
 
 export interface SolanaTaskExtra {
@@ -19,4 +20,7 @@ export interface SolanaTaskExtra {
   isBridgeExecution: boolean
   actionType: ExecutionActionType
   action: ExecutionAction
+
+  /** Set by SolanaSignAndExecuteTask; consumed by SolanaWaitForTransactionTask */
+  signedTransaction?: Transaction
 }

@@ -7,7 +7,7 @@ import type {
   TaskContext,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
-import type { SuiTaskExtra } from '../types.js'
+import type { SuiTaskExtra } from './types.js'
 
 export interface GetSuiPipelineContextDeps {
   wallet: WalletWithRequiredFeatures

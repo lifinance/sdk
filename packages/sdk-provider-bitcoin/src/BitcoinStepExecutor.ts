@@ -10,7 +10,7 @@ import {
 } from '@lifi/sdk'
 import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
 import { createBitcoinTaskPipeline } from './tasks/createBitcoinTaskPipeline.js'
-import { getBitcoinPipelineContext } from './tasks/helpers/getBitcoinPipelineContext.js'
+import { getBitcoinPipelineContext } from './tasks/getBitcoinPipelineContext.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
   client: Client

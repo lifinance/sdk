@@ -23,4 +23,7 @@ export interface BitcoinTaskExtra {
 
   /** Public client for sending tx and waiting (from getBitcoinPublicClient) */
   publicClient: Awaited<ReturnType<typeof getBitcoinPublicClient>>
+
+  /** Set by BitcoinSignAndExecuteTask; consumed by BitcoinWaitForTransactionTask */
+  txHex?: string
 }

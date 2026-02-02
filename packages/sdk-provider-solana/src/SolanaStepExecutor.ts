@@ -9,7 +9,7 @@ import {
 import type { Wallet } from '@wallet-standard/base'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
 import { createSolanaTaskPipeline } from './tasks/createSolanaTaskPipeline.js'
-import { getSolanaPipelineContext } from './tasks/helpers/getSolanaPipelineContext.js'
+import { getSolanaPipelineContext } from './tasks/getSolanaPipelineContext.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {

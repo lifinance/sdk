@@ -38,16 +38,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const checkClientDeps = {
-      getClient: () => this.client,
-      setClient: (c: Client) => {
-        this.client = c
-      },
-      statusManager: this.statusManager,
-      allowUserInteraction: this.allowUserInteraction,
-      switchChain: this.switchChain,
-    }
-
     const baseContext = await getEthereumPipelineContext(
       client,
       step,
@@ -57,7 +47,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         executionOptions: this.executionOptions,
         ethereumClient: this.client,
         allowUserInteraction: this.allowUserInteraction,
-        checkClientDeps,
+        switchChain: this.switchChain,
       }
     )
     const pipeline = new TaskPipeline(createEthereumTaskPipeline())

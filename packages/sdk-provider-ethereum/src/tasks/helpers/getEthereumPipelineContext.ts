@@ -14,7 +14,6 @@ import type { Call } from '../../types.js'
 import { isRelayerStep } from '../../utils/isRelayerStep.js'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import type { EthereumTaskExtra } from '../types.js'
-import type { CheckClientDeps } from './checkClient.js'
 import { checkClient as checkClientHelper } from './checkClient.js'
 
 export interface GetEthereumPipelineContextDeps {
@@ -22,7 +21,7 @@ export interface GetEthereumPipelineContextDeps {
   executionOptions?: ExecutionOptions
   ethereumClient: Client
   allowUserInteraction: boolean
-  checkClientDeps: CheckClientDeps
+  switchChain?: (chainId: number) => Promise<Client | undefined>
 }
 
 /**
@@ -107,6 +106,15 @@ export async function getEthereumPipelineContext(
       s: LiFiStepExtended,
       a: ExecutionAction,
       targetChainId?: number
-    ) => checkClientHelper(s, a, targetChainId, deps.checkClientDeps),
+    ) =>
+      checkClientHelper(s, a, targetChainId, {
+        getClient: () => deps.ethereumClient,
+        setClient: (c: Client) => {
+          deps.ethereumClient = c
+        },
+        statusManager: deps.statusManager,
+        allowUserInteraction: deps.allowUserInteraction,
+        switchChain: deps.switchChain,
+      }),
   }
 }

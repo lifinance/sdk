@@ -8,8 +8,8 @@ import type {
   TaskContext,
 } from '@lifi/sdk'
 import { ChainId } from '@lifi/sdk'
-import { getBitcoinPublicClient } from '../../client/publicClient.js'
-import type { BitcoinTaskExtra } from '../types.js'
+import { getBitcoinPublicClient } from '../client/publicClient.js'
+import type { BitcoinTaskExtra } from './types.js'
 
 export interface GetBitcoinPipelineContextDeps {
   walletClient: Client

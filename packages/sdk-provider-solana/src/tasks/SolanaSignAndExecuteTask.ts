@@ -5,10 +5,7 @@ import type {
   TransactionParameters,
 } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
-import {
-  getBase64EncodedWireTransaction,
-  getTransactionCodec,
-} from '@solana/kit'
+import { getTransactionCodec, type Transaction } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
 import { getWalletFeature } from '../utils/getWalletFeature.js'
@@ -16,7 +13,7 @@ import { withTimeout } from '../utils/withTimeout.js'
 import type { SolanaTaskExtra } from './types.js'
 
 export interface SolanaSignAndExecuteResult {
-  signedTransactionBase64: string
+  signedTransaction: Transaction
 }
 
 export class SolanaSignAndExecuteTask
@@ -107,12 +104,10 @@ export class SolanaSignAndExecuteTask
     const signedTransaction = transactionCodec.decode(
       signedTransactionOutputs[0].signedTransaction
     )
-    const signedTransactionBase64 =
-      getBase64EncodedWireTransaction(signedTransaction)
 
     return {
       status: 'COMPLETED',
-      data: { signedTransactionBase64 },
+      data: { signedTransaction },
     }
   }
 }

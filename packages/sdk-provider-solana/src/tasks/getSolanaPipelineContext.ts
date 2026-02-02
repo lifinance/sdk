@@ -8,7 +8,7 @@ import type {
 } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
-import type { SolanaTaskExtra } from '../types.js'
+import type { SolanaTaskExtra } from './types.js'
 
 export interface GetSolanaPipelineContextDeps {
   wallet: Wallet

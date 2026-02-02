@@ -1,12 +1,8 @@
 import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
-import {
-  getBase64EncodedWireTransaction,
-  getTransactionCodec,
-} from '@solana/kit'
+import { getBase64EncodedWireTransaction } from '@solana/kit'
 import { sendAndConfirmTransaction } from '../actions/sendAndConfirmTransaction.js'
 import { callSolanaWithRetry } from '../client/connection.js'
-import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
 import type { SolanaTaskExtra } from './types.js'
 
 export class SolanaWaitForTransactionTask
@@ -30,29 +26,21 @@ export class SolanaWaitForTransactionTask
       actionType,
       fromChain,
       isBridgeExecution,
+      signedTransaction,
     } = context
 
-    const signedTransactionBase64 = (
-      context as unknown as Record<string, unknown>
-    ).signedTransactionBase64 as string | undefined
-
-    if (!signedTransactionBase64) {
+    if (!signedTransaction) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Signed transaction is missing.'
       )
     }
 
-    const transactionCodec = getTransactionCodec()
-    const signedTransaction = transactionCodec.decode(
-      base64ToUint8Array(signedTransactionBase64)
-    )
-    const encodedTransaction =
-      getBase64EncodedWireTransaction(signedTransaction)
+    const wireTransaction = getBase64EncodedWireTransaction(signedTransaction)
 
     const simulationResult = await callSolanaWithRetry(client, (connection) =>
       connection
-        .simulateTransaction(encodedTransaction, {
+        .simulateTransaction(wireTransaction, {
           commitment: 'confirmed',
           replaceRecentBlockhash: true,
           encoding: 'base64',
