@@ -1,15 +1,17 @@
 import {
   BaseStepExecutor,
-  type LiFiStepExtended,
-  type PipelineSavedState,
-  type SDKClient,
+  LiFiErrorCode,
+  type StepExecutorBaseContext,
   TaskPipeline,
-  waitForDestinationChainTransaction,
+  TransactionError,
 } from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
-import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
-import { createSolanaTaskPipeline } from './tasks/createSolanaTaskPipeline.js'
-import { getSolanaPipelineContext } from './tasks/getSolanaPipelineContext.js'
+import { SolanaCheckBalanceTask } from './tasks/SolanaCheckBalanceTask.js'
+import { SolanaPrepareTransactionTask } from './tasks/SolanaPrepareTransactionTask.js'
+import { SolanaSignAndExecuteTask } from './tasks/SolanaSignAndExecuteTask.js'
+import type { SolanaStepExecutionTask } from './tasks/SolanaStepExecutionTask.js'
+import { SolanaWaitForDestinationChainTask } from './tasks/SolanaWaitForDestinationChainTask.js'
+import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTask.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
@@ -20,65 +22,32 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  executeStep = async (
-    client: SDKClient,
-    step: LiFiStepExtended
-  ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
-
-    const baseContext = await getSolanaPipelineContext(client, step, {
-      wallet: this.wallet,
-      statusManager: this.statusManager,
-      executionOptions: this.executionOptions,
-      allowUserInteraction: this.allowUserInteraction,
-    })
-
-    const pipeline = new TaskPipeline(createSolanaTaskPipeline())
-
-    try {
-      const savedState = step.execution?.pipelineSavedState as
-        | PipelineSavedState
-        | undefined
-      const result = savedState
-        ? await pipeline.resume(savedState, baseContext)
-        : await pipeline.run(baseContext)
-
-      if (result.status === 'PAUSED') {
-        step.execution.pipelineSavedState = {
-          pausedAtTask: result.pausedAtTask,
-          pipelineContext: result.pipelineContext,
-        }
-        return step
-      }
-
-      if (savedState) {
-        delete step.execution.pipelineSavedState
-      }
-    } catch (e: any) {
-      const error = await parseSolanaErrors(e, step, baseContext.action)
-      baseContext.action = this.statusManager.updateAction(
-        step,
-        baseContext.actionType,
-        'FAILED',
-        {
-          error: {
-            message: error.cause.message,
-            code: error.code,
-          },
-        }
-      )
-      throw error
-    }
-
-    await waitForDestinationChainTransaction(
-      client,
-      step,
-      baseContext.action,
-      baseContext.fromChain,
-      baseContext.toChain,
-      this.statusManager
+  override getContext = async (
+    baseContext: StepExecutorBaseContext
+  ): Promise<any> => {
+    const walletAccount = this.wallet.accounts.find(
+      (account) => account.address === baseContext.step.action.fromAddress
     )
 
-    return step
+    if (!walletAccount) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+
+    const pipeline = new TaskPipeline([
+      new SolanaCheckBalanceTask(),
+      new SolanaPrepareTransactionTask(),
+      new SolanaSignAndExecuteTask() as unknown as SolanaStepExecutionTask<void>,
+      new SolanaWaitForTransactionTask(),
+      new SolanaWaitForDestinationChainTask(),
+    ])
+
+    return {
+      ...baseContext,
+      pipeline,
+      walletAccount,
+    }
   }
 }

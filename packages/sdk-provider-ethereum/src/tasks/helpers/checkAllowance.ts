@@ -1,6 +1,5 @@
 import type {
   ExecutionAction,
-  ExecutionActionType,
   ExecutionOptions,
   ExtendedChain,
   LiFiStep,
@@ -12,17 +11,18 @@ import type {
 import type { Address, Client, Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { parseEthereumErrors } from '../errors/parseEthereumErrors.js'
-import { MaxUint256 } from '../permits/constants.js'
-import { getNativePermit } from '../permits/getNativePermit.js'
-import { isNativePermitValid } from '../permits/isNativePermitValid.js'
-import type { NativePermitData } from '../permits/types.js'
-import type { Call } from '../types.js'
-import { getActionWithFallback } from '../utils/getActionWithFallback.js'
-import { getDomainChainId } from '../utils/getDomainChainId.js'
-import { getAllowance } from './getAllowance.js'
-import { setAllowance } from './setAllowance.js'
-import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
+import { getAllowance } from '../../actions/getAllowance.js'
+import { setAllowance } from '../../actions/setAllowance.js'
+import { parseEthereumErrors } from '../../errors/parseEthereumErrors.js'
+import { MaxUint256 } from '../../permits/constants.js'
+import { getNativePermit } from '../../permits/getNativePermit.js'
+import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
+import type { NativePermitData } from '../../permits/types.js'
+import type { Call } from '../../types.js'
+import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { checkPermits } from './checkPermits.js'
+import { waitForApprovalTransaction } from './waitForApprovalTransaction.js'
+import { waitForResetApprovalAndUpdate } from './waitForResetApprovalAndUpdate.js'
 
 type CheckAllowanceParams = {
   checkClient(
@@ -35,12 +35,11 @@ type CheckAllowanceParams = {
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   allowUserInteraction?: boolean
-  batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
 }
 
-type AllowanceResult =
+export type AllowanceResult =
   | {
       status: 'ACTION_REQUIRED'
     }
@@ -62,7 +61,6 @@ export const checkAllowance = async (
     statusManager,
     executionOptions,
     allowUserInteraction = false,
-    batchingSupported = false,
     permit2Supported = false,
     disableMessageSigning = false,
   }: CheckAllowanceParams
@@ -74,84 +72,18 @@ export const checkAllowance = async (
     const permitTypedData = step.typedData?.filter(
       (typedData) => typedData.primaryType === 'Permit'
     )
-    if (!disableMessageSigning && permitTypedData?.length) {
-      sharedAction = statusManager.findOrCreateAction({
+    const runCheckPermits = !disableMessageSigning && permitTypedData?.length
+
+    if (runCheckPermits) {
+      const permitsResult = await checkPermits(
         step,
-        type: 'PERMIT',
-        chainId: step.action.fromChainId,
-      })
-      signedTypedData = sharedAction.signedTypedData ?? signedTypedData
-      for (const typedData of permitTypedData) {
-        // Check if we already have a valid permit for this chain and requirements
-        const signedTypedDataForChain = signedTypedData.find(
-          (signedTypedData) => isNativePermitValid(signedTypedData, typedData)
-        )
-
-        if (signedTypedDataForChain) {
-          // Skip signing if we already have a valid permit
-          continue
-        }
-
-        sharedAction = statusManager.updateAction(
-          step,
-          sharedAction.type,
-          'ACTION_REQUIRED'
-        )
-        if (!allowUserInteraction) {
-          return { status: 'ACTION_REQUIRED' }
-        }
-
-        const typedDataChainId =
-          getDomainChainId(typedData.domain) || step.action.fromChainId
-        // Switch to the permit's chain if needed
-        const permitClient = await checkClient(
-          step,
-          sharedAction,
-          typedDataChainId
-        )
-        if (!permitClient) {
-          return { status: 'ACTION_REQUIRED' }
-        }
-
-        const signature = await getAction(
-          permitClient,
-          signTypedData,
-          'signTypedData'
-        )({
-          account: permitClient.account!,
-          domain: typedData.domain,
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
-        })
-        const signedPermit: SignedTypedData = {
-          ...typedData,
-          signature,
-        }
-        signedTypedData.push(signedPermit)
-        sharedAction = statusManager.updateAction(
-          step,
-          sharedAction.type,
-          'ACTION_REQUIRED',
-          {
-            signedTypedData,
-          }
-        )
-      }
-
-      statusManager.updateAction(step, sharedAction.type, 'DONE', {
-        signedTypedData,
-      })
-      // Check if there's a signed permit for the source transaction chain
-      const matchingPermit = signedTypedData.find(
-        (signedTypedData) =>
-          getDomainChainId(signedTypedData.domain) === step.action.fromChainId
+        statusManager,
+        permitTypedData,
+        allowUserInteraction,
+        checkClient
       )
-      if (matchingPermit) {
-        return {
-          status: 'NATIVE_PERMIT',
-          data: signedTypedData,
-        }
+      if (permitsResult) {
+        return permitsResult
       }
     }
 
@@ -207,7 +139,6 @@ export const checkAllowance = async (
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
       !!chain.permit2Proxy &&
-      !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit
 
@@ -300,29 +231,22 @@ export const checkAllowance = async (
         spenderAddress as Address,
         0n,
         executionOptions,
-        batchingSupported
+        false
       )
 
-      // If batching is NOT supported, wait for the reset transaction
-      if (!batchingSupported) {
-        await waitForApprovalTransaction(
-          client,
-          updatedClient,
-          approvalResetTxHash,
-          sharedAction.type,
-          step,
-          chain,
-          statusManager
-        )
-
-        statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
-          txHash: undefined,
-          txLink: undefined,
-        })
-
-        if (!allowUserInteraction) {
-          return { status: 'ACTION_REQUIRED' }
-        }
+      // Wait for the reset transaction (non-batching path)
+      const result = await waitForResetApprovalAndUpdate(
+        client,
+        updatedClient,
+        approvalResetTxHash,
+        sharedAction.type,
+        step,
+        chain,
+        statusManager,
+        allowUserInteraction
+      )
+      if (result) {
+        return result
       }
     }
 
@@ -337,39 +261,8 @@ export const checkAllowance = async (
       executionOptions,
       // We need to return the populated transaction is batching is supported
       // instead of executing transaction on-chain
-      batchingSupported
+      false
     )
-
-    // If batching is supported, we need to return the batch approval data
-    // because allowance was't set by standard approval transaction
-    if (batchingSupported) {
-      statusManager.updateAction(step, sharedAction.type, 'DONE')
-      const calls: Call[] = []
-
-      // Add reset call first if approval reset is required
-      if (shouldResetApproval && approvalResetTxHash) {
-        calls.push({
-          to: step.action.fromToken.address as Address,
-          data: approvalResetTxHash,
-          chainId: step.action.fromToken.chainId,
-        })
-      }
-
-      // Add approval call
-      calls.push({
-        to: step.action.fromToken.address as Address,
-        data: approveTxHash,
-        chainId: step.action.fromToken.chainId,
-      })
-
-      return {
-        status: 'BATCH_APPROVAL',
-        data: {
-          calls,
-          signedTypedData,
-        },
-      }
-    }
 
     await waitForApprovalTransaction(
       client,
@@ -398,45 +291,5 @@ export const checkAllowance = async (
       },
     })
     throw error
-  }
-}
-
-const waitForApprovalTransaction = async (
-  client: SDKClient,
-  viemClient: Client,
-  txHash: Hash,
-  actionType: ExecutionActionType,
-  step: LiFiStep,
-  chain: ExtendedChain,
-  statusManager: StatusManager,
-  approvalReset: boolean = false
-) => {
-  const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
-  const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
-
-  statusManager.updateAction(step, actionType, 'PENDING', {
-    txHash,
-    txLink: getTxLink(txHash),
-  })
-
-  const transactionReceipt = await waitForTransactionReceipt(client, {
-    client: viemClient,
-    chainId: chain.id,
-    txHash,
-    onReplaced(response) {
-      const newHash = response.transaction.hash
-      statusManager.updateAction(step, actionType, 'PENDING', {
-        txHash: newHash,
-        txLink: getTxLink(newHash),
-      })
-    },
-  })
-
-  const finalHash = transactionReceipt?.transactionHash || txHash
-  if (!approvalReset) {
-    statusManager.updateAction(step, actionType, 'DONE', {
-      txHash: finalHash,
-      txLink: getTxLink(finalHash),
-    })
   }
 }

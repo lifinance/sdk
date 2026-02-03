@@ -1,33 +1,41 @@
 import type { ExtendedChain, SignedTypedData } from '@lifi/types'
+import type { StatusManager } from '../core/StatusManager.js'
 import type {
+  ExecuteStepRetryParams,
+  ExecutionAction,
+  ExecutionActionType,
+  ExecutionOptions,
   LiFiStepExtended,
   SDKClient,
   TransactionParameters,
 } from './core.js'
 
-/**
- * A task is a discrete unit of work that may require user interaction.
- * Tasks are composable and can be chained in a pipeline.
- */
-export interface ExecutionTask<TContext = unknown, TResult = unknown> {
-  /** Unique identifier for this task type */
-  readonly type: string
+/** Shared task-context extra fields; all ecosystems have these. */
+export interface TaskExtraBase {
+  statusManager: StatusManager
+  executionOptions?: ExecutionOptions
+  fromChain: ExtendedChain
+  toChain: ExtendedChain
+  isBridgeExecution: boolean
+  actionType: ExecutionActionType
+  action: ExecutionAction
+  /** Task pipeline for this step. Typed as unknown to avoid circular import; ecosystems use TaskPipeline. */
+  pipeline: unknown
+}
 
-  /** Human-readable name for display */
-  readonly displayName: string
-
-  /**
-   * Check if this task needs to run.
-   * Return false to skip entirely.
-   */
-  shouldRun(context: TaskContext<TContext>): Promise<boolean>
-
-  /**
-   * Execute the task.
-   * Can yield for user actions (signatures, confirmations).
-   * Returns result that's passed to subsequent tasks.
-   */
-  execute(context: TaskContext<TContext>): Promise<TaskResult<TResult>>
+/** Return type of BaseStepExecutor.getBaseContext (chain info + executor state). */
+export interface StepExecutorBaseContext {
+  client: SDKClient
+  step: LiFiStepExtended
+  fromChain: ExtendedChain
+  toChain: ExtendedChain
+  isBridgeExecution: boolean
+  actionType: ExecutionActionType
+  action: ExecutionAction
+  statusManager: StatusManager
+  executionOptions?: ExecutionOptions
+  allowUserInteraction: boolean
+  retryParams?: ExecuteStepRetryParams
 }
 
 /** Base context fields provided by pipeline and executor */

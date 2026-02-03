@@ -1,21 +1,20 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
 import type { EthereumTaskExtra } from './types.js'
 
 /**
  * Ensures the wallet is on the correct chain when the step is waiting for a destination-chain transaction.
  */
-export class EthereumDestinationChainCheckTask
-  implements ExecutionTask<EthereumTaskExtra, void>
-{
+export class EthereumDestinationChainCheckTask extends EthereumStepExecutionTask<void> {
   readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
-  readonly displayName = 'Check destination chain'
 
-  async shouldRun(_context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
-    // Destination chain check is always run
+  override async shouldRun(
+    _context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     return true
   }
 
-  async execute(
+  protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
     const { step, checkClient } = context

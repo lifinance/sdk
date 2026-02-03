@@ -1,21 +1,8 @@
-import type {
-  ExecutionAction,
-  ExecutionActionType,
-  ExecutionOptions,
-  ExtendedChain,
-  StatusManager,
-} from '@lifi/sdk'
+import type { TaskExtraBase, TaskPipeline } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 
-export interface SuiTaskExtra {
+export interface SuiTaskExtra extends TaskExtraBase {
   wallet: WalletWithRequiredFeatures
-  statusManager: StatusManager
-  executionOptions?: ExecutionOptions
 
-  fromChain: ExtendedChain
-  toChain: ExtendedChain
-
-  isBridgeExecution: boolean
-  actionType: ExecutionActionType
-  action: ExecutionAction
+  pipeline: TaskPipeline
 }

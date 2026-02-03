@@ -1,15 +1,11 @@
-import type {
-  ExecutionTask,
-  TaskContext,
-  TaskResult,
-  TransactionParameters,
-} from '@lifi/sdk'
+import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import {
   signAndExecuteTransaction,
   type WalletAccount,
   type WalletWithRequiredFeatures,
 } from '@mysten/wallet-standard'
+import { SuiStepExecutionTask } from './SuiStepExecutionTask.js'
 import type { SuiTaskExtra } from './types.js'
 
 function getWalletAccountForStep(
@@ -26,18 +22,19 @@ function getWalletAccountForStep(
   return account
 }
 
-export class SuiSignAndExecuteTask
-  implements ExecutionTask<SuiTaskExtra, void>
-{
+export class SuiSignAndExecuteTask extends SuiStepExecutionTask<void> {
   readonly type = 'SUI_SIGN_AND_EXECUTE'
-  readonly displayName = 'Send transaction'
 
-  async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<SuiTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
+  protected override async run(
+    context: TaskContext<SuiTaskExtra>
+  ): Promise<TaskResult<void>> {
     const { step, wallet, statusManager, actionType, fromChain } = context
 
     if (!step.transactionRequest?.data) {

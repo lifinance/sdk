@@ -1,9 +1,9 @@
 import type {
-  ExecutionTask,
   PipelineContext,
   PipelineSavedState,
   TaskContext,
 } from '../types/tasks.js'
+import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
 
 type PipelineResult =
   | {
@@ -16,14 +16,14 @@ type PipelineResult =
       pipelineContext: PipelineContext
     }
 
-export class TaskPipeline {
-  constructor(private tasks: ExecutionTask[]) {}
+export class TaskPipeline<TContext = unknown, TResult = unknown> {
+  constructor(private tasks: BaseStepExecutionTask<TContext, TResult>[]) {}
 
   /**
    * Run all tasks in sequence
    */
   async run(
-    baseContext: Omit<TaskContext, 'pipelineContext'>
+    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
   ): Promise<PipelineResult> {
     return this.runTaskLoop(this.tasks, {}, baseContext)
   }
@@ -33,7 +33,7 @@ export class TaskPipeline {
    */
   async resume(
     savedState: PipelineSavedState,
-    baseContext: Omit<TaskContext, 'pipelineContext'>
+    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
   ): Promise<PipelineResult> {
     const pipelineContext = savedState.pipelineContext
     const pausedIndex = this.tasks.findIndex(
@@ -44,8 +44,8 @@ export class TaskPipeline {
     }
 
     const pausedTask = this.tasks[pausedIndex]
-    const context: TaskContext = {
-      ...(baseContext as TaskContext),
+    const context: TaskContext<TContext> = {
+      ...(baseContext as TaskContext<TContext>),
       ...pipelineContext,
       pipelineContext,
     }
@@ -71,13 +71,13 @@ export class TaskPipeline {
    * Run the given tasks in sequence with the given pipeline context
    */
   private async runTaskLoop(
-    tasksToRun: ExecutionTask[],
+    tasksToRun: BaseStepExecutionTask<TContext, TResult>[],
     pipelineContext: PipelineContext,
-    baseContext: Omit<TaskContext, 'pipelineContext'>
+    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
   ): Promise<PipelineResult> {
     for (const task of tasksToRun) {
-      const context: TaskContext = {
-        ...(baseContext as TaskContext),
+      const context: TaskContext<TContext> = {
+        ...(baseContext as TaskContext<TContext>),
         ...pipelineContext,
         pipelineContext,
       }

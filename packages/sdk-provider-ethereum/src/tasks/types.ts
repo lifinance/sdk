@@ -1,11 +1,9 @@
 import type {
   ExecutionAction,
-  ExecutionActionType,
-  ExecutionOptions,
-  ExtendedChain,
   LiFiStepExtended,
   SignedTypedData,
-  StatusManager,
+  TaskExtraBase,
+  TaskPipeline,
   TransactionParameters,
 } from '@lifi/sdk'
 import type { Client } from 'viem'
@@ -17,14 +15,17 @@ export type CheckClientFn = (
   targetChainId?: number
 ) => Promise<Client | undefined>
 
-export interface EthereumTaskExtra {
-  statusManager: StatusManager
-  executionOptions?: ExecutionOptions
-  fromChain: ExtendedChain
-  toChain: ExtendedChain
-  isBridgeExecution: boolean
-  actionType: ExecutionActionType
-  action: ExecutionAction
+/**
+ * Execution strategy for an EVM step. Determines which pipeline of tasks runs.
+ * - standard: regular approval + getStepTransaction + sendTransaction
+ * - relayer: gasless execution via typed data + relayTransaction
+ * - batch: EIP-5792 batched calls (approval + transfer in one sendCalls)
+ */
+export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
+
+export interface EthereumTaskExtra extends TaskExtraBase {
+  /** Which strategy is used for this step; determines pipeline of tasks. */
+  executionStrategy: EthereumExecutionStrategy
 
   /** Mutable. Filled by CheckAllowance (batch) and SignAndExecute (transfer call). */
   calls: Call[]
@@ -43,4 +44,9 @@ export interface EthereumTaskExtra {
 
   /** Switch chain if needed and verify wallet; returns updated client or undefined. */
   checkClient: CheckClientFn
+
+  pipeline: TaskPipeline
+
+  /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
+  retryParams?: Record<string, unknown>
 }

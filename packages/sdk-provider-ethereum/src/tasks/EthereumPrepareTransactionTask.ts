@@ -1,9 +1,5 @@
-import type {
-  ExecutionTask,
-  TaskContext,
-  TaskResult,
-  TransactionParameters,
-} from '@lifi/sdk'
+import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
 import { prepareUpdatedStep as prepareUpdatedStepHelper } from './helpers/prepareUpdatedStep.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -12,18 +8,17 @@ export interface EthereumPrepareTransactionResult {
   isRelayerTransaction: boolean
 }
 
-export class EthereumPrepareTransactionTask
-  implements ExecutionTask<EthereumTaskExtra, EthereumPrepareTransactionResult>
-{
+export class EthereumPrepareTransactionTask extends EthereumStepExecutionTask<EthereumPrepareTransactionResult> {
   readonly type = 'ETHEREUM_PREPARE_TRANSACTION'
-  readonly displayName = 'Prepare transaction'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
-  async execute(
+  protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<EthereumPrepareTransactionResult>> {
     const {

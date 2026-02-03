@@ -1,19 +1,27 @@
 import {
   BaseStepExecutor,
+  type ExecutionAction,
   type LiFiStepExtended,
-  type PipelineSavedState,
-  type SDKClient,
+  type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
-  waitForDestinationChainTransaction,
 } from '@lifi/sdk'
 import type { Client } from 'viem'
-import {
-  isAtomicReadyWalletRejectedUpgradeError,
-  parseEthereumErrors,
-} from './errors/parseEthereumErrors.js'
-import { createEthereumTaskPipeline } from './tasks/createEthereumTaskPipeline.js'
-import { getEthereumPipelineContext } from './tasks/helpers/getEthereumPipelineContext.js'
+import { isBatchingSupported } from './actions/isBatchingSupported.js'
+import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
+import { EthereumCheckBalanceTask } from './tasks/EthereumCheckBalanceTask.js'
+import { EthereumDestinationChainCheckTask } from './tasks/EthereumDestinationChainCheckTask.js'
+import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
+import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
+import { EthereumWaitForDestinationChainTask } from './tasks/EthereumWaitForDestinationChainTask.js'
+import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
+import { checkClient as checkClientHelper } from './tasks/helpers/checkClient.js'
+import type {
+  EthereumExecutionStrategy,
+  EthereumTaskExtra,
+} from './tasks/types.js'
+import { isRelayerStep } from './utils/isRelayerStep.js'
+import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -30,68 +38,96 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.switchChain = options.switchChain
   }
 
-  executeStep = async (
-    client: SDKClient,
-    step: LiFiStepExtended,
-    // Explicitly set to true if the wallet rejected the upgrade to 7702 account, based on the EIP-5792 capabilities
-    atomicityNotReady = false
-  ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
+  override getContext = async (
+    baseContext: StepExecutorBaseContext
+  ): Promise<unknown> => {
+    const atomicityNotReady = !!baseContext.retryParams?.atomicityNotReady
+    const isRelayer = isRelayerStep(baseContext.step)
+    const { fromChain } = baseContext
+    const batchingSupported =
+      atomicityNotReady || baseContext.step.tool === 'thorswap' || isRelayer
+        ? false
+        : await isBatchingSupported(baseContext.client, {
+            client: this.client,
+            chainId: fromChain.id,
+          })
 
-    const baseContext = await getEthereumPipelineContext(
-      client,
-      step,
-      atomicityNotReady,
-      {
-        statusManager: this.statusManager,
-        executionOptions: this.executionOptions,
-        ethereumClient: this.client,
-        allowUserInteraction: this.allowUserInteraction,
-        switchChain: this.switchChain,
-      }
-    )
-    const pipeline = new TaskPipeline(createEthereumTaskPipeline())
+    const executionStrategy: EthereumExecutionStrategy = isRelayer
+      ? 'relayer'
+      : batchingSupported
+        ? 'batch'
+        : 'standard'
 
-    try {
-      const savedState = step.execution?.pipelineSavedState as
-        | PipelineSavedState
-        | undefined
-      const result = savedState
-        ? await pipeline.resume(savedState, baseContext)
-        : await pipeline.run(baseContext)
+    const isFromNativeToken =
+      fromChain.nativeToken.address ===
+        baseContext.step.action.fromToken.address &&
+      isZeroAddress(baseContext.step.action.fromToken.address)
 
-      if (result.status === 'PAUSED') {
-        step.execution.pipelineSavedState = {
-          pausedAtTask: result.pausedAtTask,
-          pipelineContext: result.pipelineContext,
-        }
-        return step
-      }
+    const disableMessageSigning =
+      baseContext.executionOptions?.disableMessageSigning ||
+      baseContext.step.type !== 'lifi'
 
-      if (savedState) {
-        delete step.execution.pipelineSavedState
-      }
-    } catch (e: any) {
-      if (isAtomicReadyWalletRejectedUpgradeError(e) && !atomicityNotReady) {
-        step.execution = undefined
-        return this.executeStep(client, step, true)
-      }
-      const error = await parseEthereumErrors(e, step, baseContext.action)
-      this.statusManager.updateAction(step, baseContext.actionType, 'FAILED', {
-        error: { message: error.cause.message, code: error.code },
-      })
-      throw error
+    const permit2Supported =
+      !!fromChain.permit2 &&
+      !!fromChain.permit2Proxy &&
+      !batchingSupported &&
+      !isFromNativeToken &&
+      !disableMessageSigning &&
+      !!baseContext.step.estimate.approvalAddress &&
+      !baseContext.step.estimate.skipApproval &&
+      !baseContext.step.estimate.skipPermit
+
+    // TODO: Define tasks per execution strategy
+    const sharedTasks = [
+      new EthereumDestinationChainCheckTask(),
+      new EthereumCheckAllowanceTask(),
+      new EthereumCheckBalanceTask(),
+      new EthereumPrepareTransactionTask(),
+      new EthereumSignAndExecuteTask(),
+      new EthereumWaitForTransactionTask(),
+      new EthereumWaitForDestinationChainTask(),
+    ]
+    let tasks: (typeof sharedTasks)[number][]
+    switch (executionStrategy) {
+      case 'standard':
+        tasks = sharedTasks
+        break
+      case 'relayer':
+        tasks = sharedTasks
+        break
+      case 'batch':
+        tasks = sharedTasks
+        break
+      default:
+        tasks = sharedTasks
     }
+    const pipeline = new TaskPipeline<EthereumTaskExtra, unknown>(tasks)
 
-    await waitForDestinationChainTransaction(
-      client,
-      step,
-      baseContext.action,
-      baseContext.fromChain,
-      baseContext.toChain,
-      this.statusManager
-    )
+    const checkClient = (
+      s: LiFiStepExtended,
+      action: ExecutionAction,
+      targetChainId?: number
+    ) =>
+      checkClientHelper(s, action, targetChainId, {
+        getClient: () => this.client,
+        setClient: (c: Client) => {
+          this.client = c
+        },
+        statusManager: baseContext.statusManager,
+        allowUserInteraction: baseContext.allowUserInteraction,
+        switchChain: this.switchChain,
+      })
 
-    return step
+    return {
+      ...baseContext,
+      executionStrategy,
+      calls: [] as EthereumTaskExtra['calls'],
+      signedTypedData: [] as EthereumTaskExtra['signedTypedData'],
+      batchingSupported,
+      permit2Supported,
+      ethereumClient: this.client,
+      checkClient,
+      pipeline,
+    }
   }
 }

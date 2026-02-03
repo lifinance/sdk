@@ -1,4 +1,4 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import {
   LiFiErrorCode,
   relayTransaction,
@@ -14,21 +14,21 @@ import { isNativePermitValid } from '../permits/isNativePermitValid.js'
 import { signPermit2Message } from '../permits/signPermit2Message.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
 import { estimateTransactionRequest as estimateTransactionRequestHelper } from './helpers/estimateTransactionRequest.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumSignAndExecuteTask
-  implements ExecutionTask<EthereumTaskExtra, void>
-{
+export class EthereumSignAndExecuteTask extends EthereumStepExecutionTask<void> {
   readonly type = 'ETHEREUM_SIGN_AND_EXECUTE'
-  readonly displayName = 'Send transaction'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
-  async execute(
+  protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
     const {

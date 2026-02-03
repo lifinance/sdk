@@ -1,16 +1,18 @@
 import type { Client } from '@bigmi/core'
 import {
   BaseStepExecutor,
-  type LiFiStepExtended,
-  type PipelineSavedState,
-  type SDKClient,
+  ChainId,
+  type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
-  waitForDestinationChainTransaction,
 } from '@lifi/sdk'
-import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
-import { createBitcoinTaskPipeline } from './tasks/createBitcoinTaskPipeline.js'
-import { getBitcoinPipelineContext } from './tasks/getBitcoinPipelineContext.js'
+import { getBitcoinPublicClient } from './client/publicClient.js'
+import { BitcoinCheckBalanceTask } from './tasks/BitcoinCheckBalanceTask.js'
+import { BitcoinPrepareTransactionTask } from './tasks/BitcoinPrepareTransactionTask.js'
+import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
+import type { BitcoinStepExecutionTask } from './tasks/BitcoinStepExecutionTask.js'
+import { BitcoinWaitForDestinationChainTask } from './tasks/BitcoinWaitForDestinationChainTask.js'
+import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -24,66 +26,27 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     this.walletClient = options.client
   }
 
-  executeStep = async (
-    client: SDKClient,
-    step: LiFiStepExtended
-  ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
-
-    const baseContext = await getBitcoinPipelineContext(client, step, {
-      walletClient: this.walletClient,
-      statusManager: this.statusManager,
-      executionOptions: this.executionOptions,
-      allowUserInteraction: this.allowUserInteraction,
-    })
-
-    const pipeline = new TaskPipeline(createBitcoinTaskPipeline())
-
-    try {
-      const savedState = step.execution?.pipelineSavedState as
-        | PipelineSavedState
-        | undefined
-      const result = savedState
-        ? await pipeline.resume(savedState, baseContext)
-        : await pipeline.run(baseContext)
-
-      if (result.status === 'PAUSED') {
-        step.execution.pipelineSavedState = {
-          pausedAtTask: result.pausedAtTask,
-          pipelineContext: result.pipelineContext,
-        }
-        return step
-      }
-
-      if (savedState) {
-        delete step.execution.pipelineSavedState
-      }
-    } catch (e: any) {
-      const error = await parseBitcoinErrors(e, step, baseContext.action)
-      baseContext.action = this.statusManager.updateAction(
-        step,
-        baseContext.actionType,
-        'FAILED',
-        {
-          error: {
-            message: error.cause.message,
-            code: error.code,
-          },
-        }
-      )
-      throw error
-    }
-
-    await waitForDestinationChainTransaction(
-      client,
-      step,
-      baseContext.action,
-      baseContext.fromChain,
-      baseContext.toChain,
-      this.statusManager,
-      10_000
+  override getContext = async (
+    baseContext: StepExecutorBaseContext
+  ): Promise<any> => {
+    const publicClient = await getBitcoinPublicClient(
+      baseContext.client,
+      ChainId.BTC
     )
 
-    return step
+    const pipeline = new TaskPipeline([
+      new BitcoinCheckBalanceTask(),
+      new BitcoinPrepareTransactionTask(),
+      new BitcoinSignAndExecuteTask() as unknown as BitcoinStepExecutionTask<void>,
+      new BitcoinWaitForTransactionTask(),
+      new BitcoinWaitForDestinationChainTask(),
+    ])
+
+    return {
+      ...baseContext,
+      pipeline,
+      publicClient,
+      walletClient: this.walletClient,
+    }
   }
 }

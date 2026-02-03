@@ -1,21 +1,21 @@
 import type { ReplacementReason } from '@bigmi/core'
 import { waitForTransaction } from '@bigmi/core'
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
-export class BitcoinWaitForTransactionTask
-  implements ExecutionTask<BitcoinTaskExtra, void>
-{
+export class BitcoinWaitForTransactionTask extends BitcoinStepExecutionTask<void> {
   readonly type = 'BITCOIN_WAIT_FOR_TRANSACTION'
-  readonly displayName = 'Confirm transaction'
 
-  async shouldRun(context: TaskContext<BitcoinTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<BitcoinTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return action.status !== 'DONE'
   }
 
-  async execute(
+  protected override async run(
     context: TaskContext<BitcoinTaskExtra>
   ): Promise<TaskResult<void>> {
     const {

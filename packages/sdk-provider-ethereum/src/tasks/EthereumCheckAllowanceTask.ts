@@ -1,15 +1,16 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
-import { checkAllowance } from '../actions/checkAllowance.js'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
+import { checkAllowance } from './helpers/checkAllowance.js'
+import { checkAllowanceBatchingSupported } from './helpers/checkAllowanceBatchingSupported.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumCheckAllowanceTask
-  implements ExecutionTask<EthereumTaskExtra, void>
-{
+export class EthereumCheckAllowanceTask extends EthereumStepExecutionTask<void> {
   readonly type = 'ETHEREUM_CHECK_ALLOWANCE'
-  readonly displayName = 'Check allowance'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     const { step, action, fromChain } = context
 
     const isFromNativeToken =
@@ -30,7 +31,7 @@ export class EthereumCheckAllowanceTask
     )
   }
 
-  async execute(
+  async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
     const { client, step, allowUserInteraction, checkClient } = context
@@ -39,17 +40,27 @@ export class EthereumCheckAllowanceTask
       context.executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     // Check if token needs approval and get approval transaction or message data when available
-    const allowanceResult = await checkAllowance(client, {
-      checkClient,
-      chain: context.fromChain,
-      step,
-      statusManager: context.statusManager,
-      executionOptions: context.executionOptions,
-      allowUserInteraction,
-      batchingSupported: context.batchingSupported,
-      permit2Supported: context.permit2Supported,
-      disableMessageSigning,
-    })
+    const allowanceResult = context.batchingSupported
+      ? await checkAllowanceBatchingSupported(client, {
+          checkClient,
+          chain: context.fromChain,
+          step,
+          statusManager: context.statusManager,
+          executionOptions: context.executionOptions,
+          allowUserInteraction,
+          permit2Supported: context.permit2Supported,
+          disableMessageSigning,
+        })
+      : await checkAllowance(client, {
+          checkClient,
+          chain: context.fromChain,
+          step,
+          statusManager: context.statusManager,
+          executionOptions: context.executionOptions,
+          allowUserInteraction,
+          permit2Supported: context.permit2Supported,
+          disableMessageSigning,
+        })
 
     switch (allowanceResult.status) {
       case 'BATCH_APPROVAL':

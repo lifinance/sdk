@@ -6,35 +6,30 @@ import {
   withTimeout,
 } from '@bigmi/core'
 import * as ecc from '@bitcoinerlab/secp256k1'
-import type {
-  ExecutionTask,
-  TaskContext,
-  TaskResult,
-  TransactionParameters,
-} from '@lifi/sdk'
+import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../utils/isPsbtFinalized.js'
 import { toXOnly } from '../utils/toXOnly.js'
+import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
 export interface BitcoinSignAndExecuteResult {
   txHex: string
 }
 
-export class BitcoinSignAndExecuteTask
-  implements ExecutionTask<BitcoinTaskExtra, BitcoinSignAndExecuteResult>
-{
+export class BitcoinSignAndExecuteTask extends BitcoinStepExecutionTask<BitcoinSignAndExecuteResult> {
   readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
-  readonly displayName = 'Sign transaction'
 
-  async shouldRun(context: TaskContext<BitcoinTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<BitcoinTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(
+  protected override async run(
     context: TaskContext<BitcoinTaskExtra>
   ): Promise<TaskResult<BitcoinSignAndExecuteResult>> {
     const { step, walletClient, statusManager, actionType, executionOptions } =

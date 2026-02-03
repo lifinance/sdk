@@ -24,6 +24,7 @@ export { actions } from './actions/index.js'
 export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './client/createClient.js'
+export { BaseStepExecutionTask } from './core/BaseStepExecutionTask.js'
 export { BaseStepExecutor } from './core/BaseStepExecutor.js'
 export { checkBalance } from './core/checkBalance.js'
 export {
@@ -43,6 +44,7 @@ export type { ErrorCode } from './errors/constants.js'
 export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
 export {
   BalanceError,
+  ExecuteStepRetryError,
   ProviderError,
   RPCError,
   ServerError,
@@ -59,6 +61,7 @@ export type {
   ContractCallParams,
   ContractTool,
   ExchangeRateUpdateParams,
+  ExecuteStepRetryParams,
   Execution,
   ExecutionAction,
   ExecutionActionStatus,
@@ -89,10 +92,12 @@ export type {
   UpdateRouteHook,
 } from './types/core.js'
 export type {
-  ExecutionTask,
   PipelineContext,
   PipelineSavedState,
+  StepExecutorBaseContext,
   TaskContext,
+  TaskContextBase,
+  TaskExtraBase,
   TaskResult,
   TaskState,
   TaskStatus,

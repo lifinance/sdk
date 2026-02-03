@@ -1,24 +1,24 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import {
   getStepTransaction,
   LiFiErrorCode,
   stepComparison,
   TransactionError,
 } from '@lifi/sdk'
+import { SolanaStepExecutionTask } from './SolanaStepExecutionTask.js'
 import type { SolanaTaskExtra } from './types.js'
 
-export class SolanaPrepareTransactionTask
-  implements ExecutionTask<SolanaTaskExtra, void>
-{
+export class SolanaPrepareTransactionTask extends SolanaStepExecutionTask<void> {
   readonly type = 'SOLANA_PREPARE_TRANSACTION'
-  readonly displayName = 'Prepare transaction'
 
-  async shouldRun(context: TaskContext<SolanaTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<SolanaTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(
+  protected override async run(
     context: TaskContext<SolanaTaskExtra>
   ): Promise<TaskResult<void>> {
     const {

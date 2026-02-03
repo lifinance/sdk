@@ -1,19 +1,19 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import { checkBalance } from '@lifi/sdk'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumCheckBalanceTask
-  implements ExecutionTask<EthereumTaskExtra, void>
-{
+export class EthereumCheckBalanceTask extends EthereumStepExecutionTask<void> {
   readonly type = 'ETHEREUM_CHECK_BALANCE'
-  readonly displayName = 'Check balance'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && !action.taskId && action.status !== 'DONE'
   }
 
-  async execute(
+  protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
     const { client, step, statusManager, actionType, ethereumClient } = context

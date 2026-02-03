@@ -10,6 +10,7 @@ export enum ErrorName {
   SlippageError = 'SlippageError',
   HTTPError = 'HTTPError',
   ConfigError = 'ConfigError',
+  ExecuteStepRetryError = 'ExecuteStepRetryError',
 }
 
 export type ErrorCode = LiFiErrorCode

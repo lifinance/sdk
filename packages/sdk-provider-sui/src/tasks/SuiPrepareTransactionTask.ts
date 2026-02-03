@@ -1,24 +1,26 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import {
   getStepTransaction,
   LiFiErrorCode,
   stepComparison,
   TransactionError,
 } from '@lifi/sdk'
+import { SuiStepExecutionTask } from './SuiStepExecutionTask.js'
 import type { SuiTaskExtra } from './types.js'
 
-export class SuiPrepareTransactionTask
-  implements ExecutionTask<SuiTaskExtra, void>
-{
+export class SuiPrepareTransactionTask extends SuiStepExecutionTask<void> {
   readonly type = 'SUI_PREPARE_TRANSACTION'
-  readonly displayName = 'Prepare transaction'
 
-  async shouldRun(context: TaskContext<SuiTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<SuiTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(context: TaskContext<SuiTaskExtra>): Promise<TaskResult<void>> {
+  protected override async run(
+    context: TaskContext<SuiTaskExtra>
+  ): Promise<TaskResult<void>> {
     const {
       client,
       step,

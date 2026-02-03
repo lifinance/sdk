@@ -1,19 +1,19 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
+import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
 import { waitForTransaction as waitForTransactionHelper } from './helpers/waitForTransaction.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumWaitForTransactionTask
-  implements ExecutionTask<EthereumTaskExtra, void>
-{
+export class EthereumWaitForTransactionTask extends EthereumStepExecutionTask<void> {
   readonly type = 'ETHEREUM_WAIT_FOR_TRANSACTION'
-  readonly displayName = 'Confirm transaction'
 
-  async shouldRun(context: TaskContext<EthereumTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !!(action.txHash || action.taskId) && action.status !== 'DONE'
   }
 
-  async execute(
+  protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<void>> {
     const {

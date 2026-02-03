@@ -1,19 +1,19 @@
-import type { ExecutionTask, TaskContext, TaskResult } from '@lifi/sdk'
+import type { TaskContext, TaskResult } from '@lifi/sdk'
 import { checkBalance } from '@lifi/sdk'
+import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
-export class BitcoinCheckBalanceTask
-  implements ExecutionTask<BitcoinTaskExtra, void>
-{
+export class BitcoinCheckBalanceTask extends BitcoinStepExecutionTask<void> {
   readonly type = 'BITCOIN_CHECK_BALANCE'
-  readonly displayName = 'Check balance'
 
-  async shouldRun(context: TaskContext<BitcoinTaskExtra>): Promise<boolean> {
+  override async shouldRun(
+    context: TaskContext<BitcoinTaskExtra>
+  ): Promise<boolean> {
     const { action } = context
     return !action.txHash && action.status !== 'DONE'
   }
 
-  async execute(
+  protected override async run(
     context: TaskContext<BitcoinTaskExtra>
   ): Promise<TaskResult<void>> {
     const { client, step, statusManager, actionType, walletClient } = context
