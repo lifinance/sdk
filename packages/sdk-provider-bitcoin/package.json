@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-bitcoin",
-  "version": "4.0.0-alpha.9",
+  "version": "4.0.0-alpha.11",
   "description": "LI.FI Bitcoin SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {

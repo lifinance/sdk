@@ -13,22 +13,48 @@ import {
 import {
   getBase64EncodedWireTransaction,
   getTransactionCodec,
+  type Transaction,
 } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { Wallet } from '@wallet-standard/base'
+import { sendAndConfirmBundle } from './actions/sendAndConfirmBundle.js'
 import { sendAndConfirmTransaction } from './actions/sendAndConfirmTransaction.js'
-import { callSolanaWithRetry } from './client/connection.js'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
+import { callSolanaRpcsWithRetry } from './rpc/utils.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 import { base64ToUint8Array } from './utils/base64ToUint8Array.js'
 import { getWalletFeature } from './utils/getWalletFeature.js'
 import { withTimeout } from './utils/withTimeout.js'
+
+type ConfirmedTransactionResult = {
+  txSignature: string
+  bundleId?: string
+}
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private wallet: Wallet
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
+  }
+
+  private shouldUseJitoBundle(
+    client: SDKClient,
+    transactions: Transaction[]
+  ): boolean {
+    const routeOptions = client.config.routeOptions as
+      | Record<string, unknown>
+      | undefined
+    const isJitoBundleEnabled = Boolean(routeOptions?.jitoBundle)
+
+    if (transactions.length > 1 && !isJitoBundleEnabled) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        `Received ${transactions.length} transactions but Jito bundle is not enabled. Enable Jito bundle in routeOptions to submit multiple transactions.`
+      )
+    }
+
+    return transactions.length > 1 && isJitoBundleEnabled
   }
 
   getWalletAccount = async (step: LiFiStepExtended) => {
@@ -131,7 +157,14 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        const transactionBytes = base64ToUint8Array(transactionRequest.data)
+        // Handle both single transaction (string) and multiple transactions (array)
+        const transactionDataArray = Array.isArray(transactionRequest.data)
+          ? transactionRequest.data
+          : [transactionRequest.data]
+
+        const transactionBytesArray = transactionDataArray.map((data) =>
+          base64ToUint8Array(data)
+        )
 
         const signedTransactionOutputs = await withTimeout(
           async () => {
@@ -139,10 +172,13 @@ export class SolanaStepExecutor extends BaseStepExecutor {
               this.wallet,
               SolanaSignTransaction
             )
-            return signTransaction({
-              account: walletAccount,
-              transaction: transactionBytes,
-            })
+            // Spread the inputs to sign all transactions at once
+            return signTransaction(
+              ...transactionBytesArray.map((transaction) => ({
+                account: walletAccount,
+                transaction,
+              }))
+            )
           },
           {
             // https://solana.com/docs/advanced/confirmation#transaction-expiration
@@ -166,58 +202,112 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
         const transactionCodec = getTransactionCodec()
 
-        const signedTransaction = transactionCodec.decode(
-          signedTransactionOutputs[0].signedTransaction
+        // Decode all signed transactions
+        const signedTransactions: Transaction[] = signedTransactionOutputs.map(
+          (output) => transactionCodec.decode(output.signedTransaction)
         )
 
-        const encodedTransaction =
-          getBase64EncodedWireTransaction(signedTransaction)
-
-        const simulationResult = await callSolanaWithRetry(
+        const useJitoBundle = this.shouldUseJitoBundle(
           client,
-          (connection) =>
-            connection
-              .simulateTransaction(encodedTransaction, {
-                commitment: 'confirmed',
-                replaceRecentBlockhash: true,
-                encoding: 'base64',
-              })
-              .send()
+          signedTransactions
         )
 
-        if (simulationResult.value.err) {
-          const errorMessage =
-            typeof simulationResult.value.err === 'object'
-              ? JSON.stringify(simulationResult.value.err)
-              : simulationResult.value.err
-          throw new TransactionError(
-            LiFiErrorCode.TransactionSimulationFailed,
-            `Transaction simulation failed: ${errorMessage}`,
-            new Error(errorMessage)
-          )
-        }
+        let confirmedTransaction: ConfirmedTransactionResult
 
-        const confirmedTransaction = await sendAndConfirmTransaction(
-          client,
-          signedTransaction
-        )
-
-        if (!confirmedTransaction.signatureResult) {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionExpired,
-            'Transaction has expired: The block height has exceeded the maximum allowed limit.'
+        if (useJitoBundle) {
+          // Use Jito bundle for transaction submission
+          const bundleResult = await sendAndConfirmBundle(
+            client,
+            signedTransactions
           )
-        }
 
-        if (confirmedTransaction.signatureResult.err) {
-          const reason =
-            typeof confirmedTransaction.signatureResult.err === 'object'
-              ? JSON.stringify(confirmedTransaction.signatureResult.err)
-              : confirmedTransaction.signatureResult.err
-          throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
-            `Transaction failed: ${reason}`
+          const allConfirmed = bundleResult.signatureResults.every(
+            (result) => result !== null
           )
+
+          if (!allConfirmed) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              'Bundle confirmation failed: Not all transactions were confirmed.'
+            )
+          }
+
+          // Check for errors in any of the transactions
+          const failedResult = bundleResult.signatureResults.find(
+            (result) => result?.err
+          )
+          if (failedResult?.err) {
+            const reason =
+              typeof failedResult.err === 'object'
+                ? JSON.stringify(failedResult.err)
+                : String(failedResult.err)
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              `Transaction failed: ${reason}`
+            )
+          }
+
+          confirmedTransaction = {
+            txSignature: bundleResult.txSignatures[0],
+            bundleId: bundleResult.bundleId,
+          }
+        } else {
+          // Use regular transaction submission
+          const signedTransaction = signedTransactions[0]
+
+          const encodedTransaction =
+            getBase64EncodedWireTransaction(signedTransaction)
+
+          const simulationResult = await callSolanaRpcsWithRetry(
+            client,
+            (connection) =>
+              connection
+                .simulateTransaction(encodedTransaction, {
+                  commitment: 'confirmed',
+                  replaceRecentBlockhash: true,
+                  encoding: 'base64',
+                })
+                .send()
+          )
+
+          if (simulationResult.value.err) {
+            const errorMessage =
+              typeof simulationResult.value.err === 'object'
+                ? JSON.stringify(simulationResult.value.err)
+                : simulationResult.value.err
+            throw new TransactionError(
+              LiFiErrorCode.TransactionSimulationFailed,
+              `Transaction simulation failed: ${errorMessage}`,
+              new Error(errorMessage)
+            )
+          }
+
+          const result = await sendAndConfirmTransaction(
+            client,
+            signedTransaction
+          )
+
+          if (!result.signatureResult) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionExpired,
+              'Transaction has expired: The block height has exceeded the maximum allowed limit.'
+            )
+          }
+
+          if (result.signatureResult.err) {
+            const reason =
+              typeof result.signatureResult.err === 'object'
+                ? JSON.stringify(result.signatureResult.err)
+                : result.signatureResult.err
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              `Transaction failed: ${reason}`
+            )
+          }
+
+          confirmedTransaction = {
+            txSignature: result.txSignature,
+          }
         }
 
         // Transaction has been confirmed and we can update the action
