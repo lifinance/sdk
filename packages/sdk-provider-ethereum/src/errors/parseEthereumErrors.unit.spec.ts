@@ -10,7 +10,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../actions/switchChain.unit.mock.js'
+import { buildStepObject } from '../tasks/helpers/switchChain.unit.mock.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
 
 describe('parseEVMStepErrors', () => {

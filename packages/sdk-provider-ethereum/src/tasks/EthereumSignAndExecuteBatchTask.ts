@@ -48,13 +48,16 @@ export class EthereumSignAndExecuteBatchTask extends BaseStepExecutionTask<
       )
     }
 
-    const updatedClient = await checkClientHelper(step, action, undefined, {
-      getClient: context.getClient,
-      setClient: context.setClient,
-      statusManager: context.statusManager,
-      allowUserInteraction: context.allowUserInteraction,
-      switchChain: context.switchChain,
-    })
+    const updatedClient = await checkClientHelper(
+      step,
+      action,
+      undefined,
+      context.getClient,
+      context.setClient,
+      context.statusManager,
+      context.allowUserInteraction,
+      context.switchChain
+    )
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

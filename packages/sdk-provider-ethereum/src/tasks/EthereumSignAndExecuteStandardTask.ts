@@ -6,16 +6,16 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { Address, Hash, Hex, SendTransactionParameters } from 'viem'
-import { sendTransaction } from 'viem/actions'
+import { estimateGas, sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { encodeNativePermitData } from '../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../permits/signPermit2Message.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
+import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { getPermit2Supported } from './helpers/allowanceTaskHelpers.js'
 import { checkClient as checkClientHelper } from './helpers/checkClient.js'
-import { estimateTransactionRequest as estimateTransactionRequestHelper } from './helpers/estimateTransactionRequest.js'
 import { shouldRunSignAndExecute } from './helpers/signAndExecuteTaskHelpers.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -58,13 +58,16 @@ export class EthereumSignAndExecuteStandardTask extends BaseStepExecutionTask<
       )
     }
 
-    const updatedClient = await checkClientHelper(step, action, undefined, {
-      getClient: context.getClient,
-      setClient: context.setClient,
-      statusManager: context.statusManager,
-      allowUserInteraction: context.allowUserInteraction,
-      switchChain: context.switchChain,
-    })
+    const updatedClient = await checkClientHelper(
+      step,
+      action,
+      undefined,
+      context.getClient,
+      context.setClient,
+      context.statusManager,
+      context.allowUserInteraction,
+      context.switchChain
+    )
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
@@ -120,11 +123,26 @@ export class EthereumSignAndExecuteStandardTask extends BaseStepExecutionTask<
 
     if (signedNativePermitTypedData || permit2Supported) {
       request.to = fromChain.permit2Proxy as Address
-      request = await estimateTransactionRequestHelper(
-        client,
-        updatedClient,
-        request
-      )
+      try {
+        const estimatedGas = await getActionWithFallback(
+          client,
+          updatedClient,
+          estimateGas,
+          'estimateGas',
+          {
+            account: updatedClient.account!,
+            to: request.to as Address,
+            data: request.data as Hex,
+            value: request.value,
+          }
+        )
+        request.gas =
+          request.gas && request.gas > estimatedGas ? request.gas : estimatedGas
+      } catch (_) {
+        if (request.gas) {
+          request.gas = request.gas + 80_000n
+        }
+      }
     }
 
     const txHash = (await getAction(

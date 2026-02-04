@@ -29,13 +29,11 @@ export class EthereumDestinationChainCheckTask extends BaseStepExecutionTask<
       step,
       destinationChainAction,
       undefined,
-      {
-        getClient: context.getClient,
-        setClient: context.setClient,
-        statusManager: context.statusManager,
-        allowUserInteraction: context.allowUserInteraction,
-        switchChain: context.switchChain,
-      }
+      context.getClient,
+      context.setClient,
+      context.statusManager,
+      context.allowUserInteraction,
+      context.switchChain
     )
     if (!updatedClient) {
       return { status: 'PAUSED' }

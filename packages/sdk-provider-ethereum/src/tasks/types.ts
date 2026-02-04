@@ -5,6 +5,7 @@ import type {
 } from '@lifi/sdk'
 import type { Client } from 'viem'
 import type { Call } from '../types.js'
+import type { AllowanceFlowState } from './helpers/allowanceTypes.js'
 
 /**
  * Execution strategy for an EVM step. Determines which pipeline of tasks runs.
@@ -36,4 +37,7 @@ export interface EthereumTaskExtra extends TaskExtraBase {
 
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
+
+  /** State for allowance sub-tasks (RunPermits, GetOrCreateAction, etc.). */
+  allowanceFlow?: AllowanceFlowState
 }

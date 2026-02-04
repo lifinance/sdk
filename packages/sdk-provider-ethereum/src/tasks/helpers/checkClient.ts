@@ -8,16 +8,8 @@ import {
 import type { Client, GetAddressesReturnType } from 'viem'
 import { getAddresses } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { switchChain } from '../../actions/switchChain.js'
 import { parseEthereumErrors } from '../../errors/parseEthereumErrors.js'
-
-export interface CheckClientDeps {
-  getClient: () => Client
-  setClient: (client: Client) => void
-  statusManager: StatusManager
-  allowUserInteraction: boolean
-  switchChain?: (chainId: number) => Promise<Client | undefined>
-}
+import { switchChain } from './switchChain.js'
 
 /**
  * Switch chain if needed, then verify wallet address matches step.fromAddress.
@@ -27,9 +19,12 @@ export async function checkClient(
   step: LiFiStepExtended,
   action: ExecutionAction,
   targetChainId: number | undefined,
-  deps: CheckClientDeps
+  getClient: () => Client,
+  setClient: (client: Client) => void,
+  statusManager: StatusManager,
+  allowUserInteraction: boolean,
+  switchChainCallback?: (chainId: number) => Promise<Client | undefined>
 ): Promise<Client | undefined> {
-  const { getClient, setClient, statusManager, allowUserInteraction } = deps
   const currentClient = getClient()
 
   const updatedClient = await switchChain(
@@ -39,7 +34,7 @@ export async function checkClient(
     action,
     targetChainId ?? step.action.fromChainId,
     allowUserInteraction,
-    deps.switchChain
+    switchChainCallback
   )
   if (updatedClient) {
     setClient(updatedClient)
