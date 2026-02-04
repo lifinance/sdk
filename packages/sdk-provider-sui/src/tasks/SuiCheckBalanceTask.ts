@@ -1,9 +1,15 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
-import { checkBalance } from '@lifi/sdk'
-import { SuiStepExecutionTask } from './SuiStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  checkBalance,
+  type TaskContext,
+  type TaskResult,
+} from '@lifi/sdk'
 import type { SuiTaskExtra } from './types.js'
 
-export class SuiCheckBalanceTask extends SuiStepExecutionTask<void> {
+export class SuiCheckBalanceTask extends BaseStepExecutionTask<
+  SuiTaskExtra,
+  void
+> {
   readonly type = 'SUI_CHECK_BALANCE'
 
   override async shouldRun(

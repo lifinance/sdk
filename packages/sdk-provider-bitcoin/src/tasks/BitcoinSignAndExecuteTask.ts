@@ -6,20 +6,28 @@ import {
   withTimeout,
 } from '@bigmi/core'
 import * as ecc from '@bitcoinerlab/secp256k1'
-import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import {
+  BaseStepExecutionTask,
+  LiFiErrorCode,
+  type TaskContext,
+  type TaskResult,
+  TransactionError,
+  type TransactionParameters,
+} from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../utils/isPsbtFinalized.js'
 import { toXOnly } from '../utils/toXOnly.js'
-import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
 export interface BitcoinSignAndExecuteResult {
   txHex: string
 }
 
-export class BitcoinSignAndExecuteTask extends BitcoinStepExecutionTask<BitcoinSignAndExecuteResult> {
+export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<
+  BitcoinTaskExtra,
+  BitcoinSignAndExecuteResult
+> {
   readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
 
   override async shouldRun(

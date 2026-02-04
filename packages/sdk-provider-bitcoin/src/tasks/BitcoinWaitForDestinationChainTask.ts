@@ -1,6 +1,9 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
-import { waitForDestinationChainTransaction } from '@lifi/sdk'
-import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  type TaskContext,
+  type TaskResult,
+  waitForDestinationChainTransaction,
+} from '@lifi/sdk'
 import type { BitcoinTaskExtra } from './types.js'
 
 const POLLING_INTERVAL_MS = 10_000
@@ -9,7 +12,10 @@ const POLLING_INTERVAL_MS = 10_000
  * Waits for the destination-chain transaction status (bridge only).
  * Runs after we have a source-chain txHash; polls status and updates step/action.
  */
-export class BitcoinWaitForDestinationChainTask extends BitcoinStepExecutionTask<void> {
+export class BitcoinWaitForDestinationChainTask extends BaseStepExecutionTask<
+  BitcoinTaskExtra,
+  void
+> {
   readonly type = 'BITCOIN_WAIT_FOR_DESTINATION_CHAIN'
 
   protected override async run(

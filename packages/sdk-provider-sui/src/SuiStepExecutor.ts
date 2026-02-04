@@ -4,6 +4,7 @@ import {
   TaskPipeline,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
+import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import { SuiCheckBalanceTask } from './tasks/SuiCheckBalanceTask.js'
 import { SuiPrepareTransactionTask } from './tasks/SuiPrepareTransactionTask.js'
 import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
@@ -34,6 +35,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
       ...baseContext,
       pipeline,
       wallet: this.wallet,
+      parseErrors: parseSuiErrors,
     }
   }
 }

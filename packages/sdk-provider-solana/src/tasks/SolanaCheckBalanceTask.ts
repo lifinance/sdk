@@ -1,9 +1,15 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
-import { checkBalance } from '@lifi/sdk'
-import { SolanaStepExecutionTask } from './SolanaStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  checkBalance,
+  type TaskContext,
+  type TaskResult,
+} from '@lifi/sdk'
 import type { SolanaTaskExtra } from './types.js'
 
-export class SolanaCheckBalanceTask extends SolanaStepExecutionTask<void> {
+export class SolanaCheckBalanceTask extends BaseStepExecutionTask<
+  SolanaTaskExtra,
+  void
+> {
   readonly type = 'SOLANA_CHECK_BALANCE'
 
   override async shouldRun(

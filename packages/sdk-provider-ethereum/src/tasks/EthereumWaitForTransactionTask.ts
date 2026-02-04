@@ -1,9 +1,16 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
-import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  type TaskContext,
+  type TaskResult,
+} from '@lifi/sdk'
+import { checkClient as checkClientHelper } from './helpers/checkClient.js'
 import { waitForTransaction as waitForTransactionHelper } from './helpers/waitForTransaction.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumWaitForTransactionTask extends EthereumStepExecutionTask<void> {
+export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<
+  EthereumTaskExtra,
+  void
+> {
   readonly type = 'ETHEREUM_WAIT_FOR_TRANSACTION'
 
   override async shouldRun(
@@ -25,10 +32,15 @@ export class EthereumWaitForTransactionTask extends EthereumStepExecutionTask<vo
       isBridgeExecution,
       statusManager,
       ethereumClient,
-      checkClient,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClientHelper(step, action, undefined, {
+      getClient: context.getClient,
+      setClient: context.setClient,
+      statusManager: context.statusManager,
+      allowUserInteraction: context.allowUserInteraction,
+      switchChain: context.switchChain,
+    })
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

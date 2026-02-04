@@ -1,9 +1,15 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
-import { checkBalance } from '@lifi/sdk'
-import { BitcoinStepExecutionTask } from './BitcoinStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  checkBalance,
+  type TaskContext,
+  type TaskResult,
+} from '@lifi/sdk'
 import type { BitcoinTaskExtra } from './types.js'
 
-export class BitcoinCheckBalanceTask extends BitcoinStepExecutionTask<void> {
+export class BitcoinCheckBalanceTask extends BaseStepExecutionTask<
+  BitcoinTaskExtra,
+  void
+> {
   readonly type = 'BITCOIN_CHECK_BALANCE'
 
   override async shouldRun(

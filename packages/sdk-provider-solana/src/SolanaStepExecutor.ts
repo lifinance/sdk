@@ -1,4 +1,5 @@
 import {
+  type BaseStepExecutionTask,
   BaseStepExecutor,
   LiFiErrorCode,
   type StepExecutorBaseContext,
@@ -6,12 +7,13 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
+import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
 import { SolanaCheckBalanceTask } from './tasks/SolanaCheckBalanceTask.js'
 import { SolanaPrepareTransactionTask } from './tasks/SolanaPrepareTransactionTask.js'
 import { SolanaSignAndExecuteTask } from './tasks/SolanaSignAndExecuteTask.js'
-import type { SolanaStepExecutionTask } from './tasks/SolanaStepExecutionTask.js'
 import { SolanaWaitForDestinationChainTask } from './tasks/SolanaWaitForDestinationChainTask.js'
 import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTask.js'
+import type { SolanaTaskExtra } from './tasks/types.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
@@ -39,7 +41,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     const pipeline = new TaskPipeline([
       new SolanaCheckBalanceTask(),
       new SolanaPrepareTransactionTask(),
-      new SolanaSignAndExecuteTask() as unknown as SolanaStepExecutionTask<void>,
+      new SolanaSignAndExecuteTask() as unknown as BaseStepExecutionTask<
+        SolanaTaskExtra,
+        unknown
+      >,
       new SolanaWaitForTransactionTask(),
       new SolanaWaitForDestinationChainTask(),
     ])
@@ -48,6 +53,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       ...baseContext,
       pipeline,
       walletAccount,
+      parseErrors: parseSolanaErrors,
     }
   }
 }

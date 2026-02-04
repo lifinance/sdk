@@ -1,5 +1,5 @@
 import type { Client } from '@bigmi/core'
-import type { TaskExtraBase, TaskPipeline } from '@lifi/sdk'
+import type { TaskExtraBase } from '@lifi/sdk'
 import type { getBitcoinPublicClient } from '../client/publicClient.js'
 
 export interface BitcoinTaskExtra extends TaskExtraBase {
@@ -11,6 +11,4 @@ export interface BitcoinTaskExtra extends TaskExtraBase {
 
   /** Set by BitcoinSignAndExecuteTask; consumed by BitcoinWaitForTransactionTask */
   txHex?: string
-
-  pipeline: TaskPipeline
 }

@@ -1,5 +1,6 @@
 import type { Client } from '@bigmi/core'
 import {
+  type BaseStepExecutionTask,
   BaseStepExecutor,
   ChainId,
   type StepExecutorBaseContext,
@@ -7,12 +8,13 @@ import {
   TaskPipeline,
 } from '@lifi/sdk'
 import { getBitcoinPublicClient } from './client/publicClient.js'
+import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
 import { BitcoinCheckBalanceTask } from './tasks/BitcoinCheckBalanceTask.js'
 import { BitcoinPrepareTransactionTask } from './tasks/BitcoinPrepareTransactionTask.js'
 import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
-import type { BitcoinStepExecutionTask } from './tasks/BitcoinStepExecutionTask.js'
 import { BitcoinWaitForDestinationChainTask } from './tasks/BitcoinWaitForDestinationChainTask.js'
 import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
+import type { BitcoinTaskExtra } from './tasks/types.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -37,7 +39,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const pipeline = new TaskPipeline([
       new BitcoinCheckBalanceTask(),
       new BitcoinPrepareTransactionTask(),
-      new BitcoinSignAndExecuteTask() as unknown as BitcoinStepExecutionTask<void>,
+      new BitcoinSignAndExecuteTask() as unknown as BaseStepExecutionTask<
+        BitcoinTaskExtra,
+        unknown
+      >,
       new BitcoinWaitForTransactionTask(),
       new BitcoinWaitForDestinationChainTask(),
     ])
@@ -47,6 +52,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       pipeline,
       publicClient,
       walletClient: this.walletClient,
+      parseErrors: parseBitcoinErrors,
     }
   }
 }

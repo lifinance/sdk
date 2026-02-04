@@ -2,6 +2,7 @@ import type {
   PipelineContext,
   PipelineSavedState,
   TaskContext,
+  TaskExtraBase,
 } from '../types/tasks.js'
 import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
 
@@ -16,7 +17,10 @@ type PipelineResult =
       pipelineContext: PipelineContext
     }
 
-export class TaskPipeline<TContext = unknown, TResult = unknown> {
+export class TaskPipeline<
+  TContext extends TaskExtraBase = TaskExtraBase,
+  TResult = unknown,
+> {
   constructor(private tasks: BaseStepExecutionTask<TContext, TResult>[]) {}
 
   /**

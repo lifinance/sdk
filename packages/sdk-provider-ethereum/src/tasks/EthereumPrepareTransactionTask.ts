@@ -1,5 +1,10 @@
-import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
-import { EthereumStepExecutionTask } from './EthereumStepExecutionTask.js'
+import {
+  BaseStepExecutionTask,
+  type TaskContext,
+  type TaskResult,
+  type TransactionParameters,
+} from '@lifi/sdk'
+import { checkClient as checkClientHelper } from './helpers/checkClient.js'
 import { prepareUpdatedStep as prepareUpdatedStepHelper } from './helpers/prepareUpdatedStep.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -8,7 +13,10 @@ export interface EthereumPrepareTransactionResult {
   isRelayerTransaction: boolean
 }
 
-export class EthereumPrepareTransactionTask extends EthereumStepExecutionTask<EthereumPrepareTransactionResult> {
+export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<
+  EthereumTaskExtra,
+  EthereumPrepareTransactionResult
+> {
   readonly type = 'ETHEREUM_PREPARE_TRANSACTION'
 
   override async shouldRun(
@@ -21,14 +29,13 @@ export class EthereumPrepareTransactionTask extends EthereumStepExecutionTask<Et
   protected async run(
     context: TaskContext<EthereumTaskExtra>
   ): Promise<TaskResult<EthereumPrepareTransactionResult>> {
+    const signedTypedData = context.signedTypedData ?? []
     const {
       client,
       step,
       action,
       actionType,
-      signedTypedData,
       allowUserInteraction,
-      checkClient,
       statusManager,
     } = context
 
@@ -40,7 +47,14 @@ export class EthereumPrepareTransactionTask extends EthereumStepExecutionTask<Et
       {
         statusManager: context.statusManager,
         executionOptions: context.executionOptions,
-        checkClient,
+        checkClient: (s, a, tid) =>
+          checkClientHelper(s, a, tid, {
+            getClient: context.getClient,
+            setClient: context.setClient,
+            statusManager: context.statusManager,
+            allowUserInteraction: context.allowUserInteraction,
+            switchChain: context.switchChain,
+          }),
         allowUserInteraction,
         ethereumClient: context.ethereumClient,
       }

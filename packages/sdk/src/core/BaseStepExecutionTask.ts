@@ -1,11 +1,15 @@
-import type { TaskContext, TaskResult } from '../types/tasks.js'
+import { ExecuteStepRetryError } from '../errors/errors.js'
+import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 
 /**
- * Base class for step pipeline tasks across all ecosystems. execute() wraps run() in try-catch
- * and calls abstract handleError(error, context) on failure, then rethrows.
- * Subclasses implement run() and handleError() (e.g. EthereumTask implements handleError via parseErrors + updateAction(FAILED)).
+ * Base class for step pipeline tasks across all ecosystems. execute() wraps run() in try-catch,
+ * parses errors via context.parseErrors, updates action to FAILED, then rethrows.
+ * TContext must extend TaskExtraBase so context has parseErrors and action.
  */
-export abstract class BaseStepExecutionTask<TContext, TResult = unknown> {
+export abstract class BaseStepExecutionTask<
+  TContext extends TaskExtraBase,
+  TResult = unknown,
+> {
   abstract readonly type: string
 
   /** Override to add conditions; default returns true (task always runs). */
@@ -14,26 +18,35 @@ export abstract class BaseStepExecutionTask<TContext, TResult = unknown> {
   }
 
   /**
-   * Subclasses implement this instead of execute(). The base class wraps it in try-catch and calls handleError on failure.
+   * Subclasses implement this instead of execute(). The base class wraps it in try-catch, parses errors, updates action to FAILED, then rethrows.
    */
   protected abstract run(
     context: TaskContext<TContext>
   ): Promise<TaskResult<TResult>>
 
-  /**
-   * Called when run() throws. Subclasses must implement (e.g. parseErrors + updateAction(FAILED)); may rethrow or throw parsed error.
-   */
-  protected abstract handleError(
-    error: Error,
-    context: TaskContext<TContext>
-  ): Promise<void>
-
   async execute(context: TaskContext<TContext>): Promise<TaskResult<TResult>> {
     try {
       return await this.run(context)
     } catch (error: any) {
-      await this.handleError(error, context)
-      throw error
+      const parsed = await context.parseErrors(
+        error,
+        context.step,
+        context.action // TODO: action should be passed to the error
+      )
+      if (!(parsed instanceof ExecuteStepRetryError)) {
+        context.statusManager.updateAction(
+          context.step,
+          context.action.type,
+          'FAILED',
+          {
+            error: {
+              message: parsed.cause?.message,
+              code: parsed.code,
+            },
+          }
+        )
+      }
+      throw parsed
     }
   }
 }

@@ -1,5 +1,7 @@
 import type { ExtendedChain, SignedTypedData } from '@lifi/types'
 import type { StatusManager } from '../core/StatusManager.js'
+import type { ExecuteStepRetryError } from '../errors/errors.js'
+import type { SDKError } from '../errors/SDKError.js'
 import type {
   ExecuteStepRetryParams,
   ExecutionAction,
@@ -21,6 +23,12 @@ export interface TaskExtraBase {
   action: ExecutionAction
   /** Task pipeline for this step. Typed as unknown to avoid circular import; ecosystems use TaskPipeline. */
   pipeline: unknown
+  /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. */
+  parseErrors: (
+    error: Error,
+    step?: LiFiStepExtended,
+    action?: ExecutionAction
+  ) => Promise<SDKError | ExecuteStepRetryError>
 }
 
 /** Return type of BaseStepExecutor.getBaseContext (chain info + executor state). */
@@ -44,6 +52,7 @@ export interface TaskContextBase {
   step: LiFiStepExtended
   chain: ExtendedChain
   allowUserInteraction: boolean
+  statusManager: StatusManager
   /** Results from previous tasks in pipeline */
   pipelineContext: PipelineContext
 }

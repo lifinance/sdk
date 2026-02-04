@@ -11,7 +11,6 @@ import type {
 import type { Address, Client, Hash } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import { setAllowance } from '../../actions/setAllowance.js'
-import { parseEthereumErrors } from '../../errors/parseEthereumErrors.js'
 import { MaxUint256 } from '../../permits/constants.js'
 import type { Call } from '../../types.js'
 import { waitForApprovalTransaction } from '../helpers/waitForApprovalTransaction.js'
@@ -61,144 +60,126 @@ export const checkAllowanceBatchingSupported = async (
 ): Promise<AllowanceResult> => {
   let sharedAction: ExecutionAction | undefined
   const signedTypedData: SignedTypedData[] = []
-  try {
-    // First, try to sign all permits in step.typedData
-    const permitTypedData = step.typedData?.filter(
-      (typedData) => typedData.primaryType === 'Permit'
-    )
-    const runCheckPermits = !disableMessageSigning && permitTypedData?.length
+  // First, try to sign all permits in step.typedData
+  const permitTypedData = step.typedData?.filter(
+    (typedData) => typedData.primaryType === 'Permit'
+  )
+  const runCheckPermits = !disableMessageSigning && permitTypedData?.length
 
-    if (runCheckPermits) {
-      const permitsResult = await checkPermits(
-        step,
-        statusManager,
-        permitTypedData,
-        allowUserInteraction,
-        checkClient
-      )
-      if (permitsResult) {
-        return permitsResult
-      }
-    }
-
-    // Find existing or create new allowance action
-    sharedAction = statusManager.findOrCreateAction({
+  if (runCheckPermits) {
+    const permitsResult = await checkPermits(
       step,
-      type: 'TOKEN_ALLOWANCE',
-      chainId: step.action.fromChainId,
-    })
-
-    const updatedClient = await checkClient(step, sharedAction)
-    if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      statusManager,
+      permitTypedData,
+      allowUserInteraction,
+      checkClient
+    )
+    if (permitsResult) {
+      return permitsResult
     }
+  }
 
-    // Handle existing pending transaction
-    if (sharedAction.txHash && sharedAction.status !== 'DONE') {
-      await waitForApprovalTransaction(
-        client,
-        updatedClient,
-        sharedAction.txHash as Address,
-        sharedAction.type,
-        step,
-        chain,
-        statusManager
-      )
-      return { status: 'DONE', data: signedTypedData }
-    }
+  // Find existing or create new allowance action
+  sharedAction = statusManager.findOrCreateAction({
+    step,
+    type: 'TOKEN_ALLOWANCE',
+    chainId: step.action.fromChainId,
+  })
 
-    // Start new allowance check
-    statusManager.updateAction(step, sharedAction.type, 'STARTED')
+  const updatedClient = await checkClient(step, sharedAction)
+  if (!updatedClient) {
+    return { status: 'ACTION_REQUIRED' }
+  }
 
-    const spenderAddress = permit2Supported
-      ? chain.permit2
-      : step.estimate.approvalAddress
-
-    const fromAmount = BigInt(step.action.fromAmount)
-
-    const approved = await getAllowance(
+  // Handle existing pending transaction
+  if (sharedAction.txHash && sharedAction.status !== 'DONE') {
+    await waitForApprovalTransaction(
       client,
       updatedClient,
-      step.action.fromToken.address as Address,
-      updatedClient.account!.address,
-      spenderAddress as Address
+      sharedAction.txHash as Address,
+      sharedAction.type,
+      step,
+      chain,
+      statusManager
     )
+    return { status: 'DONE', data: signedTypedData }
+  }
 
-    // Return early if already approved
-    if (fromAmount <= approved) {
-      statusManager.updateAction(step, sharedAction.type, 'DONE')
-      return { status: 'DONE', data: signedTypedData }
-    }
+  // Start new allowance check
+  statusManager.updateAction(step, sharedAction.type, 'STARTED')
 
-    const shouldResetApproval = step.estimate.approvalReset && approved > 0n
-    const resetApprovalStatus = shouldResetApproval
-      ? 'RESET_REQUIRED'
-      : 'ACTION_REQUIRED'
+  const spenderAddress = permit2Supported
+    ? chain.permit2
+    : step.estimate.approvalAddress
 
-    // Clear the txHash and txLink from potential previous approval transaction
-    statusManager.updateAction(step, sharedAction.type, resetApprovalStatus, {
-      txHash: undefined,
-      txLink: undefined,
-    })
+  const fromAmount = BigInt(step.action.fromAmount)
 
-    if (!allowUserInteraction) {
-      return { status: 'ACTION_REQUIRED' }
-    }
+  const approved = await getAllowance(
+    client,
+    updatedClient,
+    step.action.fromToken.address as Address,
+    updatedClient.account!.address,
+    spenderAddress as Address
+  )
 
-    // Reset allowance to 0 if required
-    let approvalResetTxHash: Hash | undefined
-    if (shouldResetApproval) {
-      approvalResetTxHash = await setAllowance(
-        client,
-        updatedClient,
-        step.action.fromToken.address as Address,
-        spenderAddress as Address,
-        0n,
-        executionOptions,
-        true
-      )
-    }
+  // Return early if already approved
+  if (fromAmount <= approved) {
+    statusManager.updateAction(step, sharedAction.type, 'DONE')
+    return { status: 'DONE', data: signedTypedData }
+  }
 
-    // Set new allowance
-    const approveAmount = permit2Supported ? MaxUint256 : fromAmount
-    const approveTxHash = await setAllowance(
+  const shouldResetApproval = step.estimate.approvalReset && approved > 0n
+  const resetApprovalStatus = shouldResetApproval
+    ? 'RESET_REQUIRED'
+    : 'ACTION_REQUIRED'
+
+  // Clear the txHash and txLink from potential previous approval transaction
+  statusManager.updateAction(step, sharedAction.type, resetApprovalStatus, {
+    txHash: undefined,
+    txLink: undefined,
+  })
+
+  if (!allowUserInteraction) {
+    return { status: 'ACTION_REQUIRED' }
+  }
+
+  // Reset allowance to 0 if required
+  let approvalResetTxHash: Hash | undefined
+  if (shouldResetApproval) {
+    approvalResetTxHash = await setAllowance(
       client,
       updatedClient,
       step.action.fromToken.address as Address,
       spenderAddress as Address,
-      approveAmount,
+      0n,
       executionOptions,
-      // We need to return the populated transaction is batching is supported
-      // instead of executing transaction on-chain
       true
     )
-
-    // Return the batch approval data because allowance wasn't set by standard
-    // approval transaction (this flow is for batching-supported execution)
-    return buildBatchApprovalResult(
-      step,
-      sharedAction,
-      statusManager,
-      shouldResetApproval,
-      approvalResetTxHash,
-      approveTxHash,
-      signedTypedData
-    )
-  } catch (e: any) {
-    if (!sharedAction) {
-      sharedAction = statusManager.findOrCreateAction({
-        step,
-        type: 'TOKEN_ALLOWANCE',
-        chainId: step.action.fromChainId,
-      })
-    }
-    const error = await parseEthereumErrors(e, step, sharedAction)
-    statusManager.updateAction(step, sharedAction.type, 'FAILED', {
-      error: {
-        message: error.cause.message,
-        code: error.code,
-      },
-    })
-    throw error
   }
+
+  // Set new allowance
+  const approveAmount = permit2Supported ? MaxUint256 : fromAmount
+  const approveTxHash = await setAllowance(
+    client,
+    updatedClient,
+    step.action.fromToken.address as Address,
+    spenderAddress as Address,
+    approveAmount,
+    executionOptions,
+    // We need to return the populated transaction is batching is supported
+    // instead of executing transaction on-chain
+    true
+  )
+
+  // Return the batch approval data because allowance wasn't set by standard
+  // approval transaction (this flow is for batching-supported execution)
+  return buildBatchApprovalResult(
+    step,
+    sharedAction,
+    statusManager,
+    shouldResetApproval,
+    approvalResetTxHash,
+    approveTxHash,
+    signedTypedData
+  )
 }

@@ -1,14 +1,18 @@
-import type { TaskContext, TaskResult } from '@lifi/sdk'
 import {
+  BaseStepExecutionTask,
   getStepTransaction,
   LiFiErrorCode,
   stepComparison,
+  type TaskContext,
+  type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { SuiStepExecutionTask } from './SuiStepExecutionTask.js'
 import type { SuiTaskExtra } from './types.js'
 
-export class SuiPrepareTransactionTask extends SuiStepExecutionTask<void> {
+export class SuiPrepareTransactionTask extends BaseStepExecutionTask<
+  SuiTaskExtra,
+  void
+> {
   readonly type = 'SUI_PREPARE_TRANSACTION'
 
   override async shouldRun(

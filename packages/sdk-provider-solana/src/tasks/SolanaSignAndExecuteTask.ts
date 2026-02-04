@@ -1,18 +1,26 @@
-import type { TaskContext, TaskResult, TransactionParameters } from '@lifi/sdk'
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import {
+  BaseStepExecutionTask,
+  LiFiErrorCode,
+  type TaskContext,
+  type TaskResult,
+  TransactionError,
+  type TransactionParameters,
+} from '@lifi/sdk'
 import { getTransactionCodec, type Transaction } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
 import { getWalletFeature } from '../utils/getWalletFeature.js'
 import { withTimeout } from '../utils/withTimeout.js'
-import { SolanaStepExecutionTask } from './SolanaStepExecutionTask.js'
 import type { SolanaTaskExtra } from './types.js'
 
 export interface SolanaSignAndExecuteResult {
   signedTransaction: Transaction
 }
 
-export class SolanaSignAndExecuteTask extends SolanaStepExecutionTask<SolanaSignAndExecuteResult> {
+export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
+  SolanaTaskExtra,
+  SolanaSignAndExecuteResult
+> {
   readonly type = 'SOLANA_SIGN_AND_EXECUTE'
 
   override async shouldRun(
