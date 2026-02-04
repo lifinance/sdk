@@ -450,14 +450,18 @@ export class EVMStepExecutor extends BaseStepExecutor {
           value: transactionRequest.value,
         }
       )
-      transactionRequest.gas =
+
+      // Use the higher of estimated vs original, then add buffer
+      const baseGas =
         transactionRequest.gas && transactionRequest.gas > estimatedGas
           ? transactionRequest.gas
           : estimatedGas
+
+      transactionRequest.gas = baseGas + 300_000n
     } catch (_) {
-      // If we fail to estimate the gas, we add 80_000 gas units Permit buffer to the gas limit
+      // If estimation fails, add 300K buffer to existing gas limit
       if (transactionRequest.gas) {
-        transactionRequest.gas = transactionRequest.gas + 80_000n
+        transactionRequest.gas = transactionRequest.gas + 300_000n
       }
     }
 
