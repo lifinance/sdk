@@ -47,7 +47,7 @@
     "watch": "tsc -w -p ./tsconfig.json"
   },
   "dependencies": {
-    "@bigmi/core": "^0.6.5",
+    "@bigmi/core": "^0.7.0",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/sdk": "workspace:*",
     "bech32": "^2.0.0",

@@ -73,8 +73,8 @@ importers:
   packages/sdk-provider-bitcoin:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.6.5
-        version: 0.6.5(typescript@5.9.3)
+        specifier: ^0.7.0
+        version: 0.7.0(typescript@5.9.3)
       '@bitcoinerlab/secp256k1':
         specifier: ^1.2.0
         version: 1.2.0
@@ -244,8 +244,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.6.5':
-    resolution: {integrity: sha512-prjyiUm8xYYcyiHf/I3MvFnqgHIv2XsA4c9EvCw0Do2thVDIJrQCcr3Z76U1ettrgg5u8XRS4MyOO+ITwG6FWA==}
+  '@bigmi/core@0.7.0':
+    resolution: {integrity: sha512-77br/G4rr4LFgLwYPQs/TZUlB/XVljgSrsseb0J6xCSs3DxomfnKQuKqTksN7IcwuDDEL22xBpyt9JZpoO+lQg==}
 
   '@biomejs/biome@2.3.14':
     resolution: {integrity: sha512-QMT6QviX0WqXJCaiqVMiBUCr5WRQ1iFSjvOLoTk6auKukJMvnMzWucXpwZB0e8F00/1/BsS9DzcKgWH+CLqVuA==}
@@ -4761,7 +4761,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.6.5(typescript@5.9.3)':
+  '@bigmi/core@0.7.0(typescript@5.9.3)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
