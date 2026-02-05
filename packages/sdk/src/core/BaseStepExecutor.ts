@@ -11,6 +11,8 @@ import type {
 import type {
   PipelineSavedState,
   StepExecutorBaseContext,
+  StepExecutorContext,
+  TaskExtraBase,
 } from '../types/tasks.js'
 import { StatusManager } from './StatusManager.js'
 
@@ -91,7 +93,9 @@ export abstract class BaseStepExecutor implements StepExecutor {
     }
   }
 
-  abstract getContext(baseContext: StepExecutorBaseContext): Promise<any> // TODO: type this
+  abstract getContext(
+    baseContext: StepExecutorBaseContext
+  ): Promise<StepExecutorContext<TaskExtraBase>>
 
   executeStep = async (
     client: SDKClient,

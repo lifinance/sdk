@@ -4,6 +4,7 @@ import {
   LiFiErrorCode,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
+  type StepExecutorContext,
   TaskPipeline,
   TransactionError,
   WaitForDestinationChainTask,
@@ -25,22 +26,11 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
   override getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<any> => {
-    const walletAccount = this.wallet.accounts.find(
-      (account) => account.address === baseContext.step.action.fromAddress
-    )
-
-    if (!walletAccount) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
-
+  ): Promise<StepExecutorContext<SolanaTaskExtra>> => {
     const pipeline = new TaskPipeline([
       new CheckBalanceTask<SolanaTaskExtra>(),
       new PrepareTransactionTask<SolanaTaskExtra>(),
-      new SolanaSignAndExecuteTask() as any, // TODO: type this
+      new SolanaSignAndExecuteTask(),
       new SolanaWaitForTransactionTask(),
       new WaitForDestinationChainTask<SolanaTaskExtra>(),
     ])
@@ -48,8 +38,20 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     return {
       ...baseContext,
       pipeline,
-      walletAccount,
-      getWalletAddress: () => walletAccount.address,
+      wallet: this.wallet,
+      getWalletAccount: () => {
+        const walletAccount = this.wallet.accounts.find(
+          (account) => account.address === baseContext.step.action.fromAddress
+        )
+        if (!walletAccount) {
+          throw new TransactionError(
+            LiFiErrorCode.WalletChangedDuringExecution,
+            'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+          )
+        }
+        return walletAccount
+      },
+      getWalletAddress: () => baseContext.step.action.fromAddress!,
       parseErrors: parseSolanaErrors,
     }
   }

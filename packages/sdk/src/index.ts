@@ -98,6 +98,7 @@ export type {
   PipelineSavedState,
   StepExecutionError,
   StepExecutorBaseContext,
+  StepExecutorContext,
   TaskContext,
   TaskContextBase,
   TaskExtraBase,

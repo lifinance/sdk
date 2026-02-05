@@ -1,21 +1,12 @@
 import type {
   PipelineContext,
+  PipelineResult,
   PipelineSavedState,
+  StepExecutorContext,
   TaskContext,
   TaskExtraBase,
 } from '../types/tasks.js'
 import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
-
-type PipelineResult =
-  | {
-      status: 'COMPLETED'
-      pipelineContext: PipelineContext
-    }
-  | {
-      status: 'PAUSED'
-      pausedAtTask: string
-      pipelineContext: PipelineContext
-    }
 
 export class TaskPipeline<
   TContext extends TaskExtraBase = TaskExtraBase,
@@ -27,7 +18,7 @@ export class TaskPipeline<
    * Run all tasks in sequence
    */
   async run(
-    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
+    baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
     return this.runTaskLoop(this.tasks, {}, baseContext)
   }
@@ -37,7 +28,7 @@ export class TaskPipeline<
    */
   async resume(
     savedState: PipelineSavedState,
-    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
+    baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
     const pipelineContext = savedState.pipelineContext
     const pausedIndex = this.tasks.findIndex(
@@ -54,14 +45,15 @@ export class TaskPipeline<
   private async runTaskLoop(
     tasksToRun: BaseStepExecutionTask<TContext, TResult>[],
     pipelineContext: PipelineContext,
-    baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
+    baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
     for (const task of tasksToRun) {
       const context = {
-        ...(baseContext as TaskContext<TContext>),
+        ...baseContext,
         ...pipelineContext,
         pipelineContext,
-      }
+        chain: baseContext.fromChain,
+      } as TaskContext<TContext>
       const result = await task.execute(context)
       if (result.data && typeof result.data === 'object') {
         Object.assign(pipelineContext, result.data)

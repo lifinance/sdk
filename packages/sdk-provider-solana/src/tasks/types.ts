@@ -4,7 +4,7 @@ import type { Wallet, WalletAccount } from '@wallet-standard/base'
 
 export interface SolanaTaskExtra extends TaskExtraBase {
   wallet: Wallet
-  walletAccount: WalletAccount
+  getWalletAccount: () => WalletAccount
 
   /** Set by SolanaSignAndExecuteTask; consumed by SolanaWaitForTransactionTask */
   signedTransaction?: Transaction

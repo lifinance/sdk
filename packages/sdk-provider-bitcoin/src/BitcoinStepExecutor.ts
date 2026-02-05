@@ -5,6 +5,7 @@ import {
   CheckBalanceTask,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
+  type StepExecutorContext,
   type StepExecutorOptions,
   TaskPipeline,
   WaitForDestinationChainTask,
@@ -29,7 +30,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
   override getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<any> => {
+  ): Promise<StepExecutorContext<BitcoinTaskExtra>> => {
     const publicClient = await getBitcoinPublicClient(
       baseContext.client,
       ChainId.BTC
@@ -38,7 +39,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     const pipeline = new TaskPipeline([
       new CheckBalanceTask<BitcoinTaskExtra>(),
       new PrepareTransactionTask<BitcoinTaskExtra>(),
-      new BitcoinSignAndExecuteTask() as any, // TODO: type this
+      new BitcoinSignAndExecuteTask(),
       new BitcoinWaitForTransactionTask(),
       new WaitForDestinationChainTask<BitcoinTaskExtra>(),
     ])

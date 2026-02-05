@@ -26,11 +26,11 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
   protected override async run(
     context: TaskContext<SuiTaskExtra>
   ): Promise<TaskResult<void>> {
-    const action = context.getOrCreateAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
+    const action = context.getOrCreateAction(
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
     const digest = action.txHash
 
     if (!digest) {

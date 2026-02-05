@@ -17,10 +17,7 @@ export interface SolanaSignAndExecuteResult {
   signedTransaction: Transaction
 }
 
-export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
-  SolanaTaskExtra,
-  SolanaSignAndExecuteResult
-> {
+export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskExtra> {
   readonly type = 'SOLANA_SIGN_AND_EXECUTE'
 
   override async shouldRun(
@@ -34,7 +31,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
   ): Promise<TaskResult<SolanaSignAndExecuteResult>> {
     const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     context.getOrCreateAction(actionType)
-    const { step, wallet, walletAccount, statusManager, executionOptions } =
+    const { step, wallet, getWalletAccount, statusManager, executionOptions } =
       context
 
     if (!step.transactionRequest?.data) {
@@ -76,7 +73,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
           SolanaSignTransaction
         )
         return signTransaction({
-          account: walletAccount,
+          account: getWalletAccount(),
           transaction: transactionBytes,
         })
       },

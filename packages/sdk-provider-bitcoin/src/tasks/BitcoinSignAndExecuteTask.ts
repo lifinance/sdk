@@ -24,10 +24,7 @@ export interface BitcoinSignAndExecuteResult {
   txHex: string
 }
 
-export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<
-  BitcoinTaskExtra,
-  BitcoinSignAndExecuteResult
-> {
+export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
 
   override async shouldRun(

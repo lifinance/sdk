@@ -6,26 +6,8 @@ import {
   TransactionError,
   type TransactionParameters,
 } from '@lifi/sdk'
-import {
-  signAndExecuteTransaction,
-  type WalletAccount,
-  type WalletWithRequiredFeatures,
-} from '@mysten/wallet-standard'
+import { signAndExecuteTransaction } from '@mysten/wallet-standard'
 import type { SuiTaskExtra } from './types.js'
-
-function getWalletAccountForStep(
-  wallet: WalletWithRequiredFeatures,
-  fromAddress: string
-): WalletAccount {
-  const account = wallet.accounts?.find((a) => a.address === fromAddress)
-  if (!account) {
-    throw new TransactionError(
-      LiFiErrorCode.WalletChangedDuringExecution,
-      'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-    )
-  }
-  return account
-}
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
   SuiTaskExtra,
@@ -81,11 +63,9 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
       )
     }
 
-    const account = getWalletAccountForStep(wallet, step.action.fromAddress!)
-
     // We give users 2 minutes to sign the transaction
     const signedTx = await signAndExecuteTransaction(wallet, {
-      account,
+      account: context.getWalletAccount(),
       chain: 'sui:mainnet',
       transaction: {
         toJSON: async () => transactionRequestData,

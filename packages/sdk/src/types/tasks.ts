@@ -36,8 +36,8 @@ export interface TaskExtraBase {
   isTransactionConfirmed: () => boolean
   /** Wallet address for the current step (e.g. for balance check). Throws if not available. */
   getWalletAddress: () => string
-  /** Task pipeline for this step. Typed as unknown to avoid circular import; ecosystems use TaskPipeline. */
-  pipeline: unknown
+  /** Task pipeline for this step. Ecosystems use TaskPipeline. */
+  pipeline: StepExecutorPipeline
   /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. Receives StepExecutionError (action may be on error.action). */
   parseErrors: (
     error: StepExecutionError,
@@ -63,6 +63,10 @@ export interface StepExecutorBaseContext {
   allowUserInteraction: boolean
   retryParams?: ExecuteStepRetryParams
 }
+
+/** Return type of StepExecutor.getContext: base context + ecosystem-specific extra. */
+export type StepExecutorContext<TExtra extends TaskExtraBase = TaskExtraBase> =
+  StepExecutorBaseContext & TExtra
 
 /** Base context fields provided by pipeline and executor */
 export interface TaskContextBase {
@@ -116,4 +120,18 @@ export interface PipelineContext {
 export interface PipelineSavedState {
   pausedAtTask: string
   pipelineContext: PipelineContext
+}
+
+/** Result of TaskPipeline.run() or TaskPipeline.resume(). */
+export type PipelineResult =
+  | { status: 'COMPLETED'; pipelineContext: PipelineContext }
+  | { status: 'PAUSED'; pausedAtTask: string; pipelineContext: PipelineContext }
+
+/** Minimal interface for context.pipeline; avoids circular dependency on TaskPipeline. */
+export interface StepExecutorPipeline {
+  run(context: unknown): Promise<PipelineResult>
+  resume(
+    savedState: PipelineSavedState,
+    context: unknown
+  ): Promise<PipelineResult>
 }

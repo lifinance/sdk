@@ -5,6 +5,7 @@ import {
   type LiFiStepExtended,
   type StepExecutionError,
   type StepExecutorBaseContext,
+  type StepExecutorContext,
   type StepExecutorOptions,
   TaskPipeline,
   WaitForDestinationChainTask,
@@ -96,7 +97,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
   override getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<unknown> => {
+  ): Promise<StepExecutorContext<EthereumTaskExtra>> => {
     const executionStrategy = await getEthereumExecutionStrategy(
       baseContext,
       this.client
