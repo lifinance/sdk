@@ -10,7 +10,6 @@ import type { Address, Hash, Hex } from 'viem'
 import { sendCalls } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { checkClient as checkClientHelper } from '../helpers/checkClient.js'
-import { shouldRunSignAndExecute } from '../helpers/signAndExecuteTaskHelpers.js'
 import type { EthereumTaskExtra } from '../types.js'
 
 /** Batch execution: sendCalls (EIP-5792) with approval calls + transfer call. */
@@ -23,11 +22,11 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    _action?: ExecutionAction
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'batch' &&
-      shouldRunSignAndExecute(context, _action)
+      !context.isTransactionExecuted(action)
     )
   }
 

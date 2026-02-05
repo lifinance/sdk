@@ -1,10 +1,10 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
-import { waitForTransactionStatus } from '../core/waitForTransactionStatus.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
+import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
 /**
  * Base task for "wait for destination chain" (bridge only).

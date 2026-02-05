@@ -9,7 +9,6 @@ import type {
   LiFiStepExtended,
   SDKClient,
   TaskExecutionActionType,
-  TransactionParameters,
 } from './core.js'
 
 /**
@@ -56,8 +55,8 @@ export interface StepExecutorBaseContext {
   getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
   createAction: (type: TaskExecutionActionType) => ExecutionAction
   /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
-  isTransactionExecuted: () => boolean
-  isTransactionConfirmed: () => boolean
+  isTransactionExecuted: (action?: ExecutionAction) => boolean
+  isTransactionConfirmed: (action?: ExecutionAction) => boolean
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   allowUserInteraction: boolean
@@ -72,11 +71,11 @@ export type StepExecutorContext<TExtra extends TaskExtraBase = TaskExtraBase> =
 export interface TaskContextBase {
   client: SDKClient
   step: LiFiStepExtended
-  chain: ExtendedChain
+  fromChain: ExtendedChain
   allowUserInteraction: boolean
   statusManager: StatusManager
-  /** Results from previous tasks in pipeline */
-  pipelineContext: PipelineContext
+  /** Data passed through tasks (outputs from previous tasks); only these fields, not full context */
+  data: PipelineData
 }
 
 /** Context = base fields + ecosystem-specific fields at top level */
@@ -103,14 +102,18 @@ export interface TaskState {
   data?: Record<string, unknown>
 }
 
-export interface PipelineContext {
-  /** Accumulated data from all completed tasks */
-  [key: string]: unknown
+/** Data passed through the task pipeline (outputs from previous tasks only; not full context) */
+export interface PipelineData {
+  // TODO: redefine
+  signedTypedData?: SignedTypedData[]
+  calls?: unknown[]
+  allowanceFlow?: unknown
+  txHex?: string
+}
 
-  // Common fields that tasks might contribute
-  signedPermits?: SignedTypedData[]
-  batchCalls?: Record<string, unknown>[]
-  preparedTransaction?: TransactionParameters
+/** Accumulated pipeline state (includes PipelineData; used for persistence) */
+export interface PipelineContext extends PipelineData {
+  [key: string]: unknown
 }
 
 /**

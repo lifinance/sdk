@@ -13,7 +13,6 @@ import { getAction } from 'viem/utils'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { checkClient as checkClientHelper } from '../helpers/checkClient.js'
-import { shouldRunSignAndExecute } from '../helpers/signAndExecuteTaskHelpers.js'
 import type { EthereumTaskExtra } from '../types.js'
 
 /** Relayer execution: sign typed data for transfer, then relayTransaction. */
@@ -26,11 +25,11 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    _action?: ExecutionAction
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'relayer' &&
-      shouldRunSignAndExecute(context, _action)
+      !context.isTransactionExecuted(action)
     )
   }
 

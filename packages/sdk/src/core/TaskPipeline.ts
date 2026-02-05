@@ -47,16 +47,19 @@ export class TaskPipeline<
     pipelineContext: PipelineContext,
     baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
+    let pipelineData = {}
     for (const task of tasksToRun) {
       const context = {
         ...baseContext,
         ...pipelineContext,
-        pipelineContext,
-        chain: baseContext.fromChain,
+        data: pipelineData,
       } as TaskContext<TContext>
       const result = await task.execute(context)
       if (result.data && typeof result.data === 'object') {
-        Object.assign(pipelineContext, result.data)
+        pipelineData = {
+          ...pipelineData,
+          ...result.data,
+        }
       }
       if (result.status === 'PAUSED') {
         return {

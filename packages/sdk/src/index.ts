@@ -26,7 +26,6 @@ export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './client/createClient.js'
 export { BaseStepExecutionTask } from './core/BaseStepExecutionTask.js'
 export { BaseStepExecutor } from './core/BaseStepExecutor.js'
-export { checkBalance } from './core/checkBalance.js'
 export {
   executeRoute,
   getActiveRoute,
@@ -36,7 +35,6 @@ export {
   updateRouteExecution,
 } from './core/execution.js'
 export { StatusManager } from './core/StatusManager.js'
-export { stepComparison } from './core/stepComparison.js'
 export { TaskPipeline } from './core/TaskPipeline.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
@@ -54,6 +52,8 @@ export {
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
 export { CheckBalanceTask } from './tasks/CheckBalanceTask.js'
+export { checkBalance } from './tasks/helpers/checkBalance.js'
+export { stepComparison } from './tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './tasks/PrepareTransactionTask.js'
 export { WaitForDestinationChainTask } from './tasks/WaitForDestinationChainTask.js'
 export type {
@@ -96,6 +96,7 @@ export type {
 } from './types/core.js'
 export type {
   PipelineContext,
+  PipelineData,
   PipelineSavedState,
   StepExecutionError,
   StepExecutorBaseContext,

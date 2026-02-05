@@ -17,7 +17,6 @@ import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { getPermit2Supported } from '../helpers/allowanceTaskHelpers.js'
 import { checkClient as checkClientHelper } from '../helpers/checkClient.js'
-import { shouldRunSignAndExecute } from '../helpers/signAndExecuteTaskHelpers.js'
 import type { EthereumTaskExtra } from '../types.js'
 
 /** Standard execution: sendTransaction (optionally with native permit or permit2 encoding). */
@@ -30,11 +29,11 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    _action?: ExecutionAction
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'standard' &&
-      shouldRunSignAndExecute(context, _action)
+      !context.isTransactionExecuted(action)
     )
   }
 

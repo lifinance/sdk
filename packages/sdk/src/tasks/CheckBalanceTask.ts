@@ -1,7 +1,7 @@
 import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
-import { checkBalance } from '../core/checkBalance.js'
 import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import { checkBalance } from './helpers/checkBalance.js'
 
 export class CheckBalanceTask<
   TContext extends TaskExtraBase,

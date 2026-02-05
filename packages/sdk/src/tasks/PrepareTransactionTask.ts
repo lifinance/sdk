@@ -1,10 +1,10 @@
 import { getStepTransaction } from '../actions/getStepTransaction.js'
 import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
-import { stepComparison } from '../core/stepComparison.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { TransactionError } from '../errors/errors.js'
 import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import { stepComparison } from './helpers/stepComparison.js'
 
 /**
  * Base task for preparing the step transaction (get transaction request, compare, require data).
