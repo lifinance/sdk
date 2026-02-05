@@ -53,9 +53,9 @@
     "@wallet-standard/base": "^1.1.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.58.0",
+    "@lifi/data-types": "^6.59.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "cpy-cli": "^6.0.0",
+    "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
