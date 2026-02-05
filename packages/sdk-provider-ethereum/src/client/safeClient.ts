@@ -1,0 +1,99 @@
+import type { Address } from 'viem'
+
+const SAFE_CLIENT_GATEWAY = 'https://safe-client.safe.global'
+
+// Cache for Safe Transaction Service URLs per chain
+const txServiceUrlCache = new Map<number, string>()
+
+// Cache for isSafeWallet results per chainId:address
+const safeWalletCache = new Map<string, boolean>()
+
+/**
+ * Resolve the Safe Transaction Service URL for a given chain ID
+ */
+async function getTransactionServiceUrl(chainId: number): Promise<string> {
+  const cached = txServiceUrlCache.get(chainId)
+  if (cached) {
+    return cached
+  }
+
+  const response = await fetch(`${SAFE_CLIENT_GATEWAY}/v1/chains/${chainId}`)
+  if (!response.ok) {
+    throw new Error(
+      `Failed to resolve Safe Transaction Service URL for chain ${chainId}: ${response.status}`
+    )
+  }
+
+  const data = (await response.json()) as {
+    transactionService: string
+  }
+
+  const url = data.transactionService
+  txServiceUrlCache.set(chainId, url)
+  return url
+}
+
+/**
+ * Make a GET request to the Safe Transaction Service
+ */
+export async function safeApiGet<T>(
+  chainId: number,
+  path: string,
+  apiKey?: string
+): Promise<T> {
+  const baseUrl = await getTransactionServiceUrl(chainId)
+  const headers: Record<string, string> = {}
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`
+  }
+  const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (!response.ok) {
+    throw new Error(
+      `Safe Transaction Service request failed: ${response.status} ${response.statusText}`
+    )
+  }
+  return response.json() as Promise<T>
+}
+
+export interface SafeInfo {
+  threshold: number
+  owners: string[]
+}
+
+export interface SafeMultisigTransaction {
+  safeTxHash: string
+  nonce: number
+  isExecuted: boolean
+  transactionHash?: string
+  isSuccessful?: boolean
+  confirmations?: Array<{ signature?: string }>
+}
+
+export interface SafeMultisigTransactionList {
+  count: number
+  results: SafeMultisigTransaction[]
+}
+
+/**
+ * Check if an address is a Safe wallet by querying the Safe Transaction Service
+ */
+export async function isSafeWallet(
+  chainId: number,
+  address: Address,
+  apiKey?: string
+): Promise<boolean> {
+  const cacheKey = `${chainId}:${address.toLowerCase()}`
+  const cached = safeWalletCache.get(cacheKey)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  try {
+    await safeApiGet<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
+    safeWalletCache.set(cacheKey, true)
+    return true
+  } catch {
+    safeWalletCache.set(cacheKey, false)
+    return false
+  }
+}
