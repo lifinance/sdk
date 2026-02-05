@@ -20,8 +20,10 @@ import type { NativePermitData } from '../permits/types.js'
 import type { Call } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
+import { isSignature } from '../utils/isSignature.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
+import { resolveSafeTransactionHash } from './waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
@@ -38,6 +40,7 @@ type CheckAllowanceParams = {
   batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
+  isSafeWallet?: boolean
 }
 
 type AllowanceResult =
@@ -65,6 +68,7 @@ export const checkAllowance = async (
     batchingSupported = false,
     permit2Supported = false,
     disableMessageSigning = false,
+    isSafeWallet = false,
   }: CheckAllowanceParams
 ): Promise<AllowanceResult> => {
   let sharedAction: ExecutionAction | undefined
@@ -172,11 +176,13 @@ export const checkAllowance = async (
       await waitForApprovalTransaction(
         client,
         updatedClient,
-        sharedAction.txHash as Address,
+        sharedAction.txHash as Hash,
         sharedAction.type,
         step,
         chain,
-        statusManager
+        statusManager,
+        false,
+        isSafeWallet
       )
       return { status: 'DONE', data: signedTypedData }
     }
@@ -312,7 +318,9 @@ export const checkAllowance = async (
           sharedAction.type,
           step,
           chain,
-          statusManager
+          statusManager,
+          false,
+          isSafeWallet
         )
 
         statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
@@ -378,7 +386,9 @@ export const checkAllowance = async (
       sharedAction.type,
       step,
       chain,
-      statusManager
+      statusManager,
+      false,
+      isSafeWallet
     )
 
     return { status: 'DONE', data: signedTypedData }
@@ -409,10 +419,28 @@ const waitForApprovalTransaction = async (
   step: LiFiStep,
   chain: ExtendedChain,
   statusManager: StatusManager,
-  approvalReset: boolean = false
+  approvalReset: boolean = false,
+  isSafeWallet: boolean = false
 ) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
+
+  // Resolve Safe signature to on-chain tx hash if needed
+  if (isSignature(txHash) && isSafeWallet) {
+    const safeAddress = viemClient.account?.address
+    if (safeAddress) {
+      statusManager.updateAction(step, actionType, 'PENDING', {
+        taskId: txHash,
+        txType: 'safe-queued',
+      })
+      txHash = await resolveSafeTransactionHash(
+        client,
+        chain.id,
+        safeAddress,
+        txHash
+      )
+    }
+  }
 
   statusManager.updateAction(step, actionType, 'PENDING', {
     txHash,
