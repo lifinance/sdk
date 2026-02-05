@@ -260,6 +260,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
               txHash: txHash,
               txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
               txHex,
+              signedAt: Date.now(),
             }
           )
         }

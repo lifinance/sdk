@@ -198,7 +198,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           )
         }
 
-        action = this.statusManager.updateAction(step, action.type, 'PENDING')
+        action = this.statusManager.updateAction(step, action.type, 'PENDING', {
+          signedAt: Date.now(),
+        })
 
         const transactionCodec = getTransactionCodec()
 

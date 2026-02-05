@@ -138,7 +138,9 @@ export class SuiStepExecutor extends BaseStepExecutor {
           },
         })
 
-        action = this.statusManager.updateAction(step, action.type, 'PENDING')
+        action = this.statusManager.updateAction(step, action.type, 'PENDING', {
+          signedAt: Date.now(),
+        })
 
         const result = await callSuiWithRetry(client, (client) =>
           client.waitForTransaction({
