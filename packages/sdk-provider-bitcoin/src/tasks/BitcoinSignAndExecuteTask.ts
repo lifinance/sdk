@@ -33,15 +33,15 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<
   override async shouldRun(
     context: TaskContext<BitcoinTaskExtra>
   ): Promise<boolean> {
-    const { action } = context
-    return !action.txHash && action.status !== 'DONE'
+    return !context.isTransactionExecuted()
   }
 
   protected override async run(
     context: TaskContext<BitcoinTaskExtra>
   ): Promise<TaskResult<BitcoinSignAndExecuteResult>> {
-    const { step, walletClient, statusManager, actionType, executionOptions } =
-      context
+    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    context.getOrCreateAction(actionType)
+    const { step, walletClient, statusManager, executionOptions } = context
 
     if (walletClient.account?.address !== step.action.fromAddress) {
       throw new TransactionError(
@@ -171,7 +171,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<
 
     const txHex = signedPsbt.extractTransaction().toHex()
 
-    context.action = statusManager.updateAction(step, actionType, 'PENDING')
+    statusManager.updateAction(step, actionType, 'PENDING')
 
     return {
       status: 'COMPLETED',

@@ -12,6 +12,12 @@ import type {
   TransactionParameters,
 } from './core.js'
 
+/**
+ * Error type used in step task execution. May carry the ExecutionAction for the task that threw,
+ * so parseErrors and FAILED updates can use it. BaseStepExecutionTask attaches action from context when catching.
+ */
+export type StepExecutionError = Error & { action?: ExecutionAction }
+
 /** Shared task-context extra fields; all ecosystems have these. */
 export interface TaskExtraBase {
   statusManager: StatusManager
@@ -19,13 +25,22 @@ export interface TaskExtraBase {
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  actionType: ExecutionActionType
-  action: ExecutionAction
+  pollingIntervalMs?: number
+  /** Get action by type if it exists (read-only). Use in shouldRun(). */
+  getAction: (type: ExecutionActionType) => ExecutionAction | undefined
+  /** Get or create action by type. Use in run() when the task may update the action. */
+  getOrCreateAction: (type: ExecutionActionType) => ExecutionAction
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
+  isTransactionExecuted: () => boolean
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
+  isTransactionConfirmed: () => boolean
+  /** Wallet address for the current step (e.g. for balance check). Throws if not available. */
+  getWalletAddress: () => string
   /** Task pipeline for this step. Typed as unknown to avoid circular import; ecosystems use TaskPipeline. */
   pipeline: unknown
-  /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. */
+  /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. Receives StepExecutionError (action may be on error.action). */
   parseErrors: (
-    error: Error,
+    error: StepExecutionError,
     step?: LiFiStepExtended,
     action?: ExecutionAction
   ) => Promise<SDKError | ExecuteStepRetryError>
@@ -38,8 +53,11 @@ export interface StepExecutorBaseContext {
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  actionType: ExecutionActionType
-  action: ExecutionAction
+  getAction: (type: ExecutionActionType) => ExecutionAction | undefined
+  getOrCreateAction: (type: ExecutionActionType) => ExecutionAction
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
+  isTransactionExecuted: () => boolean
+  isTransactionConfirmed: () => boolean
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   allowUserInteraction: boolean

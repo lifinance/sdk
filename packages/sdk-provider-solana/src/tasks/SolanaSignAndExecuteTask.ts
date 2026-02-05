@@ -26,21 +26,16 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
   override async shouldRun(
     context: TaskContext<SolanaTaskExtra>
   ): Promise<boolean> {
-    const { action } = context
-    return !action.txHash && action.status !== 'DONE'
+    return !context.isTransactionExecuted()
   }
 
   protected override async run(
     context: TaskContext<SolanaTaskExtra>
   ): Promise<TaskResult<SolanaSignAndExecuteResult>> {
-    const {
-      step,
-      wallet,
-      walletAccount,
-      statusManager,
-      actionType,
-      executionOptions,
-    } = context
+    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    context.getOrCreateAction(actionType)
+    const { step, wallet, walletAccount, statusManager, executionOptions } =
+      context
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
@@ -101,7 +96,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<
       )
     }
 
-    context.action = statusManager.updateAction(step, actionType, 'PENDING')
+    statusManager.updateAction(step, actionType, 'PENDING')
 
     const transactionCodec = getTransactionCodec()
     const signedTransaction = transactionCodec.decode(

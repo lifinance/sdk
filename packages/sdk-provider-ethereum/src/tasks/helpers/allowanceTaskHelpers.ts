@@ -79,15 +79,24 @@ export function getAllowanceParams(
 export function shouldRunAllowanceCheck(
   context: TaskContext<EthereumTaskExtra>
 ): boolean {
-  const { step, action, fromChain } = context
+  const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+  const action = context.getAction(actionType)
+  const { step, fromChain } = context
 
   const isFromNativeToken =
     fromChain.nativeToken.address === step.action.fromToken.address &&
     isZeroAddress(step.action.fromToken.address)
 
+  if (!action) {
+    return (
+      !isFromNativeToken &&
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval
+    )
+  }
   return (
-    !action?.txHash &&
-    !action?.taskId &&
+    !action.txHash &&
+    !action.taskId &&
     !isFromNativeToken &&
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&

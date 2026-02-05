@@ -5,24 +5,26 @@ import {
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
+  type StepExecutionError,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
 
 export const parseBitcoinErrors = async (
-  e: Error,
+  e: StepExecutionError,
   step?: LiFiStep,
   action?: ExecutionAction
 ): Promise<SDKError> => {
+  const resolvedAction = action ?? e.action
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.action = e.action ?? action
+    e.action = e.action ?? resolvedAction
     return e
   }
 
   const baseError = handleSpecificErrors(e)
 
-  return new SDKError(baseError, step, action)
+  return new SDKError(baseError, step, resolvedAction)
 }
 
 const handleSpecificErrors = (e: any) => {

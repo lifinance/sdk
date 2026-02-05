@@ -1,10 +1,15 @@
 import { ExecuteStepRetryError } from '../errors/errors.js'
-import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import type {
+  StepExecutionError,
+  TaskContext,
+  TaskExtraBase,
+  TaskResult,
+} from '../types/tasks.js'
 
 /**
  * Base class for step pipeline tasks across all ecosystems. execute() wraps run() in try-catch,
  * parses errors via context.parseErrors, updates action to FAILED, then rethrows.
- * TContext must extend TaskExtraBase so context has parseErrors and action.
+ * TContext must extend TaskExtraBase so context has parseErrors and getAction.
  */
 export abstract class BaseStepExecutionTask<
   TContext extends TaskExtraBase,
@@ -26,17 +31,22 @@ export abstract class BaseStepExecutionTask<
 
   async execute(context: TaskContext<TContext>): Promise<TaskResult<TResult>> {
     try {
+      const shouldRun = await this.shouldRun(context)
+      if (!shouldRun) {
+        return { status: 'COMPLETED' }
+      }
       return await this.run(context)
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as StepExecutionError
       const parsed = await context.parseErrors(
         error,
         context.step,
-        context.action // TODO: action should be passed to the error
+        error.action
       )
-      if (!(parsed instanceof ExecuteStepRetryError)) {
+      if (!(parsed instanceof ExecuteStepRetryError) && error.action) {
         context.statusManager.updateAction(
           context.step,
-          context.action.type,
+          error.action.type,
           'FAILED',
           {
             error: {

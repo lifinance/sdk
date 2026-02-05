@@ -36,14 +36,17 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>
   ): Promise<boolean> {
-    const { action } = context
-    return !action.txHash && action.status !== 'DONE'
+    return !context.isTransactionExecuted()
   }
 
   protected override async run(
     context: TaskContext<SuiTaskExtra>
   ): Promise<TaskResult<void>> {
-    const { step, wallet, statusManager, actionType, fromChain } = context
+    const { step, wallet, statusManager, fromChain, isBridgeExecution } =
+      context
+    const action = context.getOrCreateAction(
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
@@ -90,7 +93,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
     })
 
     // Persist txHash immediately so we can resume waiting if needed.
-    context.action = statusManager.updateAction(step, actionType, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: signedTx.digest,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${signedTx.digest}`,
     })

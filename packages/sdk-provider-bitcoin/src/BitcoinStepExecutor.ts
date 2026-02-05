@@ -1,18 +1,17 @@
 import type { Client } from '@bigmi/core'
 import {
-  type BaseStepExecutionTask,
   BaseStepExecutor,
   ChainId,
+  CheckBalanceTask,
+  PrepareTransactionTask,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
+  WaitForDestinationChainTask,
 } from '@lifi/sdk'
 import { getBitcoinPublicClient } from './client/publicClient.js'
 import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
-import { BitcoinCheckBalanceTask } from './tasks/BitcoinCheckBalanceTask.js'
-import { BitcoinPrepareTransactionTask } from './tasks/BitcoinPrepareTransactionTask.js'
 import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
-import { BitcoinWaitForDestinationChainTask } from './tasks/BitcoinWaitForDestinationChainTask.js'
 import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './tasks/types.js'
 
@@ -37,14 +36,11 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     )
 
     const pipeline = new TaskPipeline([
-      new BitcoinCheckBalanceTask(),
-      new BitcoinPrepareTransactionTask(),
-      new BitcoinSignAndExecuteTask() as unknown as BaseStepExecutionTask<
-        BitcoinTaskExtra,
-        unknown
-      >,
+      new CheckBalanceTask<BitcoinTaskExtra>(),
+      new PrepareTransactionTask<BitcoinTaskExtra>(),
+      new BitcoinSignAndExecuteTask() as any, // TODO: type this
       new BitcoinWaitForTransactionTask(),
-      new BitcoinWaitForDestinationChainTask(),
+      new WaitForDestinationChainTask<BitcoinTaskExtra>(),
     ])
 
     return {
@@ -52,6 +48,13 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       pipeline,
       publicClient,
       walletClient: this.walletClient,
+      getWalletAddress: () => {
+        const address = this.walletClient.account?.address
+        if (!address) {
+          throw new Error('Wallet account is not available.')
+        }
+        return address
+      },
       parseErrors: parseBitcoinErrors,
     }
   }

@@ -3,6 +3,12 @@ import type {
   TaskExtraBase,
   TransactionParameters,
 } from '@lifi/sdk'
+
+export interface EthereumPrepareTransactionResult {
+  transactionRequest: TransactionParameters | undefined
+  isRelayerTransaction: boolean
+}
+
 import type { Client } from 'viem'
 import type { Call } from '../types.js'
 import type { AllowanceFlowState } from './helpers/allowanceTypes.js'

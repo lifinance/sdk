@@ -52,14 +52,11 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
-    const actionType: ExecutionActionType = isBridgeExecution
-      ? 'CROSS_CHAIN'
-      : 'SWAP'
-    const action = this.statusManager.findOrCreateAction({
-      step,
-      type: actionType,
-      chainId: fromChain.id,
-    })
+    const getTransactionAction = () =>
+      this.statusManager.findAction(
+        step,
+        isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+      )
 
     return {
       client,
@@ -67,8 +64,26 @@ export abstract class BaseStepExecutor implements StepExecutor {
       fromChain,
       toChain,
       isBridgeExecution,
-      actionType,
-      action,
+      getAction: (type: ExecutionActionType) =>
+        this.statusManager.findAction(step, type),
+      getOrCreateAction: (type: ExecutionActionType) =>
+        this.statusManager.findOrCreateAction({
+          step,
+          type,
+          chainId: fromChain.id,
+        }),
+      isTransactionExecuted: () => {
+        const action = getTransactionAction()
+        return !!action && !!(action.txHash || action.taskId)
+      },
+      isTransactionConfirmed: () => {
+        const action = getTransactionAction()
+        return (
+          !!action &&
+          !!(action.txHash || action.taskId) &&
+          action.status === 'DONE'
+        )
+      },
       retryParams,
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,

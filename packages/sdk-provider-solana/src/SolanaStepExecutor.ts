@@ -1,17 +1,16 @@
 import {
-  type BaseStepExecutionTask,
   BaseStepExecutor,
+  CheckBalanceTask,
   LiFiErrorCode,
+  PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
   TransactionError,
+  WaitForDestinationChainTask,
 } from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
-import { SolanaCheckBalanceTask } from './tasks/SolanaCheckBalanceTask.js'
-import { SolanaPrepareTransactionTask } from './tasks/SolanaPrepareTransactionTask.js'
 import { SolanaSignAndExecuteTask } from './tasks/SolanaSignAndExecuteTask.js'
-import { SolanaWaitForDestinationChainTask } from './tasks/SolanaWaitForDestinationChainTask.js'
 import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTask.js'
 import type { SolanaTaskExtra } from './tasks/types.js'
 import type { SolanaStepExecutorOptions } from './types.js'
@@ -39,20 +38,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
 
     const pipeline = new TaskPipeline([
-      new SolanaCheckBalanceTask(),
-      new SolanaPrepareTransactionTask(),
-      new SolanaSignAndExecuteTask() as unknown as BaseStepExecutionTask<
-        SolanaTaskExtra,
-        unknown
-      >,
+      new CheckBalanceTask<SolanaTaskExtra>(),
+      new PrepareTransactionTask<SolanaTaskExtra>(),
+      new SolanaSignAndExecuteTask() as any, // TODO: type this
       new SolanaWaitForTransactionTask(),
-      new SolanaWaitForDestinationChainTask(),
+      new WaitForDestinationChainTask<SolanaTaskExtra>(),
     ])
 
     return {
       ...baseContext,
       pipeline,
       walletAccount,
+      getWalletAddress: () => walletAccount.address,
       parseErrors: parseSolanaErrors,
     }
   }

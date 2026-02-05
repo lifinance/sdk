@@ -1,15 +1,16 @@
 import {
   BaseStepExecutor,
+  CheckBalanceTask,
+  PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
+  WaitForDestinationChainTask,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
-import { SuiCheckBalanceTask } from './tasks/SuiCheckBalanceTask.js'
-import { SuiPrepareTransactionTask } from './tasks/SuiPrepareTransactionTask.js'
 import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
-import { SuiWaitForDestinationChainTask } from './tasks/SuiWaitForDestinationChainTask.js'
 import { SuiWaitForTransactionTask } from './tasks/SuiWaitForTransactionTask.js'
+import type { SuiTaskExtra } from './tasks/types.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
@@ -24,17 +25,18 @@ export class SuiStepExecutor extends BaseStepExecutor {
     baseContext: StepExecutorBaseContext
   ): Promise<any> => {
     const pipeline = new TaskPipeline([
-      new SuiCheckBalanceTask(),
-      new SuiPrepareTransactionTask(),
+      new CheckBalanceTask<SuiTaskExtra>(),
+      new PrepareTransactionTask<SuiTaskExtra>(),
       new SuiSignAndExecuteTask(),
       new SuiWaitForTransactionTask(),
-      new SuiWaitForDestinationChainTask(),
+      new WaitForDestinationChainTask<SuiTaskExtra>(),
     ])
 
     return {
       ...baseContext,
       pipeline,
       wallet: this.wallet,
+      getWalletAddress: () => baseContext.step.action.fromAddress!,
       parseErrors: parseSuiErrors,
     }
   }

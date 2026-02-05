@@ -43,32 +43,9 @@ export class TaskPipeline<
     const pausedIndex = this.tasks.findIndex(
       (t) => t.type === savedState.pausedAtTask
     )
-    if (pausedIndex < 0) {
-      return this.runTaskLoop(this.tasks, pipelineContext, baseContext)
-    }
-
-    const pausedTask = this.tasks[pausedIndex]
-    const context: TaskContext<TContext> = {
-      ...(baseContext as TaskContext<TContext>),
-      ...pipelineContext,
-      pipelineContext,
-    }
-    const result = await pausedTask.execute(context)
-
-    if (result.data && typeof result.data === 'object') {
-      Object.assign(pipelineContext, result.data)
-    }
-
-    if (result.status === 'PAUSED') {
-      return {
-        status: 'PAUSED',
-        pausedAtTask: pausedTask.type,
-        pipelineContext,
-      }
-    }
-
-    const remainingTasks = this.tasks.slice(pausedIndex + 1)
-    return this.runTaskLoop(remainingTasks, pipelineContext, baseContext)
+    const tasksToRun =
+      pausedIndex < 0 ? this.tasks : this.tasks.slice(pausedIndex)
+    return this.runTaskLoop(tasksToRun, pipelineContext, baseContext)
   }
 
   /**
@@ -80,23 +57,15 @@ export class TaskPipeline<
     baseContext: Omit<TaskContext<TContext>, 'pipelineContext'>
   ): Promise<PipelineResult> {
     for (const task of tasksToRun) {
-      const context: TaskContext<TContext> = {
+      const context = {
         ...(baseContext as TaskContext<TContext>),
         ...pipelineContext,
         pipelineContext,
       }
-
-      const shouldRun = await task.shouldRun(context)
-      if (!shouldRun) {
-        continue
-      }
-
       const result = await task.execute(context)
-
       if (result.data && typeof result.data === 'object') {
         Object.assign(pipelineContext, result.data)
       }
-
       if (result.status === 'PAUSED') {
         return {
           status: 'PAUSED',
@@ -105,7 +74,6 @@ export class TaskPipeline<
         }
       }
     }
-
     return { status: 'COMPLETED', pipelineContext }
   }
 }

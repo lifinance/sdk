@@ -17,22 +17,20 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>
   ): Promise<boolean> {
-    const { action } = context
-    return !!action.txHash && action.status !== 'DONE'
+    const action = context.getAction(
+      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    return !!action && !!action.txHash && action.status !== 'DONE'
   }
 
   protected override async run(
     context: TaskContext<SuiTaskExtra>
   ): Promise<TaskResult<void>> {
-    const {
-      client,
-      step,
-      action,
-      statusManager,
-      actionType,
-      fromChain,
-      isBridgeExecution,
-    } = context
+    const action = context.getOrCreateAction(
+      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    const { client, step, statusManager, fromChain, isBridgeExecution } =
+      context
     const digest = action.txHash
 
     if (!digest) {
@@ -59,13 +57,13 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
     }
 
     //  Transaction has been confirmed
-    context.action = statusManager.updateAction(step, actionType, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: result.digest,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
     })
 
     if (isBridgeExecution) {
-      context.action = statusManager.updateAction(step, actionType, 'DONE')
+      statusManager.updateAction(step, action.type, 'DONE')
     }
 
     return { status: 'COMPLETED' }

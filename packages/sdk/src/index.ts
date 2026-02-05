@@ -38,7 +38,6 @@ export {
 export { StatusManager } from './core/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
 export { TaskPipeline } from './core/TaskPipeline.js'
-export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
 export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
@@ -54,6 +53,9 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
+export { CheckBalanceTask } from './tasks/CheckBalanceTask.js'
+export { PrepareTransactionTask } from './tasks/PrepareTransactionTask.js'
+export { WaitForDestinationChainTask } from './tasks/WaitForDestinationChainTask.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
@@ -94,6 +96,7 @@ export type {
 export type {
   PipelineContext,
   PipelineSavedState,
+  StepExecutionError,
   StepExecutorBaseContext,
   TaskContext,
   TaskContextBase,
