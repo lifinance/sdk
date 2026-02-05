@@ -3,6 +3,7 @@ import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
 import { stepComparison } from '../core/stepComparison.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { TransactionError } from '../errors/errors.js'
+import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 
 /**
@@ -12,14 +13,19 @@ import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 export class PrepareTransactionTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext, void> {
-  override readonly type = 'PREPARE_TRANSACTION'
+  readonly type = 'PREPARE_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
-  override async shouldRun(context: TaskContext<TContext>): Promise<boolean> {
-    return !context.isTransactionExecuted()
+  override async shouldRun(
+    context: TaskContext<TContext>,
+    action?: ExecutionAction
+  ): Promise<boolean> {
+    return !context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<TContext>
+  protected async run(
+    context: TaskContext<TContext>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     const {
       client,
@@ -27,11 +33,7 @@ export class PrepareTransactionTask<
       statusManager,
       allowUserInteraction,
       executionOptions,
-      isBridgeExecution,
     } = context
-    const action = context.getOrCreateAction(
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
 
     if (!step.transactionRequest) {
       const { execution, ...stepBase } = step

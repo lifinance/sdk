@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
@@ -15,13 +16,12 @@ export class EthereumRelayerWaitForTransactionTask extends BaseStepExecutionTask
   void
 > {
   readonly type = 'ETHEREUM_RELAYER_WAIT_FOR_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    const action = context.getAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
     return (
       !!action &&
       context.executionStrategy === 'relayer' &&
@@ -31,13 +31,10 @@ export class EthereumRelayerWaitForTransactionTask extends BaseStepExecutionTask
   }
 
   protected async run(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    let currentAction = context.getOrCreateAction(actionType)
-    if (!currentAction) {
-      throw new Error(`Action not found for type ${actionType}`)
-    }
+    let currentAction = action
     const { client, step, fromChain, isBridgeExecution, statusManager } =
       context
 

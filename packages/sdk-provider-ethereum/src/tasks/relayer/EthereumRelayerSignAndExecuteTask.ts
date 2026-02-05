@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   relayTransaction,
   type TaskContext,
@@ -21,29 +22,24 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'ETHEREUM_RELAYER_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    _action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'relayer' &&
-      shouldRunSignAndExecute(context)
+      shouldRunSignAndExecute(context, _action)
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     context.signedTypedData = context.signedTypedData ?? []
     const signedTypedData = context.signedTypedData
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const action = context.getOrCreateAction(actionType)
-    if (!action) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Action not found for current step.'
-      )
-    }
     const { client, step, fromChain, statusManager } = context
 
     const intentTypedData = step.typedData?.filter(
@@ -60,7 +56,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
       )
     }
 
-    statusManager.updateAction(step, actionType, 'MESSAGE_REQUIRED')
+    statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
 
     for (const typedData of intentTypedData) {
       const typedDataChainId =
@@ -95,7 +91,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
       })
     }
 
-    statusManager.updateAction(step, actionType, 'PENDING')
+    statusManager.updateAction(step, action.type, 'PENDING')
 
     const { execution, ...stepBase } = step
     const relayedTransaction = await relayTransaction(client, {
@@ -103,7 +99,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
       typedData: signedTypedData,
     })
 
-    statusManager.updateAction(step, actionType, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       taskId: relayedTransaction.taskId as Hash,
       txType: 'relayed',
       txLink: relayedTransaction.txLink,

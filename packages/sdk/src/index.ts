@@ -87,6 +87,7 @@ export type {
   StepExecutor,
   StepExecutorOptions,
   StepExtended,
+  TaskExecutionActionType,
   TransactionMethodType,
   TransactionParameters,
   TransactionRequestParameters,

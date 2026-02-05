@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -25,33 +26,27 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'ETHEREUM_STANDARD_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    _action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'standard' &&
-      shouldRunSignAndExecute(context)
+      shouldRunSignAndExecute(context, _action)
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     context.signedTypedData = context.signedTypedData ?? []
     const signedTypedData = context.signedTypedData
 
-    const {
-      client,
-      step,
-      fromChain,
-      statusManager,
-      transactionRequest,
-      isBridgeExecution,
-    } = context
-    const action = context.getOrCreateAction(
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
+    const { client, step, fromChain, statusManager, transactionRequest } =
+      context
     const permit2Supported = getPermit2Supported(context)
 
     if (!transactionRequest) {

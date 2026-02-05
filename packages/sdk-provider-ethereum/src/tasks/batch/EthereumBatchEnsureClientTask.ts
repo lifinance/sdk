@@ -1,7 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionActionType,
+  type ExecutionAction,
   type TaskContext,
+  type TaskExecutionActionType,
   type TaskResult,
 } from '@lifi/sdk'
 import {
@@ -17,21 +18,23 @@ export class EthereumBatchEnsureClientTask extends BaseStepExecutionTask<
   { allowanceFlow: AllowanceFlowState }
 > {
   readonly type = 'ETHEREUM_BATCH_ENSURE_CLIENT'
-  readonly actionType: ExecutionActionType = 'TOKEN_ALLOWANCE'
+  readonly actionType: TaskExecutionActionType = 'TOKEN_ALLOWANCE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'batch' &&
-      shouldRunAllowanceCheck(context) &&
+      shouldRunAllowanceCheck(context, action) &&
       !context.allowanceFlow?.result &&
       !!context.allowanceFlow?.sharedAction
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    _action: ExecutionAction
   ): Promise<TaskResult<{ allowanceFlow: AllowanceFlowState }>> {
     const flow = context.allowanceFlow!
     const updatedClient =

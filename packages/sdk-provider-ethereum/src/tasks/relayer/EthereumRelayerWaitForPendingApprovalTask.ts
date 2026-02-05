@@ -1,7 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionActionType,
+  type ExecutionAction,
   type TaskContext,
+  type TaskExecutionActionType,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -19,21 +20,23 @@ export class EthereumRelayerWaitForPendingApprovalTask extends BaseStepExecution
   { allowanceFlow: AllowanceFlowState }
 > {
   readonly type = 'ETHEREUM_RELAYER_WAIT_FOR_PENDING_APPROVAL'
-  readonly actionType: ExecutionActionType = 'TOKEN_ALLOWANCE'
+  readonly actionType: TaskExecutionActionType = 'TOKEN_ALLOWANCE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    _action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'relayer' &&
-      shouldRunAllowanceCheck(context) &&
+      shouldRunAllowanceCheck(context, _action) &&
       !context.allowanceFlow?.result &&
       !!context.allowanceFlow?.updatedClient
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    _action: ExecutionAction
   ): Promise<TaskResult<{ allowanceFlow: AllowanceFlowState }>> {
     const flow = context.allowanceFlow!
     const params = getAllowanceParams(context)

@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -18,27 +19,23 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'ETHEREUM_BATCH_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    _action?: ExecutionAction
   ): Promise<boolean> {
     return (
-      context.executionStrategy === 'batch' && shouldRunSignAndExecute(context)
+      context.executionStrategy === 'batch' &&
+      shouldRunSignAndExecute(context, _action)
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     context.calls = context.calls ?? []
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const action = context.getOrCreateAction(actionType)
-    if (!action) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Action not found for current step.'
-      )
-    }
     const { step, fromChain, statusManager, transactionRequest } = context
     const calls = context.calls
 
@@ -80,7 +77,7 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<
       calls,
     })
 
-    statusManager.updateAction(step, actionType, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       taskId: id as Hash,
       txType: 'batched',
     })

@@ -1,7 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionActionType,
+  type ExecutionAction,
   type TaskContext,
+  type TaskExecutionActionType,
   type TaskResult,
 } from '@lifi/sdk'
 import { shouldRunAllowanceCheck } from '../helpers/allowanceTaskHelpers.js'
@@ -13,15 +14,16 @@ export class EthereumStandardPrepareResetStatusTask extends BaseStepExecutionTas
   { allowanceFlow: AllowanceFlowState }
 > {
   readonly type = 'ETHEREUM_STANDARD_PREPARE_RESET_STATUS'
-  readonly actionType: ExecutionActionType = 'TOKEN_ALLOWANCE'
+  readonly actionType: TaskExecutionActionType = 'TOKEN_ALLOWANCE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    _action?: ExecutionAction
   ): Promise<boolean> {
     const flow = context.allowanceFlow
     return (
       context.executionStrategy === 'standard' &&
-      shouldRunAllowanceCheck(context) &&
+      shouldRunAllowanceCheck(context, _action) &&
       !flow?.result &&
       flow?.spenderAddress !== undefined &&
       flow?.approved !== undefined &&
@@ -29,8 +31,9 @@ export class EthereumStandardPrepareResetStatusTask extends BaseStepExecutionTas
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    _action: ExecutionAction
   ): Promise<TaskResult<{ allowanceFlow: AllowanceFlowState }>> {
     const flow = context.allowanceFlow!
     const shouldResetApproval = !!(

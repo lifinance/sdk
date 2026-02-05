@@ -1,4 +1,4 @@
-import type { TaskContext } from '@lifi/sdk'
+import type { ExecutionAction, TaskContext } from '@lifi/sdk'
 import type { EthereumTaskExtra } from '../types.js'
 
 /**
@@ -6,7 +6,8 @@ import type { EthereumTaskExtra } from '../types.js'
  * Run when transaction is not yet executed (no tx/taskId or not DONE).
  */
 export function shouldRunSignAndExecute(
-  context: TaskContext<EthereumTaskExtra>
+  context: TaskContext<EthereumTaskExtra>,
+  action?: ExecutionAction
 ): boolean {
-  return !context.isTransactionExecuted()
+  return !context.isTransactionExecuted(action)
 }

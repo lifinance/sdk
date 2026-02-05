@@ -5,10 +5,10 @@ import type { SDKError } from '../errors/SDKError.js'
 import type {
   ExecuteStepRetryParams,
   ExecutionAction,
-  ExecutionActionType,
   ExecutionOptions,
   LiFiStepExtended,
   SDKClient,
+  TaskExecutionActionType,
   TransactionParameters,
 } from './core.js'
 
@@ -27,13 +27,13 @@ export interface TaskExtraBase {
   isBridgeExecution: boolean
   pollingIntervalMs?: number
   /** Get action by type if it exists (read-only). Use in shouldRun(). */
-  getAction: (type: ExecutionActionType) => ExecutionAction | undefined
+  getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
   /** Get or create action by type. Use in run() when the task may update the action. */
-  getOrCreateAction: (type: ExecutionActionType) => ExecutionAction
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
-  isTransactionExecuted: () => boolean
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
-  isTransactionConfirmed: () => boolean
+  createAction: (type: TaskExecutionActionType) => ExecutionAction
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
+  isTransactionExecuted: (action?: ExecutionAction) => boolean
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
+  isTransactionConfirmed: (action?: ExecutionAction) => boolean
   /** Wallet address for the current step (e.g. for balance check). Throws if not available. */
   getWalletAddress: () => string
   /** Task pipeline for this step. Ecosystems use TaskPipeline. */
@@ -53,9 +53,9 @@ export interface StepExecutorBaseContext {
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  getAction: (type: ExecutionActionType) => ExecutionAction | undefined
-  getOrCreateAction: (type: ExecutionActionType) => ExecutionAction
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(). */
+  getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
+  createAction: (type: TaskExecutionActionType) => ExecutionAction
+  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
   isTransactionExecuted: () => boolean
   isTransactionConfirmed: () => boolean
   statusManager: StatusManager

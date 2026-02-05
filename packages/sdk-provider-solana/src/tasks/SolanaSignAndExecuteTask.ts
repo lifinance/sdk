@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -19,18 +20,19 @@ export interface SolanaSignAndExecuteResult {
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskExtra> {
   readonly type = 'SOLANA_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<SolanaTaskExtra>
+    context: TaskContext<SolanaTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted()
+    return !context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<SolanaTaskExtra>
+  protected async run(
+    context: TaskContext<SolanaTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<SolanaSignAndExecuteResult>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    context.getOrCreateAction(actionType)
     const { step, wallet, getWalletAccount, statusManager, executionOptions } =
       context
 
@@ -93,7 +95,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskEx
       )
     }
 
-    statusManager.updateAction(step, actionType, 'PENDING')
+    statusManager.updateAction(step, action.type, 'PENDING')
 
     const transactionCodec = getTransactionCodec()
     const signedTransaction = transactionCodec.decode(

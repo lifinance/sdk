@@ -1,4 +1,5 @@
 import { ExecuteStepRetryError } from '../errors/errors.js'
+import type { ExecutionAction, TaskExecutionActionType } from '../types/core.js'
 import type {
   StepExecutionError,
   TaskContext,
@@ -16,9 +17,13 @@ export abstract class BaseStepExecutionTask<
   TResult = unknown,
 > {
   abstract readonly type: string
+  abstract readonly actionType: TaskExecutionActionType
 
   /** Override to add conditions; default returns true (task always runs). */
-  async shouldRun(_context: TaskContext<TContext>): Promise<boolean> {
+  async shouldRun(
+    _context: TaskContext<TContext>,
+    _action?: ExecutionAction
+  ): Promise<boolean> {
     return Promise.resolve(true)
   }
 
@@ -26,16 +31,21 @@ export abstract class BaseStepExecutionTask<
    * Subclasses implement this instead of execute(). The base class wraps it in try-catch, parses errors, updates action to FAILED, then rethrows.
    */
   protected abstract run(
-    context: TaskContext<TContext>
+    context: TaskContext<TContext>,
+    action: ExecutionAction
   ): Promise<TaskResult<TResult>>
 
   async execute(context: TaskContext<TContext>): Promise<TaskResult<TResult>> {
     try {
-      const shouldRun = await this.shouldRun(context)
+      let action = context.getAction(this.actionType)
+      const shouldRun = await this.shouldRun(context, action)
       if (!shouldRun) {
         return { status: 'COMPLETED' }
       }
-      return await this.run(context)
+      if (!action) {
+        action = context.createAction(this.actionType)
+      }
+      return await this.run(context, action)
     } catch (err) {
       const error = err as StepExecutionError
       const parsed = await context.parseErrors(

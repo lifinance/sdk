@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
@@ -14,20 +15,23 @@ export class EthereumDestinationChainCheckTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
+  readonly actionType = 'RECEIVING_CHAIN'
+
+  override async shouldRun(
+    _context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
+  ): Promise<boolean> {
+    return !!action && action.status !== 'DONE'
+  }
 
   protected async run(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     const { step } = context
-    const destinationChainAction = step.execution?.actions.find(
-      (a) => a.type === 'RECEIVING_CHAIN'
-    )
-    if (!destinationChainAction) {
-      return { status: 'COMPLETED' }
-    }
     const updatedClient = await checkClientHelper(
       step,
-      destinationChainAction,
+      action,
       undefined,
       context.getClient,
       context.setClient,

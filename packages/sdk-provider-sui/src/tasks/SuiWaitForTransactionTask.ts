@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -13,24 +14,21 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'SUI_WAIT_FOR_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<SuiTaskExtra>
+    context: TaskContext<SuiTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    const action = context.getAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
-    return !!action && !!action.txHash && action.status !== 'DONE'
+    return context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<SuiTaskExtra>
+  protected async run(
+    context: TaskContext<SuiTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
-    const action = context.getOrCreateAction(
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
     const digest = action.txHash
 
     if (!digest) {

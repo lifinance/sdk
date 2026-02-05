@@ -1,12 +1,13 @@
 import type {
   ExecuteStepRetryParams,
-  ExecutionActionType,
+  ExecutionAction,
   ExecutionOptions,
   InteractionSettings,
   LiFiStepExtended,
   SDKClient,
   StepExecutor,
   StepExecutorOptions,
+  TaskExecutionActionType,
 } from '../types/core.js'
 import type {
   PipelineSavedState,
@@ -54,11 +55,6 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const toChain = await client.getChainById(step.action.toChainId)
 
     const isBridgeExecution = fromChain.id !== toChain.id
-    const getTransactionAction = () =>
-      this.statusManager.findAction(
-        step,
-        isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-      )
 
     return {
       client,
@@ -66,20 +62,36 @@ export abstract class BaseStepExecutor implements StepExecutor {
       fromChain,
       toChain,
       isBridgeExecution,
-      getAction: (type: ExecutionActionType) =>
-        this.statusManager.findAction(step, type),
-      getOrCreateAction: (type: ExecutionActionType) =>
-        this.statusManager.findOrCreateAction({
-          step,
-          type,
-          chainId: fromChain.id,
-        }),
-      isTransactionExecuted: () => {
-        const action = getTransactionAction()
-        return !!action && !!(action.txHash || action.taskId)
+      getAction: (type: TaskExecutionActionType) => {
+        const actionType =
+          type === 'EXCHANGE'
+            ? isBridgeExecution
+              ? 'CROSS_CHAIN'
+              : 'SWAP'
+            : type
+        return this.statusManager.findAction(step, actionType)
       },
-      isTransactionConfirmed: () => {
-        const action = getTransactionAction()
+      createAction: (type: TaskExecutionActionType) => {
+        const actionType =
+          type === 'EXCHANGE'
+            ? isBridgeExecution
+              ? 'CROSS_CHAIN'
+              : 'SWAP'
+            : type
+        return this.statusManager.createAction({
+          step,
+          type: actionType,
+          chainId: fromChain.id,
+        })
+      },
+      isTransactionExecuted: (action?: ExecutionAction) => {
+        return (
+          !!action &&
+          !!(action.txHash || action.taskId) &&
+          action.status !== 'DONE'
+        )
+      },
+      isTransactionConfirmed: (action?: ExecutionAction) => {
         return (
           !!action &&
           !!(action.txHash || action.taskId) &&

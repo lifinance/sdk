@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -15,21 +16,19 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'SOLANA_WAIT_FOR_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<SolanaTaskExtra>
+    context: TaskContext<SolanaTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    const action = context.getAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
-    return !!action && !action.txHash && action.status !== 'DONE'
+    return context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<SolanaTaskExtra>
+  protected async run(
+    context: TaskContext<SolanaTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    context.getOrCreateAction(actionType)
     const {
       client,
       step,
@@ -93,13 +92,13 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<
       )
     }
 
-    statusManager.updateAction(step, actionType, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: confirmedTransaction.txSignature,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
     })
 
     if (isBridgeExecution) {
-      statusManager.updateAction(step, actionType, 'DONE')
+      statusManager.updateAction(step, action.type, 'DONE')
     }
 
     return { status: 'COMPLETED' }

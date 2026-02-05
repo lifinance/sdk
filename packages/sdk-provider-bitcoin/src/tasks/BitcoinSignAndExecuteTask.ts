@@ -8,6 +8,7 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -26,18 +27,19 @@ export interface BitcoinSignAndExecuteResult {
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<BitcoinTaskExtra>
+    context: TaskContext<BitcoinTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted()
+    return !context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<BitcoinTaskExtra>
+  protected async run(
+    context: TaskContext<BitcoinTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<BitcoinSignAndExecuteResult>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    context.getOrCreateAction(actionType)
     const { step, walletClient, statusManager, executionOptions } = context
 
     if (walletClient.account?.address !== step.action.fromAddress) {
@@ -168,7 +170,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
 
     const txHex = signedPsbt.extractTransaction().toHex()
 
-    statusManager.updateAction(step, actionType, 'PENDING')
+    statusManager.updateAction(step, action.type, 'PENDING')
 
     return {
       status: 'COMPLETED',

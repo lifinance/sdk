@@ -1,8 +1,9 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionActionType,
+  type ExecutionAction,
   type SignedTypedData,
   type TaskContext,
+  type TaskExecutionActionType,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Hex } from 'viem'
@@ -23,20 +24,22 @@ export class EthereumStandardRunPermitsTask extends BaseStepExecutionTask<
   { allowanceFlow: AllowanceFlowState }
 > {
   readonly type = 'ETHEREUM_STANDARD_RUN_PERMITS'
-  readonly actionType: ExecutionActionType = 'PERMIT'
+  readonly actionType: TaskExecutionActionType = 'PERMIT'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'standard' &&
-      shouldRunAllowanceCheck(context) &&
+      shouldRunAllowanceCheck(context, action) &&
       !context.allowanceFlow?.result
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    _action: ExecutionAction
   ): Promise<TaskResult<{ allowanceFlow: AllowanceFlowState }>> {
     context.calls = context.calls ?? []
     context.signedTypedData = context.signedTypedData ?? []

@@ -2,6 +2,7 @@ import type { ReplacementReason } from '@bigmi/core'
 import { waitForTransaction } from '@bigmi/core'
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -14,18 +15,20 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'BITCOIN_WAIT_FOR_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<BitcoinTaskExtra>
+    context: TaskContext<BitcoinTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted() && !context.isTransactionConfirmed()
+    return context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<BitcoinTaskExtra>
+  protected async run(
+    context: TaskContext<BitcoinTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    let currentAction = context.getOrCreateAction(actionType)
+    let currentAction = action
     const {
       step,
       statusManager,
@@ -52,7 +55,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
         hex: txHex,
       })
 
-      currentAction = statusManager.updateAction(step, actionType, 'PENDING', {
+      currentAction = statusManager.updateAction(step, action.type, 'PENDING', {
         txHash,
         txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
         txHex,
@@ -68,7 +71,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
         replacementReason = response.reason
         currentAction = statusManager.updateAction(
           step,
-          actionType,
+          action.type,
           'PENDING',
           {
             txHash: response.transaction.txid,
@@ -86,14 +89,14 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
     }
 
     if (transaction.txid !== txHash) {
-      currentAction = statusManager.updateAction(step, actionType, 'PENDING', {
+      currentAction = statusManager.updateAction(step, action.type, 'PENDING', {
         txHash: transaction.txid,
         txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
       })
     }
 
     if (isBridgeExecution) {
-      statusManager.updateAction(step, actionType, 'DONE')
+      statusManager.updateAction(step, action.type, 'DONE')
     }
 
     return { status: 'COMPLETED' }

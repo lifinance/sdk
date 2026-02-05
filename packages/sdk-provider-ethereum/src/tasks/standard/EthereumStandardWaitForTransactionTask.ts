@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
@@ -15,13 +16,12 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
   void
 > {
   readonly type = 'ETHEREUM_STANDARD_WAIT_FOR_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    const action = context.getAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
     return (
       !!action &&
       context.executionStrategy === 'standard' &&
@@ -31,11 +31,10 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
   }
 
   protected async run(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    let action = context.getOrCreateAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
+    let currentAction = action
     const {
       client,
       step,
@@ -47,7 +46,7 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
 
     const updatedClient = await checkClientHelper(
       step,
-      action,
+      currentAction,
       undefined,
       context.getClient,
       context.setClient,
@@ -65,40 +64,50 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
     ) => {
       if (
         transactionReceipt?.transactionHash &&
-        transactionReceipt.transactionHash !== action.txHash
+        transactionReceipt.transactionHash !== currentAction.txHash
       ) {
         const txHash = isHex(transactionReceipt.transactionHash, {
           strict: true,
         })
           ? transactionReceipt.transactionHash
           : undefined
-        action = statusManager.updateAction(step, action.type, 'PENDING', {
-          txHash,
-          txLink:
-            (transactionReceipt as WalletCallReceipt).transactionLink ||
-            (txHash
-              ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
-              : undefined),
-        })
+        currentAction = statusManager.updateAction(
+          step,
+          currentAction.type,
+          'PENDING',
+          {
+            txHash,
+            txLink:
+              (transactionReceipt as WalletCallReceipt).transactionLink ||
+              (txHash
+                ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
+                : undefined),
+          }
+        )
       }
     }
 
     const transactionReceipt = await waitForTransactionReceipt(client, {
       client: ethereumClientToUse,
       chainId: fromChain.id,
-      txHash: action.txHash as Hash,
+      txHash: currentAction.txHash as Hash,
       onReplaced: (response) => {
-        action = statusManager.updateAction(step, action.type, 'PENDING', {
-          txHash: response.transaction.hash,
-          txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-        })
+        currentAction = statusManager.updateAction(
+          step,
+          currentAction.type,
+          'PENDING',
+          {
+            txHash: response.transaction.hash,
+            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
+          }
+        )
       },
     })
 
     updateActionWithReceipt(transactionReceipt)
 
     if (isBridgeExecution) {
-      action = statusManager.updateAction(step, action.type, 'DONE')
+      statusManager.updateAction(step, currentAction.type, 'DONE')
     }
 
     return { status: 'COMPLETED' }

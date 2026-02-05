@@ -2,6 +2,7 @@ import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from '../core/waitForTransactionStatus.js'
 import { LiFiErrorCode } from '../errors/constants.js'
+import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 
@@ -13,18 +14,20 @@ import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 export class WaitForDestinationChainTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext, void> {
-  override readonly type = 'WAIT_FOR_DESTINATION_CHAIN'
+  readonly type = 'WAIT_FOR_DESTINATION_CHAIN'
+  readonly actionType = 'EXCHANGE'
 
-  override async shouldRun(context: TaskContext<TContext>): Promise<boolean> {
-    return context.isTransactionConfirmed()
+  override async shouldRun(
+    context: TaskContext<TContext>,
+    action?: ExecutionAction
+  ): Promise<boolean> {
+    return context.isTransactionConfirmed(action)
   }
 
-  protected override async run(
-    context: TaskContext<TContext>
+  protected async run(
+    context: TaskContext<TContext>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    const action = context.getOrCreateAction(
-      context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
     const {
       client,
       step,

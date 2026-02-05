@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   convertQuoteToRoute,
+  type ExecutionAction,
   getContractCallsQuote,
   getStepTransaction,
   LiFiErrorCode,
@@ -28,21 +29,22 @@ export class EthereumStandardPrepareTransactionTask extends BaseStepExecutionTas
   EthereumPrepareTransactionResult
 > {
   readonly type = 'ETHEREUM_STANDARD_PREPARE_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
     if (context.executionStrategy !== 'standard') {
       return false
     }
-    return !context.isTransactionExecuted()
+    return !context.isTransactionExecuted(action)
   }
 
   protected async run(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<EthereumPrepareTransactionResult>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const action = context.getOrCreateAction(actionType)
     const signedTypedData = context.signedTypedData ?? []
     const { client, step, allowUserInteraction, statusManager } = context
     const checkClient = (s: LiFiStepExtended, a: typeof action, tid?: number) =>
@@ -213,7 +215,7 @@ export class EthereumStandardPrepareTransactionTask extends BaseStepExecutionTas
       }
     }
 
-    statusManager.updateAction(step, actionType, 'ACTION_REQUIRED')
+    statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
       return { status: 'PAUSED' }

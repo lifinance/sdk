@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
@@ -14,21 +15,20 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
   void
 > {
   readonly type = 'SUI_SIGN_AND_EXECUTE'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<SuiTaskExtra>
+    context: TaskContext<SuiTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted()
+    return !context.isTransactionExecuted(action)
   }
 
-  protected override async run(
-    context: TaskContext<SuiTaskExtra>
+  protected async run(
+    context: TaskContext<SuiTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<void>> {
-    const { step, wallet, statusManager, fromChain, isBridgeExecution } =
-      context
-    const action = context.getOrCreateAction(
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
+    const { step, wallet, statusManager, fromChain } = context
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(

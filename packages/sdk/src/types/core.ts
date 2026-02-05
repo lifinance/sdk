@@ -228,6 +228,12 @@ export type ExecutionActionType =
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
+export type TaskExecutionActionType =
+  | 'TOKEN_ALLOWANCE'
+  | 'PERMIT'
+  | 'EXCHANGE'
+  | 'RECEIVING_CHAIN'
+
 export type ExecutionAction = {
   type: ExecutionActionType
   status: ExecutionActionStatus

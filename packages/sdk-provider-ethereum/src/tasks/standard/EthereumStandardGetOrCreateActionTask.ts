@@ -1,7 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionActionType,
+  type ExecutionAction,
   type TaskContext,
+  type TaskExecutionActionType,
   type TaskResult,
 } from '@lifi/sdk'
 import { shouldRunAllowanceCheck } from '../helpers/allowanceTaskHelpers.js'
@@ -13,28 +14,25 @@ export class EthereumStandardGetOrCreateActionTask extends BaseStepExecutionTask
   { allowanceFlow: AllowanceFlowState }
 > {
   readonly type = 'ETHEREUM_STANDARD_GET_OR_CREATE_ACTION'
-  readonly actionType: ExecutionActionType = 'TOKEN_ALLOWANCE'
+  readonly actionType: TaskExecutionActionType = 'TOKEN_ALLOWANCE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
     return (
       context.executionStrategy === 'standard' &&
-      shouldRunAllowanceCheck(context) &&
+      shouldRunAllowanceCheck(context, action) &&
       !context.allowanceFlow?.result
     )
   }
 
-  protected override async run(
-    context: TaskContext<EthereumTaskExtra>
+  protected async run(
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<{ allowanceFlow: AllowanceFlowState }>> {
     const flow = context.allowanceFlow!
-    const sharedAction = context.statusManager.findOrCreateAction({
-      step: context.step,
-      type: 'TOKEN_ALLOWANCE',
-      chainId: context.step.action.fromChainId,
-    })
-    flow.sharedAction = sharedAction
+    flow.sharedAction = action
     return { status: 'COMPLETED', data: { allowanceFlow: flow } }
   }
 }

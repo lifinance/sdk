@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  type ExecutionAction,
   getRelayerQuote,
   LiFiErrorCode,
   type LiFiStep,
@@ -21,21 +22,22 @@ export class EthereumRelayerPrepareTransactionTask extends BaseStepExecutionTask
   EthereumPrepareTransactionResult
 > {
   readonly type = 'ETHEREUM_RELAYER_PREPARE_TRANSACTION'
+  readonly actionType = 'EXCHANGE'
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
   ): Promise<boolean> {
     if (context.executionStrategy !== 'relayer') {
       return false
     }
-    return !context.isTransactionExecuted()
+    return !context.isTransactionExecuted(action)
   }
 
   protected async run(
-    context: TaskContext<EthereumTaskExtra>
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
   ): Promise<TaskResult<EthereumPrepareTransactionResult>> {
-    const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    context.getOrCreateAction(actionType)
     const { client, step, allowUserInteraction, statusManager } = context
 
     const { execution, ...stepBase } = step
@@ -79,7 +81,7 @@ export class EthereumRelayerPrepareTransactionTask extends BaseStepExecutionTask
       )
     }
 
-    statusManager.updateAction(step, actionType, 'ACTION_REQUIRED')
+    statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
       return { status: 'PAUSED' }

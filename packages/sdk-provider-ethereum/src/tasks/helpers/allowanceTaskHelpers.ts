@@ -1,4 +1,4 @@
-import type { TaskContext } from '@lifi/sdk'
+import type { ExecutionAction, TaskContext } from '@lifi/sdk'
 import { isZeroAddress } from '../../utils/isZeroAddress.js'
 import type { EthereumExecutionStrategy, EthereumTaskExtra } from '../types.js'
 import type { AllowanceResult, CheckAllowanceParams } from './allowanceTypes.js'
@@ -77,10 +77,9 @@ export function getAllowanceParams(
  * Allowance is required when: not native token, approval address present, no skip, no pending tx/taskId, action not DONE.
  */
 export function shouldRunAllowanceCheck(
-  context: TaskContext<EthereumTaskExtra>
+  context: TaskContext<EthereumTaskExtra>,
+  action?: ExecutionAction
 ): boolean {
-  const actionType = context.isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-  const action = context.getAction(actionType)
   const { step, fromChain } = context
 
   const isFromNativeToken =
