@@ -13,7 +13,7 @@ import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
  */
 export class WaitForDestinationChainTask<
   TContext extends TaskExtraBase,
-> extends BaseStepExecutionTask<TContext, void> {
+> extends BaseStepExecutionTask<TContext> {
   readonly type = 'WAIT_FOR_DESTINATION_CHAIN'
   readonly actionType = 'EXCHANGE'
 
@@ -27,7 +27,7 @@ export class WaitForDestinationChainTask<
   protected async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const {
       client,
       step,

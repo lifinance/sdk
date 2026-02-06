@@ -19,6 +19,7 @@ import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../utils/isPsbtFinalized.js'
 import { toXOnly } from '../utils/toXOnly.js'
+import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
 export interface BitcoinSignAndExecuteResult {
@@ -39,7 +40,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
   protected async run(
     context: TaskContext<BitcoinTaskExtra>,
     action: ExecutionAction
-  ): Promise<TaskResult<BitcoinSignAndExecuteResult>> {
+  ): Promise<TaskResult> {
     const { step, walletClient, statusManager, executionOptions } = context
 
     if (walletClient.account?.address !== step.action.fromAddress) {
@@ -172,9 +173,6 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
 
     statusManager.updateAction(step, action.type, 'PENDING')
 
-    return {
-      status: 'COMPLETED',
-      data: { txHex },
-    }
+    return new BitcoinWaitForTransactionTask().execute(context, { txHex })
   }
 }

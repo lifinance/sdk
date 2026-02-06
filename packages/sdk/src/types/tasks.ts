@@ -1,4 +1,4 @@
-import type { ExtendedChain, SignedTypedData } from '@lifi/types'
+import type { ExtendedChain } from '@lifi/types'
 import type { StatusManager } from '../core/StatusManager.js'
 import type { ExecuteStepRetryError } from '../errors/errors.js'
 import type { SDKError } from '../errors/SDKError.js'
@@ -74,47 +74,16 @@ export interface TaskContextBase {
   fromChain: ExtendedChain
   allowUserInteraction: boolean
   statusManager: StatusManager
-  /** Data passed through tasks (outputs from previous tasks); only these fields, not full context */
-  data: PipelineData
 }
 
 /** Context = base fields + ecosystem-specific fields at top level */
 export type TaskContext<TExtra = unknown> = TaskContextBase & TExtra
 
-export interface TaskResult<T = unknown> {
+export interface TaskResult {
   status: TaskStatus
-  data?: T
-
-  /** State to save for resumability */
-  saveState?: TaskState
 }
 
 export type TaskStatus = 'COMPLETED' | 'PAUSED' | 'SKIPPED'
-
-/**
- * Optional state a task can return when pausing. Pipeline only uses pausedAtTask
- * and pipelineContext on resume; taskState is stored but not read (resume = re-execute).
- * taskType is the task identifier; phase and data are optional for debugging/future use.
- */
-export interface TaskState {
-  taskType: string
-  phase?: string
-  data?: Record<string, unknown>
-}
-
-/** Data passed through the task pipeline (outputs from previous tasks only; not full context) */
-export interface PipelineData {
-  // TODO: redefine
-  signedTypedData?: SignedTypedData[]
-  calls?: unknown[]
-  allowanceFlow?: unknown
-  txHex?: string
-}
-
-/** Accumulated pipeline state (includes PipelineData; used for persistence) */
-export interface PipelineContext extends PipelineData {
-  [key: string]: unknown
-}
 
 /**
  * State persisted when a task pipeline pauses (e.g. for user interaction).
@@ -122,13 +91,13 @@ export interface PipelineContext extends PipelineData {
  */
 export interface PipelineSavedState {
   pausedAtTask: string
-  pipelineContext: PipelineContext
+  pipelineContext: TaskContext
 }
 
 /** Result of TaskPipeline.run() or TaskPipeline.resume(). */
 export type PipelineResult =
-  | { status: 'COMPLETED'; pipelineContext: PipelineContext }
-  | { status: 'PAUSED'; pausedAtTask: string; pipelineContext: PipelineContext }
+  | { status: 'COMPLETED'; pipelineContext: TaskContext }
+  | { status: 'PAUSED'; pausedAtTask: string; pipelineContext: TaskContext }
 
 /** Minimal interface for context.pipeline; avoids circular dependency on TaskPipeline. */
 export interface StepExecutorPipeline {

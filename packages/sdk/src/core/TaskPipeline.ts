@@ -1,5 +1,4 @@
 import type {
-  PipelineContext,
   PipelineResult,
   PipelineSavedState,
   StepExecutorContext,
@@ -8,11 +7,8 @@ import type {
 } from '../types/tasks.js'
 import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
 
-export class TaskPipeline<
-  TContext extends TaskExtraBase = TaskExtraBase,
-  TResult = unknown,
-> {
-  constructor(private tasks: BaseStepExecutionTask<TContext, TResult>[]) {}
+export class TaskPipeline<TContext extends TaskExtraBase = TaskExtraBase> {
+  constructor(private tasks: BaseStepExecutionTask<TContext>[]) {}
 
   /**
    * Run all tasks in sequence
@@ -20,7 +16,7 @@ export class TaskPipeline<
   async run(
     baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
-    return this.runTaskLoop(this.tasks, {}, baseContext)
+    return this.runTaskLoop(this.tasks, baseContext)
   }
 
   /**
@@ -36,39 +32,30 @@ export class TaskPipeline<
     )
     const tasksToRun =
       pausedIndex < 0 ? this.tasks : this.tasks.slice(pausedIndex)
-    return this.runTaskLoop(tasksToRun, pipelineContext, baseContext)
+    const context = {
+      ...baseContext,
+      ...pipelineContext,
+    } as TaskContext<TContext>
+    return this.runTaskLoop(tasksToRun, context)
   }
 
   /**
    * Run the given tasks in sequence with the given pipeline context
    */
   private async runTaskLoop(
-    tasksToRun: BaseStepExecutionTask<TContext, TResult>[],
-    pipelineContext: PipelineContext,
-    baseContext: StepExecutorContext<TContext>
+    tasksToRun: BaseStepExecutionTask<TContext>[],
+    context: TaskContext<TContext>
   ): Promise<PipelineResult> {
-    let pipelineData = {}
     for (const task of tasksToRun) {
-      const context = {
-        ...baseContext,
-        ...pipelineContext,
-        data: pipelineData,
-      } as TaskContext<TContext>
       const result = await task.execute(context)
-      if (result.data && typeof result.data === 'object') {
-        pipelineData = {
-          ...pipelineData,
-          ...result.data,
-        }
-      }
       if (result.status === 'PAUSED') {
         return {
           status: 'PAUSED',
           pausedAtTask: task.type,
-          pipelineContext,
+          pipelineContext: context,
         }
       }
     }
-    return { status: 'COMPLETED', pipelineContext }
+    return { status: 'COMPLETED', pipelineContext: context }
   }
 }

@@ -260,7 +260,7 @@ export type ExecutionAction = {
  */
 export interface ExecutionPipelineSavedState {
   pausedAtTask: string
-  pipelineContext: Record<string, unknown>
+  pipelineContext: any // TODO:
 }
 
 export interface Execution {

@@ -10,10 +10,7 @@ import {
 import { signAndExecuteTransaction } from '@mysten/wallet-standard'
 import type { SuiTaskExtra } from './types.js'
 
-export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
-  SuiTaskExtra,
-  void
-> {
+export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
   readonly type = 'SUI_SIGN_AND_EXECUTE'
   readonly actionType = 'EXCHANGE'
 
@@ -27,7 +24,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<
   protected async run(
     context: TaskContext<SuiTaskExtra>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const { step, wallet, statusManager, fromChain } = context
 
     if (!step.transactionRequest?.data) {

@@ -10,10 +10,7 @@ import {
 } from '@lifi/sdk'
 import type { BitcoinTaskExtra } from './types.js'
 
-export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
-  BitcoinTaskExtra,
-  void
-> {
+export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   readonly type = 'BITCOIN_WAIT_FOR_TRANSACTION'
   readonly actionType = 'EXCHANGE'
 
@@ -26,8 +23,11 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
 
   protected async run(
     context: TaskContext<BitcoinTaskExtra>,
-    action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+    action: ExecutionAction,
+    payload: {
+      txHex: string
+    }
+  ): Promise<TaskResult> {
     let currentAction = action
     const {
       step,
@@ -37,9 +37,8 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<
       publicClient,
       walletClient,
     } = context
-
     // txHex from pipeline (Sign task) or from action when we already have txHash (resume)
-    const txHex = context.txHex ?? currentAction.txHex
+    const txHex = payload.txHex ?? currentAction.txHex
 
     if (!txHex) {
       throw new TransactionError(

@@ -13,7 +13,6 @@ import {
 import { getBitcoinPublicClient } from './client/publicClient.js'
 import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
 import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
-import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './tasks/types.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
@@ -40,7 +39,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       new CheckBalanceTask<BitcoinTaskExtra>(),
       new PrepareTransactionTask<BitcoinTaskExtra>(),
       new BitcoinSignAndExecuteTask(),
-      new BitcoinWaitForTransactionTask(),
       new WaitForDestinationChainTask<BitcoinTaskExtra>(),
     ])
 

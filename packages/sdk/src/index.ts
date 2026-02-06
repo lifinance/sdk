@@ -95,8 +95,6 @@ export type {
   UpdateRouteHook,
 } from './types/core.js'
 export type {
-  PipelineContext,
-  PipelineData,
   PipelineSavedState,
   StepExecutionError,
   StepExecutorBaseContext,
@@ -105,7 +103,6 @@ export type {
   TaskContextBase,
   TaskExtraBase,
   TaskResult,
-  TaskState,
   TaskStatus,
 } from './types/tasks.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'

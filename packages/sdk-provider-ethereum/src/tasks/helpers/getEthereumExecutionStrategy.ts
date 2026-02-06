@@ -1,27 +1,32 @@
-import type { StepExecutorBaseContext } from '@lifi/sdk'
+import type {
+  ExecuteStepRetryParams,
+  ExtendedChain,
+  LiFiStepExtended,
+  SDKClient,
+} from '@lifi/sdk'
 import type { Client } from 'viem'
 import { isBatchingSupported } from '../../actions/isBatchingSupported.js'
 import { isRelayerStep } from '../../utils/isRelayerStep.js'
 import type { EthereumExecutionStrategy } from '../types.js'
 
 export async function getEthereumExecutionStrategy(
-  baseContext: StepExecutorBaseContext,
-  viemClient: Client
+  client: SDKClient,
+  viemClient: Client,
+  step: LiFiStepExtended,
+  fromChain: ExtendedChain,
+  retryParams?: ExecuteStepRetryParams
 ): Promise<EthereumExecutionStrategy> {
-  const { step, client, fromChain } = baseContext
-  const atomicityNotReady = !!baseContext.retryParams?.atomicityNotReady
+  const atomicityNotReady = !!retryParams?.atomicityNotReady
   const isRelayer = isRelayerStep(step)
+  if (isRelayer) {
+    return 'relayer'
+  }
   const batchingSupported =
-    atomicityNotReady || step.tool === 'thorswap' || isRelayer
+    atomicityNotReady || step.tool === 'thorswap'
       ? false
       : await isBatchingSupported(client, {
           client: viemClient,
           chainId: fromChain.id,
         })
-  const executionStrategy: EthereumExecutionStrategy = isRelayer
-    ? 'relayer'
-    : batchingSupported
-      ? 'batch'
-      : 'standard'
-  return executionStrategy
+  return batchingSupported ? 'batch' : 'standard'
 }

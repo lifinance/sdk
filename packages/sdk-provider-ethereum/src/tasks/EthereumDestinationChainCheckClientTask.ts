@@ -4,16 +4,12 @@ import {
   type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
-import { checkClient as checkClientHelper } from './helpers/checkClient.js'
 import type { EthereumTaskExtra } from './types.js'
 
 /**
  * Ensures the wallet is on the correct chain when the step is waiting for a destination-chain transaction.
  */
-export class EthereumDestinationChainCheckTask extends BaseStepExecutionTask<
-  EthereumTaskExtra,
-  void
-> {
+export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
   readonly actionType = 'RECEIVING_CHAIN'
 
@@ -21,24 +17,15 @@ export class EthereumDestinationChainCheckTask extends BaseStepExecutionTask<
     _context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
   ): Promise<boolean> {
-    return !!action && action.status !== 'DONE'
+    return !!action && action.substatus !== 'WAIT_DESTINATION_TRANSACTION'
   }
 
   protected async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const { step } = context
-    const updatedClient = await checkClientHelper(
-      step,
-      action,
-      undefined,
-      context.getClient,
-      context.setClient,
-      context.statusManager,
-      context.allowUserInteraction,
-      context.switchChain
-    )
+    const updatedClient = await context.checkClient(step, action)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

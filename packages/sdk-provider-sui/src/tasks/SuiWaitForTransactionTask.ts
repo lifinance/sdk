@@ -9,10 +9,7 @@ import {
 import { callSuiWithRetry } from '../client/suiClient.js'
 import type { SuiTaskExtra } from './types.js'
 
-export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
-  SuiTaskExtra,
-  void
-> {
+export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtra> {
   readonly type = 'SUI_WAIT_FOR_TRANSACTION'
   readonly actionType = 'EXCHANGE'
 
@@ -26,7 +23,7 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<
   protected async run(
     context: TaskContext<SuiTaskExtra>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
     const digest = action.txHash

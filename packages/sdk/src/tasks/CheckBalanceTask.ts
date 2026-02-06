@@ -5,7 +5,7 @@ import { checkBalance } from './helpers/checkBalance.js'
 
 export class CheckBalanceTask<
   TContext extends TaskExtraBase,
-> extends BaseStepExecutionTask<TContext, void> {
+> extends BaseStepExecutionTask<TContext> {
   readonly type: string = 'CHECK_BALANCE'
   readonly actionType = 'EXCHANGE'
 
@@ -19,7 +19,7 @@ export class CheckBalanceTask<
   protected async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const { client, step, statusManager } = context
     statusManager.updateAction(step, action.type, 'STARTED')
     await checkBalance(client, context.getWalletAddress(), step)

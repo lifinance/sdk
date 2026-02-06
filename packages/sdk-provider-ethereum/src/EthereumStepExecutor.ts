@@ -1,89 +1,31 @@
 import {
   BaseStepExecutor,
-  CheckBalanceTask,
   type ExecutionAction,
+  LiFiErrorCode,
   type LiFiStepExtended,
   type StepExecutionError,
   type StepExecutorBaseContext,
   type StepExecutorContext,
   type StepExecutorOptions,
   TaskPipeline,
+  TransactionError,
   WaitForDestinationChainTask,
 } from '@lifi/sdk'
-import type { Client } from 'viem'
+import type { Client, GetAddressesReturnType } from 'viem'
+import { getAddresses } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import { parseEthereumErrors } from './errors/parseEthereumErrors.js'
-import { EthereumBatchEnsureClientTask } from './tasks/batch/EthereumBatchEnsureClientTask.js'
-import { EthereumBatchExecuteAsBatchTask } from './tasks/batch/EthereumBatchExecuteAsBatchTask.js'
-import { EthereumBatchGetOrCreateActionTask } from './tasks/batch/EthereumBatchGetOrCreateActionTask.js'
-import { EthereumBatchGetSpenderTask } from './tasks/batch/EthereumBatchGetSpenderTask.js'
-import { EthereumBatchPrepareResetStatusTask } from './tasks/batch/EthereumBatchPrepareResetStatusTask.js'
-import { EthereumBatchPrepareTransactionTask } from './tasks/batch/EthereumBatchPrepareTransactionTask.js'
-import { EthereumBatchRunPermitsTask } from './tasks/batch/EthereumBatchRunPermitsTask.js'
-import { EthereumBatchSignAndExecuteTask } from './tasks/batch/EthereumBatchSignAndExecuteTask.js'
-import { EthereumBatchWaitForPendingApprovalTask } from './tasks/batch/EthereumBatchWaitForPendingApprovalTask.js'
-import { EthereumBatchWaitForTransactionTask } from './tasks/batch/EthereumBatchWaitForTransactionTask.js'
-import { EthereumDestinationChainCheckTask } from './tasks/EthereumDestinationChainCheckTask.js'
+import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
+import { EthereumDestinationChainCheckClientTask } from './tasks/EthereumDestinationChainCheckClientTask.js'
+import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
-import { EthereumRelayerEnsureClientTask } from './tasks/relayer/EthereumRelayerEnsureClientTask.js'
-import { EthereumRelayerExecuteOnChainTask } from './tasks/relayer/EthereumRelayerExecuteOnChainTask.js'
-import { EthereumRelayerGetOrCreateActionTask } from './tasks/relayer/EthereumRelayerGetOrCreateActionTask.js'
-import { EthereumRelayerGetSpenderTask } from './tasks/relayer/EthereumRelayerGetSpenderTask.js'
-import { EthereumRelayerPrepareResetStatusTask } from './tasks/relayer/EthereumRelayerPrepareResetStatusTask.js'
-import { EthereumRelayerPrepareTransactionTask } from './tasks/relayer/EthereumRelayerPrepareTransactionTask.js'
-import { EthereumRelayerRunPermitsTask } from './tasks/relayer/EthereumRelayerRunPermitsTask.js'
-import { EthereumRelayerSignAndExecuteTask } from './tasks/relayer/EthereumRelayerSignAndExecuteTask.js'
-import { EthereumRelayerTryNativePermitTask } from './tasks/relayer/EthereumRelayerTryNativePermitTask.js'
-import { EthereumRelayerWaitForPendingApprovalTask } from './tasks/relayer/EthereumRelayerWaitForPendingApprovalTask.js'
-import { EthereumRelayerWaitForTransactionTask } from './tasks/relayer/EthereumRelayerWaitForTransactionTask.js'
-import { EthereumStandardEnsureClientTask } from './tasks/standard/EthereumStandardEnsureClientTask.js'
-import { EthereumStandardExecuteOnChainTask } from './tasks/standard/EthereumStandardExecuteOnChainTask.js'
-import { EthereumStandardGetOrCreateActionTask } from './tasks/standard/EthereumStandardGetOrCreateActionTask.js'
-import { EthereumStandardGetSpenderTask } from './tasks/standard/EthereumStandardGetSpenderTask.js'
-import { EthereumStandardPrepareResetStatusTask } from './tasks/standard/EthereumStandardPrepareResetStatusTask.js'
-import { EthereumStandardPrepareTransactionTask } from './tasks/standard/EthereumStandardPrepareTransactionTask.js'
-import { EthereumStandardRunPermitsTask } from './tasks/standard/EthereumStandardRunPermitsTask.js'
-import { EthereumStandardSignAndExecuteTask } from './tasks/standard/EthereumStandardSignAndExecuteTask.js'
-import { EthereumStandardTryNativePermitTask } from './tasks/standard/EthereumStandardTryNativePermitTask.js'
-import { EthereumStandardWaitForPendingApprovalTask } from './tasks/standard/EthereumStandardWaitForPendingApprovalTask.js'
-import { EthereumStandardWaitForTransactionTask } from './tasks/standard/EthereumStandardWaitForTransactionTask.js'
+import { switchChain } from './tasks/helpers/switchChain.js'
 import type { EthereumTaskExtra } from './tasks/types.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
 }
-
-const allowanceTasksStandard = [
-  new EthereumStandardRunPermitsTask(),
-  new EthereumStandardGetOrCreateActionTask(),
-  new EthereumStandardEnsureClientTask(),
-  new EthereumStandardWaitForPendingApprovalTask(),
-  new EthereumStandardGetSpenderTask(),
-  new EthereumStandardTryNativePermitTask(),
-  new EthereumStandardPrepareResetStatusTask(),
-  new EthereumStandardExecuteOnChainTask(),
-]
-
-const allowanceTasksRelayer = [
-  new EthereumRelayerRunPermitsTask(),
-  new EthereumRelayerGetOrCreateActionTask(),
-  new EthereumRelayerEnsureClientTask(),
-  new EthereumRelayerWaitForPendingApprovalTask(),
-  new EthereumRelayerGetSpenderTask(),
-  new EthereumRelayerTryNativePermitTask(),
-  new EthereumRelayerPrepareResetStatusTask(),
-  new EthereumRelayerExecuteOnChainTask(),
-]
-
-const allowanceTasksBatch = [
-  new EthereumBatchRunPermitsTask(),
-  new EthereumBatchGetOrCreateActionTask(),
-  new EthereumBatchEnsureClientTask(),
-  new EthereumBatchWaitForPendingApprovalTask(),
-  new EthereumBatchGetSpenderTask(),
-  new EthereumBatchPrepareResetStatusTask(),
-  new EthereumBatchExecuteAsBatchTask(),
-]
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
@@ -95,60 +37,90 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.switchChain = options.switchChain
   }
 
+  // Ensure that we are using the right chain and wallet when executing transactions.
+  checkClient = async (
+    step: LiFiStepExtended,
+    action: ExecutionAction,
+    targetChainId?: number
+  ) => {
+    const updatedClient = await switchChain(
+      this.client,
+      this.statusManager,
+      step,
+      action,
+      targetChainId ?? step.action.fromChainId,
+      this.allowUserInteraction,
+      this.switchChain
+    )
+    if (updatedClient) {
+      this.client = updatedClient
+    }
+
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    let accountAddress = this.client.account?.address
+    if (!accountAddress) {
+      const accountAddresses = (await getAction(
+        this.client,
+        getAddresses,
+        'getAddresses'
+      )(undefined)) as GetAddressesReturnType
+      accountAddress = accountAddresses?.[0]
+    }
+    if (
+      accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
+    ) {
+      const errorMessage =
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      this.statusManager.updateAction(step, action.type, 'FAILED', {
+        error: {
+          code: LiFiErrorCode.WalletChangedDuringExecution,
+          message: errorMessage,
+        },
+      })
+      // TODO: handle errors in one place
+      throw await parseEthereumErrors(
+        new TransactionError(
+          LiFiErrorCode.WalletChangedDuringExecution,
+          errorMessage
+        ),
+        step,
+        action
+      )
+    }
+    return updatedClient
+  }
+
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<StepExecutorContext<EthereumTaskExtra>> => {
-    const executionStrategy = await getEthereumExecutionStrategy(
-      baseContext,
-      this.client
-    )
+    const tasks = [
+      new EthereumDestinationChainCheckClientTask(),
+      new EthereumCheckAllowanceTask(),
+      new EthereumWaitForTransactionTask(),
+      new WaitForDestinationChainTask<EthereumTaskExtra>(),
+    ]
 
-    const tasks =
-      executionStrategy === 'relayer'
-        ? [
-            new EthereumDestinationChainCheckTask(),
-            ...allowanceTasksRelayer,
-            new CheckBalanceTask<EthereumTaskExtra>(),
-            new EthereumRelayerPrepareTransactionTask(),
-            new EthereumRelayerSignAndExecuteTask(),
-            new EthereumRelayerWaitForTransactionTask(),
-            new WaitForDestinationChainTask<EthereumTaskExtra>(),
-          ]
-        : executionStrategy === 'batch'
-          ? [
-              new EthereumDestinationChainCheckTask(),
-              ...allowanceTasksBatch,
-              new CheckBalanceTask<EthereumTaskExtra>(),
-              new EthereumBatchPrepareTransactionTask(),
-              new EthereumBatchSignAndExecuteTask(),
-              new EthereumBatchWaitForTransactionTask(),
-              new WaitForDestinationChainTask<EthereumTaskExtra>(),
-            ]
-          : [
-              new EthereumDestinationChainCheckTask(),
-              ...allowanceTasksStandard,
-              new CheckBalanceTask<EthereumTaskExtra>(),
-              new EthereumStandardPrepareTransactionTask(),
-              new EthereumStandardSignAndExecuteTask(),
-              new EthereumStandardWaitForTransactionTask(),
-              new WaitForDestinationChainTask<EthereumTaskExtra>(),
-            ]
-    const pipeline = new TaskPipeline<EthereumTaskExtra, unknown>(tasks)
+    const pipeline = new TaskPipeline<EthereumTaskExtra>(tasks)
 
     return {
       ...baseContext,
-      executionStrategy,
+      getExecutionStrategy: async (step: LiFiStepExtended) => {
+        return await getEthereumExecutionStrategy(
+          baseContext.client,
+          this.client,
+          step,
+          baseContext.fromChain,
+          baseContext.retryParams
+        )
+      },
       ethereumClient: this.client,
+      checkClient: this.checkClient,
       getWalletAddress: () => {
         const address = this.client.account?.address
         if (!address) {
           throw new Error('Wallet account is not available.')
         }
         return address
-      },
-      getClient: () => this.client,
-      setClient: (c: Client) => {
-        this.client = c
       },
       switchChain: this.switchChain,
       pipeline,

@@ -1,17 +1,9 @@
 import type {
-  SignedTypedData,
+  ExecutionAction,
+  LiFiStepExtended,
   TaskExtraBase,
-  TransactionParameters,
 } from '@lifi/sdk'
-
-export interface EthereumPrepareTransactionResult {
-  transactionRequest: TransactionParameters | undefined
-  isRelayerTransaction: boolean
-}
-
 import type { Client } from 'viem'
-import type { Call } from '../types.js'
-import type { AllowanceFlowState } from './helpers/allowanceTypes.js'
 
 /**
  * Execution strategy for an EVM step. Determines which pipeline of tasks runs.
@@ -22,28 +14,17 @@ import type { AllowanceFlowState } from './helpers/allowanceTypes.js'
 export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
 
 export interface EthereumTaskExtra extends TaskExtraBase {
-  /** Which strategy is used for this step; determines pipeline of tasks. */
-  executionStrategy: EthereumExecutionStrategy
-
-  /** Mutable. Initialized and filled by allowance/sign-and-execute tasks when needed. */
-  calls?: Call[]
-  /** Mutable. Initialized and filled by allowance/sign-and-execute tasks when needed. */
-  signedTypedData?: SignedTypedData[]
-
-  /** Set by PrepareTransaction task. */
-  transactionRequest?: TransactionParameters
-  isRelayerTransaction?: boolean
-
+  getExecutionStrategy: (
+    step: LiFiStepExtended
+  ) => Promise<EthereumExecutionStrategy>
   /** Viem client for signing/sending. */
   ethereumClient: Client
-
-  getClient: () => Client
-  setClient: (client: Client) => void
+  checkClient: (
+    step: LiFiStepExtended,
+    action: ExecutionAction,
+    targetChainId?: number
+  ) => Promise<Client | undefined>
   switchChain?: (chainId: number) => Promise<Client | undefined>
-
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
-
-  /** State for allowance sub-tasks (RunPermits, GetOrCreateAction, etc.). */
-  allowanceFlow?: AllowanceFlowState
 }

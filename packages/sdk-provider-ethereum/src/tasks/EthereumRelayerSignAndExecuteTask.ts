@@ -3,6 +3,7 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   relayTransaction,
+  type SignedTypedData,
   type TaskContext,
   type TaskResult,
   TransactionError,
@@ -10,16 +11,11 @@ import {
 import type { Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
-import { getDomainChainId } from '../../utils/getDomainChainId.js'
-import { checkClient as checkClientHelper } from '../helpers/checkClient.js'
-import type { EthereumTaskExtra } from '../types.js'
+import { isNativePermitValid } from '../permits/isNativePermitValid.js'
+import { getDomainChainId } from '../utils/getDomainChainId.js'
+import type { EthereumTaskExtra } from './types.js'
 
-/** Relayer execution: sign typed data for transfer, then relayTransaction. */
-export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
-  EthereumTaskExtra,
-  void
-> {
+export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   readonly type = 'ETHEREUM_RELAYER_SIGN_AND_EXECUTE'
   readonly actionType = 'EXCHANGE'
 
@@ -27,52 +23,52 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
   ): Promise<boolean> {
-    return (
-      context.executionStrategy === 'relayer' &&
-      !context.isTransactionExecuted(action)
-    )
+    return !context.isTransactionExecuted(action)
   }
 
   protected async run(
     context: TaskContext<EthereumTaskExtra>,
-    action: ExecutionAction
-  ): Promise<TaskResult<void>> {
-    context.signedTypedData = context.signedTypedData ?? []
-    const signedTypedData = context.signedTypedData
-    const { client, step, fromChain, statusManager } = context
-
+    action: ExecutionAction,
+    payload: {
+      signedTypedData: SignedTypedData[]
+    }
+  ): Promise<TaskResult> {
+    const {
+      step,
+      fromChain,
+      client,
+      statusManager,
+      allowUserInteraction,
+      checkClient,
+    } = context
+    const { signedTypedData } = payload
     const intentTypedData = step.typedData?.filter(
       (typedData) =>
         !signedTypedData.some((signedPermit) =>
           isNativePermitValid(signedPermit, typedData)
         )
     )
-
     if (!intentTypedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Typed data for transfer is not found.'
       )
     }
-
     statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
-
     for (const typedData of intentTypedData) {
+      if (!allowUserInteraction) {
+        return { status: 'PAUSED' }
+      }
+
       const typedDataChainId =
         getDomainChainId(typedData.domain) || fromChain.id
-      const updatedClient = await checkClientHelper(
-        step,
-        action,
-        typedDataChainId,
-        context.getClient,
-        context.setClient,
-        context.statusManager,
-        context.allowUserInteraction,
-        context.switchChain
-      )
+
+      // Switch to the typed data's chain if needed
+      const updatedClient = await checkClient(step, action, typedDataChainId)
       if (!updatedClient) {
         return { status: 'PAUSED' }
       }
+
       const signature = await getAction(
         updatedClient,
         signTypedData,
@@ -86,7 +82,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
       })
       signedTypedData.push({
         ...typedData,
-        signature,
+        signature: signature,
       })
     }
 
@@ -102,7 +98,9 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<
       taskId: relayedTransaction.taskId as Hash,
       txType: 'relayed',
       txLink: relayedTransaction.txLink,
+      signedAt: Date.now(),
     })
+
     return { status: 'COMPLETED' }
   }
 }

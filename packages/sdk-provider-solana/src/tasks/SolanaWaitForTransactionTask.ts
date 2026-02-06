@@ -11,10 +11,7 @@ import { sendAndConfirmTransaction } from '../actions/sendAndConfirmTransaction.
 import { callSolanaWithRetry } from '../client/connection.js'
 import type { SolanaTaskExtra } from './types.js'
 
-export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<
-  SolanaTaskExtra,
-  void
-> {
+export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<SolanaTaskExtra> {
   readonly type = 'SOLANA_WAIT_FOR_TRANSACTION'
   readonly actionType = 'EXCHANGE'
 
@@ -27,16 +24,14 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<
 
   protected async run(
     context: TaskContext<SolanaTaskExtra>,
-    action: ExecutionAction
-  ): Promise<TaskResult<void>> {
-    const {
-      client,
-      step,
-      statusManager,
-      fromChain,
-      isBridgeExecution,
-      signedTransaction,
-    } = context
+    action: ExecutionAction,
+    payload: {
+      signedTransaction: any // TODO: type this
+    }
+  ): Promise<TaskResult> {
+    const { client, step, statusManager, fromChain, isBridgeExecution } =
+      context
+    const { signedTransaction } = payload
 
     if (!signedTransaction) {
       throw new TransactionError(

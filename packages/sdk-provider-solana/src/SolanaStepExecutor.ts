@@ -12,7 +12,6 @@ import {
 import type { Wallet } from '@wallet-standard/base'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
 import { SolanaSignAndExecuteTask } from './tasks/SolanaSignAndExecuteTask.js'
-import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTask.js'
 import type { SolanaTaskExtra } from './tasks/types.js'
 import type { SolanaStepExecutorOptions } from './types.js'
 
@@ -31,7 +30,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       new CheckBalanceTask<SolanaTaskExtra>(),
       new PrepareTransactionTask<SolanaTaskExtra>(),
       new SolanaSignAndExecuteTask(),
-      new SolanaWaitForTransactionTask(),
       new WaitForDestinationChainTask<SolanaTaskExtra>(),
     ])
 

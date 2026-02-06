@@ -12,7 +12,7 @@ import { stepComparison } from './helpers/stepComparison.js'
  */
 export class PrepareTransactionTask<
   TContext extends TaskExtraBase,
-> extends BaseStepExecutionTask<TContext, void> {
+> extends BaseStepExecutionTask<TContext> {
   readonly type = 'PREPARE_TRANSACTION'
   readonly actionType = 'EXCHANGE'
 
@@ -26,7 +26,7 @@ export class PrepareTransactionTask<
   protected async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
-  ): Promise<TaskResult<void>> {
+  ): Promise<TaskResult> {
     const {
       client,
       step,
