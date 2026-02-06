@@ -173,6 +173,9 @@ export class StatusManager {
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
+        if (params?.signedAt) {
+          step.execution.signedAt = params.signedAt
+        }
         break
       case 'RESET_REQUIRED':
       case 'MESSAGE_REQUIRED':
