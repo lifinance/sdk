@@ -1,6 +1,5 @@
 import type {
   PipelineResult,
-  PipelineSavedState,
   StepExecutorContext,
   TaskContext,
   TaskExtraBase,
@@ -20,23 +19,17 @@ export class TaskPipeline<TContext extends TaskExtraBase = TaskExtraBase> {
   }
 
   /**
-   * Resume pipeline from saved state (re-executes the paused task, then continues)
+   * Resume pipeline from saved state (re-executes the paused task, then continues).
+   * Context is rebuilt from baseContext; step state is already on step.execution.
    */
   async resume(
-    savedState: PipelineSavedState,
+    pausedAtTask: string,
     baseContext: StepExecutorContext<TContext>
   ): Promise<PipelineResult> {
-    const pipelineContext = savedState.pipelineContext
-    const pausedIndex = this.tasks.findIndex(
-      (t) => t.type === savedState.pausedAtTask
-    )
+    const pausedIndex = this.tasks.findIndex((t) => t.type === pausedAtTask)
     const tasksToRun =
       pausedIndex < 0 ? this.tasks : this.tasks.slice(pausedIndex)
-    const context = {
-      ...baseContext,
-      ...pipelineContext,
-    } as TaskContext<TContext>
-    return this.runTaskLoop(tasksToRun, context)
+    return this.runTaskLoop(tasksToRun, baseContext as TaskContext<TContext>)
   }
 
   /**
@@ -49,13 +42,9 @@ export class TaskPipeline<TContext extends TaskExtraBase = TaskExtraBase> {
     for (const task of tasksToRun) {
       const result = await task.execute(context)
       if (result.status === 'PAUSED') {
-        return {
-          status: 'PAUSED',
-          pausedAtTask: task.type,
-          pipelineContext: context,
-        }
+        return { status: 'PAUSED', pausedAtTask: task.type }
       }
     }
-    return { status: 'COMPLETED', pipelineContext: context }
+    return { status: 'COMPLETED' }
   }
 }

@@ -10,7 +10,6 @@ import type {
   TaskExecutionActionType,
 } from '../types/core.js'
 import type {
-  PipelineSavedState,
   StepExecutorBaseContext,
   StepExecutorContext,
   TaskExtraBase,
@@ -119,24 +118,18 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const baseContext = await this.getBaseContext(client, step, retryParams)
     const context = await this.getContext(baseContext)
 
-    const savedState = step.execution?.pipelineSavedState as
-      | PipelineSavedState
-      | undefined
-    const result = savedState
-      ? await context.pipeline.resume(savedState, context)
+    const pausedAtTask = step.execution?.pausedAtTask
+    const result = pausedAtTask
+      ? await context.pipeline.resume(pausedAtTask, context)
       : await context.pipeline.run(context)
 
-    // TODO: Check how to handle resume (what state is needed?)
     if (result.status === 'PAUSED') {
-      step.execution.pipelineSavedState = {
-        pausedAtTask: result.pausedAtTask,
-        pipelineContext: result.pipelineContext,
-      }
+      step.execution.pausedAtTask = result.pausedAtTask
       return step
     }
 
-    if (savedState) {
-      delete step.execution.pipelineSavedState
+    if (pausedAtTask) {
+      delete step.execution.pausedAtTask
     }
 
     return step

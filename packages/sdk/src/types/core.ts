@@ -230,7 +230,6 @@ export type ExecutionActionType =
 
 export type TaskExecutionActionType =
   | 'TOKEN_ALLOWANCE'
-  | 'PERMIT'
   | 'EXCHANGE'
   | 'RECEIVING_CHAIN'
 
@@ -254,15 +253,6 @@ export type ExecutionAction = {
   [key: string]: any
 }
 
-/**
- * Saved state when a task pipeline pauses.
- * Executors persist this on the step so they can call pipeline.resume() on the next executeStep.
- */
-export interface ExecutionPipelineSavedState {
-  pausedAtTask: string
-  pipelineContext: any // TODO:
-}
-
 export interface Execution {
   startedAt: number
   signedAt?: number
@@ -275,8 +265,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
-  /** Set by step executors when TaskPipeline returns PAUSED; used to call pipeline.resume() on next run. */
-  pipelineSavedState?: ExecutionPipelineSavedState
+  /** Set by step executors when TaskPipeline returns PAUSED; used to call pipeline.resume() on next executeStep. */
+  pausedAtTask?: string
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

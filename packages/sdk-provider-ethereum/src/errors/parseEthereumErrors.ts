@@ -8,19 +8,17 @@ import {
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
-  type StepExecutionError,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
 import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 
 export const parseEthereumErrors = async (
-  e: StepExecutionError,
+  e: Error,
   step?: LiFiStep,
   action?: ExecutionAction,
   retryParams?: ExecuteStepRetryParams
 ): Promise<SDKError | ExecuteStepRetryError> => {
-  const resolvedAction = action ?? e.action
   if (
     isAtomicReadyWalletRejectedUpgradeError(e) &&
     !retryParams?.atomicityNotReady
@@ -34,13 +32,13 @@ export const parseEthereumErrors = async (
 
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.action = e.action ?? resolvedAction
+    e.action = e.action ?? action
     return e
   }
 
-  const baseError = await handleSpecificErrors(e, step, resolvedAction)
+  const baseError = await handleSpecificErrors(e, step, action)
 
-  return new SDKError(baseError, step, resolvedAction)
+  return new SDKError(baseError, step, action)
 }
 
 const handleSpecificErrors = async (

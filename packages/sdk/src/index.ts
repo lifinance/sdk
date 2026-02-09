@@ -95,12 +95,9 @@ export type {
   UpdateRouteHook,
 } from './types/core.js'
 export type {
-  PipelineSavedState,
-  StepExecutionError,
   StepExecutorBaseContext,
   StepExecutorContext,
   TaskContext,
-  TaskContextBase,
   TaskExtraBase,
   TaskResult,
   TaskStatus,

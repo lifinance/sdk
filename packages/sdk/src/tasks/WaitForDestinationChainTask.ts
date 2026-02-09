@@ -1,6 +1,7 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../errors/constants.js'
+import { TransactionError } from '../errors/errors.js'
 import type { ExecutionAction } from '../types/core.js'
 import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
@@ -104,23 +105,18 @@ export class WaitForDestinationChainTask<
       })
 
       return { status: 'COMPLETED' }
-    } catch (e: unknown) {
-      // TODO: throw the error that could be parsed by the parseErrors function
+    } catch (e: any) {
       const htmlMessage = await getTransactionFailedMessage(
         client,
         step,
         `${toChain.metamask.blockExplorerUrls[0]}tx/${transactionHash}`
       )
-
-      statusManager.updateAction(step, actionType, 'FAILED', {
-        error: {
-          code: LiFiErrorCode.TransactionFailed,
-          message:
-            'Failed while waiting for status of destination chain transaction.',
-          htmlMessage,
-        },
-      })
-      throw e
+      throw new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        htmlMessage ??
+          'Failed while waiting for status of destination chain transaction.',
+        e
+      )
     }
   }
 }

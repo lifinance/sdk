@@ -11,97 +11,53 @@ import type {
   TaskExecutionActionType,
 } from './core.js'
 
-/**
- * Error type used in step task execution. May carry the ExecutionAction for the task that threw,
- * so parseErrors and FAILED updates can use it. BaseStepExecutionTask attaches action from context when catching.
- */
-export type StepExecutionError = Error & { action?: ExecutionAction }
-
-/** Shared task-context extra fields; all ecosystems have these. */
-export interface TaskExtraBase {
+interface TaskContextShared {
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  pollingIntervalMs?: number
-  /** Get action by type if it exists (read-only). Use in shouldRun(). */
   getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
-  /** Get or create action by type. Use in run() when the task may update the action. */
   createAction: (type: TaskExecutionActionType) => ExecutionAction
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
   isTransactionExecuted: (action?: ExecutionAction) => boolean
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
   isTransactionConfirmed: (action?: ExecutionAction) => boolean
-  /** Task pipeline for this step. Ecosystems use TaskPipeline. */
-  pipeline: StepExecutorPipeline
-  /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. Receives StepExecutionError (action may be on error.action). */
+}
+
+export interface TaskExtraBase extends TaskContextShared {
+  pollingIntervalMs?: number
+  pipeline: {
+    run(context: TaskContext<TaskExtraBase>): Promise<PipelineResult>
+    resume(
+      pausedAtTask: string,
+      context: TaskContext<TaskExtraBase>
+    ): Promise<PipelineResult>
+  }
   parseErrors: (
-    error: StepExecutionError,
+    error: Error,
     step?: LiFiStepExtended,
     action?: ExecutionAction
   ) => Promise<SDKError | ExecuteStepRetryError>
 }
 
-/** Return type of BaseStepExecutor.getBaseContext (chain info + executor state). */
-export interface StepExecutorBaseContext {
+export interface StepExecutorBaseContext extends TaskContextShared {
   client: SDKClient
   step: LiFiStepExtended
-  fromChain: ExtendedChain
-  toChain: ExtendedChain
-  isBridgeExecution: boolean
-  getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
-  createAction: (type: TaskExecutionActionType) => ExecutionAction
-  /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
-  isTransactionExecuted: (action?: ExecutionAction) => boolean
-  isTransactionConfirmed: (action?: ExecutionAction) => boolean
-  statusManager: StatusManager
-  executionOptions?: ExecutionOptions
   allowUserInteraction: boolean
   retryParams?: ExecuteStepRetryParams
 }
 
-/** Return type of StepExecutor.getContext: base context + ecosystem-specific extra. */
 export type StepExecutorContext<TExtra extends TaskExtraBase = TaskExtraBase> =
   StepExecutorBaseContext & TExtra
 
-/** Base context fields provided by pipeline and executor */
-export interface TaskContextBase {
-  client: SDKClient
-  step: LiFiStepExtended
-  fromChain: ExtendedChain
-  allowUserInteraction: boolean
-  statusManager: StatusManager
-}
-
-/** Context = base fields + ecosystem-specific fields at top level */
-export type TaskContext<TExtra = unknown> = TaskContextBase & TExtra
+export type TaskContext<TExtra extends TaskExtraBase = TaskExtraBase> =
+  StepExecutorContext<TExtra>
 
 export interface TaskResult {
   status: TaskStatus
 }
 
-export type TaskStatus = 'COMPLETED' | 'PAUSED' | 'SKIPPED'
+export type TaskStatus = 'COMPLETED' | 'PAUSED'
 
-/**
- * State persisted when a task pipeline pauses (e.g. for user interaction).
- * Stored on step.execution.pipelineSavedState so the executor can call pipeline.resume() on the next run.
- */
-export interface PipelineSavedState {
-  pausedAtTask: string
-  pipelineContext: TaskContext
-}
-
-/** Result of TaskPipeline.run() or TaskPipeline.resume(). */
 export type PipelineResult =
-  | { status: 'COMPLETED'; pipelineContext: TaskContext }
-  | { status: 'PAUSED'; pausedAtTask: string; pipelineContext: TaskContext }
-
-/** Minimal interface for context.pipeline; avoids circular dependency on TaskPipeline. */
-export interface StepExecutorPipeline {
-  run(context: unknown): Promise<PipelineResult>
-  resume(
-    savedState: PipelineSavedState,
-    context: unknown
-  ): Promise<PipelineResult>
-}
+  | { status: 'COMPLETED' }
+  | { status: 'PAUSED'; pausedAtTask: string }

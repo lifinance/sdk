@@ -5,26 +5,24 @@ import {
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
-  type StepExecutionError,
   TransactionError,
   UnknownError,
 } from '@lifi/sdk'
 
 export const parseSolanaErrors = async (
-  e: StepExecutionError,
+  e: Error,
   step?: LiFiStep,
   action?: ExecutionAction
 ): Promise<SDKError> => {
-  const resolvedAction = action ?? e.action
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.action = e.action ?? resolvedAction
+    e.action = e.action ?? action
     return e
   }
 
   const baseError = handleSpecificErrors(e)
 
-  return new SDKError(baseError, step, resolvedAction)
+  return new SDKError(baseError, step, action)
 }
 
 const handleSpecificErrors = (e: any) => {

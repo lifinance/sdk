@@ -3,7 +3,6 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
-  type StepExecutionError,
   type StepExecutorBaseContext,
   type StepExecutorContext,
   type StepExecutorOptions,
@@ -70,22 +69,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     if (
       accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
     ) {
-      const errorMessage =
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      this.statusManager.updateAction(step, action.type, 'FAILED', {
-        error: {
-          code: LiFiErrorCode.WalletChangedDuringExecution,
-          message: errorMessage,
-        },
-      })
-      // TODO: handle errors in one place
-      throw await parseEthereumErrors(
-        new TransactionError(
-          LiFiErrorCode.WalletChangedDuringExecution,
-          errorMessage
-        ),
-        step,
-        action
       )
     }
     return updatedClient
@@ -143,7 +129,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       switchChain: this.switchChain,
       pipeline,
       parseErrors: (
-        e: StepExecutionError,
+        e: Error,
         step?: LiFiStepExtended,
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, baseContext.retryParams),

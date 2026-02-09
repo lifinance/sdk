@@ -6,9 +6,6 @@ import {
 } from '@lifi/sdk'
 import type { EthereumTaskExtra } from './types.js'
 
-/**
- * Ensures the wallet is on the correct chain when the step is waiting for a destination-chain transaction.
- */
 export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
   readonly actionType = 'RECEIVING_CHAIN'

@@ -19,9 +19,6 @@ import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import type { EthereumTaskExtra } from './types.js'
 
-/**
- * Ensures the wallet is on the correct chain when the step is waiting for a destination-chain transaction.
- */
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   readonly type = 'ETHEREUM_STANDARD_SIGN_AND_EXECUTE'
   readonly actionType = 'EXCHANGE'
