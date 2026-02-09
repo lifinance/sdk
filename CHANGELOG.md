@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.15.6](https://github.com/lifinance/sdk/compare/v3.15.5...v3.15.6) (2026-02-09)
+
+
+### Bug Fixes
+
+* add blocklist for EIP-7702 delegation addresses in native permit validation ([9e0b26f](https://github.com/lifinance/sdk/commit/9e0b26f399202fe8fd6fa5c47e13af9207239ac8))
+
 ### [3.15.5](https://github.com/lifinance/sdk/compare/v3.15.4...v3.15.5) (2026-02-04)
 
 
