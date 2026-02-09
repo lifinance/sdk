@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0-alpha.9",
+  "version": "4.0.0-alpha.13",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -27,6 +27,8 @@
     "test": "pnpm -r --parallel test",
     "test:cov": "pnpm -r --parallel test:cov",
     "test:unit": "pnpm -r --parallel test:unit",
+    "link:all": "pnpm -r exec pnpm link --global",
+    "unlink:all": "pnpm -r exec pnpm unlink --global",
     "link:bigmi": "pnpm -r --parallel link:bigmi",
     "unlink:bigmi": "pnpm -r --parallel unlink:bigmi",
     "knip:all": "knip",
@@ -44,13 +46,13 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
-    "@commitlint/cli": "^20.3.1",
-    "@commitlint/config-conventional": "^20.3.1",
+    "@biomejs/biome": "^2.3.14",
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.0.18",
     "husky": "^9.1.7",
-    "knip": "^5.82.1",
+    "knip": "^5.83.0",
     "lerna": "^9.0.3",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",

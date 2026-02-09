@@ -24,7 +24,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask<EthereumTa
       batchingSupported: boolean
       approved: bigint
       spenderAddress: Address
-      permit2Supported: boolean
     }
   ): Promise<TaskResult> {
     const {
@@ -41,7 +40,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask<EthereumTa
       batchingSupported,
       approved,
       spenderAddress,
-      permit2Supported,
     } = payload
 
     const shouldResetApproval = step.estimate.approvalReset && approved > 0n
@@ -100,7 +98,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask<EthereumTa
       updatedClient,
       spenderAddress,
       batchingSupported,
-      permit2Supported,
       shouldResetApproval,
       approvalResetTxHash,
     })

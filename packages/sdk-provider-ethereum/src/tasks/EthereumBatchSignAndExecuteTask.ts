@@ -30,9 +30,11 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<Ether
       calls: Call[]
     }
   ): Promise<TaskResult> {
-    const { ethereumClient, step, fromChain, statusManager } = context
+    const { ethereumClient, step, fromChain, statusManager, checkClient } =
+      context
 
-    const updatedClient = await context.checkClient(step, action)
+    // Make sure that the chain is still correct
+    const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

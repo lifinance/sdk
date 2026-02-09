@@ -33,23 +33,21 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       new WaitForDestinationChainTask<SolanaTaskExtra>(),
     ])
 
+    const walletAccount = this.wallet.accounts.find(
+      (account) => account.address === baseContext.step.action.fromAddress
+    )
+    if (!walletAccount) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+
     return {
       ...baseContext,
       pipeline,
       wallet: this.wallet,
-      getWalletAccount: () => {
-        const walletAccount = this.wallet.accounts.find(
-          (account) => account.address === baseContext.step.action.fromAddress
-        )
-        if (!walletAccount) {
-          throw new TransactionError(
-            LiFiErrorCode.WalletChangedDuringExecution,
-            'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-          )
-        }
-        return walletAccount
-      },
-      getWalletAddress: () => baseContext.step.action.fromAddress!,
+      walletAccount,
       parseErrors: parseSolanaErrors,
     }
   }

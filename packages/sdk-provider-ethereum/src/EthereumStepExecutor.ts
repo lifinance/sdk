@@ -15,12 +15,13 @@ import type { Client, GetAddressesReturnType } from 'viem'
 import { getAddresses } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { parseEthereumErrors } from './errors/parseEthereumErrors.js'
-import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
+import { EthereumCheckAndExecuteTask } from './tasks/EthereumCheckAndExecuteTask.js'
 import { EthereumDestinationChainCheckClientTask } from './tasks/EthereumDestinationChainCheckClientTask.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
 import { switchChain } from './tasks/helpers/switchChain.js'
 import type { EthereumTaskExtra } from './tasks/types.js'
+import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -95,15 +96,39 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   ): Promise<StepExecutorContext<EthereumTaskExtra>> => {
     const tasks = [
       new EthereumDestinationChainCheckClientTask(),
-      new EthereumCheckAllowanceTask(),
+      new EthereumCheckAndExecuteTask(),
       new EthereumWaitForTransactionTask(),
       new WaitForDestinationChainTask<EthereumTaskExtra>(),
     ]
 
     const pipeline = new TaskPipeline<EthereumTaskExtra>(tasks)
 
+    const isFromNativeToken =
+      baseContext.fromChain.nativeToken.address ===
+        baseContext.step.action.fromToken.address &&
+      isZeroAddress(baseContext.step.action.fromToken.address)
+
+    // Check if message signing is disabled - useful for smart contract wallets
+    // We also disable message signing for custom steps
+    const disableMessageSigning =
+      baseContext.executionOptions?.disableMessageSigning ||
+      baseContext.step.type !== 'lifi'
+
     return {
       ...baseContext,
+      isFromNativeToken,
+      disableMessageSigning,
+      // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
+      isPermit2Supported: (batchingSupported: boolean) =>
+        !!baseContext.fromChain.permit2 &&
+        !!baseContext.fromChain.permit2Proxy &&
+        !isFromNativeToken &&
+        !disableMessageSigning &&
+        !batchingSupported &&
+        // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
+        !!baseContext.step.estimate.approvalAddress &&
+        !baseContext.step.estimate.skipApproval &&
+        !baseContext.step.estimate.skipPermit,
       getExecutionStrategy: async (step: LiFiStepExtended) => {
         return await getEthereumExecutionStrategy(
           baseContext.client,
@@ -115,13 +140,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       },
       ethereumClient: this.client,
       checkClient: this.checkClient,
-      getWalletAddress: () => {
-        const address = this.client.account?.address
-        if (!address) {
-          throw new Error('Wallet account is not available.')
-        }
-        return address
-      },
       switchChain: this.switchChain,
       pipeline,
       parseErrors: (

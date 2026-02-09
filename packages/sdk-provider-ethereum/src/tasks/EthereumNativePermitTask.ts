@@ -19,13 +19,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
   readonly type = 'ETHEREUM_NATIVE_PERMIT'
   readonly actionType = 'EXCHANGE'
 
-  override async shouldRun(
-    _context: TaskContext<EthereumTaskExtra>,
-    action?: ExecutionAction
-  ): Promise<boolean> {
-    return !!action
-  }
-
   protected async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
@@ -35,7 +28,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
       batchingSupported: boolean
       approved: bigint
       spenderAddress: Address
-      permit2Supported: boolean
     }
   ): Promise<TaskResult> {
     const { step, client, fromChain, statusManager, allowUserInteraction } =
@@ -47,7 +39,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
       batchingSupported,
       approved,
       spenderAddress,
-      permit2Supported,
     } = payload
 
     const fromAmount = BigInt(step.action.fromAmount)
@@ -74,7 +65,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
         batchingSupported,
         approved,
         spenderAddress,
-        permit2Supported,
       })
     }
 

@@ -33,8 +33,6 @@ export interface TaskExtraBase {
   isTransactionExecuted: (action?: ExecutionAction) => boolean
   /** True when the step action exists, is DONE, and has txHash or taskId. Use in shouldRun(): return !context.isTransactionExecuted(action). */
   isTransactionConfirmed: (action?: ExecutionAction) => boolean
-  /** Wallet address for the current step (e.g. for balance check). Throws if not available. */
-  getWalletAddress: () => string
   /** Task pipeline for this step. Ecosystems use TaskPipeline. */
   pipeline: StepExecutorPipeline
   /** Parses raw errors into SDKError; used by BaseStepExecutionTask on failure. Receives StepExecutionError (action may be on error.action). */

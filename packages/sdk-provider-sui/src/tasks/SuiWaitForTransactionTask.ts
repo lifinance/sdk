@@ -6,6 +6,7 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
+import type { SuiSignAndExecuteTransactionOutput } from '@mysten/wallet-standard'
 import { callSuiWithRetry } from '../client/suiClient.js'
 import type { SuiTaskExtra } from './types.js'
 
@@ -17,27 +18,23 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtr
     context: TaskContext<SuiTaskExtra>,
     action?: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return !context.isTransactionExecuted(action)
   }
 
   protected async run(
     context: TaskContext<SuiTaskExtra>,
-    action: ExecutionAction
+    action: ExecutionAction,
+    payload: {
+      signedTx: SuiSignAndExecuteTransactionOutput
+    }
   ): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
-    const digest = action.txHash
-
-    if (!digest) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Transaction hash is undefined.'
-      )
-    }
+    const { signedTx } = payload
 
     const result = await callSuiWithRetry(client, (client) =>
       client.waitForTransaction({
-        digest,
+        digest: signedTx.digest,
         options: {
           showEffects: true,
         },
@@ -51,8 +48,8 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtr
       )
     }
 
-    //  Transaction has been confirmed
-    statusManager.updateAction(step, action.type, 'PENDING', {
+    // Transaction has been confirmed and we can update the action
+    action = statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: result.digest,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
     })

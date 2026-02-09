@@ -17,6 +17,7 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
     _context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
   ): Promise<boolean> {
+    // Find if it's bridging and the step is waiting for a transaction on the destination chain
     return !!action && action.substatus !== 'WAIT_DESTINATION_TRANSACTION'
   }
 
@@ -24,8 +25,11 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step } = context
-    const updatedClient = await context.checkClient(step, action)
+    const { step, checkClient } = context
+    // Make sure that the chain is still correct
+    // If the step is waiting for a transaction on the destination chain, we do not switch the chain
+    // All changes are already done from the source chain
+    const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

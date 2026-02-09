@@ -22,10 +22,6 @@ import { toXOnly } from '../utils/toXOnly.js'
 import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
-export interface BitcoinSignAndExecuteResult {
-  txHex: string
-}
-
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
   readonly actionType = 'EXCHANGE'
@@ -41,14 +37,14 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
     context: TaskContext<BitcoinTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, walletClient, statusManager, executionOptions } = context
-
-    if (walletClient.account?.address !== step.action.fromAddress) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
+    const {
+      step,
+      walletClient,
+      statusManager,
+      executionOptions,
+      fromChain,
+      publicClient,
+    } = context
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
@@ -80,6 +76,15 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
       )
     }
 
+    // TODO: check chain and possibly implement chain switch?
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (walletClient.account?.address !== step.action.fromAddress) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+
     const psbtHex = transactionRequest.data
 
     // Initialize ECC library required for Taproot operations
@@ -94,6 +99,10 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
         : (walletClient.account?.address as string)
       const addressInfo = getAddressInfo(accountAddress)
       if (addressInfo.type === AddressType.p2tr) {
+        // Taproot (P2TR) addresses require specific PSBT fields for proper signing
+
+        // tapInternalKey: Required for Taproot key-path spending
+        // Most wallets  / libraries usually handle this already
         if (!input.tapInternalKey) {
           const pubKey = walletClient.account?.publicKey
           if (pubKey) {
@@ -103,12 +112,15 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
             })
           }
         }
+        // sighashType: Required by bitcoinjs-lib even though the bitcoin protocol allows defaults
+        // check if sighashType is default (0) or not set (undefined)
         if (!input.sighashType) {
           psbt.updateInput(index, {
             sighashType: 1, // Default to Transaction.SIGHASH_ALL - 1
           })
         }
       }
+      // redeemScript: Required by Pay-to-Script-Hash (P2SH) addresses for proper spending
       if (addressInfo.type === AddressType.p2sh) {
         if (!input.redeemScript) {
           const pubKey = walletClient.account?.publicKey
@@ -135,7 +147,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
           } else {
             map.set(accountAddress, {
               address: accountAddress,
-              sigHash: 1,
+              sigHash: 1, // Default to Transaction.SIGHASH_ALL - 1
               signingIndexes: [index],
             })
           }
@@ -147,6 +159,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
         .values()
     )
 
+    // We give users 10 minutes to sign the transaction or it should be considered expired
     const signedPsbtHex = await withTimeout(
       () =>
         signPsbt(walletClient, {
@@ -171,8 +184,20 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
 
     const txHex = signedPsbt.extractTransaction().toHex()
 
-    statusManager.updateAction(step, action.type, 'PENDING')
+    const txHash = await publicClient.sendUTXOTransaction({
+      hex: txHex,
+    })
 
-    return new BitcoinWaitForTransactionTask().execute(context, { txHex })
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      txHash: txHash,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+      txHex,
+      signedAt: Date.now(),
+    })
+
+    return new BitcoinWaitForTransactionTask().execute(context, {
+      txHex,
+      txHash,
+    })
   }
 }

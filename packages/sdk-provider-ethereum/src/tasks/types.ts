@@ -14,10 +14,12 @@ import type { Client } from 'viem'
 export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
 
 export interface EthereumTaskExtra extends TaskExtraBase {
+  isFromNativeToken: boolean
+  disableMessageSigning: boolean
+  isPermit2Supported: (isBatchingSupported: boolean) => boolean
   getExecutionStrategy: (
     step: LiFiStepExtended
   ) => Promise<EthereumExecutionStrategy>
-  /** Viem client for signing/sending. */
   ethereumClient: Client
   checkClient: (
     step: LiFiStepExtended,

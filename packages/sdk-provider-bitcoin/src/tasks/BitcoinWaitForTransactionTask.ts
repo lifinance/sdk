@@ -26,39 +26,28 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<Bitcoin
     action: ExecutionAction,
     payload: {
       txHex: string
+      txHash: string
     }
   ): Promise<TaskResult> {
-    let currentAction = action
     const {
       step,
       statusManager,
       fromChain,
       isBridgeExecution,
-      publicClient,
       walletClient,
+      publicClient,
     } = context
-    // txHex from pipeline (Sign task) or from action when we already have txHash (resume)
-    const txHex = payload.txHex ?? currentAction.txHex
 
-    if (!txHex) {
+    const txHex = action.txHex ?? payload.txHex
+    const txHash = action.txHash ?? payload.txHash
+
+    // TODO: check chain and possibly implement chain switch?
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (walletClient.account?.address !== step.action.fromAddress) {
       throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Signed transaction hex is missing.'
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
-    }
-
-    let txHash = currentAction.txHash
-
-    if (!txHash) {
-      txHash = await publicClient.sendUTXOTransaction({
-        hex: txHex,
-      })
-
-      currentAction = statusManager.updateAction(step, action.type, 'PENDING', {
-        txHash,
-        txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
-        txHex,
-      })
     }
 
     let replacementReason: ReplacementReason | undefined
@@ -68,15 +57,10 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<Bitcoin
       senderAddress: walletClient.account?.address,
       onReplaced: (response) => {
         replacementReason = response.reason
-        currentAction = statusManager.updateAction(
-          step,
-          action.type,
-          'PENDING',
-          {
-            txHash: response.transaction.txid,
-            txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
-          }
-        )
+        statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: response.transaction.txid,
+          txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.txid}`,
+        })
       },
     })
 
@@ -88,7 +72,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<Bitcoin
     }
 
     if (transaction.txid !== txHash) {
-      currentAction = statusManager.updateAction(step, action.type, 'PENDING', {
+      statusManager.updateAction(step, action.type, 'PENDING', {
         txHash: transaction.txid,
         txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${transaction.txid}`,
       })

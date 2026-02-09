@@ -21,6 +21,10 @@ export async function getEthereumExecutionStrategy(
   if (isRelayer) {
     return 'relayer'
   }
+  // Batching via EIP-5792 is disabled in the next cases:
+  // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
+  // 2. When the step is using thorswap tool (temporary disabled)
+  // 3. When using relayer transactions
   const batchingSupported =
     atomicityNotReady || step.tool === 'thorswap'
       ? false

@@ -8,6 +8,7 @@ import {
   type TransactionParameters,
 } from '@lifi/sdk'
 import { signAndExecuteTransaction } from '@mysten/wallet-standard'
+import { SuiWaitForTransactionTask } from './SuiWaitForTransactionTask.js'
 import type { SuiTaskExtra } from './types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
@@ -25,7 +26,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
     context: TaskContext<SuiTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, wallet, statusManager, fromChain } = context
+    const { step, wallet, statusManager, executionOptions } = context
 
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
@@ -38,9 +39,9 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
       data: step.transactionRequest.data,
     }
 
-    if (context.executionOptions?.updateTransactionRequestHook) {
+    if (executionOptions?.updateTransactionRequestHook) {
       const customizedTransactionRequest: TransactionParameters =
-        await context.executionOptions.updateTransactionRequestHook({
+        await executionOptions.updateTransactionRequestHook({
           requestType: 'transaction',
           ...transactionRequest,
         })
@@ -60,21 +61,31 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
       )
     }
 
+    const walletAccount = wallet.accounts?.find(
+      (a) => a.address === step.action.fromAddress
+    )
+    if (!walletAccount) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+
     // We give users 2 minutes to sign the transaction
     const signedTx = await signAndExecuteTransaction(wallet, {
-      account: context.getWalletAccount(),
+      account: walletAccount,
       chain: 'sui:mainnet',
       transaction: {
         toJSON: async () => transactionRequestData,
       },
     })
 
-    // Persist txHash immediately so we can resume waiting if needed.
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: signedTx.digest,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${signedTx.digest}`,
+      signedAt: Date.now(),
     })
 
-    return { status: 'COMPLETED' }
+    return new SuiWaitForTransactionTask().execute(context, {
+      signedTx,
+    })
   }
 }

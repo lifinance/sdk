@@ -20,21 +20,22 @@ export const checkPermitTypedData = async (
     action: ExecutionAction,
     targetChainId?: number
   ) => Promise<Client | undefined>,
-  disableMessageSigning: boolean
+  disableMessageSigning: boolean,
+  signedTypedData: SignedTypedData[]
 ) => {
   let action: ExecutionAction | undefined
   try {
+    // First, try to sign all permits in step.typedData
     const permitTypedData = step.typedData?.filter(
       (typedData) => typedData.primaryType === 'Permit'
     )
-    let signedTypedData: SignedTypedData[] = []
     if (!disableMessageSigning && permitTypedData?.length) {
       action = statusManager.findOrCreateAction({
         step,
         type: 'PERMIT',
         chainId: step.action.fromChainId,
       })
-      signedTypedData = action.signedTypedData || []
+      signedTypedData = action.signedTypedData ?? signedTypedData
       for (const typedData of permitTypedData) {
         // Check if we already have a valid permit for this chain and requirements
         const signedTypedDataForChain = signedTypedData.find(

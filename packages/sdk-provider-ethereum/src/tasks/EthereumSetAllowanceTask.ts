@@ -25,25 +25,32 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTask
       updatedClient: Client
       spenderAddress: Address
       batchingSupported: boolean
-      permit2Supported: boolean
       shouldResetApproval: boolean
       approvalResetTxHash: Hash
     }
   ): Promise<TaskResult> {
-    const { step, client, statusManager, executionOptions, fromChain } = context
+    const {
+      step,
+      client,
+      statusManager,
+      executionOptions,
+      fromChain,
+      isPermit2Supported,
+    } = context
     const {
       signedTypedData,
       updatedClient,
       spenderAddress,
       batchingSupported,
-      permit2Supported,
       shouldResetApproval,
       approvalResetTxHash,
     } = payload
 
     // Set new allowance
     const fromAmount = BigInt(step.action.fromAmount)
-    const approveAmount = permit2Supported ? MaxUint256 : fromAmount
+    const approveAmount = isPermit2Supported(batchingSupported)
+      ? MaxUint256
+      : fromAmount
     const approveTxHash = await setAllowance(
       client,
       updatedClient,
@@ -60,6 +67,8 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTask
     // because allowance was't set by standard approval transaction
     if (batchingSupported) {
       statusManager.updateAction(step, action.type, 'DONE')
+
+      // Check if the wallet supports atomic batch transactions (EIP-5792)
       const calls: Call[] = []
 
       // Add reset call first if approval reset is required

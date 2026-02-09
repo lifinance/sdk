@@ -1,7 +1,6 @@
 import type { Client } from '@bigmi/core'
 import {
   BaseStepExecutor,
-  ChainId,
   CheckBalanceTask,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
@@ -32,7 +31,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
   ): Promise<StepExecutorContext<BitcoinTaskExtra>> => {
     const publicClient = await getBitcoinPublicClient(
       baseContext.client,
-      ChainId.BTC
+      baseContext.fromChain.id
     )
 
     const pipeline = new TaskPipeline([
@@ -45,15 +44,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     return {
       ...baseContext,
       pipeline,
-      publicClient,
+      pollingIntervalMs: 10_000,
       walletClient: this.walletClient,
-      getWalletAddress: () => {
-        const address = this.walletClient.account?.address
-        if (!address) {
-          throw new Error('Wallet account is not available.')
-        }
-        return address
-      },
+      publicClient,
       parseErrors: parseBitcoinErrors,
     }
   }

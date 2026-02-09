@@ -16,7 +16,6 @@ import { encodePermit2Data } from '../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../permits/signPermit2Message.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
-import { isZeroAddress } from '../utils/isZeroAddress.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import type { EthereumTaskExtra } from './types.js'
 
@@ -42,7 +41,14 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<Et
       signedTypedData: SignedTypedData[]
     }
   ): Promise<TaskResult> {
-    const { step, client, fromChain, executionOptions, statusManager } = context
+    const {
+      step,
+      client,
+      fromChain,
+      statusManager,
+      isPermit2Supported,
+      checkClient,
+    } = context
 
     let { transactionRequest, signedTypedData } = payload
     if (!transactionRequest) {
@@ -53,31 +59,12 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<Et
     }
 
     // Make sure that the chain is still correct
-    const updatedClient = await context.checkClient(step, action)
+    const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
 
-    const isFromNativeToken =
-      fromChain.nativeToken.address === step.action.fromToken.address &&
-      isZeroAddress(step.action.fromToken.address)
-
-    // Check if message signing is disabled - useful for smart contract wallets
-    // We also disable message signing for custom steps
-    const disableMessageSigning =
-      executionOptions?.disableMessageSigning || step.type !== 'lifi'
-
-    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
-    const permit2Supported =
-      !!fromChain.permit2 &&
-      !!fromChain.permit2Proxy &&
-      !isFromNativeToken &&
-      !disableMessageSigning &&
-      // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
-      !!step.estimate.approvalAddress &&
-      !step.estimate.skipApproval &&
-      !step.estimate.skipPermit
-
+    const permit2Supported = isPermit2Supported(false)
     const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&

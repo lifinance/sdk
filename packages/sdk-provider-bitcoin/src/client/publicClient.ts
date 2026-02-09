@@ -20,7 +20,7 @@ import {
 import type { SDKClient } from '@lifi/sdk'
 import { toBigmiChainId } from '../utils/toBigmiChainId.js'
 
-type PublicClient = Client<
+export type PublicClient = Client<
   FallbackTransport<readonly HttpTransport[]>,
   Chain,
   Account | undefined,

@@ -9,9 +9,6 @@ import { EthereumRelayerWaitForTransactionTask } from './EthereumRelayerWaitForT
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
 import type { EthereumTaskExtra } from './types.js'
 
-/**
- * Ensures the wallet is on the correct chain when the step is waiting for a destination-chain transaction.
- */
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   readonly type = 'ETHEREUM_WAIT_FOR_TRANSACTION'
   readonly actionType = 'EXCHANGE'
@@ -27,8 +24,10 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<Ethere
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step } = context
-    const updatedClient = await context.checkClient(step, action)
+    const { step, checkClient } = context
+
+    // Make sure that the chain is still correct
+    const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

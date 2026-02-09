@@ -57,10 +57,6 @@ export class WaitForDestinationChainTask<
         })
         actionType = receivingChainAction.type
       }
-      // Record the time when the user has signed the transaction
-      statusManager.updateExecution(step, 'PENDING', {
-        signedAt: Date.now(),
-      })
 
       const statusResponse = (await waitForTransactionStatus(
         client,
