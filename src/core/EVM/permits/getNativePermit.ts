@@ -20,6 +20,16 @@ import {
 } from './constants.js'
 import type { NativePermitData } from './types.js'
 
+/**
+ * Blocklist of EIP-7702 delegation addresses that should not use native permits
+ * These delegations may have incompatibilities or security concerns with permit signatures
+ * Addresses should be lowercase without 0x prefix for case-insensitive matching
+ */
+const EIP7702_DELEGATION_BLOCKLIST: string[] = [
+  // OKX delegation isn't compatible at this moment
+  '36d3CBD83961868398d056EfBf50f5CE15528c0D',
+]
+
 type GetNativePermitParams = {
   chainId: number
   tokenAddress: Address
@@ -126,7 +136,7 @@ function validateDomainSeparator({
  * Checks if the account can use native permits based on its code.
  * Returns true if:
  * 1. Account has no code (EOA)
- * 2. Account is EOA and has EIP-7702 delegation designator code
+ * 2. Account is EOA and has EIP-7702 delegation designator code (and not in blocklist)
  *
  * @param client - The Viem client instance
  * @returns Promise<boolean> - Whether the account can use native permits
@@ -147,8 +157,17 @@ const canAccountUseNativePermits = async (client: Client): Promise<boolean> => {
       return true
     }
 
-    // If has code but it's EIP-7702 delegation designator - can use native permits
+    // If has code but it's EIP-7702 delegation designator - check blocklist
     if (isDelegationDesignatorCode(accountCode)) {
+      // Check if the code contains any blocklisted delegation address
+      const codeLC = accountCode.toLowerCase()
+      const isBlocked = EIP7702_DELEGATION_BLOCKLIST.some(
+        (blockedAddress: string) =>
+          codeLC.includes(blockedAddress.toLowerCase())
+      )
+      if (isBlocked) {
+        return false
+      }
       return true
     }
 
