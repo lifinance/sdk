@@ -433,12 +433,10 @@ const waitForApprovalTransaction = async (
         taskId: txHash,
         txType: 'safe-queued',
       })
-      txHash = await resolveSafeTransactionHash(
-        client,
-        chain.id,
-        safeAddress,
-        txHash
-      )
+
+      txHash = await resolveSafeTransactionHash(chain.id, safeAddress, txHash, {
+        safeApiKey: client.config.safeApiKey,
+      })
     }
   }
 

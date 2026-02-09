@@ -44,7 +44,7 @@ import { isBatchingSupported } from './actions/isBatchingSupported.js'
 import { switchChain } from './actions/switchChain.js'
 import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
-import { resolveSafeTransactionHash } from './actions/waitForSafeTransactionReceipt.js'
+import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
 import { isSafeWallet } from './client/safeClient.js'
 import {
@@ -200,7 +200,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         )
         break
       case 'safe-queued': {
-        // Safe transaction - resolve signature to on-chain tx hash via Safe Transaction Service
         const safeAddress = this.client.account?.address
         if (!safeAddress) {
           throw new TransactionError(
@@ -208,25 +207,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             'Safe address not available for transaction tracking.'
           )
         }
-        const resolvedTxHash = await resolveSafeTransactionHash(
-          client,
-          fromChain.id,
-          safeAddress,
-          action.taskId as string,
-          { pollingInterval: 5_000 }
-        )
-
-        // Now wait for the actual on-chain receipt
-        transactionReceipt = await waitForTransactionReceipt(client, {
-          client: this.client,
+        transactionReceipt = await waitForSafeTransactionReceipt(client, {
+          viemClient: this.client,
           chainId: fromChain.id,
-          txHash: resolvedTxHash,
-          onReplaced: (response) => {
-            this.statusManager.updateAction(step, action.type, 'PENDING', {
-              txHash: response.transaction.hash,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${response.transaction.hash}`,
-            })
-          },
+          safeAddress,
+          signature: action.taskId as string,
+          pollingInterval: 5_000,
         })
         break
       }
@@ -536,7 +522,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
     // Check if the wallet is a Safe wallet (cached after first call per chainId:address)
     const accountAddress = this.client.account?.address
-    const isSafe = accountAddress
+    const isSafeWalletAddress = accountAddress
       ? await isSafeWallet(
           fromChain.id,
           accountAddress,
@@ -613,7 +599,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
-        isSafeWallet: isSafe,
+        isSafeWallet: isSafeWalletAddress,
       })
 
       switch (allowanceResult.status) {
@@ -859,7 +845,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
         // Check if the returned "hash" is actually a Safe signature
         // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
-        if (txHash && isSignature(txHash) && isSafe) {
+        if (txHash && isSignature(txHash) && isSafeWalletAddress) {
           // Store the signature as taskId and use 'safe-queued' txType
           taskId = txHash
           txHash = undefined

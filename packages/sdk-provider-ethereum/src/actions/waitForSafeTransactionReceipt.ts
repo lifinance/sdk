@@ -4,12 +4,13 @@ import {
   TransactionError,
   waitForResult,
 } from '@lifi/sdk'
-import type { Address, Hash } from 'viem'
+import type { Address, Client, Hash, TransactionReceipt } from 'viem'
 import {
   type SafeMultisigTransaction,
   type SafeMultisigTransactionList,
   safeApiGet,
 } from '../client/safeClient.js'
+import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 export interface WaitForSafeTransactionResult {
   safeTxHash: Hash
@@ -73,9 +74,10 @@ async function findTransactionBySignature(
 }
 
 /**
- * Wait for a Safe transaction to be executed by polling the Safe Transaction Service
+ * Wait for a Safe transaction to be executed by polling the Safe Transaction Service.
+ * Returns the Safe API execution status, not the on-chain receipt.
  */
-export async function waitForSafeTransactionReceipt(
+export async function waitForSafeTransactionExecution(
   chainId: number,
   safeAddress: Address,
   signature: string,
@@ -191,23 +193,22 @@ export async function waitForSafeTransactionReceipt(
 }
 
 /**
- * Resolve a Safe signature to an on-chain transaction hash by polling the Safe Transaction Service.
- * Throws on failure, replacement, or if the transaction is not found.
+ * Resolve a Safe signature to an on-chain transaction hash.
+ * Polls the Safe Transaction Service until executed and handles all error cases internally.
  */
 export async function resolveSafeTransactionHash(
-  client: SDKClient,
   chainId: number,
   safeAddress: Address,
   signature: string,
-  options?: { pollingInterval?: number }
+  options?: { pollingInterval?: number; safeApiKey?: string }
 ): Promise<Hash> {
-  const safeResult = await waitForSafeTransactionReceipt(
+  const safeResult = await waitForSafeTransactionExecution(
     chainId,
     safeAddress,
     signature,
     {
       pollingInterval: options?.pollingInterval,
-      safeApiKey: client.config.safeApiKey,
+      safeApiKey: options?.safeApiKey,
     }
   )
 
@@ -237,4 +238,36 @@ export async function resolveSafeTransactionHash(
   }
 
   return safeResult.transactionHash
+}
+
+/**
+ * Wait for a Safe transaction to be executed and return the on-chain transaction receipt.
+ * This combines polling the Safe Transaction Service and waiting for blockchain confirmation.
+ */
+export async function waitForSafeTransactionReceipt(
+  client: SDKClient,
+  options: {
+    viemClient: Client
+    chainId: number
+    safeAddress: Address
+    signature: string
+    pollingInterval?: number
+  }
+): Promise<TransactionReceipt | undefined> {
+  const resolvedTxHash = await resolveSafeTransactionHash(
+    options.chainId,
+    options.safeAddress,
+    options.signature,
+    {
+      pollingInterval: options.pollingInterval,
+      safeApiKey: client.config.safeApiKey,
+    }
+  )
+
+  // Wait for actual blockchain confirmation
+  return await waitForTransactionReceipt(client, {
+    client: options.viemClient,
+    chainId: options.chainId,
+    txHash: resolvedTxHash,
+  })
 }
