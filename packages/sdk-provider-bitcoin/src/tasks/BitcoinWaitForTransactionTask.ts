@@ -11,9 +11,6 @@ import {
 import type { BitcoinTaskExtra } from './types.js'
 
 export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
-  readonly type = 'BITCOIN_WAIT_FOR_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<BitcoinTaskExtra>,
     action?: ExecutionAction
@@ -21,7 +18,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<Bitcoin
     return context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<BitcoinTaskExtra>,
     action: ExecutionAction,
     payload: {

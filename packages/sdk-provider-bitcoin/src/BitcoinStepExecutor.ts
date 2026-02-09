@@ -1,5 +1,6 @@
 import type { Client } from '@bigmi/core'
 import {
+  ActionPipelineOrchestrator,
   BaseStepExecutor,
   CheckBalanceTask,
   PrepareTransactionTask,
@@ -12,6 +13,7 @@ import {
 import { getBitcoinPublicClient } from './client/publicClient.js'
 import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
 import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
+import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './tasks/types.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
@@ -29,16 +31,21 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<StepExecutorContext<BitcoinTaskExtra>> => {
-    const publicClient = await getBitcoinPublicClient(
-      baseContext.client,
-      baseContext.fromChain.id
-    )
+    const { isBridgeExecution, client, fromChain } = baseContext
 
-    const pipeline = new TaskPipeline([
-      new CheckBalanceTask<BitcoinTaskExtra>(),
-      new PrepareTransactionTask<BitcoinTaskExtra>(),
-      new BitcoinSignAndExecuteTask(),
-      new WaitForDestinationChainTask<BitcoinTaskExtra>(),
+    const publicClient = await getBitcoinPublicClient(client, fromChain.id)
+
+    const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const pipeline = new ActionPipelineOrchestrator<BitcoinTaskExtra>([
+      new TaskPipeline<BitcoinTaskExtra>(exchangeActionType, [
+        new CheckBalanceTask<BitcoinTaskExtra>(),
+        new PrepareTransactionTask<BitcoinTaskExtra>(),
+        new BitcoinSignAndExecuteTask(),
+        new BitcoinWaitForTransactionTask(),
+      ]),
+      new TaskPipeline<BitcoinTaskExtra>('RECEIVING_CHAIN', [
+        new WaitForDestinationChainTask<BitcoinTaskExtra>(),
+      ]),
     ])
 
     return {

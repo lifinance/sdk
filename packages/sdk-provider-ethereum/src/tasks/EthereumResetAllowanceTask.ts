@@ -7,15 +7,18 @@ import {
 } from '@lifi/sdk'
 import type { Address, Client, Hash } from 'viem'
 import { setAllowance } from '../actions/setAllowance.js'
-import { EthereumSetAllowanceTask } from './EthereumSetAllowanceTask.js'
 import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_RESET_ALLOWANCE'
-  readonly actionType = 'TOKEN_ALLOWANCE'
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>,
+    action: ExecutionAction
+  ): Promise<boolean> {
+    return !context.isTransactionExecuted(action)
+  }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {
@@ -93,13 +96,16 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask<EthereumTa
       }
     }
 
-    return await new EthereumSetAllowanceTask().execute(context, {
-      signedTypedData,
-      updatedClient,
-      spenderAddress,
-      batchingSupported,
-      shouldResetApproval,
-      approvalResetTxHash,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTypedData,
+        updatedClient,
+        spenderAddress,
+        batchingSupported,
+        shouldResetApproval,
+        approvalResetTxHash,
+      },
+    }
   }
 }

@@ -1,4 +1,5 @@
 import {
+  ActionPipelineOrchestrator,
   BaseStepExecutor,
   type ExecutionAction,
   LiFiErrorCode,
@@ -14,8 +15,10 @@ import type { Client, GetAddressesReturnType } from 'viem'
 import { getAddresses } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { parseEthereumErrors } from './errors/parseEthereumErrors.js'
-import { EthereumCheckAndExecuteTask } from './tasks/EthereumCheckAndExecuteTask.js'
+import { EthereumCheckPermitAndAllowanceTask } from './tasks/EthereumCheckPermitAndAllowanceTask.js'
 import { EthereumDestinationChainCheckClientTask } from './tasks/EthereumDestinationChainCheckClientTask.js'
+import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
+import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
 import { switchChain } from './tasks/helpers/switchChain.js'
@@ -80,25 +83,36 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<StepExecutorContext<EthereumTaskExtra>> => {
-    const tasks = [
-      new EthereumDestinationChainCheckClientTask(),
-      new EthereumCheckAndExecuteTask(),
-      new EthereumWaitForTransactionTask(),
-      new WaitForDestinationChainTask<EthereumTaskExtra>(),
-    ]
-
-    const pipeline = new TaskPipeline<EthereumTaskExtra>(tasks)
+    const {
+      isBridgeExecution,
+      step,
+      fromChain,
+      executionOptions,
+      client,
+      retryParams,
+    } = baseContext
+    const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const pipeline = new ActionPipelineOrchestrator<EthereumTaskExtra>([
+      new TaskPipeline<EthereumTaskExtra>(exchangeActionType, [
+        new EthereumCheckPermitAndAllowanceTask(),
+        new EthereumPrepareTransactionTask(),
+        new EthereumSignAndExecuteTask(),
+        new EthereumWaitForTransactionTask(),
+      ]),
+      new TaskPipeline<EthereumTaskExtra>('RECEIVING_CHAIN', [
+        new EthereumDestinationChainCheckClientTask(),
+        new WaitForDestinationChainTask<EthereumTaskExtra>(),
+      ]),
+    ])
 
     const isFromNativeToken =
-      baseContext.fromChain.nativeToken.address ===
-        baseContext.step.action.fromToken.address &&
-      isZeroAddress(baseContext.step.action.fromToken.address)
+      fromChain.nativeToken.address === step.action.fromToken.address &&
+      isZeroAddress(step.action.fromToken.address)
 
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      baseContext.executionOptions?.disableMessageSigning ||
-      baseContext.step.type !== 'lifi'
+      executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
     return {
       ...baseContext,
@@ -106,22 +120,22 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       disableMessageSigning,
       // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
       isPermit2Supported: (batchingSupported: boolean) =>
-        !!baseContext.fromChain.permit2 &&
-        !!baseContext.fromChain.permit2Proxy &&
+        !!fromChain.permit2 &&
+        !!fromChain.permit2Proxy &&
         !isFromNativeToken &&
         !disableMessageSigning &&
         !batchingSupported &&
         // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
-        !!baseContext.step.estimate.approvalAddress &&
-        !baseContext.step.estimate.skipApproval &&
-        !baseContext.step.estimate.skipPermit,
+        !!step.estimate.approvalAddress &&
+        !step.estimate.skipApproval &&
+        !step.estimate.skipPermit,
       getExecutionStrategy: async (step: LiFiStepExtended) => {
         return await getEthereumExecutionStrategy(
-          baseContext.client,
+          client,
           this.client,
           step,
-          baseContext.fromChain,
-          baseContext.retryParams
+          fromChain,
+          retryParams
         )
       },
       ethereumClient: this.client,
@@ -132,7 +146,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         e: Error,
         step?: LiFiStepExtended,
         action?: ExecutionAction
-      ) => parseEthereumErrors(e, step, action, baseContext.retryParams),
+      ) => parseEthereumErrors(e, step, action, retryParams),
     }
   }
 }

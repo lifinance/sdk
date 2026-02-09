@@ -8,7 +8,6 @@ import type {
   ExecutionOptions,
   LiFiStepExtended,
   SDKClient,
-  TaskExecutionActionType,
 } from './core.js'
 
 interface TaskContextShared {
@@ -17,8 +16,6 @@ interface TaskContextShared {
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  getAction: (type: TaskExecutionActionType) => ExecutionAction | undefined
-  createAction: (type: TaskExecutionActionType) => ExecutionAction
   isTransactionExecuted: (action?: ExecutionAction) => boolean
   isTransactionConfirmed: (action?: ExecutionAction) => boolean
 }
@@ -26,11 +23,10 @@ interface TaskContextShared {
 export interface TaskExtraBase extends TaskContextShared {
   pollingIntervalMs?: number
   pipeline: {
-    run(context: TaskContext<TaskExtraBase>): Promise<PipelineResult>
-    resume(
-      pausedAtTask: string,
-      context: TaskContext<TaskExtraBase>
-    ): Promise<PipelineResult>
+    run(
+      context: TaskContext<TaskExtraBase>,
+      payload?: unknown
+    ): Promise<TaskResult>
   }
   parseErrors: (
     error: Error,
@@ -54,10 +50,8 @@ export type TaskContext<TExtra extends TaskExtraBase = TaskExtraBase> =
 
 export interface TaskResult {
   status: TaskStatus
+  /** Optional handoff to the next task in the pipeline. */
+  data?: unknown
 }
 
 export type TaskStatus = 'COMPLETED' | 'PAUSED'
-
-export type PipelineResult =
-  | { status: 'COMPLETED' }
-  | { status: 'PAUSED'; pausedAtTask: string }

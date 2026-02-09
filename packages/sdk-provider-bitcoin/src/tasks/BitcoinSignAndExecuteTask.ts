@@ -19,13 +19,9 @@ import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../utils/isPsbtFinalized.js'
 import { toXOnly } from '../utils/toXOnly.js'
-import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
 import type { BitcoinTaskExtra } from './types.js'
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
-  readonly type = 'BITCOIN_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<BitcoinTaskExtra>,
     action?: ExecutionAction
@@ -33,7 +29,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<BitcoinTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
@@ -195,9 +191,12 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
       signedAt: Date.now(),
     })
 
-    return new BitcoinWaitForTransactionTask().execute(context, {
-      txHex,
-      txHash,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        txHex,
+        txHash,
+      },
+    }
   }
 }

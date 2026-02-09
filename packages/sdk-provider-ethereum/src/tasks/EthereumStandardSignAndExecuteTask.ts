@@ -20,9 +20,6 @@ import { estimateTransactionRequest } from './helpers/estimateTransactionRequest
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_STANDARD_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -30,7 +27,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<Et
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {

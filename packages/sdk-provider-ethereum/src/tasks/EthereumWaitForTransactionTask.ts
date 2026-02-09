@@ -7,11 +7,25 @@ import {
 import { EthereumBatchWaitForTransactionTask } from './EthereumBatchWaitForTransactionTask.js'
 import { EthereumRelayerWaitForTransactionTask } from './EthereumRelayerWaitForTransactionTask.js'
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
-import type { EthereumTaskExtra } from './types.js'
+import type { EthereumExecutionStrategy, EthereumTaskExtra } from './types.js'
+
+export interface EthereumWaitForTransactionStrategyTasks {
+  batch: BaseStepExecutionTask<EthereumTaskExtra>
+  relayer: BaseStepExecutionTask<EthereumTaskExtra>
+  standard: BaseStepExecutionTask<EthereumTaskExtra>
+}
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_WAIT_FOR_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
+  private readonly strategies: EthereumWaitForTransactionStrategyTasks
+
+  constructor() {
+    super()
+    this.strategies = {
+      batch: new EthereumBatchWaitForTransactionTask(),
+      relayer: new EthereumRelayerWaitForTransactionTask(),
+      standard: new EthereumStandardWaitForTransactionTask(),
+    }
+  }
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
@@ -20,7 +34,7 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<Ethere
     return context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
@@ -32,13 +46,10 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<Ethere
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = await context.getExecutionStrategy(step)
-    if (executionStrategy === 'batch') {
-      return await new EthereumBatchWaitForTransactionTask().execute(context)
-    }
-    if (executionStrategy === 'relayer') {
-      return await new EthereumRelayerWaitForTransactionTask().execute(context)
-    }
-    return await new EthereumStandardWaitForTransactionTask().execute(context)
+    const executionStrategy: EthereumExecutionStrategy =
+      await context.getExecutionStrategy(step)
+
+    const task = this.strategies[executionStrategy]
+    return task.run(context, action)
   }
 }

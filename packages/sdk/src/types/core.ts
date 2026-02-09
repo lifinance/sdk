@@ -228,11 +228,6 @@ export type ExecutionActionType =
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
-export type TaskExecutionActionType =
-  | 'TOKEN_ALLOWANCE'
-  | 'EXCHANGE'
-  | 'RECEIVING_CHAIN'
-
 export type ExecutionAction = {
   type: ExecutionActionType
   status: ExecutionActionStatus
@@ -265,8 +260,6 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
-  /** Set by step executors when TaskPipeline returns PAUSED; used to call pipeline.resume() on next executeStep. */
-  pausedAtTask?: string
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

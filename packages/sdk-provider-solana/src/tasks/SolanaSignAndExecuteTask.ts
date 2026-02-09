@@ -11,13 +11,9 @@ import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
 import { getWalletFeature } from '../utils/getWalletFeature.js'
 import { withTimeout } from '../utils/withTimeout.js'
-import { SolanaWaitForTransactionTask } from './SolanaWaitForTransactionTask.js'
 import type { SolanaTaskExtra } from './types.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskExtra> {
-  readonly type = 'SOLANA_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<SolanaTaskExtra>,
     action?: ExecutionAction
@@ -25,7 +21,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskEx
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<SolanaTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
@@ -107,8 +103,11 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskEx
       signedAt: Date.now(),
     })
 
-    return new SolanaWaitForTransactionTask().execute(context, {
-      signedTransactionOutputs,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTransactionOutputs,
+      },
+    }
   }
 }

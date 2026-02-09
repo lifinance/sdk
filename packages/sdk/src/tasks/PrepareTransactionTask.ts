@@ -13,9 +13,6 @@ import { stepComparison } from './helpers/stepComparison.js'
 export class PrepareTransactionTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext> {
-  readonly type = 'PREPARE_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<TContext>,
     action?: ExecutionAction
@@ -23,7 +20,7 @@ export class PrepareTransactionTask<
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
   ): Promise<TaskResult> {

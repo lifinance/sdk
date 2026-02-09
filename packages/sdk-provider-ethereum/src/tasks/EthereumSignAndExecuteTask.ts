@@ -12,9 +12,22 @@ import { EthereumRelayerSignAndExecuteTask } from './EthereumRelayerSignAndExecu
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
 import type { EthereumTaskExtra } from './types.js'
 
+export interface EthereumSignAndExecuteStrategyTasks {
+  batch: BaseStepExecutionTask<EthereumTaskExtra>
+  relayer: BaseStepExecutionTask<EthereumTaskExtra>
+  standard: BaseStepExecutionTask<EthereumTaskExtra>
+}
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
+  private readonly strategies: EthereumSignAndExecuteStrategyTasks
+
+  constructor() {
+    super()
+    this.strategies = {
+      batch: new EthereumBatchSignAndExecuteTask(),
+      relayer: new EthereumRelayerSignAndExecuteTask(),
+      standard: new EthereumStandardSignAndExecuteTask(),
+    }
+  }
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
@@ -23,7 +36,7 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTa
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {
@@ -43,17 +56,15 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTa
     const { signedTypedData, calls, transactionRequest } = payload
     const executionStrategy = await context.getExecutionStrategy(step)
     if (executionStrategy === 'batch' && transactionRequest) {
-      return await new EthereumBatchSignAndExecuteTask().execute(context, {
+      return this.strategies.batch.run(context, action, {
         transactionRequest,
         calls,
       })
     }
     if (executionStrategy === 'relayer') {
-      return await new EthereumRelayerSignAndExecuteTask().execute(context, {
-        signedTypedData,
-      })
+      return this.strategies.relayer.run(context, action, { signedTypedData })
     }
-    return await new EthereumStandardSignAndExecuteTask().execute(context, {
+    return this.strategies.standard.run(context, action, {
       transactionRequest,
       signedTypedData,
     })

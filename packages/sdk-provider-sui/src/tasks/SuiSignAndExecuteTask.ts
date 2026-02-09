@@ -8,13 +8,9 @@ import {
   type TransactionParameters,
 } from '@lifi/sdk'
 import { signAndExecuteTransaction } from '@mysten/wallet-standard'
-import { SuiWaitForTransactionTask } from './SuiWaitForTransactionTask.js'
 import type { SuiTaskExtra } from './types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
-  readonly type = 'SUI_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>,
     action?: ExecutionAction
@@ -22,7 +18,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<SuiTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
@@ -84,8 +80,11 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
       signedAt: Date.now(),
     })
 
-    return new SuiWaitForTransactionTask().execute(context, {
-      signedTx,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTx,
+      },
+    }
   }
 }

@@ -10,9 +10,6 @@ import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_STANDARD_WAIT_FOR_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -20,7 +17,7 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
     return context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {

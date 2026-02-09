@@ -15,9 +15,6 @@ import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 export class WaitForDestinationChainTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext> {
-  readonly type = 'WAIT_FOR_DESTINATION_CHAIN'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<TContext>,
     action?: ExecutionAction
@@ -25,7 +22,7 @@ export class WaitForDestinationChainTask<
     return context.isTransactionConfirmed(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
   ): Promise<TaskResult> {

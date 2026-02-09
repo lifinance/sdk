@@ -12,9 +12,6 @@ import type { Call } from '../types.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_BATCH_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -22,7 +19,7 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<Ether
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {

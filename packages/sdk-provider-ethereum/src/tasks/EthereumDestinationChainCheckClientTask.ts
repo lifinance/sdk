@@ -7,9 +7,6 @@ import {
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_DESTINATION_CHAIN_CHECK'
-  readonly actionType = 'RECEIVING_CHAIN'
-
   override async shouldRun(
     _context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -18,7 +15,7 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
     return !!action && action.substatus !== 'WAIT_DESTINATION_TRANSACTION'
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {

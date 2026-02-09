@@ -16,9 +16,6 @@ import { getDomainChainId } from '../utils/getDomainChainId.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_RELAYER_SIGN_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -26,7 +23,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<Eth
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {

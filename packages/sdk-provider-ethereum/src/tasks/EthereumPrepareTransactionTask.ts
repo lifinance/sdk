@@ -12,14 +12,10 @@ import {
 } from '@lifi/sdk'
 import { getMaxPriorityFeePerGas } from '../actions/getMaxPriorityFeePerGas.js'
 import type { Call } from '../types.js'
-import { EthereumSignAndExecuteTask } from './EthereumSignAndExecuteTask.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_PREPARE_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction
@@ -27,7 +23,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<Ethere
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {
@@ -147,10 +143,13 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<Ethere
       }
     }
 
-    return await new EthereumSignAndExecuteTask().execute(context, {
-      signedTypedData,
-      calls,
-      transactionRequest,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTypedData,
+        calls,
+        transactionRequest,
+      },
+    }
   }
 }

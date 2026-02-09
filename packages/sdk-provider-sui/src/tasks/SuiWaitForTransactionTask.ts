@@ -11,9 +11,6 @@ import { callSuiWithRetry } from '../client/suiClient.js'
 import type { SuiTaskExtra } from './types.js'
 
 export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtra> {
-  readonly type = 'SUI_WAIT_FOR_TRANSACTION'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>,
     action?: ExecutionAction
@@ -21,7 +18,7 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtr
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<SuiTaskExtra>,
     action: ExecutionAction,
     payload: {

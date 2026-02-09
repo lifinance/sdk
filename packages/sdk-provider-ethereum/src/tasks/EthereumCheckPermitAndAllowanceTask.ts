@@ -1,18 +1,35 @@
 import {
+  ActionPipelineOrchestrator,
   BaseStepExecutionTask,
   type ExecutionAction,
   type SignedTypedData,
   type TaskContext,
+  TaskPipeline,
   type TaskResult,
 } from '@lifi/sdk'
 import { EthereumCheckAllowanceTask } from './EthereumCheckAllowanceTask.js'
-import { EthereumPrepareTransactionTask } from './EthereumPrepareTransactionTask.js'
+import { EthereumNativePermitTask } from './EthereumNativePermitTask.js'
+import { EthereumResetAllowanceTask } from './EthereumResetAllowanceTask.js'
+import { EthereumSetAllowanceTask } from './EthereumSetAllowanceTask.js'
+import { EthereumWaitForApprovalTransactionTask } from './EthereumWaitForApprovalTransaction.js'
 import { checkPermitTypedData } from './helpers/checkPermitTypedData.js'
 import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumCheckAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_CHECK_AND_EXECUTE'
-  readonly actionType = 'EXCHANGE'
+export class EthereumCheckPermitAndAllowanceTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+  private readonly pipeline: ActionPipelineOrchestrator<EthereumTaskExtra>
+
+  constructor() {
+    super()
+    this.pipeline = new ActionPipelineOrchestrator<EthereumTaskExtra>([
+      new TaskPipeline<EthereumTaskExtra>('TOKEN_ALLOWANCE', [
+        new EthereumCheckAllowanceTask(),
+        new EthereumNativePermitTask(),
+        new EthereumResetAllowanceTask(),
+        new EthereumSetAllowanceTask(),
+        new EthereumWaitForApprovalTransactionTask(),
+      ]),
+    ])
+  }
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
@@ -21,7 +38,7 @@ export class EthereumCheckAndExecuteTask extends BaseStepExecutionTask<EthereumT
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction
   ): Promise<TaskResult> {
@@ -48,9 +65,12 @@ export class EthereumCheckAndExecuteTask extends BaseStepExecutionTask<EthereumT
       !step.estimate.skipApproval
 
     if (!checkForAllowance) {
-      return await new EthereumPrepareTransactionTask().execute(context, {
-        signedTypedData,
-      })
+      return {
+        status: 'COMPLETED',
+        data: {
+          signedTypedData,
+        },
+      }
     }
 
     const result = await checkPermitTypedData(
@@ -69,12 +89,15 @@ export class EthereumCheckAndExecuteTask extends BaseStepExecutionTask<EthereumT
     signedTypedData = result.signedTypedData
 
     if (result.hasMatchingPermit) {
-      return await new EthereumPrepareTransactionTask().execute(context, {
-        signedTypedData,
-      })
+      return {
+        status: 'COMPLETED',
+        data: {
+          signedTypedData,
+        },
+      }
     }
 
-    return await new EthereumCheckAllowanceTask().execute(context, {
+    return await this.pipeline.run(context, {
       signedTypedData,
     })
   }

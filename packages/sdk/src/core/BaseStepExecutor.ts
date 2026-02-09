@@ -7,7 +7,6 @@ import type {
   SDKClient,
   StepExecutor,
   StepExecutorOptions,
-  TaskExecutionActionType,
 } from '../types/core.js'
 import type {
   StepExecutorBaseContext,
@@ -61,28 +60,6 @@ export abstract class BaseStepExecutor implements StepExecutor {
       fromChain,
       toChain,
       isBridgeExecution,
-      getAction: (type: TaskExecutionActionType) => {
-        const actionType =
-          type === 'EXCHANGE'
-            ? isBridgeExecution
-              ? 'CROSS_CHAIN'
-              : 'SWAP'
-            : type
-        return this.statusManager.findAction(step, actionType)
-      },
-      createAction: (type: TaskExecutionActionType) => {
-        const actionType =
-          type === 'EXCHANGE'
-            ? isBridgeExecution
-              ? 'CROSS_CHAIN'
-              : 'SWAP'
-            : type
-        return this.statusManager.createAction({
-          step,
-          type: actionType,
-          chainId: fromChain.id,
-        })
-      },
       isTransactionExecuted: (action?: ExecutionAction) => {
         return (
           !!action &&
@@ -118,19 +95,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const baseContext = await this.getBaseContext(client, step, retryParams)
     const context = await this.getContext(baseContext)
 
-    const pausedAtTask = step.execution?.pausedAtTask
-    const result = pausedAtTask
-      ? await context.pipeline.resume(pausedAtTask, context)
-      : await context.pipeline.run(context)
-
-    if (result.status === 'PAUSED') {
-      step.execution.pausedAtTask = result.pausedAtTask
-      return step
-    }
-
-    if (pausedAtTask) {
-      delete step.execution.pausedAtTask
-    }
+    await context.pipeline.run(context)
 
     return step
   }

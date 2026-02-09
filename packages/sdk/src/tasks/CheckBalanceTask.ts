@@ -8,9 +8,6 @@ import { checkBalance } from './helpers/checkBalance.js'
 export class CheckBalanceTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext> {
-  readonly type: string = 'CHECK_BALANCE'
-  readonly actionType = 'EXCHANGE'
-
   override async shouldRun(
     context: TaskContext<TContext>,
     action?: ExecutionAction
@@ -18,7 +15,7 @@ export class CheckBalanceTask<
     return !context.isTransactionExecuted(action)
   }
 
-  protected async run(
+  async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
   ): Promise<TaskResult> {

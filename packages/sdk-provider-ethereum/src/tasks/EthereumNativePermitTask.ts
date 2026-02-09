@@ -11,15 +11,31 @@ import { getAction } from 'viem/utils'
 import { getNativePermit } from '../permits/getNativePermit.js'
 import { isNativePermitValid } from '../permits/isNativePermitValid.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
-import { EthereumPrepareTransactionTask } from './EthereumPrepareTransactionTask.js'
-import { EthereumResetAllowanceTask } from './EthereumResetAllowanceTask.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_NATIVE_PERMIT'
-  readonly actionType = 'EXCHANGE'
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction,
+    payload?: {
+      signedTypedData: SignedTypedData[]
+      updatedClient: Client
+      batchingSupported: boolean
+      approved: bigint
+      spenderAddress: Address
+    }
+  ): Promise<boolean> {
+    const { step, fromChain, disableMessageSigning } = context
+    // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
+    const isNativePermitAvailable =
+      !!fromChain.permit2Proxy &&
+      !payload?.batchingSupported &&
+      !disableMessageSigning &&
+      !step.estimate.skipPermit
+    return !context.isTransactionExecuted(action) && isNativePermitAvailable
+  }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {
@@ -59,13 +75,16 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
     )
 
     if (!nativePermitData) {
-      return await new EthereumResetAllowanceTask().execute(context, {
-        signedTypedData,
-        updatedClient,
-        batchingSupported,
-        approved,
-        spenderAddress,
-      })
+      return {
+        status: 'COMPLETED',
+        data: {
+          signedTypedData,
+          updatedClient,
+          batchingSupported,
+          approved,
+          spenderAddress,
+        },
+      }
     }
 
     signedTypedData = signedTypedData.length
@@ -109,8 +128,11 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
       signedTypedData,
     })
 
-    return await new EthereumPrepareTransactionTask().execute(context, {
-      signedTypedData,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTypedData,
+      },
+    }
   }
 }

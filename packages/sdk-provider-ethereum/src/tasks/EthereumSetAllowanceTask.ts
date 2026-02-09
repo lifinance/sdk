@@ -9,15 +9,18 @@ import type { Address, Client, Hash } from 'viem'
 import { setAllowance } from '../actions/setAllowance.js'
 import { MaxUint256 } from '../permits/constants.js'
 import type { Call } from '../types.js'
-import { EthereumPrepareTransactionTask } from './EthereumPrepareTransactionTask.js'
 import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly type = 'ETHEREUM_SET_ALLOWANCE'
-  readonly actionType = 'TOKEN_ALLOWANCE'
+  override async shouldRun(
+    context: TaskContext<EthereumTaskExtra>,
+    action?: ExecutionAction
+  ): Promise<boolean> {
+    return !context.isTransactionExecuted(action)
+  }
 
-  protected async run(
+  async run(
     context: TaskContext<EthereumTaskExtra>,
     action: ExecutionAction,
     payload: {
@@ -87,10 +90,13 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTask
         chainId: step.action.fromToken.chainId,
       })
 
-      return await new EthereumPrepareTransactionTask().execute(context, {
-        signedTypedData,
-        calls,
-      })
+      return {
+        status: 'COMPLETED',
+        data: {
+          signedTypedData,
+          calls,
+        },
+      }
     }
 
     await waitForApprovalTransaction(
@@ -103,8 +109,11 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTask
       statusManager
     )
 
-    return await new EthereumPrepareTransactionTask().execute(context, {
-      signedTypedData,
-    })
+    return {
+      status: 'COMPLETED',
+      data: {
+        signedTypedData,
+      },
+    }
   }
 }

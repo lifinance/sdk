@@ -1,4 +1,5 @@
 import {
+  ActionPipelineOrchestrator,
   BaseStepExecutor,
   CheckBalanceTask,
   PrepareTransactionTask,
@@ -10,6 +11,7 @@ import {
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
+import { SuiWaitForTransactionTask } from './tasks/SuiWaitForTransactionTask.js'
 import type { SuiTaskExtra } from './tasks/types.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
@@ -24,11 +26,18 @@ export class SuiStepExecutor extends BaseStepExecutor {
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<StepExecutorContext<SuiTaskExtra>> => {
-    const pipeline = new TaskPipeline([
-      new CheckBalanceTask<SuiTaskExtra>(),
-      new PrepareTransactionTask<SuiTaskExtra>(),
-      new SuiSignAndExecuteTask(),
-      new WaitForDestinationChainTask<SuiTaskExtra>(),
+    const { isBridgeExecution } = baseContext
+    const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    const pipeline = new ActionPipelineOrchestrator<SuiTaskExtra>([
+      new TaskPipeline<SuiTaskExtra>(exchangeActionType, [
+        new CheckBalanceTask<SuiTaskExtra>(),
+        new PrepareTransactionTask<SuiTaskExtra>(),
+        new SuiSignAndExecuteTask(),
+        new SuiWaitForTransactionTask(),
+      ]),
+      new TaskPipeline<SuiTaskExtra>('RECEIVING_CHAIN', [
+        new WaitForDestinationChainTask<SuiTaskExtra>(),
+      ]),
     ])
 
     return {

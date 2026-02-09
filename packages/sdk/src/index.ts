@@ -24,6 +24,7 @@ export { actions } from './actions/index.js'
 export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './client/createClient.js'
+export { ActionPipelineOrchestrator } from './core/ActionPipelineOrchestrator.js'
 export { BaseStepExecutionTask } from './core/BaseStepExecutionTask.js'
 export { BaseStepExecutor } from './core/BaseStepExecutor.js'
 export {
@@ -87,7 +88,6 @@ export type {
   StepExecutor,
   StepExecutorOptions,
   StepExtended,
-  TaskExecutionActionType,
   TransactionMethodType,
   TransactionParameters,
   TransactionRequestParameters,
