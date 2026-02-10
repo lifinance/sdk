@@ -56,7 +56,7 @@ export { CheckBalanceTask } from './tasks/CheckBalanceTask.js'
 export { checkBalance } from './tasks/helpers/checkBalance.js'
 export { stepComparison } from './tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './tasks/PrepareTransactionTask.js'
-export { WaitForDestinationChainTask } from './tasks/WaitForDestinationChainTask.js'
+export { WaitForTransactionStatusTask } from './tasks/WaitForTransactionStatusTask.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,

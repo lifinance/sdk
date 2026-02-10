@@ -6,7 +6,7 @@ import {
   type StepExecutorBaseContext,
   type StepExecutorContext,
   TaskPipeline,
-  WaitForDestinationChainTask,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
@@ -34,10 +34,17 @@ export class SuiStepExecutor extends BaseStepExecutor {
         new PrepareTransactionTask<SuiTaskExtra>(),
         new SuiSignAndExecuteTask(),
         new SuiWaitForTransactionTask(),
+        ...(!isBridgeExecution
+          ? [new WaitForTransactionStatusTask<SuiTaskExtra>()]
+          : []),
       ]),
-      new TaskPipeline<SuiTaskExtra>('RECEIVING_CHAIN', [
-        new WaitForDestinationChainTask<SuiTaskExtra>(),
-      ]),
+      ...(isBridgeExecution
+        ? [
+            new TaskPipeline<SuiTaskExtra>('RECEIVING_CHAIN', [
+              new WaitForTransactionStatusTask<SuiTaskExtra>(),
+            ]),
+          ]
+        : []),
     ])
 
     return {

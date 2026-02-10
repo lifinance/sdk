@@ -64,13 +64,6 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<Ethere
       signedTypedData
     )
 
-    if (!step.transactionRequest && !step.typedData?.length) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
-
     const comparedStep = await stepComparison(
       statusManager,
       step,

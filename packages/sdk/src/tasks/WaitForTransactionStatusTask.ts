@@ -7,21 +7,9 @@ import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
-/**
- * Base task for "wait for destination chain" (bridge only).
- * Uses context.client, step, action, fromChain, toChain, statusManager.
- * Subclasses set `type` and optionally override getWaitOptions() for ecosystem-specific options.
- */
-export class WaitForDestinationChainTask<
+export class WaitForTransactionStatusTask<
   TContext extends TaskExtraBase,
 > extends BaseStepExecutionTask<TContext> {
-  override async shouldRun(
-    context: TaskContext<TContext>,
-    action?: ExecutionAction
-  ): Promise<boolean> {
-    return context.isTransactionConfirmed(action)
-  }
-
   async run(
     context: TaskContext<TContext>,
     action: ExecutionAction
@@ -29,31 +17,30 @@ export class WaitForDestinationChainTask<
     const {
       client,
       step,
-      fromChain,
-      toChain,
       statusManager,
       pollingIntervalMs,
+      toChain,
+      isBridgeExecution,
     } = context
 
     // At this point, we should have a txHash or taskId
     // taskId is used for custom integrations that don't use the standard transaction hash
-    const transactionHash = action.txHash || action.taskId
-    let actionType = action.type
+    let transactionHash: string | undefined
     try {
+      const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+      if (exchangeActionType !== action.type) {
+        const exchangeAction = statusManager.findAction(
+          step,
+          exchangeActionType
+        )
+        transactionHash = exchangeAction?.txHash || exchangeAction?.taskId
+      } else {
+        transactionHash = action.txHash || action.taskId
+      }
+
       // Wait for the transaction status on the destination chain
       if (!transactionHash) {
         throw new Error('Transaction hash is undefined.')
-      }
-
-      const isBridgeExecution = fromChain.id !== toChain.id
-      if (isBridgeExecution) {
-        const receivingChainAction = statusManager.findOrCreateAction({
-          step,
-          type: 'RECEIVING_CHAIN',
-          status: 'PENDING',
-          chainId: toChain.id,
-        })
-        actionType = receivingChainAction.type
       }
 
       const statusResponse = (await waitForTransactionStatus(
@@ -61,7 +48,7 @@ export class WaitForDestinationChainTask<
         statusManager,
         transactionHash,
         step,
-        actionType,
+        action.type,
         pollingIntervalMs
       )) as FullStatusData
 
@@ -69,7 +56,7 @@ export class WaitForDestinationChainTask<
         statusResponse.receiving as ExtendedTransactionInfo
 
       // Update action status
-      statusManager.updateAction(step, actionType, 'DONE', {
+      statusManager.updateAction(step, action.type, 'DONE', {
         chainId: statusReceiving?.chainId || toChain.id,
         substatus: statusResponse.substatus,
         substatusMessage: statusResponse.substatusMessage,

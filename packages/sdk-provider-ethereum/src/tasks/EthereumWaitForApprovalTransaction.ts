@@ -10,8 +10,6 @@ import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction
 import type { EthereumTaskExtra } from './types.js'
 
 export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  readonly actionType = 'TOKEN_ALLOWANCE'
-
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
     action?: ExecutionAction

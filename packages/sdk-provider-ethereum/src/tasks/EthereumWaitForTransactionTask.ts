@@ -50,6 +50,7 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<Ethere
       await context.getExecutionStrategy(step)
 
     const task = this.strategies[executionStrategy]
-    return task.run(context, action)
+    const result = await task.run(context, action)
+    return result
   }
 }

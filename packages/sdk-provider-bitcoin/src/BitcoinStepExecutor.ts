@@ -8,7 +8,7 @@ import {
   type StepExecutorContext,
   type StepExecutorOptions,
   TaskPipeline,
-  WaitForDestinationChainTask,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import { getBitcoinPublicClient } from './client/publicClient.js'
 import { parseBitcoinErrors } from './errors/parseBitcoinErrors.js'
@@ -42,10 +42,17 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
         new PrepareTransactionTask<BitcoinTaskExtra>(),
         new BitcoinSignAndExecuteTask(),
         new BitcoinWaitForTransactionTask(),
+        ...(!isBridgeExecution
+          ? [new WaitForTransactionStatusTask<BitcoinTaskExtra>()]
+          : []),
       ]),
-      new TaskPipeline<BitcoinTaskExtra>('RECEIVING_CHAIN', [
-        new WaitForDestinationChainTask<BitcoinTaskExtra>(),
-      ]),
+      ...(isBridgeExecution
+        ? [
+            new TaskPipeline<BitcoinTaskExtra>('RECEIVING_CHAIN', [
+              new WaitForTransactionStatusTask<BitcoinTaskExtra>(),
+            ]),
+          ]
+        : []),
     ])
 
     return {

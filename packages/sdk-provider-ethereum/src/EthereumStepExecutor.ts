@@ -9,7 +9,7 @@ import {
   type StepExecutorOptions,
   TaskPipeline,
   TransactionError,
-  WaitForDestinationChainTask,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import type { Client, GetAddressesReturnType } from 'viem'
 import { getAddresses } from 'viem/actions'
@@ -98,11 +98,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         new EthereumPrepareTransactionTask(),
         new EthereumSignAndExecuteTask(),
         new EthereumWaitForTransactionTask(),
+        ...(!isBridgeExecution
+          ? [new WaitForTransactionStatusTask<EthereumTaskExtra>()]
+          : []),
       ]),
-      new TaskPipeline<EthereumTaskExtra>('RECEIVING_CHAIN', [
-        new EthereumDestinationChainCheckClientTask(),
-        new WaitForDestinationChainTask<EthereumTaskExtra>(),
-      ]),
+      ...(isBridgeExecution
+        ? [
+            new TaskPipeline<EthereumTaskExtra>('RECEIVING_CHAIN', [
+              new EthereumDestinationChainCheckClientTask(),
+              new WaitForTransactionStatusTask<EthereumTaskExtra>(),
+            ]),
+          ]
+        : []),
     ])
 
     const isFromNativeToken =

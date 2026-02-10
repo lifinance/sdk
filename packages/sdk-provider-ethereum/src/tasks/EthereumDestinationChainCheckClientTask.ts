@@ -27,6 +27,7 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
+
     return { status: 'COMPLETED' }
   }
 }

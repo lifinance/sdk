@@ -8,7 +8,7 @@ import {
   type StepExecutorContext,
   TaskPipeline,
   TransactionError,
-  WaitForDestinationChainTask,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
@@ -36,10 +36,17 @@ export class SolanaStepExecutor extends BaseStepExecutor {
         new PrepareTransactionTask<SolanaTaskExtra>(),
         new SolanaSignAndExecuteTask(),
         new SolanaWaitForTransactionTask(),
+        ...(!isBridgeExecution
+          ? [new WaitForTransactionStatusTask<SolanaTaskExtra>()]
+          : []),
       ]),
-      new TaskPipeline<SolanaTaskExtra>('RECEIVING_CHAIN', [
-        new WaitForDestinationChainTask<SolanaTaskExtra>(),
-      ]),
+      ...(isBridgeExecution
+        ? [
+            new TaskPipeline<SolanaTaskExtra>('RECEIVING_CHAIN', [
+              new WaitForTransactionStatusTask<SolanaTaskExtra>(),
+            ]),
+          ]
+        : []),
     ])
 
     const walletAccount = this.wallet.accounts.find(

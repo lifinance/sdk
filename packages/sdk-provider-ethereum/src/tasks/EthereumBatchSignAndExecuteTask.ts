@@ -36,7 +36,8 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<Ether
       return { status: 'PAUSED' }
     }
 
-    const { transactionRequest, calls } = payload
+    const { transactionRequest, calls: incomingCalls } = payload
+    const calls = incomingCalls ?? []
     const transferCall: Call = {
       chainId: fromChain.id,
       data: transactionRequest.data as Hex,
