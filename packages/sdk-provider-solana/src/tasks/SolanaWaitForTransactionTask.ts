@@ -45,7 +45,7 @@ const shouldUseJitoBundle = (
 export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<SolanaTaskExtra> {
   override async shouldRun(
     context: TaskContext<SolanaTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }

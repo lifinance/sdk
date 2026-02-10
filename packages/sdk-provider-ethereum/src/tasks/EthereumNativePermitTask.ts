@@ -16,7 +16,7 @@ import type { EthereumTaskExtra } from './types.js'
 export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    action?: ExecutionAction,
+    action: ExecutionAction,
     payload?: {
       signedTypedData: SignedTypedData[]
       updatedClient: Client

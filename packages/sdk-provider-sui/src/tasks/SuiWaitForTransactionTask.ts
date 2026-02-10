@@ -13,7 +13,7 @@ import type { SuiTaskExtra } from './types.js'
 export class SuiWaitForTransactionTask extends BaseStepExecutionTask<SuiTaskExtra> {
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }

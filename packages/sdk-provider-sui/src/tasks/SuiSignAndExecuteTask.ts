@@ -1,11 +1,11 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  getTransactionRequestData,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
   TransactionError,
-  type TransactionParameters,
 } from '@lifi/sdk'
 import { signAndExecuteTransaction } from '@mysten/wallet-standard'
 import type { SuiTaskExtra } from './types.js'
@@ -13,7 +13,7 @@ import type { SuiTaskExtra } from './types.js'
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
   override async shouldRun(
     context: TaskContext<SuiTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
@@ -24,38 +24,10 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
   ): Promise<TaskResult> {
     const { step, wallet, statusManager, executionOptions } = context
 
-    if (!step.transactionRequest?.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
-
-    let transactionRequest: TransactionParameters = {
-      data: step.transactionRequest.data,
-    }
-
-    if (executionOptions?.updateTransactionRequestHook) {
-      const customizedTransactionRequest: TransactionParameters =
-        await executionOptions.updateTransactionRequestHook({
-          requestType: 'transaction',
-          ...transactionRequest,
-        })
-
-      transactionRequest = {
-        ...transactionRequest,
-        ...customizedTransactionRequest,
-      }
-    }
-
-    const transactionRequestData = transactionRequest.data
-
-    if (!transactionRequestData) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
+    const transactionRequestData = await getTransactionRequestData(
+      step,
+      executionOptions
+    )
 
     const walletAccount = wallet.accounts?.find(
       (a) => a.address === step.action.fromAddress

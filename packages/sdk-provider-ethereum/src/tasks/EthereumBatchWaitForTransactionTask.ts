@@ -13,7 +13,7 @@ import type { EthereumTaskExtra } from './types.js'
 export class EthereumBatchWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return context.isTransactionExecuted(action)
   }

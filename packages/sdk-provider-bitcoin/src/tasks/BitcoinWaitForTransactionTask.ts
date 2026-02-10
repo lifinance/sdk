@@ -13,7 +13,7 @@ import type { BitcoinTaskExtra } from './types.js'
 export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   override async shouldRun(
     context: TaskContext<BitcoinTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return context.isTransactionExecuted(action)
   }

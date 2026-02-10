@@ -31,7 +31,7 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTa
 
   override async shouldRun(
     context: TaskContext<EthereumTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }

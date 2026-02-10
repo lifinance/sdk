@@ -17,7 +17,6 @@ interface TaskContextShared {
   toChain: ExtendedChain
   isBridgeExecution: boolean
   isTransactionExecuted: (action?: ExecutionAction) => boolean
-  isTransactionConfirmed: (action?: ExecutionAction) => boolean
 }
 
 export interface TaskExtraBase extends TaskContextShared {

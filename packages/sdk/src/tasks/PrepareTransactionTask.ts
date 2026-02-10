@@ -15,7 +15,7 @@ export class PrepareTransactionTask<
 > extends BaseStepExecutionTask<TContext> {
   override async shouldRun(
     context: TaskContext<TContext>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }

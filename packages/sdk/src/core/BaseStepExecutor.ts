@@ -67,13 +67,6 @@ export abstract class BaseStepExecutor implements StepExecutor {
           action.status !== 'DONE'
         )
       },
-      isTransactionConfirmed: (action?: ExecutionAction) => {
-        return (
-          !!action &&
-          !!(action.txHash || action.taskId) &&
-          action.status === 'DONE'
-        )
-      },
       retryParams,
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,

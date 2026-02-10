@@ -1,11 +1,11 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  getTransactionRequestData,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
   TransactionError,
-  type TransactionParameters,
 } from '@lifi/sdk'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
@@ -16,7 +16,7 @@ import type { SolanaTaskExtra } from './types.js'
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskExtra> {
   override async shouldRun(
     context: TaskContext<SolanaTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
@@ -28,40 +28,15 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask<SolanaTaskEx
     const { step, wallet, walletAccount, statusManager, executionOptions } =
       context
 
-    if (!step.transactionRequest?.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
-
-    let transactionRequest: TransactionParameters = {
-      data: step.transactionRequest.data,
-    }
-
-    if (executionOptions?.updateTransactionRequestHook) {
-      const customizedTransactionRequest: TransactionParameters =
-        await executionOptions.updateTransactionRequestHook({
-          requestType: 'transaction',
-          ...transactionRequest,
-        })
-      transactionRequest = {
-        ...transactionRequest,
-        ...customizedTransactionRequest,
-      }
-    }
-
-    if (!transactionRequest.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
+    const transactionRequestData = await getTransactionRequestData(
+      step,
+      executionOptions
+    )
 
     // Handle both single transaction (string) and multiple transactions (array)
-    const transactionDataArray = Array.isArray(transactionRequest.data)
-      ? transactionRequest.data
-      : [transactionRequest.data]
+    const transactionDataArray = Array.isArray(transactionRequestData)
+      ? transactionRequestData
+      : [transactionRequestData]
 
     const transactionBytesArray = transactionDataArray.map((data) =>
       base64ToUint8Array(data)

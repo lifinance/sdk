@@ -7,10 +7,10 @@ export abstract class BaseStepExecutionTask<
 > {
   async shouldRun(
     _context: TaskContext<TContext>,
-    _action?: ExecutionAction,
+    action: ExecutionAction,
     _payload?: TPayload
   ): Promise<boolean> {
-    return Promise.resolve(true)
+    return action.status !== 'DONE'
   }
 
   abstract run(

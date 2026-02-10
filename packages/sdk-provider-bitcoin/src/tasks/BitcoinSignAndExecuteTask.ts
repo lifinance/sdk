@@ -9,11 +9,11 @@ import * as ecc from '@bitcoinerlab/secp256k1'
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  getTransactionRequestData,
   LiFiErrorCode,
   type TaskContext,
   type TaskResult,
   TransactionError,
-  type TransactionParameters,
 } from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
@@ -24,7 +24,7 @@ import type { BitcoinTaskExtra } from './types.js'
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
   override async shouldRun(
     context: TaskContext<BitcoinTaskExtra>,
-    action?: ExecutionAction
+    action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
@@ -42,35 +42,10 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
       publicClient,
     } = context
 
-    if (!step.transactionRequest?.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
-
-    let transactionRequest: TransactionParameters = {
-      data: step.transactionRequest.data,
-    }
-
-    if (executionOptions?.updateTransactionRequestHook) {
-      const customizedTransactionRequest: TransactionParameters =
-        await executionOptions.updateTransactionRequestHook({
-          requestType: 'transaction',
-          ...transactionRequest,
-        })
-      transactionRequest = {
-        ...transactionRequest,
-        ...customizedTransactionRequest,
-      }
-    }
-
-    if (!transactionRequest.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
-      )
-    }
+    const transactionRequestData = await getTransactionRequestData(
+      step,
+      executionOptions
+    )
 
     // TODO: check chain and possibly implement chain switch?
     // Prevent execution of the quote by wallet different from the one which requested the quote
@@ -81,7 +56,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTask
       )
     }
 
-    const psbtHex = transactionRequest.data
+    const psbtHex = transactionRequestData
 
     // Initialize ECC library required for Taproot operations
     // https://github.com/bitcoinjs/bitcoinjs-lib?tab=readme-ov-file#using-taproot
