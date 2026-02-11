@@ -3,15 +3,21 @@ import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { TransactionError } from '../errors/errors.js'
 import type { ExecutionAction } from '../types/core.js'
-import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
 import { getTransactionFailedMessage } from '../utils/getTransactionMessage.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
-export class WaitForTransactionStatusTask<
-  TContext extends TaskExtraBase,
-> extends BaseStepExecutionTask<TContext> {
+export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
+  override async shouldRun(
+    _context: StepExecutorContext,
+    action: ExecutionAction
+  ): Promise<boolean> {
+    // For bridge actions, status is checked in RECEIVING_CHAIN action/pipeline
+    return action.type !== 'CROSS_CHAIN' && action?.status !== 'DONE'
+  }
+
   async run(
-    context: TaskContext<TContext>,
+    context: StepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const {

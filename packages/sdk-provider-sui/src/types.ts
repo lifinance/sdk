@@ -1,6 +1,7 @@
 import {
   ChainType,
   type SDKProvider,
+  type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
@@ -20,6 +21,10 @@ export function isSuiProvider(
 }
 
 export interface SuiStepExecutorOptions extends StepExecutorOptions {
+  wallet: WalletWithRequiredFeatures
+}
+
+export interface SuiStepExecutorContext extends StepExecutorContext {
   wallet: WalletWithRequiredFeatures
 }
 

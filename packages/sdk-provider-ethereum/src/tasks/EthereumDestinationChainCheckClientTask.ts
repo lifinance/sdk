@@ -1,14 +1,13 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
-import type { EthereumTaskExtra } from './types.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 
-export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTask {
   override async shouldRun(
-    _context: TaskContext<EthereumTaskExtra>,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     // Find if it's bridging and the step is waiting for a transaction on the destination chain
@@ -16,7 +15,7 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const { step, checkClient } = context

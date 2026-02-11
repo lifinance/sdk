@@ -3,7 +3,6 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type SignedTypedData,
-  type TaskContext,
   type TaskResult,
   TransactionError,
   type TransactionParameters,
@@ -14,21 +13,21 @@ import { getAction } from 'viem/utils'
 import { encodeNativePermitData } from '../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../permits/signPermit2Message.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       transactionRequest: TransactionParameters

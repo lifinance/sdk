@@ -3,23 +3,22 @@ import {
   type ExecutionAction,
   getTransactionRequestData,
   LiFiErrorCode,
-  type TaskContext,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
 import { signAndExecuteTransaction } from '@mysten/wallet-standard'
-import type { SuiTaskExtra } from './types.js'
+import type { SuiStepExecutorContext } from '../types.js'
 
-export class SuiSignAndExecuteTask extends BaseStepExecutionTask<SuiTaskExtra> {
+export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<SuiTaskExtra>,
+    context: SuiStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<SuiTaskExtra>,
+    context: SuiStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const { step, wallet, statusManager, executionOptions } = context

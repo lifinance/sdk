@@ -11,7 +11,6 @@ import type {
 import type {
   StepExecutorBaseContext,
   StepExecutorContext,
-  TaskExtraBase,
 } from '../types/tasks.js'
 import { StatusManager } from './StatusManager.js'
 
@@ -76,7 +75,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
 
   abstract getContext(
     baseContext: StepExecutorBaseContext
-  ): Promise<StepExecutorContext<TaskExtraBase>>
+  ): Promise<StepExecutorContext>
 
   executeStep = async (
     client: SDKClient,
@@ -88,7 +87,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const baseContext = await this.getBaseContext(client, step, retryParams)
     const context = await this.getContext(baseContext)
 
-    await context.pipeline.run(context)
+    await context.actionPipelines.run(context)
 
     return step
   }

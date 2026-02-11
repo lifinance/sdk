@@ -4,7 +4,6 @@ import {
   LiFiErrorCode,
   relayTransaction,
   type SignedTypedData,
-  type TaskContext,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -12,19 +11,19 @@ import type { Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { isNativePermitValid } from '../permits/isNativePermitValid.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTypedData: SignedTypedData[]

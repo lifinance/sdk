@@ -4,7 +4,6 @@ import {
   CheckBalanceTask,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
-  type StepExecutorContext,
   TaskPipeline,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
@@ -12,8 +11,7 @@ import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
 import { SuiWaitForTransactionTask } from './tasks/SuiWaitForTransactionTask.js'
-import type { SuiTaskExtra } from './tasks/types.js'
-import type { SuiStepExecutorOptions } from './types.js'
+import type { SuiStepExecutorContext, SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
   private wallet: WalletWithRequiredFeatures
@@ -25,31 +23,27 @@ export class SuiStepExecutor extends BaseStepExecutor {
 
   override getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<StepExecutorContext<SuiTaskExtra>> => {
+  ): Promise<SuiStepExecutorContext> => {
     const { isBridgeExecution } = baseContext
     const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const pipeline = new ActionPipelineOrchestrator<SuiTaskExtra>([
-      new TaskPipeline<SuiTaskExtra>(exchangeActionType, [
-        new CheckBalanceTask<SuiTaskExtra>(),
-        new PrepareTransactionTask<SuiTaskExtra>(),
+    const actionPipelines = new ActionPipelineOrchestrator([
+      new TaskPipeline(exchangeActionType, [
+        new CheckBalanceTask(),
+        new PrepareTransactionTask(),
         new SuiSignAndExecuteTask(),
         new SuiWaitForTransactionTask(),
-        ...(!isBridgeExecution
-          ? [new WaitForTransactionStatusTask<SuiTaskExtra>()]
-          : []),
+        new WaitForTransactionStatusTask(),
       ]),
-      ...(isBridgeExecution
-        ? [
-            new TaskPipeline<SuiTaskExtra>('RECEIVING_CHAIN', [
-              new WaitForTransactionStatusTask<SuiTaskExtra>(),
-            ]),
-          ]
-        : []),
+      new TaskPipeline(
+        'RECEIVING_CHAIN',
+        [new WaitForTransactionStatusTask()],
+        () => isBridgeExecution
+      ),
     ])
 
     return {
       ...baseContext,
-      pipeline,
+      actionPipelines,
       wallet: this.wallet,
       parseErrors: parseSuiErrors,
     }

@@ -1,24 +1,23 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import { waitForTransactionReceipt } from '../actions/waitForTransactionReceipt.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const {

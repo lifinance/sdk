@@ -2,26 +2,24 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   type SignedTypedData,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address, Client, Hash } from 'viem'
 import { setAllowance } from '../actions/setAllowance.js'
 import { MaxUint256 } from '../permits/constants.js'
-import type { Call } from '../types.js'
+import type { Call, EthereumStepExecutorContext } from '../types.js'
 import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumSetAllowanceTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTypedData: SignedTypedData[]

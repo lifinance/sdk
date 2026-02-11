@@ -5,26 +5,24 @@ import {
   LiFiErrorCode,
   type SignedTypedData,
   stepComparison,
-  type TaskContext,
   type TaskResult,
   TransactionError,
   type TransactionParameters,
 } from '@lifi/sdk'
 import { getMaxPriorityFeePerGas } from '../actions/getMaxPriorityFeePerGas.js'
-import type { Call } from '../types.js'
+import type { Call, EthereumStepExecutorContext } from '../types.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumPrepareTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTypedData: SignedTypedData[]

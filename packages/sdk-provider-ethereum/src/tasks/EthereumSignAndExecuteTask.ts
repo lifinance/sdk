@@ -2,23 +2,20 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   type SignedTypedData,
-  type TaskContext,
   type TaskResult,
   type TransactionParameters,
 } from '@lifi/sdk'
-import type { Call } from '../types.js'
+import type { Call, EthereumStepExecutorContext } from '../types.js'
 import { EthereumBatchSignAndExecuteTask } from './EthereumBatchSignAndExecuteTask.js'
 import { EthereumRelayerSignAndExecuteTask } from './EthereumRelayerSignAndExecuteTask.js'
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export interface EthereumSignAndExecuteStrategyTasks {
-  batch: BaseStepExecutionTask<EthereumTaskExtra>
-  relayer: BaseStepExecutionTask<EthereumTaskExtra>
-  standard: BaseStepExecutionTask<EthereumTaskExtra>
-}
-export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  private readonly strategies: EthereumSignAndExecuteStrategyTasks
+export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
+  private readonly strategies: {
+    batch: BaseStepExecutionTask
+    relayer: BaseStepExecutionTask
+    standard: BaseStepExecutionTask
+  }
 
   constructor() {
     super()
@@ -30,14 +27,14 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask<EthereumTa
   }
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTypedData: SignedTypedData[]

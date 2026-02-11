@@ -5,7 +5,6 @@ import {
   LiFiErrorCode,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
-  type StepExecutorContext,
   TaskPipeline,
   TransactionError,
   WaitForTransactionStatusTask,
@@ -14,8 +13,10 @@ import type { Wallet } from '@wallet-standard/base'
 import { parseSolanaErrors } from './errors/parseSolanaErrors.js'
 import { SolanaSignAndExecuteTask } from './tasks/SolanaSignAndExecuteTask.js'
 import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTask.js'
-import type { SolanaTaskExtra } from './tasks/types.js'
-import type { SolanaStepExecutorOptions } from './types.js'
+import type {
+  SolanaStepExecutorContext,
+  SolanaStepExecutorOptions,
+} from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private wallet: Wallet
@@ -27,26 +28,22 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
   override getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<StepExecutorContext<SolanaTaskExtra>> => {
+  ): Promise<SolanaStepExecutorContext> => {
     const { isBridgeExecution, step } = baseContext
     const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const pipeline = new ActionPipelineOrchestrator<SolanaTaskExtra>([
-      new TaskPipeline<SolanaTaskExtra>(exchangeActionType, [
-        new CheckBalanceTask<SolanaTaskExtra>(),
-        new PrepareTransactionTask<SolanaTaskExtra>(),
+    const actionPipelines = new ActionPipelineOrchestrator([
+      new TaskPipeline(exchangeActionType, [
+        new CheckBalanceTask(),
+        new PrepareTransactionTask(),
         new SolanaSignAndExecuteTask(),
         new SolanaWaitForTransactionTask(),
-        ...(!isBridgeExecution
-          ? [new WaitForTransactionStatusTask<SolanaTaskExtra>()]
-          : []),
+        new WaitForTransactionStatusTask(),
       ]),
-      ...(isBridgeExecution
-        ? [
-            new TaskPipeline<SolanaTaskExtra>('RECEIVING_CHAIN', [
-              new WaitForTransactionStatusTask<SolanaTaskExtra>(),
-            ]),
-          ]
-        : []),
+      new TaskPipeline(
+        'RECEIVING_CHAIN',
+        [new WaitForTransactionStatusTask()],
+        () => isBridgeExecution
+      ),
     ])
 
     const walletAccount = this.wallet.accounts.find(
@@ -61,7 +58,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
 
     return {
       ...baseContext,
-      pipeline,
+      actionPipelines,
       wallet: this.wallet,
       walletAccount,
       parseErrors: parseSolanaErrors,

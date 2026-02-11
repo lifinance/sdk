@@ -1,26 +1,24 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type TaskContext,
   type TaskResult,
   type TransactionParameters,
 } from '@lifi/sdk'
 import type { Address, Hash, Hex } from 'viem'
 import { sendCalls } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { Call } from '../types.js'
-import type { EthereumTaskExtra } from './types.js'
+import type { Call, EthereumStepExecutorContext } from '../types.js'
 
-export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       transactionRequest: TransactionParameters

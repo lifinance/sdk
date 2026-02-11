@@ -1,31 +1,47 @@
 import { ExecuteStepRetryError } from '../errors/errors.js'
-import type { ExecutionActionType } from '../types/core.js'
-import type {
-  StepExecutorContext,
-  TaskExtraBase,
-  TaskResult,
-} from '../types/tasks.js'
+import type { ExecutionAction, ExecutionActionType } from '../types/core.js'
+import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
 import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
+
+export type TaskPipelineRunWhen = (
+  context: StepExecutorContext,
+  payload?: unknown
+) => boolean | Promise<boolean>
 
 /**
  * Action-centric pipeline: accepts actionType and a list of tasks.
  * When an action is not done, the whole pipeline runs from the start.
  * Tasks individually check shouldRun.
+ * Optional runWhen: when provided, the pipeline runs only when it returns true.
  */
-export class TaskPipeline<TContext extends TaskExtraBase = TaskExtraBase> {
+export class TaskPipeline {
   readonly actionType: ExecutionActionType
-  private tasks: BaseStepExecutionTask<TContext>[]
+  private readonly tasks: BaseStepExecutionTask[]
+  private readonly runWhen?: TaskPipelineRunWhen
 
   constructor(
     actionType: ExecutionActionType,
-    tasks: BaseStepExecutionTask<TContext>[]
+    tasks: BaseStepExecutionTask[],
+    runWhen?: TaskPipelineRunWhen
   ) {
     this.actionType = actionType
     this.tasks = tasks
+    this.runWhen = runWhen
+  }
+
+  async shouldRun(
+    context: StepExecutorContext,
+    action?: ExecutionAction,
+    payload?: unknown
+  ): Promise<boolean> {
+    if (!this.runWhen) {
+      return action?.status !== 'DONE'
+    }
+    return this.runWhen(context, payload)
   }
 
   async run(
-    context: StepExecutorContext<TContext>,
+    context: StepExecutorContext,
     payload?: unknown
   ): Promise<TaskResult> {
     const { statusManager, step, parseErrors } = context

@@ -11,26 +11,25 @@ import {
   type ExecutionAction,
   getTransactionRequestData,
   LiFiErrorCode,
-  type TaskContext,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
+import type { BitcoinStepExecutorContext } from '../types.js'
 import { generateRedeemScript } from '../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../utils/isPsbtFinalized.js'
 import { toXOnly } from '../utils/toXOnly.js'
-import type { BitcoinTaskExtra } from './types.js'
 
-export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
+export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<BitcoinTaskExtra>,
+    context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<BitcoinTaskExtra>,
+    context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const {

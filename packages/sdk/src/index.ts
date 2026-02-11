@@ -97,8 +97,6 @@ export type {
 export type {
   StepExecutorBaseContext,
   StepExecutorContext,
-  TaskContext,
-  TaskExtraBase,
   TaskResult,
   TaskStatus,
 } from './types/tasks.js'

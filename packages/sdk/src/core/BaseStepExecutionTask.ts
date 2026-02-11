@@ -1,12 +1,9 @@
 import type { ExecutionAction } from '../types/core.js'
-import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
 
-export abstract class BaseStepExecutionTask<
-  TContext extends TaskExtraBase,
-  TPayload = unknown,
-> {
+export abstract class BaseStepExecutionTask<TPayload = unknown> {
   async shouldRun(
-    _context: TaskContext<TContext>,
+    _context: StepExecutorContext,
     action: ExecutionAction,
     _payload?: TPayload
   ): Promise<boolean> {
@@ -14,7 +11,7 @@ export abstract class BaseStepExecutionTask<
   }
 
   abstract run(
-    context: TaskContext<TContext>,
+    context: StepExecutorContext,
     action: ExecutionAction,
     payload?: TPayload
   ): Promise<TaskResult>

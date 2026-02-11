@@ -4,8 +4,8 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
+  type SignedTypedData,
   type StepExecutorBaseContext,
-  type StepExecutorContext,
   type StepExecutorOptions,
   TaskPipeline,
   TransactionError,
@@ -15,14 +15,20 @@ import type { Client, GetAddressesReturnType } from 'viem'
 import { getAddresses } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { parseEthereumErrors } from './errors/parseEthereumErrors.js'
-import { EthereumCheckPermitAndAllowanceTask } from './tasks/EthereumCheckPermitAndAllowanceTask.js'
+import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
+import { EthereumCheckPermitsTask } from './tasks/EthereumCheckPermitsTask.js'
 import { EthereumDestinationChainCheckClientTask } from './tasks/EthereumDestinationChainCheckClientTask.js'
+import { EthereumNativePermitTask } from './tasks/EthereumNativePermitTask.js'
 import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
+import { EthereumResetAllowanceTask } from './tasks/EthereumResetAllowanceTask.js'
+import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
+import { EthereumWaitForApprovalTransactionTask } from './tasks/EthereumWaitForApprovalTransaction.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
 import { switchChain } from './tasks/helpers/switchChain.js'
-import type { EthereumTaskExtra } from './tasks/types.js'
+import type { EthereumStepExecutorContext } from './types.js'
+import { getDomainChainId } from './utils/getDomainChainId.js'
 import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
@@ -80,9 +86,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     return updatedClient
   }
 
-  override getContext = async (
+  getContext = async (
     baseContext: StepExecutorBaseContext
-  ): Promise<StepExecutorContext<EthereumTaskExtra>> => {
+  ): Promise<EthereumStepExecutorContext> => {
     const {
       isBridgeExecution,
       step,
@@ -90,36 +96,86 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       executionOptions,
       client,
       retryParams,
+      statusManager,
     } = baseContext
-    const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    const pipeline = new ActionPipelineOrchestrator<EthereumTaskExtra>([
-      new TaskPipeline<EthereumTaskExtra>(exchangeActionType, [
-        new EthereumCheckPermitAndAllowanceTask(),
-        new EthereumPrepareTransactionTask(),
-        new EthereumSignAndExecuteTask(),
-        new EthereumWaitForTransactionTask(),
-        ...(!isBridgeExecution
-          ? [new WaitForTransactionStatusTask<EthereumTaskExtra>()]
-          : []),
-      ]),
-      ...(isBridgeExecution
-        ? [
-            new TaskPipeline<EthereumTaskExtra>('RECEIVING_CHAIN', [
-              new EthereumDestinationChainCheckClientTask(),
-              new WaitForTransactionStatusTask<EthereumTaskExtra>(),
-            ]),
-          ]
-        : []),
-    ])
 
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
 
+    const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+
+    // Check if token needs approval and get approval transaction or message data when available
+    const exchangeAction = statusManager.findAction(step, exchangeActionType)
+    const checkForAllowance =
+      // No existing swap/bridge transaction is pending
+      !exchangeAction?.txHash &&
+      // No existing swap/bridge batch/order is pending
+      !exchangeAction?.taskId &&
+      // Token is not native (address is not zero)
+      !isFromNativeToken &&
+      // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval
+
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
       executionOptions?.disableMessageSigning || step.type !== 'lifi'
+
+    const actionPipelines = new ActionPipelineOrchestrator([
+      new TaskPipeline(
+        'PERMIT',
+        [new EthereumCheckPermitsTask()],
+        (context) => {
+          const permitTypedData = context.step.typedData?.filter(
+            (typedData) => typedData.primaryType === 'Permit'
+          )
+          return (
+            checkForAllowance &&
+            !!permitTypedData?.length &&
+            !disableMessageSigning
+          )
+        }
+      ),
+      new TaskPipeline(
+        'TOKEN_ALLOWANCE',
+        [
+          new EthereumCheckAllowanceTask(),
+          new EthereumNativePermitTask(),
+          new EthereumResetAllowanceTask(),
+          new EthereumSetAllowanceTask(),
+          new EthereumWaitForApprovalTransactionTask(),
+        ],
+        (context) => {
+          const permitAction = context.statusManager.findAction(
+            context.step,
+            'PERMIT'
+          )
+          // Check if there's a signed permit for the source transaction chain
+          const matchingPermit = permitAction?.signedTypedData.find(
+            (signedTypedData: SignedTypedData) =>
+              getDomainChainId(signedTypedData.domain) ===
+              context.step.action.fromChainId
+          )
+          return checkForAllowance && !matchingPermit
+        }
+      ),
+      new TaskPipeline(exchangeActionType, [
+        new EthereumPrepareTransactionTask(),
+        new EthereumSignAndExecuteTask(),
+        new EthereumWaitForTransactionTask(),
+        new WaitForTransactionStatusTask(),
+      ]),
+      new TaskPipeline(
+        'RECEIVING_CHAIN',
+        [
+          new EthereumDestinationChainCheckClientTask(),
+          new WaitForTransactionStatusTask(),
+        ],
+        () => isBridgeExecution
+      ),
+    ])
 
     return {
       ...baseContext,
@@ -148,7 +204,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ethereumClient: this.client,
       checkClient: this.checkClient,
       switchChain: this.switchChain,
-      pipeline,
+      actionPipelines,
       parseErrors: (
         e: Error,
         step?: LiFiStepExtended,

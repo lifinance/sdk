@@ -2,21 +2,19 @@ import { BaseStepExecutionTask } from '../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { TransactionError } from '../errors/errors.js'
 import type { ExecutionAction } from '../types/core.js'
-import type { TaskContext, TaskExtraBase, TaskResult } from '../types/tasks.js'
+import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
 import { checkBalance } from './helpers/checkBalance.js'
 
-export class CheckBalanceTask<
-  TContext extends TaskExtraBase,
-> extends BaseStepExecutionTask<TContext> {
+export class CheckBalanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<TContext>,
+    context: StepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<TContext>,
+    context: StepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const { client, step, statusManager } = context

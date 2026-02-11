@@ -1,32 +1,25 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type SignedTypedData,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getAllowance } from '../actions/getAllowance.js'
-import type { EthereumTaskExtra } from './types.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 
-export class EthereumCheckAllowanceTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-    }
+    context: EthereumStepExecutorContext,
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const { step, checkClient, fromChain, client, statusManager } = context
-
-    const { signedTypedData } = payload
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
@@ -54,6 +47,9 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask<EthereumTa
       updatedClient.account!.address,
       spenderAddress as Address
     )
+
+    const permitAction = statusManager.findAction(step, 'PERMIT')
+    const signedTypedData = permitAction?.signedTypedData ?? []
 
     // Return early if already approved
     if (fromAmount <= approved) {

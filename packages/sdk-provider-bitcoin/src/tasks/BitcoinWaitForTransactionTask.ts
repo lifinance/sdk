@@ -4,22 +4,21 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   LiFiErrorCode,
-  type TaskContext,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import type { BitcoinTaskExtra } from './types.js'
+import type { BitcoinStepExecutorContext } from '../types.js'
 
-export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask<BitcoinTaskExtra> {
+export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<BitcoinTaskExtra>,
+    context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<BitcoinTaskExtra>,
+    context: BitcoinStepExecutorContext,
     action: ExecutionAction,
     payload: {
       txHex: string

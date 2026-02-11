@@ -1,22 +1,22 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
+import type {
+  EthereumExecutionStrategy,
+  EthereumStepExecutorContext,
+} from '../types.js'
 import { EthereumBatchWaitForTransactionTask } from './EthereumBatchWaitForTransactionTask.js'
 import { EthereumRelayerWaitForTransactionTask } from './EthereumRelayerWaitForTransactionTask.js'
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
-import type { EthereumExecutionStrategy, EthereumTaskExtra } from './types.js'
 
-export interface EthereumWaitForTransactionStrategyTasks {
-  batch: BaseStepExecutionTask<EthereumTaskExtra>
-  relayer: BaseStepExecutionTask<EthereumTaskExtra>
-  standard: BaseStepExecutionTask<EthereumTaskExtra>
-}
-
-export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<EthereumTaskExtra> {
-  private readonly strategies: EthereumWaitForTransactionStrategyTasks
+export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
+  private readonly strategies: {
+    batch: BaseStepExecutionTask
+    relayer: BaseStepExecutionTask
+    standard: BaseStepExecutionTask
+  }
 
   constructor() {
     super()
@@ -28,14 +28,14 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask<Ethere
   }
 
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
     const { step, checkClient } = context

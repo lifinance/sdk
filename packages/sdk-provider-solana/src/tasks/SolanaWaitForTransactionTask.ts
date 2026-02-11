@@ -3,7 +3,6 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type SDKClient,
-  type TaskContext,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -16,7 +15,7 @@ import type { SolanaSignTransactionOutput } from '@solana/wallet-standard-featur
 import { sendAndConfirmBundle } from '../actions/sendAndConfirmBundle.js'
 import { sendAndConfirmTransaction } from '../actions/sendAndConfirmTransaction.js'
 import { callSolanaRpcsWithRetry } from '../rpc/utils.js'
-import type { SolanaTaskExtra } from './types.js'
+import type { SolanaStepExecutorContext } from '../types.js'
 
 type ConfirmedTransactionResult = {
   txSignature: string
@@ -42,16 +41,16 @@ const shouldUseJitoBundle = (
   return transactions.length > 1 && isJitoBundleEnabled
 }
 
-export class SolanaWaitForTransactionTask extends BaseStepExecutionTask<SolanaTaskExtra> {
+export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<SolanaTaskExtra>,
+    context: SolanaStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
     return !context.isTransactionExecuted(action)
   }
 
   async run(
-    context: TaskContext<SolanaTaskExtra>,
+    context: SolanaStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTransactionOutputs: SolanaSignTransactionOutput[]

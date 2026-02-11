@@ -6,8 +6,8 @@ import type {
 } from '@lifi/sdk'
 import type { Client } from 'viem'
 import { isBatchingSupported } from '../../actions/isBatchingSupported.js'
+import type { EthereumExecutionStrategy } from '../../types.js'
 import { isRelayerStep } from '../../utils/isRelayerStep.js'
-import type { EthereumExecutionStrategy } from '../types.js'
 
 export async function getEthereumExecutionStrategy(
   client: SDKClient,

@@ -10,22 +10,23 @@ import type {
   SDKClient,
 } from './core.js'
 
-interface TaskContextShared {
+export interface StepExecutorBaseContext {
   statusManager: StatusManager
   executionOptions?: ExecutionOptions
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
   isTransactionExecuted: (action?: ExecutionAction) => boolean
+  client: SDKClient
+  step: LiFiStepExtended
+  allowUserInteraction: boolean
+  retryParams?: ExecuteStepRetryParams
 }
 
-export interface TaskExtraBase extends TaskContextShared {
+export interface StepExecutorContext extends StepExecutorBaseContext {
   pollingIntervalMs?: number
-  pipeline: {
-    run(
-      context: TaskContext<TaskExtraBase>,
-      payload?: unknown
-    ): Promise<TaskResult>
+  actionPipelines: {
+    run(context: StepExecutorContext, payload?: unknown): Promise<TaskResult>
   }
   parseErrors: (
     error: Error,
@@ -33,19 +34,6 @@ export interface TaskExtraBase extends TaskContextShared {
     action?: ExecutionAction
   ) => Promise<SDKError | ExecuteStepRetryError>
 }
-
-export interface StepExecutorBaseContext extends TaskContextShared {
-  client: SDKClient
-  step: LiFiStepExtended
-  allowUserInteraction: boolean
-  retryParams?: ExecuteStepRetryParams
-}
-
-export type StepExecutorContext<TExtra extends TaskExtraBase = TaskExtraBase> =
-  StepExecutorBaseContext & TExtra
-
-export type TaskContext<TExtra extends TaskExtraBase = TaskExtraBase> =
-  StepExecutorContext<TExtra>
 
 export interface TaskResult {
   status: TaskStatus

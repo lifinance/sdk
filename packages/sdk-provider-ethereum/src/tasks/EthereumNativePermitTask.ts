@@ -2,7 +2,6 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   type SignedTypedData,
-  type TaskContext,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
@@ -10,12 +9,12 @@ import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { getNativePermit } from '../permits/getNativePermit.js'
 import { isNativePermitValid } from '../permits/isNativePermitValid.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
-import type { EthereumTaskExtra } from './types.js'
 
-export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTaskExtra> {
+export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload?: {
       signedTypedData: SignedTypedData[]
@@ -36,7 +35,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask<EthereumTask
   }
 
   async run(
-    context: TaskContext<EthereumTaskExtra>,
+    context: EthereumStepExecutorContext,
     action: ExecutionAction,
     payload: {
       signedTypedData: SignedTypedData[]
