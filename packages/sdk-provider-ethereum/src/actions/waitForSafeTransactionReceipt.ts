@@ -252,6 +252,7 @@ export async function waitForSafeTransactionReceipt(
     safeAddress: Address
     signature: string
     pollingInterval?: number
+    safeApiKey?: string
   }
 ): Promise<TransactionReceipt | undefined> {
   const resolvedTxHash = await resolveSafeTransactionHash(
@@ -260,7 +261,7 @@ export async function waitForSafeTransactionReceipt(
     options.signature,
     {
       pollingInterval: options.pollingInterval,
-      safeApiKey: client.config.safeApiKey,
+      safeApiKey: options.safeApiKey,
     }
   )
 

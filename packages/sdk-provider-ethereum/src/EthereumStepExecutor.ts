@@ -46,7 +46,6 @@ import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactio
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
 import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
-import { isSafeWallet } from './client/safeClient.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
@@ -63,22 +62,25 @@ import { getDomainChainId } from './utils/getDomainChainId.js'
 import { isContractCallStep } from './utils/isContractCallStep.js'
 import { isGaslessStep } from './utils/isGaslessStep.js'
 import { isRelayerStep } from './utils/isRelayerStep.js'
-import { isSignature } from './utils/isSignature.js'
+import { isSafeSignature } from './utils/isSafeSignature.js'
 import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
+  safeApiKey?: string
 }
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
+  private safeApiKey?: string
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
+    this.safeApiKey = options.safeApiKey
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
@@ -213,6 +215,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           safeAddress,
           signature: action.taskId as string,
           pollingInterval: 5_000,
+          safeApiKey: this.safeApiKey,
         })
         break
       }
@@ -520,16 +523,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
 
-    // Check if the wallet is a Safe wallet (cached after first call per chainId:address)
-    const accountAddress = this.client.account?.address
-    const isSafeWalletAddress = accountAddress
-      ? await isSafeWallet(
-          fromChain.id,
-          accountAddress,
-          client.config.safeApiKey
-        )
-      : false
-
     // Check if the wallet supports atomic batch transactions (EIP-5792)
     const calls: Call[] = []
     // Signed typed data for native permits and other messages
@@ -599,7 +592,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
-        isSafeWallet: isSafeWalletAddress,
+        safeApiKey: this.safeApiKey,
       })
 
       switch (allowanceResult.status) {
@@ -845,7 +838,15 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
         // Check if the returned "hash" is actually a Safe signature
         // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
-        if (txHash && isSignature(txHash) && isSafeWalletAddress) {
+        if (
+          txHash &&
+          (await isSafeSignature(
+            txHash,
+            fromChain.id,
+            this.client.account?.address,
+            this.safeApiKey
+          ))
+        ) {
           // Store the signature as taskId and use 'safe-queued' txType
           taskId = txHash
           txHash = undefined

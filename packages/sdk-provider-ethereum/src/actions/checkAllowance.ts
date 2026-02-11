@@ -20,7 +20,7 @@ import type { NativePermitData } from '../permits/types.js'
 import type { Call } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
-import { isSignature } from '../utils/isSignature.js'
+import { isSafeSignature } from '../utils/isSafeSignature.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
 import { resolveSafeTransactionHash } from './waitForSafeTransactionReceipt.js'
@@ -40,7 +40,7 @@ type CheckAllowanceParams = {
   batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
-  isSafeWallet?: boolean
+  safeApiKey?: string
 }
 
 type AllowanceResult =
@@ -68,7 +68,7 @@ export const checkAllowance = async (
     batchingSupported = false,
     permit2Supported = false,
     disableMessageSigning = false,
-    isSafeWallet = false,
+    safeApiKey,
   }: CheckAllowanceParams
 ): Promise<AllowanceResult> => {
   let sharedAction: ExecutionAction | undefined
@@ -182,7 +182,7 @@ export const checkAllowance = async (
         chain,
         statusManager,
         false,
-        isSafeWallet
+        safeApiKey
       )
       return { status: 'DONE', data: signedTypedData }
     }
@@ -320,7 +320,7 @@ export const checkAllowance = async (
           chain,
           statusManager,
           false,
-          isSafeWallet
+          safeApiKey
         )
 
         statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
@@ -388,7 +388,7 @@ export const checkAllowance = async (
       chain,
       statusManager,
       false,
-      isSafeWallet
+      safeApiKey
     )
 
     return { status: 'DONE', data: signedTypedData }
@@ -420,24 +420,26 @@ const waitForApprovalTransaction = async (
   chain: ExtendedChain,
   statusManager: StatusManager,
   approvalReset: boolean = false,
-  isSafeWallet: boolean = false
+  safeApiKey?: string
 ) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
 
   // Resolve Safe signature to on-chain tx hash if needed
-  if (isSignature(txHash) && isSafeWallet) {
-    const safeAddress = viemClient.account?.address
-    if (safeAddress) {
-      statusManager.updateAction(step, actionType, 'PENDING', {
-        taskId: txHash,
-        txType: 'safe-queued',
-      })
+  const address = viemClient.account?.address
 
-      txHash = await resolveSafeTransactionHash(chain.id, safeAddress, txHash, {
-        safeApiKey: client.config.safeApiKey,
-      })
-    }
+  if (
+    address &&
+    (await isSafeSignature(txHash, chain.id, address, safeApiKey))
+  ) {
+    statusManager.updateAction(step, actionType, 'PENDING', {
+      taskId: txHash,
+      txType: 'safe-queued',
+    })
+
+    txHash = await resolveSafeTransactionHash(chain.id, address, txHash, {
+      safeApiKey,
+    })
   }
 
   statusManager.updateAction(step, actionType, 'PENDING', {
