@@ -30,9 +30,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       ethereumClient: updatedClient,
       isPermit2Supported,
       getExecutionStrategy,
-      shouldResetApproval,
     } = context
 
+    const shouldResetApproval =
+      step.estimate.approvalReset && (action.allowance ?? 0n) > 0n
     const resetApprovalStatus = shouldResetApproval
       ? 'RESET_REQUIRED'
       : 'ACTION_REQUIRED'
@@ -66,7 +67,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
         executionOptions,
         batchingSupported
       )
-      context.approvalResetTxHash = approvalResetTxHash
+      // Persist approval reset tx hash
+      statusManager.updateAction(step, action.type, action.status, {
+        approvalResetTxHash,
+      })
 
       // If batching is NOT supported, wait for the reset transaction
       if (!batchingSupported) {

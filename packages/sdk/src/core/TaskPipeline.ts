@@ -45,7 +45,10 @@ export class TaskPipeline {
       const action = statusManager.findOrCreateAction({
         step,
         type: this.actionType,
-        chainId: step.action.fromChainId,
+        chainId:
+          this.actionType === 'RECEIVING_CHAIN'
+            ? step.action.toChainId
+            : step.action.fromChainId,
       })
       try {
         const shouldRun = await task.shouldRun(context, action)

@@ -14,7 +14,6 @@ import type {
   Address,
   Client,
   FallbackTransportConfig,
-  Hash,
   Hex,
 } from 'viem'
 
@@ -46,8 +45,6 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   signedTypedData: SignedTypedData[]
   calls: Call[]
   transactionRequest: TransactionParameters | undefined
-  shouldResetApproval: boolean
-  approvalResetTxHash: Hash | undefined
 }
 
 export interface EthereumSDKProvider extends SDKProvider {

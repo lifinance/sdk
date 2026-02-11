@@ -30,8 +30,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       isPermit2Supported,
       getExecutionStrategy,
       ethereumClient: updatedClient,
-      shouldResetApproval,
-      approvalResetTxHash,
     } = context
 
     const executionStrategy = await getExecutionStrategy(step)
@@ -68,6 +66,9 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       const calls: Call[] = []
 
       // Add reset call first if approval reset is required
+      const shouldResetApproval =
+        step.estimate.approvalReset && (action.allowance ?? 0n) > 0n
+      const approvalResetTxHash = action.approvalResetTxHash
       if (shouldResetApproval && approvalResetTxHash) {
         calls.push({
           to: step.action.fromToken.address as Address,

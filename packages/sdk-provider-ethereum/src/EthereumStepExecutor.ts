@@ -214,8 +214,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       signedTypedData: [],
       calls: [],
       transactionRequest: undefined,
-      shouldResetApproval: false,
-      approvalResetTxHash: undefined,
     }
   }
 }

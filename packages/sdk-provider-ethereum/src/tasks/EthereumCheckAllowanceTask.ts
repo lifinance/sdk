@@ -54,8 +54,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient.account!.address,
       spenderAddress as Address
     )
-    const shouldResetApproval = step.estimate.approvalReset && allowance > 0n
-    context.shouldResetApproval = !!shouldResetApproval
+    // Persist allowance
+    statusManager.updateAction(step, action.type, action.status, { allowance })
 
     // Return early if already approved
     if (fromAmount <= allowance) {
