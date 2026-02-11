@@ -39,6 +39,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       executionOptions,
       fromChain,
       publicClient,
+      checkClient,
     } = context
 
     const transactionRequestData = await getTransactionRequestData(
@@ -46,14 +47,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       executionOptions
     )
 
-    // TODO: check chain and possibly implement chain switch?
-    // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (walletClient.account?.address !== step.action.fromAddress) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
+    checkClient(step)
 
     const psbtHex = transactionRequestData
 
@@ -167,10 +161,6 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      data: {
-        txHex,
-        txHash,
-      },
     }
   }
 }

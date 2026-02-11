@@ -3,10 +3,13 @@ import {
   ActionPipelineOrchestrator,
   BaseStepExecutor,
   CheckBalanceTask,
+  LiFiErrorCode,
+  type LiFiStepExtended,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
+  TransactionError,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import { getBitcoinPublicClient } from './client/publicClient.js'
@@ -20,11 +23,22 @@ interface BitcoinStepExecutorOptions extends StepExecutorOptions {
 }
 
 export class BitcoinStepExecutor extends BaseStepExecutor {
-  private walletClient: Client
+  private client: Client
 
   constructor(options: BitcoinStepExecutorOptions) {
     super(options)
-    this.walletClient = options.client
+    this.client = options.client
+  }
+
+  checkClient = (step: LiFiStepExtended) => {
+    // TODO: check chain and possibly implement chain switch?
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (this.client.account?.address !== step.action.fromAddress) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
   }
 
   override getContext = async (
@@ -54,7 +68,8 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       ...baseContext,
       actionPipelines,
       pollingIntervalMs: 10_000,
-      walletClient: this.walletClient,
+      checkClient: this.checkClient,
+      walletClient: this.client,
       publicClient,
       parseErrors: parseBitcoinErrors,
     }

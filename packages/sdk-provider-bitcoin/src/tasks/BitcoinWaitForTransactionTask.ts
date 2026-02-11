@@ -19,11 +19,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
 
   async run(
     context: BitcoinStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      txHex: string
-      txHash: string
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const {
       step,
@@ -32,19 +28,13 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       walletClient,
       publicClient,
+      checkClient,
     } = context
 
-    const txHex = action.txHex ?? payload.txHex
-    const txHash = action.txHash ?? payload.txHash
+    const txHex = action.txHex
+    const txHash = action.txHash!
 
-    // TODO: check chain and possibly implement chain switch?
-    // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (walletClient.account?.address !== step.action.fromAddress) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
+    checkClient(step)
 
     let replacementReason: ReplacementReason | undefined
     const transaction = await waitForTransaction(publicClient, {
