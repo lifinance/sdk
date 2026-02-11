@@ -4,6 +4,7 @@ import {
   type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
+import type { Transaction } from '@solana/kit'
 import type { Wallet, WalletAccount } from '@wallet-standard/base'
 
 export interface SolanaProviderOptions {
@@ -13,6 +14,7 @@ export interface SolanaProviderOptions {
 export interface SolanaStepExecutorContext extends StepExecutorContext {
   wallet: Wallet
   walletAccount: WalletAccount
+  signedTransactions: Transaction[]
 }
 
 export interface SolanaSDKProvider extends SDKProvider {

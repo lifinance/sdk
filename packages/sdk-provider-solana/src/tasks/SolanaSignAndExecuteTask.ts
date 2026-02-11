@@ -6,6 +6,7 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
+import { getTransactionCodec } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../types.js'
 import { base64ToUint8Array } from '../utils/base64ToUint8Array.js'
@@ -73,15 +74,19 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    const transactionCodec = getTransactionCodec()
+
+    // Decode all signed transactions
+    context.signedTransactions = signedTransactionOutputs.map((output) =>
+      transactionCodec.decode(output.signedTransaction)
+    )
+
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
     })
 
     return {
       status: 'COMPLETED',
-      data: {
-        signedTransactionOutputs,
-      },
     }
   }
 }

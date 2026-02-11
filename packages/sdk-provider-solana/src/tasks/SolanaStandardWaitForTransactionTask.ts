@@ -5,7 +5,7 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
+import { getBase64EncodedWireTransaction } from '@solana/kit'
 import { sendAndConfirmTransaction } from '../actions/sendAndConfirmTransaction.js'
 import { callSolanaRpcsWithRetry } from '../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../types.js'
@@ -20,13 +20,23 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
 
   async run(
     context: SolanaStepExecutorContext,
-    action: ExecutionAction,
-    payload: { signedTransactions: Transaction[] }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { client, step, statusManager, fromChain, isBridgeExecution } =
-      context
+    const {
+      client,
+      step,
+      statusManager,
+      fromChain,
+      isBridgeExecution,
+      signedTransactions,
+    } = context
 
-    const { signedTransactions } = payload
+    if (!signedTransactions.length) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Signed transactions are not found.'
+      )
+    }
 
     // Use regular transaction submission
     const signedTransaction = signedTransactions[0]

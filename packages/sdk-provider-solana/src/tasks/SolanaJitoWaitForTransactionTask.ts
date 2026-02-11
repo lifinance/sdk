@@ -5,7 +5,6 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import type { Transaction } from '@solana/kit'
 import { sendAndConfirmBundle } from '../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../types.js'
 
@@ -19,12 +18,16 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
 
   async run(
     context: SolanaStepExecutorContext,
-    action: ExecutionAction,
-    payload: { signedTransactions: Transaction[] }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { client, step, statusManager, fromChain, isBridgeExecution } =
-      context
-    const { signedTransactions } = payload
+    const {
+      client,
+      step,
+      statusManager,
+      fromChain,
+      isBridgeExecution,
+      signedTransactions,
+    } = context
 
     // Use Jito bundle for transaction submission
     const bundleResult = await sendAndConfirmBundle(client, signedTransactions)

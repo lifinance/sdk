@@ -4,7 +4,7 @@ import {
   type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
-import type { Address, Client } from 'viem'
+import type { Address } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import { getNativePermit } from '../permits/getNativePermit.js'
@@ -15,20 +15,15 @@ import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload?: {
-      signedTypedData: SignedTypedData[]
-      updatedClient: Client
-      batchingSupported: boolean
-      approved: bigint
-      spenderAddress: Address
-    }
+    action: ExecutionAction
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
+    const executionStrategy = await context.getExecutionStrategy(step)
+    const batchingSupported = executionStrategy === 'batch'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
       !!fromChain.permit2Proxy &&
-      !payload?.batchingSupported &&
+      !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit
     return !context.isTransactionExecuted(action) && isNativePermitAvailable
@@ -36,25 +31,16 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-      updatedClient: Client
-      batchingSupported: boolean
-      approved: bigint
-      spenderAddress: Address
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, client, fromChain, statusManager, allowUserInteraction } =
-      context
-
-    let {
-      signedTypedData,
-      updatedClient,
-      batchingSupported,
-      approved,
-      spenderAddress,
-    } = payload
+    const {
+      step,
+      client,
+      fromChain,
+      statusManager,
+      allowUserInteraction,
+      ethereumClient: updatedClient,
+    } = context
 
     const fromAmount = BigInt(step.action.fromAmount)
 
@@ -76,19 +62,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     if (!nativePermitData) {
       return {
         status: 'COMPLETED',
-        data: {
-          signedTypedData,
-          updatedClient,
-          batchingSupported,
-          approved,
-          spenderAddress,
-        },
       }
     }
 
-    signedTypedData = signedTypedData.length
-      ? signedTypedData
-      : action.signedTypedData || []
+    let signedTypedData = context.signedTypedData
+    if (!signedTypedData.length) {
+      signedTypedData = action.signedTypedData || []
+    }
 
     // Check if we already have a valid permit for this chain and requirements
     const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
@@ -127,11 +107,10 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       signedTypedData,
     })
 
+    context.signedTypedData = signedTypedData
+
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-      },
     }
   }
 }

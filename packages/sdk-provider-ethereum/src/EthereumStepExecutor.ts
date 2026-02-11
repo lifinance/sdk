@@ -210,6 +210,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step?: LiFiStepExtended,
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, retryParams),
+      // Payload shared between tasks
+      signedTypedData: [],
+      calls: [],
+      transactionRequest: undefined,
+      shouldResetApproval: false,
+      approvalResetTxHash: undefined,
     }
   }
 }

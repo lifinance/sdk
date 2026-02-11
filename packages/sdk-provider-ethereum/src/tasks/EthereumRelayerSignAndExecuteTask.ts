@@ -3,7 +3,6 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   relayTransaction,
-  type SignedTypedData,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -24,10 +23,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const {
       step,
@@ -36,8 +32,8 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
+      signedTypedData,
     } = context
-    const { signedTypedData } = payload
     const intentTypedData = step.typedData?.filter(
       (typedData) =>
         !signedTypedData.some((signedPermit) =>
@@ -96,6 +92,8 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
       txLink: relayedTransaction.txLink,
       signedAt: Date.now(),
     })
+
+    context.signedTypedData = signedTypedData
 
     return { status: 'COMPLETED' }
   }

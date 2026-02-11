@@ -5,8 +5,8 @@ import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
 
 export type TaskPipelineRunWhen = (
   context: StepExecutorContext,
-  payload?: unknown
-) => boolean | Promise<boolean>
+  action?: ExecutionAction
+) => boolean
 
 /**
  * Action-centric pipeline: accepts actionType and a list of tasks.
@@ -31,19 +31,15 @@ export class TaskPipeline {
 
   async shouldRun(
     context: StepExecutorContext,
-    action?: ExecutionAction,
-    payload?: unknown
+    action?: ExecutionAction
   ): Promise<boolean> {
     if (!this.runWhen) {
       return action?.status !== 'DONE'
     }
-    return this.runWhen(context, payload)
+    return this.runWhen(context, action)
   }
 
-  async run(
-    context: StepExecutorContext,
-    payload?: unknown
-  ): Promise<TaskResult> {
+  async run(context: StepExecutorContext): Promise<TaskResult> {
     const { statusManager, step, parseErrors } = context
     for (const task of this.tasks) {
       const action = statusManager.findOrCreateAction({
@@ -52,15 +48,14 @@ export class TaskPipeline {
         chainId: step.action.fromChainId,
       })
       try {
-        const shouldRun = await task.shouldRun(context, action, payload)
+        const shouldRun = await task.shouldRun(context, action)
         if (!shouldRun) {
           continue
         }
-        const result = await task.run(context, action, payload)
+        const result = await task.run(context, action)
         if (result.status === 'PAUSED') {
           return { status: 'PAUSED' }
         }
-        payload = result.data
       } catch (error: any) {
         const parsed = await parseErrors(error, step, action)
         if (!(parsed instanceof ExecuteStepRetryError) && action) {
@@ -74,6 +69,6 @@ export class TaskPipeline {
         throw parsed
       }
     }
-    return { status: 'COMPLETED', data: payload }
+    return { status: 'COMPLETED' }
   }
 }

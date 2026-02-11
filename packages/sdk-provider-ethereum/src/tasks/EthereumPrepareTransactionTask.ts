@@ -3,14 +3,13 @@ import {
   checkBalance,
   type ExecutionAction,
   LiFiErrorCode,
-  type SignedTypedData,
   stepComparison,
   type TaskResult,
   TransactionError,
   type TransactionParameters,
 } from '@lifi/sdk'
 import { getMaxPriorityFeePerGas } from '../actions/getMaxPriorityFeePerGas.js'
-import type { Call, EthereumStepExecutorContext } from '../types.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
@@ -23,11 +22,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-      calls: Call[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const {
       step,
@@ -37,9 +32,8 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       ethereumClient,
+      signedTypedData,
     } = context
-
-    const { signedTypedData, calls } = payload
 
     statusManager.updateAction(step, action.type, 'STARTED')
 
@@ -134,13 +128,10 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       }
     }
 
+    context.transactionRequest = transactionRequest
+
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-        calls,
-        transactionRequest,
-      },
     }
   }
 }

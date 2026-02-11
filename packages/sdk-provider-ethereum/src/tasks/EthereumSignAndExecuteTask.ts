@@ -1,11 +1,9 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type SignedTypedData,
   type TaskResult,
-  type TransactionParameters,
 } from '@lifi/sdk'
-import type { Call, EthereumStepExecutorContext } from '../types.js'
+import type { EthereumStepExecutorContext } from '../types.js'
 import { EthereumBatchSignAndExecuteTask } from './EthereumBatchSignAndExecuteTask.js'
 import { EthereumRelayerSignAndExecuteTask } from './EthereumRelayerSignAndExecuteTask.js'
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
@@ -35,14 +33,10 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-      calls: Call[]
-      transactionRequest: TransactionParameters
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, statusManager, allowUserInteraction } = context
+    const { step, statusManager, allowUserInteraction, transactionRequest } =
+      context
 
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
@@ -50,20 +44,13 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const { signedTypedData, calls, transactionRequest } = payload
     const executionStrategy = await context.getExecutionStrategy(step)
     if (executionStrategy === 'batch' && transactionRequest) {
-      return this.strategies.batch.run(context, action, {
-        transactionRequest,
-        calls,
-      })
+      return this.strategies.batch.run(context, action)
     }
     if (executionStrategy === 'relayer') {
-      return this.strategies.relayer.run(context, action, { signedTypedData })
+      return this.strategies.relayer.run(context, action)
     }
-    return this.strategies.standard.run(context, action, {
-      transactionRequest,
-      signedTypedData,
-    })
+    return this.strategies.standard.run(context, action)
   }
 }

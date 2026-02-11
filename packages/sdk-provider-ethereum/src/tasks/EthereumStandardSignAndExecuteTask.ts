@@ -2,10 +2,8 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   LiFiErrorCode,
-  type SignedTypedData,
   type TaskResult,
   TransactionError,
-  type TransactionParameters,
 } from '@lifi/sdk'
 import type { Address, Hex, SendTransactionParameters } from 'viem'
 import { sendTransaction } from 'viem/actions'
@@ -28,22 +26,19 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      transactionRequest: TransactionParameters
-      signedTypedData: SignedTypedData[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const {
+    let {
       step,
       client,
       fromChain,
       statusManager,
       isPermit2Supported,
       checkClient,
+      signedTypedData,
+      transactionRequest,
     } = context
 
-    let { transactionRequest, signedTypedData } = payload
     if (!transactionRequest) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
@@ -125,6 +120,8 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
         : undefined,
       signedAt: Date.now(),
     })
+
+    context.transactionRequest = transactionRequest
 
     return { status: 'COMPLETED' }
   }

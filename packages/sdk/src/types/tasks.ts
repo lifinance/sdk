@@ -26,7 +26,7 @@ export interface StepExecutorBaseContext {
 export interface StepExecutorContext extends StepExecutorBaseContext {
   pollingIntervalMs?: number
   actionPipelines: {
-    run(context: StepExecutorContext, payload?: unknown): Promise<TaskResult>
+    run(context: StepExecutorContext): Promise<TaskResult>
   }
   parseErrors: (
     error: Error,
@@ -37,8 +37,6 @@ export interface StepExecutorContext extends StepExecutorBaseContext {
 
 export interface TaskResult {
   status: TaskStatus
-  /** Optional handoff to the next task in the pipeline. */
-  data?: unknown
 }
 
 export type TaskStatus = 'COMPLETED' | 'PAUSED'

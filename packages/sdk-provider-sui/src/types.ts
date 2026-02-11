@@ -4,10 +4,18 @@ import {
   type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
+import type {
+  SuiSignAndExecuteTransactionOutput,
+  WalletWithRequiredFeatures,
+} from '@mysten/wallet-standard'
 
 export interface SuiProviderOptions {
   getWallet?: () => Promise<WalletWithRequiredFeatures>
+}
+
+export interface SuiStepExecutorContext extends StepExecutorContext {
+  wallet: WalletWithRequiredFeatures
+  signedTransaction?: SuiSignAndExecuteTransactionOutput
 }
 
 export interface SuiSDKProvider extends SDKProvider {
@@ -21,10 +29,6 @@ export function isSuiProvider(
 }
 
 export interface SuiStepExecutorOptions extends StepExecutorOptions {
-  wallet: WalletWithRequiredFeatures
-}
-
-export interface SuiStepExecutorContext extends StepExecutorContext {
   wallet: WalletWithRequiredFeatures
 }
 

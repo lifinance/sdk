@@ -3,8 +3,6 @@ import {
   type ExecutionAction,
   type TaskResult,
 } from '@lifi/sdk'
-import { getTransactionCodec, type Transaction } from '@solana/kit'
-import type { SolanaSignTransactionOutput } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../types.js'
 import { shouldUseJitoBundle } from '../utils/shouldUseJitoBundle.js'
 import { SolanaJitoWaitForTransactionTask } from './SolanaJitoWaitForTransactionTask.js'
@@ -33,20 +31,9 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
 
   async run(
     context: SolanaStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTransactionOutputs: SolanaSignTransactionOutput[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { client } = context
-    const { signedTransactionOutputs } = payload
-
-    const transactionCodec = getTransactionCodec()
-
-    // Decode all signed transactions
-    const signedTransactions: Transaction[] = signedTransactionOutputs.map(
-      (output) => transactionCodec.decode(output.signedTransaction)
-    )
+    const { client, signedTransactions } = context
 
     const useJitoBundle = shouldUseJitoBundle(
       client.config.routeOptions,
@@ -54,12 +41,8 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
     )
 
     if (useJitoBundle) {
-      return this.strategies.jito.run(context, action, {
-        signedTransactions,
-      })
+      return this.strategies.jito.run(context, action)
     }
-    return this.strategies.standard.run(context, action, {
-      signedTransactions,
-    })
+    return this.strategies.standard.run(context, action)
   }
 }

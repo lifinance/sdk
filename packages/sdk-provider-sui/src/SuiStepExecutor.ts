@@ -46,6 +46,8 @@ export class SuiStepExecutor extends BaseStepExecutor {
       actionPipelines,
       wallet: this.wallet,
       parseErrors: parseSuiErrors,
+      // Payload shared between tasks
+      signedTransaction: undefined,
     }
   }
 }

@@ -1,7 +1,6 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -18,13 +17,9 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const { step, client, fromChain, statusManager, checkClient } = context
-    const { signedTypedData } = payload
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
@@ -44,9 +39,6 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
 
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-      },
     }
   }
 }

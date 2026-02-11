@@ -1,10 +1,9 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
-import type { Address, Client, Hash } from 'viem'
+import type { Address, Hash } from 'viem'
 import { setAllowance } from '../actions/setAllowance.js'
 import type { EthereumStepExecutorContext } from '../types.js'
 import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
@@ -19,14 +18,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-      updatedClient: Client
-      batchingSupported: boolean
-      approved: bigint
-      spenderAddress: Address
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const {
       step,
@@ -35,16 +27,12 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       client,
       executionOptions,
       fromChain,
+      ethereumClient: updatedClient,
+      isPermit2Supported,
+      getExecutionStrategy,
+      shouldResetApproval,
     } = context
-    const {
-      signedTypedData,
-      updatedClient,
-      batchingSupported,
-      approved,
-      spenderAddress,
-    } = payload
 
-    const shouldResetApproval = step.estimate.approvalReset && approved > 0n
     const resetApprovalStatus = shouldResetApproval
       ? 'RESET_REQUIRED'
       : 'ACTION_REQUIRED'
@@ -59,6 +47,13 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
+    const executionStrategy = await getExecutionStrategy(step)
+    const batchingSupported = executionStrategy === 'batch'
+    const permit2Supported = isPermit2Supported(batchingSupported)
+    const spenderAddress = permit2Supported
+      ? fromChain.permit2
+      : step.estimate.approvalAddress
+
     // Reset allowance to 0 if required
     let approvalResetTxHash: Hash | undefined
     if (shouldResetApproval) {
@@ -71,6 +66,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
         executionOptions,
         batchingSupported
       )
+      context.approvalResetTxHash = approvalResetTxHash
 
       // If batching is NOT supported, wait for the reset transaction
       if (!batchingSupported) {
@@ -97,14 +93,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-        updatedClient,
-        spenderAddress,
-        batchingSupported,
-        shouldResetApproval,
-        approvalResetTxHash,
-      },
     }
   }
 }

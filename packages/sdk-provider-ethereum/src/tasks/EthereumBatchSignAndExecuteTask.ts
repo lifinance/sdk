@@ -1,8 +1,9 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  LiFiErrorCode,
   type TaskResult,
-  type TransactionParameters,
+  TransactionError,
 } from '@lifi/sdk'
 import type { Address, Hash, Hex } from 'viem'
 import { sendCalls } from 'viem/actions'
@@ -19,14 +20,17 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      transactionRequest: TransactionParameters
-      calls: Call[]
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
-    const { ethereumClient, step, fromChain, statusManager, checkClient } =
-      context
+    const {
+      ethereumClient,
+      step,
+      fromChain,
+      statusManager,
+      checkClient,
+      calls,
+      transactionRequest,
+    } = context
 
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)
@@ -34,8 +38,13 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const { transactionRequest, calls: incomingCalls } = payload
-    const calls = incomingCalls ?? []
+    if (!transactionRequest) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Transaction request is not found.'
+      )
+    }
+
     const transferCall: Call = {
       chainId: fromChain.id,
       data: transactionRequest.data as Hex,

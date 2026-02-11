@@ -19,7 +19,15 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, checkClient, fromChain, client, statusManager } = context
+    const {
+      step,
+      checkClient,
+      fromChain,
+      client,
+      statusManager,
+      isPermit2Supported,
+      getExecutionStrategy,
+    } = context
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
@@ -29,48 +37,36 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     // Start new allowance check
     statusManager.updateAction(step, action.type, 'STARTED')
 
-    const executionStrategy = await context.getExecutionStrategy(step)
+    const executionStrategy = await getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batch'
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
-    const permit2Supported = context.isPermit2Supported(batchingSupported)
-
+    const permit2Supported = isPermit2Supported(batchingSupported)
     const spenderAddress = permit2Supported
       ? fromChain.permit2
       : step.estimate.approvalAddress
 
     const fromAmount = BigInt(step.action.fromAmount)
 
-    const approved = await getAllowance(
+    const allowance = await getAllowance(
       client,
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
       spenderAddress as Address
     )
-
-    const permitAction = statusManager.findAction(step, 'PERMIT')
-    const signedTypedData = permitAction?.signedTypedData ?? []
+    const shouldResetApproval = step.estimate.approvalReset && allowance > 0n
+    context.shouldResetApproval = !!shouldResetApproval
 
     // Return early if already approved
-    if (fromAmount <= approved) {
+    if (fromAmount <= allowance) {
       statusManager.updateAction(step, action.type, 'DONE')
       return {
         status: 'COMPLETED',
-        data: {
-          signedTypedData,
-        },
       }
     }
 
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-        updatedClient,
-        batchingSupported,
-        approved,
-        spenderAddress,
-      },
     }
   }
 }

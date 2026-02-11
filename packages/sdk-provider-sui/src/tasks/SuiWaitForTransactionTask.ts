@@ -5,7 +5,6 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import type { SuiSignAndExecuteTransactionOutput } from '@mysten/wallet-standard'
 import { callSuiWithRetry } from '../client/suiClient.js'
 import type { SuiStepExecutorContext } from '../types.js'
 
@@ -19,14 +18,17 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
 
   async run(
     context: SuiStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTx: SuiSignAndExecuteTransactionOutput
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
-    const { signedTx } = payload
+    const signedTx = context.signedTransaction
+    if (!signedTx) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Signed transaction is not found.'
+      )
+    }
 
     const result = await callSuiWithRetry(client, (client) =>
       client.waitForTransaction({
@@ -45,7 +47,7 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     // Transaction has been confirmed and we can update the action
-    action = statusManager.updateAction(step, action.type, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: result.digest,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
     })

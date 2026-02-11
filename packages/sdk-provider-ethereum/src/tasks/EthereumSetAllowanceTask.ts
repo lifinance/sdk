@@ -1,10 +1,9 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
-import type { Address, Client, Hash } from 'viem'
+import type { Address } from 'viem'
 import { setAllowance } from '../actions/setAllowance.js'
 import { MaxUint256 } from '../permits/constants.js'
 import type { Call, EthereumStepExecutorContext } from '../types.js'
@@ -20,15 +19,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
   async run(
     context: EthereumStepExecutorContext,
-    action: ExecutionAction,
-    payload: {
-      signedTypedData: SignedTypedData[]
-      updatedClient: Client
-      spenderAddress: Address
-      batchingSupported: boolean
-      shouldResetApproval: boolean
-      approvalResetTxHash: Hash
-    }
+    action: ExecutionAction
   ): Promise<TaskResult> {
     const {
       step,
@@ -37,21 +28,25 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       executionOptions,
       fromChain,
       isPermit2Supported,
-    } = context
-    const {
-      signedTypedData,
-      updatedClient,
-      spenderAddress,
-      batchingSupported,
+      getExecutionStrategy,
+      ethereumClient: updatedClient,
       shouldResetApproval,
       approvalResetTxHash,
-    } = payload
+    } = context
+
+    const executionStrategy = await getExecutionStrategy(step)
+    const batchingSupported = executionStrategy === 'batch'
+    const permit2Supported = isPermit2Supported(batchingSupported)
 
     // Set new allowance
     const fromAmount = BigInt(step.action.fromAmount)
-    const approveAmount = isPermit2Supported(batchingSupported)
-      ? MaxUint256
-      : fromAmount
+    const approveAmount = permit2Supported ? MaxUint256 : fromAmount
+
+    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
+    const spenderAddress = permit2Supported
+      ? fromChain.permit2
+      : step.estimate.approvalAddress
+
     const approveTxHash = await setAllowance(
       client,
       updatedClient,
@@ -88,13 +83,9 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
         chainId: step.action.fromToken.chainId,
       })
 
-      return {
-        status: 'COMPLETED',
-        data: {
-          signedTypedData,
-          calls,
-        },
-      }
+      context.calls.push(...calls)
+
+      return { status: 'COMPLETED' }
     }
 
     await waitForApprovalTransaction(
@@ -109,9 +100,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      data: {
-        signedTypedData,
-      },
     }
   }
 }

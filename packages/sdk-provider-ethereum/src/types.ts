@@ -5,13 +5,16 @@ import {
   type LiFiStep,
   type LiFiStepExtended,
   type SDKProvider,
+  type SignedTypedData,
   type StepExecutorContext,
+  type TransactionParameters,
 } from '@lifi/sdk'
 import type {
   WalletCallReceipt as _WalletCallReceipt,
   Address,
   Client,
   FallbackTransportConfig,
+  Hash,
   Hex,
 } from 'viem'
 
@@ -39,6 +42,12 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   switchChain?: (chainId: number) => Promise<Client | undefined>
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
+  // Payload shared between tasks
+  signedTypedData: SignedTypedData[]
+  calls: Call[]
+  transactionRequest: TransactionParameters | undefined
+  shouldResetApproval: boolean
+  approvalResetTxHash: Hash | undefined
 }
 
 export interface EthereumSDKProvider extends SDKProvider {
