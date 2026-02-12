@@ -44,7 +44,9 @@ import { isBatchingSupported } from './actions/isBatchingSupported.js'
 import { switchChain } from './actions/switchChain.js'
 import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
+import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
+import { isSafeWallet } from './client/safeClient.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
@@ -61,21 +63,25 @@ import { getDomainChainId } from './utils/getDomainChainId.js'
 import { isContractCallStep } from './utils/isContractCallStep.js'
 import { isGaslessStep } from './utils/isGaslessStep.js'
 import { isRelayerStep } from './utils/isRelayerStep.js'
+import { isSafeSignature } from './utils/isSafeSignature.js'
 import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
+  safeApiKey?: string
 }
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
+  private safeApiKey?: string
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
+    this.safeApiKey = options.safeApiKey
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
@@ -196,6 +202,24 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           step
         )
         break
+      case 'safe-queued': {
+        const safeAddress = this.client.account?.address
+        if (!safeAddress) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Safe address not available for transaction tracking.'
+          )
+        }
+        transactionReceipt = await waitForSafeTransactionReceipt(client, {
+          viemClient: this.client,
+          chainId: fromChain.id,
+          safeAddress,
+          signature: action.taskId as string,
+          pollingInterval: 5_000,
+          safeApiKey: this.safeApiKey,
+        })
+        break
+      }
       default:
         transactionReceipt = await waitForTransactionReceipt(client, {
           client: this.client,
@@ -460,7 +484,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           : estimatedGas
 
       transactionRequest.gas = baseGas + 300_000n
-    } catch (_) {
+    } catch {
       // If estimation fails, add 300K buffer to existing gas limit
       if (transactionRequest.gas) {
         transactionRequest.gas = transactionRequest.gas + 300_000n
@@ -529,10 +553,21 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
 
+    const isAddressSafeWallet = this.client.account?.address
+      ? await isSafeWallet(
+          fromChain.id,
+          this.client.account.address,
+          this.safeApiKey,
+          this.client
+        )
+      : false
+
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
+      this.executionOptions?.disableMessageSigning ||
+      step.type !== 'lifi' ||
+      isAddressSafeWallet
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -569,6 +604,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
+        safeApiKey: this.safeApiKey,
       })
 
       switch (allowanceResult.status) {
@@ -811,6 +847,23 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
           chain: convertExtendedChain(fromChain),
         } as SendTransactionParameters)
+
+        // Check if the returned "hash" is actually a Safe signature
+        // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
+        if (
+          txHash &&
+          (await isSafeSignature(txHash, {
+            chainId: fromChain.id,
+            address: this.client.account?.address,
+            apiKey: this.safeApiKey,
+            client: this.client,
+          }))
+        ) {
+          // Store the signature as taskId and use 'safe-queued' txType
+          taskId = txHash
+          txHash = undefined
+          txType = 'safe-queued'
+        }
       }
 
       action = this.statusManager.updateAction(

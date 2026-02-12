@@ -17,6 +17,7 @@ export interface EthereumProviderOptions {
   getWalletClient?: () => Promise<Client>
   switchChain?: (chainId: number) => Promise<Client | undefined>
   fallbackTransportConfig?: FallbackTransportConfig
+  safeApiKey?: string
 }
 
 export interface EthereumSDKProvider extends SDKProvider {

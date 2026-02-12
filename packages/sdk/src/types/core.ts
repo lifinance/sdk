@@ -255,4 +255,8 @@ export interface Execution {
   externalTxLink?: string
 }
 
-export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
+export type TransactionMethodType =
+  | 'standard'
+  | 'relayed'
+  | 'batched'
+  | 'safe-queued'

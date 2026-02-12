@@ -1,0 +1,138 @@
+import type { Address, Client } from 'viem'
+import { getCode } from 'viem/actions'
+import { getAction } from 'viem/utils'
+
+const SAFE_CLIENT_GATEWAY = 'https://safe-client.safe.global'
+
+// 5 minutes TTL for Safe wallet checks (allows detecting newly deployed Safes)
+const SAFE_WALLET_CACHE_TTL = 5 * 60 * 1_000
+// 1 hour TTL for transaction service URLs (rarely change)
+const TX_SERVICE_URL_CACHE_TTL = 60 * 60 * 1_000
+
+interface CacheEntry<T> {
+  value: T
+  expiresAt: number
+}
+
+// Cache for Safe Transaction Service URLs per chain
+const txServiceUrlCache = new Map<number, CacheEntry<string>>()
+
+// Cache for isSafeWallet results per chainId:address
+const safeWalletCache = new Map<string, CacheEntry<boolean>>()
+
+/**
+ * Resolve the Safe Transaction Service URL for a given chain ID
+ */
+async function getTransactionServiceUrl(chainId: number): Promise<string> {
+  const cached = txServiceUrlCache.get(chainId)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value
+  }
+
+  const response = await fetch(`${SAFE_CLIENT_GATEWAY}/v1/chains/${chainId}`)
+  if (!response.ok) {
+    throw new Error(
+      `Failed to resolve Safe Transaction Service URL for chain ${chainId}: ${response.status}`
+    )
+  }
+
+  const data = (await response.json()) as {
+    transactionService: string
+  }
+
+  const url = data.transactionService
+  txServiceUrlCache.set(chainId, {
+    value: url,
+    expiresAt: Date.now() + TX_SERVICE_URL_CACHE_TTL,
+  })
+  return url
+}
+
+/**
+ * Make a GET request to the Safe Transaction Service
+ */
+export async function safeApiGet<T>(
+  chainId: number,
+  path: string,
+  apiKey?: string
+): Promise<T> {
+  const baseUrl = await getTransactionServiceUrl(chainId)
+  const headers: Record<string, string> = {}
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`
+  }
+  const response = await fetch(`${baseUrl}${path}`, { headers })
+  if (!response.ok) {
+    throw new Error(
+      `Safe Transaction Service request failed: ${response.status} ${response.statusText}`
+    )
+  }
+  return response.json() as Promise<T>
+}
+
+export interface SafeInfo {
+  threshold: number
+  owners: string[]
+}
+
+export interface SafeMultisigTransaction {
+  safeTxHash: string
+  nonce: number
+  isExecuted: boolean
+  transactionHash?: string
+  isSuccessful?: boolean
+  confirmations?: Array<{ signature?: string }>
+}
+
+export interface SafeMultisigTransactionList {
+  count: number
+  results: SafeMultisigTransaction[]
+}
+
+/**
+ * Check if an address is a Safe wallet by querying the Safe Transaction Service
+ */
+export async function isSafeWallet(
+  chainId: number,
+  address: Address,
+  apiKey?: string,
+  client?: Client
+): Promise<boolean> {
+  const cacheKey = `${chainId}:${address.toLowerCase()}`
+  const cached = safeWalletCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value
+  }
+
+  // If a client is available, check if the address has contract code.
+  // EOA wallets have no code and can never be Safe wallets.
+  if (client) {
+    try {
+      const code = await getAction(client, getCode, 'getCode')({ address })
+      if (!code || code === '0x') {
+        safeWalletCache.set(cacheKey, {
+          value: false,
+          expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
+        })
+        return false
+      }
+    } catch {
+      // If getCode fails, fall through to the Safe API check
+    }
+  }
+
+  try {
+    await safeApiGet<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
+    safeWalletCache.set(cacheKey, {
+      value: true,
+      expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
+    })
+    return true
+  } catch {
+    safeWalletCache.set(cacheKey, {
+      value: false,
+      expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
+    })
+    return false
+  }
+}
