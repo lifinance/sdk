@@ -172,11 +172,17 @@ export const checkAllowance = async (
     }
 
     // Handle existing pending transaction
-    if (sharedAction.txHash && sharedAction.status !== 'DONE') {
+    // Safe queued transactions store the identifier in taskId instead of txHash
+    if (
+      (sharedAction.txHash || sharedAction.taskId) &&
+      sharedAction.status !== 'DONE'
+    ) {
+      const hashOrSignature = (sharedAction.txHash ||
+        sharedAction.taskId) as Hash
       await waitForApprovalTransaction(
         client,
         updatedClient,
-        sharedAction.txHash as Hash,
+        hashOrSignature,
         sharedAction.type,
         step,
         chain,
@@ -430,7 +436,7 @@ const waitForApprovalTransaction = async (
 
   if (
     address &&
-    (await isSafeSignature(txHash, chain.id, address, safeApiKey))
+    (await isSafeSignature(txHash, chain.id, address, safeApiKey, viemClient))
   ) {
     statusManager.updateAction(step, actionType, 'PENDING', {
       taskId: txHash,

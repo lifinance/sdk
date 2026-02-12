@@ -1,4 +1,6 @@
-import type { Address } from 'viem'
+import type { Address, Client } from 'viem'
+import { getCode } from 'viem/actions'
+import { getAction } from 'viem/utils'
 
 const SAFE_CLIENT_GATEWAY = 'https://safe-client.safe.global'
 
@@ -80,12 +82,27 @@ export interface SafeMultisigTransactionList {
 export async function isSafeWallet(
   chainId: number,
   address: Address,
-  apiKey?: string
+  apiKey?: string,
+  client?: Client
 ): Promise<boolean> {
   const cacheKey = `${chainId}:${address.toLowerCase()}`
   const cached = safeWalletCache.get(cacheKey)
   if (cached !== undefined) {
     return cached
+  }
+
+  // If a client is available, check if the address has contract code.
+  // EOA wallets have no code and can never be Safe wallets.
+  if (client) {
+    try {
+      const code = await getAction(client, getCode, 'getCode')({ address })
+      if (!code || code === '0x') {
+        safeWalletCache.set(cacheKey, false)
+        return false
+      }
+    } catch {
+      // If getCode fails, fall through to the Safe API check
+    }
   }
 
   try {

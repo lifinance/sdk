@@ -46,6 +46,7 @@ import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactio
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
 import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
+import { isSafeWallet } from './client/safeClient.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
@@ -552,10 +553,21 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
 
+    const isAddressSafeWallet = this.client.account?.address
+      ? await isSafeWallet(
+          fromChain.id,
+          this.client.account.address,
+          this.safeApiKey,
+          this.client
+        )
+      : false
+
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
+      this.executionOptions?.disableMessageSigning ||
+      step.type !== 'lifi' ||
+      isAddressSafeWallet
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -844,7 +856,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
             txHash,
             fromChain.id,
             this.client.account?.address,
-            this.safeApiKey
+            this.safeApiKey,
+            this.client
           ))
         ) {
           // Store the signature as taskId and use 'safe-queued' txType
