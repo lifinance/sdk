@@ -852,13 +852,12 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
         if (
           txHash &&
-          (await isSafeSignature(
-            txHash,
-            fromChain.id,
-            this.client.account?.address,
-            this.safeApiKey,
-            this.client
-          ))
+          (await isSafeSignature(txHash, {
+            chainId: fromChain.id,
+            address: this.client.account?.address,
+            apiKey: this.safeApiKey,
+            client: this.client,
+          }))
         ) {
           // Store the signature as taskId and use 'safe-queued' txType
           taskId = txHash

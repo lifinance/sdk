@@ -20,6 +20,25 @@ export interface WaitForSafeTransactionResult {
   status: 'executed' | 'pending' | 'replaced' | 'failed' | 'not_found'
 }
 
+function findMatchingTransaction(
+  results: SafeMultisigTransaction[],
+  signature: string
+): { safeTxHash: Hash; nonce: number } | null {
+  const normalized = signature.toLowerCase()
+  for (const tx of results) {
+    const hasMatch = tx.confirmations?.some(
+      (conf) => conf.signature?.toLowerCase() === normalized
+    )
+    if (hasMatch) {
+      return {
+        safeTxHash: tx.safeTxHash as Hash,
+        nonce: Number(tx.nonce),
+      }
+    }
+  }
+  return null
+}
+
 /**
  * Find a Safe transaction by matching the signature in confirmations
  */
@@ -29,48 +48,25 @@ async function findTransactionBySignature(
   signature: string,
   apiKey?: string
 ): Promise<{ safeTxHash: Hash; nonce: number } | null> {
-  try {
-    const pendingTxs = await safeApiGet<SafeMultisigTransactionList>(
-      chainId,
-      `/api/v1/safes/${safeAddress}/multisig-transactions/?executed=false`,
-      apiKey
-    )
+  const pendingTxs = await safeApiGet<SafeMultisigTransactionList>(
+    chainId,
+    `/api/v1/safes/${safeAddress}/multisig-transactions/?executed=false`,
+    apiKey
+  )
 
-    const normalizedSignature = signature.toLowerCase()
-    for (const tx of pendingTxs.results) {
-      const hasMatchingSignature = tx.confirmations?.some(
-        (conf) => conf.signature?.toLowerCase() === normalizedSignature
-      )
-      if (hasMatchingSignature) {
-        return {
-          safeTxHash: tx.safeTxHash as Hash,
-          nonce: Number(tx.nonce),
-        }
-      }
-    }
-
-    // Also check recent executed transactions in case it was already executed
-    const allTxs = await safeApiGet<SafeMultisigTransactionList>(
-      chainId,
-      `/api/v1/safes/${safeAddress}/multisig-transactions/?limit=20`,
-      apiKey
-    )
-    for (const tx of allTxs.results.slice(0, 20)) {
-      const hasMatchingSignature = tx.confirmations?.some(
-        (conf) => conf.signature?.toLowerCase() === normalizedSignature
-      )
-      if (hasMatchingSignature) {
-        return {
-          safeTxHash: tx.safeTxHash as Hash,
-          nonce: Number(tx.nonce),
-        }
-      }
-    }
-
-    return null
-  } catch {
-    return null
+  const match = findMatchingTransaction(pendingTxs.results, signature)
+  if (match) {
+    return match
   }
+
+  // Also check recent executed transactions in case it was already executed
+  const allTxs = await safeApiGet<SafeMultisigTransactionList>(
+    chainId,
+    `/api/v1/safes/${safeAddress}/multisig-transactions/?limit=20`,
+    apiKey
+  )
+
+  return findMatchingTransaction(allTxs.results, signature)
 }
 
 /**
@@ -91,7 +87,6 @@ export async function waitForSafeTransactionExecution(
   const basePollingInterval = options?.pollingInterval ?? 10_000
   const timeout = options?.timeout ?? 3_600_000 * 24 // 24 hours default
   const apiKey = options?.safeApiKey
-  const maxRetries = Math.ceil(timeout / basePollingInterval)
 
   // First, find the transaction by signature
   const txInfo = await findTransactionBySignature(
@@ -113,11 +108,17 @@ export async function waitForSafeTransactionExecution(
 
   const { safeTxHash, nonce: originalNonce } = txInfo
   let pollCount = 0
+  const startTime = Date.now()
 
   try {
     return await waitForResult<WaitForSafeTransactionResult>(
       async () => {
         pollCount++
+
+        // Check elapsed time to enforce the actual timeout
+        if (Date.now() - startTime > timeout) {
+          throw new Error('Safe transaction polling timed out')
+        }
 
         const tx = await safeApiGet<SafeMultisigTransaction>(
           chainId,
@@ -157,7 +158,7 @@ export async function waitForSafeTransactionExecution(
                 transactionHash: null,
                 isExecuted: false,
                 isSuccessful: false,
-                status: 'replaced' as const,
+                status: 'replaced',
               }
             }
           } catch {
@@ -177,11 +178,11 @@ export async function waitForSafeTransactionExecution(
       },
       // Dynamic backoff: 10s → 30s, increasing by 2s each poll
       (poll) => Math.min(basePollingInterval + poll * 2_000, 30_000),
-      maxRetries,
+      Number.MAX_SAFE_INTEGER,
       () => true
     )
   } catch {
-    // maxRetries exhausted = timeout
+    // Timeout or maxRetries exhausted
     return {
       safeTxHash,
       transactionHash: null,
@@ -222,6 +223,12 @@ export async function resolveSafeTransactionHash(
     throw new TransactionError(
       LiFiErrorCode.TransactionFailed,
       'Safe transaction not found in Safe Transaction Service.'
+    )
+  }
+  if (safeResult.status === 'pending') {
+    throw new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Safe transaction timed out waiting for execution.'
     )
   }
   if (safeResult.status === 'failed' || !safeResult.isSuccessful) {

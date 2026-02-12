@@ -179,17 +179,16 @@ export const checkAllowance = async (
     ) {
       const hashOrSignature = (sharedAction.txHash ||
         sharedAction.taskId) as Hash
-      await waitForApprovalTransaction(
+      await waitForApprovalTransaction({
         client,
-        updatedClient,
-        hashOrSignature,
-        sharedAction.type,
+        viemClient: updatedClient,
+        txHash: hashOrSignature,
+        actionType: sharedAction.type,
         step,
         chain,
         statusManager,
-        false,
-        safeApiKey
-      )
+        safeApiKey,
+      })
       return { status: 'DONE', data: signedTypedData }
     }
 
@@ -317,17 +316,16 @@ export const checkAllowance = async (
 
       // If batching is NOT supported, wait for the reset transaction
       if (!batchingSupported) {
-        await waitForApprovalTransaction(
+        await waitForApprovalTransaction({
           client,
-          updatedClient,
-          approvalResetTxHash,
-          sharedAction.type,
+          viemClient: updatedClient,
+          txHash: approvalResetTxHash,
+          actionType: sharedAction.type,
           step,
           chain,
           statusManager,
-          false,
-          safeApiKey
-        )
+          safeApiKey,
+        })
 
         statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
           txHash: undefined,
@@ -385,17 +383,16 @@ export const checkAllowance = async (
       }
     }
 
-    await waitForApprovalTransaction(
+    await waitForApprovalTransaction({
       client,
-      updatedClient,
-      approveTxHash,
-      sharedAction.type,
+      viemClient: updatedClient,
+      txHash: approveTxHash,
+      actionType: sharedAction.type,
       step,
       chain,
       statusManager,
-      false,
-      safeApiKey
-    )
+      safeApiKey,
+    })
 
     return { status: 'DONE', data: signedTypedData }
   } catch (e: any) {
@@ -417,17 +414,29 @@ export const checkAllowance = async (
   }
 }
 
-const waitForApprovalTransaction = async (
-  client: SDKClient,
-  viemClient: Client,
-  txHash: Hash,
-  actionType: ExecutionActionType,
-  step: LiFiStep,
-  chain: ExtendedChain,
-  statusManager: StatusManager,
-  approvalReset: boolean = false,
+interface WaitForApprovalOptions {
+  client: SDKClient
+  viemClient: Client
+  txHash: Hash
+  actionType: ExecutionActionType
+  step: LiFiStep
+  chain: ExtendedChain
+  statusManager: StatusManager
+  approvalReset?: boolean
   safeApiKey?: string
-) => {
+}
+
+const waitForApprovalTransaction = async ({
+  client,
+  viemClient,
+  txHash,
+  actionType,
+  step,
+  chain,
+  statusManager,
+  approvalReset = false,
+  safeApiKey,
+}: WaitForApprovalOptions) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
 
@@ -436,7 +445,12 @@ const waitForApprovalTransaction = async (
 
   if (
     address &&
-    (await isSafeSignature(txHash, chain.id, address, safeApiKey, viemClient))
+    (await isSafeSignature(txHash, {
+      chainId: chain.id,
+      address,
+      apiKey: safeApiKey,
+      client: viemClient,
+    }))
   ) {
     statusManager.updateAction(step, actionType, 'PENDING', {
       taskId: txHash,

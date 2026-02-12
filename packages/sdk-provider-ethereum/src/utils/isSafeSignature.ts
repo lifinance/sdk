@@ -9,11 +9,14 @@ import { isSafeWallet } from '../client/safeClient.js'
  */
 export async function isSafeSignature(
   hash: string,
-  chainId: number,
-  address?: Address,
-  apiKey?: string,
-  client?: Client
+  options: {
+    chainId: number
+    address?: Address
+    apiKey?: string
+    client?: Client
+  }
 ): Promise<boolean> {
+  const { chainId, address, apiKey, client } = options
   // Signature: 65 bytes = 130 hex chars + 0x prefix = 132 chars
   // Tx hash: 32 bytes = 64 hex chars + 0x prefix = 66 chars
   if (!hash.startsWith('0x') || hash.length <= 66) {
