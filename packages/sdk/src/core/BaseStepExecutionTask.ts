@@ -1,5 +1,5 @@
 import type { ExecutionAction } from '../types/core.js'
-import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
+import type { StepExecutorContext, TaskResult } from '../types/execution.js'
 
 export abstract class BaseStepExecutionTask {
   async shouldRun(

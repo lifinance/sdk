@@ -52,11 +52,12 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
-export { CheckBalanceTask } from './tasks/CheckBalanceTask.js'
-export { checkBalance } from './tasks/helpers/checkBalance.js'
-export { stepComparison } from './tasks/helpers/stepComparison.js'
-export { PrepareTransactionTask } from './tasks/PrepareTransactionTask.js'
-export { WaitForTransactionStatusTask } from './tasks/WaitForTransactionStatusTask.js'
+export { ReceivingChainPipeline } from './execution/pipelines/ReceivingChainPipeline.js'
+export { CheckBalanceTask } from './execution/tasks/CheckBalanceTask.js'
+export { checkBalance } from './execution/tasks/helpers/checkBalance.js'
+export { stepComparison } from './execution/tasks/helpers/stepComparison.js'
+export { PrepareTransactionTask } from './execution/tasks/PrepareTransactionTask.js'
+export { WaitForTransactionStatusTask } from './execution/tasks/WaitForTransactionStatusTask.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
@@ -99,7 +100,7 @@ export type {
   StepExecutorContext,
   TaskResult,
   TaskStatus,
-} from './types/tasks.js'
+} from './types/execution.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'

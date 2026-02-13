@@ -1,4 +1,4 @@
-import type { StepExecutorContext, TaskResult } from '../types/tasks.js'
+import type { StepExecutorContext, TaskResult } from '../types/execution.js'
 import type { TaskPipeline } from './TaskPipeline.js'
 
 export class ActionPipelineOrchestrator {

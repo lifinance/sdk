@@ -11,7 +11,7 @@ import type {
 import type {
   StepExecutorBaseContext,
   StepExecutorContext,
-} from '../types/tasks.js'
+} from '../types/execution.js'
 import { StatusManager } from './StatusManager.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)

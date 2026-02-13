@@ -28,7 +28,6 @@ export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
 export interface EthereumStepExecutorContext extends StepExecutorContext {
   isFromNativeToken: boolean
   disableMessageSigning: boolean
-  isPermit2Supported: (isBatchingSupported: boolean) => boolean
   getExecutionStrategy: (
     step: LiFiStepExtended
   ) => Promise<EthereumExecutionStrategy>
