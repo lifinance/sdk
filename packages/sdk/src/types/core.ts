@@ -82,13 +82,20 @@ export interface InteractionSettings {
   allowExecution?: boolean
 }
 
+/**
+ * Params passed when retrying executeStep after an ExecuteStepRetryError.
+ * Providers can use this to pass strategy-specific retry options (e.g. atomicityNotReady for Ethereum 7702).
+ */
+export type ExecuteStepRetryParams = Record<string, unknown>
+
 export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
   executeStep(
     client: SDKClient,
-    step: LiFiStepExtended
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
   ): Promise<LiFiStepExtended>
 }
 

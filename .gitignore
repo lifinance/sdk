@@ -1,7 +1,7 @@
 # build
 cjs
 esm
-types
+/types
 _esm/
 _cjs/
 _types/

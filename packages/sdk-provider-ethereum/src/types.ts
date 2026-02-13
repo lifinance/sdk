@@ -1,9 +1,13 @@
 import {
   type BaseToken,
   ChainType,
+  type ExecutionAction,
   type LiFiStep,
   type LiFiStepExtended,
   type SDKProvider,
+  type SignedTypedData,
+  type StepExecutorContext,
+  type TransactionParameters,
 } from '@lifi/sdk'
 import type {
   WalletCallReceipt as _WalletCallReceipt,
@@ -17,6 +21,29 @@ export interface EthereumProviderOptions {
   getWalletClient?: () => Promise<Client>
   switchChain?: (chainId: number) => Promise<Client | undefined>
   fallbackTransportConfig?: FallbackTransportConfig
+}
+
+export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
+
+export interface EthereumStepExecutorContext extends StepExecutorContext {
+  isFromNativeToken: boolean
+  disableMessageSigning: boolean
+  getExecutionStrategy: (
+    step: LiFiStepExtended
+  ) => Promise<EthereumExecutionStrategy>
+  ethereumClient: Client
+  checkClient: (
+    step: LiFiStepExtended,
+    action: ExecutionAction,
+    targetChainId?: number
+  ) => Promise<Client | undefined>
+  switchChain?: (chainId: number) => Promise<Client | undefined>
+  /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
+  retryParams?: Record<string, unknown>
+  // Payload shared between tasks
+  signedTypedData: SignedTypedData[]
+  calls: Call[]
+  transactionRequest: TransactionParameters | undefined
 }
 
 export interface EthereumSDKProvider extends SDKProvider {

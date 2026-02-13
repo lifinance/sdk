@@ -24,8 +24,6 @@ export { actions } from './actions/index.js'
 export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
 export { createClient } from './client/createClient.js'
-export { BaseStepExecutor } from './core/BaseStepExecutor.js'
-export { checkBalance } from './core/checkBalance.js'
 export {
   executeRoute,
   getActiveRoute,
@@ -35,13 +33,12 @@ export {
   updateRouteExecution,
 } from './core/execution.js'
 export { StatusManager } from './core/StatusManager.js'
-export { stepComparison } from './core/stepComparison.js'
-export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
 export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
 export {
   BalanceError,
+  ExecuteStepRetryError,
   ProviderError,
   RPCError,
   ServerError,
@@ -51,6 +48,17 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
+export { ActionPipelineOrchestrator } from './execution/ActionPipelineOrchestrator.js'
+export { BaseStepExecutionTask } from './execution/BaseStepExecutionTask.js'
+export { BaseStepExecutor } from './execution/BaseStepExecutor.js'
+export { ReceivingChainPipeline } from './execution/pipelines/ReceivingChainPipeline.js'
+export { TaskPipeline } from './execution/TaskPipeline.js'
+export { CheckBalanceTask } from './execution/tasks/CheckBalanceTask.js'
+export { checkBalance } from './execution/tasks/helpers/checkBalance.js'
+export { getTransactionRequestData } from './execution/tasks/helpers/getTransactionRequestData.js'
+export { stepComparison } from './execution/tasks/helpers/stepComparison.js'
+export { PrepareTransactionTask } from './execution/tasks/PrepareTransactionTask.js'
+export { WaitForTransactionStatusTask } from './execution/tasks/WaitForTransactionStatusTask.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
@@ -58,6 +66,7 @@ export type {
   ContractCallParams,
   ContractTool,
   ExchangeRateUpdateParams,
+  ExecuteStepRetryParams,
   Execution,
   ExecutionAction,
   ExecutionActionStatus,
@@ -87,6 +96,12 @@ export type {
   TransactionRequestUpdateHook,
   UpdateRouteHook,
 } from './types/core.js'
+export type {
+  StepExecutorBaseContext,
+  StepExecutorContext,
+  TaskResult,
+  TaskStatus,
+} from './types/execution.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
