@@ -1,8 +1,8 @@
-import { BaseStepExecutionTask } from '../../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { checkBalance } from './helpers/checkBalance.js'
 
 export class CheckBalanceTask extends BaseStepExecutionTask {

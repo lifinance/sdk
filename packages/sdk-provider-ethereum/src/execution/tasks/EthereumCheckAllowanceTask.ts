@@ -33,7 +33,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     // Start new allowance check
@@ -60,8 +60,10 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient.account!.address,
       spenderAddress as Address
     )
-    // Persist allowance
-    statusManager.updateAction(step, action.type, action.status, { allowance })
+    // Persist allowance approved status
+    statusManager.updateAction(step, action.type, action.status, {
+      allowanceApproved: allowance > 0n,
+    })
 
     // Return early if already approved
     if (fromAmount <= allowance) {

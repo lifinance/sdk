@@ -19,7 +19,7 @@ export class EthereumPermitPipeline extends TaskPipeline {
       isBridgeExecution,
       disableMessageSigning,
     } = context
-    const permitTypedData = context.step.typedData?.filter(
+    const permitTypedData = step.typedData?.filter(
       (typedData) => typedData.primaryType === 'Permit'
     )
     return (

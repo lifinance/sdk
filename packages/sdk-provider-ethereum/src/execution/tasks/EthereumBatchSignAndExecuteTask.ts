@@ -34,7 +34,7 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     if (!transactionRequest) {

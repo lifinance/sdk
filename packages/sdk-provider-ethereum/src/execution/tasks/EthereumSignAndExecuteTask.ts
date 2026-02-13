@@ -35,16 +35,21 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, statusManager, allowUserInteraction, transactionRequest } =
-      context
+    const {
+      step,
+      statusManager,
+      allowUserInteraction,
+      transactionRequest,
+      getExecutionStrategy,
+    } = context
 
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
-    const executionStrategy = await context.getExecutionStrategy(step)
+    const executionStrategy = await getExecutionStrategy(step)
     if (executionStrategy === 'batch' && transactionRequest) {
       return this.strategies.batch.run(context, action)
     }

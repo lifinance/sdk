@@ -23,7 +23,7 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     // Handle existing pending transaction

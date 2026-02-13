@@ -1,10 +1,10 @@
-import { LiFiErrorCode } from '../errors/constants.js'
-import { TransactionError } from '../errors/errors.js'
+import { LiFiErrorCode } from '../../../errors/constants.js'
+import { TransactionError } from '../../../errors/errors.js'
 import type {
   ExecutionOptions,
   LiFiStepExtended,
   TransactionParameters,
-} from '../types/core.js'
+} from '../../../types/core.js'
 
 export const getTransactionRequestData = async (
   step: LiFiStepExtended,

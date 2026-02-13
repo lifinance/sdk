@@ -36,8 +36,8 @@ export class TaskPipeline {
           continue
         }
         const result = await task.run(context, action)
-        if (result.status === 'PAUSED') {
-          return { status: 'PAUSED' }
+        if (result.status === 'ACTION_REQUIRED') {
+          return { status: 'ACTION_REQUIRED' }
         }
       } catch (error: any) {
         const parsed = await parseErrors(error, step, action)

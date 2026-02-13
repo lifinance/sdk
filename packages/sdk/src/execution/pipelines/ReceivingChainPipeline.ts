@@ -1,6 +1,6 @@
-import { TaskPipeline } from '../../core/TaskPipeline.js'
 import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext } from '../../types/execution.js'
+import { TaskPipeline } from '../TaskPipeline.js'
 import { WaitForTransactionStatusTask } from '../tasks/WaitForTransactionStatusTask.js'
 
 export class ReceivingChainPipeline extends TaskPipeline {

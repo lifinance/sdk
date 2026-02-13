@@ -49,7 +49,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
     for (const typedData of intentTypedData) {
       if (!allowUserInteraction) {
-        return { status: 'PAUSED' }
+        return { status: 'ACTION_REQUIRED' }
       }
 
       const typedDataChainId =
@@ -58,7 +58,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
       // Switch to the typed data's chain if needed
       const updatedClient = await checkClient(step, action, typedDataChainId)
       if (!updatedClient) {
-        return { status: 'PAUSED' }
+        return { status: 'ACTION_REQUIRED' }
       }
 
       const signature = await getAction(

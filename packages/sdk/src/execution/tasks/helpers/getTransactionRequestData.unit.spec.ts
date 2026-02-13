@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { LiFiErrorCode } from '../errors/constants.js'
+import { LiFiErrorCode } from '../../../errors/constants.js'
 import { getTransactionRequestData } from './getTransactionRequestData.js'
 
 describe('getTransactionRequestData', () => {

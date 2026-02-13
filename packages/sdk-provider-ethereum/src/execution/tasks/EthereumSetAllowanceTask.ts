@@ -75,7 +75,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
       // Add reset call first if approval reset is required
       const shouldResetApproval =
-        step.estimate.approvalReset && (action.allowance ?? 0n) > 0n
+        step.estimate.approvalReset && action.allowanceApproved
       const approvalResetTxHash = action.approvalResetTxHash
       if (shouldResetApproval && approvalResetTxHash) {
         calls.push({

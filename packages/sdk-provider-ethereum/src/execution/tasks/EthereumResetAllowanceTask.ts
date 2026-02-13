@@ -35,7 +35,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     } = context
 
     const shouldResetApproval =
-      step.estimate.approvalReset && (action.allowance ?? 0n) > 0n
+      step.estimate.approvalReset && action.allowanceApproved
     const resetApprovalStatus = shouldResetApproval
       ? 'RESET_REQUIRED'
       : 'ACTION_REQUIRED'
@@ -47,7 +47,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     })
 
     if (!allowUserInteraction) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     const executionStrategy = await getExecutionStrategy(step)
@@ -98,7 +98,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
         })
 
         if (!allowUserInteraction) {
-          return { status: 'PAUSED' }
+          return { status: 'ACTION_REQUIRED' }
         }
       }
     }

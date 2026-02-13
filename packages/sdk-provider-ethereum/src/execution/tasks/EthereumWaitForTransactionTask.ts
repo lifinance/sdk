@@ -38,16 +38,16 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, checkClient } = context
+    const { step, checkClient, getExecutionStrategy } = context
 
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     const executionStrategy: EthereumExecutionStrategy =
-      await context.getExecutionStrategy(step)
+      await getExecutionStrategy(step)
 
     const task = this.strategies[executionStrategy]
     return await task.run(context, action)

@@ -1,10 +1,10 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
-import { BaseStepExecutionTask } from '../../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
+import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
 export class WaitForTransactionStatusTask extends BaseStepExecutionTask {

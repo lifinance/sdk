@@ -79,7 +79,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
       if (!allowUserInteraction) {
-        return { status: 'PAUSED' }
+        return { status: 'ACTION_REQUIRED' }
       }
 
       // Sign the permit

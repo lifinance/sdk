@@ -39,4 +39,4 @@ export interface TaskResult {
   status: TaskStatus
 }
 
-export type TaskStatus = 'COMPLETED' | 'PAUSED'
+export type TaskStatus = 'COMPLETED' | 'ACTION_REQUIRED'

@@ -1,9 +1,9 @@
 import { getStepTransaction } from '../../actions/getStepTransaction.js'
-import { BaseStepExecutionTask } from '../../core/BaseStepExecutionTask.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
 /**
@@ -56,7 +56,7 @@ export class PrepareTransactionTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
-      return { status: 'PAUSED' }
+      return { status: 'ACTION_REQUIRED' }
     }
 
     return { status: 'COMPLETED' }

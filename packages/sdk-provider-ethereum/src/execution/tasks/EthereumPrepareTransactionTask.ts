@@ -70,7 +70,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       if (ethereumClient.account?.type === 'local') {
         const updatedClient = await checkClient(step, action)
         if (!updatedClient) {
-          return { status: 'PAUSED' }
+          return { status: 'ACTION_REQUIRED' }
         }
         maxPriorityFeePerGas = await getMaxPriorityFeePerGas(
           client,
