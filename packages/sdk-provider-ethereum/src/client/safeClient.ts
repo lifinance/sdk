@@ -1,11 +1,10 @@
 import type { Address, Client } from 'viem'
 import { getCode } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import type { SafeInfo } from './types.js'
 
 const SAFE_CLIENT_GATEWAY = 'https://safe-client.safe.global'
 
-// 5 minutes TTL for Safe wallet checks (allows detecting newly deployed Safes)
-const SAFE_WALLET_CACHE_TTL = 5 * 60 * 1_000
 // 1 hour TTL for transaction service URLs (rarely change)
 const TX_SERVICE_URL_CACHE_TTL = 60 * 60 * 1_000
 
@@ -18,7 +17,7 @@ interface CacheEntry<T> {
 const txServiceUrlCache = new Map<number, CacheEntry<string>>()
 
 // Cache for isSafeWallet results per chainId:address
-const safeWalletCache = new Map<string, CacheEntry<boolean>>()
+const safeWalletCache = new Map<string, boolean>()
 
 /**
  * Resolve the Safe Transaction Service URL for a given chain ID
@@ -70,25 +69,6 @@ export async function safeApiGet<T>(
   return response.json() as Promise<T>
 }
 
-export interface SafeInfo {
-  threshold: number
-  owners: string[]
-}
-
-export interface SafeMultisigTransaction {
-  safeTxHash: string
-  nonce: number
-  isExecuted: boolean
-  transactionHash?: string
-  isSuccessful?: boolean
-  confirmations?: Array<{ signature?: string }>
-}
-
-export interface SafeMultisigTransactionList {
-  count: number
-  results: SafeMultisigTransaction[]
-}
-
 /**
  * Check if an address is a Safe wallet by querying the Safe Transaction Service
  */
@@ -100,8 +80,8 @@ export async function isSafeWallet(
 ): Promise<boolean> {
   const cacheKey = `${chainId}:${address.toLowerCase()}`
   const cached = safeWalletCache.get(cacheKey)
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.value
+  if (cached !== undefined) {
+    return cached
   }
 
   // If a client is available, check if the address has contract code.
@@ -110,10 +90,7 @@ export async function isSafeWallet(
     try {
       const code = await getAction(client, getCode, 'getCode')({ address })
       if (!code || code === '0x') {
-        safeWalletCache.set(cacheKey, {
-          value: false,
-          expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
-        })
+        safeWalletCache.set(cacheKey, false)
         return false
       }
     } catch {
@@ -123,16 +100,10 @@ export async function isSafeWallet(
 
   try {
     await safeApiGet<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
-    safeWalletCache.set(cacheKey, {
-      value: true,
-      expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
-    })
+    safeWalletCache.set(cacheKey, true)
     return true
   } catch {
-    safeWalletCache.set(cacheKey, {
-      value: false,
-      expiresAt: Date.now() + SAFE_WALLET_CACHE_TTL,
-    })
+    safeWalletCache.set(cacheKey, false)
     return false
   }
 }

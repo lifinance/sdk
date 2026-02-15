@@ -23,7 +23,7 @@ import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { isSafeSignature } from '../utils/isSafeSignature.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
-import { resolveSafeTransactionHash } from './waitForSafeTransactionReceipt.js'
+import { waitForSafeTransactionExecution } from './waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
@@ -457,7 +457,7 @@ const waitForApprovalTransaction = async ({
       txType: 'safe-queued',
     })
 
-    txHash = await resolveSafeTransactionHash(chain.id, address, txHash, {
+    txHash = await waitForSafeTransactionExecution(chain.id, address, txHash, {
       safeApiKey,
     })
   }

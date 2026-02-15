@@ -5,20 +5,12 @@ import {
   waitForResult,
 } from '@lifi/sdk'
 import type { Address, Client, Hash, TransactionReceipt } from 'viem'
-import {
-  type SafeMultisigTransaction,
-  type SafeMultisigTransactionList,
-  safeApiGet,
-} from '../client/safeClient.js'
+import { safeApiGet } from '../client/safeClient.js'
+import type {
+  SafeMultisigTransaction,
+  SafeMultisigTransactionList,
+} from '../client/types.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
-
-export interface WaitForSafeTransactionResult {
-  safeTxHash: Hash
-  transactionHash: Hash | null
-  isExecuted: boolean
-  isSuccessful: boolean | null
-  status: 'executed' | 'pending' | 'replaced' | 'failed' | 'not_found'
-}
 
 function findMatchingTransaction(
   results: SafeMultisigTransaction[],
@@ -71,7 +63,7 @@ async function findTransactionBySignature(
 
 /**
  * Wait for a Safe transaction to be executed by polling the Safe Transaction Service.
- * Returns the Safe API execution status, not the on-chain receipt.
+ * Resolves the Safe signature to an on-chain transaction hash.
  */
 export async function waitForSafeTransactionExecution(
   chainId: number,
@@ -81,9 +73,8 @@ export async function waitForSafeTransactionExecution(
     pollingInterval?: number
     timeout?: number
     safeApiKey?: string
-    onStatusUpdate?: (status: WaitForSafeTransactionResult) => void
   }
-): Promise<WaitForSafeTransactionResult> {
+): Promise<Hash> {
   const basePollingInterval = options?.pollingInterval ?? 10_000
   const timeout = options?.timeout ?? 3_600_000 * 24 // 24 hours default
   const apiKey = options?.safeApiKey
@@ -97,13 +88,10 @@ export async function waitForSafeTransactionExecution(
   )
 
   if (!txInfo) {
-    return {
-      safeTxHash: '0x' as Hash,
-      transactionHash: null,
-      isExecuted: false,
-      isSuccessful: null,
-      status: 'not_found',
-    }
+    throw new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Safe transaction not found in Safe Transaction Service.'
+    )
   }
 
   const { safeTxHash, nonce: originalNonce } = txInfo
@@ -111,7 +99,7 @@ export async function waitForSafeTransactionExecution(
   const startTime = Date.now()
 
   try {
-    return await waitForResult<WaitForSafeTransactionResult>(
+    return await waitForResult<Hash>(
       async () => {
         pollCount++
 
@@ -127,15 +115,19 @@ export async function waitForSafeTransactionExecution(
         )
 
         if (tx.isExecuted) {
-          const result: WaitForSafeTransactionResult = {
-            safeTxHash,
-            transactionHash: tx.transactionHash as Hash | null,
-            isExecuted: true,
-            isSuccessful: tx.isSuccessful ?? null,
-            status: tx.isSuccessful ? 'executed' : 'failed',
+          if (!tx.isSuccessful) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              'Safe transaction failed.'
+            )
           }
-          options?.onStatusUpdate?.(result)
-          return result
+          if (!tx.transactionHash) {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              'Safe transaction executed but no transaction hash returned.'
+            )
+          }
+          return tx.transactionHash as Hash
         }
 
         // Check if this transaction was replaced — only every 3rd poll to reduce API calls
@@ -153,26 +145,18 @@ export async function waitForSafeTransactionExecution(
                 t.safeTxHash !== safeTxHash
             )
             if (executedWithSameOrHigherNonce) {
-              return {
-                safeTxHash,
-                transactionHash: null,
-                isExecuted: false,
-                isSuccessful: false,
-                status: 'replaced',
-              }
+              throw new TransactionError(
+                LiFiErrorCode.TransactionCanceled,
+                'Safe transaction was replaced by another transaction.'
+              )
             }
-          } catch {
-            // Ignore errors when checking for replacement
+          } catch (error) {
+            if (error instanceof TransactionError) {
+              throw error
+            }
+            // Ignore other errors when checking for replacement
           }
         }
-
-        options?.onStatusUpdate?.({
-          safeTxHash,
-          transactionHash: null,
-          isExecuted: false,
-          isSuccessful: null,
-          status: 'pending',
-        })
 
         return undefined
       },
@@ -181,70 +165,16 @@ export async function waitForSafeTransactionExecution(
       Number.MAX_SAFE_INTEGER,
       () => true
     )
-  } catch {
+  } catch (error) {
+    if (error instanceof TransactionError) {
+      throw error
+    }
     // Timeout or maxRetries exhausted
-    return {
-      safeTxHash,
-      transactionHash: null,
-      isExecuted: false,
-      isSuccessful: null,
-      status: 'pending',
-    }
-  }
-}
-
-/**
- * Resolve a Safe signature to an on-chain transaction hash.
- * Polls the Safe Transaction Service until executed and handles all error cases internally.
- */
-export async function resolveSafeTransactionHash(
-  chainId: number,
-  safeAddress: Address,
-  signature: string,
-  options?: { pollingInterval?: number; safeApiKey?: string }
-): Promise<Hash> {
-  const safeResult = await waitForSafeTransactionExecution(
-    chainId,
-    safeAddress,
-    signature,
-    {
-      pollingInterval: options?.pollingInterval,
-      safeApiKey: options?.safeApiKey,
-    }
-  )
-
-  if (safeResult.status === 'replaced') {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionCanceled,
-      'Safe transaction was replaced by another transaction.'
-    )
-  }
-  if (safeResult.status === 'not_found') {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      'Safe transaction not found in Safe Transaction Service.'
-    )
-  }
-  if (safeResult.status === 'pending') {
     throw new TransactionError(
       LiFiErrorCode.TransactionFailed,
       'Safe transaction timed out waiting for execution.'
     )
   }
-  if (safeResult.status === 'failed' || !safeResult.isSuccessful) {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      'Safe transaction failed.'
-    )
-  }
-  if (!safeResult.transactionHash) {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionFailed,
-      'Safe transaction executed but no transaction hash returned.'
-    )
-  }
-
-  return safeResult.transactionHash
 }
 
 /**
@@ -262,7 +192,7 @@ export async function waitForSafeTransactionReceipt(
     safeApiKey?: string
   }
 ): Promise<TransactionReceipt | undefined> {
-  const resolvedTxHash = await resolveSafeTransactionHash(
+  const resolvedTxHash = await waitForSafeTransactionExecution(
     options.chainId,
     options.safeAddress,
     options.signature,
