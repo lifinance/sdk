@@ -5,7 +5,7 @@
     "composite": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "outDir": "./dist"
   },
   "include": ["./src/**/*", "./src/**/*.json"],
