@@ -1,7 +1,11 @@
-import type { Address, Client } from 'viem'
+import type { Address, Client, Hash } from 'viem'
 import { getCode } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import type { SafeInfo } from './types.js'
+import type {
+  SafeInfo,
+  SafeMultisigTransaction,
+  SafeMultisigTransactionList,
+} from './types.js'
 
 const SAFE_CLIENT_GATEWAY = 'https://safe-client.safe.global'
 
@@ -47,10 +51,7 @@ async function getTransactionServiceUrl(chainId: number): Promise<string> {
   return url
 }
 
-/**
- * Make a GET request to the Safe Transaction Service
- */
-export async function safeApiGet<T>(
+async function safeRequest<T>(
   chainId: number,
   path: string,
   apiKey?: string
@@ -67,6 +68,62 @@ export async function safeApiGet<T>(
     )
   }
   return response.json() as Promise<T>
+}
+
+export function getSafeInfo({
+  chainId,
+  address,
+  apiKey,
+}: {
+  chainId: number
+  address: Address
+  apiKey?: string
+}): Promise<SafeInfo> {
+  return safeRequest<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
+}
+
+export function getSafeTransaction({
+  chainId,
+  safeTxHash,
+  apiKey,
+}: {
+  chainId: number
+  safeTxHash: Hash
+  apiKey?: string
+}): Promise<SafeMultisigTransaction> {
+  return safeRequest<SafeMultisigTransaction>(
+    chainId,
+    `/api/v1/multisig-transactions/${safeTxHash}/`,
+    apiKey
+  )
+}
+
+export function getSafeTransactions({
+  chainId,
+  safeAddress,
+  executed,
+  limit,
+  apiKey,
+}: {
+  chainId: number
+  safeAddress: Address
+  executed?: boolean
+  limit?: number
+  apiKey?: string
+}): Promise<SafeMultisigTransactionList> {
+  const params = new URLSearchParams()
+  if (executed !== undefined) {
+    params.set('executed', String(executed))
+  }
+  if (limit !== undefined) {
+    params.set('limit', String(limit))
+  }
+  const qs = params.toString()
+  return safeRequest<SafeMultisigTransactionList>(
+    chainId,
+    `/api/v1/safes/${safeAddress}/multisig-transactions/${qs ? `?${qs}` : ''}`,
+    apiKey
+  )
 }
 
 /**
@@ -99,7 +156,7 @@ export async function isSafeWallet(
   }
 
   try {
-    await safeApiGet<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
+    await getSafeInfo({ chainId, address, apiKey })
     safeWalletCache.set(cacheKey, true)
     return true
   } catch {

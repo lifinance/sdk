@@ -5,11 +5,11 @@ import {
   waitForResult,
 } from '@lifi/sdk'
 import type { Address, Client, Hash, TransactionReceipt } from 'viem'
-import { safeApiGet } from '../client/safeClient.js'
-import type {
-  SafeMultisigTransaction,
-  SafeMultisigTransactionList,
-} from '../client/types.js'
+import {
+  getSafeTransaction,
+  getSafeTransactions,
+} from '../client/safeClient.js'
+import type { SafeMultisigTransaction } from '../client/types.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 function findMatchingTransaction(
@@ -40,11 +40,12 @@ async function findTransactionBySignature(
   signature: string,
   apiKey?: string
 ): Promise<{ safeTxHash: Hash; nonce: number } | null> {
-  const pendingTxs = await safeApiGet<SafeMultisigTransactionList>(
+  const pendingTxs = await getSafeTransactions({
     chainId,
-    `/api/v1/safes/${safeAddress}/multisig-transactions/?executed=false`,
-    apiKey
-  )
+    safeAddress,
+    executed: false,
+    apiKey,
+  })
 
   const match = findMatchingTransaction(pendingTxs.results, signature)
   if (match) {
@@ -52,11 +53,12 @@ async function findTransactionBySignature(
   }
 
   // Also check recent executed transactions in case it was already executed
-  const allTxs = await safeApiGet<SafeMultisigTransactionList>(
+  const allTxs = await getSafeTransactions({
     chainId,
-    `/api/v1/safes/${safeAddress}/multisig-transactions/?limit=20`,
-    apiKey
-  )
+    safeAddress,
+    limit: 20,
+    apiKey,
+  })
 
   return findMatchingTransaction(allTxs.results, signature)
 }
@@ -108,11 +110,7 @@ export async function waitForSafeTransactionExecution(
           throw new Error('Safe transaction polling timed out')
         }
 
-        const tx = await safeApiGet<SafeMultisigTransaction>(
-          chainId,
-          `/api/v1/multisig-transactions/${safeTxHash}/`,
-          apiKey
-        )
+        const tx = await getSafeTransaction({ chainId, safeTxHash, apiKey })
 
         if (tx.isExecuted) {
           if (!tx.isSuccessful) {
@@ -133,11 +131,11 @@ export async function waitForSafeTransactionExecution(
         // Check if this transaction was replaced — only every 3rd poll to reduce API calls
         if (pollCount % 3 === 0) {
           try {
-            const allTxs = await safeApiGet<SafeMultisigTransactionList>(
+            const allTxs = await getSafeTransactions({
               chainId,
-              `/api/v1/safes/${safeAddress}/multisig-transactions/`,
-              apiKey
-            )
+              safeAddress,
+              apiKey,
+            })
             const executedWithSameOrHigherNonce = allTxs.results.find(
               (t) =>
                 t.isExecuted &&
