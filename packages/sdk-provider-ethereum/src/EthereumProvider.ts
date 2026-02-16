@@ -2,7 +2,7 @@ import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { isAddress } from 'viem'
 import { getEthereumBalance } from './actions/getEthereumBalance.js'
 import { resolveEthereumAddress } from './actions/resolveEthereumAddress.js'
-import { EthereumStepExecutor } from './execution/EthereumStepExecutor.js'
+import { EthereumStepExecutor } from './core/EthereumStepExecutor.js'
 import type { EthereumProviderOptions, EthereumSDKProvider } from './types.js'
 
 export function EthereumProvider(

@@ -7,7 +7,7 @@ import {
 import { isAddress } from '@solana/kit'
 import { getSolanaBalance } from './actions/getSolanaBalance.js'
 import { resolveSolanaAddress } from './actions/resolveSolanaAddress.js'
-import { SolanaStepExecutor } from './execution/SolanaStepExecutor.js'
+import { SolanaStepExecutor } from './core/SolanaStepExecutor.js'
 import type { SolanaProviderOptions, SolanaSDKProvider } from './types.js'
 
 export function SolanaProvider(

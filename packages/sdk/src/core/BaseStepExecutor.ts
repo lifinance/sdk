@@ -1,4 +1,3 @@
-import { StatusManager } from '../core/StatusManager.js'
 import type {
   ExecuteStepRetryParams,
   ExecutionAction,
@@ -13,6 +12,7 @@ import type {
   StepExecutorBaseContext,
   StepExecutorContext,
 } from '../types/execution.js'
+import { StatusManager } from './StatusManager.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
 const defaultInteractionSettings = {

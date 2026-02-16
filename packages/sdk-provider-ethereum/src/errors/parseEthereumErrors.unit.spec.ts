@@ -11,7 +11,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { buildStepObject } from '../execution/tasks/helpers/switchChain.unit.mock.js'
+import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
 
 function assertSDKError(
