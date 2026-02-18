@@ -27,6 +27,7 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
       pollingIntervalMs,
       toChain,
       isBridgeExecution,
+      transactionStatusObservers,
     } = context
 
     // At this point, we should have a txHash or taskId
@@ -55,7 +56,8 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
         transactionHash,
         step,
         action.type,
-        pollingIntervalMs
+        pollingIntervalMs,
+        transactionStatusObservers
       )) as FullStatusData
 
       const statusReceiving =

@@ -70,6 +70,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,
       allowUserInteraction: this.allowUserInteraction,
+      transactionStatusObservers: {},
     }
   }
 
