@@ -112,7 +112,6 @@ export async function waitForSafeTransactionExecution(
               Number(t.nonce) >= originalNonce! &&
               t.safeTxHash !== safeTxHash
           )
-          console.debug({ replaced, results })
           if (replaced) {
             throw new TransactionError(
               LiFiErrorCode.TransactionCanceled,
