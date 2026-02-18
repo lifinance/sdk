@@ -216,7 +216,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           safeAddress,
           signature: action.taskId as string,
           pollingInterval: 5_000,
-          safeApiKey: this.safeApiKey,
         })
         break
       }
@@ -604,7 +603,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         batchingSupported,
         permit2Supported,
         disableMessageSigning,
-        safeApiKey: this.safeApiKey,
       })
 
       switch (allowanceResult.status) {
@@ -855,8 +853,8 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           (await isSafeSignature(txHash, {
             chainId: fromChain.id,
             address: this.client.account?.address,
-            apiKey: this.safeApiKey,
-            client: this.client,
+            safeApiKey: this.safeApiKey,
+            viemClient: this.client,
           }))
         ) {
           // Store the signature as taskId and use 'safe-queued' txType

@@ -34,6 +34,7 @@ export interface SDKBaseConfig {
   preloadChains?: boolean
   chainsRefetchInterval?: number
   requestInterceptor?: RequestInterceptor
+  safeApiKey?: string
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {

@@ -23,7 +23,7 @@ import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { isSafeSignature } from '../utils/isSafeSignature.js'
 import { getAllowance } from './getAllowance.js'
 import { setAllowance } from './setAllowance.js'
-import { waitForSafeTransactionExecution } from './waitForSafeTransactionReceipt.js'
+import { waitForSafeTransactionExecution } from './waitForSafeTransactionExecution.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
@@ -40,7 +40,6 @@ type CheckAllowanceParams = {
   batchingSupported?: boolean
   permit2Supported?: boolean
   disableMessageSigning?: boolean
-  safeApiKey?: string
 }
 
 type AllowanceResult =
@@ -68,7 +67,6 @@ export const checkAllowance = async (
     batchingSupported = false,
     permit2Supported = false,
     disableMessageSigning = false,
-    safeApiKey,
   }: CheckAllowanceParams
 ): Promise<AllowanceResult> => {
   let sharedAction: ExecutionAction | undefined
@@ -187,7 +185,6 @@ export const checkAllowance = async (
         step,
         chain,
         statusManager,
-        safeApiKey,
       })
       return { status: 'DONE', data: signedTypedData }
     }
@@ -324,7 +321,6 @@ export const checkAllowance = async (
           step,
           chain,
           statusManager,
-          safeApiKey,
         })
 
         statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
@@ -391,7 +387,6 @@ export const checkAllowance = async (
       step,
       chain,
       statusManager,
-      safeApiKey,
     })
 
     return { status: 'DONE', data: signedTypedData }
@@ -423,7 +418,6 @@ interface WaitForApprovalOptions {
   chain: ExtendedChain
   statusManager: StatusManager
   approvalReset?: boolean
-  safeApiKey?: string
 }
 
 const waitForApprovalTransaction = async ({
@@ -435,30 +429,30 @@ const waitForApprovalTransaction = async ({
   chain,
   statusManager,
   approvalReset = false,
-  safeApiKey,
 }: WaitForApprovalOptions) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
 
-  // Resolve Safe signature to on-chain tx hash if needed
   const address = viemClient.account?.address
 
-  if (
-    address &&
-    (await isSafeSignature(txHash, {
-      chainId: chain.id,
-      address,
-      apiKey: safeApiKey,
-      client: viemClient,
-    }))
-  ) {
+  const isSignature = await isSafeSignature(txHash, {
+    chainId: chain.id,
+    address,
+    safeApiKey: client.config.safeApiKey,
+    viemClient: viemClient,
+  })
+
+  // Resolve Safe signature to on-chain tx hash if needed
+  if (address && isSignature) {
     statusManager.updateAction(step, actionType, 'PENDING', {
       taskId: txHash,
       txType: 'safe-queued',
     })
 
-    txHash = await waitForSafeTransactionExecution(chain.id, address, txHash, {
-      safeApiKey,
+    txHash = await waitForSafeTransactionExecution(client, {
+      chainId: chain.id,
+      safeAddress: address,
+      signature: txHash,
     })
   }
 
