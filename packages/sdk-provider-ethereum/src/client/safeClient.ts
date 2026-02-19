@@ -1,5 +1,5 @@
+import { LruMap } from '@lifi/sdk'
 import type { Address, Client, Hash } from 'viem'
-import { LruMap } from 'viem/_types/utils/lru.js'
 import { getCode } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type {
