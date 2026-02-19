@@ -20,8 +20,8 @@ import type { NativePermitData } from '../permits/types.js'
 import type { Call } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
-import { isSafeSignature } from '../utils/isSafeSignature.js'
 import { getAllowance } from './getAllowance.js'
+import { isSafeSignature } from './isSafeSignature.js'
 import { setAllowance } from './setAllowance.js'
 import { waitForSafeTransactionExecution } from './waitForSafeTransactionExecution.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
@@ -435,10 +435,10 @@ const waitForApprovalTransaction = async ({
 
   const address = viemClient.account?.address
 
-  const isSignature = await isSafeSignature(txHash, {
+  const isSignature = await isSafeSignature(client, {
+    hash: txHash,
     chainId: chain.id,
     address,
-    safeApiKey: client.config.safeApiKey,
     viemClient: viemClient,
   })
 

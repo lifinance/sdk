@@ -41,12 +41,13 @@ import { getAction, isHex } from 'viem/utils'
 import { checkAllowance } from './actions/checkAllowance.js'
 import { getMaxPriorityFeePerGas } from './actions/getMaxPriorityFeePerGas.js'
 import { isBatchingSupported } from './actions/isBatchingSupported.js'
+import { isSafeSignature } from './actions/isSafeSignature.js'
+import { isSafeWallet } from './actions/isSafeWallet.js'
 import { switchChain } from './actions/switchChain.js'
 import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
 import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
-import { isSafeWallet } from './client/safeClient.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
@@ -63,7 +64,6 @@ import { getDomainChainId } from './utils/getDomainChainId.js'
 import { isContractCallStep } from './utils/isContractCallStep.js'
 import { isGaslessStep } from './utils/isGaslessStep.js'
 import { isRelayerStep } from './utils/isRelayerStep.js'
-import { isSafeSignature } from './utils/isSafeSignature.js'
 import { isZeroAddress } from './utils/isZeroAddress.js'
 
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
@@ -550,12 +550,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       isZeroAddress(step.action.fromToken.address)
 
     const isAddressSafeWallet = this.client.account?.address
-      ? await isSafeWallet(
-          fromChain.id,
-          this.client.account.address,
-          client.config.safeApiKey,
-          this.client
-        )
+      ? await isSafeWallet(client, {
+          chainId: fromChain.id,
+          address: this.client.account.address,
+          viemClient: this.client,
+        })
       : false
 
     // Check if message signing is disabled - useful for smart contract wallets
@@ -843,10 +842,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           chain: convertExtendedChain(fromChain),
         } as SendTransactionParameters)
 
-        const isSignature = await isSafeSignature(txHash, {
+        const isSignature = await isSafeSignature(client, {
+          hash: txHash,
           chainId: fromChain.id,
           address: this.client.account?.address,
-          safeApiKey: client.config.safeApiKey,
           viemClient: this.client,
         })
         // Check if the returned "hash" is actually a Safe signature

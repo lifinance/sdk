@@ -5,10 +5,7 @@ import {
   waitForResult,
 } from '@lifi/sdk'
 import type { Address, Hash } from 'viem'
-import {
-  getSafeTransaction,
-  getSafeTransactions,
-} from '../client/safeClient.js'
+import { getSafeClient } from '../client/safeClient.js'
 
 export interface WaitForSafeTransactionExecutionProps {
   chainId: number
@@ -39,8 +36,7 @@ export async function waitForSafeTransactionExecution(
 ): Promise<Hash> {
   const basePollingInterval = pollingInterval ?? 10_000
   const timeout = timeoutMs ?? 3_600_000 * 24 // 24 hours default
-  const { safeApiKey } = client.config
-
+  const safeClient = getSafeClient(chainId, client.config.safeApiKey)
   let safeTxHash: Hash | undefined
   let originalNonce: number | undefined
   let pollCount = 0
@@ -58,11 +54,7 @@ export async function waitForSafeTransactionExecution(
 
         // Resolve signature to safeTxHash
         if (!safeTxHash) {
-          const { results } = await getSafeTransactions({
-            chainId,
-            safeAddress,
-            apiKey: safeApiKey,
-          })
+          const { results } = await safeClient.getTransactions(safeAddress)
 
           const match = results.find((tx) =>
             tx.confirmations?.some(
@@ -77,11 +69,7 @@ export async function waitForSafeTransactionExecution(
         }
 
         // single-tx lookup for execution status
-        const tx = await getSafeTransaction({
-          chainId,
-          safeTxHash,
-          apiKey: safeApiKey,
-        })
+        const tx = await safeClient.getTransaction(safeTxHash)
 
         if (tx.isExecuted) {
           if (!tx.isSuccessful) {
@@ -101,11 +89,7 @@ export async function waitForSafeTransactionExecution(
 
         // Check for replacement every 3rd poll
         if (pollCount % 3 === 0) {
-          const { results } = await getSafeTransactions({
-            chainId,
-            safeAddress,
-            apiKey: safeApiKey,
-          })
+          const { results } = await safeClient.getTransactions(safeAddress)
           const replaced = results.find(
             (t) =>
               t.isExecuted &&

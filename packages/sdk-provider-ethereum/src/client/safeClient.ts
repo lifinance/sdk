@@ -1,7 +1,5 @@
 import { LruMap } from '@lifi/sdk'
-import type { Address, Client, Hash } from 'viem'
-import { getCode } from 'viem/actions'
-import { getAction } from 'viem/utils'
+import type { Address, Hash } from 'viem'
 import type {
   SafeInfo,
   SafeMultisigTransaction,
@@ -20,9 +18,6 @@ interface CacheEntry<T> {
 
 // Cache for Safe Transaction Service URLs per chain
 const txServiceUrlCache = new LruMap<CacheEntry<string>>(12)
-
-// Cache for isSafeWallet results per chainId:address
-const safeWalletCache = new LruMap<boolean>(12)
 
 /**
  * Resolve the Safe Transaction Service URL for a given chain ID
@@ -52,7 +47,7 @@ async function getTransactionServiceUrl(chainId: number): Promise<string> {
   return url
 }
 
-async function safeRequest<T>(
+async function request<T>(
   chainId: number,
   path: string,
   apiKey?: string
@@ -71,97 +66,35 @@ async function safeRequest<T>(
   return response.json() as Promise<T>
 }
 
-export function getSafeInfo({
-  chainId,
-  address,
-  apiKey,
-}: {
-  chainId: number
-  address: Address
-  apiKey?: string
-}): Promise<SafeInfo> {
-  return safeRequest<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey)
-}
+export const getSafeClient = (chainId: number, apiKey?: string) => ({
+  getInfo: (address: Address) =>
+    request<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey),
 
-export function getSafeTransaction({
-  chainId,
-  safeTxHash,
-  apiKey,
-}: {
-  chainId: number
-  safeTxHash: Hash
-  apiKey?: string
-}): Promise<SafeMultisigTransaction> {
-  return safeRequest<SafeMultisigTransaction>(
-    chainId,
-    `/api/v1/multisig-transactions/${safeTxHash}/`,
-    apiKey
-  )
-}
+  getTransaction: (safeTxHash: Hash) =>
+    request<SafeMultisigTransaction>(
+      chainId,
+      `/api/v1/multisig-transactions/${safeTxHash}/`,
+      apiKey
+    ),
 
-export function getSafeTransactions({
-  chainId,
-  safeAddress,
-  executed,
-  limit,
-  apiKey,
-}: {
-  chainId: number
-  safeAddress: Address
-  executed?: boolean
-  limit?: number
-  apiKey?: string
-}): Promise<SafeMultisigTransactionList> {
-  const params = new URLSearchParams()
-  if (executed !== undefined) {
-    params.set('executed', String(executed))
-  }
-  if (limit !== undefined) {
-    params.set('limit', String(limit))
-  }
-  const qs = params.toString()
-  return safeRequest<SafeMultisigTransactionList>(
-    chainId,
-    `/api/v1/safes/${safeAddress}/multisig-transactions/${qs ? `?${qs}` : ''}`,
-    apiKey
-  )
-}
-
-/**
- * Check if an address is a Safe wallet by querying the Safe Transaction Service
- */
-export async function isSafeWallet(
-  chainId: number,
-  address: Address,
-  apiKey?: string,
-  client?: Client
-): Promise<boolean> {
-  const cacheKey = `${chainId}:${address.toLowerCase()}`
-  const cached = safeWalletCache.get(cacheKey)
-  if (cached !== undefined) {
-    return cached
-  }
-
-  // If a client is available, check if the address has contract code.
-  // EOA wallets have no code and can never be Safe wallets.
-  if (client) {
-    try {
-      const code = await getAction(client, getCode, 'getCode')({ address })
-      if (!code || code === '0x') {
-        safeWalletCache.set(cacheKey, false)
-        return false
-      }
-    } catch {
-      // If getCode fails, fall through to the Safe API check
+  getTransactions: (
+    safeAddress: Address,
+    options?: { executed?: boolean; limit?: number }
+  ) => {
+    const params = new URLSearchParams()
+    if (options?.executed !== undefined) {
+      params.set('executed', String(options.executed))
     }
-  }
+    if (options?.limit !== undefined) {
+      params.set('limit', String(options.limit))
+    }
+    const qs = params.toString()
+    return request<SafeMultisigTransactionList>(
+      chainId,
+      `/api/v1/safes/${safeAddress}/multisig-transactions/${qs ? `?${qs}` : ''}`,
+      apiKey
+    )
+  },
+})
 
-  try {
-    await getSafeInfo({ chainId, address, apiKey })
-    safeWalletCache.set(cacheKey, true)
-    return true
-  } catch {
-    safeWalletCache.set(cacheKey, false)
-    return false
-  }
-}
+export type SafeClient = ReturnType<typeof getSafeClient>
