@@ -1,4 +1,5 @@
 import type { Address, Client, Hash } from 'viem'
+import { LruMap } from 'viem/_types/utils/lru.js'
 import { getCode } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type {
@@ -18,16 +19,16 @@ interface CacheEntry<T> {
 }
 
 // Cache for Safe Transaction Service URLs per chain
-const txServiceUrlCache = new Map<number, CacheEntry<string>>()
+const txServiceUrlCache = new LruMap<CacheEntry<string>>(12)
 
 // Cache for isSafeWallet results per chainId:address
-const safeWalletCache = new Map<string, boolean>()
+const safeWalletCache = new LruMap<boolean>(12)
 
 /**
  * Resolve the Safe Transaction Service URL for a given chain ID
  */
 async function getTransactionServiceUrl(chainId: number): Promise<string> {
-  const cached = txServiceUrlCache.get(chainId)
+  const cached = txServiceUrlCache.get(chainId.toString())
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value
   }
@@ -44,7 +45,7 @@ async function getTransactionServiceUrl(chainId: number): Promise<string> {
   }
 
   const url = data.transactionService
-  txServiceUrlCache.set(chainId, {
+  txServiceUrlCache.set(chainId.toString(), {
     value: url,
     expiresAt: Date.now() + TX_SERVICE_URL_CACHE_TTL,
   })
