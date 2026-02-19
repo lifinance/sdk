@@ -69,19 +69,16 @@ import { isZeroAddress } from './utils/isZeroAddress.js'
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
-  safeApiKey?: string
 }
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
-  private safeApiKey?: string
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
-    this.safeApiKey = options.safeApiKey
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
@@ -556,7 +553,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ? await isSafeWallet(
           fromChain.id,
           this.client.account.address,
-          this.safeApiKey,
+          client.config.safeApiKey,
           this.client
         )
       : false
@@ -846,17 +843,15 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           chain: convertExtendedChain(fromChain),
         } as SendTransactionParameters)
 
+        const isSignature = await isSafeSignature(txHash, {
+          chainId: fromChain.id,
+          address: this.client.account?.address,
+          safeApiKey: client.config.safeApiKey,
+          viemClient: this.client,
+        })
         // Check if the returned "hash" is actually a Safe signature
         // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
-        if (
-          txHash &&
-          (await isSafeSignature(txHash, {
-            chainId: fromChain.id,
-            address: this.client.account?.address,
-            safeApiKey: this.safeApiKey,
-            viemClient: this.client,
-          }))
-        ) {
+        if (txHash && isSignature) {
           // Store the signature as taskId and use 'safe-queued' txType
           taskId = txHash
           txHash = undefined
