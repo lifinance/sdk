@@ -41,9 +41,12 @@ import { getAction, isHex } from 'viem/utils'
 import { checkAllowance } from './actions/checkAllowance.js'
 import { getMaxPriorityFeePerGas } from './actions/getMaxPriorityFeePerGas.js'
 import { isBatchingSupported } from './actions/isBatchingSupported.js'
+import { isSafeSignature } from './actions/isSafeSignature.js'
+import { isSafeWallet } from './actions/isSafeWallet.js'
 import { switchChain } from './actions/switchChain.js'
 import { waitForBatchTransactionReceipt } from './actions/waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from './actions/waitForRelayedTransactionReceipt.js'
+import { waitForSafeTransactionReceipt } from './actions/waitForSafeTransactionReceipt.js'
 import { waitForTransactionReceipt } from './actions/waitForTransactionReceipt.js'
 import {
   isAtomicReadyWalletRejectedUpgradeError,
@@ -196,6 +199,23 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           step
         )
         break
+      case 'safe-queued': {
+        const safeAddress = this.client.account?.address
+        if (!safeAddress) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            'Safe address not available for transaction tracking.'
+          )
+        }
+        transactionReceipt = await waitForSafeTransactionReceipt(client, {
+          viemClient: this.client,
+          chainId: fromChain.id,
+          safeAddress,
+          signature: action.taskId as string,
+          pollingInterval: 5_000,
+        })
+        break
+      }
       default:
         transactionReceipt = await waitForTransactionReceipt(client, {
           client: this.client,
@@ -460,7 +480,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           : estimatedGas
 
       transactionRequest.gas = baseGas + 300_000n
-    } catch (_) {
+    } catch {
       // If estimation fails, add 300K buffer to existing gas limit
       if (transactionRequest.gas) {
         transactionRequest.gas = transactionRequest.gas + 300_000n
@@ -529,10 +549,20 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
 
+    const isAddressSafeWallet = this.client.account?.address
+      ? await isSafeWallet(client, {
+          chainId: fromChain.id,
+          address: this.client.account.address,
+          viemClient: this.client,
+        })
+      : false
+
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      this.executionOptions?.disableMessageSigning || step.type !== 'lifi'
+      this.executionOptions?.disableMessageSigning ||
+      step.type !== 'lifi' ||
+      isAddressSafeWallet
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const permit2Supported =
@@ -811,6 +841,21 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
           chain: convertExtendedChain(fromChain),
         } as SendTransactionParameters)
+
+        const isSignature = await isSafeSignature(client, {
+          hash: txHash,
+          chainId: fromChain.id,
+          address: this.client.account?.address,
+          viemClient: this.client,
+        })
+        // Check if the returned "hash" is actually a Safe signature
+        // Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of a tx hash (32 bytes = 66 chars)
+        if (txHash && isSignature) {
+          // Store the signature as taskId and use 'safe-queued' txType
+          taskId = txHash
+          txHash = undefined
+          txType = 'safe-queued'
+        }
       }
 
       action = this.statusManager.updateAction(

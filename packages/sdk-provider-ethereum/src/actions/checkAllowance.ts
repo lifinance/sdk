@@ -21,7 +21,9 @@ import type { Call } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { getDomainChainId } from '../utils/getDomainChainId.js'
 import { getAllowance } from './getAllowance.js'
+import { isSafeSignature } from './isSafeSignature.js'
 import { setAllowance } from './setAllowance.js'
+import { waitForSafeTransactionExecution } from './waitForSafeTransactionExecution.js'
 import { waitForTransactionReceipt } from './waitForTransactionReceipt.js'
 
 type CheckAllowanceParams = {
@@ -168,16 +170,22 @@ export const checkAllowance = async (
     }
 
     // Handle existing pending transaction
-    if (sharedAction.txHash && sharedAction.status !== 'DONE') {
-      await waitForApprovalTransaction(
+    // Safe queued transactions store the identifier in taskId instead of txHash
+    if (
+      (sharedAction.txHash || sharedAction.taskId) &&
+      sharedAction.status !== 'DONE'
+    ) {
+      const hashOrSignature = (sharedAction.txHash ||
+        sharedAction.taskId) as Hash
+      await waitForApprovalTransaction({
         client,
-        updatedClient,
-        sharedAction.txHash as Address,
-        sharedAction.type,
+        viemClient: updatedClient,
+        txHash: hashOrSignature,
+        actionType: sharedAction.type,
         step,
         chain,
-        statusManager
-      )
+        statusManager,
+      })
       return { status: 'DONE', data: signedTypedData }
     }
 
@@ -305,15 +313,15 @@ export const checkAllowance = async (
 
       // If batching is NOT supported, wait for the reset transaction
       if (!batchingSupported) {
-        await waitForApprovalTransaction(
+        await waitForApprovalTransaction({
           client,
-          updatedClient,
-          approvalResetTxHash,
-          sharedAction.type,
+          viemClient: updatedClient,
+          txHash: approvalResetTxHash,
+          actionType: sharedAction.type,
           step,
           chain,
-          statusManager
-        )
+          statusManager,
+        })
 
         statusManager.updateAction(step, sharedAction.type, 'ACTION_REQUIRED', {
           txHash: undefined,
@@ -371,15 +379,15 @@ export const checkAllowance = async (
       }
     }
 
-    await waitForApprovalTransaction(
+    await waitForApprovalTransaction({
       client,
-      updatedClient,
-      approveTxHash,
-      sharedAction.type,
+      viemClient: updatedClient,
+      txHash: approveTxHash,
+      actionType: sharedAction.type,
       step,
       chain,
-      statusManager
-    )
+      statusManager,
+    })
 
     return { status: 'DONE', data: signedTypedData }
   } catch (e: any) {
@@ -401,18 +409,52 @@ export const checkAllowance = async (
   }
 }
 
-const waitForApprovalTransaction = async (
-  client: SDKClient,
-  viemClient: Client,
-  txHash: Hash,
-  actionType: ExecutionActionType,
-  step: LiFiStep,
-  chain: ExtendedChain,
-  statusManager: StatusManager,
-  approvalReset: boolean = false
-) => {
+interface WaitForApprovalOptions {
+  client: SDKClient
+  viemClient: Client
+  txHash: Hash
+  actionType: ExecutionActionType
+  step: LiFiStep
+  chain: ExtendedChain
+  statusManager: StatusManager
+  approvalReset?: boolean
+}
+
+const waitForApprovalTransaction = async ({
+  client,
+  viemClient,
+  txHash,
+  actionType,
+  step,
+  chain,
+  statusManager,
+  approvalReset = false,
+}: WaitForApprovalOptions) => {
   const baseExplorerUrl = chain.metamask.blockExplorerUrls[0]
   const getTxLink = (hash: Hash) => `${baseExplorerUrl}tx/${hash}`
+
+  const address = viemClient.account?.address
+
+  const isSignature = await isSafeSignature(client, {
+    hash: txHash,
+    chainId: chain.id,
+    address,
+    viemClient: viemClient,
+  })
+
+  // Resolve Safe signature to on-chain tx hash if needed
+  if (address && isSignature) {
+    statusManager.updateAction(step, actionType, 'PENDING', {
+      taskId: txHash,
+      txType: 'safe-queued',
+    })
+
+    txHash = await waitForSafeTransactionExecution(client, {
+      chainId: chain.id,
+      safeAddress: address,
+      signature: txHash,
+    })
+  }
 
   statusManager.updateAction(step, actionType, 'PENDING', {
     txHash,
