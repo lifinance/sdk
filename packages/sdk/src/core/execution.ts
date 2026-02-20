@@ -1,8 +1,9 @@
 import type { Route } from '@lifi/types'
 import { LiFiErrorCode } from '../errors/constants.js'
-import { ProviderError } from '../errors/errors.js'
+import { ExecuteStepRetryError, ProviderError } from '../errors/errors.js'
 import type {
   ExecutionOptions,
+  LiFiStepExtended,
   RouteExtended,
   SDKClient,
   SDKProvider,
@@ -136,7 +137,21 @@ const executeSteps = async (
         updateRouteExecution(route, execution.executionOptions)
       }
 
-      const executedStep = await stepExecutor.executeStep(client, step)
+      let executedStep: LiFiStepExtended
+      try {
+        executedStep = await stepExecutor.executeStep(client, step)
+      } catch (e) {
+        if (e instanceof ExecuteStepRetryError) {
+          step.execution = undefined
+          executedStep = await stepExecutor.executeStep(
+            client,
+            step,
+            e.retryParams
+          )
+        } else {
+          throw e
+        }
+      }
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
       if (executedStep.execution?.status !== 'DONE') {

@@ -1,12 +1,10 @@
 import type { FullStatusData, LiFiStep, StatusResponse } from '@lifi/types'
-import { getStatus } from '../actions/getStatus.js'
-import { ServerError } from '../errors/errors.js'
-import type { ExecutionActionType, SDKClient } from '../types/core.js'
-import { waitForResult } from '../utils/waitForResult.js'
-import { getSubstatusMessage } from './actionMessages.js'
-import type { StatusManager } from './StatusManager.js'
-
-const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
+import { getStatus } from '../../../actions/getStatus.js'
+import { ServerError } from '../../../errors/errors.js'
+import type { ExecutionActionType, SDKClient } from '../../../types/core.js'
+import { waitForResult } from '../../../utils/waitForResult.js'
+import { getSubstatusMessage } from '../../actionMessages.js'
+import type { StatusManager } from '../../StatusManager.js'
 
 export async function waitForTransactionStatus(
   client: SDKClient,
@@ -14,7 +12,8 @@ export async function waitForTransactionStatus(
   txHash: string,
   step: LiFiStep,
   actionType: ExecutionActionType,
-  interval = 5_000
+  interval = 5_000,
+  transactionStatusObservers?: Record<string, Promise<StatusResponse>>
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
     return getStatus(client, {
@@ -54,11 +53,13 @@ export async function waitForTransactionStatus(
       })
   }
 
-  let status = TRANSACTION_HASH_OBSERVERS[txHash]
+  let status = transactionStatusObservers?.[txHash]
 
   if (!status) {
     status = waitForResult(_getStatus, interval)
-    TRANSACTION_HASH_OBSERVERS[txHash] = status
+    if (transactionStatusObservers) {
+      transactionStatusObservers[txHash] = status
+    }
   }
 
   const resolvedStatus = await status

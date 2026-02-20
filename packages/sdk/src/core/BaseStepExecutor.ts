@@ -1,11 +1,16 @@
-import type { LiFiStep } from '@lifi/types'
 import type {
+  ExecuteStepRetryParams,
   ExecutionOptions,
   InteractionSettings,
+  LiFiStepExtended,
   SDKClient,
   StepExecutor,
   StepExecutorOptions,
 } from '../types/core.js'
+import type {
+  StepExecutorBaseContext,
+  StepExecutorContext,
+} from '../types/execution.js'
 import { StatusManager } from './StatusManager.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
@@ -37,5 +42,46 @@ export abstract class BaseStepExecutor implements StepExecutor {
     this.allowExecution = interactionSettings.allowExecution
   }
 
-  abstract executeStep(client: SDKClient, step: LiFiStep): Promise<LiFiStep>
+  private getBaseContext = async (
+    client: SDKClient,
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
+  ): Promise<StepExecutorBaseContext> => {
+    const fromChain = await client.getChainById(step.action.fromChainId)
+    const toChain = await client.getChainById(step.action.toChainId)
+
+    const isBridgeExecution = fromChain.id !== toChain.id
+
+    return {
+      client,
+      step,
+      fromChain,
+      toChain,
+      isBridgeExecution,
+      retryParams,
+      statusManager: this.statusManager,
+      executionOptions: this.executionOptions,
+      allowUserInteraction: this.allowUserInteraction,
+      transactionStatusObservers: {},
+    }
+  }
+
+  abstract getContext(
+    baseContext: StepExecutorBaseContext
+  ): Promise<StepExecutorContext>
+
+  executeStep = async (
+    client: SDKClient,
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
+  ): Promise<LiFiStepExtended> => {
+    step.execution = this.statusManager.initExecutionObject(step)
+
+    const baseContext = await this.getBaseContext(client, step, retryParams)
+    const context = await this.getContext(baseContext)
+
+    await context.actionPipelines.run(context)
+
+    return step
+  }
 }

@@ -30,10 +30,10 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
-  action: ExecutionAction,
+  _action: ExecutionAction,
   targetChainId: number,
   allowUserInteraction: boolean,
-  switchChain?: (chainId: number) => Promise<Client | undefined>
+  switchChainCallback?: (chainId: number) => Promise<Client | undefined>
 ): Promise<Client | undefined> => {
   // if we are already on the correct chain we can proceed directly
   const currentChainId = (await getAction(
@@ -50,13 +50,13 @@ export const switchChain = async (
   }
 
   try {
-    if (!switchChain) {
+    if (!switchChainCallback) {
       throw new ProviderError(
         LiFiErrorCode.ChainSwitchError,
         'Chain switch hook is not provided.'
       )
     }
-    const updatedClient = await switchChain(targetChainId)
+    const updatedClient = await switchChainCallback(targetChainId)
     let updatedChainId: number | undefined
     if (updatedClient) {
       updatedChainId = (await getAction(
@@ -74,7 +74,8 @@ export const switchChain = async (
 
     return updatedClient
   } catch (error: any) {
-    statusManager.updateAction(step, action.type, 'FAILED', {
+    statusManager.updateExecution(step, {
+      status: 'FAILED',
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,

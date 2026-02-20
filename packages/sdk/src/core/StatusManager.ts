@@ -4,7 +4,6 @@ import type {
   ExecutionAction,
   ExecutionActionStatus,
   ExecutionActionType,
-  ExecutionStatus,
   LiFiStepExtended,
 } from '../types/core.js'
 import { getActionMessage } from './actionMessages.js'
@@ -59,24 +58,19 @@ export class StatusManager {
   /**
    * Updates the execution object of a Step.
    * @param step  The current step in execution
-   * @param status  The status for the execution
    * @param execution Optional. Information about received tokens
    * @returns The step with the updated execution object
    */
   updateExecution(
     step: LiFiStepExtended,
-    status: ExecutionStatus,
-    execution?: Partial<Execution>
+    execution: Partial<Execution>
   ): LiFiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
-    step.execution.status = status
-    if (execution) {
-      step.execution = {
-        ...step.execution,
-        ...execution,
-      }
+    step.execution = {
+      ...step.execution,
+      ...execution,
     }
     this.updateStepInRoute(step)
     return step
@@ -110,24 +104,19 @@ export class StatusManager {
 
   /**
    * Create and push a new action into the execution.
+   * Caller is responsible for ensuring an action of this type does not already exist (e.g. after findAction returned undefined).
    * @param step The step that should contain the new action.
-   * @param type Type of the action. Used to identify already existing actions.
+   * @param type Type of the action.
    * @param chainId Chain Id of the action.
    * @param status By default created action is set to the STARTED status. We can override new action with the needed status.
-   * @returns Returns action.
+   * @returns The created action.
    */
-  findOrCreateAction = ({
+  createAction = ({
     step,
     type,
     chainId,
     status,
   }: FindOrCreateActionProps): ExecutionAction => {
-    const action = this.findAction(step, type, status)
-
-    if (action) {
-      return action
-    }
-
     const newAction: ExecutionAction = {
       type: type,
       message: getActionMessage(type, status ?? 'STARTED'),
@@ -138,6 +127,27 @@ export class StatusManager {
     step.execution!.actions.push(newAction)
     this.updateStepInRoute(step)
     return newAction
+  }
+
+  /**
+   * Find an existing action by type, or create and push a new one if none exists.
+   * @param step The step that should contain the action.
+   * @param type Type of the action. Used to identify already existing actions.
+   * @param chainId Chain Id of the action (used when creating).
+   * @param status By default created action is set to the STARTED status. We can override new action with the needed status.
+   * @returns The found or newly created action.
+   */
+  findOrCreateAction = ({
+    step,
+    type,
+    chainId,
+    status,
+  }: FindOrCreateActionProps): ExecutionAction => {
+    const action = this.findAction(step, type, status)
+    if (action) {
+      return action
+    }
+    return this.createAction({ step, type, chainId, status })
   }
 
   /**
@@ -173,9 +183,6 @@ export class StatusManager {
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
-        if (params?.signedAt) {
-          step.execution.signedAt = params.signedAt
-        }
         break
       case 'RESET_REQUIRED':
       case 'MESSAGE_REQUIRED':
@@ -190,9 +197,7 @@ export class StatusManager {
     currentAction.message = getActionMessage(type, status)
     // set extra parameters or overwrite the standard params set in the switch statement
     if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        currentAction[key] = value
-      }
+      Object.assign(currentAction, params)
     }
     // Sort actions, the ones with DONE status go first
     step.execution.actions = [

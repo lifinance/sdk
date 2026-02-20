@@ -9,6 +9,7 @@ import type {
   LiFiStep,
   Route,
   RouteOptions,
+  SignedTypedData,
   Step,
   Substatus,
   Token,
@@ -82,13 +83,20 @@ export interface InteractionSettings {
   allowExecution?: boolean
 }
 
+/**
+ * Params passed when retrying executeStep after an ExecuteStepRetryError.
+ * Providers can use this to pass strategy-specific retry options (e.g. atomicityNotReady for Ethereum 7702).
+ */
+export type ExecuteStepRetryParams = Record<string, unknown>
+
 export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
   executeStep(
     client: SDKClient,
-    step: LiFiStepExtended
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
   ): Promise<LiFiStepExtended>
 }
 
@@ -223,22 +231,22 @@ export type ExecutionActionType =
 
 export type ExecutionAction = {
   type: ExecutionActionType
-  status: ExecutionActionStatus
-  substatus?: Substatus
-  chainId?: number
   txHash?: string
   taskId?: string
   txLink?: string
   txType?: TransactionMethodType
-  message?: string
-  error?: {
-    code: string | number
-    message: string
-    htmlMessage?: string
-  }
+  txHex?: string
+  signedTypedData?: SignedTypedData[] // TODO: check if can be moved to execution
 
-  // additional information
-  [key: string]: any
+  // TODO: remove
+  status: ExecutionActionStatus
+  message?: string
+  substatusMessage?: string
+  substatus?: Substatus
+  chainId?: number
+  // TODO: make a separate action type and use txHash and txLink
+  resetTxHash?: string
+  resetTxLink?: string
 }
 
 export interface Execution {
@@ -253,6 +261,12 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+  allowanceApproved?: boolean
+  error?: {
+    code: string | number
+    message: string
+    htmlMessage?: string
+  }
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'
