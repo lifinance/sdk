@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
@@ -26,7 +27,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit
-    return context.isTransactionPrepared(action) && isNativePermitAvailable
+    return isTransactionPrepared(action) && isNativePermitAvailable
   }
 
   async run(
@@ -44,7 +45,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     const fromAmount = BigInt(step.action.fromAmount)
@@ -84,7 +85,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
       if (!allowUserInteraction) {
-        return { status: 'ACTION_REQUIRED' }
+        return { status: 'PAUSED' }
       }
 
       // Sign the permit

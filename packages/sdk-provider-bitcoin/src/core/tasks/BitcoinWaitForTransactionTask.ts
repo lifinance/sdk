@@ -3,6 +3,7 @@ import { waitForTransaction } from '@bigmi/core'
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -11,10 +12,10 @@ import type { BitcoinStepExecutorContext } from '../../types.js'
 
 export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: BitcoinStepExecutorContext,
+    _context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(

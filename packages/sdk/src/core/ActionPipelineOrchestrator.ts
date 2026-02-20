@@ -13,7 +13,7 @@ export class ActionPipelineOrchestrator {
         continue
       }
       const result = await pipeline.run(context)
-      if (result.status === 'ACTION_REQUIRED') {
+      if (result.status === 'PAUSED') {
         return result
       }
     }

@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -18,7 +19,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     const { step } = context
     const shouldResetApproval =
       step.estimate.approvalReset && action.allowanceApproved
-    return context.isTransactionPrepared(action) && shouldResetApproval
+    return isTransactionPrepared(action) && shouldResetApproval
   }
 
   async run(
@@ -40,11 +41,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
-    }
-
-    if (!allowUserInteraction) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     // Clear the txHash and txLink from potential previous reset allowance approval transaction
@@ -52,6 +49,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       resetTxHash: undefined,
       resetTxLink: undefined,
     })
+
+    if (!allowUserInteraction) {
+      return { status: 'PAUSED' }
+    }
 
     const executionStrategy = await getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batch'

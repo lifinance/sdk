@@ -37,8 +37,9 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       }
 
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
+
       if (!allowUserInteraction) {
-        return { status: 'ACTION_REQUIRED' }
+        return { status: 'PAUSED' }
       }
 
       const typedDataChainId =
@@ -46,7 +47,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       // Switch to the permit's chain if needed
       const permitClient = await checkClient(step, action, typedDataChainId)
       if (!permitClient) {
-        return { status: 'ACTION_REQUIRED' }
+        return { status: 'PAUSED' }
       }
 
       const signature = await getAction(
@@ -65,7 +66,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         signature,
       }
       signedTypedData.push(signedPermit)
-      statusManager.updateAction(step, action.type, 'ACTION_REQUIRED', {
+      statusManager.updateAction(step, action.type, action.status, {
         signedTypedData,
       })
     }

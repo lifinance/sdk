@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   LiFiErrorCode,
   relayTransaction,
   type TaskResult,
@@ -15,10 +16,10 @@ import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
 export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -49,7 +50,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
     for (const typedData of intentTypedData) {
       if (!allowUserInteraction) {
-        return { status: 'ACTION_REQUIRED' }
+        return { status: 'PAUSED' }
       }
 
       const typedDataChainId =
@@ -58,7 +59,7 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
       // Switch to the typed data's chain if needed
       const updatedClient = await checkClient(step, action, typedDataChainId)
       if (!updatedClient) {
-        return { status: 'ACTION_REQUIRED' }
+        return { status: 'PAUSED' }
       }
 
       const signature = await getAction(

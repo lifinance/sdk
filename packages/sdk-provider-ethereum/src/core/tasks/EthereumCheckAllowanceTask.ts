@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -10,10 +11,10 @@ import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -33,7 +34,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     // Start new allowance check

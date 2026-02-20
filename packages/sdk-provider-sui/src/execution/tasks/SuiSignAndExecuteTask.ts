@@ -2,6 +2,7 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   getTransactionRequestData,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -11,10 +12,10 @@ import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: SuiStepExecutorContext,
+    _context: SuiStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(

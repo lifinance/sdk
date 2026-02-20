@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -8,10 +9,10 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 
 export class EthereumBatchSetCallsTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(

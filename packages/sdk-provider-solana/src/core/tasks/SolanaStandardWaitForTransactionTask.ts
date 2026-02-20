@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -12,10 +13,10 @@ import type { SolanaStepExecutorContext } from '../../types.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: SolanaStepExecutorContext,
+    _context: SolanaStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(

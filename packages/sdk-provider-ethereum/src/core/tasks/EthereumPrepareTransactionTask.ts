@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   LiFiErrorCode,
   stepComparison,
   type TaskResult,
@@ -13,10 +14,10 @@ import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -35,7 +36,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     // Try to prepare a new transaction request and update the step with typed data

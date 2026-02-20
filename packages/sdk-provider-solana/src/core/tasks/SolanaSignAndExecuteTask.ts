@@ -2,6 +2,7 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   getTransactionRequestData,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -15,10 +16,10 @@ import { withTimeout } from '../../utils/withTimeout.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: SolanaStepExecutorContext,
+    _context: SolanaStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(

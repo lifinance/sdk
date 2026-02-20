@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   type TaskResult,
 } from '@lifi/sdk'
 import type {
@@ -28,23 +29,17 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   }
 
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const { step, checkClient, getExecutionStrategy } = context
-
-    // Make sure that the chain is still correct
-    const updatedClient = await checkClient(step, action)
-    if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
-    }
+    const { step, getExecutionStrategy } = context
 
     const executionStrategy: EthereumExecutionStrategy =
       await getExecutionStrategy(step)

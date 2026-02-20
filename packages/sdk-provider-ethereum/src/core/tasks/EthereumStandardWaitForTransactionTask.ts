@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
@@ -10,10 +11,10 @@ import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(
@@ -31,7 +32,7 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     const transactionReceipt = await waitForTransactionReceipt(client, {

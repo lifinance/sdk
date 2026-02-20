@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -19,10 +20,10 @@ import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -39,6 +40,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       checkClient,
       signedTypedData,
       transactionRequest,
+      allowUserInteraction,
     } = context
 
     if (!transactionRequest) {
@@ -51,7 +53,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     const permit2Supported = isPermit2Supported(
@@ -76,6 +78,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       )
     } else if (permit2Supported) {
       statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
+      if (!allowUserInteraction) {
+        return { status: 'PAUSED' }
+      }
       const permit2Signature = await signPermit2Message(client, {
         client: updatedClient,
         chain: fromChain,
@@ -92,6 +97,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
         permit2Signature.signature
       )
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
+      if (!allowUserInteraction) {
+        return { status: 'PAUSED' }
+      }
     }
 
     if (signedNativePermitTypedData || permit2Supported) {

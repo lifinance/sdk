@@ -1,6 +1,5 @@
 import type {
   ExecuteStepRetryParams,
-  ExecutionAction,
   ExecutionOptions,
   InteractionSettings,
   LiFiStepExtended,
@@ -59,20 +58,6 @@ export abstract class BaseStepExecutor implements StepExecutor {
       fromChain,
       toChain,
       isBridgeExecution,
-      isTransactionPrepared: (action?: ExecutionAction) => {
-        return (
-          !!action &&
-          !(action.txHash || action.taskId) &&
-          action.status !== 'DONE'
-        )
-      },
-      isTransactionPending: (action?: ExecutionAction) => {
-        return (
-          !!action &&
-          !!(action.txHash || action.taskId) &&
-          action.status !== 'DONE'
-        )
-      },
       retryParams,
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,

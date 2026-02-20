@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   type TaskResult,
 } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
@@ -25,10 +26,10 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
   }
 
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -46,7 +47,7 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     const executionStrategy = await getExecutionStrategy(step)

@@ -10,6 +10,7 @@ import {
   BaseStepExecutionTask,
   type ExecutionAction,
   getTransactionRequestData,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -22,10 +23,10 @@ import { toXOnly } from '../../utils/toXOnly.js'
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: BitcoinStepExecutorContext,
+    _context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(

@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   type TaskResult,
 } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
@@ -9,10 +10,10 @@ import { EthereumWaitForApprovalTransactionTask } from './EthereumWaitForApprova
 
 export class EthereumGetApprovedAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(

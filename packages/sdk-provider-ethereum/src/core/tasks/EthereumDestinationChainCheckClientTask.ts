@@ -24,7 +24,7 @@ export class EthereumDestinationChainCheckClientTask extends BaseStepExecutionTa
     // All changes are already done from the source chain
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     return { status: 'COMPLETED' }

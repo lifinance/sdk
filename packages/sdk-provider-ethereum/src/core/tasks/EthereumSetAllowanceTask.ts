@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -12,10 +13,10 @@ import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -37,11 +38,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
-    }
-
-    if (!allowUserInteraction) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     // Clear the txHash and txLink from potential previous approval transaction
@@ -49,6 +46,10 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       txHash: undefined,
       txLink: undefined,
     })
+
+    if (!allowUserInteraction) {
+      return { status: 'PAUSED' }
+    }
 
     const executionStrategy = await getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batch'

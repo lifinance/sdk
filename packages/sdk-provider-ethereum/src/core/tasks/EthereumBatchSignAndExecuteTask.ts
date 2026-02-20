@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -12,10 +13,10 @@ import type { Call, EthereumStepExecutorContext } from '../../types.js'
 
 export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -34,7 +35,7 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     if (!transactionRequest) {

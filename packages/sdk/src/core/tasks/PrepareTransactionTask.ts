@@ -3,6 +3,7 @@ import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import { isTransactionPrepared } from '../../utils/transactions.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
@@ -12,10 +13,10 @@ import { stepComparison } from './helpers/stepComparison.js'
  */
 export class PrepareTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: StepExecutorContext,
+    _context: StepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPrepared(action)
+    return isTransactionPrepared(action)
   }
 
   async run(
@@ -56,7 +57,7 @@ export class PrepareTransactionTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
     if (!allowUserInteraction) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     return { status: 'COMPLETED' }

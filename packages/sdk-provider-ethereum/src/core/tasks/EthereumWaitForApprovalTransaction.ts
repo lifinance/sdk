@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
+  isTransactionPending,
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
@@ -10,10 +11,10 @@ import { getTxLink } from './helpers/getTxLink.js'
 
 export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
-    context: EthereumStepExecutorContext,
+    _context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionPending(action)
+    return isTransactionPending(action)
   }
 
   async run(
@@ -24,7 +25,7 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
 
     const updatedClient = await checkClient(step, action)
     if (!updatedClient) {
-      return { status: 'ACTION_REQUIRED' }
+      return { status: 'PAUSED' }
     }
 
     const txHash = action.txHash as Address
