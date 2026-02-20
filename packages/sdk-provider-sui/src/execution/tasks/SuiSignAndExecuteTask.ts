@@ -48,7 +48,10 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
       },
     })
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING')
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

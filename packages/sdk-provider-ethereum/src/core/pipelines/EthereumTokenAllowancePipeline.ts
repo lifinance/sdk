@@ -31,7 +31,7 @@ export class EthereumTokenAllowancePipeline extends TaskPipeline {
       context
     const permitAction = statusManager.findAction(step, 'PERMIT')
     // Check if there's a signed permit for the source transaction chain
-    const matchingPermit = permitAction?.signedTypedData.find(
+    const matchingPermit = permitAction?.signedTypedData?.find(
       (signedTypedData: SignedTypedData) =>
         getDomainChainId(signedTypedData.domain) === step.action.fromChainId
     )

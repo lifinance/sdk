@@ -31,7 +31,7 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
     } = context
 
     const strategy = await getExecutionStrategy(step)
-    const batchingSupported = strategy === 'batch'
+    const batchingSupported = strategy === 'batched'
 
     if (!batchingSupported) {
       const updatedClient = await checkClient(step, action)

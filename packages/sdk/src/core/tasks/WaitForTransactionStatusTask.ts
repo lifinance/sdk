@@ -75,7 +75,8 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
       })
 
       // Update execution status
-      statusManager.updateExecution(step, 'DONE', {
+      statusManager.updateExecution(step, {
+        status: 'DONE',
         ...(statusResponse.sending.amount && {
           fromAmount: statusResponse.sending.amount,
         }),

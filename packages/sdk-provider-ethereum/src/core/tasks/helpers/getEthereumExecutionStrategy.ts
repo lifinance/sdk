@@ -3,10 +3,10 @@ import type {
   ExtendedChain,
   LiFiStepExtended,
   SDKClient,
+  TransactionMethodType,
 } from '@lifi/sdk'
 import type { Client } from 'viem'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
-import type { EthereumExecutionStrategy } from '../../../types.js'
 import { isRelayerStep } from '../../../utils/isRelayerStep.js'
 
 export async function getEthereumExecutionStrategy(
@@ -15,11 +15,11 @@ export async function getEthereumExecutionStrategy(
   step: LiFiStepExtended,
   fromChain: ExtendedChain,
   retryParams?: ExecuteStepRetryParams
-): Promise<EthereumExecutionStrategy> {
+): Promise<TransactionMethodType> {
   const atomicityNotReady = !!retryParams?.atomicityNotReady
   const isRelayer = isRelayerStep(step)
   if (isRelayer) {
-    return 'relayer'
+    return 'relayed'
   }
   // Batching via EIP-5792 is disabled in the next cases:
   // 1. When atomicity is not ready or the wallet rejected the upgrade to 7702 account (atomicityNotReady is true)
@@ -32,5 +32,5 @@ export async function getEthereumExecutionStrategy(
           client: viemClient,
           chainId: fromChain.id,
         })
-  return batchingSupported ? 'batch' : 'standard'
+  return batchingSupported ? 'batched' : 'standard'
 }

@@ -35,10 +35,10 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
     const txHex = action.txHex
     const txHash = action.txHash
 
-    if (!txHash) {
+    if (!txHash || !txHex) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction. Transaction hash is not found.'
+        'Unable to prepare transaction. Transaction hash or hex is not set.'
       )
     }
 

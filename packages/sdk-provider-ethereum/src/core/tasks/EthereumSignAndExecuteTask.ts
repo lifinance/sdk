@@ -5,22 +5,22 @@ import {
   type TaskResult,
 } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { EthereumBatchSignAndExecuteTask } from './EthereumBatchSignAndExecuteTask.js'
-import { EthereumRelayerSignAndExecuteTask } from './EthereumRelayerSignAndExecuteTask.js'
+import { EthereumBatchedSignAndExecuteTask } from './EthereumBatchedSignAndExecuteTask.js'
+import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecuteTask.js'
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
 
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
   private readonly strategies: {
-    batch: BaseStepExecutionTask
-    relayer: BaseStepExecutionTask
+    batched: BaseStepExecutionTask
+    relayed: BaseStepExecutionTask
     standard: BaseStepExecutionTask
   }
 
   constructor() {
     super()
     this.strategies = {
-      batch: new EthereumBatchSignAndExecuteTask(),
-      relayer: new EthereumRelayerSignAndExecuteTask(),
+      batched: new EthereumBatchedSignAndExecuteTask(),
+      relayed: new EthereumRelayedSignAndExecuteTask(),
       standard: new EthereumStandardSignAndExecuteTask(),
     }
   }
@@ -51,11 +51,11 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     }
 
     const executionStrategy = await getExecutionStrategy(step)
-    if (executionStrategy === 'batch' && transactionRequest) {
-      return this.strategies.batch.run(context, action)
+    if (executionStrategy === 'batched' && transactionRequest) {
+      return this.strategies.batched.run(context, action)
     }
-    if (executionStrategy === 'relayer') {
-      return this.strategies.relayer.run(context, action)
+    if (executionStrategy === 'relayed') {
+      return this.strategies.relayed.run(context, action)
     }
     return this.strategies.standard.run(context, action)
   }

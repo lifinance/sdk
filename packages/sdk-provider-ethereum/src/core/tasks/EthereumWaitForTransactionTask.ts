@@ -3,27 +3,25 @@ import {
   type ExecutionAction,
   isTransactionPending,
   type TaskResult,
+  type TransactionMethodType,
 } from '@lifi/sdk'
-import type {
-  EthereumExecutionStrategy,
-  EthereumStepExecutorContext,
-} from '../../types.js'
-import { EthereumBatchWaitForTransactionTask } from './EthereumBatchWaitForTransactionTask.js'
-import { EthereumRelayerWaitForTransactionTask } from './EthereumRelayerWaitForTransactionTask.js'
+import type { EthereumStepExecutorContext } from '../../types.js'
+import { EthereumBatchedWaitForTransactionTask } from './EthereumBatchedWaitForTransactionTask.js'
+import { EthereumRelayedWaitForTransactionTask } from './EthereumRelayedWaitForTransactionTask.js'
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   private readonly strategies: {
-    batch: BaseStepExecutionTask
-    relayer: BaseStepExecutionTask
+    batched: BaseStepExecutionTask
+    relayed: BaseStepExecutionTask
     standard: BaseStepExecutionTask
   }
 
   constructor() {
     super()
     this.strategies = {
-      batch: new EthereumBatchWaitForTransactionTask(),
-      relayer: new EthereumRelayerWaitForTransactionTask(),
+      batched: new EthereumBatchedWaitForTransactionTask(),
+      relayed: new EthereumRelayedWaitForTransactionTask(),
       standard: new EthereumStandardWaitForTransactionTask(),
     }
   }
@@ -41,7 +39,7 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   ): Promise<TaskResult> {
     const { step, getExecutionStrategy } = context
 
-    const executionStrategy: EthereumExecutionStrategy =
+    const executionStrategy: TransactionMethodType =
       await getExecutionStrategy(step)
 
     const task = this.strategies[executionStrategy]

@@ -128,12 +128,16 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       chain: convertExtendedChain(fromChain),
     } as SendTransactionParameters)
 
-    statusManager.updateAction(context.step, action.type, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,
       txType: 'standard',
       txLink: txHash
         ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
         : undefined,
+    })
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

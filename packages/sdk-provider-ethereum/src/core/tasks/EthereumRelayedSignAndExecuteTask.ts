@@ -14,7 +14,7 @@ import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
-export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
+export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
     _context: EthereumStepExecutorContext,
     action: ExecutionAction
@@ -91,6 +91,10 @@ export class EthereumRelayerSignAndExecuteTask extends BaseStepExecutionTask {
       taskId: relayedTransaction.taskId as Hash,
       txType: 'relayed',
       txLink: relayedTransaction.txLink,
+    })
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

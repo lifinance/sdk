@@ -7,6 +7,7 @@ import {
   type SDKProvider,
   type SignedTypedData,
   type StepExecutorContext,
+  type TransactionMethodType,
   type TransactionParameters,
 } from '@lifi/sdk'
 import type {
@@ -23,14 +24,12 @@ export interface EthereumProviderOptions {
   fallbackTransportConfig?: FallbackTransportConfig
 }
 
-export type EthereumExecutionStrategy = 'standard' | 'relayer' | 'batch'
-
 export interface EthereumStepExecutorContext extends StepExecutorContext {
   isFromNativeToken: boolean
   disableMessageSigning: boolean
   getExecutionStrategy: (
     step: LiFiStepExtended
-  ) => Promise<EthereumExecutionStrategy>
+  ) => Promise<TransactionMethodType>
   checkClient: (
     step: LiFiStepExtended,
     action: ExecutionAction,

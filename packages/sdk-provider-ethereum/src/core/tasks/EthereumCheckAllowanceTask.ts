@@ -62,8 +62,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       spenderAddress as Address
     )
 
-    // Persist allowance approved status
-    statusManager.updateAction(step, action.type, action.status, {
+    statusManager.updateExecution(step, {
       allowanceApproved: allowance > 0n,
     })
 

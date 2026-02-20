@@ -11,7 +11,7 @@ import { sendCalls } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
 
-export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
+export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
   override async shouldRun(
     _context: EthereumStepExecutorContext,
     action: ExecutionAction
@@ -85,6 +85,10 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'PENDING', {
       taskId: id as Hash,
       txType: 'batched',
+    })
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

@@ -20,7 +20,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
     const executionStrategy = await context.getExecutionStrategy(step)
-    const batchingSupported = executionStrategy === 'batch'
+    const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
       !!fromChain.permit2Proxy &&

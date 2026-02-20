@@ -82,7 +82,10 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       transactionCodec.decode(output.signedTransaction)
     )
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
+    statusManager.updateAction(step, action.type, 'PENDING')
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

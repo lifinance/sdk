@@ -18,8 +18,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   ): Promise<boolean> {
     const { step } = context
     const shouldResetApproval =
-      step.estimate.approvalReset && action.allowanceApproved
-    return isTransactionPrepared(action) && shouldResetApproval
+      step.estimate.approvalReset && step.execution?.allowanceApproved
+    return isTransactionPrepared(action) && !!shouldResetApproval
   }
 
   async run(
@@ -55,7 +55,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     }
 
     const executionStrategy = await getExecutionStrategy(step)
-    const batchingSupported = executionStrategy === 'batch'
+    const batchingSupported = executionStrategy === 'batched'
 
     const permit2Supported = isPermit2Supported(
       step,

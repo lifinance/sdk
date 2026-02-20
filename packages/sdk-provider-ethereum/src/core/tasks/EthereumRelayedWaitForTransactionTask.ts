@@ -9,7 +9,7 @@ import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTr
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
-export class EthereumRelayerWaitForTransactionTask extends BaseStepExecutionTask {
+export class EthereumRelayedWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
     _context: EthereumStepExecutorContext,
     action: ExecutionAction

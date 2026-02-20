@@ -12,7 +12,7 @@ import type {
 } from '../../types.js'
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
-export class EthereumBatchWaitForTransactionTask extends BaseStepExecutionTask {
+export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
     _context: EthereumStepExecutorContext,
     action: ExecutionAction

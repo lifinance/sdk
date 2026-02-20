@@ -157,6 +157,10 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       txHash: txHash,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
       txHex,
+    })
+
+    statusManager.updateExecution(step, {
+      status: 'PENDING',
       signedAt: Date.now(),
     })
 

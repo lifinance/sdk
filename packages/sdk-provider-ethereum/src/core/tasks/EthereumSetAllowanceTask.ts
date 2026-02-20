@@ -52,7 +52,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
     }
 
     const executionStrategy = await getExecutionStrategy(step)
-    const batchingSupported = executionStrategy === 'batch'
+    const batchingSupported = executionStrategy === 'batched'
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,

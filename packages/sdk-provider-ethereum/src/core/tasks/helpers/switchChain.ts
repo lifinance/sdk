@@ -30,7 +30,7 @@ export const switchChain = async (
   client: Client,
   statusManager: StatusManager,
   step: LiFiStepExtended,
-  action: ExecutionAction,
+  _action: ExecutionAction,
   targetChainId: number,
   allowUserInteraction: boolean,
   switchChainCallback?: (chainId: number) => Promise<Client | undefined>
@@ -74,7 +74,8 @@ export const switchChain = async (
 
     return updatedClient
   } catch (error: any) {
-    statusManager.updateAction(step, action.type, 'FAILED', {
+    statusManager.updateExecution(step, {
+      status: 'FAILED',
       error: {
         message: error.message,
         code: LiFiErrorCode.ChainSwitchError,

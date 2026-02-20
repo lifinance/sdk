@@ -42,7 +42,8 @@ export class TaskPipeline {
       } catch (error: any) {
         const parsed = await parseErrors(error, step, action)
         if (!(parsed instanceof ExecuteStepRetryError) && action) {
-          statusManager.updateAction(step, this.actionType, 'FAILED', {
+          statusManager.updateExecution(step, {
+            status: 'FAILED',
             error: {
               message: parsed.cause?.message,
               code: parsed.code,

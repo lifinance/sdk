@@ -97,7 +97,9 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         // function has to be wrapped into a function https://jestjs.io/docs/expect#tothrowerror
         expect(() =>
-          statusManager.updateExecution(structuredClone(step), 'DONE')
+          statusManager.updateExecution(structuredClone(step), {
+            status: 'DONE',
+          })
         ).toThrow("Can't update empty execution.")
       })
     })
@@ -105,7 +107,8 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.updateExecution(structuredClone(step), 'DONE', {
+        statusManager.updateExecution(structuredClone(step), {
+          status: 'DONE',
           fromAmount: '123',
           toAmount: '312',
         })
