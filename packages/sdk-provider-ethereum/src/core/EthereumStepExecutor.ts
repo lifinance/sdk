@@ -127,7 +127,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ) => parseEthereumErrors(e, step, action, retryParams),
       // Payload shared between tasks
       signedTypedData: [],
-      calls: [],
       transactionRequest: undefined,
     }
   }

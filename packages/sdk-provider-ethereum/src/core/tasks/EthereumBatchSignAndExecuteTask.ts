@@ -23,14 +23,33 @@ export class EthereumBatchSignAndExecuteTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const {
+    const { step, fromChain, statusManager, checkClient, transactionRequest } =
+      context
+
+    const calls = []
+
+    const tokenAllowanceAction = statusManager.findAction(
       step,
-      fromChain,
-      statusManager,
-      checkClient,
-      calls,
-      transactionRequest,
-    } = context
+      'TOKEN_ALLOWANCE'
+    )
+    const resetTxHash = tokenAllowanceAction?.resetTxHash as Address
+    const txHash = tokenAllowanceAction?.txHash as Address
+
+    if (resetTxHash) {
+      calls.push({
+        to: step.action.fromToken.address as Address,
+        data: resetTxHash,
+        chainId: step.action.fromToken.chainId,
+      })
+    }
+
+    if (txHash) {
+      calls.push({
+        to: step.action.fromToken.address as Address,
+        data: txHash,
+        chainId: step.action.fromToken.chainId,
+      })
+    }
 
     // Make sure that the chain is still correct
     const updatedClient = await checkClient(step, action)

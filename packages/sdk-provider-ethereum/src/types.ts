@@ -41,7 +41,6 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   retryParams?: Record<string, unknown>
   // Payload shared between tasks
   signedTypedData: SignedTypedData[]
-  calls: Call[]
   transactionRequest: TransactionParameters | undefined
 }
 

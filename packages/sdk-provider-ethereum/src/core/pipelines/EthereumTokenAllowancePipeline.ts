@@ -6,10 +6,10 @@ import {
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { EthereumCheckAllowanceTask } from '../tasks/EthereumCheckAllowanceTask.js'
-import { EthereumGetApprovedAllowanceTask } from '../tasks/EthereumGetApprovedAllowanceTask.js'
 import { EthereumNativePermitTask } from '../tasks/EthereumNativePermitTask.js'
 import { EthereumResetAllowanceTask } from '../tasks/EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from '../tasks/EthereumSetAllowanceTask.js'
+import { EthereumWaitForApprovalTransactionTask } from '../tasks/EthereumWaitForApprovalTransactionTask.js'
 import { shouldCheckForAllowance } from '../tasks/helpers/shouldCheckForAllowance.js'
 
 export class EthereumTokenAllowancePipeline extends TaskPipeline {
@@ -19,7 +19,7 @@ export class EthereumTokenAllowancePipeline extends TaskPipeline {
       new EthereumNativePermitTask(),
       new EthereumResetAllowanceTask(),
       new EthereumSetAllowanceTask(),
-      new EthereumGetApprovedAllowanceTask(),
+      new EthereumWaitForApprovalTransactionTask(),
     ])
   }
 
