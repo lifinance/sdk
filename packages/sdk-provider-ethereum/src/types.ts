@@ -31,7 +31,6 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   getExecutionStrategy: (
     step: LiFiStepExtended
   ) => Promise<EthereumExecutionStrategy>
-  ethereumClient: Client
   checkClient: (
     step: LiFiStepExtended,
     action: ExecutionAction,

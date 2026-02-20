@@ -13,7 +13,7 @@ export class EthereumRelayerWaitForTransactionTask extends BaseStepExecutionTask
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return context.isTransactionPending(action)
   }
 
   async run(

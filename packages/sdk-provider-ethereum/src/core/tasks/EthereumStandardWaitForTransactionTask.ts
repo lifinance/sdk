@@ -13,7 +13,7 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return context.isTransactionPending(action)
   }
 
   async run(
@@ -22,15 +22,20 @@ export class EthereumStandardWaitForTransactionTask extends BaseStepExecutionTas
   ): Promise<TaskResult> {
     const {
       client,
-      ethereumClient,
       step,
       statusManager,
       fromChain,
       isBridgeExecution,
+      checkClient,
     } = context
 
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
+
     const transactionReceipt = await waitForTransactionReceipt(client, {
-      client: ethereumClient,
+      client: updatedClient,
       chainId: fromChain.id,
       txHash: action.txHash as Hash,
       onReplaced: (response) => {

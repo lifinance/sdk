@@ -13,7 +13,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(
@@ -60,6 +60,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient.account!.address,
       spenderAddress as Address
     )
+
     // Persist allowance approved status
     statusManager.updateAction(step, action.type, action.status, {
       allowanceApproved: allowance > 0n,

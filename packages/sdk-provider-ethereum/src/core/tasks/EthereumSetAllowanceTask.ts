@@ -6,16 +6,16 @@ import {
 import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { MaxUint256 } from '../../permits/constants.js'
-import type { Call, EthereumStepExecutorContext } from '../../types.js'
+import type { EthereumStepExecutorContext } from '../../types.js'
+import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
-import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(
@@ -30,9 +30,25 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       fromChain,
       isFromNativeToken,
       disableMessageSigning,
+      allowUserInteraction,
       getExecutionStrategy,
-      ethereumClient: updatedClient,
+      checkClient,
     } = context
+
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
+
+    if (!allowUserInteraction) {
+      return { status: 'ACTION_REQUIRED' }
+    }
+
+    // Clear the txHash and txLink from potential previous approval transaction
+    statusManager.updateAction(step, action.type, 'ACTION_REQUIRED', {
+      txHash: undefined,
+      txLink: undefined,
+    })
 
     const executionStrategy = await getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batch'
@@ -65,50 +81,11 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       batchingSupported
     )
 
-    // If batching is supported, we need to return the batch approval data
-    // because allowance was't set by standard approval transaction
-    if (batchingSupported) {
-      statusManager.updateAction(step, action.type, 'DONE')
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      txHash: approveTxHash,
+      txLink: getTxLink(fromChain, approveTxHash),
+    })
 
-      // Check if the wallet supports atomic batch transactions (EIP-5792)
-      const calls: Call[] = []
-
-      // Add reset call first if approval reset is required
-      const shouldResetApproval =
-        step.estimate.approvalReset && action.allowanceApproved
-      const approvalResetTxHash = action.approvalResetTxHash
-      if (shouldResetApproval && approvalResetTxHash) {
-        calls.push({
-          to: step.action.fromToken.address as Address,
-          data: approvalResetTxHash,
-          chainId: step.action.fromToken.chainId,
-        })
-      }
-
-      // Add approval call
-      calls.push({
-        to: step.action.fromToken.address as Address,
-        data: approveTxHash,
-        chainId: step.action.fromToken.chainId,
-      })
-
-      context.calls.push(...calls)
-
-      return { status: 'COMPLETED' }
-    }
-
-    await waitForApprovalTransaction(
-      client,
-      updatedClient,
-      approveTxHash,
-      action.type,
-      step,
-      fromChain,
-      statusManager
-    )
-
-    return {
-      status: 'COMPLETED',
-    }
+    return { status: 'COMPLETED' }
   }
 }

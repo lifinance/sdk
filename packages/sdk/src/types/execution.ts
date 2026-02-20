@@ -16,7 +16,8 @@ export interface StepExecutorBaseContext {
   fromChain: ExtendedChain
   toChain: ExtendedChain
   isBridgeExecution: boolean
-  isTransactionExecuted: (action?: ExecutionAction) => boolean
+  isTransactionPrepared: (action?: ExecutionAction) => boolean
+  isTransactionPending: (action?: ExecutionAction) => boolean
   client: SDKClient
   step: LiFiStepExtended
   allowUserInteraction: boolean

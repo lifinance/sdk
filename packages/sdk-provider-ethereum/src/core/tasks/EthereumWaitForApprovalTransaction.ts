@@ -4,15 +4,16 @@ import {
   type TaskResult,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
+import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
+import { getTxLink } from './helpers/getTxLink.js'
 
 export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return context.isTransactionPending(action)
   }
 
   async run(
@@ -26,16 +27,26 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
       return { status: 'ACTION_REQUIRED' }
     }
 
-    // Handle existing pending transaction
-    await waitForApprovalTransaction(
-      client,
-      updatedClient,
-      action.txHash as Address,
-      action.type,
-      step,
-      fromChain,
-      statusManager
-    )
+    const txHash = action.txHash as Address
+
+    const transactionReceipt = await waitForTransactionReceipt(client, {
+      client: updatedClient,
+      chainId: fromChain.id,
+      txHash,
+      onReplaced(response) {
+        const newHash = response.transaction.hash
+        statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: newHash,
+          txLink: getTxLink(fromChain, newHash),
+        })
+      },
+    })
+
+    const finalHash = transactionReceipt?.transactionHash || txHash
+    statusManager.updateAction(step, action.type, 'DONE', {
+      txHash: finalHash,
+      txLink: getTxLink(fromChain, finalHash),
+    })
 
     return {
       status: 'COMPLETED',

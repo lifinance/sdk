@@ -3,18 +3,22 @@ import {
   type ExecutionAction,
   type TaskResult,
 } from '@lifi/sdk'
-import type { Address, Hash } from 'viem'
+import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
+import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
-import { waitForApprovalTransaction } from './helpers/waitForApprovalTransaction.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    const { step } = context
+    const shouldResetApproval =
+      step.estimate.approvalReset && action.allowanceApproved
+    return context.isTransactionPrepared(action) && shouldResetApproval
   }
 
   async run(
@@ -25,33 +29,33 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       step,
       statusManager,
       allowUserInteraction,
-      client,
-      executionOptions,
+      getExecutionStrategy,
+      checkClient,
       fromChain,
-      ethereumClient: updatedClient,
       isFromNativeToken,
       disableMessageSigning,
-      getExecutionStrategy,
+      executionOptions,
+      client,
     } = context
 
-    const shouldResetApproval =
-      step.estimate.approvalReset && action.allowanceApproved
-    const resetApprovalStatus = shouldResetApproval
-      ? 'RESET_REQUIRED'
-      : 'ACTION_REQUIRED'
-
-    // Clear the txHash and txLink from potential previous approval transaction
-    statusManager.updateAction(step, action.type, resetApprovalStatus, {
-      txHash: undefined,
-      txLink: undefined,
-    })
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
 
     if (!allowUserInteraction) {
       return { status: 'ACTION_REQUIRED' }
     }
 
+    // Clear the txHash and txLink from potential previous reset allowance approval transaction
+    statusManager.updateAction(step, action.type, 'RESET_REQUIRED', {
+      resetTxHash: undefined,
+      resetTxLink: undefined,
+    })
+
     const executionStrategy = await getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batch'
+
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -64,43 +68,40 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       : step.estimate.approvalAddress
 
     // Reset allowance to 0 if required
-    let approvalResetTxHash: Hash | undefined
-    if (shouldResetApproval) {
-      approvalResetTxHash = await setAllowance(
-        client,
-        updatedClient,
-        step.action.fromToken.address as Address,
-        spenderAddress as Address,
-        0n,
-        executionOptions,
-        batchingSupported
-      )
-      // Persist approval reset tx hash
-      statusManager.updateAction(step, action.type, action.status, {
-        approvalResetTxHash,
+    const approvalResetTxHash = await setAllowance(
+      client,
+      updatedClient,
+      step.action.fromToken.address as Address,
+      spenderAddress as Address,
+      0n,
+      executionOptions,
+      batchingSupported
+    )
+
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      resetTxHash: approvalResetTxHash,
+      resetTxLink: getTxLink(fromChain, approvalResetTxHash),
+    })
+
+    if (!batchingSupported) {
+      const transactionReceipt = await waitForTransactionReceipt(client, {
+        client: updatedClient,
+        chainId: fromChain.id,
+        txHash: action.resetTxHash as Address,
+        onReplaced(response) {
+          const newHash = response.transaction.hash
+          statusManager.updateAction(step, action.type, 'PENDING', {
+            resetTxHash: newHash,
+            resetTxLink: getTxLink(fromChain, newHash),
+          })
+        },
       })
-
-      // If batching is NOT supported, wait for the reset transaction
-      if (!batchingSupported) {
-        await waitForApprovalTransaction(
-          client,
-          updatedClient,
-          approvalResetTxHash,
-          action.type,
-          step,
-          fromChain,
-          statusManager
-        )
-
-        statusManager.updateAction(step, action.type, 'ACTION_REQUIRED', {
-          txHash: undefined,
-          txLink: undefined,
-        })
-
-        if (!allowUserInteraction) {
-          return { status: 'ACTION_REQUIRED' }
-        }
-      }
+      const finalHash =
+        transactionReceipt?.transactionHash || approvalResetTxHash
+      statusManager.updateAction(step, action.type, action.status, {
+        resetTxHash: finalHash,
+        resetTxLink: getTxLink(fromChain, finalHash),
+      })
     }
 
     return {

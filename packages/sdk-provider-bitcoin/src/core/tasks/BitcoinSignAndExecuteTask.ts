@@ -25,7 +25,7 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
     context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(

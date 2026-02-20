@@ -26,7 +26,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit
-    return !context.isTransactionExecuted(action) && isNativePermitAvailable
+    return context.isTransactionPrepared(action) && isNativePermitAvailable
   }
 
   async run(
@@ -39,8 +39,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       allowUserInteraction,
-      ethereumClient: updatedClient,
+      checkClient,
     } = context
+
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
 
     const fromAmount = BigInt(step.action.fromAmount)
 

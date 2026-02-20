@@ -16,23 +16,23 @@ export class EthereumBatchWaitForTransactionTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return context.isTransactionPending(action)
   }
 
   async run(
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<TaskResult> {
-    const {
-      ethereumClient,
-      step,
-      statusManager,
-      fromChain,
-      isBridgeExecution,
-    } = context
+    const { step, statusManager, fromChain, isBridgeExecution, checkClient } =
+      context
+
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
 
     const transactionReceipt = await waitForBatchTransactionReceipt(
-      ethereumClient,
+      updatedClient,
       action.taskId as Hash,
       (result) => {
         const receipt = result.receipts?.find((r) => r.status === 'reverted') as

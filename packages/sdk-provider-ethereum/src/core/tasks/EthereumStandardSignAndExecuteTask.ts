@@ -22,7 +22,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(

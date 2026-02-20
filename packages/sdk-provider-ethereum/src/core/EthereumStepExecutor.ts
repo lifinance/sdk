@@ -117,7 +117,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           retryParams
         )
       },
-      ethereumClient: this.client,
       checkClient: this.checkClient,
       switchChain: this.switchChain,
       actionPipelines,

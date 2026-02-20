@@ -18,7 +18,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     context: SolanaStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(

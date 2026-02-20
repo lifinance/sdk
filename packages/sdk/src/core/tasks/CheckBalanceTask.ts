@@ -10,7 +10,7 @@ export class CheckBalanceTask extends BaseStepExecutionTask {
     context: StepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(

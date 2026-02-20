@@ -14,7 +14,7 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
     context: BitcoinStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return context.isTransactionExecuted(action)
+    return context.isTransactionPending(action)
   }
 
   async run(

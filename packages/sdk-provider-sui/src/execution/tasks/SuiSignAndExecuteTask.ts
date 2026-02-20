@@ -14,7 +14,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
     context: SuiStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(

@@ -16,7 +16,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     context: EthereumStepExecutorContext,
     action: ExecutionAction
   ): Promise<boolean> {
-    return !context.isTransactionExecuted(action)
+    return context.isTransactionPrepared(action)
   }
 
   async run(
@@ -30,9 +30,13 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
-      ethereumClient,
       signedTypedData,
     } = context
+
+    const updatedClient = await checkClient(step, action)
+    if (!updatedClient) {
+      return { status: 'ACTION_REQUIRED' }
+    }
 
     // Try to prepare a new transaction request and update the step with typed data
     const updatedStep = await getUpdatedStep(
@@ -65,13 +69,9 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
 
     let transactionRequest: TransactionParameters | undefined
     if (step.transactionRequest) {
-      // Only call checkClient for local accounts when we need to get maxPriorityFeePerGas
+      // Only fetch maxPriorityFeePerGas for local accounts
       let maxPriorityFeePerGas: bigint | undefined
-      if (ethereumClient.account?.type === 'local') {
-        const updatedClient = await checkClient(step, action)
-        if (!updatedClient) {
-          return { status: 'ACTION_REQUIRED' }
-        }
+      if (updatedClient.account?.type === 'local') {
         maxPriorityFeePerGas = await getMaxPriorityFeePerGas(
           client,
           updatedClient
