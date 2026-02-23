@@ -125,7 +125,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         }
         const message = {
           ...typedData.message,
-          agentAddress: agentAccount.address,
+          agentAddress: agentAccount.address.toLowerCase(),
           agentName: `${typedData.message.agentName} valid_until ${expiresAt}`,
         }
         const typedDataChainId =
