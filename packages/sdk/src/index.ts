@@ -68,6 +68,7 @@ export type {
   ExecuteStepRetryParams,
   Execution,
   ExecutionAction,
+  ExecutionActionStatus,
   ExecutionActionType,
   ExecutionOptions,
   ExecutionStatus,
@@ -107,9 +108,5 @@ export { formatUnits } from './utils/formatUnits.js'
 export { isHex } from './utils/isHex.js'
 export { parseUnits } from './utils/parseUnits.js'
 export { sleep } from './utils/sleep.js'
-export {
-  isTransactionPending,
-  isTransactionPrepared,
-} from './utils/transactions.js'
 export { waitForResult } from './utils/waitForResult.js'
 export { withDedupe } from './utils/withDedupe.js'

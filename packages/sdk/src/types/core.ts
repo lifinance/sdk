@@ -239,6 +239,7 @@ export type ExecutionAction = {
   substatus?: Substatus
   substatusMessage?: string
   chainId?: number
+  group?: string
   error?: { code: string | number; message: string; htmlMessage?: string }
   // 'SWAP' | 'CROSS_CHAIN' | 'RECEIVING_CHAIN'
   txHash?: string

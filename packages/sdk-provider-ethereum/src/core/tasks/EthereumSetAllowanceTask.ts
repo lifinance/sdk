@@ -63,6 +63,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'SET_ALLOWANCE',
       chainId: step.action.fromChainId,
+      group: 'TOKEN_ALLOWANCE',
     })
 
     // Clear the txHash and txLink from potential previous approval transaction

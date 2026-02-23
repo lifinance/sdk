@@ -63,6 +63,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       step,
       type: 'NATIVE_PERMIT',
       chainId: step.action.fromChainId,
+      group: 'TOKEN_ALLOWANCE',
     })
 
     const updatedClient = await checkClient(step)

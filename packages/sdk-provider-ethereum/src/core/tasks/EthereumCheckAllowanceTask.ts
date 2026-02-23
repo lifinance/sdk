@@ -42,6 +42,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'CHECK_ALLOWANCE',
       chainId: step.action.fromChainId,
+      group: 'TOKEN_ALLOWANCE',
     })
 
     const executionStrategy = await getExecutionStrategy(step)

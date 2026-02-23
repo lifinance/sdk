@@ -66,6 +66,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'RESET_ALLOWANCE',
       chainId: step.action.fromChainId,
+      group: 'TOKEN_ALLOWANCE',
     })
 
     statusManager.updateAction(step, action.type, 'RESET_REQUIRED', {
@@ -127,6 +128,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
         txLink: getTxLink(fromChain, finalHash),
       })
     }
+
+    statusManager.updateAction(step, action.type, 'DONE')
 
     return {
       status: 'COMPLETED',
