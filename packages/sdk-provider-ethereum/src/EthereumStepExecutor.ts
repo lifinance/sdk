@@ -52,7 +52,10 @@ import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
 } from './errors/parseEthereumErrors.js'
-import { getOrCreateAgentWallet } from './hyperliquid/agentWallet.js'
+import {
+  approveAgentWallet,
+  getOrCreateAgentWallet,
+} from './hyperliquid/agentWallet.js'
 import {
   isApproveAgentMessage,
   isHyperliquidAgentStep,
@@ -834,6 +837,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         taskId = relayedTransaction.taskId as Hash
         txType = 'relayed'
         txLink = relayedTransaction.txLink
+
+        if (isHyperliquidAgentStep(step) && taskId) {
+          const ownerAddress = this.client.account!.address
+          await approveAgentWallet(this.getStorage(client), ownerAddress)
+        }
       } else {
         if (!transactionRequest) {
           throw new TransactionError(

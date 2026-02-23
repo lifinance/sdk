@@ -1,20 +1,21 @@
 import type { SDKStorage } from '@lifi/sdk'
-import type { LocalAccount } from 'viem'
-import { english, generateMnemonic, mnemonicToAccount } from 'viem/accounts'
+import type { Hex, LocalAccount } from 'viem'
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
 
 const DEFAULT_STORAGE_KEY_PREFIX = 'li.fi-sdk:hyperliquid:agent'
 const DEFAULT_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000 // 1 week
 const EXPIRATION_BUFFER_MS = 60 * 60 * 1000 // 1 hour
 
-// Mnemonics are encrypted with AES-GCM using a key derived (PBKDF2) from the
-// owner's wallet address. This is obfuscation and the wallet address is public,
-// so anyone who knows the scheme can derive the same key. It prevents raw
-// mnemonic exposure in storage but does not defend against a targeted attack.
+// Private keys are encrypted with AES-GCM using a key derived (PBKDF2) from
+// the owner's wallet address. This is obfuscation -- the wallet address is
+// public, so anyone who knows the scheme can derive the same key. It prevents
+// raw key exposure in storage but does not defend against a targeted attack.
 const ENCRYPTION_SALT = 'li.fi-sdk:agent-wallet-encryption'
 
 interface StoredAgentWallet {
-  mnemonic: string
+  pkey: string
   expiresAt: number
+  approved: boolean
 }
 
 export interface AgentWalletResult {
@@ -83,13 +84,14 @@ async function decrypt(encoded: string, key: CryptoKey): Promise<string> {
 async function saveAgentWallet(
   storage: SDKStorage,
   ownerAddress: string,
-  mnemonic: string,
+  privateKey: Hex,
   keyPrefix?: string
 ): Promise<void> {
-  const key = await deriveKey(ownerAddress)
+  const encryptionKey = await deriveKey(ownerAddress)
   const data: StoredAgentWallet = {
-    mnemonic: await encrypt(mnemonic, key),
+    pkey: await encrypt(privateKey, encryptionKey),
     expiresAt: Date.now() + DEFAULT_EXPIRATION_MS,
+    approved: false,
   }
   await storage.set(
     getStorageKey(ownerAddress, keyPrefix),
@@ -101,18 +103,47 @@ async function loadAgentWallet(
   storage: SDKStorage,
   ownerAddress: string,
   keyPrefix?: string
-): Promise<{ account: LocalAccount; expiresAt: number } | null> {
+): Promise<{
+  account: LocalAccount
+  expiresAt: number
+  approved: boolean
+} | null> {
   const raw = await storage.get(getStorageKey(ownerAddress, keyPrefix))
   if (!raw) {
     return null
   }
   try {
     const data: StoredAgentWallet = JSON.parse(raw)
-    const key = await deriveKey(ownerAddress)
-    const mnemonic = await decrypt(data.mnemonic, key)
-    return { account: mnemonicToAccount(mnemonic), expiresAt: data.expiresAt }
+    const encryptionKey = await deriveKey(ownerAddress)
+    const privateKey = (await decrypt(data.pkey, encryptionKey)) as Hex
+    return {
+      account: privateKeyToAccount(privateKey),
+      expiresAt: data.expiresAt,
+      approved: data.approved,
+    }
   } catch {
     return null
+  }
+}
+
+export async function approveAgentWallet(
+  storage: SDKStorage,
+  ownerAddress: string,
+  keyPrefix?: string
+): Promise<void> {
+  const raw = await storage.get(getStorageKey(ownerAddress, keyPrefix))
+  if (!raw) {
+    return
+  }
+  try {
+    const data: StoredAgentWallet = JSON.parse(raw)
+    data.approved = true
+    await storage.set(
+      getStorageKey(ownerAddress, keyPrefix),
+      JSON.stringify(data)
+    )
+  } catch {
+    // Storage is corrupted, nothing to approve
   }
 }
 
@@ -122,7 +153,11 @@ export async function getOrCreateAgentWallet(
   keyPrefix?: string
 ): Promise<AgentWalletResult> {
   const existing = await loadAgentWallet(storage, ownerAddress, keyPrefix)
-  if (existing && existing.expiresAt - Date.now() > EXPIRATION_BUFFER_MS) {
+  if (
+    existing &&
+    existing.approved &&
+    existing.expiresAt - Date.now() > EXPIRATION_BUFFER_MS
+  ) {
     return {
       account: existing.account,
       needsApproval: false,
@@ -130,9 +165,9 @@ export async function getOrCreateAgentWallet(
     }
   }
 
-  const mnemonic = generateMnemonic(english)
-  const account = mnemonicToAccount(mnemonic)
+  const privateKey = generatePrivateKey()
+  const account = privateKeyToAccount(privateKey)
   const expiresAt = Date.now() + DEFAULT_EXPIRATION_MS
-  await saveAgentWallet(storage, ownerAddress, mnemonic, keyPrefix)
+  await saveAgentWallet(storage, ownerAddress, privateKey, keyPrefix)
   return { account, needsApproval: true, expiresAt }
 }
