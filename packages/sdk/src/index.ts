@@ -36,6 +36,12 @@ export {
 } from './core/execution.js'
 export { StatusManager } from './core/StatusManager.js'
 export { stepComparison } from './core/stepComparison.js'
+export type { SDKStorage } from './core/storage.js'
+export {
+  createDefaultStorage,
+  InMemoryStorage,
+  LocalStorageAdapter,
+} from './core/storage.js'
 export { waitForDestinationChainTransaction } from './core/waitForDestinationChainTransaction.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'

@@ -14,6 +14,7 @@ import type {
   Token,
   TokenAmount,
 } from '@lifi/types'
+import type { SDKStorage } from '../core/storage.js'
 import type { ExtendedRequestInit } from './request.js'
 
 export type RequestInterceptor = (
@@ -34,6 +35,7 @@ export interface SDKBaseConfig {
   preloadChains?: boolean
   chainsRefetchInterval?: number
   requestInterceptor?: RequestInterceptor
+  storage?: SDKStorage
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
