@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -12,17 +10,11 @@ import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name =
+    'SOLANA_STANDARD_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = SolanaStandardWaitForTransactionTask.name
 
-  async run(
-    context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       client,
       step,
@@ -31,6 +23,17 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       isBridgeExecution,
       signedTransactions,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     if (!signedTransactions.length) {
       throw new TransactionError(

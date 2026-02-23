@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   stepComparison,
   type TaskResult,
@@ -13,17 +11,10 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'ETHEREUM_PREPARE_TRANSACTION' as const
+  override readonly taskName = EthereumPrepareTransactionTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       client,
@@ -32,9 +23,22 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       signedTypedData,
+      isBridgeExecution,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
+
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

@@ -1,9 +1,4 @@
-import {
-  BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
-  type TaskResult,
-} from '@lifi/sdk'
+import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
@@ -12,20 +7,43 @@ import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_RESET_ALLOWANCE' as const
+  override readonly taskName = EthereumResetAllowanceTask.name
+
   override async shouldRun(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
+    context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step } = context
+    const { step, statusManager } = context
+
+    const permitAction = statusManager.findAction(step, 'PERMIT')
+    if (permitAction?.hasSignedPermit) {
+      return false
+    }
+
+    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    if (allowanceAction?.txHash) {
+      return false
+    }
+
+    const checkAllowanceAction = statusManager.findAction(
+      step,
+      'CHECK_ALLOWANCE'
+    )
+    if (checkAllowanceAction?.hasSufficientAllowance) {
+      return false
+    }
+
+    const nativePermitAction = statusManager.findAction(step, 'NATIVE_PERMIT')
+    if (nativePermitAction?.signedTypedData) {
+      return false
+    }
+
     const shouldResetApproval =
-      step.estimate.approvalReset && step.execution?.allowanceApproved
-    return isTransactionPrepared(action) && !!shouldResetApproval
+      step.estimate.approvalReset && checkAllowanceAction?.hasAllowance
+    return !!shouldResetApproval
   }
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       statusManager,
@@ -39,15 +57,20 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       client,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
 
-    // Clear the txHash and txLink from potential previous reset allowance approval transaction
+    const action = statusManager.findOrCreateAction({
+      step,
+      type: 'RESET_ALLOWANCE',
+      chainId: step.action.fromChainId,
+    })
+
     statusManager.updateAction(step, action.type, 'RESET_REQUIRED', {
-      resetTxHash: undefined,
-      resetTxLink: undefined,
+      txHash: undefined,
+      txLink: undefined,
     })
 
     if (!allowUserInteraction) {
@@ -80,28 +103,28 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
-      resetTxHash: approvalResetTxHash,
-      resetTxLink: getTxLink(fromChain, approvalResetTxHash),
+      txHash: approvalResetTxHash,
+      txLink: getTxLink(fromChain, approvalResetTxHash),
     })
 
     if (!batchingSupported) {
       const transactionReceipt = await waitForTransactionReceipt(client, {
         client: updatedClient,
         chainId: fromChain.id,
-        txHash: action.resetTxHash as Address,
+        txHash: approvalResetTxHash as Address,
         onReplaced(response) {
           const newHash = response.transaction.hash
           statusManager.updateAction(step, action.type, 'PENDING', {
-            resetTxHash: newHash,
-            resetTxLink: getTxLink(fromChain, newHash),
+            txHash: newHash,
+            txLink: getTxLink(fromChain, newHash),
           })
         },
       })
       const finalHash =
         transactionReceipt?.transactionHash || approvalResetTxHash
       statusManager.updateAction(step, action.type, action.status, {
-        resetTxHash: finalHash,
-        resetTxLink: getTxLink(fromChain, finalHash),
+        txHash: finalHash,
+        txLink: getTxLink(fromChain, finalHash),
       })
     }
 

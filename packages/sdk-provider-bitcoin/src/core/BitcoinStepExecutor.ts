@@ -1,18 +1,21 @@
 import type { Client } from '@bigmi/core'
 import {
-  ActionPipelineOrchestrator,
   BaseStepExecutor,
+  CheckBalanceTask,
   LiFiErrorCode,
   type LiFiStepExtended,
-  ReceivingChainPipeline,
+  PrepareTransactionTask,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
+  TaskPipeline,
   TransactionError,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import { getBitcoinPublicClient } from '../client/publicClient.js'
 import { parseBitcoinErrors } from '../errors/parseBitcoinErrors.js'
 import type { BitcoinStepExecutorContext } from '../types.js'
-import { BitcoinSwapOrBridgePipeline } from './pipelines/BitcoinSwapOrBridgePipeline.js'
+import { BitcoinSignAndExecuteTask } from './tasks/BitcoinSignAndExecuteTask.js'
+import { BitcoinWaitForTransactionTask } from './tasks/BitcoinWaitForTransactionTask.js'
 
 interface BitcoinStepExecutorOptions extends StepExecutorOptions {
   client: Client
@@ -37,21 +40,44 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     }
   }
 
+  getFirstTaskName = (step: LiFiStepExtended, isBridgeExecution: boolean) => {
+    const swapOrBridgeAction = this.statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!swapOrBridgeAction?.txHash) {
+      return CheckBalanceTask.name
+    }
+
+    return swapOrBridgeAction?.status !== 'DONE'
+      ? BitcoinWaitForTransactionTask.name
+      : WaitForTransactionStatusTask.name
+  }
+
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<BitcoinStepExecutorContext> => {
-    const { isBridgeExecution, client, fromChain } = baseContext
+    const { client, fromChain, isBridgeExecution, step } = baseContext
 
     const publicClient = await getBitcoinPublicClient(client, fromChain.id)
 
-    const actionPipelines = new ActionPipelineOrchestrator([
-      new BitcoinSwapOrBridgePipeline(isBridgeExecution),
-      new ReceivingChainPipeline(),
+    const pipeline = new TaskPipeline([
+      new CheckBalanceTask(),
+      new PrepareTransactionTask(),
+      new BitcoinSignAndExecuteTask(),
+      new BitcoinWaitForTransactionTask(),
+      new WaitForTransactionStatusTask(
+        isBridgeExecution ? 'RECEIVING_CHAIN' : 'SWAP'
+      ),
     ])
+
+    const firstTaskName = this.getFirstTaskName(step, isBridgeExecution)
 
     return {
       ...baseContext,
-      actionPipelines,
+      pipeline,
+      firstTaskName,
       pollingIntervalMs: 10_000,
       checkClient: this.checkClient,
       walletClient: this.client,

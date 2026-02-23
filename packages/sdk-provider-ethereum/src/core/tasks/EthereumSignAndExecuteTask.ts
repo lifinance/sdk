@@ -1,8 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
+  LiFiErrorCode,
   type TaskResult,
+  TransactionError,
 } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedSignAndExecuteTask } from './EthereumBatchedSignAndExecuteTask.js'
@@ -10,6 +10,9 @@ import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecu
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
 
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_SIGN_AND_EXECUTE' as const
+  override readonly taskName = EthereumSignAndExecuteTask.name
+
   private readonly strategies: {
     batched: BaseStepExecutionTask
     relayed: BaseStepExecutionTask
@@ -25,24 +28,26 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     }
   }
 
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
-
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       statusManager,
       allowUserInteraction,
       transactionRequest,
       getExecutionStrategy,
+      isBridgeExecution,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
@@ -52,11 +57,11 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getExecutionStrategy(step)
     if (executionStrategy === 'batched' && transactionRequest) {
-      return this.strategies.batched.run(context, action)
+      return this.strategies.batched.run(context)
     }
     if (executionStrategy === 'relayed') {
-      return this.strategies.relayed.run(context, action)
+      return this.strategies.relayed.run(context)
     }
-    return this.strategies.standard.run(context, action)
+    return this.strategies.standard.run(context)
   }
 }

@@ -8,9 +8,7 @@ import {
 import * as ecc from '@bitcoinerlab/secp256k1'
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
   getTransactionRequestData,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -22,17 +20,10 @@ import { isPsbtFinalized } from '../../utils/isPsbtFinalized.js'
 import { toXOnly } from '../../utils/toXOnly.js'
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: BitcoinStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'BITCOIN_SIGN_AND_EXECUTE' as const
+  override readonly taskName = BitcoinSignAndExecuteTask.name
 
-  async run(
-    context: BitcoinStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       walletClient,
@@ -41,7 +32,20 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       fromChain,
       publicClient,
       checkClient,
+      isBridgeExecution,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     const transactionRequestData = await getTransactionRequestData(
       step,
@@ -157,10 +161,6 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       txHash: txHash,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
       txHex,
-    })
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
       signedAt: Date.now(),
     })
 

@@ -1,15 +1,13 @@
-import {
-  BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
-  type TaskResult,
-} from '@lifi/sdk'
+import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { shouldUseJitoBundle } from '../../utils/shouldUseJitoBundle.js'
 import { SolanaJitoWaitForTransactionTask } from './SolanaJitoWaitForTransactionTask.js'
 import { SolanaStandardWaitForTransactionTask } from './SolanaStandardWaitForTransactionTask.js'
 
 export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
+  static override readonly name = 'SOLANA_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = SolanaWaitForTransactionTask.name
+
   private readonly strategies: {
     jito: BaseStepExecutionTask
     standard: BaseStepExecutionTask
@@ -23,17 +21,7 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
     }
   }
 
-  override async shouldRun(
-    _context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
-
-  async run(
-    context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const { client, signedTransactions } = context
 
     const useJitoBundle = shouldUseJitoBundle(
@@ -42,8 +30,8 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
     )
 
     if (useJitoBundle) {
-      return this.strategies.jito.run(context, action)
+      return this.strategies.jito.run(context)
     }
-    return this.strategies.standard.run(context, action)
+    return this.strategies.standard.run(context)
   }
 }

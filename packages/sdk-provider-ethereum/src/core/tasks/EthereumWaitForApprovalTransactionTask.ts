@@ -1,8 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPending,
+  LiFiErrorCode,
   type TaskResult,
+  TransactionError,
 } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
@@ -10,17 +10,19 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getTxLink } from './helpers/getTxLink.js'
 
 export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTask {
+  static override readonly name =
+    'ETHEREUM_WAIT_FOR_APPROVAL_TRANSACTION' as const
+  override readonly taskName = EthereumWaitForApprovalTransactionTask.name
+
   override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
+    context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    return isTransactionPending(action)
+    const { step, statusManager } = context
+    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    return !!allowanceAction?.txHash && allowanceAction?.status !== 'DONE'
   }
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       client,
       step,
@@ -30,11 +32,19 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
       fromChain,
     } = context
 
+    const action = statusManager.findAction(step, 'SET_ALLOWANCE')
+    if (!action?.txHash) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. No transaction hash found.'
+      )
+    }
+
     const strategy = await getExecutionStrategy(step)
     const batchingSupported = strategy === 'batched'
 
     if (!batchingSupported) {
-      const updatedClient = await checkClient(step, action)
+      const updatedClient = await checkClient(step)
       if (!updatedClient) {
         return { status: 'PAUSED' }
       }

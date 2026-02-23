@@ -1,49 +1,42 @@
 import { ExecuteStepRetryError } from '../errors/errors.js'
-import type { ExecutionAction, ExecutionActionType } from '../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../types/execution.js'
 import type { BaseStepExecutionTask } from './BaseStepExecutionTask.js'
 
 export class TaskPipeline {
-  readonly actionType: ExecutionActionType
   private readonly tasks: BaseStepExecutionTask[]
 
-  constructor(actionType: ExecutionActionType, tasks: BaseStepExecutionTask[]) {
-    this.actionType = actionType
+  constructor(tasks: BaseStepExecutionTask[]) {
     this.tasks = tasks
   }
 
-  async shouldRun(
-    _context: StepExecutorContext,
-    action?: ExecutionAction
-  ): Promise<boolean> {
-    return action?.status !== 'DONE'
-  }
-
   async run(context: StepExecutorContext): Promise<TaskResult> {
-    const { statusManager, step, parseErrors } = context
-    for (const task of this.tasks) {
-      const action = statusManager.findOrCreateAction({
-        step,
-        type: this.actionType,
-        chainId:
-          this.actionType === 'RECEIVING_CHAIN'
-            ? step.action.toChainId
-            : step.action.fromChainId,
-      })
+    const { statusManager, step, parseErrors, firstTaskName } = context
+
+    let tasksToRun = this.tasks
+    if (firstTaskName) {
+      const firstTaskIndex = tasksToRun.findIndex(
+        (task) => task.taskName === firstTaskName
+      )
+      if (firstTaskIndex >= 0) {
+        tasksToRun = tasksToRun.slice(firstTaskIndex)
+      }
+    }
+
+    for (const task of tasksToRun) {
+      const shouldRun = await task.shouldRun(context)
+      if (!shouldRun) {
+        continue
+      }
       try {
-        const shouldRun = await task.shouldRun(context, action)
-        if (!shouldRun) {
-          continue
-        }
-        const result = await task.run(context, action)
+        const result = await task.run(context)
         if (result.status === 'PAUSED') {
           return { status: 'PAUSED' }
         }
       } catch (error: any) {
+        const action = step?.execution?.actions?.at(-1)
         const parsed = await parseErrors(error, step, action)
         if (!(parsed instanceof ExecuteStepRetryError) && action) {
-          statusManager.updateExecution(step, {
-            status: 'FAILED',
+          statusManager.updateAction(step, action.type, 'FAILED', {
             error: {
               message: parsed.cause?.message,
               code: parsed.code,
@@ -53,6 +46,7 @@ export class TaskPipeline {
         throw parsed
       }
     }
+
     return { status: 'COMPLETED' }
   }
 }

@@ -1,8 +1,6 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
   getTransactionRequestData,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -11,18 +9,24 @@ import { signAndExecuteTransaction } from '@mysten/wallet-standard'
 import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: SuiStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'SUI_SIGN_AND_EXECUTE' as const
+  override readonly taskName = SuiSignAndExecuteTask.name
 
-  async run(
-    context: SuiStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
-    const { step, wallet, statusManager, executionOptions } = context
+  async run(context: SuiStepExecutorContext): Promise<TaskResult> {
+    const { step, wallet, statusManager, executionOptions, isBridgeExecution } =
+      context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     const transactionRequestData = await getTransactionRequestData(
       step,
@@ -48,10 +52,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
       },
     })
 
-    statusManager.updateAction(step, action.type, 'PENDING')
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
+    statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
     })
 

@@ -117,14 +117,18 @@ export class StatusManager {
     chainId,
     status,
   }: FindOrCreateActionProps): ExecutionAction => {
-    const newAction: ExecutionAction = {
-      type: type,
-      message: getActionMessage(type, status ?? 'STARTED'),
-      status: status ?? 'STARTED',
-      chainId: chainId,
+    if (!step.execution) {
+      throw new Error("Execution hasn't been initialized.")
     }
 
-    step.execution!.actions.push(newAction)
+    const newAction: ExecutionAction = {
+      type,
+      message: getActionMessage(type, status ?? 'STARTED'),
+      status: status ?? 'STARTED',
+      chainId,
+    }
+
+    step.execution.actions.push(newAction)
     this.updateStepInRoute(step)
     return newAction
   }
@@ -162,7 +166,7 @@ export class StatusManager {
     step: LiFiStepExtended,
     type: ExecutionActionType,
     status: ExecutionActionStatus,
-    params?: Partial<ExecutionAction>
+    params?: Partial<ExecutionAction & { signedAt?: number }>
   ): ExecutionAction => {
     if (!step.execution) {
       throw new Error("Can't update an empty step execution.")
@@ -183,6 +187,9 @@ export class StatusManager {
         break
       case 'PENDING':
         step.execution.status = 'PENDING'
+        if (params?.signedAt) {
+          step.execution.signedAt = params.signedAt
+        }
         break
       case 'RESET_REQUIRED':
       case 'MESSAGE_REQUIRED':
@@ -197,7 +204,8 @@ export class StatusManager {
     currentAction.message = getActionMessage(type, status)
     // set extra parameters or overwrite the standard params set in the switch statement
     if (params) {
-      Object.assign(currentAction, params)
+      const { signedAt: _signedAt, ...rest } = params
+      Object.assign(currentAction, rest)
     }
     // Sort actions, the ones with DONE status go first
     step.execution.actions = [

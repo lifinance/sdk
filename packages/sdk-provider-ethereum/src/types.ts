@@ -1,7 +1,6 @@
 import {
   type BaseToken,
   ChainType,
-  type ExecutionAction,
   type LiFiStep,
   type LiFiStepExtended,
   type SDKProvider,
@@ -32,7 +31,6 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   ) => Promise<TransactionMethodType>
   checkClient: (
     step: LiFiStepExtended,
-    action: ExecutionAction,
     targetChainId?: number
   ) => Promise<Client | undefined>
   switchChain?: (chainId: number) => Promise<Client | undefined>

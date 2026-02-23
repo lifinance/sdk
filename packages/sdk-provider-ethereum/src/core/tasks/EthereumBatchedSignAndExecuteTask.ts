@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -12,27 +10,27 @@ import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
 
 export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'ETHEREUM_BATCHED_SIGN_AND_EXECUTE' as const
+  override readonly taskName = EthereumBatchedSignAndExecuteTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
-    const { step, fromChain, statusManager, checkClient, transactionRequest } =
-      context
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
+    const {
+      step,
+      fromChain,
+      statusManager,
+      checkClient,
+      transactionRequest,
+      isBridgeExecution,
+    } = context
 
     const calls = []
 
-    const tokenAllowanceAction = statusManager.findAction(
+    const resetTokenAllowanceAction = statusManager.findAction(
       step,
-      'TOKEN_ALLOWANCE'
+      'RESET_ALLOWANCE'
     )
-    const resetTxHash = tokenAllowanceAction?.resetTxHash as Address
+    const tokenAllowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    const resetTxHash = resetTokenAllowanceAction?.txHash as Address
     const txHash = tokenAllowanceAction?.txHash as Address
 
     if (resetTxHash) {
@@ -51,8 +49,19 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       })
     }
 
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
+
     // Make sure that the chain is still correct
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
@@ -85,10 +94,6 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'PENDING', {
       taskId: id as Hash,
       txType: 'batched',
-    })
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
       signedAt: Date.now(),
     })
 

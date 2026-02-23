@@ -80,7 +80,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
     const baseContext = await this.getBaseContext(client, step, retryParams)
     const context = await this.getContext(baseContext)
 
-    await context.actionPipelines.run(context)
+    await context.pipeline.run(context)
 
     return step
   }

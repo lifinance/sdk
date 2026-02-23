@@ -1,8 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPending,
+  LiFiErrorCode,
   type TaskResult,
+  TransactionError,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransactionReceipt.js'
@@ -13,21 +13,27 @@ import type {
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPending(action)
-  }
+  static override readonly name =
+    'ETHEREUM_BATCHED_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = EthereumBatchedWaitForTransactionTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { step, statusManager, fromChain, isBridgeExecution, checkClient } =
       context
 
-    const updatedClient = await checkClient(step, action)
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction.'
+      )
+    }
+
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }

@@ -1,26 +1,26 @@
-import {
-  BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
-  type TaskResult,
-} from '@lifi/sdk'
+import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_CHECK_ALLOWANCE' as const
+  override readonly taskName = EthereumCheckAllowanceTask.name
+
   override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
+    context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    return isTransactionPrepared(action)
+    const { step, statusManager } = context
+    const permitAction = statusManager.findAction(step, 'PERMIT')
+    if (permitAction?.hasSignedPermit) {
+      return false
+    }
+    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    return !allowanceAction?.txHash
   }
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       checkClient,
@@ -32,13 +32,17 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
 
     // Start new allowance check
-    statusManager.updateAction(step, action.type, 'STARTED')
+    const action = statusManager.findOrCreateAction({
+      step,
+      type: 'CHECK_ALLOWANCE',
+      chainId: step.action.fromChainId,
+    })
 
     const executionStrategy = await getExecutionStrategy(step)
     const permit2Supported = isPermit2Supported(
@@ -62,17 +66,10 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       spenderAddress as Address
     )
 
-    statusManager.updateExecution(step, {
-      allowanceApproved: allowance > 0n,
+    statusManager.updateAction(step, action.type, 'DONE', {
+      hasAllowance: allowance > 0n,
+      hasSufficientAllowance: fromAmount <= allowance,
     })
-
-    // Return early if already approved
-    if (fromAmount <= allowance) {
-      statusManager.updateAction(step, action.type, 'DONE')
-      return {
-        status: 'COMPLETED',
-      }
-    }
 
     return {
       status: 'COMPLETED',

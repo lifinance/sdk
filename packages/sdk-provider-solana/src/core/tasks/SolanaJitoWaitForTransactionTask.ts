@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -10,17 +8,10 @@ import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 
 export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'SOLANA_JITO_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = SolanaJitoWaitForTransactionTask.name
 
-  async run(
-    context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       client,
       step,
@@ -29,6 +20,17 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       signedTransactions,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     // Use Jito bundle for transaction submission
     const bundleResult = await sendAndConfirmBundle(client, signedTransactions)

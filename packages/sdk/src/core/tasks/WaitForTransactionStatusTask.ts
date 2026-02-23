@@ -1,25 +1,24 @@
 import type { ExtendedTransactionInfo, FullStatusData } from '@lifi/types'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import type { ExecutionAction } from '../../types/core.js'
+import type { ExecutionActionType } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
 export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: StepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    // For bridge actions, status is checked in RECEIVING_CHAIN action/pipeline
-    return action.type !== 'CROSS_CHAIN' && action?.status !== 'DONE'
+  static override readonly name = 'WAIT_FOR_TRANSACTION_STATUS' as const
+  override readonly taskName = WaitForTransactionStatusTask.name
+
+  readonly actionType: ExecutionActionType
+
+  constructor(actionType: ExecutionActionType) {
+    super()
+    this.actionType = actionType
   }
 
-  async run(
-    context: StepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: StepExecutorContext): Promise<TaskResult> {
     const {
       client,
       step,
@@ -34,21 +33,26 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
     // taskId is used for custom integrations that don't use the standard transaction hash
     let transactionHash: string | undefined
     try {
-      const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-      if (exchangeActionType !== action.type) {
-        const exchangeAction = statusManager.findAction(
-          step,
-          exchangeActionType
-        )
-        transactionHash = exchangeAction?.txHash || exchangeAction?.taskId
-      } else {
-        transactionHash = action.txHash || action.taskId
-      }
+      const swapOrBridgeAction = statusManager.findAction(
+        step,
+        isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+      )
+      transactionHash = swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
 
       // Wait for the transaction status on the destination chain
       if (!transactionHash) {
         throw new Error('Transaction hash is undefined.')
       }
+
+      const action = statusManager.findOrCreateAction({
+        step,
+        type: this.actionType,
+        chainId:
+          this.actionType === 'RECEIVING_CHAIN'
+            ? step.action.toChainId
+            : step.action.fromChainId,
+        status: 'PENDING',
+      })
 
       const statusResponse = (await waitForTransactionStatus(
         client,

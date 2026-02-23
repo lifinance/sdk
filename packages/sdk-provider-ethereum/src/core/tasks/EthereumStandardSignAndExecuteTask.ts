@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -19,17 +17,10 @@ import { estimateTransactionRequest } from './helpers/estimateTransactionRequest
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'ETHEREUM_STANDARD_SIGN_AND_EXECUTE' as const
+  override readonly taskName = EthereumStandardSignAndExecuteTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     let {
       step,
       client,
@@ -41,6 +32,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       signedTypedData,
       transactionRequest,
       allowUserInteraction,
+      isBridgeExecution,
     } = context
 
     if (!transactionRequest) {
@@ -50,8 +42,19 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
+
     // Make sure that the chain is still correct
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
@@ -134,10 +137,6 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       txLink: txHash
         ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
         : undefined,
-    })
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
       signedAt: Date.now(),
     })
 

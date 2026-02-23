@@ -2,8 +2,6 @@ import type { ReplacementReason } from '@bigmi/core'
 import { waitForTransaction } from '@bigmi/core'
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPending,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -11,17 +9,10 @@ import {
 import type { BitcoinStepExecutorContext } from '../../types.js'
 
 export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: BitcoinStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPending(action)
-  }
+  static override readonly name = 'BITCOIN_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = BitcoinWaitForTransactionTask.name
 
-  async run(
-    context: BitcoinStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       statusManager,
@@ -32,8 +23,13 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
       checkClient,
     } = context
 
-    const txHex = action.txHex
-    const txHash = action.txHash
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    const txHex = action?.txHex
+    const txHash = action?.txHash
 
     if (!txHash || !txHex) {
       throw new TransactionError(

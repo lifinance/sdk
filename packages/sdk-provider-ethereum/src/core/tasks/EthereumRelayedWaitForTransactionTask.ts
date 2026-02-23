@@ -1,8 +1,8 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPending,
+  LiFiErrorCode,
   type TaskResult,
+  TransactionError,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTransactionReceipt.js'
@@ -10,19 +10,25 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumRelayedWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPending(action)
-  }
+  static override readonly name =
+    'ETHEREUM_RELAYED_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = EthereumRelayedWaitForTransactionTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction.'
+      )
+    }
 
     const transactionReceipt = await waitForRelayedTransactionReceipt(
       client,

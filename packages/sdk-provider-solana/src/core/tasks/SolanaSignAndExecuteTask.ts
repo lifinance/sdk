@@ -1,8 +1,6 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
   getTransactionRequestData,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -15,19 +13,29 @@ import { getWalletFeature } from '../../utils/getWalletFeature.js'
 import { withTimeout } from '../../utils/withTimeout.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'SOLANA_SIGN_AND_EXECUTE' as const
+  override readonly taskName = SolanaSignAndExecuteTask.name
 
-  async run(
-    context: SolanaStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
-    const { step, wallet, walletAccount, statusManager, executionOptions } =
-      context
+  async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
+    const {
+      step,
+      wallet,
+      walletAccount,
+      statusManager,
+      executionOptions,
+      isBridgeExecution,
+    } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     const transactionRequestData = await getTransactionRequestData(
       step,
@@ -82,10 +90,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       transactionCodec.decode(output.signedTransaction)
     )
 
-    statusManager.updateAction(step, action.type, 'PENDING')
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
+    statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
     })
 

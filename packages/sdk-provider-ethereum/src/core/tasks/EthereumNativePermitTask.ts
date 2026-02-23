@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
@@ -14,11 +12,32 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_NATIVE_PERMIT' as const
+  override readonly taskName = EthereumNativePermitTask.name
+
   override async shouldRun(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
+    context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, fromChain, disableMessageSigning } = context
+    const { step, fromChain, disableMessageSigning, statusManager } = context
+
+    const permitAction = statusManager.findAction(step, 'PERMIT')
+    if (permitAction?.hasSignedPermit) {
+      return false
+    }
+
+    const checkAllowanceAction = statusManager.findAction(
+      step,
+      'CHECK_ALLOWANCE'
+    )
+    if (checkAllowanceAction?.hasSufficientAllowance) {
+      return false
+    }
+
+    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    if (allowanceAction?.txHash) {
+      return false
+    }
+
     const executionStrategy = await context.getExecutionStrategy(step)
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
@@ -27,13 +46,10 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit
-    return isTransactionPrepared(action) && isNativePermitAvailable
+    return isNativePermitAvailable
   }
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       client,
@@ -43,7 +59,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       checkClient,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const action = statusManager.findOrCreateAction({
+      step,
+      type: 'NATIVE_PERMIT',
+      chainId: step.action.fromChainId,
+    })
+
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
@@ -66,9 +88,8 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     )
 
     if (!nativePermitData) {
-      return {
-        status: 'COMPLETED',
-      }
+      statusManager.updateAction(step, action.type, 'DONE')
+      return { status: 'COMPLETED' }
     }
 
     let signedTypedData = context.signedTypedData

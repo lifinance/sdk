@@ -1,9 +1,4 @@
-import {
-  BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
-  type TaskResult,
-} from '@lifi/sdk'
+import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { MaxUint256 } from '../../permits/constants.js'
@@ -12,17 +7,40 @@ import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_SET_ALLOWANCE' as const
+  override readonly taskName = EthereumSetAllowanceTask.name
+
   override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
+    context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    return isTransactionPrepared(action)
+    const { step, statusManager } = context
+    const permitAction = statusManager.findAction(step, 'PERMIT')
+    if (permitAction?.hasSignedPermit) {
+      return false
+    }
+
+    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
+    if (allowanceAction?.txHash) {
+      return false
+    }
+
+    const checkAllowanceAction = statusManager.findAction(
+      step,
+      'CHECK_ALLOWANCE'
+    )
+    if (checkAllowanceAction?.hasSufficientAllowance) {
+      return false
+    }
+
+    const nativePermitAction = statusManager.findAction(step, 'NATIVE_PERMIT')
+    if (nativePermitAction?.signedTypedData) {
+      return false
+    }
+
+    return true
   }
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       client,
@@ -36,10 +54,16 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       checkClient,
     } = context
 
-    const updatedClient = await checkClient(step, action)
+    const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
+
+    const action = statusManager.findOrCreateAction({
+      step,
+      type: 'SET_ALLOWANCE',
+      chainId: step.action.fromChainId,
+    })
 
     // Clear the txHash and txLink from potential previous approval transaction
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED', {

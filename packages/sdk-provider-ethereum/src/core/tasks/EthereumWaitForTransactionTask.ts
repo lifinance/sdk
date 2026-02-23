@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPending,
   type TaskResult,
   type TransactionMethodType,
 } from '@lifi/sdk'
@@ -11,6 +9,9 @@ import { EthereumRelayedWaitForTransactionTask } from './EthereumRelayedWaitForT
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
+  static override readonly name = 'ETHEREUM_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = EthereumWaitForTransactionTask.name
+
   private readonly strategies: {
     batched: BaseStepExecutionTask
     relayed: BaseStepExecutionTask
@@ -26,23 +27,14 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
     }
   }
 
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPending(action)
-  }
-
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { step, getExecutionStrategy } = context
 
     const executionStrategy: TransactionMethodType =
       await getExecutionStrategy(step)
 
     const task = this.strategies[executionStrategy]
-    return await task.run(context, action)
+
+    return await task.run(context)
   }
 }

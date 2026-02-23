@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   relayTransaction,
   type TaskResult,
@@ -15,17 +13,10 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'ETHEREUM_RELAYED_SIGN_AND_EXECUTE' as const
+  override readonly taskName = EthereumRelayedSignAndExecuteTask.name
 
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       fromChain,
@@ -34,7 +25,21 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       signedTypedData,
+      isBridgeExecution,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction.'
+      )
+    }
+
     const intentTypedData = step.typedData?.filter(
       (typedData) =>
         !signedTypedData.some((signedPermit) =>
@@ -57,7 +62,7 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
         getDomainChainId(typedData.domain) || fromChain.id
 
       // Switch to the typed data's chain if needed
-      const updatedClient = await checkClient(step, action, typedDataChainId)
+      const updatedClient = await checkClient(step, typedDataChainId)
       if (!updatedClient) {
         return { status: 'PAUSED' }
       }
@@ -91,10 +96,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       taskId: relayedTransaction.taskId as Hash,
       txType: 'relayed',
       txLink: relayedTransaction.txLink,
-    })
-
-    statusManager.updateExecution(step, {
-      status: 'PENDING',
       signedAt: Date.now(),
     })
 

@@ -1,7 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
-  isTransactionPrepared,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -10,24 +8,29 @@ import { callSuiWithRetry } from '../../client/suiClient.js'
 import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: SuiStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'SUI_WAIT_FOR_TRANSACTION' as const
+  override readonly taskName = SuiWaitForTransactionTask.name
 
-  async run(
-    context: SuiStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: SuiStepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context
+
     const signedTx = context.signedTransaction
     if (!signedTx) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Signed transaction is not found.'
+      )
+    }
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
       )
     }
 

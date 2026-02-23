@@ -1,6 +1,5 @@
 import {
   BaseStepExecutionTask,
-  type ExecutionAction,
   type SignedTypedData,
   type TaskResult,
 } from '@lifi/sdk'
@@ -11,11 +10,29 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
-  async run(
-    context: EthereumStepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  static override readonly name = 'ETHEREUM_CHECK_PERMITS' as const
+  override readonly taskName = EthereumCheckPermitsTask.name
+
+  override async shouldRun(
+    context: EthereumStepExecutorContext
+  ): Promise<boolean> {
+    const { step, disableMessageSigning } = context
+
+    const permitTypedData = step.typedData?.filter(
+      (typedData) => typedData.primaryType === 'Permit'
+    )
+
+    return !!permitTypedData?.length && !disableMessageSigning
+  }
+
+  async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { step, statusManager, allowUserInteraction, checkClient } = context
+
+    const action = statusManager.findOrCreateAction({
+      step,
+      type: 'PERMIT',
+      chainId: step.action.fromChainId,
+    })
 
     // First, try to sign all permits in step.typedData
     const permitTypedData =
@@ -45,7 +62,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       const typedDataChainId =
         getDomainChainId(typedData.domain) || step.action.fromChainId
       // Switch to the permit's chain if needed
-      const permitClient = await checkClient(step, action, typedDataChainId)
+      const permitClient = await checkClient(step, typedDataChainId)
       if (!permitClient) {
         return { status: 'PAUSED' }
       }
@@ -71,8 +88,15 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       })
     }
 
+    // Check if there's a signed permit for the source transaction chain
+    const matchingPermit = signedTypedData.find(
+      (signedTypedData) =>
+        getDomainChainId(signedTypedData.domain) === step.action.fromChainId
+    )
+
     statusManager.updateAction(step, action.type, 'DONE', {
       signedTypedData,
+      hasSignedPermit: !!matchingPermit,
     })
 
     context.signedTypedData = signedTypedData

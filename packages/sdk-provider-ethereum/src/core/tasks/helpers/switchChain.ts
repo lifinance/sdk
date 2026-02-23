@@ -1,10 +1,4 @@
-import {
-  type ExecutionAction,
-  LiFiErrorCode,
-  type LiFiStepExtended,
-  ProviderError,
-  type StatusManager,
-} from '@lifi/sdk'
+import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
@@ -19,18 +13,14 @@ import { getAction } from 'viem/utils'
  *
  * Account Type: json-rpc -
  * We can switch chain and return existing connector client from the switchChain callback in order to continue execution on a new chain.
- * @param client
- * @param statusManager
- * @param step
- * @param switchChain
- * @param allowUserInteraction
+ * @param client The client to switch the chain for
+ * @param targetChainId The target chain id to switch to
+ * @param allowUserInteraction Whether user interaction is allowed
+ * @param switchChainCallback The callback to switch the chain
  * @returns New connector client
  */
 export const switchChain = async (
   client: Client,
-  statusManager: StatusManager,
-  step: LiFiStepExtended,
-  _action: ExecutionAction,
   targetChainId: number,
   allowUserInteraction: boolean,
   switchChainCallback?: (chainId: number) => Promise<Client | undefined>
@@ -48,39 +38,27 @@ export const switchChain = async (
   if (!allowUserInteraction) {
     return
   }
-
-  try {
-    if (!switchChainCallback) {
-      throw new ProviderError(
-        LiFiErrorCode.ChainSwitchError,
-        'Chain switch hook is not provided.'
-      )
-    }
-    const updatedClient = await switchChainCallback(targetChainId)
-    let updatedChainId: number | undefined
-    if (updatedClient) {
-      updatedChainId = (await getAction(
-        updatedClient,
-        getChainId,
-        'getChainId'
-      )(undefined)) as GetChainIdReturnType
-    }
-    if (updatedChainId !== targetChainId) {
-      throw new ProviderError(
-        LiFiErrorCode.ChainSwitchError,
-        'Chain switch required.'
-      )
-    }
-
-    return updatedClient
-  } catch (error: any) {
-    statusManager.updateExecution(step, {
-      status: 'FAILED',
-      error: {
-        message: error.message,
-        code: LiFiErrorCode.ChainSwitchError,
-      },
-    })
-    throw error
+  if (!switchChainCallback) {
+    throw new ProviderError(
+      LiFiErrorCode.ChainSwitchError,
+      'Chain switch hook is not provided.'
+    )
   }
+  const updatedClient = await switchChainCallback(targetChainId)
+  let updatedChainId: number | undefined
+  if (updatedClient) {
+    updatedChainId = (await getAction(
+      updatedClient,
+      getChainId,
+      'getChainId'
+    )(undefined)) as GetChainIdReturnType
+  }
+  if (updatedChainId !== targetChainId) {
+    throw new ProviderError(
+      LiFiErrorCode.ChainSwitchError,
+      'Chain switch required.'
+    )
+  }
+
+  return updatedClient
 }

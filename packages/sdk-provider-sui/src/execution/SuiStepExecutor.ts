@@ -1,8 +1,11 @@
 import {
-  ActionPipelineOrchestrator,
   BaseStepExecutor,
-  ReceivingChainPipeline,
+  CheckBalanceTask,
+  type LiFiStepExtended,
+  PrepareTransactionTask,
   type StepExecutorBaseContext,
+  TaskPipeline,
+  WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
 import { parseSuiErrors } from '../errors/parseSuiErrors.js'
@@ -10,7 +13,8 @@ import type {
   SuiStepExecutorContext,
   SuiStepExecutorOptions,
 } from '../types.js'
-import { SuiSwapOrBridgePipeline } from './pipelines/SuiSwapOrBridgePipeline.js'
+import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
+import { SuiWaitForTransactionTask } from './tasks/SuiWaitForTransactionTask.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
   private wallet: WalletWithRequiredFeatures
@@ -20,18 +24,39 @@ export class SuiStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
+  getFirstTaskName = (step: LiFiStepExtended, isBridgeExecution: boolean) => {
+    const swapOrBridgeAction = this.statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!swapOrBridgeAction?.txHash) {
+      return CheckBalanceTask.name
+    }
+    return WaitForTransactionStatusTask.name
+  }
+
   override getContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SuiStepExecutorContext> => {
-    const { isBridgeExecution } = baseContext
-    const actionPipelines = new ActionPipelineOrchestrator([
-      new SuiSwapOrBridgePipeline(isBridgeExecution),
-      new ReceivingChainPipeline(),
+    const { step, isBridgeExecution } = baseContext
+
+    const pipeline = new TaskPipeline([
+      new CheckBalanceTask(),
+      new PrepareTransactionTask(),
+      new SuiSignAndExecuteTask(),
+      new SuiWaitForTransactionTask(),
+      new WaitForTransactionStatusTask(
+        isBridgeExecution ? 'RECEIVING_CHAIN' : 'SWAP'
+      ),
     ])
+
+    const firstTaskName = this.getFirstTaskName(step, isBridgeExecution)
 
     return {
       ...baseContext,
-      actionPipelines,
+      pipeline,
+      firstTaskName,
       wallet: this.wallet,
       parseErrors: parseSuiErrors,
       // Payload shared between tasks

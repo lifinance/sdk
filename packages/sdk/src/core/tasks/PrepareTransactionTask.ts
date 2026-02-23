@@ -1,35 +1,35 @@
 import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
-import type { ExecutionAction } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
-import { isTransactionPrepared } from '../../utils/transactions.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
-/**
- * Base task for preparing the step transaction (get transaction request, compare, require data).
- * Shared by Sui, Bitcoin, Solana. Ethereum has its own prepare flow (contract calls, permits, etc.).
- */
 export class PrepareTransactionTask extends BaseStepExecutionTask {
-  override async shouldRun(
-    _context: StepExecutorContext,
-    action: ExecutionAction
-  ): Promise<boolean> {
-    return isTransactionPrepared(action)
-  }
+  static override readonly name = 'PREPARE_TRANSACTION' as const
+  override readonly taskName = PrepareTransactionTask.name
 
-  async run(
-    context: StepExecutorContext,
-    action: ExecutionAction
-  ): Promise<TaskResult> {
+  async run(context: StepExecutorContext): Promise<TaskResult> {
     const {
       client,
       step,
       statusManager,
       allowUserInteraction,
       executionOptions,
+      isBridgeExecution,
     } = context
+
+    const action = statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
+
+    if (!action) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Action not found.'
+      )
+    }
 
     if (!step.transactionRequest) {
       const { execution, ...stepBase } = step

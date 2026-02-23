@@ -223,30 +223,36 @@ export type ExecutionActionStatus =
   | 'CANCELLED'
 
 export type ExecutionActionType =
-  | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
+  | 'CHECK_ALLOWANCE'
+  | 'NATIVE_PERMIT'
+  | 'RESET_ALLOWANCE'
+  | 'SET_ALLOWANCE'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
 export type ExecutionAction = {
   type: ExecutionActionType
-  txHash?: string
-  taskId?: string
-  txLink?: string
-  txType?: TransactionMethodType
-  txHex?: string
-  signedTypedData?: SignedTypedData[] // TODO: check if can be moved to execution
-
-  // TODO: remove
   status: ExecutionActionStatus
   message?: string
-  substatusMessage?: string
   substatus?: Substatus
+  substatusMessage?: string
   chainId?: number
-  // TODO: make a separate action type and use txHash and txLink
-  resetTxHash?: string
-  resetTxLink?: string
+  error?: { code: string | number; message: string; htmlMessage?: string }
+  // 'SWAP' | 'CROSS_CHAIN' | 'RECEIVING_CHAIN'
+  txHash?: string
+  txLink?: string
+  taskId?: string
+  txType?: TransactionMethodType
+  txHex?: string
+  // 'PERMIT'
+  hasSignedPermit?: boolean
+  // 'CHECK_ALLOWANCE'
+  hasAllowance?: boolean
+  hasSufficientAllowance?: boolean
+  // 'NATIVE_PERMIT' | 'PERMIT' | 'SET_ALLOWANCE' | 'RESET_ALLOWANCE'
+  signedTypedData?: SignedTypedData[]
 }
 
 export interface Execution {
@@ -261,12 +267,6 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
-  allowanceApproved?: boolean
-  error?: {
-    code: string | number
-    message: string
-    htmlMessage?: string
-  }
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

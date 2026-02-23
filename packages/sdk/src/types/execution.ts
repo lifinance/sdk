@@ -26,7 +26,8 @@ export interface StepExecutorBaseContext {
 
 export interface StepExecutorContext extends StepExecutorBaseContext {
   pollingIntervalMs?: number
-  actionPipelines: {
+  firstTaskName: string
+  pipeline: {
     run(context: StepExecutorContext): Promise<TaskResult>
   }
   parseErrors: (
