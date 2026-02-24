@@ -98,8 +98,8 @@ export type {
 export type {
   StepExecutorBaseContext,
   StepExecutorContext,
-  TaskOutput,
   TaskResult,
+  TaskResultData,
   TaskStatus,
 } from './types/execution.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'

@@ -10,19 +10,9 @@ export class TaskPipeline {
   }
 
   async run(context: StepExecutorContext): Promise<TaskResult> {
-    const { statusManager, step, parseErrors, firstTaskName } = context
+    const { statusManager, step, parseErrors } = context
 
-    let tasksToRun = this.tasks
-    if (firstTaskName) {
-      const firstTaskIndex = tasksToRun.findIndex(
-        (task) => task.taskName === firstTaskName
-      )
-      if (firstTaskIndex >= 0) {
-        tasksToRun = tasksToRun.slice(firstTaskIndex)
-      }
-    }
-
-    for (const task of tasksToRun) {
+    for (const task of this.tasks) {
       try {
         const shouldRun = await task.shouldRun(context)
         if (!shouldRun) {
@@ -32,8 +22,8 @@ export class TaskPipeline {
         if (result.status === 'PAUSED') {
           return { status: 'PAUSED' }
         }
-        if (result.output && typeof result.output === 'object') {
-          Object.assign(context.outputs, result.output)
+        if (result.result && typeof result.result === 'object') {
+          Object.assign(context.tasksResults, result.result)
         }
       } catch (error: any) {
         const action = step?.execution?.actions?.at(-1)

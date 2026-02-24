@@ -18,10 +18,10 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
       statusManager,
       fromChain,
       isBridgeExecution,
-      outputs,
+      tasksResults,
     } = context
 
-    const signedTx = outputs.signedTransaction
+    const signedTx = tasksResults.signedTransaction
     if (!signedTx) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,

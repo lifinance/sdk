@@ -4,6 +4,7 @@ import {
   type LiFiStep,
   type LiFiStepExtended,
   type SDKProvider,
+  type SignedTypedData,
   type StepExecutorContext,
   type TransactionMethodType,
   type TransactionParameters,
@@ -25,6 +26,11 @@ export interface EthereumProviderOptions {
 export interface EthereumTaskOutputs extends Record<string, unknown> {
   transactionRequest?: TransactionParameters
   executionStrategy: TransactionMethodType
+  calls: Call[]
+  signedTypedData: SignedTypedData[]
+  hasMatchingPermit?: boolean
+  hasAllowance?: boolean
+  hasSufficientAllowance?: boolean
 }
 
 export interface EthereumStepExecutorContext extends StepExecutorContext {
@@ -37,8 +43,8 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   switchChain?: (chainId: number) => Promise<Client | undefined>
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
-  /** Accumulated outputs from previous tasks. Read-only for tasks; pipeline merges task results here. */
-  outputs: EthereumTaskOutputs
+  /** Accumulated results from previous tasks. Read-only for tasks; pipeline merges task results here. */
+  tasksResults: EthereumTaskOutputs
 }
 
 export interface EthereumSDKProvider extends SDKProvider {

@@ -40,29 +40,10 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     }
   }
 
-  getFirstTaskName = (step: LiFiStepExtended, isBridgeExecution: boolean) => {
-    const swapOrBridgeAction = this.statusManager.findAction(
-      step,
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
+  override createPipeline = (context: BitcoinStepExecutorContext) => {
+    const { step, isBridgeExecution } = context
 
-    if (!swapOrBridgeAction?.txHash) {
-      return CheckBalanceTask.name
-    }
-
-    return swapOrBridgeAction?.status !== 'DONE'
-      ? BitcoinWaitForTransactionTask.name
-      : WaitForTransactionStatusTask.name
-  }
-
-  override getContext = async (
-    baseContext: StepExecutorBaseContext
-  ): Promise<BitcoinStepExecutorContext> => {
-    const { client, fromChain, isBridgeExecution, step } = baseContext
-
-    const publicClient = await getBitcoinPublicClient(client, fromChain.id)
-
-    const pipeline = new TaskPipeline([
+    const tasks = [
       new CheckBalanceTask(),
       new PrepareTransactionTask(),
       new BitcoinSignAndExecuteTask(),
@@ -70,20 +51,40 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       new WaitForTransactionStatusTask(
         isBridgeExecution ? 'RECEIVING_CHAIN' : 'SWAP'
       ),
-    ])
+    ]
+    const swapOrBridgeAction = this.statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
 
-    const firstTaskName = this.getFirstTaskName(step, isBridgeExecution)
+    const taskClassName = swapOrBridgeAction?.txHash
+      ? WaitForTransactionStatusTask
+      : CheckBalanceTask
+
+    const firstTaskIndex = tasks.findIndex(
+      (task) => task instanceof taskClassName
+    )
+
+    const tasksToRun = tasks.slice(firstTaskIndex)
+
+    return new TaskPipeline(tasksToRun)
+  }
+
+  override createContext = async (
+    baseContext: StepExecutorBaseContext
+  ): Promise<BitcoinStepExecutorContext> => {
+    const { client, fromChain } = baseContext
+
+    const publicClient = await getBitcoinPublicClient(client, fromChain.id)
 
     return {
       ...baseContext,
-      pipeline,
-      firstTaskName,
       pollingIntervalMs: 10_000,
       checkClient: this.checkClient,
       walletClient: this.client,
       publicClient,
       parseErrors: parseBitcoinErrors,
-      outputs: {},
+      tasksResults: {},
     }
   }
 }

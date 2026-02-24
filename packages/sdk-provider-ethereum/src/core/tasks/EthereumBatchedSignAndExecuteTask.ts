@@ -19,37 +19,13 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       checkClient,
-      outputs,
+      tasksResults,
       isBridgeExecution,
     } = context
 
-    const transactionRequest = outputs.transactionRequest
+    const transactionRequest = tasksResults.transactionRequest
 
-    const calls = []
-
-    const resetTokenAllowanceAction = statusManager.findAction(
-      step,
-      'RESET_ALLOWANCE'
-    )
-    const tokenAllowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    const resetTxHash = resetTokenAllowanceAction?.txHash as Address
-    const txHash = tokenAllowanceAction?.txHash as Address
-
-    if (resetTxHash) {
-      calls.push({
-        to: step.action.fromToken.address as Address,
-        data: resetTxHash,
-        chainId: step.action.fromToken.chainId,
-      })
-    }
-
-    if (txHash) {
-      calls.push({
-        to: step.action.fromToken.address as Address,
-        data: txHash,
-        chainId: step.action.fromToken.chainId,
-      })
-    }
+    const calls = [...tasksResults.calls]
 
     const action = statusManager.findAction(
       step,
@@ -99,6 +75,6 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       signedAt: Date.now(),
     })
 
-    return { status: 'COMPLETED' }
+    return { status: 'COMPLETED', result: { calls } }
   }
 }

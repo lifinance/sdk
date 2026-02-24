@@ -33,12 +33,12 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
       step,
       statusManager,
       allowUserInteraction,
-      outputs,
+      tasksResults,
       isBridgeExecution,
     } = context
 
-    const transactionRequest = outputs.transactionRequest
-    const executionStrategy = outputs.executionStrategy
+    const transactionRequest = tasksResults.transactionRequest
+    const executionStrategy = tasksResults.executionStrategy
 
     const action = statusManager.findAction(
       step,

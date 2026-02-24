@@ -1,7 +1,6 @@
 import {
   BaseStepExecutor,
   CheckBalanceTask,
-  type LiFiStepExtended,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
@@ -24,24 +23,21 @@ export class SuiStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  getFirstTaskName = (step: LiFiStepExtended, isBridgeExecution: boolean) => {
-    const swapOrBridgeAction = this.statusManager.findAction(
-      step,
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
-
-    if (!swapOrBridgeAction?.txHash) {
-      return CheckBalanceTask.name
-    }
-    return WaitForTransactionStatusTask.name
-  }
-
-  override getContext = async (
+  override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SuiStepExecutorContext> => {
-    const { step, isBridgeExecution } = baseContext
+    return {
+      ...baseContext,
+      wallet: this.wallet,
+      parseErrors: parseSuiErrors,
+      tasksResults: {},
+    }
+  }
 
-    const pipeline = new TaskPipeline([
+  override createPipeline = (context: SuiStepExecutorContext) => {
+    const { step, isBridgeExecution } = context
+
+    const tasks = [
       new CheckBalanceTask(),
       new PrepareTransactionTask(),
       new SuiSignAndExecuteTask(),
@@ -49,17 +45,23 @@ export class SuiStepExecutor extends BaseStepExecutor {
       new WaitForTransactionStatusTask(
         isBridgeExecution ? 'RECEIVING_CHAIN' : 'SWAP'
       ),
-    ])
+    ]
 
-    const firstTaskName = this.getFirstTaskName(step, isBridgeExecution)
+    const swapOrBridgeAction = this.statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
 
-    return {
-      ...baseContext,
-      pipeline,
-      firstTaskName,
-      wallet: this.wallet,
-      parseErrors: parseSuiErrors,
-      outputs: {},
-    }
+    const taskClassName = swapOrBridgeAction?.txHash
+      ? WaitForTransactionStatusTask
+      : CheckBalanceTask
+
+    const firstTaskIndex = tasks.findIndex(
+      (task) => task instanceof taskClassName
+    )
+
+    const tasksToRun = tasks.slice(firstTaskIndex)
+
+    return new TaskPipeline(tasksToRun)
   }
 }

@@ -9,7 +9,6 @@ import type {
   LiFiStep,
   Route,
   RouteOptions,
-  SignedTypedData,
   Step,
   Substatus,
   Token,
@@ -239,21 +238,12 @@ export type ExecutionAction = {
   substatus?: Substatus
   substatusMessage?: string
   chainId?: number
-  group?: string
   error?: { code: string | number; message: string; htmlMessage?: string }
-  // 'SWAP' | 'CROSS_CHAIN' | 'RECEIVING_CHAIN'
   txHash?: string
   txLink?: string
   taskId?: string
   txType?: TransactionMethodType
   txHex?: string
-  // 'PERMIT'
-  hasSignedPermit?: boolean
-  // 'CHECK_ALLOWANCE'
-  hasAllowance?: boolean
-  hasSufficientAllowance?: boolean
-  // 'NATIVE_PERMIT' | 'PERMIT' | 'SET_ALLOWANCE' | 'RESET_ALLOWANCE'
-  signedTypedData?: SignedTypedData[]
 }
 
 export interface Execution {

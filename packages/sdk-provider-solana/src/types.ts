@@ -18,7 +18,7 @@ export interface SolanaTaskOutputs extends Record<string, unknown> {
 export interface SolanaStepExecutorContext extends StepExecutorContext {
   wallet: Wallet
   walletAccount: WalletAccount
-  outputs: SolanaTaskOutputs
+  tasksResults: SolanaTaskOutputs
 }
 
 export interface SolanaSDKProvider extends SDKProvider {

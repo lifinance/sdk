@@ -19,7 +19,7 @@ export interface SuiTaskOutputs extends Record<string, unknown> {
 
 export interface SuiStepExecutorContext extends StepExecutorContext {
   wallet: WalletWithRequiredFeatures
-  outputs: SuiTaskOutputs
+  tasksResults: SuiTaskOutputs
 }
 
 export interface SuiSDKProvider extends SDKProvider {

@@ -24,9 +24,9 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { outputs } = context
+    const { tasksResults } = context
 
-    const executionStrategy = outputs.executionStrategy
+    const executionStrategy = tasksResults.executionStrategy
 
     const task = this.strategies[executionStrategy]
 

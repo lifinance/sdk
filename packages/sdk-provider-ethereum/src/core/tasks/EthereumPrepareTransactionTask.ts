@@ -9,7 +9,6 @@ import {
 import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
-import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
@@ -27,6 +26,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       fromChain,
       retryParams,
+      tasksResults,
     } = context
 
     const action = statusManager.findAction(
@@ -51,7 +51,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       client,
       step,
       executionOptions,
-      getSignedTypedDataFromActions(step, statusManager)
+      tasksResults.signedTypedData
     )
 
     const comparedStep = await stepComparison(
@@ -133,7 +133,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      output: { transactionRequest, executionStrategy },
+      result: { transactionRequest, executionStrategy },
     }
   }
 }

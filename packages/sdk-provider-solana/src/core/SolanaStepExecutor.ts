@@ -2,7 +2,6 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   LiFiErrorCode,
-  type LiFiStepExtended,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
@@ -26,22 +25,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  getFirstTaskName = (step: LiFiStepExtended, isBridgeExecution: boolean) => {
-    const swapOrBridgeAction = this.statusManager.findAction(
-      step,
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
-
-    if (!swapOrBridgeAction?.txHash) {
-      return CheckBalanceTask.name
-    }
-    return WaitForTransactionStatusTask.name
-  }
-
-  override getContext = async (
+  override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SolanaStepExecutorContext> => {
-    const { step, isBridgeExecution } = baseContext
+    const { step } = baseContext
 
     const walletAccount = this.wallet.accounts.find(
       (account) => account.address === step.action.fromAddress
@@ -53,7 +40,19 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       )
     }
 
-    const pipeline = new TaskPipeline([
+    return {
+      ...baseContext,
+      wallet: this.wallet,
+      walletAccount,
+      parseErrors: parseSolanaErrors,
+      tasksResults: {},
+    }
+  }
+
+  override createPipeline = (context: SolanaStepExecutorContext) => {
+    const { step, isBridgeExecution } = context
+
+    const tasks = [
       new CheckBalanceTask(),
       new PrepareTransactionTask(),
       new SolanaSignAndExecuteTask(),
@@ -61,18 +60,23 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       new WaitForTransactionStatusTask(
         isBridgeExecution ? 'RECEIVING_CHAIN' : 'SWAP'
       ),
-    ])
+    ]
 
-    const firstTaskName = this.getFirstTaskName(step, isBridgeExecution)
+    const swapOrBridgeAction = this.statusManager.findAction(
+      step,
+      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+    )
 
-    return {
-      ...baseContext,
-      pipeline,
-      firstTaskName,
-      wallet: this.wallet,
-      walletAccount,
-      parseErrors: parseSolanaErrors,
-      outputs: {},
-    }
+    const taskClassName = swapOrBridgeAction?.txHash
+      ? WaitForTransactionStatusTask
+      : CheckBalanceTask
+
+    const firstTaskIndex = tasks.findIndex(
+      (task) => task instanceof taskClassName
+    )
+
+    const tasksToRun = tasks.slice(firstTaskIndex)
+
+    return new TaskPipeline(tasksToRun)
   }
 }

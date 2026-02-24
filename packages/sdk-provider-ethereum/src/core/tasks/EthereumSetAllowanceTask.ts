@@ -13,31 +13,10 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, statusManager } = context
-    const permitAction = statusManager.findAction(step, 'PERMIT')
-    if (permitAction?.hasSignedPermit) {
-      return false
-    }
-
-    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    if (allowanceAction?.txHash) {
-      return false
-    }
-
-    const checkAllowanceAction = statusManager.findAction(
-      step,
-      'CHECK_ALLOWANCE'
+    const { tasksResults } = context
+    return (
+      !tasksResults.hasMatchingPermit && !tasksResults.hasSufficientAllowance
     )
-    if (checkAllowanceAction?.hasSufficientAllowance) {
-      return false
-    }
-
-    const nativePermitAction = statusManager.findAction(step, 'NATIVE_PERMIT')
-    if (nativePermitAction?.signedTypedData) {
-      return false
-    }
-
-    return true
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -51,7 +30,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       allowUserInteraction,
       checkClient,
-      outputs,
+      tasksResults,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -63,7 +42,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'SET_ALLOWANCE',
       chainId: step.action.fromChainId,
-      group: 'TOKEN_ALLOWANCE',
     })
 
     // Clear the txHash and txLink from potential previous approval transaction
@@ -76,7 +54,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = outputs.executionStrategy
+    const executionStrategy = tasksResults.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     const permit2Supported = isPermit2Supported(
       step,
@@ -107,11 +85,20 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       batchingSupported
     )
 
+    const calls = [...tasksResults.calls]
+    if (batchingSupported) {
+      calls.push({
+        to: step.action.fromToken.address as Address,
+        data: approveTxHash,
+        chainId: step.action.fromToken.chainId,
+      })
+    }
+
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: approveTxHash,
       txLink: getTxLink(fromChain, approveTxHash),
     })
 
-    return { status: 'COMPLETED' }
+    return { status: 'COMPLETED', result: { calls } }
   }
 }

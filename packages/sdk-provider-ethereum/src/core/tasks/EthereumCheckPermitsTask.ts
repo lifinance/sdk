@@ -5,7 +5,6 @@ import {
 } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
@@ -26,7 +25,13 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { step, statusManager, allowUserInteraction, checkClient } = context
+    const {
+      step,
+      statusManager,
+      allowUserInteraction,
+      checkClient,
+      tasksResults,
+    } = context
 
     const action = statusManager.findOrCreateAction({
       step,
@@ -40,19 +45,8 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         (typedData) => typedData.primaryType === 'Permit'
       ) ?? []
 
-    const signedTypedData = action.signedTypedData ?? []
+    const signedTypedData = [...tasksResults.signedTypedData]
     for (const typedData of permitTypedData) {
-      // Check if we already have a valid permit for this chain and requirements
-      const signedTypedDataForChain = signedTypedData.find(
-        (signedTypedData: SignedTypedData) =>
-          isNativePermitValid(signedTypedData, typedData)
-      )
-
-      if (signedTypedDataForChain) {
-        // Skip signing if we already have a valid permit
-        continue
-      }
-
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
       if (!allowUserInteraction) {
@@ -61,6 +55,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
 
       const typedDataChainId =
         getDomainChainId(typedData.domain) || step.action.fromChainId
+
       // Switch to the permit's chain if needed
       const permitClient = await checkClient(step, typedDataChainId)
       if (!permitClient) {
@@ -83,9 +78,6 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         signature,
       }
       signedTypedData.push(signedPermit)
-      statusManager.updateAction(step, action.type, action.status, {
-        signedTypedData,
-      })
     }
 
     // Check if there's a signed permit for the source transaction chain
@@ -94,11 +86,11 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         getDomainChainId(signedTypedData.domain) === step.action.fromChainId
     )
 
-    statusManager.updateAction(step, action.type, 'DONE', {
-      signedTypedData,
-      hasSignedPermit: !!matchingPermit,
-    })
+    statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED' }
+    return {
+      status: 'COMPLETED',
+      result: { signedTypedData, hasMatchingPermit: !!matchingPermit },
+    }
   }
 }

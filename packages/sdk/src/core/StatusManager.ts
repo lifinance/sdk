@@ -14,7 +14,6 @@ type FindOrCreateActionProps = {
   type: ExecutionActionType
   chainId?: ChainId
   status?: ExecutionActionStatus
-  group?: string
 }
 
 /**
@@ -117,7 +116,6 @@ export class StatusManager {
     type,
     chainId,
     status,
-    group,
   }: FindOrCreateActionProps): ExecutionAction => {
     if (!step.execution) {
       throw new Error("Execution hasn't been initialized.")
@@ -128,7 +126,6 @@ export class StatusManager {
       message: getActionMessage(type, status ?? 'STARTED'),
       status: status ?? 'STARTED',
       chainId,
-      group,
     }
 
     step.execution.actions.push(newAction)
@@ -149,13 +146,12 @@ export class StatusManager {
     type,
     chainId,
     status,
-    group,
   }: FindOrCreateActionProps): ExecutionAction => {
     const action = this.findAction(step, type, status)
     if (action) {
       return action
     }
-    return this.createAction({ step, type, chainId, status, group })
+    return this.createAction({ step, type, chainId, status })
   }
 
   /**

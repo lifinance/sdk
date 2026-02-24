@@ -21,10 +21,10 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       statusManager,
       fromChain,
       isBridgeExecution,
-      outputs,
+      tasksResults,
     } = context
 
-    const signedTransactions = outputs.signedTransactions ?? []
+    const signedTransactions = tasksResults.signedTransactions ?? []
 
     const action = statusManager.findAction(
       step,

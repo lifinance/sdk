@@ -10,7 +10,6 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
-import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
   static override readonly name = 'ETHEREUM_NATIVE_PERMIT' as const
@@ -19,28 +18,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, fromChain, disableMessageSigning, statusManager, outputs } =
-      context
+    const { step, fromChain, disableMessageSigning, tasksResults } = context
 
-    const permitAction = statusManager.findAction(step, 'PERMIT')
-    if (permitAction?.hasSignedPermit) {
+    if (tasksResults.hasMatchingPermit || tasksResults.hasSufficientAllowance) {
       return false
     }
 
-    const checkAllowanceAction = statusManager.findAction(
-      step,
-      'CHECK_ALLOWANCE'
-    )
-    if (checkAllowanceAction?.hasSufficientAllowance) {
-      return false
-    }
-
-    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    if (allowanceAction?.txHash) {
-      return false
-    }
-
-    const executionStrategy = outputs.executionStrategy
+    const executionStrategy = tasksResults.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
@@ -59,13 +43,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
+      tasksResults,
     } = context
 
     const action = statusManager.findOrCreateAction({
       step,
       type: 'NATIVE_PERMIT',
       chainId: step.action.fromChainId,
-      group: 'TOKEN_ALLOWANCE',
     })
 
     const updatedClient = await checkClient(step)
@@ -95,7 +79,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return { status: 'COMPLETED' }
     }
 
-    const signedTypedData = getSignedTypedDataFromActions(step, statusManager)
+    const signedTypedData = [...tasksResults.signedTypedData]
 
     // Check if we already have a valid permit for this chain and requirements
     const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
@@ -130,10 +114,11 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       signedTypedData.push(signedPermit)
     }
 
-    statusManager.updateAction(step, action.type, 'DONE', {
-      signedTypedData,
-    })
+    statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED' }
+    return {
+      status: 'COMPLETED',
+      result: { signedTypedData, hasMatchingPermit: true },
+    }
   }
 }

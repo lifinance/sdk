@@ -12,6 +12,7 @@ import type {
   StepExecutorContext,
 } from '../types/execution.js'
 import { StatusManager } from './StatusManager.js'
+import type { TaskPipeline } from './TaskPipeline.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
 const defaultInteractionSettings = {
@@ -42,7 +43,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
     this.allowExecution = interactionSettings.allowExecution
   }
 
-  private getBaseContext = async (
+  private createBaseContext = async (
     client: SDKClient,
     step: LiFiStepExtended,
     retryParams?: ExecuteStepRetryParams
@@ -62,13 +63,14 @@ export abstract class BaseStepExecutor implements StepExecutor {
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,
       allowUserInteraction: this.allowUserInteraction,
-      transactionStatusObservers: {},
     }
   }
 
-  abstract getContext(
+  abstract createContext(
     baseContext: StepExecutorBaseContext
   ): Promise<StepExecutorContext>
+
+  abstract createPipeline(context: StepExecutorContext): TaskPipeline
 
   executeStep = async (
     client: SDKClient,
@@ -77,10 +79,12 @@ export abstract class BaseStepExecutor implements StepExecutor {
   ): Promise<LiFiStepExtended> => {
     step.execution = this.statusManager.initExecutionObject(step)
 
-    const baseContext = await this.getBaseContext(client, step, retryParams)
-    const context = await this.getContext(baseContext)
+    const baseContext = await this.createBaseContext(client, step, retryParams)
+    const context = await this.createContext(baseContext)
 
-    await context.pipeline.run(context)
+    const pipeline = this.createPipeline(context)
+
+    await pipeline.run(context)
 
     return step
   }

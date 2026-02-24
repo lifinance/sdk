@@ -11,13 +11,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, statusManager } = context
-    const permitAction = statusManager.findAction(step, 'PERMIT')
-    if (permitAction?.hasSignedPermit) {
-      return false
-    }
-    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    return !allowanceAction?.txHash
+    const { tasksResults } = context
+    return !tasksResults.hasMatchingPermit
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -29,7 +24,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       statusManager,
       isFromNativeToken,
       disableMessageSigning,
-      outputs,
+      tasksResults,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -42,10 +37,9 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'CHECK_ALLOWANCE',
       chainId: step.action.fromChainId,
-      group: 'TOKEN_ALLOWANCE',
     })
 
-    const executionStrategy = outputs.executionStrategy
+    const executionStrategy = tasksResults.executionStrategy
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -67,11 +61,14 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       spenderAddress as Address
     )
 
-    statusManager.updateAction(step, action.type, 'DONE', {
-      hasAllowance: allowance > 0n,
-      hasSufficientAllowance: fromAmount <= allowance,
-    })
+    statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED' }
+    return {
+      status: 'COMPLETED',
+      result: {
+        hasAllowance: allowance > 0n,
+        hasSufficientAllowance: fromAmount <= allowance,
+      },
+    }
   }
 }

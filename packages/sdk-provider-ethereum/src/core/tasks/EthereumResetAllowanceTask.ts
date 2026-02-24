@@ -13,34 +13,14 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, statusManager } = context
+    const { step, tasksResults } = context
 
-    const permitAction = statusManager.findAction(step, 'PERMIT')
-    if (permitAction?.hasSignedPermit) {
-      return false
-    }
-
-    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    if (allowanceAction?.txHash) {
-      return false
-    }
-
-    const checkAllowanceAction = statusManager.findAction(
-      step,
-      'CHECK_ALLOWANCE'
+    return (
+      !tasksResults.hasMatchingPermit &&
+      !tasksResults.hasSufficientAllowance &&
+      !!step.estimate.approvalReset &&
+      !!tasksResults.hasAllowance
     )
-    if (checkAllowanceAction?.hasSufficientAllowance) {
-      return false
-    }
-
-    const nativePermitAction = statusManager.findAction(step, 'NATIVE_PERMIT')
-    if (nativePermitAction?.signedTypedData) {
-      return false
-    }
-
-    const shouldResetApproval =
-      step.estimate.approvalReset && checkAllowanceAction?.hasAllowance
-    return !!shouldResetApproval
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -54,7 +34,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       executionOptions,
       client,
-      outputs,
+      tasksResults,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -66,7 +46,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       step,
       type: 'RESET_ALLOWANCE',
       chainId: step.action.fromChainId,
-      group: 'TOKEN_ALLOWANCE',
     })
 
     statusManager.updateAction(step, action.type, 'RESET_REQUIRED', {
@@ -78,7 +57,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = outputs.executionStrategy
+    const executionStrategy = tasksResults.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
 
     const permit2Supported = isPermit2Supported(
@@ -108,7 +87,14 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       txLink: getTxLink(fromChain, approvalResetTxHash),
     })
 
-    if (!batchingSupported) {
+    const calls = [...tasksResults.calls]
+    if (batchingSupported) {
+      calls.push({
+        to: step.action.fromToken.address as Address,
+        data: approvalResetTxHash,
+        chainId: step.action.fromToken.chainId,
+      })
+    } else {
       const transactionReceipt = await waitForTransactionReceipt(client, {
         client: updatedClient,
         chainId: fromChain.id,
@@ -131,6 +117,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED' }
+    return { status: 'COMPLETED', result: { calls } }
   }
 }

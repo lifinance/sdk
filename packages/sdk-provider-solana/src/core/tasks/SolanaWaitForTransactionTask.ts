@@ -22,9 +22,9 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
   }
 
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
-    const { client, outputs } = context
+    const { client, tasksResults } = context
 
-    const signedTransactions = outputs.signedTransactions ?? []
+    const signedTransactions = tasksResults.signedTransactions ?? []
 
     const useJitoBundle = shouldUseJitoBundle(
       client.config.routeOptions,

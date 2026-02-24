@@ -1,4 +1,5 @@
 import {
+  type BaseStepExecutionTask,
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
@@ -77,49 +78,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     return updatedClient
   }
 
-  getFirstTaskName = (
-    step: LiFiStepExtended,
-    isBridgeExecution: boolean,
-    isFromNativeToken: boolean
-  ) => {
-    const doCheckAllowance = shouldCheckForAllowance(
-      step,
-      isBridgeExecution,
-      isFromNativeToken,
-      this.statusManager
-    )
-
-    if (doCheckAllowance) {
-      return EthereumCheckPermitsTask.name
-    }
-
-    const swapOrBridgeAction = this.statusManager.findAction(
-      step,
-      isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
-    )
-
-    if (!(swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId)) {
-      return CheckBalanceTask.name
-    }
-
-    if (swapOrBridgeAction?.status !== 'DONE') {
-      return EthereumWaitForTransactionTask.name
-    }
-
-    return EthereumWaitForTransactionStatusTask.name
-  }
-
-  getContext = async (
+  override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
-    const {
-      step,
-      fromChain,
-      executionOptions,
-      client,
-      retryParams,
-      isBridgeExecution,
-    } = baseContext
+    const { step, fromChain, executionOptions, client, retryParams } =
+      baseContext
 
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
@@ -132,26 +95,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
 
     // Ensure chain and wallet are correct before any viem RPC (e.g. getCapabilities in execution strategy)
     const clientForStrategy = (await this.checkClient(step)) ?? this.client
-
-    const pipeline = new TaskPipeline([
-      new EthereumCheckPermitsTask(),
-      new EthereumCheckAllowanceTask(),
-      new EthereumNativePermitTask(),
-      new EthereumResetAllowanceTask(),
-      new EthereumSetAllowanceTask(),
-      new EthereumWaitForApprovalTransactionTask(),
-      new CheckBalanceTask(),
-      new EthereumPrepareTransactionTask(),
-      new EthereumSignAndExecuteTask(),
-      new EthereumWaitForTransactionTask(),
-      new EthereumWaitForTransactionStatusTask(),
-    ])
-
-    const firstTaskName = this.getFirstTaskName(
-      step,
-      isBridgeExecution,
-      isFromNativeToken
-    )
 
     const executionStrategy = await getEthereumExecutionStrategy(
       client,
@@ -166,14 +109,59 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       isFromNativeToken,
       disableMessageSigning,
       checkClient: this.checkClient,
-      pipeline,
-      firstTaskName,
       parseErrors: (
         e: Error,
         step?: LiFiStepExtended,
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, retryParams),
-      outputs: { executionStrategy },
+      tasksResults: { executionStrategy, signedTypedData: [], calls: [] },
     }
+  }
+
+  override createPipeline = (context: EthereumStepExecutorContext) => {
+    const { step, isBridgeExecution, isFromNativeToken } = context
+
+    const tasks = [
+      new EthereumCheckPermitsTask(),
+      new EthereumCheckAllowanceTask(),
+      new EthereumNativePermitTask(),
+      new EthereumResetAllowanceTask(),
+      new EthereumSetAllowanceTask(),
+      new EthereumWaitForApprovalTransactionTask(),
+      new CheckBalanceTask(),
+      new EthereumPrepareTransactionTask(),
+      new EthereumSignAndExecuteTask(),
+      new EthereumWaitForTransactionTask(),
+      new EthereumWaitForTransactionStatusTask(),
+    ]
+
+    const doCheckAllowance = shouldCheckForAllowance(
+      step,
+      isBridgeExecution,
+      isFromNativeToken,
+      this.statusManager
+    )
+
+    let taskClassName: typeof BaseStepExecutionTask
+    if (doCheckAllowance) {
+      taskClassName = EthereumCheckPermitsTask
+    } else {
+      const swapOrBridgeAction = this.statusManager.findAction(
+        step,
+        isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
+      )
+      taskClassName =
+        swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
+          ? EthereumWaitForTransactionStatusTask
+          : CheckBalanceTask
+    }
+
+    const firstTaskIndex = tasks.findIndex(
+      (task) => task instanceof taskClassName
+    )
+
+    const tasksToRun = tasks.slice(firstTaskIndex)
+
+    return new TaskPipeline(tasksToRun)
   }
 }

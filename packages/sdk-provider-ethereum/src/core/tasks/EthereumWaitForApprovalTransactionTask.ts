@@ -17,14 +17,21 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, statusManager } = context
-    const allowanceAction = statusManager.findAction(step, 'SET_ALLOWANCE')
-    return !!allowanceAction?.txHash && allowanceAction?.status !== 'DONE'
+    const { tasksResults } = context
+    return (
+      !tasksResults.hasMatchingPermit && !tasksResults.hasSufficientAllowance
+    )
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { client, step, statusManager, checkClient, fromChain, outputs } =
-      context
+    const {
+      client,
+      step,
+      statusManager,
+      checkClient,
+      fromChain,
+      tasksResults,
+    } = context
 
     const action = statusManager.findAction(step, 'SET_ALLOWANCE')
     if (!action?.txHash) {
@@ -34,7 +41,7 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
       )
     }
 
-    const strategy = outputs.executionStrategy
+    const strategy = tasksResults.executionStrategy
     const batchingSupported = strategy === 'batched'
 
     if (!batchingSupported) {

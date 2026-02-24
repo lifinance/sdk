@@ -14,7 +14,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
-import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
@@ -30,13 +29,12 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       isFromNativeToken,
       disableMessageSigning,
       checkClient,
-      outputs,
+      tasksResults,
       allowUserInteraction,
       isBridgeExecution,
     } = context
 
-    const transactionRequest = outputs.transactionRequest
-    const signedTypedData = getSignedTypedDataFromActions(step, statusManager)
+    const transactionRequest = tasksResults.transactionRequest
 
     if (!transactionRequest) {
       throw new TransactionError(
@@ -69,7 +67,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       disableMessageSigning,
       'standard'
     )
-    const signedNativePermitTypedData = signedTypedData.find(
+    const signedNativePermitTypedData = tasksResults.signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
         getDomainChainId(p.domain) === fromChain.id
@@ -149,7 +147,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      output: { transactionRequest: finalTransactionRequest },
+      result: { transactionRequest: finalTransactionRequest },
     }
   }
 }
