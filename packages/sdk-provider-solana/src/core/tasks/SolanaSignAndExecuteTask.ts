@@ -13,9 +13,6 @@ import { getWalletFeature } from '../../utils/getWalletFeature.js'
 import { withTimeout } from '../../utils/withTimeout.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'SOLANA_SIGN_AND_EXECUTE' as const
-  override readonly taskName = SolanaSignAndExecuteTask.name
-
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       step,

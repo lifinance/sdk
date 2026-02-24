@@ -204,7 +204,7 @@ export const buildStepObject = ({
         status: 'PENDING',
         actions: [
           {
-            type: 'TOKEN_ALLOWANCE',
+            type: 'SET_ALLOWANCE',
             message: 'Somethings done',
             status: 'DONE',
             txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',

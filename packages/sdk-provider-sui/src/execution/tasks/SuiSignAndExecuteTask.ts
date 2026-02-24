@@ -9,9 +9,6 @@ import { signAndExecuteTransaction } from '@mysten/wallet-standard'
 import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'SUI_SIGN_AND_EXECUTE' as const
-  override readonly taskName = SuiSignAndExecuteTask.name
-
   async run(context: SuiStepExecutorContext): Promise<TaskResult> {
     const { step, wallet, statusManager, executionOptions, isBridgeExecution } =
       context

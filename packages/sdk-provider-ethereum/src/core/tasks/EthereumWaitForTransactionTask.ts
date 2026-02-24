@@ -5,9 +5,6 @@ import { EthereumRelayedWaitForTransactionTask } from './EthereumRelayedWaitForT
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = EthereumWaitForTransactionTask.name
-
   private readonly strategies: {
     batched: BaseStepExecutionTask
     relayed: BaseStepExecutionTask

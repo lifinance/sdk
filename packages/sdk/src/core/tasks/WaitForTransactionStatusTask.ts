@@ -8,9 +8,6 @@ import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
 
 export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
-  static override readonly name = 'WAIT_FOR_TRANSACTION_STATUS' as const
-  override readonly taskName = WaitForTransactionStatusTask.name
-
   readonly actionType: ExecutionActionType
 
   constructor(actionType: ExecutionActionType) {

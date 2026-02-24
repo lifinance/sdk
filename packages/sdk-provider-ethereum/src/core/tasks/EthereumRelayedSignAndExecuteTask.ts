@@ -13,9 +13,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_RELAYED_SIGN_AND_EXECUTE' as const
-  override readonly taskName = EthereumRelayedSignAndExecuteTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,

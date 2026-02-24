@@ -6,9 +6,6 @@ import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
 export class PrepareTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'PREPARE_TRANSACTION' as const
-  override readonly taskName = PrepareTransactionTask.name
-
   async run(context: StepExecutorContext): Promise<TaskResult> {
     const {
       client,

@@ -20,9 +20,6 @@ import { isPsbtFinalized } from '../../utils/isPsbtFinalized.js'
 import { toXOnly } from '../../utils/toXOnly.js'
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'BITCOIN_SIGN_AND_EXECUTE' as const
-  override readonly taskName = BitcoinSignAndExecuteTask.name
-
   async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
     const {
       step,

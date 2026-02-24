@@ -8,9 +8,6 @@ import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 
 export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'SOLANA_JITO_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = SolanaJitoWaitForTransactionTask.name
-
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       client,

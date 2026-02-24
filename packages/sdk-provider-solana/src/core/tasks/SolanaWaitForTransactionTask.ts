@@ -5,9 +5,6 @@ import { SolanaJitoWaitForTransactionTask } from './SolanaJitoWaitForTransaction
 import { SolanaStandardWaitForTransactionTask } from './SolanaStandardWaitForTransactionTask.js'
 
 export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'SOLANA_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = SolanaWaitForTransactionTask.name
-
   private readonly strategies: {
     jito: BaseStepExecutionTask
     standard: BaseStepExecutionTask

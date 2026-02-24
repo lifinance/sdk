@@ -10,10 +10,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumRelayedWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name =
-    'ETHEREUM_RELAYED_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = EthereumRelayedWaitForTransactionTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, fromChain, isBridgeExecution } =
       context

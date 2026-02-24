@@ -10,9 +10,6 @@ import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
 
 export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_BATCHED_SIGN_AND_EXECUTE' as const
-  override readonly taskName = EthereumBatchedSignAndExecuteTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,

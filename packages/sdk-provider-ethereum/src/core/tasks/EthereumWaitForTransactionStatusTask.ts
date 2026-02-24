@@ -6,10 +6,6 @@ import {
 import type { EthereumStepExecutorContext } from '../../types.js'
 
 export class EthereumWaitForTransactionStatusTask extends BaseStepExecutionTask {
-  static override readonly name =
-    'ETHEREUM_WAIT_FOR_TRANSACTION_STATUS' as const
-  override readonly taskName = EthereumWaitForTransactionStatusTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { step, checkClient, isBridgeExecution, statusManager } = context
     // Make sure that the chain is still correct

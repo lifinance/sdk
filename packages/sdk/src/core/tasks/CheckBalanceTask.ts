@@ -5,9 +5,6 @@ import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { checkBalance } from './helpers/checkBalance.js'
 
 export class CheckBalanceTask extends BaseStepExecutionTask {
-  static override readonly name = 'CHECK_BALANCE' as const
-  override readonly taskName = CheckBalanceTask.name
-
   async run(context: StepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, isBridgeExecution } = context
 

@@ -159,7 +159,7 @@ describe('StatusManager', () => {
         it('should return the action and not call the callbacks', () => {
           const action = statusManager.findOrCreateAction({
             step: structuredClone(step),
-            type: 'TOKEN_ALLOWANCE',
+            type: 'SET_ALLOWANCE',
           })
 
           expect(action).toEqual(step.execution?.actions[0])
@@ -267,7 +267,7 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
+          statusManager.removeAction(structuredClone(step), 'SET_ALLOWANCE')
         ).toThrow("Execution hasn't been initialized.")
       })
     })
@@ -275,7 +275,7 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
+        statusManager.removeAction(structuredClone(step), 'SET_ALLOWANCE')
       })
 
       it('should remove the action and call the callbacks', () => {

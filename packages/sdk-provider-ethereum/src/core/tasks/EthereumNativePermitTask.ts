@@ -12,9 +12,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_NATIVE_PERMIT' as const
-  override readonly taskName = EthereumNativePermitTask.name
-
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {

@@ -8,9 +8,6 @@ import { callSuiWithRetry } from '../../client/suiClient.js'
 import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'SUI_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = SuiWaitForTransactionTask.name
-
   async run(context: SuiStepExecutorContext): Promise<TaskResult> {
     const {
       client,

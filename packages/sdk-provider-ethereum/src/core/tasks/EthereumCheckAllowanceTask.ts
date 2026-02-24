@@ -5,9 +5,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_CHECK_ALLOWANCE' as const
-  override readonly taskName = EthereumCheckAllowanceTask.name
-
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {

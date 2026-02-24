@@ -17,9 +17,6 @@ import { estimateTransactionRequest } from './helpers/estimateTransactionRequest
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_STANDARD_SIGN_AND_EXECUTE' as const
-  override readonly taskName = EthereumStandardSignAndExecuteTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,

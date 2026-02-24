@@ -10,10 +10,6 @@ import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name =
-    'SOLANA_STANDARD_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = SolanaStandardWaitForTransactionTask.name
-
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       client,

@@ -9,9 +9,6 @@ import {
 import type { BitcoinStepExecutorContext } from '../../types.js'
 
 export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'BITCOIN_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = BitcoinWaitForTransactionTask.name
-
   async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
     const {
       step,

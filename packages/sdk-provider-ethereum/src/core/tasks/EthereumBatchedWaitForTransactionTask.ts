@@ -13,10 +13,6 @@ import type {
 import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask {
-  static override readonly name =
-    'ETHEREUM_BATCHED_WAIT_FOR_TRANSACTION' as const
-  override readonly taskName = EthereumBatchedWaitForTransactionTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const { step, statusManager, fromChain, isBridgeExecution, checkClient } =
       context

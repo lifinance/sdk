@@ -9,9 +9,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_CHECK_PERMITS' as const
-  override readonly taskName = EthereumCheckPermitsTask.name
-
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {

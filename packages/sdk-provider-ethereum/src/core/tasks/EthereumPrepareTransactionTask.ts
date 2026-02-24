@@ -12,9 +12,6 @@ import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStra
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_PREPARE_TRANSACTION' as const
-  override readonly taskName = EthereumPrepareTransactionTask.name
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,

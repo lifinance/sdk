@@ -10,10 +10,6 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getTxLink } from './helpers/getTxLink.js'
 
 export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTask {
-  static override readonly name =
-    'ETHEREUM_WAIT_FOR_APPROVAL_TRANSACTION' as const
-  override readonly taskName = EthereumWaitForApprovalTransactionTask.name
-
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {

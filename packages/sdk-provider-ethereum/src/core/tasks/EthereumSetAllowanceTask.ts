@@ -7,9 +7,6 @@ import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_SET_ALLOWANCE' as const
-  override readonly taskName = EthereumSetAllowanceTask.name
-
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {

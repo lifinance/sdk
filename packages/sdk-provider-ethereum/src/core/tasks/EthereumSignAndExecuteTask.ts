@@ -10,9 +10,6 @@ import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecu
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
 
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
-  static override readonly name = 'ETHEREUM_SIGN_AND_EXECUTE' as const
-  override readonly taskName = EthereumSignAndExecuteTask.name
-
   private readonly strategies: {
     batched: BaseStepExecutionTask
     relayed: BaseStepExecutionTask
