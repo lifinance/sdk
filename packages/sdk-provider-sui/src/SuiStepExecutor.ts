@@ -139,44 +139,37 @@ export class SuiStepExecutor extends BaseStepExecutor {
           signedAt: Date.now(),
         })
 
-        if ($kind === 'FailedTransaction' && FailedTransaction) {
+        if ($kind !== 'Transaction' || !TransactionResult) {
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
-            `Transaction failed: ${FailedTransaction.status.error}`
+            `Transaction failed: ${FailedTransaction?.status.error ?? `Unexpected transaction result: ${$kind}`}`
           )
         }
 
-        if ($kind === 'Transaction' && TransactionResult) {
-          const result = await callSuiWithRetry(client, (client) =>
-            client.waitForTransaction({
-              digest: TransactionResult.digest,
-              options: {
-                showEffects: true,
-              },
-            })
+        const result = await callSuiWithRetry(client, (client) =>
+          client.waitForTransaction({
+            digest: TransactionResult.digest,
+            options: {
+              showEffects: true,
+            },
+          })
+        )
+
+        if (result.effects?.status.status !== 'success') {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            `Transaction failed: ${result.effects?.status.error}`
           )
+        }
 
-          if (result.effects?.status.status !== 'success') {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionFailed,
-              `Transaction failed: ${result.effects?.status.error}`
-            )
-          }
+        // Transaction has been confirmed and we can update the action
+        action = this.statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: result.digest,
+          txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
+        })
 
-          // Transaction has been confirmed and we can update the action
-          action = this.statusManager.updateAction(
-            step,
-            action.type,
-            'PENDING',
-            {
-              txHash: result.digest,
-              txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
-            }
-          )
-
-          if (isBridgeExecution) {
-            action = this.statusManager.updateAction(step, action.type, 'DONE')
-          }
+        if (isBridgeExecution) {
+          action = this.statusManager.updateAction(step, action.type, 'DONE')
         }
       } catch (e: any) {
         const error = await parseSuiErrors(e, step, action)

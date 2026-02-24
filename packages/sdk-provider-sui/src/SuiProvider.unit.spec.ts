@@ -1,8 +1,13 @@
-import { ChainType } from '@lifi/sdk'
+import { ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { SuiProvider } from './SuiProvider.js'
 
 describe('SuiProvider', () => {
+  const mockStepExecutorOptions = {
+    routeId: 'test-route',
+    executionOptions: {},
+  } as any
+
   it('should create provider with default options', () => {
     const provider = SuiProvider()
 
@@ -14,40 +19,41 @@ describe('SuiProvider', () => {
     expect(provider.setOptions).toBeDefined()
   })
 
-  it('should throw error when wallet is not provided', async () => {
+  it('should throw ProviderError when getClient is not provided', async () => {
     const provider = SuiProvider()
-    const mockOptions = {
-      routeId: 'test-route',
-      executionOptions: {},
-    } as any
 
-    await expect(provider.getStepExecutor(mockOptions)).rejects.toThrowError(
-      'getClient is not provided.'
-    )
+    await expect(
+      provider.getStepExecutor(mockStepExecutorOptions)
+    ).rejects.toThrowError(ProviderError)
   })
 
-  it('should return step executor when wallet is provided', async () => {
-    const mockWallet = {
+  it('should throw ProviderError when getSigner is not provided', async () => {
+    const mockGetClient = vi.fn().mockResolvedValue({})
+    const provider = SuiProvider({ getClient: mockGetClient })
+
+    await expect(
+      provider.getStepExecutor(mockStepExecutorOptions)
+    ).rejects.toThrowError(ProviderError)
+  })
+
+  it('should return step executor when client and signer are provided', async () => {
+    const mockClient = {
       getAccounts: vi.fn(),
       signAndExecuteTransaction: vi.fn(),
     }
 
-    const mockGetWallet = vi.fn().mockResolvedValue(mockWallet)
-    const mockSigner = vi.fn().mockResolvedValue({})
+    const mockGetClient = vi.fn().mockResolvedValue(mockClient)
+    const mockGetSigner = vi.fn().mockResolvedValue({})
 
     const provider = SuiProvider({
-      getClient: mockGetWallet,
-      getSigner: mockSigner,
+      getClient: mockGetClient,
+      getSigner: mockGetSigner,
     })
 
-    const mockOptions = {
-      routeId: 'test-route',
-      executionOptions: {},
-    } as any
-
-    const executor = await provider.getStepExecutor(mockOptions)
+    const executor = await provider.getStepExecutor(mockStepExecutorOptions)
 
     expect(executor).toBeDefined()
-    expect(mockGetWallet).toHaveBeenCalledOnce()
+    expect(mockGetClient).toHaveBeenCalledOnce()
+    expect(mockGetSigner).toHaveBeenCalledOnce()
   })
 })

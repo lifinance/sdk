@@ -1,4 +1,9 @@
-import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
+import {
+  ChainType,
+  LiFiErrorCode,
+  ProviderError,
+  type StepExecutorOptions,
+} from '@lifi/sdk'
 import { isValidSuiAddress } from '@mysten/sui/utils'
 import { getSuiBalance } from './actions/getSuiBalance.js'
 import { resolveSuiAddress } from './actions/resolveSuiAddress.js'
@@ -18,10 +23,16 @@ export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
       options: StepExecutorOptions
     ): Promise<SuiStepExecutor> {
       if (!_options.getClient) {
-        throw new Error('getClient is not provided.')
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'getClient is not provided.'
+        )
       }
       if (!_options.getSigner) {
-        throw new Error('getSigner is not provided.')
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'getSigner is not provided.'
+        )
       }
 
       const client = await _options.getClient()
