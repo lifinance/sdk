@@ -22,7 +22,7 @@ describe('SuiProvider', () => {
     } as any
 
     await expect(provider.getStepExecutor(mockOptions)).rejects.toThrowError(
-      'getWallet is not provided.'
+      'getClient is not provided.'
     )
   })
 
@@ -33,9 +33,11 @@ describe('SuiProvider', () => {
     }
 
     const mockGetWallet = vi.fn().mockResolvedValue(mockWallet)
+    const mockSigner = vi.fn().mockResolvedValue({})
 
     const provider = SuiProvider({
-      getWallet: mockGetWallet,
+      getClient: mockGetWallet,
+      getSigner: mockSigner,
     })
 
     const mockOptions = {

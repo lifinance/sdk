@@ -5,7 +5,8 @@
     "composite": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "moduleResolution": "Node",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
     "outDir": "./dist"
   },
   "include": ["./src/**/*", "./src/**/*.json"],

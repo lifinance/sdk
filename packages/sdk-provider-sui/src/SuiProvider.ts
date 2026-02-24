@@ -17,14 +17,19 @@ export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SuiStepExecutor> {
-      if (!_options.getWallet) {
-        throw new Error('getWallet is not provided.')
+      if (!_options.getClient) {
+        throw new Error('getClient is not provided.')
+      }
+      if (!_options.getSigner) {
+        throw new Error('getSigner is not provided.')
       }
 
-      const wallet = await _options.getWallet()
+      const client = await _options.getClient()
+      const signer = await _options.getSigner()
 
       const executor = new SuiStepExecutor({
-        wallet,
+        client,
+        signer,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,
