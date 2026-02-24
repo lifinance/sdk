@@ -48,13 +48,13 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       step,
       statusManager,
       allowUserInteraction,
-      getExecutionStrategy,
       checkClient,
       fromChain,
       isFromNativeToken,
       disableMessageSigning,
       executionOptions,
       client,
+      outputs,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -78,7 +78,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = await getExecutionStrategy(step)
+    const executionStrategy = outputs.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
 
     const permit2Supported = isPermit2Supported(
@@ -131,8 +131,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE')
 
-    return {
-      status: 'COMPLETED',
-    }
+    return { status: 'COMPLETED' }
   }
 }

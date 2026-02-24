@@ -130,6 +130,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const disableMessageSigning =
       executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
+    // Ensure chain and wallet are correct before any viem RPC (e.g. getCapabilities in execution strategy)
+    const clientForStrategy = (await this.checkClient(step)) ?? this.client
+
     const pipeline = new TaskPipeline([
       new EthereumCheckPermitsTask(),
       new EthereumCheckAllowanceTask(),
@@ -150,19 +153,18 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       isFromNativeToken
     )
 
+    const executionStrategy = await getEthereumExecutionStrategy(
+      client,
+      clientForStrategy,
+      step,
+      fromChain,
+      retryParams
+    )
+
     return {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
-      getExecutionStrategy: async (step: LiFiStepExtended) => {
-        return await getEthereumExecutionStrategy(
-          client,
-          this.client,
-          step,
-          fromChain,
-          retryParams
-        )
-      },
       checkClient: this.checkClient,
       pipeline,
       firstTaskName,
@@ -171,9 +173,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step?: LiFiStepExtended,
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, retryParams),
-      // Payload shared between tasks
-      signedTypedData: [],
-      transactionRequest: undefined,
+      outputs: { executionStrategy },
     }
   }
 }

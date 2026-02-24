@@ -13,9 +13,13 @@ export interface SuiProviderOptions {
   getWallet?: () => Promise<WalletWithRequiredFeatures>
 }
 
+export interface SuiTaskOutputs extends Record<string, unknown> {
+  signedTransaction?: SuiSignAndExecuteTransactionOutput
+}
+
 export interface SuiStepExecutorContext extends StepExecutorContext {
   wallet: WalletWithRequiredFeatures
-  signedTransaction?: SuiSignAndExecuteTransactionOutput
+  outputs: SuiTaskOutputs
 }
 
 export interface SuiSDKProvider extends SDKProvider {

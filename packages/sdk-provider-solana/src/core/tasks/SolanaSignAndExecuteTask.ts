@@ -86,7 +86,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     const transactionCodec = getTransactionCodec()
 
     // Decode all signed transactions
-    context.signedTransactions = signedTransactionOutputs.map((output) =>
+    const signedTransactions = signedTransactionOutputs.map((output) =>
       transactionCodec.decode(output.signedTransaction)
     )
 
@@ -96,6 +96,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
+      output: { signedTransactions },
     }
   }
 }

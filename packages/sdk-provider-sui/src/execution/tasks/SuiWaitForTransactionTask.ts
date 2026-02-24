@@ -12,10 +12,16 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
   override readonly taskName = SuiWaitForTransactionTask.name
 
   async run(context: SuiStepExecutorContext): Promise<TaskResult> {
-    const { client, step, statusManager, fromChain, isBridgeExecution } =
-      context
+    const {
+      client,
+      step,
+      statusManager,
+      fromChain,
+      isBridgeExecution,
+      outputs,
+    } = context
 
-    const signedTx = context.signedTransaction
+    const signedTx = outputs.signedTransaction
     if (!signedTx) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,

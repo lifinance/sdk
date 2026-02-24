@@ -3,6 +3,8 @@ import type { Address, Client, Hex } from 'viem'
 import { estimateGas } from 'viem/actions'
 import { getActionWithFallback } from '../../../utils/getActionWithFallback.js'
 
+const GAS_ESTIMATION_BUFFER = 300_000n
+
 export const estimateTransactionRequest = async (
   client: SDKClient,
   viemClient: Client,
@@ -28,11 +30,11 @@ export const estimateTransactionRequest = async (
         ? transactionRequest.gas
         : estimatedGas
 
-    transactionRequest.gas = baseGas + 300_000n
+    transactionRequest.gas = baseGas + GAS_ESTIMATION_BUFFER
   } catch (_) {
-    // If estimation fails, add 300K buffer to existing gas limit
+    // If estimation fails, add buffer to existing gas limit
     if (transactionRequest.gas) {
-      transactionRequest.gas = transactionRequest.gas + 300_000n
+      transactionRequest.gas = transactionRequest.gas + GAS_ESTIMATION_BUFFER
     }
   }
 

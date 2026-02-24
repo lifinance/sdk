@@ -23,14 +23,8 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const {
-      client,
-      step,
-      statusManager,
-      getExecutionStrategy,
-      checkClient,
-      fromChain,
-    } = context
+    const { client, step, statusManager, checkClient, fromChain, outputs } =
+      context
 
     const action = statusManager.findAction(step, 'SET_ALLOWANCE')
     if (!action?.txHash) {
@@ -40,7 +34,7 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
       )
     }
 
-    const strategy = await getExecutionStrategy(step)
+    const strategy = outputs.executionStrategy
     const batchingSupported = strategy === 'batched'
 
     if (!batchingSupported) {
@@ -75,8 +69,6 @@ export class EthereumWaitForApprovalTransactionTask extends BaseStepExecutionTas
 
     statusManager.updateAction(step, action.type, 'DONE')
 
-    return {
-      status: 'COMPLETED',
-    }
+    return { status: 'COMPLETED' }
   }
 }

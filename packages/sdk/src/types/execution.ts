@@ -35,10 +35,19 @@ export interface StepExecutorContext extends StepExecutorBaseContext {
     step?: LiFiStepExtended,
     action?: ExecutionAction
   ) => Promise<SDKError | ExecuteStepRetryError>
+  /**
+   * Accumulated outputs from previous tasks. Only the pipeline writes to this;
+   * tasks should only read. Providers extend the type for their output keys.
+   */
+  outputs: Record<string, unknown>
 }
+
+export type TaskOutput = Record<string, unknown>
 
 export interface TaskResult {
   status: TaskStatus
+  /** Optional: data produced for downstream tasks. Pipeline merges into context.outputs. */
+  output?: TaskOutput
 }
 
 export type TaskStatus = 'COMPLETED' | 'PAUSED'

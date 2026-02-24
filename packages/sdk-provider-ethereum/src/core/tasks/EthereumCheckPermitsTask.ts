@@ -99,8 +99,6 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       hasSignedPermit: !!matchingPermit,
     })
 
-    context.signedTypedData = signedTypedData
-
     return { status: 'COMPLETED' }
   }
 }

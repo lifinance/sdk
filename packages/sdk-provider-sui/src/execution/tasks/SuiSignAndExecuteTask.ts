@@ -44,7 +44,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
     }
 
     // We give users 2 minutes to sign the transaction
-    context.signedTransaction = await signAndExecuteTransaction(wallet, {
+    const signedTransaction = await signAndExecuteTransaction(wallet, {
       account: walletAccount,
       chain: 'sui:mainnet',
       transaction: {
@@ -58,6 +58,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
+      output: { signedTransaction },
     }
   }
 }

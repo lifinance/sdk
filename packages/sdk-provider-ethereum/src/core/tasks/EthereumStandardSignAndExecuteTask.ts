@@ -14,6 +14,7 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
+import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
@@ -21,7 +22,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   override readonly taskName = EthereumStandardSignAndExecuteTask.name
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    let {
+    const {
       step,
       client,
       fromChain,
@@ -29,11 +30,13 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       isFromNativeToken,
       disableMessageSigning,
       checkClient,
-      signedTypedData,
-      transactionRequest,
+      outputs,
       allowUserInteraction,
       isBridgeExecution,
     } = context
+
+    const transactionRequest = outputs.transactionRequest
+    const signedTypedData = getSignedTypedDataFromActions(step, statusManager)
 
     if (!transactionRequest) {
       throw new TransactionError(
@@ -105,13 +108,17 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       }
     }
 
+    let finalTransactionRequest = transactionRequest
     if (signedNativePermitTypedData || permit2Supported) {
       // Target address should be the Permit2 proxy contract in case of native permit or Permit2
-      transactionRequest.to = fromChain.permit2Proxy as Address
-      transactionRequest = await estimateTransactionRequest(
+      finalTransactionRequest = {
+        ...transactionRequest,
+        to: fromChain.permit2Proxy as Address,
+      }
+      finalTransactionRequest = await estimateTransactionRequest(
         client,
         updatedClient,
-        transactionRequest
+        finalTransactionRequest
       )
     }
 
@@ -120,14 +127,14 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       sendTransaction,
       'sendTransaction'
     )({
-      to: transactionRequest.to as Address,
+      to: finalTransactionRequest.to as Address,
       account: updatedClient.account!,
-      data: transactionRequest.data as Hex,
-      value: transactionRequest.value,
-      gas: transactionRequest.gas,
-      gasPrice: transactionRequest.gasPrice,
-      maxFeePerGas: transactionRequest.maxFeePerGas,
-      maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+      data: finalTransactionRequest.data as Hex,
+      value: finalTransactionRequest.value,
+      gas: finalTransactionRequest.gas,
+      gasPrice: finalTransactionRequest.gasPrice,
+      maxFeePerGas: finalTransactionRequest.maxFeePerGas,
+      maxPriorityFeePerGas: finalTransactionRequest.maxPriorityFeePerGas,
       chain: convertExtendedChain(fromChain),
     } as SendTransactionParameters)
 
@@ -140,8 +147,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       signedAt: Date.now(),
     })
 
-    context.transactionRequest = transactionRequest
-
-    return { status: 'COMPLETED' }
+    return {
+      status: 'COMPLETED',
+      output: { transactionRequest: finalTransactionRequest },
+    }
   }
 }

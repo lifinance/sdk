@@ -8,6 +8,8 @@ import {
 } from '@lifi/sdk'
 import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
+import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
@@ -22,8 +24,9 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
-      signedTypedData,
       isBridgeExecution,
+      fromChain,
+      retryParams,
     } = context
 
     const action = statusManager.findAction(
@@ -48,7 +51,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       client,
       step,
       executionOptions,
-      signedTypedData
+      getSignedTypedDataFromActions(step, statusManager)
     )
 
     const comparedStep = await stepComparison(
@@ -119,10 +122,18 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       }
     }
 
-    context.transactionRequest = transactionRequest
+    // Recompute execution strategy after PrepareTransaction mutates step
+    const executionStrategy = await getEthereumExecutionStrategy(
+      client,
+      updatedClient,
+      step,
+      fromChain,
+      retryParams
+    )
 
     return {
       status: 'COMPLETED',
+      output: { transactionRequest, executionStrategy },
     }
   }
 }

@@ -50,8 +50,8 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       isFromNativeToken,
       disableMessageSigning,
       allowUserInteraction,
-      getExecutionStrategy,
       checkClient,
+      outputs,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -76,7 +76,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = await getExecutionStrategy(step)
+    const executionStrategy = outputs.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     const permit2Supported = isPermit2Supported(
       step,
@@ -102,7 +102,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       spenderAddress as Address,
       approveAmount,
       executionOptions,
-      // We need to return the populated transaction is batching is supported
+      // We need to return the populated transaction when batching is supported
       // instead of executing transaction on-chain
       batchingSupported
     )

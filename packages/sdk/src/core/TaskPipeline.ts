@@ -23,14 +23,17 @@ export class TaskPipeline {
     }
 
     for (const task of tasksToRun) {
-      const shouldRun = await task.shouldRun(context)
-      if (!shouldRun) {
-        continue
-      }
       try {
+        const shouldRun = await task.shouldRun(context)
+        if (!shouldRun) {
+          continue
+        }
         const result = await task.run(context)
         if (result.status === 'PAUSED') {
           return { status: 'PAUSED' }
+        }
+        if (result.output && typeof result.output === 'object') {
+          Object.assign(context.outputs, result.output)
         }
       } catch (error: any) {
         const action = step?.execution?.actions?.at(-1)

@@ -83,6 +83,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       walletClient: this.client,
       publicClient,
       parseErrors: parseBitcoinErrors,
+      outputs: {},
     }
   }
 }

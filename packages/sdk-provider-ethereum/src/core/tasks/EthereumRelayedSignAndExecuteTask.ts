@@ -11,6 +11,7 @@ import { getAction } from 'viem/utils'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
   static override readonly name = 'ETHEREUM_RELAYED_SIGN_AND_EXECUTE' as const
@@ -24,9 +25,12 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
-      signedTypedData,
       isBridgeExecution,
     } = context
+
+    const signedTypedData = [
+      ...getSignedTypedDataFromActions(step, statusManager),
+    ]
 
     const action = statusManager.findAction(
       step,
@@ -98,8 +102,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       txLink: relayedTransaction.txLink,
       signedAt: Date.now(),
     })
-
-    context.signedTypedData = signedTypedData
 
     return { status: 'COMPLETED' }
   }

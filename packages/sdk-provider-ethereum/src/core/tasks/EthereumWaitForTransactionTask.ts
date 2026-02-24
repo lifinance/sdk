@@ -1,8 +1,4 @@
-import {
-  BaseStepExecutionTask,
-  type TaskResult,
-  type TransactionMethodType,
-} from '@lifi/sdk'
+import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedWaitForTransactionTask } from './EthereumBatchedWaitForTransactionTask.js'
 import { EthereumRelayedWaitForTransactionTask } from './EthereumRelayedWaitForTransactionTask.js'
@@ -28,10 +24,9 @@ export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { step, getExecutionStrategy } = context
+    const { outputs } = context
 
-    const executionStrategy: TransactionMethodType =
-      await getExecutionStrategy(step)
+    const executionStrategy = outputs.executionStrategy
 
     const task = this.strategies[executionStrategy]
 

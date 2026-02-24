@@ -19,9 +19,11 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       checkClient,
-      transactionRequest,
+      outputs,
       isBridgeExecution,
     } = context
+
+    const transactionRequest = outputs.transactionRequest
 
     const calls = []
 

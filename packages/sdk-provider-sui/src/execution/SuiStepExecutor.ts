@@ -59,8 +59,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
       firstTaskName,
       wallet: this.wallet,
       parseErrors: parseSuiErrors,
-      // Payload shared between tasks
-      signedTransaction: undefined,
+      outputs: {},
     }
   }
 }

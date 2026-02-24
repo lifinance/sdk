@@ -10,6 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { getSignedTypedDataFromActions } from './helpers/getSignedTypedDataFromActions.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
   static override readonly name = 'ETHEREUM_NATIVE_PERMIT' as const
@@ -18,7 +19,8 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, fromChain, disableMessageSigning, statusManager } = context
+    const { step, fromChain, disableMessageSigning, statusManager, outputs } =
+      context
 
     const permitAction = statusManager.findAction(step, 'PERMIT')
     if (permitAction?.hasSignedPermit) {
@@ -38,7 +40,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return false
     }
 
-    const executionStrategy = await context.getExecutionStrategy(step)
+    const executionStrategy = outputs.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
@@ -93,10 +95,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return { status: 'COMPLETED' }
     }
 
-    let signedTypedData = context.signedTypedData
-    if (!signedTypedData.length) {
-      signedTypedData = action.signedTypedData || []
-    }
+    const signedTypedData = getSignedTypedDataFromActions(step, statusManager)
 
     // Check if we already have a valid permit for this chain and requirements
     const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
@@ -135,10 +134,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       signedTypedData,
     })
 
-    context.signedTypedData = signedTypedData
-
-    return {
-      status: 'COMPLETED',
-    }
+    return { status: 'COMPLETED' }
   }
 }

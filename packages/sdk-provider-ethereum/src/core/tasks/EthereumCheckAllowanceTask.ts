@@ -27,9 +27,9 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       fromChain,
       client,
       statusManager,
-      getExecutionStrategy,
       isFromNativeToken,
       disableMessageSigning,
+      outputs,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -45,7 +45,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       group: 'TOKEN_ALLOWANCE',
     })
 
-    const executionStrategy = await getExecutionStrategy(step)
+    const executionStrategy = outputs.executionStrategy
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -72,8 +72,6 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       hasSufficientAllowance: fromAmount <= allowance,
     })
 
-    return {
-      status: 'COMPLETED',
-    }
+    return { status: 'COMPLETED' }
   }
 }
