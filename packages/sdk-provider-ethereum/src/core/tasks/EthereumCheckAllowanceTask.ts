@@ -8,8 +8,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { tasksResults } = context
-    return !tasksResults.hasMatchingPermit
+    return !context.hasMatchingPermit
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -21,7 +20,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       statusManager,
       isFromNativeToken,
       disableMessageSigning,
-      tasksResults,
+      executionStrategy,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -36,7 +35,6 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       chainId: step.action.fromChainId,
     })
 
-    const executionStrategy = tasksResults.executionStrategy
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -62,7 +60,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: {
+      context: {
         hasAllowance: allowance > 0n,
         hasSufficientAllowance: fromAmount <= allowance,
       },

@@ -10,32 +10,15 @@ import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecu
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
 
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
-  private readonly strategies: {
-    batched: BaseStepExecutionTask
-    relayed: BaseStepExecutionTask
-    standard: BaseStepExecutionTask
-  }
-
-  constructor() {
-    super()
-    this.strategies = {
-      batched: new EthereumBatchedSignAndExecuteTask(),
-      relayed: new EthereumRelayedSignAndExecuteTask(),
-      standard: new EthereumStandardSignAndExecuteTask(),
-    }
-  }
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       statusManager,
       allowUserInteraction,
-      tasksResults,
+      transactionRequest,
+      executionStrategy,
       isBridgeExecution,
     } = context
-
-    const transactionRequest = tasksResults.transactionRequest
-    const executionStrategy = tasksResults.executionStrategy
 
     const action = statusManager.findAction(
       step,
@@ -55,11 +38,11 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     }
 
     if (executionStrategy === 'batched' && transactionRequest) {
-      return this.strategies.batched.run(context)
+      return new EthereumBatchedSignAndExecuteTask().run(context)
     }
     if (executionStrategy === 'relayed') {
-      return this.strategies.relayed.run(context)
+      return new EthereumRelayedSignAndExecuteTask().run(context)
     }
-    return this.strategies.standard.run(context)
+    return new EthereumStandardSignAndExecuteTask().run(context)
   }
 }

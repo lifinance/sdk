@@ -22,10 +22,10 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       isBridgeExecution,
-      tasksResults,
+      signedTypedData: currentSignedTypedData,
     } = context
 
-    const signedTypedData = [...tasksResults.signedTypedData]
+    const signedTypedData = [...currentSignedTypedData]
 
     const action = statusManager.findAction(
       step,
@@ -98,6 +98,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       signedAt: Date.now(),
     })
 
-    return { status: 'COMPLETED', result: { signedTypedData } }
+    return { status: 'COMPLETED', context: { signedTypedData } }
   }
 }

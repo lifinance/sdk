@@ -26,12 +26,11 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       isFromNativeToken,
       disableMessageSigning,
       checkClient,
-      tasksResults,
+      transactionRequest,
+      signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
     } = context
-
-    const transactionRequest = tasksResults.transactionRequest
 
     if (!transactionRequest) {
       throw new TransactionError(
@@ -64,7 +63,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       disableMessageSigning,
       'standard'
     )
-    const signedNativePermitTypedData = tasksResults.signedTypedData.find(
+    const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
         getDomainChainId(p.domain) === fromChain.id
@@ -144,7 +143,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { transactionRequest: finalTransactionRequest },
+      context: { transactionRequest: finalTransactionRequest },
     }
   }
 }

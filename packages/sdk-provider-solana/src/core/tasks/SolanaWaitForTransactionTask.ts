@@ -5,23 +5,10 @@ import { SolanaJitoWaitForTransactionTask } from './SolanaJitoWaitForTransaction
 import { SolanaStandardWaitForTransactionTask } from './SolanaStandardWaitForTransactionTask.js'
 
 export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
-  private readonly strategies: {
-    jito: BaseStepExecutionTask
-    standard: BaseStepExecutionTask
-  }
-
-  constructor() {
-    super()
-    this.strategies = {
-      jito: new SolanaJitoWaitForTransactionTask(),
-      standard: new SolanaStandardWaitForTransactionTask(),
-    }
-  }
-
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
-    const { client, tasksResults } = context
+    const { client, signedTransactions: contextSignedTransactions } = context
 
-    const signedTransactions = tasksResults.signedTransactions ?? []
+    const signedTransactions = contextSignedTransactions ?? []
 
     const useJitoBundle = shouldUseJitoBundle(
       client.config.routeOptions,
@@ -29,8 +16,8 @@ export class SolanaWaitForTransactionTask extends BaseStepExecutionTask {
     )
 
     if (useJitoBundle) {
-      return this.strategies.jito.run(context)
+      return new SolanaJitoWaitForTransactionTask().run(context)
     }
-    return this.strategies.standard.run(context)
+    return new SolanaStandardWaitForTransactionTask().run(context)
   }
 }

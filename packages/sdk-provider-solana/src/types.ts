@@ -11,14 +11,15 @@ export interface SolanaProviderOptions {
   getWallet?: () => Promise<Wallet>
 }
 
-export interface SolanaTaskOutputs extends Record<string, unknown> {
+export interface SolanaTaskContext {
   signedTransactions?: Transaction[]
 }
 
-export interface SolanaStepExecutorContext extends StepExecutorContext {
+export interface SolanaStepExecutorContext
+  extends StepExecutorContext,
+    SolanaTaskContext {
   wallet: Wallet
   walletAccount: WalletAccount
-  tasksResults: SolanaTaskOutputs
 }
 
 export interface SolanaSDKProvider extends SDKProvider {

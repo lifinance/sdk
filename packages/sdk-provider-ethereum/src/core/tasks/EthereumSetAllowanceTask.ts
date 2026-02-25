@@ -11,10 +11,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { tasksResults } = context
-    return (
-      !tasksResults.hasMatchingPermit && !tasksResults.hasSufficientAllowance
-    )
+    return !context.hasMatchingPermit && !context.hasSufficientAllowance
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -28,7 +25,8 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       allowUserInteraction,
       checkClient,
-      tasksResults,
+      executionStrategy,
+      calls: currentCalls,
     } = context
 
     const updatedClient = await checkClient(step)
@@ -52,7 +50,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const executionStrategy = tasksResults.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     const permit2Supported = isPermit2Supported(
       step,
@@ -83,7 +80,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       batchingSupported
     )
 
-    const calls = [...tasksResults.calls]
+    const calls = [...currentCalls]
     if (batchingSupported) {
       calls.push({
         to: step.action.fromToken.address as Address,
@@ -118,6 +115,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       })
     }
 
-    return { status: 'COMPLETED', result: { calls } }
+    return { status: 'COMPLETED', context: { calls } }
   }
 }

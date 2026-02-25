@@ -15,13 +15,18 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, fromChain, disableMessageSigning, tasksResults } = context
+    const {
+      step,
+      fromChain,
+      disableMessageSigning,
+      hasMatchingPermit,
+      hasSufficientAllowance,
+      executionStrategy,
+    } = context
 
-    if (tasksResults.hasMatchingPermit || tasksResults.hasSufficientAllowance) {
+    if (hasMatchingPermit || hasSufficientAllowance) {
       return false
     }
-
-    const executionStrategy = tasksResults.executionStrategy
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
@@ -40,7 +45,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
-      tasksResults,
+      signedTypedData: currentSignedTypedData,
     } = context
 
     const action = statusManager.findOrCreateAction({
@@ -76,7 +81,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return { status: 'COMPLETED' }
     }
 
-    const signedTypedData = [...tasksResults.signedTypedData]
+    const signedTypedData = [...currentSignedTypedData]
 
     // Check if we already have a valid permit for this chain and requirements
     const signedTypedDataForChain = signedTypedData.find((signedTypedData) =>
@@ -115,7 +120,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { signedTypedData, hasMatchingPermit: true },
+      context: { signedTypedData, hasMatchingPermit: true },
     }
   }
 }

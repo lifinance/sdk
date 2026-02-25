@@ -29,6 +29,17 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     this.client = options.client
   }
 
+  checkClient = (step: LiFiStepExtended) => {
+    // TODO: check chain and possibly implement chain switch?
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (this.client.account?.address !== step.action.fromAddress) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+  }
+
   override createPipeline = (context: BitcoinStepExecutorContext) => {
     const { step, isBridgeExecution } = context
 
@@ -47,7 +58,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     )
 
     const taskClassName = swapOrBridgeAction?.txHash
-      ? WaitForTransactionStatusTask
+      ? swapOrBridgeAction?.status === 'DONE'
+        ? WaitForTransactionStatusTask
+        : BitcoinWaitForTransactionTask
       : CheckBalanceTask
 
     const firstTaskIndex = tasks.findIndex(
@@ -66,25 +79,13 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
     const publicClient = await getBitcoinPublicClient(client, fromChain.id)
 
-    const checkClient = (step: LiFiStepExtended) => {
-      // TODO: check chain and possibly implement chain switch?
-      // Prevent execution of the quote by wallet different from the one which requested the quote
-      if (this.client.account?.address !== step.action.fromAddress) {
-        throw new TransactionError(
-          LiFiErrorCode.WalletChangedDuringExecution,
-          'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-        )
-      }
-    }
-
     return {
       ...baseContext,
       pollingIntervalMs: 10_000,
-      checkClient,
+      checkClient: this.checkClient,
       walletClient: this.client,
       publicClient,
       parseErrors: parseBitcoinErrors,
-      tasksResults: {},
     }
   }
 }

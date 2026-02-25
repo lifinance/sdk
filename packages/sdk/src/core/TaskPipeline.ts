@@ -22,8 +22,8 @@ export class TaskPipeline {
         if (result.status === 'PAUSED') {
           return { status: 'PAUSED' }
         }
-        if (result.result && typeof result.result === 'object') {
-          Object.assign(context.tasksResults, result.result)
+        if (result.context && typeof result.context === 'object') {
+          Object.assign(context, result.context)
         }
       } catch (error: any) {
         const action = step?.execution?.actions?.at(-1)

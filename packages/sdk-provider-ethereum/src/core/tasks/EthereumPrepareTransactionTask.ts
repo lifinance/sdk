@@ -23,7 +23,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       fromChain,
       retryParams,
-      tasksResults,
+      signedTypedData,
     } = context
 
     const action = statusManager.findAction(
@@ -48,7 +48,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       client,
       step,
       executionOptions,
-      tasksResults.signedTypedData
+      signedTypedData
     )
 
     const comparedStep = await stepComparison(
@@ -130,7 +130,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { transactionRequest, executionStrategy },
+      context: { transactionRequest, executionStrategy },
     }
   }
 }

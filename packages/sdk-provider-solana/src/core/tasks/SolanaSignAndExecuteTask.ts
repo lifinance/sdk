@@ -93,7 +93,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { signedTransactions },
+      context: { signedTransactions },
     }
   }
 }

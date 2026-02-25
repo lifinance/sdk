@@ -15,10 +15,10 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       statusManager,
       fromChain,
       isBridgeExecution,
-      tasksResults,
+      signedTransactions: contextSignedTransactions,
     } = context
 
-    const signedTransactions = tasksResults.signedTransactions ?? []
+    const signedTransactions = contextSignedTransactions ?? []
 
     const action = statusManager.findAction(
       step,

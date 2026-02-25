@@ -44,6 +44,39 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.switchChain = options.switchChain
   }
 
+  // Ensure that we are using the right chain and wallet when executing transactions.
+  checkClient = async (step: LiFiStepExtended, targetChainId?: number) => {
+    const updatedClient = await switchChain(
+      this.client,
+      targetChainId ?? step.action.fromChainId,
+      this.allowUserInteraction,
+      this.switchChain
+    )
+    if (updatedClient) {
+      this.client = updatedClient
+    }
+
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    let accountAddress = this.client.account?.address
+    if (!accountAddress) {
+      const accountAddresses = (await getAction(
+        this.client,
+        getAddresses,
+        'getAddresses'
+      )(undefined)) as GetAddressesReturnType
+      accountAddress = accountAddresses?.[0]
+    }
+    if (
+      accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
+    ) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+    return updatedClient
+  }
+
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
@@ -59,46 +92,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const disableMessageSigning =
       executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
-    const ethereumClient = { current: this.client }
-
-    // Ensure that we are using the right chain and wallet when executing transactions.
-    const checkClient = async (
-      step: LiFiStepExtended,
-      targetChainId?: number
-    ) => {
-      const updatedClient = await switchChain(
-        ethereumClient.current,
-        targetChainId ?? step.action.fromChainId,
-        this.allowUserInteraction,
-        this.switchChain
-      )
-      if (updatedClient) {
-        ethereumClient.current = updatedClient
-      }
-
-      // Prevent execution of the quote by wallet different from the one which requested the quote
-      let accountAddress = ethereumClient.current.account?.address
-      if (!accountAddress) {
-        const accountAddresses = (await getAction(
-          ethereumClient.current,
-          getAddresses,
-          'getAddresses'
-        )(undefined)) as GetAddressesReturnType
-        accountAddress = accountAddresses?.[0]
-      }
-      if (
-        accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
-      ) {
-        throw new TransactionError(
-          LiFiErrorCode.WalletChangedDuringExecution,
-          'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-        )
-      }
-      return updatedClient
-    }
-
-    const clientForStrategy =
-      (await checkClient(step)) ?? ethereumClient.current
+    const clientForStrategy = (await this.checkClient(step)) ?? this.client
 
     const executionStrategy = await getEthereumExecutionStrategy(
       client,
@@ -112,13 +106,15 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
-      checkClient,
+      checkClient: this.checkClient,
       parseErrors: (
         e: Error,
         step?: LiFiStepExtended,
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, retryParams),
-      tasksResults: { executionStrategy, signedTypedData: [], calls: [] },
+      executionStrategy,
+      signedTypedData: [],
+      calls: [],
     }
   }
 
@@ -155,7 +151,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       )
       taskClassName =
         swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
-          ? EthereumWaitForTransactionStatusTask
+          ? swapOrBridgeAction?.status === 'DONE'
+            ? EthereumWaitForTransactionStatusTask
+            : EthereumWaitForTransactionTask
           : CheckBalanceTask
     }
 

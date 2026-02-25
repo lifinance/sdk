@@ -16,13 +16,12 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       checkClient,
-      tasksResults,
+      transactionRequest,
+      calls: currentCalls,
       isBridgeExecution,
     } = context
 
-    const transactionRequest = tasksResults.transactionRequest
-
-    const calls = [...tasksResults.calls]
+    const calls = [...currentCalls]
 
     const action = statusManager.findAction(
       step,
@@ -72,6 +71,6 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       signedAt: Date.now(),
     })
 
-    return { status: 'COMPLETED', result: { calls } }
+    return { status: 'COMPLETED', context: { calls } }
   }
 }

@@ -13,13 +13,14 @@ export interface SuiProviderOptions {
   getWallet?: () => Promise<WalletWithRequiredFeatures>
 }
 
-export interface SuiTaskOutputs extends Record<string, unknown> {
+export interface SuiTaskContext {
   signedTransaction?: SuiSignAndExecuteTransactionOutput
 }
 
-export interface SuiStepExecutorContext extends StepExecutorContext {
+export interface SuiStepExecutorContext
+  extends StepExecutorContext,
+    SuiTaskContext {
   wallet: WalletWithRequiredFeatures
-  tasksResults: SuiTaskOutputs
 }
 
 export interface SuiSDKProvider extends SDKProvider {

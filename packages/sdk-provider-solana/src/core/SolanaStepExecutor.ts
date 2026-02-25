@@ -45,7 +45,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       wallet: this.wallet,
       walletAccount,
       parseErrors: parseSolanaErrors,
-      tasksResults: {},
     }
   }
 

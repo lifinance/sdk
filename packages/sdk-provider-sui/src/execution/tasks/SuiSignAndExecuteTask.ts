@@ -55,7 +55,7 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { signedTransaction },
+      context: { signedTransaction },
     }
   }
 }

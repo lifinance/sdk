@@ -5,28 +5,15 @@ import { EthereumRelayedWaitForTransactionTask } from './EthereumRelayedWaitForT
 import { EthereumStandardWaitForTransactionTask } from './EthereumStandardWaitForTransactionTask.js'
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
-  private readonly strategies: {
-    batched: BaseStepExecutionTask
-    relayed: BaseStepExecutionTask
-    standard: BaseStepExecutionTask
-  }
-
-  constructor() {
-    super()
-    this.strategies = {
-      batched: new EthereumBatchedWaitForTransactionTask(),
-      relayed: new EthereumRelayedWaitForTransactionTask(),
-      standard: new EthereumStandardWaitForTransactionTask(),
-    }
-  }
-
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { tasksResults } = context
+    const { executionStrategy } = context
 
-    const executionStrategy = tasksResults.executionStrategy
-
-    const task = this.strategies[executionStrategy]
-
-    return await task.run(context)
+    if (executionStrategy === 'batched') {
+      return new EthereumBatchedWaitForTransactionTask().run(context)
+    }
+    if (executionStrategy === 'relayed') {
+      return new EthereumRelayedWaitForTransactionTask().run(context)
+    }
+    return new EthereumStandardWaitForTransactionTask().run(context)
   }
 }

@@ -27,7 +27,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       checkClient,
-      tasksResults,
+      signedTypedData: currentSignedTypedData,
     } = context
 
     const action = statusManager.findOrCreateAction({
@@ -42,7 +42,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         (typedData) => typedData.primaryType === 'Permit'
       ) ?? []
 
-    const signedTypedData = [...tasksResults.signedTypedData]
+    const signedTypedData = [...currentSignedTypedData]
     for (const typedData of permitTypedData) {
       statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 
@@ -87,7 +87,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      result: { signedTypedData, hasMatchingPermit: !!matchingPermit },
+      context: { signedTypedData, hasMatchingPermit: !!matchingPermit },
     }
   }
 }

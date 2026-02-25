@@ -23,7 +23,7 @@ export interface EthereumProviderOptions {
   fallbackTransportConfig?: FallbackTransportConfig
 }
 
-export interface EthereumTaskOutputs extends Record<string, unknown> {
+export interface EthereumTaskContext {
   transactionRequest?: TransactionParameters
   executionStrategy: TransactionMethodType
   calls: Call[]
@@ -33,7 +33,9 @@ export interface EthereumTaskOutputs extends Record<string, unknown> {
   hasSufficientAllowance?: boolean
 }
 
-export interface EthereumStepExecutorContext extends StepExecutorContext {
+export interface EthereumStepExecutorContext
+  extends StepExecutorContext,
+    EthereumTaskContext {
   isFromNativeToken: boolean
   disableMessageSigning: boolean
   checkClient: (
@@ -43,8 +45,6 @@ export interface EthereumStepExecutorContext extends StepExecutorContext {
   switchChain?: (chainId: number) => Promise<Client | undefined>
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
-  /** Accumulated results from previous tasks. Read-only for tasks; pipeline merges task results here. */
-  tasksResults: EthereumTaskOutputs
 }
 
 export interface EthereumSDKProvider extends SDKProvider {

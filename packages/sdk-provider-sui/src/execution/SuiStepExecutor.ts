@@ -30,7 +30,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
       ...baseContext,
       wallet: this.wallet,
       parseErrors: parseSuiErrors,
-      tasksResults: {},
     }
   }
 
