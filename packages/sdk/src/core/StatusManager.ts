@@ -129,6 +129,7 @@ export class StatusManager {
     }
 
     step.execution.actions.push(newAction)
+    step.execution.lastActionType = type
     this.updateStepInRoute(step)
     return newAction
   }
