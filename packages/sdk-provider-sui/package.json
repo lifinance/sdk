@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-sui",
-  "version": "4.0.0-alpha.13",
+  "version": "4.0.0-alpha.16",
   "description": "LI.FI Sui SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
