@@ -69,7 +69,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       : step.estimate.approvalAddress
 
     // Reset allowance to 0 if required
-    const approvalResetTxHash = await setAllowance(
+    const resetResult = await setAllowance(
       client,
       updatedClient,
       step.action.fromToken.address as Address,
@@ -79,23 +79,23 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       batchingSupported
     )
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: approvalResetTxHash,
-      txLink: getTxLink(fromChain, approvalResetTxHash),
-    })
-
     const calls = [...tasksResults.calls]
     if (batchingSupported) {
       calls.push({
         to: step.action.fromToken.address as Address,
-        data: approvalResetTxHash,
+        data: resetResult,
         chainId: step.action.fromToken.chainId,
       })
     } else {
+      statusManager.updateAction(step, action.type, 'PENDING', {
+        txHash: resetResult,
+        txLink: getTxLink(fromChain, resetResult),
+      })
+
       const transactionReceipt = await waitForTransactionReceipt(client, {
         client: updatedClient,
         chainId: fromChain.id,
-        txHash: approvalResetTxHash as Address,
+        txHash: resetResult as Address,
         onReplaced(response) {
           const newHash = response.transaction.hash
           statusManager.updateAction(step, action.type, 'PENDING', {
@@ -104,8 +104,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
           })
         },
       })
-      const finalHash =
-        transactionReceipt?.transactionHash || approvalResetTxHash
+      const finalHash = transactionReceipt?.transactionHash || resetResult
       statusManager.updateAction(step, action.type, action.status, {
         txHash: finalHash,
         txLink: getTxLink(fromChain, finalHash),

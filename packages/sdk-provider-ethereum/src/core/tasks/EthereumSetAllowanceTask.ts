@@ -1,6 +1,7 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
+import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import { MaxUint256 } from '../../permits/constants.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getTxLink } from './helpers/getTxLink.js'
@@ -70,7 +71,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       ? fromChain.permit2
       : step.estimate.approvalAddress
 
-    const approveTxHash = await setAllowance(
+    const approveResult = await setAllowance(
       client,
       updatedClient,
       step.action.fromToken.address as Address,
@@ -86,15 +87,36 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
     if (batchingSupported) {
       calls.push({
         to: step.action.fromToken.address as Address,
-        data: approveTxHash,
+        data: approveResult,
         chainId: step.action.fromToken.chainId,
       })
-    }
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: approveTxHash,
-      txLink: getTxLink(fromChain, approveTxHash),
-    })
+      statusManager.updateAction(step, action.type, 'DONE')
+    } else {
+      statusManager.updateAction(step, action.type, 'PENDING', {
+        txHash: approveResult,
+        txLink: getTxLink(fromChain, approveResult),
+      })
+
+      const transactionReceipt = await waitForTransactionReceipt(client, {
+        client: updatedClient,
+        chainId: fromChain.id,
+        txHash: approveResult,
+        onReplaced(response) {
+          const newHash = response.transaction.hash
+          statusManager.updateAction(step, action.type, 'PENDING', {
+            txHash: newHash,
+            txLink: getTxLink(fromChain, newHash),
+          })
+        },
+      })
+
+      const finalHash = transactionReceipt?.transactionHash || approveResult
+      statusManager.updateAction(step, action.type, 'DONE', {
+        txHash: finalHash,
+        txLink: getTxLink(fromChain, finalHash),
+      })
+    }
 
     return { status: 'COMPLETED', result: { calls } }
   }

@@ -23,7 +23,6 @@ import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransacti
 import { EthereumResetAllowanceTask } from './tasks/EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
-import { EthereumWaitForApprovalTransactionTask } from './tasks/EthereumWaitForApprovalTransactionTask.js'
 import { EthereumWaitForTransactionStatusTask } from './tasks/EthereumWaitForTransactionStatusTask.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
@@ -45,39 +44,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.switchChain = options.switchChain
   }
 
-  // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (step: LiFiStepExtended, targetChainId?: number) => {
-    const updatedClient = await switchChain(
-      this.client,
-      targetChainId ?? step.action.fromChainId,
-      this.allowUserInteraction,
-      this.switchChain
-    )
-    if (updatedClient) {
-      this.client = updatedClient
-    }
-
-    // Prevent execution of the quote by wallet different from the one which requested the quote
-    let accountAddress = this.client.account?.address
-    if (!accountAddress) {
-      const accountAddresses = (await getAction(
-        this.client,
-        getAddresses,
-        'getAddresses'
-      )(undefined)) as GetAddressesReturnType
-      accountAddress = accountAddresses?.[0]
-    }
-    if (
-      accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
-    ) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
-    return updatedClient
-  }
-
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
@@ -93,8 +59,46 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const disableMessageSigning =
       executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
-    // Ensure chain and wallet are correct before any viem RPC (e.g. getCapabilities in execution strategy)
-    const clientForStrategy = (await this.checkClient(step)) ?? this.client
+    const ethereumClient = { current: this.client }
+
+    // Ensure that we are using the right chain and wallet when executing transactions.
+    const checkClient = async (
+      step: LiFiStepExtended,
+      targetChainId?: number
+    ) => {
+      const updatedClient = await switchChain(
+        ethereumClient.current,
+        targetChainId ?? step.action.fromChainId,
+        this.allowUserInteraction,
+        this.switchChain
+      )
+      if (updatedClient) {
+        ethereumClient.current = updatedClient
+      }
+
+      // Prevent execution of the quote by wallet different from the one which requested the quote
+      let accountAddress = ethereumClient.current.account?.address
+      if (!accountAddress) {
+        const accountAddresses = (await getAction(
+          ethereumClient.current,
+          getAddresses,
+          'getAddresses'
+        )(undefined)) as GetAddressesReturnType
+        accountAddress = accountAddresses?.[0]
+      }
+      if (
+        accountAddress?.toLowerCase() !== step.action.fromAddress?.toLowerCase()
+      ) {
+        throw new TransactionError(
+          LiFiErrorCode.WalletChangedDuringExecution,
+          'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+        )
+      }
+      return updatedClient
+    }
+
+    const clientForStrategy =
+      (await checkClient(step)) ?? ethereumClient.current
 
     const executionStrategy = await getEthereumExecutionStrategy(
       client,
@@ -108,7 +112,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
-      checkClient: this.checkClient,
+      checkClient,
       parseErrors: (
         e: Error,
         step?: LiFiStepExtended,
@@ -127,7 +131,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       new EthereumNativePermitTask(),
       new EthereumResetAllowanceTask(),
       new EthereumSetAllowanceTask(),
-      new EthereumWaitForApprovalTransactionTask(),
       new CheckBalanceTask(),
       new EthereumPrepareTransactionTask(),
       new EthereumSignAndExecuteTask(),
