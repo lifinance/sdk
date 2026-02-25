@@ -15,9 +15,10 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
       statusManager,
       fromChain,
       isBridgeExecution,
-      signedTransaction: signedTx,
+      signedTransaction,
     } = context
-    if (!signedTx) {
+
+    if (!signedTransaction) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Signed transaction is not found.'
@@ -37,7 +38,7 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
 
     const result = await callSuiWithRetry(client, (client) =>
       client.waitForTransaction({
-        digest: signedTx.digest,
+        digest: signedTransaction.digest,
         options: {
           showEffects: true,
         },

@@ -18,7 +18,7 @@ export class EthereumWaitForTransactionStatusTask extends BaseStepExecutionTask 
 
     if (
       destinationChainAction &&
-      destinationChainAction?.substatus !== 'WAIT_DESTINATION_TRANSACTION'
+      destinationChainAction.substatus !== 'WAIT_DESTINATION_TRANSACTION'
     ) {
       const updatedClient = await checkClient(step)
       if (!updatedClient) {

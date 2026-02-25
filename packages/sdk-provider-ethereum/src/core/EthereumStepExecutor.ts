@@ -113,7 +113,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         action?: ExecutionAction
       ) => parseEthereumErrors(e, step, action, retryParams),
       executionStrategy,
+      // Signed typed data for native permits and other messages
       signedTypedData: [],
+      // Calls for atomic batch transactions (EIP-5792)
       calls: [],
     }
   }

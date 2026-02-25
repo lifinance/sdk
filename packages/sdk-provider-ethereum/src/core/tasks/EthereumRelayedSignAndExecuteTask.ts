@@ -35,7 +35,7 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
     if (!action) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
+        'Unable to prepare transaction. Action not found.'
       )
     }
 

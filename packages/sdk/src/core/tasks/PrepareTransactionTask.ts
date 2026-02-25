@@ -47,7 +47,7 @@ export class PrepareTransactionTask extends BaseStepExecutionTask {
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
+        'Unable to prepare transaction. Transaction request data is not found.'
       )
     }
 

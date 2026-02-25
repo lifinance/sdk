@@ -10,8 +10,14 @@ import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: SuiStepExecutorContext): Promise<TaskResult> {
-    const { step, wallet, statusManager, executionOptions, isBridgeExecution } =
-      context
+    const {
+      step,
+      wallet,
+      statusManager,
+      executionOptions,
+      isBridgeExecution,
+      checkWallet,
+    } = context
 
     const action = statusManager.findAction(
       step,
@@ -30,19 +36,13 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
       executionOptions
     )
 
-    const walletAccount = wallet.accounts?.find(
-      (a) => a.address === step.action.fromAddress
-    )
-    if (!walletAccount) {
-      throw new TransactionError(
-        LiFiErrorCode.WalletChangedDuringExecution,
-        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
-      )
-    }
+    checkWallet(step)
 
     // We give users 2 minutes to sign the transaction
     const signedTransaction = await signAndExecuteTransaction(wallet, {
-      account: walletAccount,
+      account: wallet.accounts.find(
+        (account) => account.address === step.action.fromAddress
+      )!,
       chain: 'sui:mainnet',
       transaction: {
         toJSON: async () => transactionRequestData,

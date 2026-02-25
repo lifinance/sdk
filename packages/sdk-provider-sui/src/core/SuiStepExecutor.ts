@@ -1,9 +1,12 @@
 import {
   BaseStepExecutor,
   CheckBalanceTask,
+  LiFiErrorCode,
+  type LiFiStepExtended,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
+  TransactionError,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
 import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
@@ -23,12 +26,27 @@ export class SuiStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
+  checkWallet = (step: LiFiStepExtended) => {
+    // Prevent execution of the quote by wallet different from the one which requested the quote
+    if (
+      !this.wallet.accounts?.some?.(
+        (account) => account.address === step.action.fromAddress
+      )
+    ) {
+      throw new TransactionError(
+        LiFiErrorCode.WalletChangedDuringExecution,
+        'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+      )
+    }
+  }
+
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SuiStepExecutorContext> => {
     return {
       ...baseContext,
       wallet: this.wallet,
+      checkWallet: this.checkWallet,
       parseErrors: parseSuiErrors,
     }
   }
@@ -51,9 +69,10 @@ export class SuiStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskClassName = swapOrBridgeAction?.txHash
-      ? WaitForTransactionStatusTask
-      : CheckBalanceTask
+    const taskClassName =
+      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+        ? WaitForTransactionStatusTask
+        : CheckBalanceTask
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task instanceof taskClassName

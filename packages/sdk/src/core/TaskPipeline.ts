@@ -26,7 +26,9 @@ export class TaskPipeline {
           Object.assign(context, result.context)
         }
       } catch (error: any) {
-        const action = step?.execution?.actions?.at(-1)
+        const action = step?.execution?.lastActionType
+          ? statusManager.findAction(step, step?.execution?.lastActionType)
+          : undefined
         const parsed = await parseErrors(error, step, action)
         if (!(parsed instanceof ExecuteStepRetryError) && action) {
           statusManager.updateAction(step, action.type, 'FAILED', {

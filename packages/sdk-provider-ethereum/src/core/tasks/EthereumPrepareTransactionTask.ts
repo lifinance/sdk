@@ -68,7 +68,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     if (!step.transactionRequest && !step.typedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction.'
+        'Unable to prepare transaction. Transaction request is not found.'
       )
     }
 

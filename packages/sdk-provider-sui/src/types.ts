@@ -1,5 +1,6 @@
 import {
   ChainType,
+  type LiFiStepExtended,
   type SDKProvider,
   type StepExecutorContext,
   type StepExecutorOptions,
@@ -21,6 +22,7 @@ export interface SuiStepExecutorContext
   extends StepExecutorContext,
     SuiTaskContext {
   wallet: WalletWithRequiredFeatures
+  checkWallet: (step: LiFiStepExtended) => void
 }
 
 export interface SuiSDKProvider extends SDKProvider {

@@ -80,16 +80,16 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      signedAt: Date.now(),
+    })
+
     const transactionCodec = getTransactionCodec()
 
     // Decode all signed transactions
     const signedTransactions = signedTransactionOutputs.map((output) =>
       transactionCodec.decode(output.signedTransaction)
     )
-
-    statusManager.updateAction(step, action.type, 'PENDING', {
-      signedAt: Date.now(),
-    })
 
     return {
       status: 'COMPLETED',

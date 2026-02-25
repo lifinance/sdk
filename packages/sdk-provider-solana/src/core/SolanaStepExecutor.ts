@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   LiFiErrorCode,
+  type LiFiStepExtended,
   PrepareTransactionTask,
   type StepExecutorBaseContext,
   TaskPipeline,
@@ -25,20 +26,27 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  override createContext = async (
-    baseContext: StepExecutorBaseContext
-  ): Promise<SolanaStepExecutorContext> => {
-    const { step } = baseContext
-
-    const walletAccount = this.wallet.accounts.find(
+  getWalletAccount = (step: LiFiStepExtended) => {
+    const account = this.wallet.accounts.find(
       (account) => account.address === step.action.fromAddress
     )
-    if (!walletAccount) {
+
+    if (!account) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
     }
+
+    return account
+  }
+
+  override createContext = async (
+    baseContext: StepExecutorBaseContext
+  ): Promise<SolanaStepExecutorContext> => {
+    const { step } = baseContext
+
+    const walletAccount = this.getWalletAccount(step)
 
     return {
       ...baseContext,
@@ -66,9 +74,10 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskClassName = swapOrBridgeAction?.txHash
-      ? WaitForTransactionStatusTask
-      : CheckBalanceTask
+    const taskClassName =
+      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+        ? WaitForTransactionStatusTask
+        : CheckBalanceTask
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task instanceof taskClassName
