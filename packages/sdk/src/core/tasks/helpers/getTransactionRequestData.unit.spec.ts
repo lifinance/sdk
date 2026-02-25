@@ -13,7 +13,8 @@ describe('getTransactionRequestData', () => {
   it('throws TransactionUnprepared when step has no transactionRequest or data', async () => {
     await expect(getTransactionRequestData({} as any)).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionUnprepared,
-      message: 'Unable to prepare transaction.',
+      message:
+        'Unable to prepare transaction. Transaction request data is not found.',
     })
   })
 
@@ -44,7 +45,8 @@ describe('getTransactionRequestData', () => {
       getTransactionRequestData(step, { updateTransactionRequestHook })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionUnprepared,
-      message: 'Unable to prepare transaction.',
+      message:
+        'Unable to prepare transaction. Transaction request data is not found.',
     })
   })
 })
