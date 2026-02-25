@@ -200,6 +200,8 @@ export class StatusManager {
         break
     }
 
+    step.execution.lastActionType = type
+
     currentAction.status = status
     currentAction.message = getActionMessage(type, status)
     // set extra parameters or overwrite the standard params set in the switch statement

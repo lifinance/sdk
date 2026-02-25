@@ -251,6 +251,7 @@ export interface Execution {
   signedAt?: number
   status: ExecutionStatus
   actions: Array<ExecutionAction>
+  lastActionType?: ExecutionActionType
   fromAmount?: string
   toAmount?: string
   toToken?: Token
