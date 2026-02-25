@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   checkBalance,
   convertQuoteToRoute,
+  createDefaultStorage,
   type ExecutionAction,
   type ExtendedChain,
   getContractCallsQuote,
@@ -13,12 +14,14 @@ import {
   patchContractCalls,
   relayTransaction,
   type SDKClient,
+  type SDKStorage,
   type SignedTypedData,
   type StepExecutorOptions,
   stepComparison,
   TransactionError,
   type TransactionMethodType,
   type TransactionParameters,
+  type TypedData,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
 import type {
@@ -49,6 +52,15 @@ import {
   isAtomicReadyWalletRejectedUpgradeError,
   parseEthereumErrors,
 } from './errors/parseEthereumErrors.js'
+import {
+  approveAgentWallet,
+  getOrCreateAgentWallet,
+} from './hyperliquid/agentWallet.js'
+import {
+  isApproveAgentMessage,
+  isHyperliquidAgentStep,
+  isHyperliquidOrderMessage,
+} from './hyperliquid/isHyperliquidAgentStep.js'
 import { PatcherMagicNumber } from './permits/constants.js'
 import { encodeNativePermitData } from './permits/encodeNativePermitData.js'
 import { encodePermit2Data } from './permits/encodePermit2Data.js'
@@ -71,11 +83,85 @@ interface EthereumStepExecutorOptions extends StepExecutorOptions {
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
+  private storage?: SDKStorage
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
+  }
+
+  private getStorage(client: SDKClient): SDKStorage {
+    if (!this.storage) {
+      this.storage = client.config.storage ?? createDefaultStorage()
+    }
+    return this.storage
+  }
+
+  private signHyperliquidTypedData = async (
+    sdkClient: SDKClient,
+    step: LiFiStepExtended,
+    action: ExecutionAction,
+    intentTypedData: TypedData[],
+    fromChainId: number
+  ): Promise<SignedTypedData[]> => {
+    const signedResults: SignedTypedData[] = []
+    const ownerAddress = this.client.account!.address
+    const storage = this.getStorage(sdkClient)
+    const {
+      account: agentAccount,
+      needsApproval,
+      expiresAt,
+    } = await getOrCreateAgentWallet(storage, ownerAddress)
+
+    for (const typedData of intentTypedData) {
+      if (!this.allowUserInteraction) {
+        break
+      }
+
+      if (isApproveAgentMessage(typedData)) {
+        if (!needsApproval) {
+          continue
+        }
+        const message = {
+          ...typedData.message,
+          agentAddress: agentAccount.address.toLowerCase(),
+          agentName: `${typedData.message.agentName} valid_until ${expiresAt}`,
+        }
+        const typedDataChainId =
+          getDomainChainId(typedData.domain) || fromChainId
+        const updatedClient = await this.checkClient(
+          step,
+          action,
+          typedDataChainId
+        )
+        if (!updatedClient) {
+          break
+        }
+        const signature = await getAction(
+          updatedClient,
+          signTypedData,
+          'signTypedData'
+        )({
+          account: updatedClient.account!,
+          primaryType: typedData.primaryType,
+          domain: typedData.domain,
+          types: typedData.types,
+          message,
+        })
+        signedResults.push({ ...typedData, message, signature })
+      } else if (isHyperliquidOrderMessage(typedData)) {
+        const signature = await agentAccount.signTypedData({
+          domain: typedData.domain,
+          types: typedData.types,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
+        })
+        signedResults.push({ ...typedData, signature })
+      }
+    }
+
+    return signedResults
   }
 
   // Ensure that we are using the right chain and wallet when executing transactions.
@@ -699,36 +785,46 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           )
         }
         this.statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
-        for (const typedData of intentTypedData) {
-          if (!this.allowUserInteraction) {
-            return step
-          }
-          const typedDataChainId =
-            getDomainChainId(typedData.domain) || fromChain.id
-          // Switch to the typed data's chain if needed
-          const updatedClient = await this.checkClient(
+        if (isHyperliquidAgentStep(step)) {
+          const hlSignedData = await this.signHyperliquidTypedData(
+            client,
             step,
             action,
-            typedDataChainId
+            intentTypedData,
+            fromChain.id
           )
-          if (!updatedClient) {
-            return step
+          signedTypedData.push(...hlSignedData)
+        } else {
+          for (const typedData of intentTypedData) {
+            if (!this.allowUserInteraction) {
+              return step
+            }
+            const typedDataChainId =
+              getDomainChainId(typedData.domain) || fromChain.id
+            const updatedClient = await this.checkClient(
+              step,
+              action,
+              typedDataChainId
+            )
+            if (!updatedClient) {
+              return step
+            }
+            const signature = await getAction(
+              updatedClient,
+              signTypedData,
+              'signTypedData'
+            )({
+              account: updatedClient.account!,
+              primaryType: typedData.primaryType,
+              domain: typedData.domain,
+              types: typedData.types,
+              message: typedData.message,
+            })
+            signedTypedData.push({
+              ...typedData,
+              signature: signature,
+            })
           }
-          const signature = await getAction(
-            updatedClient,
-            signTypedData,
-            'signTypedData'
-          )({
-            account: updatedClient.account!,
-            primaryType: typedData.primaryType,
-            domain: typedData.domain,
-            types: typedData.types,
-            message: typedData.message,
-          })
-          signedTypedData.push({
-            ...typedData,
-            signature: signature,
-          })
         }
 
         this.statusManager.updateAction(step, action.type, 'PENDING')
@@ -741,6 +837,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         taskId = relayedTransaction.taskId as Hash
         txType = 'relayed'
         txLink = relayedTransaction.txLink
+
+        if (isHyperliquidAgentStep(step) && taskId) {
+          const ownerAddress = this.client.account!.address
+          await approveAgentWallet(this.getStorage(client), ownerAddress)
+        }
       } else {
         if (!transactionRequest) {
           throw new TransactionError(
