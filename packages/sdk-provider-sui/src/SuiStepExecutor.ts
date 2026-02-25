@@ -10,29 +10,27 @@ import {
   type TransactionParameters,
   waitForDestinationChainTransaction,
 } from '@lifi/sdk'
-import {
-  signAndExecuteTransaction,
-  type WalletWithRequiredFeatures,
-} from '@mysten/wallet-standard'
+import type { ClientWithCoreApi } from '@mysten/sui/client'
+import type { Signer } from '@mysten/sui/cryptography'
+import { Transaction } from '@mysten/sui/transactions'
 import { callSuiWithRetry } from './client/suiClient.js'
 import { parseSuiErrors } from './errors/parseSuiErrors.js'
 import type { SuiStepExecutorOptions } from './types.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
-  private wallet: WalletWithRequiredFeatures
+  private client: ClientWithCoreApi
+  private signer: Signer
 
   constructor(options: SuiStepExecutorOptions) {
     super(options)
-    this.wallet = options.wallet
+    this.client = options.client
+    this.signer = options.signer
   }
 
   checkWallet = (step: LiFiStepExtended) => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (
-      !this.wallet.accounts?.some?.(
-        (account) => account.address === step.action.fromAddress
-      )
-    ) {
+    const address = this.signer.toSuiAddress()
+    if (address !== step.action.fromAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -128,23 +126,29 @@ export class SuiStepExecutor extends BaseStepExecutor {
         this.checkWallet(step)
 
         // We give users 2 minutes to sign the transaction
-        const signedTx = await signAndExecuteTransaction(this.wallet, {
-          account: this.wallet.accounts.find(
-            (account) => account.address === step.action.fromAddress
-          )!,
-          chain: 'sui:mainnet',
-          transaction: {
-            toJSON: async () => transactionRequestData,
-          },
+        const {
+          $kind,
+          FailedTransaction,
+          Transaction: TransactionResult,
+        } = await this.client.core.signAndExecuteTransaction({
+          signer: this.signer,
+          transaction: Transaction.from(transactionRequestData),
         })
 
         action = this.statusManager.updateAction(step, action.type, 'PENDING', {
           signedAt: Date.now(),
         })
 
+        if ($kind !== 'Transaction' || !TransactionResult) {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            `Transaction failed: ${FailedTransaction?.status.error ?? `Unexpected transaction result: ${$kind}`}`
+          )
+        }
+
         const result = await callSuiWithRetry(client, (client) =>
           client.waitForTransaction({
-            digest: signedTx.digest,
+            digest: TransactionResult.digest,
             options: {
               showEffects: true,
             },

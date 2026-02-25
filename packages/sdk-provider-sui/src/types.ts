@@ -3,10 +3,12 @@ import {
   type SDKProvider,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
+import type { ClientWithCoreApi } from '@mysten/sui/client'
+import type { Signer } from '@mysten/sui/cryptography'
 
 export interface SuiProviderOptions {
-  getWallet?: () => Promise<WalletWithRequiredFeatures>
+  getClient?: () => Promise<ClientWithCoreApi>
+  getSigner?: () => Promise<Signer>
 }
 
 export interface SuiSDKProvider extends SDKProvider {
@@ -20,7 +22,8 @@ export function isSuiProvider(
 }
 
 export interface SuiStepExecutorOptions extends StepExecutorOptions {
-  wallet: WalletWithRequiredFeatures
+  client: ClientWithCoreApi
+  signer: Signer
 }
 
 export const SuiTokenShortAddress = '0x2::sui::SUI'
