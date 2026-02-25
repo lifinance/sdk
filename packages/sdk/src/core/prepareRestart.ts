@@ -22,6 +22,8 @@ export const prepareRestart = (route: RouteExtended) => {
         // If no tx hash exists, reset the actions array
         step.execution.actions = []
       }
+      // Reset the last action type
+      step.execution.lastActionType = undefined
     }
     step.transactionRequest = undefined
   }

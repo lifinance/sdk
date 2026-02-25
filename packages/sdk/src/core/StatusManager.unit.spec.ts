@@ -181,6 +181,7 @@ describe('StatusManager', () => {
 
           const updatedExecution = Object.assign({}, step.execution, {
             actions: [...step.execution!.actions, action],
+            lastActionType: 'CROSS_CHAIN',
           })
 
           const updatedStep = Object.assign({}, step, {
