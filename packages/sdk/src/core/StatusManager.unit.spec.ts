@@ -241,6 +241,7 @@ describe('StatusManager', () => {
               status === 'DONE' || status === 'CANCELLED'
             const updatedExecution = Object.assign({}, step.execution, {
               actions: [step.execution!.actions[0], action],
+              lastActionType: 'SWAP',
               status: notUpdateableStatus
                 ? step.execution!.status
                 : (status as ExecutionStatus),
