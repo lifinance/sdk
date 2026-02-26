@@ -34,10 +34,11 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const action = statusManager.findOrCreateAction({
+    const action = statusManager.initializeAction({
       step,
       type: 'SET_ALLOWANCE',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     // Clear the txHash and txLink from potential previous approval transaction

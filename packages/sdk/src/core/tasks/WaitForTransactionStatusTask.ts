@@ -40,7 +40,7 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
         throw new Error('Transaction hash is undefined.')
       }
 
-      const action = statusManager.findOrCreateAction({
+      const action = statusManager.initializeAction({
         step,
         type: this.actionType,
         chainId:

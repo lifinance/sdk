@@ -77,7 +77,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
     step: LiFiStepExtended,
     retryParams?: ExecuteStepRetryParams
   ): Promise<LiFiStepExtended> => {
-    step.execution = this.statusManager.initExecutionObject(step)
+    step.execution = this.statusManager.initializeExecution(step)
 
     const baseContext = await this.createBaseContext(client, step, retryParams)
     const context = await this.createContext(baseContext)

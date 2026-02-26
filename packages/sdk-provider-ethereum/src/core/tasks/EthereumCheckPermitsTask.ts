@@ -30,10 +30,11 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       signedTypedData: currentSignedTypedData,
     } = context
 
-    const action = statusManager.findOrCreateAction({
+    const action = statusManager.initializeAction({
       step,
       type: 'PERMIT',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     // First, try to sign all permits in step.typedData

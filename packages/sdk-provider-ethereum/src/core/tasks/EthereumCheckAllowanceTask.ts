@@ -29,10 +29,11 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     }
 
     // Start new allowance check
-    const action = statusManager.findOrCreateAction({
+    const action = statusManager.initializeAction({
       step,
       type: 'CHECK_ALLOWANCE',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     const permit2Supported = isPermit2Supported(

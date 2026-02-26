@@ -48,10 +48,11 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       signedTypedData: currentSignedTypedData,
     } = context
 
-    const action = statusManager.findOrCreateAction({
+    const action = statusManager.initializeAction({
       step,
       type: 'NATIVE_PERMIT',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     const updatedClient = await checkClient(step)

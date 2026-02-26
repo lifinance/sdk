@@ -8,10 +8,11 @@ export class CheckBalanceTask extends BaseStepExecutionTask {
   async run(context: StepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, isBridgeExecution } = context
 
-    statusManager.findOrCreateAction({
+    statusManager.initializeAction({
       step,
       type: isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     const walletAddress = step.action.fromAddress

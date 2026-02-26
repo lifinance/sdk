@@ -41,10 +41,11 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const action = statusManager.findOrCreateAction({
+    const action = statusManager.initializeAction({
       step,
       type: 'RESET_ALLOWANCE',
       chainId: step.action.fromChainId,
+      status: 'STARTED',
     })
 
     statusManager.updateAction(step, action.type, 'RESET_REQUIRED', {
