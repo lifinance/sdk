@@ -53,10 +53,9 @@ export const getJitoConnections = async (): Promise<JitoConnection[]> => {
 export async function callSolanaWithRetry<R>(
   fn: (connection: Connection) => Promise<R>
 ): Promise<R> {
-  // Ensure connections are initialized
-  await ensureConnections()
+  const solanaConnections = await getSolanaConnections()
   let lastError: any = null
-  for (const connection of connections.values()) {
+  for (const connection of solanaConnections) {
     try {
       const result = await fn(connection)
       return result
