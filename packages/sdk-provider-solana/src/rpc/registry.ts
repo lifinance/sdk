@@ -1,10 +1,10 @@
-import { ChainId, type SDKClient } from '@lifi/sdk'
+import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
 import { createSolanaRpc } from '@solana/kit'
 import { createJitoRpc } from './jito/createJitoRpc.js'
 import type { JitoRpcType, SolanaRpcType } from './types.js'
 
-const solanaRpcs = new Map<string, SolanaRpcType>()
-const jitoRpcs = new Map<string, JitoRpcType>()
+const solanaRpcs = new LruMap<SolanaRpcType>(12)
+const jitoRpcs = new LruMap<JitoRpcType>(12)
 
 /**
  * Checks if an RPC URL supports Jito methods by calling getTipAccounts.
@@ -20,23 +20,27 @@ export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
 }
 
 /**
- * Initializes the Solana and Jito RPCs if they haven't been initialized yet.
- * Detects Jito RPCs by checking if they support the getTipAccounts method.
- * @returns - Promise that resolves when RPCs are initialized.
+ * Initializes Solana RPCs for all available RPC URLs if they haven't been cached yet.
+ * @param client - The SDK client used to fetch RPC URLs.
  */
-const ensureRpcs = async (client: SDKClient): Promise<void> => {
+const ensureSolanaRpcs = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
-    // Skip if already categorized
-    if (solanaRpcs.has(rpcUrl) || jitoRpcs.has(rpcUrl)) {
-      continue
-    }
-
-    // Check if it's a Jito RPC
-    if (await isJitoRpc(rpcUrl)) {
-      jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
-    } else {
+    if (!solanaRpcs.has(rpcUrl)) {
       solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
+    }
+  }
+}
+
+/**
+ * Detects and caches Jito-capable RPCs by checking if they support the getTipAccounts method.
+ * @param client - The SDK client used to fetch RPC URLs.
+ */
+const ensureJitoRpcs = async (client: SDKClient): Promise<void> => {
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  for (const rpcUrl of rpcUrls) {
+    if (!jitoRpcs.has(rpcUrl) && (await isJitoRpc(rpcUrl))) {
+      jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
     }
   }
 }
@@ -48,7 +52,7 @@ const ensureRpcs = async (client: SDKClient): Promise<void> => {
 export const getSolanaRpcs = async (
   client: SDKClient
 ): Promise<SolanaRpcType[]> => {
-  await ensureRpcs(client)
+  await ensureSolanaRpcs(client)
   return Array.from(solanaRpcs.values())
 }
 
@@ -59,6 +63,6 @@ export const getSolanaRpcs = async (
 export const getJitoRpcs = async (
   client: SDKClient
 ): Promise<JitoRpcType[]> => {
-  await ensureRpcs(client)
+  await ensureJitoRpcs(client)
   return Array.from(jitoRpcs.values())
 }
