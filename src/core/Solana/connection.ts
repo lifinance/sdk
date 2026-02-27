@@ -14,14 +14,15 @@ const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
-      const useJito =
+      const isJitoConnection =
         Boolean(config.get().routeOptions?.jitoBundle) &&
         (await JitoConnection.isJitoRpc(rpcUrl))
 
-      connections.set(
-        rpcUrl,
-        useJito ? new JitoConnection(rpcUrl) : new Connection(rpcUrl)
-      )
+      const connection = isJitoConnection
+        ? new JitoConnection(rpcUrl)
+        : new Connection(rpcUrl)
+
+      connections.set(rpcUrl, connection)
     }
   }
 }
