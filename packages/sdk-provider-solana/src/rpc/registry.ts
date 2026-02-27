@@ -26,14 +26,14 @@ export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
  */
 const ensureRpcs = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  const isJitoBundleEnabled = Boolean(client.config.routeOptions?.jitoBundle)
+
   for (const rpcUrl of rpcUrls) {
-    // Skip if already categorized
     if (solanaRpcs.has(rpcUrl) || jitoRpcs.has(rpcUrl)) {
       continue
     }
 
-    // Check if it's a Jito RPC
-    if (await isJitoRpc(rpcUrl)) {
+    if (isJitoBundleEnabled && (await isJitoRpc(rpcUrl))) {
       jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
     } else {
       solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
