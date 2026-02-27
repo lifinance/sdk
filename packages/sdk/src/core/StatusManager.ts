@@ -144,7 +144,9 @@ export class StatusManager {
     const action = this.findAction(step, type)
 
     if (action) {
-      return this.updateAction(step, type, status)
+      return this.updateAction(step, type, status, {
+        error: undefined,
+      })
     }
 
     return this.createAction({ step, type, chainId, status })
