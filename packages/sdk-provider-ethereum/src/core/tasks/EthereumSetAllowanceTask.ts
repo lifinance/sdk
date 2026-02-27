@@ -4,6 +4,7 @@ import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import { MaxUint256 } from '../../permits/constants.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
@@ -25,14 +26,25 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       allowUserInteraction,
       checkClient,
-      executionStrategy,
+      executionStrategy: executionStrategyContext,
       calls: currentCalls,
+      retryParams,
     } = context
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
+
+    const executionStrategy =
+      executionStrategyContext ??
+      (await getEthereumExecutionStrategy(
+        client,
+        updatedClient,
+        step,
+        fromChain,
+        retryParams
+      ))
 
     const action = statusManager.initializeAction({
       step,
@@ -116,6 +128,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       })
     }
 
-    return { status: 'COMPLETED', context: { calls } }
+    return { status: 'COMPLETED', context: { calls, executionStrategy } }
   }
 }

@@ -27,6 +27,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     if (hasMatchingPermit || hasSufficientAllowance) {
       return false
     }
+    // NB: executionStrategy is set in CheckAllowanceTask
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =

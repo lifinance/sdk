@@ -1,9 +1,11 @@
 import {
   BaseStepExecutor,
   CheckBalanceTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
+  type SDKError,
   type StepExecutorBaseContext,
   TaskPipeline,
   TransactionError,
@@ -41,6 +43,12 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     return account
   }
 
+  override parseErrors = (
+    error: Error,
+    step?: LiFiStepExtended,
+    action?: ExecutionAction
+  ): Promise<SDKError> => parseSolanaErrors(error, step, action)
+
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SolanaStepExecutorContext> => {
@@ -52,7 +60,6 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       ...baseContext,
       wallet: this.wallet,
       walletAccount,
-      parseErrors: parseSolanaErrors,
     }
   }
 

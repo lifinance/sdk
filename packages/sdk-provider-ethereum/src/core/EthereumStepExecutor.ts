@@ -2,9 +2,12 @@ import {
   type BaseStepExecutionTask,
   BaseStepExecutor,
   CheckBalanceTask,
+  type ExecuteStepRetryError,
+  type ExecuteStepRetryParams,
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
+  type SDKError,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
@@ -25,7 +28,6 @@ import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
 import { EthereumWaitForTransactionStatusTask } from './tasks/EthereumWaitForTransactionStatusTask.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
-import { getEthereumExecutionStrategy } from './tasks/helpers/getEthereumExecutionStrategy.js'
 import { shouldCheckForAllowance } from './tasks/helpers/shouldCheckForAllowance.js'
 import { switchChain } from './tasks/helpers/switchChain.js'
 
@@ -43,6 +45,14 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.client = options.client
     this.switchChain = options.switchChain
   }
+
+  override parseErrors = (
+    error: Error,
+    step?: LiFiStepExtended,
+    action?: ExecutionAction,
+    retryParams?: ExecuteStepRetryParams
+  ): Promise<SDKError | ExecuteStepRetryError> =>
+    parseEthereumErrors(error, step, action, retryParams)
 
   // Ensure that we are using the right chain and wallet when executing transactions.
   checkClient = async (step: LiFiStepExtended, targetChainId?: number) => {
@@ -80,8 +90,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
-    const { step, fromChain, executionOptions, client, retryParams } =
-      baseContext
+    const { step, fromChain, executionOptions } = baseContext
 
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
@@ -92,27 +101,11 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     const disableMessageSigning =
       executionOptions?.disableMessageSigning || step.type !== 'lifi'
 
-    const clientForStrategy = (await this.checkClient(step)) ?? this.client
-
-    const executionStrategy = await getEthereumExecutionStrategy(
-      client,
-      clientForStrategy,
-      step,
-      fromChain,
-      retryParams
-    )
-
     return {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
       checkClient: this.checkClient,
-      parseErrors: (
-        e: Error,
-        step?: LiFiStepExtended,
-        action?: ExecutionAction
-      ) => parseEthereumErrors(e, step, action, retryParams),
-      executionStrategy,
       // Signed typed data for native permits and other messages
       signedTypedData: [],
       // Calls for atomic batch transactions (EIP-5792)

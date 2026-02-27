@@ -1,9 +1,11 @@
 import {
   BaseStepExecutor,
   CheckBalanceTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
+  type SDKError,
   type StepExecutorBaseContext,
   TaskPipeline,
   TransactionError,
@@ -40,6 +42,12 @@ export class SuiStepExecutor extends BaseStepExecutor {
     }
   }
 
+  override parseErrors = (
+    error: Error,
+    step?: LiFiStepExtended,
+    action?: ExecutionAction
+  ): Promise<SDKError> => parseSuiErrors(error, step, action)
+
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SuiStepExecutorContext> => {
@@ -47,7 +55,6 @@ export class SuiStepExecutor extends BaseStepExecutor {
       ...baseContext,
       wallet: this.wallet,
       checkWallet: this.checkWallet,
-      parseErrors: parseSuiErrors,
     }
   }
 

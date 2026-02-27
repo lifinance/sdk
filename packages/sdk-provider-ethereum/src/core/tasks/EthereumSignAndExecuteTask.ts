@@ -8,6 +8,7 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedSignAndExecuteTask } from './EthereumBatchedSignAndExecuteTask.js'
 import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecuteTask.js'
 import { EthereumStandardSignAndExecuteTask } from './EthereumStandardSignAndExecuteTask.js'
+import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
 export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -16,9 +17,28 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       transactionRequest,
-      executionStrategy,
+      checkClient,
+      client,
+      fromChain,
+      retryParams,
+      executionStrategy: executionStrategyContext,
       isBridgeExecution,
     } = context
+
+    let executionStrategy = executionStrategyContext
+    if (!executionStrategyContext) {
+      const updatedClient = await checkClient(step)
+      if (!updatedClient) {
+        return { status: 'PAUSED' }
+      }
+      executionStrategy = await getEthereumExecutionStrategy(
+        client,
+        updatedClient,
+        step,
+        fromChain,
+        retryParams
+      )
+    }
 
     const action = statusManager.findAction(
       step,

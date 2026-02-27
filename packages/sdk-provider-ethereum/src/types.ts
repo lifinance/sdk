@@ -25,7 +25,7 @@ export interface EthereumProviderOptions {
 
 export interface EthereumTaskContext {
   transactionRequest?: TransactionParameters
-  executionStrategy: TransactionMethodType
+  executionStrategy?: TransactionMethodType
   calls: Call[]
   signedTypedData: SignedTypedData[]
   hasMatchingPermit?: boolean

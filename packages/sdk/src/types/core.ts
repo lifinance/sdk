@@ -238,12 +238,13 @@ export type ExecutionAction = {
   substatus?: Substatus
   substatusMessage?: string
   chainId?: number
-  error?: { code: string | number; message: string; htmlMessage?: string }
   txHash?: string
   txLink?: string
   taskId?: string
   txType?: TransactionMethodType
   txHex?: string
+  // Errors occured during the action execution (within tasks)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export interface Execution {
@@ -259,6 +260,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+  // Errors occured outside of actions (e.g. during context creation)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

@@ -2,9 +2,11 @@ import type { Client } from '@bigmi/core'
 import {
   BaseStepExecutor,
   CheckBalanceTask,
+  type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
+  type SDKError,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
@@ -72,6 +74,12 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     return new TaskPipeline(tasksToRun)
   }
 
+  override parseErrors = (
+    error: Error,
+    step?: LiFiStepExtended,
+    action?: ExecutionAction
+  ): Promise<SDKError> => parseBitcoinErrors(error, step, action)
+
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<BitcoinStepExecutorContext> => {
@@ -85,7 +93,6 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       checkClient: this.checkClient,
       walletClient: this.client,
       publicClient,
-      parseErrors: parseBitcoinErrors,
     }
   }
 }

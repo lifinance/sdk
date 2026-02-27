@@ -3,6 +3,7 @@ import type { Address } from 'viem'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
@@ -32,7 +33,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       executionOptions,
       client,
-      executionStrategy,
+      executionStrategy: executionStrategyContext,
+      retryParams,
       calls: currentCalls,
     } = context
 
@@ -40,6 +42,16 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     if (!updatedClient) {
       return { status: 'PAUSED' }
     }
+
+    const executionStrategy =
+      executionStrategyContext ??
+      (await getEthereumExecutionStrategy(
+        client,
+        updatedClient,
+        step,
+        fromChain,
+        retryParams
+      ))
 
     const action = statusManager.initializeAction({
       step,
@@ -115,6 +127,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED', context: { calls } }
+    return { status: 'COMPLETED', context: { calls, executionStrategy } }
   }
 }

@@ -47,6 +47,8 @@ export class StatusManager {
       step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
       step.execution.signedAt = undefined
+      step.execution.lastActionType = undefined
+      step.execution.error = undefined
       this.updateStepInRoute(step)
     }
 
@@ -176,6 +178,9 @@ export class StatusManager {
         break
       case 'FAILED':
         step.execution.status = 'FAILED'
+        if (params?.error) {
+          step.execution.error = params.error
+        }
         break
       case 'DONE':
         break
