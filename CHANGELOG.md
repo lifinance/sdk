@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.15.7](https://github.com/lifinance/sdk/compare/v3.15.6...v3.15.7) (2026-02-27)
+
+
+### Bug Fixes
+
+* **Solana:** exclude Jito RPCs from callSolanaWithRetry ([#351](https://github.com/lifinance/sdk/issues/351)) ([c23cb9f](https://github.com/lifinance/sdk/commit/c23cb9f3e44d17e6675022a9d4801a3ec9ca8c61))
+* **solana:** only use JitoConnection when jitoBundle option is enabled ([#353](https://github.com/lifinance/sdk/issues/353)) ([b4409ce](https://github.com/lifinance/sdk/commit/b4409ce3068e52feaf848783346cc7f153402f09))
+
 ### [3.15.6](https://github.com/lifinance/sdk/compare/v3.15.5...v3.15.6) (2026-02-09)
 
 
