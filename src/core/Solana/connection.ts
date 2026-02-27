@@ -1,5 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { Connection } from '@solana/web3.js'
+import { config } from '../../config.js'
 import { getRpcUrls } from '../rpc.js'
 import { JitoConnection } from './jito/JitoConnection.js'
 
@@ -13,10 +14,14 @@ const ensureConnections = async (): Promise<void> => {
   const rpcUrls = await getRpcUrls(ChainId.SOL)
   for (const rpcUrl of rpcUrls) {
     if (!connections.get(rpcUrl)) {
-      const connection = (await JitoConnection.isJitoRpc(rpcUrl))
-        ? new JitoConnection(rpcUrl)
-        : new Connection(rpcUrl)
-      connections.set(rpcUrl, connection)
+      const useJito =
+        Boolean(config.get().routeOptions?.jitoBundle) &&
+        (await JitoConnection.isJitoRpc(rpcUrl))
+
+      connections.set(
+        rpcUrl,
+        useJito ? new JitoConnection(rpcUrl) : new Connection(rpcUrl)
+      )
     }
   }
 }
