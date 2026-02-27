@@ -20,23 +20,27 @@ export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
 }
 
 /**
- * Initializes the Solana and Jito RPCs if they haven't been initialized yet.
- * Detects Jito RPCs by checking if they support the getTipAccounts method.
- * @returns - Promise that resolves when RPCs are initialized.
+ * Initializes Solana RPCs for all available RPC URLs if they haven't been cached yet.
+ * @param client - The SDK client used to fetch RPC URLs.
  */
-const ensureRpcs = async (client: SDKClient): Promise<void> => {
+const ensureSolanaRpcs = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
-  const isJitoBundleEnabled = Boolean(client.config.routeOptions?.jitoBundle)
-
   for (const rpcUrl of rpcUrls) {
-    if (solanaRpcs.has(rpcUrl) || jitoRpcs.has(rpcUrl)) {
-      continue
-    }
-
-    if (isJitoBundleEnabled && (await isJitoRpc(rpcUrl))) {
-      jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
-    } else {
+    if (!solanaRpcs.has(rpcUrl)) {
       solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
+    }
+  }
+}
+
+/**
+ * Detects and caches Jito-capable RPCs by checking if they support the getTipAccounts method.
+ * @param client - The SDK client used to fetch RPC URLs.
+ */
+const ensureJitoRpcs = async (client: SDKClient): Promise<void> => {
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  for (const rpcUrl of rpcUrls) {
+    if (!jitoRpcs.has(rpcUrl) && (await isJitoRpc(rpcUrl))) {
+      jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
     }
   }
 }
@@ -48,7 +52,7 @@ const ensureRpcs = async (client: SDKClient): Promise<void> => {
 export const getSolanaRpcs = async (
   client: SDKClient
 ): Promise<SolanaRpcType[]> => {
-  await ensureRpcs(client)
+  await ensureSolanaRpcs(client)
   return Array.from(solanaRpcs.values())
 }
 
@@ -59,6 +63,6 @@ export const getSolanaRpcs = async (
 export const getJitoRpcs = async (
   client: SDKClient
 ): Promise<JitoRpcType[]> => {
-  await ensureRpcs(client)
+  await ensureJitoRpcs(client)
   return Array.from(jitoRpcs.values())
 }
