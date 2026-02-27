@@ -1,10 +1,10 @@
-import { ChainId, type SDKClient } from '@lifi/sdk'
+import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
 import { createSolanaRpc } from '@solana/kit'
 import { createJitoRpc } from './jito/createJitoRpc.js'
 import type { JitoRpcType, SolanaRpcType } from './types.js'
 
-const solanaRpcs = new Map<string, SolanaRpcType>()
-const jitoRpcs = new Map<string, JitoRpcType>()
+const solanaRpcs = new LruMap<SolanaRpcType>(12)
+const jitoRpcs = new LruMap<JitoRpcType>(12)
 
 /**
  * Checks if an RPC URL supports Jito methods by calling getTipAccounts.
