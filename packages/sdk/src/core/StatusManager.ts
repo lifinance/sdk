@@ -4,23 +4,20 @@ import type {
   ExecutionAction,
   ExecutionActionStatus,
   ExecutionActionType,
-  ExecutionStatus,
   LiFiStepExtended,
 } from '../types/core.js'
 import { getActionMessage } from './actionMessages.js'
 import { executionState } from './executionState.js'
 
-type FindOrCreateActionProps = {
+type ActionProps = {
   step: LiFiStepExtended
   type: ExecutionActionType
-  chainId?: ChainId
-  status?: ExecutionActionStatus
+  chainId: ChainId
+  status: ExecutionActionStatus
 }
 
 /**
- * Manages status updates of a route and provides various functions for tracking actions
- * @param {string} routeId The route dd this StatusManger belongs to.
- * @returns {StatusManager} An instance of StatusManager.
+ * Manages status updates of a route and provides various functions for tracking actions.
  */
 export class StatusManager {
   private readonly routeId: string
@@ -32,10 +29,10 @@ export class StatusManager {
 
   /**
    * Initializes the execution object of a Step.
-   * @param step  The current step in execution
-   * @returns The initialized execution object for this step and a function to update this step
+   * @param step The current step in execution
+   * @returns The initialized execution object for this step
    */
-  initExecutionObject = (step: LiFiStepExtended): Execution => {
+  initializeExecution = (step: LiFiStepExtended): Execution => {
     if (!step.execution) {
       step.execution = {
         startedAt: Date.now(),
@@ -50,6 +47,8 @@ export class StatusManager {
       step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
       step.execution.signedAt = undefined
+      step.execution.lastActionType = undefined
+      step.execution.error = undefined
       this.updateStepInRoute(step)
     }
 
@@ -58,25 +57,20 @@ export class StatusManager {
 
   /**
    * Updates the execution object of a Step.
-   * @param step  The current step in execution
-   * @param status  The status for the execution
-   * @param execution Optional. Information about received tokens
+   * @param step The current step in execution
+   * @param execution Partial execution data to merge
    * @returns The step with the updated execution object
    */
   updateExecution(
     step: LiFiStepExtended,
-    status: ExecutionStatus,
-    execution?: Partial<Execution>
+    execution: Partial<Execution>
   ): LiFiStep {
     if (!step.execution) {
       throw Error("Can't update empty execution.")
     }
-    step.execution.status = status
-    if (execution) {
-      step.execution = {
-        ...step.execution,
-        ...execution,
-      }
+    step.execution = {
+      ...step.execution,
+      ...execution,
     }
     this.updateStepInRoute(step)
     return step
@@ -86,13 +80,11 @@ export class StatusManager {
    * Finds an action of the specified type in the step's execution
    * @param step The step to search in
    * @param type The action type to find
-   * @param status Optional status to update the action with if found
    * @returns The found action or undefined if not found
    */
   findAction(
     step: LiFiStepExtended,
-    type: ExecutionActionType,
-    status?: ExecutionActionStatus
+    type: ExecutionActionType
   ): ExecutionAction | undefined {
     if (!step.execution?.actions) {
       throw new Error("Execution hasn't been initialized.")
@@ -100,44 +92,64 @@ export class StatusManager {
 
     const action = step.execution.actions.find((p) => p.type === type)
 
-    if (action && status && action.status !== status) {
-      action.status = status
-      this.updateStepInRoute(step)
-    }
-
     return action
   }
 
   /**
    * Create and push a new action into the execution.
+   * Caller is responsible for ensuring an action of this type does not already exist.
    * @param step The step that should contain the new action.
-   * @param type Type of the action. Used to identify already existing actions.
+   * @param type Type of the action.
    * @param chainId Chain Id of the action.
-   * @param status By default created action is set to the STARTED status. We can override new action with the needed status.
-   * @returns Returns action.
+   * @param status The initial status for the new action.
+   * @returns The created action.
    */
-  findOrCreateAction = ({
+  createAction = ({
     step,
     type,
     chainId,
     status,
-  }: FindOrCreateActionProps): ExecutionAction => {
-    const action = this.findAction(step, type, status)
-
-    if (action) {
-      return action
+  }: ActionProps): ExecutionAction => {
+    if (!step.execution) {
+      throw new Error("Execution hasn't been initialized.")
     }
 
     const newAction: ExecutionAction = {
-      type: type,
-      message: getActionMessage(type, status ?? 'STARTED'),
-      status: status ?? 'STARTED',
-      chainId: chainId,
+      type,
+      message: getActionMessage(type, status),
+      status,
+      chainId,
     }
 
-    step.execution!.actions.push(newAction)
+    step.execution.actions.push(newAction)
+    step.execution.lastActionType = type
     this.updateStepInRoute(step)
     return newAction
+  }
+
+  /**
+   * Find an existing action by type and update it, or create a new one if none exists.
+   * @param step The step that should contain the action.
+   * @param type Type of the action. Used to identify already existing actions.
+   * @param chainId Chain Id of the action (used when creating).
+   * @param status The status to set on the found or newly created action.
+   * @returns The updated or newly created action.
+   */
+  initializeAction = ({
+    step,
+    type,
+    chainId,
+    status,
+  }: ActionProps): ExecutionAction => {
+    const action = this.findAction(step, type)
+
+    if (action) {
+      return this.updateAction(step, type, status, {
+        error: undefined,
+      })
+    }
+
+    return this.createAction({ step, type, chainId, status })
   }
 
   /**
@@ -152,7 +164,7 @@ export class StatusManager {
     step: LiFiStepExtended,
     type: ExecutionActionType,
     status: ExecutionActionStatus,
-    params?: Partial<ExecutionAction>
+    params?: Partial<ExecutionAction & { signedAt?: number }>
   ): ExecutionAction => {
     if (!step.execution) {
       throw new Error("Can't update an empty step execution.")
@@ -168,6 +180,9 @@ export class StatusManager {
         break
       case 'FAILED':
         step.execution.status = 'FAILED'
+        if (params?.error) {
+          step.execution.error = params.error
+        }
         break
       case 'DONE':
         break
@@ -186,13 +201,14 @@ export class StatusManager {
         break
     }
 
+    step.execution.lastActionType = type
+
     currentAction.status = status
     currentAction.message = getActionMessage(type, status)
     // set extra parameters or overwrite the standard params set in the switch statement
     if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        currentAction[key] = value
-      }
+      const { signedAt: _signedAt, ...rest } = params
+      Object.assign(currentAction, rest)
     }
     // Sort actions, the ones with DONE status go first
     step.execution.actions = [
@@ -201,20 +217,6 @@ export class StatusManager {
     ]
     this.updateStepInRoute(step) // updates the step in the route
     return currentAction
-  }
-
-  /**
-   * Remove an action from the execution
-   * @param step The step where the action should be removed from
-   * @param type  The action type to remove
-   */
-  removeAction = (step: LiFiStepExtended, type: ExecutionActionType): void => {
-    if (!step.execution) {
-      throw new Error("Execution hasn't been initialized.")
-    }
-    const index = step.execution.actions.findIndex((p) => p.type === type)
-    step.execution.actions.splice(index, 1)
-    this.updateStepInRoute(step)
   }
 
   updateStepInRoute = (step: LiFiStep): LiFiStep => {

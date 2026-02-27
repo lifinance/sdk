@@ -1,11 +1,4 @@
-import {
-  type ExecutionAction,
-  type ExecutionOptions,
-  LiFiErrorCode,
-  type LiFiStep,
-  ProviderError,
-  type StatusManager,
-} from '@lifi/sdk'
+import { LiFiErrorCode, type LiFiStep, ProviderError } from '@lifi/sdk'
 import type { Client } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,44 +7,17 @@ import { buildStepObject } from './switchChain.unit.mock.js'
 
 let client: Client
 let step: LiFiStep
-let statusManager: StatusManager
-let _hooks: ExecutionOptions
 let requestMock: Mock
 let switchChainHookMock: Mock
-let findOrCreateActionMock: Mock
-let updateExecutionMock: Mock
-let updateActionMock: Mock
-let mockAction: ExecutionAction
 
 describe('switchChain', () => {
   beforeEach(() => {
     switchChainHookMock = vi.fn()
-    _hooks = {
-      switchChainHook: switchChainHookMock,
-    } as unknown as ExecutionOptions
-
     step = buildStepObject({ includingExecution: false })
-
     requestMock = vi.fn(() => 1)
     client = {
       request: requestMock,
     } as unknown as Client
-
-    findOrCreateActionMock = vi.fn()
-    updateExecutionMock = vi.fn()
-    updateActionMock = vi.fn()
-    mockAction = {
-      type: 'SWAP',
-      status: 'STARTED',
-      startedAt: Date.now(),
-    }
-    statusManager = {
-      initExecutionObject: vi.fn(),
-      findOrCreateAction: findOrCreateActionMock,
-      removeAction: vi.fn(),
-      updateExecution: updateExecutionMock,
-      updateAction: updateActionMock,
-    } as unknown as StatusManager
   })
 
   describe('when the chain is already correct', () => {
@@ -62,16 +28,12 @@ describe('switchChain', () => {
     it('should return the connector client and do nothing else', async () => {
       const updatedClient = await switchChain(
         client,
-        statusManager,
-        step,
-        mockAction,
         step.action.fromChainId,
         true,
         switchChainHookMock
       )
 
       expect(updatedClient).toEqual(client)
-      expect(statusManager.initExecutionObject).not.toHaveBeenCalled()
       expect(switchChainHookMock).not.toHaveBeenCalled()
     })
   })
@@ -79,16 +41,12 @@ describe('switchChain', () => {
   describe('when the chain is not correct', () => {
     beforeEach(() => {
       requestMock.mockResolvedValueOnce(1)
-      findOrCreateActionMock.mockReturnValue({ type: 'SWITCH_CHAIN' })
     })
 
     describe('when allowUserInteraction is false', () => {
-      it('should initialize the status manager and abort', async () => {
+      it('should return undefined and not call the hook', async () => {
         const updatedClient = await switchChain(
           client,
-          statusManager,
-          step,
-          mockAction,
           step.action.fromChainId,
           false,
           switchChainHookMock
@@ -111,9 +69,6 @@ describe('switchChain', () => {
           await expect(
             switchChain(
               client,
-              statusManager,
-              step,
-              mockAction,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -135,9 +90,6 @@ describe('switchChain', () => {
           await expect(
             switchChain(
               client,
-              statusManager,
-              step,
-              mockAction,
               step.action.fromChainId,
               true,
               switchChainHookMock
@@ -169,9 +121,6 @@ describe('switchChain', () => {
         it('should return the updated connector client', async () => {
           const updatedClient = await switchChain(
             client,
-            statusManager,
-            step,
-            mockAction,
             step.action.fromChainId,
             true,
             switchChainHookMock

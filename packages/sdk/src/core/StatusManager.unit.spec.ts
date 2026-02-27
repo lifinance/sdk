@@ -49,11 +49,11 @@ describe('StatusManager', () => {
     vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE)
   })
 
-  describe('initExecutionObject', () => {
+  describe('initializeExecution', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })
-        statusManager.initExecutionObject(step)
+        statusManager.initializeExecution(step)
       })
 
       it('should create an empty execution & call the callbacks with the updated route', () => {
@@ -76,7 +76,7 @@ describe('StatusManager', () => {
     describe('when an execution is already defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.initExecutionObject(structuredClone(step))
+        statusManager.initializeExecution(structuredClone(step))
       })
 
       it('should not call the callbacks', () => {
@@ -97,7 +97,9 @@ describe('StatusManager', () => {
       it('should throw an error', () => {
         // function has to be wrapped into a function https://jestjs.io/docs/expect#tothrowerror
         expect(() =>
-          statusManager.updateExecution(structuredClone(step), 'DONE')
+          statusManager.updateExecution(structuredClone(step), {
+            status: 'DONE',
+          })
         ).toThrow("Can't update empty execution.")
       })
     })
@@ -105,7 +107,8 @@ describe('StatusManager', () => {
     describe('when an execution is defined', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.updateExecution(structuredClone(step), 'DONE', {
+        statusManager.updateExecution(structuredClone(step), {
+          status: 'DONE',
           fromAmount: '123',
           toAmount: '312',
         })
@@ -131,7 +134,7 @@ describe('StatusManager', () => {
     })
   })
 
-  describe('findOrCreateAction', () => {
+  describe('initializeAction', () => {
     describe('when no execution is defined yet', () => {
       beforeEach(() => {
         statusManager = initializeStatusManager({ includingExecution: false })
@@ -139,9 +142,11 @@ describe('StatusManager', () => {
 
       it('should throw an error', () => {
         expect(() =>
-          statusManager.findOrCreateAction({
+          statusManager.initializeAction({
             step: structuredClone(step),
             type: 'SWAP',
+            chainId: 137,
+            status: 'STARTED',
           })
         ).toThrow("Execution hasn't been initialized.")
       })
@@ -153,23 +158,28 @@ describe('StatusManager', () => {
       })
 
       describe('and the action already exists', () => {
-        it('should return the action and not call the callbacks', () => {
-          const action = statusManager.findOrCreateAction({
+        it('should update the action via updateAction and call the callbacks', () => {
+          const action = statusManager.initializeAction({
             step: structuredClone(step),
-            type: 'TOKEN_ALLOWANCE',
+            type: 'SET_ALLOWANCE',
+            chainId: 137,
+            status: 'PENDING',
           })
 
-          expect(action).toEqual(step.execution?.actions[0])
+          expect(action.type).toEqual('SET_ALLOWANCE')
+          expect(action.status).toEqual('PENDING')
 
-          expect(updateRouteHookMock).not.toHaveBeenCalled()
+          expect(updateRouteHookMock).toHaveBeenCalled()
         })
       })
 
       describe("and the action doesn't exist", () => {
         it('should create a new action and call the callbacks with the updated route', () => {
-          const action = statusManager.findOrCreateAction({
+          const action = statusManager.initializeAction({
             step: structuredClone(step),
             type: 'CROSS_CHAIN',
+            chainId: 137,
+            status: 'STARTED',
           })
 
           expect(action.type).toEqual('CROSS_CHAIN')
@@ -178,6 +188,7 @@ describe('StatusManager', () => {
 
           const updatedExecution = Object.assign({}, step.execution, {
             actions: [...step.execution!.actions, action],
+            lastActionType: 'CROSS_CHAIN',
           })
 
           const updatedStep = Object.assign({}, step, {
@@ -238,6 +249,7 @@ describe('StatusManager', () => {
               status === 'DONE' || status === 'CANCELLED'
             const updatedExecution = Object.assign({}, step.execution, {
               actions: [step.execution!.actions[0], action],
+              lastActionType: 'SWAP',
               status: notUpdateableStatus
                 ? step.execution!.status
                 : (status as ExecutionStatus),
@@ -253,43 +265,6 @@ describe('StatusManager', () => {
           })
         })
       }
-    })
-  })
-
-  describe('removeAction', () => {
-    describe('when no execution is defined yet', () => {
-      beforeEach(() => {
-        statusManager = initializeStatusManager({ includingExecution: false })
-      })
-
-      it('should throw an error', () => {
-        expect(() =>
-          statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
-        ).toThrow("Execution hasn't been initialized.")
-      })
-    })
-
-    describe('when an execution is defined', () => {
-      beforeEach(() => {
-        statusManager = initializeStatusManager({ includingExecution: true })
-        statusManager.removeAction(structuredClone(step), 'TOKEN_ALLOWANCE')
-      })
-
-      it('should remove the action and call the callbacks', () => {
-        const updatedExecution = Object.assign({}, step.execution, {
-          actions: [step.execution!.actions[1]],
-        })
-
-        const updatedStep = Object.assign({}, step, {
-          execution: updatedExecution,
-        })
-
-        const updatedRoute = Object.assign({}, route, {
-          steps: [updatedStep],
-        })
-
-        expectCallbacksToHaveBeenCalledWith(updatedRoute)
-      })
     })
   })
 })

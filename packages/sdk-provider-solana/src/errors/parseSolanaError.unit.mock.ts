@@ -125,8 +125,7 @@ export const buildStepObject = ({
         startedAt: SOME_DATE,
         actions: [
           {
-            type: 'TOKEN_ALLOWANCE',
-            startedAt: SOME_DATE,
+            type: 'SET_ALLOWANCE',
             message: 'Somethings done',
             status: 'DONE',
             txHash: '0x11111112542d85b3ef69ae05771c2dccff4faa26',
@@ -134,7 +133,6 @@ export const buildStepObject = ({
           },
           {
             type: 'SWAP',
-            startedAt: SOME_DATE + 20,
             message: 'Somethings pending',
             status: 'PENDING',
           },

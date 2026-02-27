@@ -1,6 +1,8 @@
 import {
   BaseError,
   ErrorMessage,
+  ExecuteStepRetryError,
+  type ExecuteStepRetryParams,
   type ExecutionAction,
   fetchTxErrorDetails,
   LiFiErrorCode,
@@ -14,8 +16,20 @@ import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 export const parseEthereumErrors = async (
   e: Error,
   step?: LiFiStep,
-  action?: ExecutionAction
-): Promise<SDKError> => {
+  action?: ExecutionAction,
+  retryParams?: ExecuteStepRetryParams
+): Promise<SDKError | ExecuteStepRetryError> => {
+  if (
+    isAtomicReadyWalletRejectedUpgradeError(e) &&
+    !retryParams?.atomicityNotReady
+  ) {
+    return new ExecuteStepRetryError(
+      'Wallet rejected 7702 upgrade based on the EIP-5792 capabilities; retry with atomicityNotReady',
+      { atomicityNotReady: true },
+      e
+    )
+  }
+
   if (e instanceof SDKError) {
     e.step = e.step ?? step
     e.action = e.action ?? action
