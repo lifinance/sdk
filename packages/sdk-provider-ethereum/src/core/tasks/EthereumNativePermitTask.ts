@@ -10,6 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -21,13 +22,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       disableMessageSigning,
       hasMatchingPermit,
       hasSufficientAllowance,
-      executionStrategy,
     } = context
 
     if (hasMatchingPermit || hasSufficientAllowance) {
       return false
     }
-    // NB: executionStrategy is set in CheckAllowanceTask
+
+    const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =

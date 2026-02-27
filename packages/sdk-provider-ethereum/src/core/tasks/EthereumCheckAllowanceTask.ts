@@ -21,14 +21,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       statusManager,
       isFromNativeToken,
       disableMessageSigning,
-      executionStrategy: executionStrategyContext,
-      retryParams,
     } = context
-
-    const updatedClient = await checkClient(step)
-    if (!updatedClient) {
-      return { status: 'PAUSED' }
-    }
 
     // Start new allowance check
     const action = statusManager.initializeAction({
@@ -38,16 +31,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    const executionStrategy =
-      executionStrategyContext ??
-      (await getEthereumExecutionStrategy(
-        client,
-        updatedClient,
-        step,
-        fromChain,
-        retryParams
-      ))
-
+    const executionStrategy = await getEthereumExecutionStrategy(context)
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -60,6 +44,11 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       : step.estimate.approvalAddress
 
     const fromAmount = BigInt(step.action.fromAmount)
+
+    const updatedClient = await checkClient(step)
+    if (!updatedClient) {
+      return { status: 'PAUSED' }
+    }
 
     const allowance = await getAllowance(
       client,

@@ -1,5 +1,4 @@
 import {
-  type BaseStepExecutionTask,
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecuteStepRetryError,
@@ -105,6 +104,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
+      ethereumClient: this.client,
       checkClient: this.checkClient,
       // Signed typed data for native permits and other messages
       signedTypedData: [],
@@ -136,24 +136,24 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       this.statusManager
     )
 
-    let taskClassName: typeof BaseStepExecutionTask
+    let taskName: string
     if (doCheckAllowance) {
-      taskClassName = EthereumCheckPermitsTask
+      taskName = EthereumCheckPermitsTask.name
     } else {
       const swapOrBridgeAction = this.statusManager.findAction(
         step,
         isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
       )
-      taskClassName =
+      taskName =
         swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
           ? swapOrBridgeAction?.status === 'DONE'
-            ? EthereumWaitForTransactionStatusTask
-            : EthereumWaitForTransactionTask
-          : CheckBalanceTask
+            ? EthereumWaitForTransactionStatusTask.name
+            : EthereumWaitForTransactionTask.name
+          : CheckBalanceTask.name
     }
 
     const firstTaskIndex = tasks.findIndex(
-      (task) => task instanceof taskClassName
+      (task) => task.constructor.name === taskName
     )
 
     const tasksToRun = tasks.slice(firstTaskIndex)

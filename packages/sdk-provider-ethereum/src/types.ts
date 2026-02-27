@@ -38,6 +38,7 @@ export interface EthereumStepExecutorContext
     EthereumTaskContext {
   isFromNativeToken: boolean
   disableMessageSigning: boolean
+  ethereumClient: Client
   checkClient: (
     step: LiFiStepExtended,
     targetChainId?: number

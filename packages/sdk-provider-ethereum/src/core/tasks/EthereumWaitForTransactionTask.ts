@@ -7,30 +7,7 @@ import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStra
 
 export class EthereumWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const {
-      step,
-      client,
-      fromChain,
-      checkClient,
-      executionStrategy: executionStrategyContext,
-      retryParams,
-    } = context
-
-    let executionStrategy = executionStrategyContext
-    if (!executionStrategyContext) {
-      const updatedClient = await checkClient(step)
-      if (!updatedClient) {
-        return { status: 'PAUSED' }
-      }
-      executionStrategy = await getEthereumExecutionStrategy(
-        client,
-        updatedClient,
-        step,
-        fromChain,
-        retryParams
-      )
-    }
-
+    const executionStrategy = await getEthereumExecutionStrategy(context)
     if (executionStrategy === 'batched') {
       return new EthereumBatchedWaitForTransactionTask().run(context)
     }

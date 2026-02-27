@@ -21,9 +21,8 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       isBridgeExecution,
-      fromChain,
-      retryParams,
       signedTypedData,
+      ethereumClient,
     } = context
 
     const action = statusManager.findAction(
@@ -36,11 +35,6 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Action not found.'
       )
-    }
-
-    const updatedClient = await checkClient(step)
-    if (!updatedClient) {
-      return { status: 'PAUSED' }
     }
 
     // Try to prepare a new transaction request and update the step with typed data
@@ -76,7 +70,11 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     if (step.transactionRequest) {
       // Only fetch maxPriorityFeePerGas for local accounts
       let maxPriorityFeePerGas: bigint | undefined
-      if (updatedClient.account?.type === 'local') {
+      if (ethereumClient.account?.type === 'local') {
+        const updatedClient = await checkClient(step)
+        if (!updatedClient) {
+          return { status: 'PAUSED' }
+        }
         maxPriorityFeePerGas = await getMaxPriorityFeePerGas(
           client,
           updatedClient
@@ -120,13 +118,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     }
 
     // Recompute execution strategy after PrepareTransaction mutates step
-    const executionStrategy = await getEthereumExecutionStrategy(
-      client,
-      updatedClient,
-      step,
-      fromChain,
-      retryParams
-    )
+    const executionStrategy = await getEthereumExecutionStrategy(context, true)
 
     return {
       status: 'COMPLETED',

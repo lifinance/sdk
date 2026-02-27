@@ -76,13 +76,13 @@ export class SuiStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskClassName =
+    const taskName =
       swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask
-        : CheckBalanceTask
+        ? WaitForTransactionStatusTask.name
+        : CheckBalanceTask.name
 
     const firstTaskIndex = tasks.findIndex(
-      (task) => task instanceof taskClassName
+      (task) => task.constructor.name === taskName
     )
 
     const tasksToRun = tasks.slice(firstTaskIndex)

@@ -33,25 +33,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       disableMessageSigning,
       executionOptions,
       client,
-      executionStrategy: executionStrategyContext,
-      retryParams,
       calls: currentCalls,
     } = context
-
-    const updatedClient = await checkClient(step)
-    if (!updatedClient) {
-      return { status: 'PAUSED' }
-    }
-
-    const executionStrategy =
-      executionStrategyContext ??
-      (await getEthereumExecutionStrategy(
-        client,
-        updatedClient,
-        step,
-        fromChain,
-        retryParams
-      ))
 
     const action = statusManager.initializeAction({
       step,
@@ -69,8 +52,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
+    const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -81,6 +64,11 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
     const spenderAddress = permit2Supported
       ? fromChain.permit2
       : step.estimate.approvalAddress
+
+    const updatedClient = await checkClient(step)
+    if (!updatedClient) {
+      return { status: 'PAUSED' }
+    }
 
     // Reset allowance to 0 if required
     const resetResult = await setAllowance(

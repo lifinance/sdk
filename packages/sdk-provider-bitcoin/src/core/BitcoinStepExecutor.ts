@@ -59,14 +59,14 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskClassName = swapOrBridgeAction?.txHash
+    const taskName = swapOrBridgeAction?.txHash
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask
-        : BitcoinWaitForTransactionTask
-      : CheckBalanceTask
+        ? WaitForTransactionStatusTask.name
+        : BitcoinWaitForTransactionTask.name
+      : CheckBalanceTask.name
 
     const firstTaskIndex = tasks.findIndex(
-      (task) => task instanceof taskClassName
+      (task) => task.constructor.name === taskName
     )
 
     const tasksToRun = tasks.slice(firstTaskIndex)

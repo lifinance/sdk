@@ -17,28 +17,8 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
       statusManager,
       allowUserInteraction,
       transactionRequest,
-      checkClient,
-      client,
-      fromChain,
-      retryParams,
-      executionStrategy: executionStrategyContext,
       isBridgeExecution,
     } = context
-
-    let executionStrategy = executionStrategyContext
-    if (!executionStrategyContext) {
-      const updatedClient = await checkClient(step)
-      if (!updatedClient) {
-        return { status: 'PAUSED' }
-      }
-      executionStrategy = await getEthereumExecutionStrategy(
-        client,
-        updatedClient,
-        step,
-        fromChain,
-        retryParams
-      )
-    }
 
     const action = statusManager.findAction(
       step,
@@ -57,6 +37,7 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
+    const executionStrategy = await getEthereumExecutionStrategy(context)
     if (executionStrategy === 'batched' && transactionRequest) {
       return new EthereumBatchedSignAndExecuteTask().run(context)
     }
