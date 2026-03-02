@@ -1,6 +1,7 @@
+import type { LiFiStep } from '@lifi/types'
 import { describe, expect, it, vi } from 'vitest'
-import { TransactionError } from '../errors/errors.js'
-import type { LiFiStep, StatusManager } from '../index.js'
+import type { StatusManager } from '../../../core/StatusManager.js'
+import { TransactionError } from '../../../errors/errors.js'
 import { stepComparison } from './stepComparison.js'
 
 describe('stepComparison', () => {
