@@ -19,10 +19,12 @@ import type { SolanaStepExecutorOptions } from './types.js'
 
 export class SolanaStepExecutor extends BaseStepExecutor {
   private walletAdapter: SignerWalletAdapter
+  private skipSimulation: boolean
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.walletAdapter = options.walletAdapter
+    this.skipSimulation = options.skipSimulation ?? false
   }
 
   checkWalletAdapter = (step: LiFiStepExtended) => {
@@ -244,18 +246,20 @@ export class SolanaStepExecutor extends BaseStepExecutor {
           // Use regular transaction for single transaction
           const signedTransaction = signedTransactions[0]
 
-          const simulationResult = await callSolanaWithRetry((connection) =>
-            connection.simulateTransaction(signedTransaction, {
-              commitment: 'confirmed',
-              replaceRecentBlockhash: true,
-            })
-          )
-
-          if (simulationResult.value.err) {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionSimulationFailed,
-              'Transaction simulation failed'
+          if (!this.skipSimulation) {
+            const simulationResult = await callSolanaWithRetry((connection) =>
+              connection.simulateTransaction(signedTransaction, {
+                commitment: 'confirmed',
+                replaceRecentBlockhash: true,
+              })
             )
+
+            if (simulationResult.value.err) {
+              throw new TransactionError(
+                LiFiErrorCode.TransactionSimulationFailed,
+                'Transaction simulation failed'
+              )
+            }
           }
 
           confirmedTransaction =
