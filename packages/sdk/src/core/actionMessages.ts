@@ -8,11 +8,20 @@ const actionMessages: Record<
   ExecutionActionType,
   Partial<Record<ExecutionActionStatus, string>>
 > = {
-  TOKEN_ALLOWANCE: {
+  CHECK_ALLOWANCE: {
+    STARTED: 'Checking token allowance',
+    PENDING: 'Waiting for token allowance check',
+    DONE: 'Token allowance checked',
+  },
+  RESET_ALLOWANCE: {
+    STARTED: 'Resetting token allowance',
+    RESET_REQUIRED: 'Resetting token allowance',
+    PENDING: 'Waiting for token allowance reset',
+    DONE: 'Token allowance reset',
+  },
+  SET_ALLOWANCE: {
     STARTED: 'Setting token allowance',
     ACTION_REQUIRED: 'Set token allowance',
-    RESET_REQUIRED: 'Resetting token allowance',
-    MESSAGE_REQUIRED: 'Sign token allowance message',
     PENDING: 'Waiting for token allowance',
     DONE: 'Token allowance set',
   },
@@ -31,6 +40,7 @@ const actionMessages: Record<
     DONE: 'Bridge transaction confirmed',
   },
   RECEIVING_CHAIN: {
+    STARTED: 'Waiting for destination chain',
     PENDING: 'Waiting for destination chain',
     DONE: 'Bridge completed',
   },
@@ -40,7 +50,14 @@ const actionMessages: Record<
     PENDING: 'Waiting for permit message',
     DONE: 'Permit message signed',
   },
+  NATIVE_PERMIT: {
+    STARTED: 'Preparing transaction',
+    ACTION_REQUIRED: 'Sign permit message',
+    PENDING: 'Waiting for permit message',
+    DONE: 'Permit message signed',
+  },
 }
+
 const substatusMessages: Record<
   StatusMessage,
   Partial<Record<Substatus, string>>

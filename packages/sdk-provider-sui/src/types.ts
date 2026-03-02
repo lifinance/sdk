@@ -1,14 +1,28 @@
 import {
   ChainType,
+  type LiFiStepExtended,
   type SDKProvider,
+  type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type { ClientWithCoreApi } from '@mysten/sui/client'
+import type { ClientWithCoreApi, SuiClientTypes } from '@mysten/sui/client'
 import type { Signer } from '@mysten/sui/cryptography'
 
 export interface SuiProviderOptions {
   getClient?: () => Promise<ClientWithCoreApi>
   getSigner?: () => Promise<Signer>
+}
+
+export interface SuiTaskContext {
+  signedTransaction?: SuiClientTypes.Transaction
+}
+
+export interface SuiStepExecutorContext
+  extends StepExecutorContext,
+    SuiTaskContext {
+  suiClient: ClientWithCoreApi
+  signer: Signer
+  checkWallet: (step: LiFiStepExtended) => void
 }
 
 export interface SuiSDKProvider extends SDKProvider {

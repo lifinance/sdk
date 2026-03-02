@@ -2,7 +2,7 @@ import { isUTXOAddress } from '@bigmi/core'
 import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { getBitcoinBalance } from './actions/getBitcoinBalance.js'
 import { resolveBitcoinAddress } from './actions/resolveBitcoinAddress.js'
-import { BitcoinStepExecutor } from './BitcoinStepExecutor.js'
+import { BitcoinStepExecutor } from './core/BitcoinStepExecutor.js'
 import type { BitcoinProviderOptions, BitcoinSDKProvider } from './types.js'
 
 export function BitcoinProvider(
