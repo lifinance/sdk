@@ -3,7 +3,7 @@
  *
  * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
  */
-class LruMap<value = unknown> extends Map<string, value> {
+export class LruMap<value = unknown> extends Map<string, value> {
   maxSize: number
 
   constructor(size: number) {
