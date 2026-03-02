@@ -154,8 +154,7 @@ export async function getOrCreateAgentWallet(
 ): Promise<AgentWalletResult> {
   const existing = await loadAgentWallet(storage, ownerAddress, keyPrefix)
   if (
-    existing &&
-    existing.approved &&
+    existing?.approved &&
     existing.expiresAt - Date.now() > EXPIRATION_BUFFER_MS
   ) {
     return {
