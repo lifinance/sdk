@@ -83,13 +83,20 @@ export interface InteractionSettings {
   allowExecution?: boolean
 }
 
+/**
+ * Params passed when retrying executeStep after an ExecuteStepRetryError.
+ * Providers can use this to pass strategy-specific retry options (e.g. atomicityNotReady for Ethereum 7702).
+ */
+export type ExecuteStepRetryParams = Record<string, unknown>
+
 export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
   executeStep(
     client: SDKClient,
-    step: LiFiStepExtended
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
   ): Promise<LiFiStepExtended>
 }
 
@@ -216,8 +223,11 @@ export type ExecutionActionStatus =
   | 'CANCELLED'
 
 export type ExecutionActionType =
-  | 'TOKEN_ALLOWANCE'
   | 'PERMIT'
+  | 'CHECK_ALLOWANCE'
+  | 'NATIVE_PERMIT'
+  | 'RESET_ALLOWANCE'
+  | 'SET_ALLOWANCE'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
@@ -225,21 +235,17 @@ export type ExecutionActionType =
 export type ExecutionAction = {
   type: ExecutionActionType
   status: ExecutionActionStatus
+  message?: string
   substatus?: Substatus
+  substatusMessage?: string
   chainId?: number
   txHash?: string
-  taskId?: string
   txLink?: string
+  taskId?: string
   txType?: TransactionMethodType
-  message?: string
-  error?: {
-    code: string | number
-    message: string
-    htmlMessage?: string
-  }
-
-  // additional information
-  [key: string]: any
+  txHex?: string
+  // Errors occured during the action execution (within tasks)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export interface Execution {
@@ -247,6 +253,7 @@ export interface Execution {
   signedAt?: number
   status: ExecutionStatus
   actions: Array<ExecutionAction>
+  lastActionType?: ExecutionActionType
   fromAmount?: string
   toAmount?: string
   toToken?: Token
@@ -254,6 +261,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+  // Errors occured outside of actions (e.g. during context creation)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export type TransactionMethodType =
