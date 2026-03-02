@@ -1,12 +1,25 @@
 import {
   ChainType,
   type SDKProvider,
+  type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type { Wallet } from '@wallet-standard/base'
+import type { Transaction } from '@solana/kit'
+import type { Wallet, WalletAccount } from '@wallet-standard/base'
 
 export interface SolanaProviderOptions {
   getWallet?: () => Promise<Wallet>
+}
+
+export interface SolanaTaskContext {
+  signedTransactions?: Transaction[]
+}
+
+export interface SolanaStepExecutorContext
+  extends StepExecutorContext,
+    SolanaTaskContext {
+  wallet: Wallet
+  walletAccount: WalletAccount
 }
 
 export interface SolanaSDKProvider extends SDKProvider {

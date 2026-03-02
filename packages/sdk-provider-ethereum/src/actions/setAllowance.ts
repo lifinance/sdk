@@ -3,7 +3,13 @@ import type {
   SDKClient,
   TransactionParameters,
 } from '@lifi/sdk'
-import type { Address, Client, Hash, SendTransactionParameters } from 'viem'
+import type {
+  Address,
+  Client,
+  Hash,
+  Hex,
+  SendTransactionParameters,
+} from 'viem'
 import { encodeFunctionData } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
@@ -21,7 +27,7 @@ export const setAllowance = async (
   amount: bigint,
   executionOptions?: ExecutionOptions,
   returnPopulatedTransaction?: boolean
-): Promise<Hash> => {
+): Promise<Hash | Hex> => {
   const data = encodeFunctionData({
     abi: approveAbi,
     functionName: 'approve',
