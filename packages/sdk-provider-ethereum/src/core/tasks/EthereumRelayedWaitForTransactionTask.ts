@@ -11,14 +11,8 @@ import { updateActionWithReceipt } from './helpers/updateActionWithReceipt.js'
 
 export class EthereumRelayedWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const {
-      client,
-      step,
-      statusManager,
-      fromChain,
-      isBridgeExecution,
-      checkClient,
-    } = context
+    const { client, step, statusManager, fromChain, isBridgeExecution } =
+      context
 
     const action = statusManager.findAction(
       step,
@@ -29,11 +23,6 @@ export class EthereumRelayedWaitForTransactionTask extends BaseStepExecutionTask
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Action not found.'
       )
-    }
-
-    const updatedClient = await checkClient(step)
-    if (!updatedClient) {
-      return { status: 'PAUSED' }
     }
 
     const transactionReceipt = await waitForRelayedTransactionReceipt(
