@@ -2,7 +2,6 @@ import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { checkDisableMessageSigning } from './helpers/checkDisableMessageSigning.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
@@ -21,6 +20,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       client,
       statusManager,
       isFromNativeToken,
+      disableMessageSigning,
     } = context
 
     // Start new allowance check
@@ -32,7 +32,6 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     })
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
-    const disableMessageSigning = await checkDisableMessageSigning(context)
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -67,7 +66,6 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
         hasAllowance: allowance > 0n,
         hasSufficientAllowance: fromAmount <= allowance,
         executionStrategy,
-        disableMessageSigning,
       },
     }
   }

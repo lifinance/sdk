@@ -13,10 +13,10 @@ import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
-import { checkDisableMessageSigning } from './helpers/checkDisableMessageSigning.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
-import { getActionTransactionData } from './helpers/getActionTransactionData.js'
+import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolveTransactionHash } from './helpers/resolveTransactionHash.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -31,6 +31,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
+      disableMessageSigning,
     } = context
 
     if (!transactionRequest) {
@@ -57,7 +58,6 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const disableMessageSigning = await checkDisableMessageSigning(context)
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -134,7 +134,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       chain: convertExtendedChain(fromChain),
     } as SendTransactionParameters)
 
-    const actionTransactionData = await getActionTransactionData(
+    const resolvedTxHash = await resolveTransactionHash(
       client,
       updatedClient,
       txHash,
@@ -142,7 +142,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
-      ...actionTransactionData,
+      txHash: resolvedTxHash,
+      txLink: getTxLink(fromChain, resolvedTxHash),
+      txType: 'standard',
       signedAt: Date.now(),
     })
 
@@ -150,7 +152,6 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       status: 'COMPLETED',
       context: {
         transactionRequest: finalTransactionRequest,
-        disableMessageSigning,
       },
     }
   }

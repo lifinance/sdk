@@ -265,8 +265,4 @@ export interface Execution {
   error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
-export type TransactionMethodType =
-  | 'standard'
-  | 'relayed'
-  | 'batched'
-  | 'safe-queued'
+export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

@@ -10,15 +10,19 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
-import { checkDisableMessageSigning } from './helpers/checkDisableMessageSigning.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, fromChain, hasMatchingPermit, hasSufficientAllowance } =
-      context
+    const {
+      step,
+      fromChain,
+      hasMatchingPermit,
+      hasSufficientAllowance,
+      disableMessageSigning,
+    } = context
 
     if (hasMatchingPermit || hasSufficientAllowance) {
       return false
@@ -26,7 +30,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-    const disableMessageSigning = await checkDisableMessageSigning(context)
     // Check if proxy contract is available and message signing is not disabled, also not available for atomic batch
     const isNativePermitAvailable =
       !!fromChain.permit2Proxy &&

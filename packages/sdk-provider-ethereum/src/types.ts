@@ -25,7 +25,7 @@ export interface EthereumProviderOptions {
 }
 
 export interface EthereumTaskContext {
-  disableMessageSigning?: boolean
+  disableMessageSigning: boolean
   transactionRequest?: TransactionParameters
   executionStrategy?: TransactionMethodType
   calls: Call[]

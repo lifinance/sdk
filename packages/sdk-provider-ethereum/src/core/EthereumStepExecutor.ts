@@ -89,15 +89,21 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
-    const { step, fromChain } = baseContext
+    const { step, fromChain, executionOptions } = baseContext
 
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
       isZeroAddress(step.action.fromToken.address)
 
+    // Check if message signing is disabled - useful for smart contract wallets
+    // We also disable message signing for custom steps
+    const disableMessageSigning =
+      executionOptions?.disableMessageSigning || step.type !== 'lifi'
+
     return {
       ...baseContext,
       isFromNativeToken,
+      disableMessageSigning,
       ethereumClient: this.client,
       checkClient: this.checkClient,
       // Signed typed data for native permits and other messages

@@ -7,19 +7,16 @@ import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
-import { checkDisableMessageSigning } from './helpers/checkDisableMessageSigning.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step } = context
+    const { step, disableMessageSigning } = context
 
     const permitTypedData = step.typedData?.filter(
       (typedData) => typedData.primaryType === 'Permit'
     )
-
-    const disableMessageSigning = await checkDisableMessageSigning(context)
 
     return !!permitTypedData?.length && !disableMessageSigning
   }

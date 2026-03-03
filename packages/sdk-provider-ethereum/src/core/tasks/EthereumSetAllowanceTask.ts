@@ -4,11 +4,10 @@ import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import { MaxUint256 } from '../../permits/constants.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { checkDisableMessageSigning } from './helpers/checkDisableMessageSigning.js'
-import { getActionTransactionData } from './helpers/getActionTransactionData.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolveTransactionHash } from './helpers/resolveTransactionHash.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -28,6 +27,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       calls: currentCalls,
+      disableMessageSigning,
     } = context
 
     const action = statusManager.initializeAction({
@@ -49,7 +49,6 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-    const disableMessageSigning = await checkDisableMessageSigning(context)
     const permit2Supported = isPermit2Supported(
       step,
       fromChain,
@@ -94,14 +93,15 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
       statusManager.updateAction(step, action.type, 'DONE')
     } else {
-      const actionTransactionData = await getActionTransactionData(
+      const resolvedTxHash = await resolveTransactionHash(
         client,
         updatedClient,
         approveResult,
         fromChain
       )
       statusManager.updateAction(step, action.type, 'PENDING', {
-        ...actionTransactionData,
+        txHash: resolvedTxHash,
+        txLink: getTxLink(fromChain, resolvedTxHash),
       })
 
       const transactionReceipt = await waitForTransactionReceipt(client, {
@@ -117,8 +117,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
         },
       })
 
-      const finalHash =
-        transactionReceipt?.transactionHash || actionTransactionData.txHash
+      const finalHash = transactionReceipt?.transactionHash || resolvedTxHash
       statusManager.updateAction(step, action.type, 'DONE', {
         txHash: finalHash,
         txLink: getTxLink(fromChain, finalHash),
@@ -127,7 +126,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      context: { calls, executionStrategy, disableMessageSigning },
+      context: { calls, executionStrategy },
     }
   }
 }
