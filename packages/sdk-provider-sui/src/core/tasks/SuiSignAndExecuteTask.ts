@@ -5,14 +5,15 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { signAndExecuteTransaction } from '@mysten/wallet-standard'
+import { Transaction } from '@mysten/sui/transactions'
 import type { SuiStepExecutorContext } from '../../types.js'
 
 export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: SuiStepExecutorContext): Promise<TaskResult> {
     const {
       step,
-      wallet,
+      suiClient,
+      signer,
       statusManager,
       executionOptions,
       isBridgeExecution,
@@ -39,23 +40,29 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
     checkWallet(step)
 
     // We give users 2 minutes to sign the transaction
-    const signedTransaction = await signAndExecuteTransaction(wallet, {
-      account: wallet.accounts.find(
-        (account) => account.address === step.action.fromAddress
-      )!,
-      chain: 'sui:mainnet',
-      transaction: {
-        toJSON: async () => transactionRequestData,
-      },
+    const {
+      $kind,
+      FailedTransaction,
+      Transaction: TransactionResult,
+    } = await suiClient.core.signAndExecuteTransaction({
+      signer,
+      transaction: Transaction.from(transactionRequestData),
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
     })
 
+    if ($kind !== 'Transaction' || !TransactionResult) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        `Transaction failed: ${FailedTransaction?.status.error ?? `Unexpected transaction result: ${$kind}`}`
+      )
+    }
+
     return {
       status: 'COMPLETED',
-      context: { signedTransaction },
+      context: { signedTransaction: TransactionResult },
     }
   }
 }
