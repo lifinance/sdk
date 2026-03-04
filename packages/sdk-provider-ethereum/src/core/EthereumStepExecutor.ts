@@ -43,6 +43,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
   private storage?: SDKStorage
+  private disableMessageSigning?: boolean
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)

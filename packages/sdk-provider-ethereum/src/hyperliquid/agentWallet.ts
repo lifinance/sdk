@@ -13,6 +13,7 @@ const EXPIRATION_BUFFER_MS = 60 * 60 * 1000 // 1 hour
 const ENCRYPTION_SALT = 'li.fi-sdk:agent-wallet-encryption'
 
 interface StoredAgentWallet {
+  address: string
   pkey: string
   expiresAt: number
   approved: boolean
@@ -84,11 +85,13 @@ async function decrypt(encoded: string, key: CryptoKey): Promise<string> {
 async function saveAgentWallet(
   storage: SDKStorage,
   ownerAddress: string,
+  accountAddress: string,
   privateKey: Hex,
   keyPrefix?: string
 ): Promise<void> {
   const encryptionKey = await deriveKey(ownerAddress)
   const data: StoredAgentWallet = {
+    address: accountAddress,
     pkey: await encrypt(privateKey, encryptionKey),
     expiresAt: Date.now() + DEFAULT_EXPIRATION_MS,
     approved: false,
@@ -167,6 +170,12 @@ export async function getOrCreateAgentWallet(
   const privateKey = generatePrivateKey()
   const account = privateKeyToAccount(privateKey)
   const expiresAt = Date.now() + DEFAULT_EXPIRATION_MS
-  await saveAgentWallet(storage, ownerAddress, privateKey, keyPrefix)
+  await saveAgentWallet(
+    storage,
+    ownerAddress,
+    account.address,
+    privateKey,
+    keyPrefix
+  )
   return { account, needsApproval: true, expiresAt }
 }
