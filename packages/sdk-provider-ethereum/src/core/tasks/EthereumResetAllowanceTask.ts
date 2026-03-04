@@ -1,12 +1,12 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
+import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
-import { resolveTransactionHash } from './helpers/resolveTransactionHash.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -35,7 +35,6 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       client,
       calls: currentCalls,
       disableMessageSigning,
-      safeApiKey,
     } = context
 
     const action = statusManager.initializeAction({
@@ -92,10 +91,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       })
     } else {
       const resolvedTxHash = await resolveTransactionHash(
+        client,
         updatedClient,
         resetResult,
-        fromChain,
-        safeApiKey
+        fromChain.id
       )
       statusManager.updateAction(step, action.type, 'PENDING', {
         txHash: resolvedTxHash,

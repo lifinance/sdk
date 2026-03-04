@@ -1,12 +1,17 @@
-import { LiFiErrorCode, TransactionError, waitForResult } from '@lifi/sdk'
+import {
+  LiFiErrorCode,
+  type SDKClient,
+  TransactionError,
+  waitForResult,
+} from '@lifi/sdk'
 import type { Address, Hash } from 'viem'
 import { getSafeClient } from '../client/safeClient.js'
+import { getSafeApiKey } from '../utils/getSafeApiKey.js'
 
 export interface WaitForSafeTransactionExecutionProps {
   chainId: number
   safeAddress: Address
   signature: string
-  safeApiKey?: string
   pollingInterval?: number
   timeout?: number
 }
@@ -15,20 +20,24 @@ export interface WaitForSafeTransactionExecutionProps {
  * Polls the Safe Transaction Service until the transaction matching the given signature
  * is executed, then resolves with the on-chain transaction hash.
  *
+ * @param client - {@link SDKClient}
  * @param props - {@link WaitForSafeTransactionExecutionProps}
  * @returns The on-chain transaction hash once the Safe transaction is executed.
  * @throws {TransactionError} If the transaction fails, is replaced, or polling times out.
  */
-export async function waitForSafeTransactionExecution({
-  chainId,
-  safeAddress,
-  signature,
-  safeApiKey,
-  pollingInterval,
-  timeout: timeoutMs,
-}: WaitForSafeTransactionExecutionProps): Promise<Hash> {
+export async function waitForSafeTransactionExecution(
+  client: SDKClient,
+  {
+    chainId,
+    safeAddress,
+    signature,
+    pollingInterval,
+    timeout: timeoutMs,
+  }: WaitForSafeTransactionExecutionProps
+): Promise<Hash> {
   const basePollingInterval = pollingInterval ?? 10_000
   const timeout = timeoutMs ?? 3_600_000 * 24 // 24 hours default
+  const safeApiKey = getSafeApiKey(client)
   const safeClient = getSafeClient(chainId, safeApiKey)
   let safeTxHash: Hash | undefined
   let originalNonce: number | undefined

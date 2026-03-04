@@ -33,21 +33,18 @@ import { switchChain } from './tasks/helpers/switchChain.js'
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
-  safeApiKey?: string
   disableMessageSigning?: boolean
 }
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
-  private safeApiKey?: string
   private disableMessageSigning?: boolean
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
-    this.safeApiKey = options.safeApiKey
     this.disableMessageSigning = options.disableMessageSigning
   }
 
@@ -110,7 +107,6 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       ...baseContext,
       isFromNativeToken,
       disableMessageSigning,
-      safeApiKey: this.safeApiKey,
       ethereumClient: this.client,
       checkClient: this.checkClient,
       // Signed typed data for native permits and other messages

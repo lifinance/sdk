@@ -7,6 +7,7 @@ import {
 import type { Address, Hex, SendTransactionParameters } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { encodeNativePermitData } from '../../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../../permits/signPermit2Message.js'
@@ -16,7 +17,6 @@ import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
-import { resolveTransactionHash } from './helpers/resolveTransactionHash.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -32,7 +32,6 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       allowUserInteraction,
       isBridgeExecution,
       disableMessageSigning,
-      safeApiKey,
     } = context
 
     if (!transactionRequest) {
@@ -136,10 +135,10 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     } as SendTransactionParameters)
 
     const resolvedTxHash = await resolveTransactionHash(
+      client,
       updatedClient,
       txHash,
-      fromChain,
-      safeApiKey
+      fromChain.id
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
