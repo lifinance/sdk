@@ -61,7 +61,9 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     if (simulationResult.value.err) {
       const errorMessage =
         typeof simulationResult.value.err === 'object'
-          ? JSON.stringify(simulationResult.value.err)
+          ? JSON.stringify(simulationResult.value.err, (_, v) =>
+              typeof v === 'bigint' ? v.toString() : v
+            )
           : simulationResult.value.err
       throw new TransactionError(
         LiFiErrorCode.TransactionSimulationFailed,
@@ -82,7 +84,9 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     if (result.signatureResult.err) {
       const reason =
         typeof result.signatureResult.err === 'object'
-          ? JSON.stringify(result.signatureResult.err)
+          ? JSON.stringify(result.signatureResult.err, (_, v) =>
+              typeof v === 'bigint' ? v.toString() : v
+            )
           : result.signatureResult.err
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
