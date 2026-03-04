@@ -19,9 +19,9 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     const {
       step,
       fromChain,
-      disableMessageSigning,
       hasMatchingPermit,
       hasSufficientAllowance,
+      disableMessageSigning,
     } = context
 
     if (hasMatchingPermit || hasSufficientAllowance) {

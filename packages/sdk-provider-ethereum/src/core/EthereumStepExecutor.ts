@@ -33,16 +33,19 @@ import { switchChain } from './tasks/helpers/switchChain.js'
 interface EthereumStepExecutorOptions extends StepExecutorOptions {
   client: Client
   switchChain?: (chainId: number) => Promise<Client | undefined>
+  disableMessageSigning?: boolean
 }
 
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
+  private disableMessageSigning?: boolean
 
   constructor(options: EthereumStepExecutorOptions) {
     super(options)
     this.client = options.client
     this.switchChain = options.switchChain
+    this.disableMessageSigning = options.disableMessageSigning
   }
 
   override parseErrors = (
@@ -89,7 +92,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<EthereumStepExecutorContext> => {
-    const { step, fromChain, executionOptions } = baseContext
+    const { step, fromChain } = baseContext
 
     const isFromNativeToken =
       fromChain.nativeToken.address === step.action.fromToken.address &&
@@ -98,7 +101,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     // Check if message signing is disabled - useful for smart contract wallets
     // We also disable message signing for custom steps
     const disableMessageSigning =
-      executionOptions?.disableMessageSigning || step.type !== 'lifi'
+      !!this.disableMessageSigning || step.type !== 'lifi'
 
     return {
       ...baseContext,

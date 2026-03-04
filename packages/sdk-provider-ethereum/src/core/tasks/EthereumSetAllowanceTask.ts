@@ -1,5 +1,6 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
+import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import { MaxUint256 } from '../../permits/constants.js'
@@ -23,10 +24,10 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       executionOptions,
       fromChain,
       isFromNativeToken,
-      disableMessageSigning,
       allowUserInteraction,
       checkClient,
       calls: currentCalls,
+      disableMessageSigning,
     } = context
 
     const action = statusManager.initializeAction({
@@ -92,9 +93,15 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
       statusManager.updateAction(step, action.type, 'DONE')
     } else {
+      const resolvedTxHash = await resolveTransactionHash(
+        client,
+        updatedClient,
+        approveResult,
+        fromChain.id
+      )
       statusManager.updateAction(step, action.type, 'PENDING', {
-        txHash: approveResult,
-        txLink: getTxLink(fromChain, approveResult),
+        txHash: resolvedTxHash,
+        txLink: getTxLink(fromChain, resolvedTxHash),
       })
 
       const transactionReceipt = await waitForTransactionReceipt(client, {
@@ -110,13 +117,16 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
         },
       })
 
-      const finalHash = transactionReceipt?.transactionHash || approveResult
+      const finalHash = transactionReceipt?.transactionHash || resolvedTxHash
       statusManager.updateAction(step, action.type, 'DONE', {
         txHash: finalHash,
         txLink: getTxLink(fromChain, finalHash),
       })
     }
 
-    return { status: 'COMPLETED', context: { calls, executionStrategy } }
+    return {
+      status: 'COMPLETED',
+      context: { calls, executionStrategy },
+    }
   }
 }

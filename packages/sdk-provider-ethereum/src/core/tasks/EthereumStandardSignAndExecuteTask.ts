@@ -7,6 +7,7 @@ import {
 import type { Address, Hex, SendTransactionParameters } from 'viem'
 import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { encodeNativePermitData } from '../../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../../permits/signPermit2Message.js'
@@ -14,6 +15,7 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
+import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
@@ -24,12 +26,12 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       isFromNativeToken,
-      disableMessageSigning,
       checkClient,
       transactionRequest,
       signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
+      disableMessageSigning,
     } = context
 
     if (!transactionRequest) {
@@ -132,18 +134,25 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       chain: convertExtendedChain(fromChain),
     } as SendTransactionParameters)
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
+    const resolvedTxHash = await resolveTransactionHash(
+      client,
+      updatedClient,
       txHash,
+      fromChain.id
+    )
+
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      txHash: resolvedTxHash,
+      txLink: getTxLink(fromChain, resolvedTxHash),
       txType: 'standard',
-      txLink: txHash
-        ? `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`
-        : undefined,
       signedAt: Date.now(),
     })
 
     return {
       status: 'COMPLETED',
-      context: { transactionRequest: finalTransactionRequest },
+      context: {
+        transactionRequest: finalTransactionRequest,
+      },
     }
   }
 }

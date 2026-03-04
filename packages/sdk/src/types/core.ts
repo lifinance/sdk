@@ -202,7 +202,6 @@ export interface ExecutionOptions {
   getContractCalls?: GetContractCallsHook
   adjustZeroOutputFromPreviousStep?: boolean
   executeInBackground?: boolean
-  disableMessageSigning?: boolean
   /**
    * @deprecated
    */

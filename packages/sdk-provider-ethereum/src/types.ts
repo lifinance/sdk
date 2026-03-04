@@ -21,9 +21,12 @@ export interface EthereumProviderOptions {
   getWalletClient?: () => Promise<Client>
   switchChain?: (chainId: number) => Promise<Client | undefined>
   fallbackTransportConfig?: FallbackTransportConfig
+  safeApiKey?: string
+  disableMessageSigning?: boolean
 }
 
 export interface EthereumTaskContext {
+  disableMessageSigning: boolean
   transactionRequest?: TransactionParameters
   executionStrategy?: TransactionMethodType
   calls: Call[]
@@ -37,7 +40,6 @@ export interface EthereumStepExecutorContext
   extends StepExecutorContext,
     EthereumTaskContext {
   isFromNativeToken: boolean
-  disableMessageSigning: boolean
   ethereumClient: Client
   checkClient: (
     step: LiFiStepExtended,

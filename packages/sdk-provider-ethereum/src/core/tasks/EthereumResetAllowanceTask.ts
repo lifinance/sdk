@@ -1,5 +1,6 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { Address } from 'viem'
+import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
@@ -30,10 +31,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       checkClient,
       fromChain,
       isFromNativeToken,
-      disableMessageSigning,
       executionOptions,
       client,
       calls: currentCalls,
+      disableMessageSigning,
     } = context
 
     const action = statusManager.initializeAction({
@@ -89,9 +90,15 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
         chainId: step.action.fromToken.chainId,
       })
     } else {
+      const resolvedTxHash = await resolveTransactionHash(
+        client,
+        updatedClient,
+        resetResult,
+        fromChain.id
+      )
       statusManager.updateAction(step, action.type, 'PENDING', {
-        txHash: resetResult,
-        txLink: getTxLink(fromChain, resetResult),
+        txHash: resolvedTxHash,
+        txLink: getTxLink(fromChain, resolvedTxHash),
       })
 
       const transactionReceipt = await waitForTransactionReceipt(client, {
@@ -106,8 +113,9 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
           })
         },
       })
-      const finalHash = transactionReceipt?.transactionHash || resetResult
-      statusManager.updateAction(step, action.type, action.status, {
+
+      const finalHash = transactionReceipt?.transactionHash || resolvedTxHash
+      statusManager.updateAction(step, action.type, 'PENDING', {
         txHash: finalHash,
         txLink: getTxLink(fromChain, finalHash),
       })
@@ -115,6 +123,9 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE')
 
-    return { status: 'COMPLETED', context: { calls, executionStrategy } }
+    return {
+      status: 'COMPLETED',
+      context: { calls, executionStrategy },
+    }
   }
 }
