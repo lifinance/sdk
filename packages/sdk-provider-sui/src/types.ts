@@ -5,23 +5,23 @@ import {
   type StepExecutorContext,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import type {
-  SuiSignAndExecuteTransactionOutput,
-  WalletWithRequiredFeatures,
-} from '@mysten/wallet-standard'
+import type { ClientWithCoreApi, SuiClientTypes } from '@mysten/sui/client'
+import type { Signer } from '@mysten/sui/cryptography'
 
 export interface SuiProviderOptions {
-  getWallet?: () => Promise<WalletWithRequiredFeatures>
+  getClient?: () => Promise<ClientWithCoreApi>
+  getSigner?: () => Promise<Signer>
 }
 
 export interface SuiTaskContext {
-  signedTransaction?: SuiSignAndExecuteTransactionOutput
+  signedTransaction?: SuiClientTypes.Transaction
 }
 
 export interface SuiStepExecutorContext
   extends StepExecutorContext,
     SuiTaskContext {
-  wallet: WalletWithRequiredFeatures
+  suiClient: ClientWithCoreApi
+  signer: Signer
   checkWallet: (step: LiFiStepExtended) => void
 }
 
@@ -36,7 +36,8 @@ export function isSuiProvider(
 }
 
 export interface SuiStepExecutorOptions extends StepExecutorOptions {
-  wallet: WalletWithRequiredFeatures
+  client: ClientWithCoreApi
+  signer: Signer
 }
 
 export const SuiTokenShortAddress = '0x2::sui::SUI'
