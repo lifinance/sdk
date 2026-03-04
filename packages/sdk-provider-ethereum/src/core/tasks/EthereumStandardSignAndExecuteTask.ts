@@ -32,6 +32,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       allowUserInteraction,
       isBridgeExecution,
       disableMessageSigning,
+      safeApiKey,
     } = context
 
     if (!transactionRequest) {
@@ -135,10 +136,10 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     } as SendTransactionParameters)
 
     const resolvedTxHash = await resolveTransactionHash(
-      client,
       updatedClient,
       txHash,
-      fromChain
+      fromChain,
+      safeApiKey
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {

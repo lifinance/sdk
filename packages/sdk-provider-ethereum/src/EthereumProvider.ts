@@ -32,6 +32,8 @@ export function EthereumProvider(
       const executor = new EthereumStepExecutor({
         client: walletClient,
         switchChain: _options.switchChain,
+        safeApiKey: _options.safeApiKey,
+        disableMessageSigning: _options.disableMessageSigning,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,

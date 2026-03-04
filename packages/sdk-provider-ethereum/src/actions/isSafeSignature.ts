@@ -1,4 +1,3 @@
-import type { SDKClient } from '@lifi/sdk'
 import type { Address, Client } from 'viem'
 import { isSafeWallet } from './isSafeWallet.js'
 
@@ -7,6 +6,7 @@ export interface IsSafeSignatureProps {
   chainId: number
   address?: Address
   viemClient?: Client
+  safeApiKey?: string
 }
 
 /**
@@ -15,10 +15,13 @@ export interface IsSafeSignatureProps {
  * Safe wallets via Rabby return a signature (65 bytes = 132 chars) instead of
  * a transaction hash (32 bytes = 66 chars) for queued transactions.
  */
-export async function isSafeSignature(
-  client: SDKClient,
-  { hash, chainId, address, viemClient }: IsSafeSignatureProps
-): Promise<boolean> {
+export async function isSafeSignature({
+  hash,
+  chainId,
+  address,
+  viemClient,
+  safeApiKey,
+}: IsSafeSignatureProps): Promise<boolean> {
   // Signature: 65 bytes = 130 hex chars + 0x prefix = 132 chars
   // Tx hash: 32 bytes = 64 hex chars + 0x prefix = 66 chars
   if (!hash.startsWith('0x') || hash.length <= 66) {
@@ -29,5 +32,5 @@ export async function isSafeSignature(
     return false
   }
 
-  return isSafeWallet(client, { chainId, address, viemClient })
+  return isSafeWallet({ chainId, address, viemClient, safeApiKey })
 }

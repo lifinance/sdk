@@ -22,6 +22,7 @@ export interface EthereumProviderOptions {
   switchChain?: (chainId: number) => Promise<Client | undefined>
   fallbackTransportConfig?: FallbackTransportConfig
   safeApiKey?: string
+  disableMessageSigning?: boolean
 }
 
 export interface EthereumTaskContext {
@@ -45,6 +46,7 @@ export interface EthereumStepExecutorContext
     targetChainId?: number
   ) => Promise<Client | undefined>
   switchChain?: (chainId: number) => Promise<Client | undefined>
+  safeApiKey?: string
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
 }

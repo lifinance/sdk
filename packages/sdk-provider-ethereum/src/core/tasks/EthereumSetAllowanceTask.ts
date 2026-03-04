@@ -28,6 +28,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       checkClient,
       calls: currentCalls,
       disableMessageSigning,
+      safeApiKey,
     } = context
 
     const action = statusManager.initializeAction({
@@ -94,10 +95,10 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       statusManager.updateAction(step, action.type, 'DONE')
     } else {
       const resolvedTxHash = await resolveTransactionHash(
-        client,
         updatedClient,
         approveResult,
-        fromChain
+        fromChain,
+        safeApiKey
       )
       statusManager.updateAction(step, action.type, 'PENDING', {
         txHash: resolvedTxHash,
