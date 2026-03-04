@@ -11,7 +11,8 @@ import {
   TransactionError,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
-import type { WalletWithRequiredFeatures } from '@mysten/wallet-standard'
+import type { ClientWithCoreApi } from '@mysten/sui/client'
+import type { Signer } from '@mysten/sui/cryptography'
 import { parseSuiErrors } from '../errors/parseSuiErrors.js'
 import type {
   SuiStepExecutorContext,
@@ -21,20 +22,19 @@ import { SuiSignAndExecuteTask } from './tasks/SuiSignAndExecuteTask.js'
 import { SuiWaitForTransactionTask } from './tasks/SuiWaitForTransactionTask.js'
 
 export class SuiStepExecutor extends BaseStepExecutor {
-  private wallet: WalletWithRequiredFeatures
+  private client: ClientWithCoreApi
+  private signer: Signer
 
   constructor(options: SuiStepExecutorOptions) {
     super(options)
-    this.wallet = options.wallet
+    this.client = options.client
+    this.signer = options.signer
   }
 
   checkWallet = (step: LiFiStepExtended) => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
-    if (
-      !this.wallet.accounts?.some?.(
-        (account) => account.address === step.action.fromAddress
-      )
-    ) {
+    const address = this.signer.toSuiAddress()
+    if (address !== step.action.fromAddress) {
       throw new TransactionError(
         LiFiErrorCode.WalletChangedDuringExecution,
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
@@ -53,7 +53,8 @@ export class SuiStepExecutor extends BaseStepExecutor {
   ): Promise<SuiStepExecutorContext> => {
     return {
       ...baseContext,
-      wallet: this.wallet,
+      suiClient: this.client,
+      signer: this.signer,
       checkWallet: this.checkWallet,
     }
   }
