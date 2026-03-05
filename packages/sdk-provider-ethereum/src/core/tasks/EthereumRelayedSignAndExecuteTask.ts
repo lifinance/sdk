@@ -8,7 +8,6 @@ import {
 import type { Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
-import { approveAgentWallet } from '../../hyperliquid/agentWallet.js'
 import { isHyperliquidAgentStep } from '../../hyperliquid/isHyperliquidAgentStep.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
@@ -26,8 +25,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       checkClient,
       isBridgeExecution,
       signedTypedData: currentSignedTypedData,
-      ethereumClient,
-      getStorage,
     } = context
 
     const signedTypedData = [...currentSignedTypedData]
@@ -118,11 +115,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       txLink: relayedTransaction.txLink,
       signedAt: Date.now(),
     })
-
-    if (isHyperliquidAgentStep(step) && relayedTransaction.taskId) {
-      const ownerAddress = ethereumClient.account!.address
-      await approveAgentWallet(getStorage(client), ownerAddress)
-    }
 
     return { status: 'COMPLETED', context: { signedTypedData } }
   }

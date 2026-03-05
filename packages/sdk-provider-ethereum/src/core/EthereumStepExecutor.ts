@@ -52,7 +52,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.disableMessageSigning = options.disableMessageSigning
   }
 
-  private getStorage(client: SDKClient): SDKStorage {
+  private getStorage = (client: SDKClient): SDKStorage => {
     if (!this.storage) {
       this.storage = client.config.storage ?? createDefaultStorage()
     }

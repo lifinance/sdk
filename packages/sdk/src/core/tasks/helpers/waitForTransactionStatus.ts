@@ -54,13 +54,13 @@ export async function waitForTransactionStatus(
       })
   }
 
-  let status = TRANSACTION_HASH_OBSERVERS?.[txHash]
+  let status = TRANSACTION_HASH_OBSERVERS[txHash]
 
   if (!status) {
-    status = waitForResult(_getStatus, interval)
-    if (TRANSACTION_HASH_OBSERVERS) {
-      TRANSACTION_HASH_OBSERVERS[txHash] = status
-    }
+    status = waitForResult(_getStatus, interval).finally(() => {
+      delete TRANSACTION_HASH_OBSERVERS[txHash]
+    })
+    TRANSACTION_HASH_OBSERVERS[txHash] = status
   }
 
   const resolvedStatus = await status

@@ -16,7 +16,6 @@ interface StoredAgentWallet {
   address: string
   pkey: string
   expiresAt: number
-  approved: boolean
 }
 
 export interface AgentWalletResult {
@@ -94,7 +93,6 @@ async function saveAgentWallet(
     address: accountAddress,
     pkey: await encrypt(privateKey, encryptionKey),
     expiresAt: Date.now() + DEFAULT_EXPIRATION_MS,
-    approved: false,
   }
   await storage.set(
     getStorageKey(ownerAddress, keyPrefix),
@@ -106,11 +104,7 @@ async function loadAgentWallet(
   storage: SDKStorage,
   ownerAddress: string,
   keyPrefix?: string
-): Promise<{
-  account: LocalAccount
-  expiresAt: number
-  approved: boolean
-} | null> {
+): Promise<{ account: LocalAccount; expiresAt: number } | null> {
   const raw = await storage.get(getStorageKey(ownerAddress, keyPrefix))
   if (!raw) {
     return null
@@ -122,48 +116,30 @@ async function loadAgentWallet(
     return {
       account: privateKeyToAccount(privateKey),
       expiresAt: data.expiresAt,
-      approved: data.approved,
     }
   } catch {
     return null
   }
 }
 
-export async function approveAgentWallet(
-  storage: SDKStorage,
-  ownerAddress: string,
-  keyPrefix?: string
-): Promise<void> {
-  const raw = await storage.get(getStorageKey(ownerAddress, keyPrefix))
-  if (!raw) {
-    return
-  }
-  try {
-    const data: StoredAgentWallet = JSON.parse(raw)
-    data.approved = true
-    await storage.set(
-      getStorageKey(ownerAddress, keyPrefix),
-      JSON.stringify(data)
-    )
-  } catch {
-    // Storage is corrupted, nothing to approve
-  }
-}
-
 export async function getOrCreateAgentWallet(
   storage: SDKStorage,
   ownerAddress: string,
+  existingAgentAddress?: string,
   keyPrefix?: string
 ): Promise<AgentWalletResult> {
-  const existing = await loadAgentWallet(storage, ownerAddress, keyPrefix)
-  if (
-    existing?.approved &&
-    existing.expiresAt - Date.now() > EXPIRATION_BUFFER_MS
-  ) {
-    return {
-      account: existing.account,
-      needsApproval: false,
-      expiresAt: existing.expiresAt,
+  if (existingAgentAddress) {
+    const existing = await loadAgentWallet(storage, ownerAddress, keyPrefix)
+    if (
+      existing?.account.address.toLowerCase() ===
+        existingAgentAddress.toLowerCase() &&
+      existing.expiresAt - Date.now() > EXPIRATION_BUFFER_MS
+    ) {
+      return {
+        account: existing.account,
+        needsApproval: false,
+        expiresAt: existing.expiresAt,
+      }
     }
   }
 

@@ -23,25 +23,31 @@ export const signHyperliquidTypedData = async (
     getStorage,
   } = context
 
+  if (!allowUserInteraction) {
+    return
+  }
+
   const signedResults: SignedTypedData[] = []
   const ownerAddress = ethereumClient.account!.address
   const storage = getStorage(client)
+
+  const approveMessage = intentTypedData.find(isApproveAgentMessage)
+  const existingAgentAddress = approveMessage?.message.agentAddress as
+    | string
+    | undefined
 
   const {
     account: agentAccount,
     needsApproval,
     expiresAt,
-  } = await getOrCreateAgentWallet(storage, ownerAddress)
+  } = await getOrCreateAgentWallet(storage, ownerAddress, existingAgentAddress)
 
   for (const typedData of intentTypedData) {
-    if (!allowUserInteraction) {
-      return
-    }
-
     if (isApproveAgentMessage(typedData)) {
       if (!needsApproval) {
         continue
       }
+
       const message = {
         ...typedData.message,
         agentAddress: agentAccount.address.toLowerCase(),
