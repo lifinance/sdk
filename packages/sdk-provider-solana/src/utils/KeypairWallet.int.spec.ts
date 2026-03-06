@@ -49,38 +49,37 @@ const runWalletScenario = ({ name, setup }: WalletScenario) => {
       expectedPublicKey = setupResult.expectedPublicKey
     })
 
-    it(
-      'should expose the wallet through the provider',
-      { retry: retryTimes, timeout },
-      async () => {
-        const provider = client.getProvider(ChainType.SVM)
-        expect(provider).toBeDefined()
-        if (!provider) {
-          throw new Error('Solana provider not found')
-        }
-        expect(isSolanaProvider(provider)).toBe(true)
-
-        const executor = await provider.getStepExecutor({
-          routeId: 'test-route-id',
-        })
-
-        expect(executor).toBeDefined()
-        expect(executor).toHaveProperty('executeStep')
-
-        expect(wallet.accounts).toHaveLength(1)
-        const account = wallet.accounts[0]
-
-        if (expectedAddress) {
-          expect(account.address).toEqual(expectedAddress)
-        } else {
-          expect(account.address).toBeDefined()
-        }
-
-        if (expectedPublicKey) {
-          expect(account.publicKey).toEqual(expectedPublicKey)
-        }
+    it('should expose the wallet through the provider', {
+      retry: retryTimes,
+      timeout,
+    }, async () => {
+      const provider = client.getProvider(ChainType.SVM)
+      expect(provider).toBeDefined()
+      if (!provider) {
+        throw new Error('Solana provider not found')
       }
-    )
+      expect(isSolanaProvider(provider)).toBe(true)
+
+      const executor = await provider.getStepExecutor({
+        routeId: 'test-route-id',
+      })
+
+      expect(executor).toBeDefined()
+      expect(executor).toHaveProperty('executeStep')
+
+      expect(wallet.accounts).toHaveLength(1)
+      const account = wallet.accounts[0]
+
+      if (expectedAddress) {
+        expect(account.address).toEqual(expectedAddress)
+      } else {
+        expect(account.address).toBeDefined()
+      }
+
+      if (expectedPublicKey) {
+        expect(account.publicKey).toEqual(expectedPublicKey)
+      }
+    })
   })
 }
 
