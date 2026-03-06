@@ -8,9 +8,11 @@ import {
 import type { Hash } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import { isHyperliquidAgentStep } from '../../hyperliquid/isHyperliquidAgentStep.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { signHyperliquidTypedData } from './helpers/signHyperliquidTypedData.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -51,36 +53,52 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
         'Unable to prepare transaction. Typed data for transfer is not found.'
       )
     }
+
     statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
-    for (const typedData of intentTypedData) {
-      if (!allowUserInteraction) {
+
+    if (isHyperliquidAgentStep(step)) {
+      const signedResults = await signHyperliquidTypedData(
+        context,
+        intentTypedData
+      )
+
+      if (!signedResults) {
         return { status: 'PAUSED' }
       }
 
-      const typedDataChainId =
-        getDomainChainId(typedData.domain) || fromChain.id
+      signedTypedData.push(...signedResults)
+    } else {
+      for (const typedData of intentTypedData) {
+        if (!allowUserInteraction) {
+          return { status: 'PAUSED' }
+        }
 
-      // Switch to the typed data's chain if needed
-      const updatedClient = await checkClient(step, typedDataChainId)
-      if (!updatedClient) {
-        return { status: 'PAUSED' }
+        const typedDataChainId =
+          getDomainChainId(typedData.domain) || fromChain.id
+
+        // Switch to the typed data's chain if needed
+        const updatedClient = await checkClient(step, typedDataChainId)
+        if (!updatedClient) {
+          return { status: 'PAUSED' }
+        }
+
+        const signature = await getAction(
+          updatedClient,
+          signTypedData,
+          'signTypedData'
+        )({
+          account: updatedClient.account!,
+          primaryType: typedData.primaryType,
+          domain: typedData.domain,
+          types: typedData.types,
+          message: typedData.message,
+        })
+
+        signedTypedData.push({
+          ...typedData,
+          signature: signature,
+        })
       }
-
-      const signature = await getAction(
-        updatedClient,
-        signTypedData,
-        'signTypedData'
-      )({
-        account: updatedClient.account!,
-        primaryType: typedData.primaryType,
-        domain: typedData.domain,
-        types: typedData.types,
-        message: typedData.message,
-      })
-      signedTypedData.push({
-        ...typedData,
-        signature: signature,
-      })
     }
 
     statusManager.updateAction(step, action.type, 'PENDING')

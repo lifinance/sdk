@@ -3,7 +3,9 @@ import {
   ChainType,
   type LiFiStep,
   type LiFiStepExtended,
+  type SDKClient,
   type SDKProvider,
+  type SDKStorage,
   type SignedTypedData,
   type StepExecutorContext,
   type TransactionMethodType,
@@ -46,6 +48,7 @@ export interface EthereumStepExecutorContext
     targetChainId?: number
   ) => Promise<Client | undefined>
   switchChain?: (chainId: number) => Promise<Client | undefined>
+  getStorage: (client: SDKClient) => SDKStorage
   /** Params passed when retrying executeStep (e.g. atomicityNotReady for 7702). */
   retryParams?: Record<string, unknown>
 }

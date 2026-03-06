@@ -1,12 +1,15 @@
 import {
   BaseStepExecutor,
   CheckBalanceTask,
+  createDefaultStorage,
   type ExecuteStepRetryError,
   type ExecuteStepRetryParams,
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStepExtended,
+  type SDKClient,
   type SDKError,
+  type SDKStorage,
   type StepExecutorBaseContext,
   type StepExecutorOptions,
   TaskPipeline,
@@ -39,6 +42,7 @@ interface EthereumStepExecutorOptions extends StepExecutorOptions {
 export class EthereumStepExecutor extends BaseStepExecutor {
   private client: Client
   private switchChain?: (chainId: number) => Promise<Client | undefined>
+  private storage?: SDKStorage
   private disableMessageSigning?: boolean
 
   constructor(options: EthereumStepExecutorOptions) {
@@ -46,6 +50,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     this.client = options.client
     this.switchChain = options.switchChain
     this.disableMessageSigning = options.disableMessageSigning
+  }
+
+  private getStorage = (client: SDKClient): SDKStorage => {
+    if (!this.storage) {
+      this.storage = client.config.storage ?? createDefaultStorage()
+    }
+    return this.storage
   }
 
   override parseErrors = (
@@ -109,6 +120,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       disableMessageSigning,
       ethereumClient: this.client,
       checkClient: this.checkClient,
+      getStorage: this.getStorage,
       // Signed typed data for native permits and other messages
       signedTypedData: [],
       // Calls for atomic batch transactions (EIP-5792)

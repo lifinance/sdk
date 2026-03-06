@@ -11,6 +11,10 @@ export {
   setTokenAllowance,
 } from './actions/setAllowance.js'
 export { EthereumProvider } from './EthereumProvider.js'
+export {
+  isHyperliquidAgentStep,
+  isHyperliquidOrderMessage,
+} from './hyperliquid/isHyperliquidAgentStep.js'
 export { PatcherMagicNumber } from './permits/constants.js'
 export { getNativePermit } from './permits/getNativePermit.js'
 export { isDelegationDesignatorCode } from './permits/isDelegationDesignatorCode.js'

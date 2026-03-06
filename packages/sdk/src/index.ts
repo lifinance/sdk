@@ -36,6 +36,12 @@ export {
   updateRouteExecution,
 } from './core/execution.js'
 export { StatusManager } from './core/StatusManager.js'
+export type { SDKStorage } from './core/storage.js'
+export {
+  createDefaultStorage,
+  InMemoryStorage,
+  LocalStorageAdapter,
+} from './core/storage.js'
 export { TaskPipeline } from './core/TaskPipeline.js'
 export { CheckBalanceTask } from './core/tasks/CheckBalanceTask.js'
 export { checkBalance } from './core/tasks/helpers/checkBalance.js'
