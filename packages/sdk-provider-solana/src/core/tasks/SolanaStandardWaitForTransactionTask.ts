@@ -46,30 +46,32 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     const encodedTransaction =
       getBase64EncodedWireTransaction(signedTransaction)
 
-    const simulationResult = await callSolanaRpcsWithRetry(
-      client,
-      (connection) =>
-        connection
-          .simulateTransaction(encodedTransaction, {
-            commitment: 'confirmed',
-            replaceRecentBlockhash: true,
-            encoding: 'base64',
-          })
-          .send()
-    )
-
-    if (simulationResult.value.err) {
-      const errorMessage =
-        typeof simulationResult.value.err === 'object'
-          ? JSON.stringify(simulationResult.value.err, (_, v) =>
-              typeof v === 'bigint' ? v.toString() : v
-            )
-          : simulationResult.value.err
-      throw new TransactionError(
-        LiFiErrorCode.TransactionSimulationFailed,
-        `Transaction simulation failed: ${errorMessage}`,
-        new Error(errorMessage)
+    if (!context.skipSimulation) {
+      const simulationResult = await callSolanaRpcsWithRetry(
+        client,
+        (connection) =>
+          connection
+            .simulateTransaction(encodedTransaction, {
+              commitment: 'confirmed',
+              replaceRecentBlockhash: true,
+              encoding: 'base64',
+            })
+            .send()
       )
+
+      if (simulationResult.value.err) {
+        const errorMessage =
+          typeof simulationResult.value.err === 'object'
+            ? JSON.stringify(simulationResult.value.err, (_, v) =>
+                typeof v === 'bigint' ? v.toString() : v
+              )
+            : simulationResult.value.err
+        throw new TransactionError(
+          LiFiErrorCode.TransactionSimulationFailed,
+          `Transaction simulation failed: ${errorMessage}`,
+          new Error(errorMessage)
+        )
+      }
     }
 
     const result = await sendAndConfirmTransaction(client, signedTransaction)

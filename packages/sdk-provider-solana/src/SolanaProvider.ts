@@ -36,6 +36,7 @@ export function SolanaProvider(
       const executor = new SolanaStepExecutor({
         wallet,
         routeId: options.routeId,
+        skipSimulation: _options.skipSimulation,
         executionOptions: {
           ...options.executionOptions,
         },
