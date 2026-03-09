@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.16.0](https://github.com/lifinance/sdk/compare/v3.15.7...v3.16.0) (2026-03-09)
+
+
+### Features
+
+* add skip simulation ([#357](https://github.com/lifinance/sdk/issues/357)) ([08dc60c](https://github.com/lifinance/sdk/commit/08dc60c18176f93cc48b3d7957ee4decf22d219c))
+
+
+### Bug Fixes
+
+* preserve falsy param values like slippage=0 in API requests ([#355](https://github.com/lifinance/sdk/issues/355)) ([ae1ec7e](https://github.com/lifinance/sdk/commit/ae1ec7e0a31e61b72b45e14ea786e494cb0b308b))
+
 ### [3.15.7](https://github.com/lifinance/sdk/compare/v3.15.6...v3.15.7) (2026-02-27)
 
 
