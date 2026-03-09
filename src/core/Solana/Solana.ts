@@ -27,6 +27,7 @@ export function Solana(options?: SolanaProviderOptions): SolanaProvider {
       const executor = new SolanaStepExecutor({
         walletAdapter,
         routeId: options.routeId,
+        skipSimulation: _options.skipSimulation,
         executionOptions: {
           ...options.executionOptions,
         },

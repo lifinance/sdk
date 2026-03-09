@@ -253,12 +253,20 @@ export const getStepTransaction = async (
 
   const _config = config.get()
   let requestUrl = `${_config.apiUrl}/advanced/stepTransaction`
-  const isJitoBundleEnabled = Boolean(_config.routeOptions?.jitoBundle)
+  const jitoBundle = _config.routeOptions?.jitoBundle
+  const svmSponsor = _config.routeOptions?.svmSponsor
 
-  if (isJitoBundleEnabled && step.action.fromChainId === ChainId.SOL) {
-    // add jitoBundle param to url if from chain is SVM and jitoBundle is enabled in config
-    const queryParams = new URLSearchParams({ jitoBundle: 'true' })
-    requestUrl = `${requestUrl}?${queryParams}`
+  if (step.action.fromChainId === ChainId.SOL) {
+    const queryParams = new URLSearchParams()
+    if (jitoBundle) {
+      queryParams.set('jitoBundle', jitoBundle.toString())
+    }
+    if (svmSponsor) {
+      queryParams.set('svmSponsor', svmSponsor)
+    }
+    if (queryParams.size > 0) {
+      requestUrl = `${requestUrl}?${queryParams}`
+    }
   }
 
   return await request<LiFiStep>(requestUrl, {

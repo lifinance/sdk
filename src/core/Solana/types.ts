@@ -4,6 +4,7 @@ import type { SDKProvider, StepExecutorOptions } from '../types.js'
 
 export interface SolanaProviderOptions {
   getWalletAdapter?: () => Promise<SignerWalletAdapter>
+  skipSimulation?: boolean
 }
 
 export interface SolanaProvider extends SDKProvider {
@@ -16,6 +17,7 @@ export function isSolana(provider: SDKProvider): provider is SolanaProvider {
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   walletAdapter: SignerWalletAdapter
+  skipSimulation?: boolean
 }
 
 export const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
