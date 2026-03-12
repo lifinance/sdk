@@ -43,67 +43,60 @@ describe('getBalances integration tests', () => {
     }
   }
 
-  it(
-    'should work for ERC20 on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.USDC, ChainId.POL),
-        findDefaultToken(CoinKey.USDT, ChainId.POL),
-      ]
+  it('should work for ERC20 on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.USDC, ChainId.POL),
+      findDefaultToken(CoinKey.USDT, ChainId.POL),
+    ]
 
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
-  it(
-    'should work for MATIC on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.POL, ChainId.POL),
-        findDefaultToken(CoinKey.DAI, ChainId.POL),
-      ]
+  it('should work for MATIC on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.POL, ChainId.POL),
+      findDefaultToken(CoinKey.DAI, ChainId.POL),
+    ]
 
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
-  it(
-    'should return even with invalid data on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
-      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
+  it('should return even with invalid data on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
+    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+    const tokens = [findDefaultToken(CoinKey.USDC, ChainId.POL), invalidToken]
 
-      const tokenBalances = await getEVMBalance(
-        walletAddress,
-        tokens as Token[]
-      )
-      expect(tokenBalances.length).toBe(2)
+    const tokenBalances = await getEVMBalance(walletAddress, tokens as Token[])
+    expect(tokenBalances.length).toBe(2)
 
-      // invalid tokens should be returned with balance 0
-      const invalidBalance = tokenBalances.find(
-        (token) => token.address === invalidToken.address
-      )
-      expect(invalidBalance).toBeDefined()
-      expect(invalidBalance!.amount).toBeUndefined()
-    }
-  )
+    // invalid tokens should be returned with balance 0
+    const invalidBalance = tokenBalances.find(
+      (token) => token.address === invalidToken.address
+    )
+    expect(invalidBalance).toBeDefined()
+    expect(invalidBalance!.amount).toBeUndefined()
+  })
 
-  it(
-    'should fallback to a direct call if only one token is requested',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [findDefaultToken(CoinKey.DAI, ChainId.BSC)]
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+  it('should fallback to a direct call if only one token is requested', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [findDefaultToken(CoinKey.DAI, ChainId.BSC)]
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
   it('should handle empty lists', { retry: retryTimes, timeout }, async () => {
     const walletAddress = defaultWalletAddress
@@ -111,21 +104,20 @@ describe('getBalances integration tests', () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it(
-    'should handle token lists with more than 100 tokens',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const { tokens } = await getTokens({
-        chains: [ChainId.OPT],
-      })
-      expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)
-      if (tokens[ChainId.OPT]?.length) {
-        await loadAndCompareTokenAmounts(
-          walletAddress,
-          tokens[ChainId.OPT].slice(0, 150)
-        ) // chunk limit is 100
-      }
+  it('should handle token lists with more than 100 tokens', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const { tokens } = await getTokens({
+      chains: [ChainId.OPT],
+    })
+    expect(tokens[ChainId.OPT]?.length).toBeGreaterThan(100)
+    if (tokens[ChainId.OPT]?.length) {
+      await loadAndCompareTokenAmounts(
+        walletAddress,
+        tokens[ChainId.OPT].slice(0, 150)
+      ) // chunk limit is 100
     }
-  )
+  })
 })

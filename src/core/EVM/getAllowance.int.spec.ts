@@ -42,88 +42,84 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
     expect(allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
   })
 
-  it(
-    'should work for MATIC on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const token = findDefaultToken(CoinKey.POL, ChainId.POL)
-      const client = await getPublicClient(token.chainId)
-      const allowance = await getAllowance(
-        client,
-        token.address as Address,
-        defaultWalletAddress,
-        defaultSpenderAddress
-      )
+  it('should work for MATIC on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const token = findDefaultToken(CoinKey.POL, ChainId.POL)
+    const client = await getPublicClient(token.chainId)
+    const allowance = await getAllowance(
+      client,
+      token.address as Address,
+      defaultWalletAddress,
+      defaultSpenderAddress
+    )
 
-      expect(allowance).toBe(0n)
-    }
-  )
+    expect(allowance).toBe(0n)
+  })
 
-  it(
-    'should return even with invalid data on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
-      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const client = await getPublicClient(invalidToken.chainId)
-      const allowance = await getAllowance(
-        client,
-        invalidToken.address as Address,
-        defaultWalletAddress,
-        defaultSpenderAddress
-      )
-      expect(allowance).toBe(0n)
-    }
-  )
+  it('should return even with invalid data on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const invalidToken = findDefaultToken(CoinKey.POL, ChainId.POL)
+    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+    const client = await getPublicClient(invalidToken.chainId)
+    const allowance = await getAllowance(
+      client,
+      invalidToken.address as Address,
+      defaultWalletAddress,
+      defaultSpenderAddress
+    )
+    expect(allowance).toBe(0n)
+  })
 
-  it(
-    'should handle empty lists with multicall',
-    { retry: retryTimes, timeout },
-    async () => {
-      const client = await getPublicClient(137)
-      const allowances = await getAllowanceMulticall(
-        client,
-        137,
-        [],
-        defaultWalletAddress
-      )
-      expect(allowances.length).toBe(0)
-    }
-  )
+  it('should handle empty lists with multicall', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const client = await getPublicClient(137)
+    const allowances = await getAllowanceMulticall(
+      client,
+      137,
+      [],
+      defaultWalletAddress
+    )
+    expect(allowances.length).toBe(0)
+  })
 
-  it(
-    'should handle token lists with more than 10 tokens',
-    { retry: retryTimes, timeout },
-    async () => {
-      const { tokens } = await getTokens({
-        chains: [ChainId.POL],
+  it('should handle token lists with more than 10 tokens', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const { tokens } = await getTokens({
+      chains: [ChainId.POL],
+    })
+    const filteredTokens = tokens[ChainId.POL]
+    filteredTokens.unshift(memeToken)
+
+    expect(filteredTokens?.length).toBeGreaterThanOrEqual(10)
+    const tokenSpenders: TokenSpender[] | undefined = filteredTokens?.map(
+      (token) => ({
+        token,
+        spenderAddress: defaultSpenderAddress,
       })
-      const filteredTokens = tokens[ChainId.POL]
-      filteredTokens.unshift(memeToken)
+    )
 
-      expect(filteredTokens?.length).toBeGreaterThanOrEqual(10)
-      const tokenSpenders: TokenSpender[] | undefined = filteredTokens?.map(
-        (token) => ({
-          token,
-          spenderAddress: defaultSpenderAddress,
-        })
+    if (tokenSpenders?.length) {
+      const tokens = await getTokenAllowanceMulticall(
+        defaultWalletAddress,
+        tokenSpenders.slice(0, 10)
       )
 
-      if (tokenSpenders?.length) {
-        const tokens = await getTokenAllowanceMulticall(
-          defaultWalletAddress,
-          tokenSpenders.slice(0, 10)
-        )
-
-        for (let i = 0; i < tokens.length; i++) {
-          const token = tokens[i]
-          expect(token.allowance).toBeDefined()
-        }
-
-        const token = tokens.find((token) => token.allowance)
-
-        expect(token?.allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
+      for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i]
+        expect(token.allowance).toBeDefined()
       }
+
+      const token = tokens.find((token) => token.allowance)
+
+      expect(token?.allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
     }
-  )
+  })
 })

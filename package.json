@@ -100,7 +100,7 @@
     ]
   },
   "dependencies": {
-    "@bigmi/core": "^0.7.0",
+    "@bigmi/core": "^0.7.1",
     "@bitcoinerlab/secp256k1": "^1.2.0",
     "@lifi/types": "17.65.0",
     "@mysten/sui": "^1.45.2",
@@ -111,19 +111,19 @@
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.1",
     "bs58": "^6.0.0",
-    "viem": "^2.46.3"
+    "viem": "^2.47.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
-    "@commitlint/cli": "^20.4.2",
-    "@commitlint/config-conventional": "^20.4.2",
-    "@lifi/data-types": "^6.63.1",
+    "@biomejs/biome": "^2.4.6",
+    "@commitlint/cli": "^20.4.4",
+    "@commitlint/config-conventional": "^20.4.4",
+    "@lifi/data-types": "^6.64.0",
     "@types/fs-extra": "^11.0.4",
     "@types/ws": "^8.18.1",
-    "fs-extra": "^11.3.3",
+    "fs-extra": "^11.3.4",
     "husky": "^9.1.7",
-    "knip": "^5.85.0",
-    "lint-staged": "^16.2.7",
+    "knip": "^5.86.0",
+    "lint-staged": "^16.3.3",
     "madge": "^8.0.0",
     "msw": "^2.12.10",
     "pinst": "^3.0.0",
@@ -144,5 +144,5 @@
       "postbump": "node scripts/version.js && git add ."
     }
   },
-  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017"
+  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
 }

@@ -233,7 +233,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
     process: Process,
     signedTypedData?: SignedTypedData[]
   ) => {
-    // biome-ignore lint/correctness/noUnusedVariables: destructuring
     const { execution, ...stepBase } = step
     const relayerStep = isRelayerStep(step)
     const gaslessStep = isGaslessStep(step)
@@ -730,7 +729,6 @@ export class EVMStepExecutor extends BaseStepExecutor {
 
         this.statusManager.updateProcess(step, process.type, 'PENDING')
 
-        // biome-ignore lint/correctness/noUnusedVariables: destructuring
         const { execution, ...stepBase } = step
         const relayedTransaction = await relayTransaction({
           ...stepBase,

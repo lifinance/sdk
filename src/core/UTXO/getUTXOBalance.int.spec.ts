@@ -38,17 +38,16 @@ describe('getBalances integration tests', () => {
     }
   }
 
-  it(
-    'should work for ERC20 on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.USDC, ChainId.POL),
-        findDefaultToken(CoinKey.USDT, ChainId.POL),
-      ]
+  it('should work for ERC20 on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.USDC, ChainId.POL),
+      findDefaultToken(CoinKey.USDT, ChainId.POL),
+    ]
 
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 })

@@ -45,41 +45,36 @@ describe.sequential('Sui token balance', async () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it(
-    'should work for native SUI token',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.SUI, ChainId.SUI),
-        findDefaultToken(CoinKey.USDC, ChainId.SUI),
-      ]
+  it('should work for native SUI token', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.SUI, ChainId.SUI),
+      findDefaultToken(CoinKey.USDC, ChainId.SUI),
+    ]
 
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
-  it(
-    'should return even with invalid data',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SUI)
-      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
+  it('should return even with invalid data', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SUI)
+    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+    const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
 
-      const tokenBalances = await getSuiBalance(
-        walletAddress,
-        tokens as Token[]
-      )
-      expect(tokenBalances.length).toBe(2)
+    const tokenBalances = await getSuiBalance(walletAddress, tokens as Token[])
+    expect(tokenBalances.length).toBe(2)
 
-      // invalid tokens should be returned with balance 0
-      const invalidBalance = tokenBalances.find(
-        (token) => token.address === invalidToken.address
-      )
-      expect(invalidBalance).toBeDefined()
-      expect(invalidBalance!.amount).toBeUndefined()
-    }
-  )
+    // invalid tokens should be returned with balance 0
+    const invalidBalance = tokenBalances.find(
+      (token) => token.address === invalidToken.address
+    )
+    expect(invalidBalance).toBeDefined()
+    expect(invalidBalance!.amount).toBeUndefined()
+  })
 })

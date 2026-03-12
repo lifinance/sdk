@@ -47,43 +47,41 @@ describe.sequential('Solana token balance', async () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it(
-    'should work for stables on SOL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.SOL, ChainId.SOL),
-        findDefaultToken(CoinKey.USDC, ChainId.SOL),
-      ]
+  it('should work for stables on SOL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.SOL, ChainId.SOL),
+      findDefaultToken(CoinKey.USDC, ChainId.SOL),
+    ]
 
-      await loadAndCompareTokenAmounts(walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(walletAddress, tokens)
+  })
 
-  it(
-    'should return even with invalid data',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SOL)
-      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-      const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
+  it('should return even with invalid data', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SOL)
+    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+    const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
 
-      const tokenBalances = await getSolanaBalance(
-        walletAddress,
-        tokens as Token[]
-      )
-      expect(tokenBalances.length).toBe(2)
+    const tokenBalances = await getSolanaBalance(
+      walletAddress,
+      tokens as Token[]
+    )
+    expect(tokenBalances.length).toBe(2)
 
-      // invalid tokens should be returned with balance 0
-      const invalidBalance = tokenBalances.find(
-        (token) => token.address === invalidToken.address
-      )
-      expect(invalidBalance).toBeDefined()
-      expect(invalidBalance!.amount).toBeUndefined()
-    }
-  )
+    // invalid tokens should be returned with balance 0
+    const invalidBalance = tokenBalances.find(
+      (token) => token.address === invalidToken.address
+    )
+    expect(invalidBalance).toBeDefined()
+    expect(invalidBalance!.amount).toBeUndefined()
+  })
 
   // it(
   //   'should execute route',
