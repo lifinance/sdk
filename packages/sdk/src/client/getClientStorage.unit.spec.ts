@@ -159,6 +159,7 @@ describe('getClientStorage', () => {
           ChainType.SVM,
           ChainType.UTXO,
           ChainType.MVM,
+          ChainType.TVM,
         ],
       })
       expect(chains).toEqual(mockChains)
