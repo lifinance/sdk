@@ -6,10 +6,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { TronWeb } from 'tronweb'
-import {
-  callTronRpcsWithRetry,
-  getTronWebInstance,
-} from '../../rpc/callTronRpcsWithRetry.js'
+import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import type { TronStepExecutorContext } from '../../types.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
 import { TRON_POLL_INTERVAL_MS, TRON_POLL_MAX_RETRIES } from '../constants.js'
@@ -43,18 +40,25 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    const tronWeb = await getTronWebInstance(client)
-    const broadcastResult =
-      await tronWeb.trx.sendRawTransaction(signedTransaction)
+    const broadcastResult = await callTronRpcsWithRetry(
+      client,
+      async (tronWeb) => {
+        const result = await tronWeb.trx.sendRawTransaction(signedTransaction)
 
-    if (!broadcastResult.result) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionFailed,
-        `Transaction broadcast failed: ${broadcastResult.code || 'Unknown error'}`
-      )
-    }
+        if (!result.result && String(result.code) !== 'DUP_TRANSACTION_ERROR') {
+          throw new TransactionError(
+            LiFiErrorCode.TransactionFailed,
+            `Transaction broadcast failed: ${result.code || 'Unknown error'}`
+          )
+        }
 
-    const txHash = stripHexPrefix(broadcastResult.transaction.txID)
+        return result
+      }
+    )
+
+    const txHash = stripHexPrefix(
+      broadcastResult.transaction?.txID ?? signedTransaction.txID
+    )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,
