@@ -16,12 +16,24 @@ import {
   WalletWindowClosedError,
 } from '@tronweb3/tronwallet-abstract-adapter'
 
+// "BANDWITH" is the Tron protocol's own misspelling
+const isBandwidthError = (message?: string): boolean =>
+  !!message?.includes('BANDWITH_ERROR')
+
 export const parseTronErrors = async (
   e: Error,
   step?: LiFiStep,
   action?: ExecutionAction
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
+    if (isBandwidthError(e.message)) {
+      const baseError = new TransactionError(
+        LiFiErrorCode.InsufficientFunds,
+        'Insufficient TRX for network bandwidth. The account needs more TRX to cover transaction fees.',
+        e
+      )
+      return new SDKError(baseError, step ?? e.step, action ?? e.action)
+    }
     e.step = e.step ?? step
     e.action = e.action ?? action
     return e
@@ -71,6 +83,14 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(
       LiFiErrorCode.WalletChangedDuringExecution,
       message,
+      e
+    )
+  }
+
+  if (isBandwidthError(message)) {
+    return new TransactionError(
+      LiFiErrorCode.InsufficientFunds,
+      'Insufficient TRX for network bandwidth. The account needs more TRX to cover transaction fees.',
       e
     )
   }
