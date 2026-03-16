@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.16.2](https://github.com/lifinance/sdk/compare/v3.16.1...v3.16.2) (2026-03-16)
+
+
+### Bug Fixes
+
+* **sdk:** handle null message in HTTPError response body ([#360](https://github.com/lifinance/sdk/issues/360)) ([f8eee31](https://github.com/lifinance/sdk/commit/f8eee31c5b2abef55840a1c36f0012a13c345179))
+
 ### [3.16.1](https://github.com/lifinance/sdk/compare/v3.16.0...v3.16.1) (2026-03-12)
 
 ## [3.16.0](https://github.com/lifinance/sdk/compare/v3.15.7...v3.16.0) (2026-03-09)
