@@ -1,16 +1,15 @@
 import { ChainId, type SDKClient } from '@lifi/sdk'
 import { TronWeb } from 'tronweb'
 
-export async function getTronWebInstance(client: SDKClient): Promise<TronWeb> {
-  const urls = await client.getRpcUrlsByChainId(ChainId.TRN)
-  return new TronWeb({ fullHost: urls[0] })
-}
-
 export async function callTronRpcsWithRetry<R>(
   client: SDKClient,
   fn: (tronWeb: TronWeb) => Promise<R>
 ): Promise<R> {
   const urls = await client.getRpcUrlsByChainId(ChainId.TRN)
+
+  if (!urls.length) {
+    throw new Error('No Tron RPC URLs available')
+  }
 
   const errors: Error[] = []
   for (const url of urls) {
