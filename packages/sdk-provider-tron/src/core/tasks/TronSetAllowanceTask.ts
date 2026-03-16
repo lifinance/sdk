@@ -79,7 +79,7 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
       async (tronWeb) => {
         const result = await tronWeb.trx.sendRawTransaction(signedTransaction)
 
-        if (!result.result) {
+        if (!result.result && String(result.code) !== 'DUP_TRANSACTION_ERROR') {
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             `Approval broadcast failed: ${result.code || 'Unknown error'}`
