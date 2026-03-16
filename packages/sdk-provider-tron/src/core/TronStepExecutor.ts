@@ -17,6 +17,9 @@ import type {
   TronStepExecutorContext,
   TronStepExecutorOptions,
 } from '../types.js'
+import { isZeroAddress } from '../utils/isZeroAddress.js'
+import { TronCheckAllowanceTask } from './tasks/TronCheckAllowanceTask.js'
+import { TronSetAllowanceTask } from './tasks/TronSetAllowanceTask.js'
 import { TronSignAndExecuteTask } from './tasks/TronSignAndExecuteTask.js'
 import { TronWaitForTransactionTask } from './tasks/TronWaitForTransactionTask.js'
 
@@ -57,7 +60,11 @@ export class TronStepExecutor extends BaseStepExecutor {
   override createPipeline = (context: TronStepExecutorContext) => {
     const { step, isBridgeExecution } = context
 
+    const isFromNativeToken = isZeroAddress(step.action.fromToken.address)
+
     const tasks = [
+      new TronCheckAllowanceTask(),
+      new TronSetAllowanceTask(),
       new CheckBalanceTask(),
       new PrepareTransactionTask(),
       new TronSignAndExecuteTask(),
@@ -72,10 +79,21 @@ export class TronStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName =
-      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : CheckBalanceTask.name
+    const doCheckAllowance =
+      !swapOrBridgeAction?.txHash &&
+      !isFromNativeToken &&
+      !!step.estimate.approvalAddress &&
+      !step.estimate.skipApproval
+
+    let taskName: string
+    if (doCheckAllowance) {
+      taskName = TronCheckAllowanceTask.name
+    } else {
+      taskName =
+        swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+          ? WaitForTransactionStatusTask.name
+          : CheckBalanceTask.name
+    }
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task.constructor.name === taskName

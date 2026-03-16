@@ -16,6 +16,7 @@ export interface TronProviderOptions {
 
 export interface TronTaskContext {
   signedTransaction?: SignedTransaction
+  hasSufficientAllowance?: boolean
 }
 
 export interface TronStepExecutorContext

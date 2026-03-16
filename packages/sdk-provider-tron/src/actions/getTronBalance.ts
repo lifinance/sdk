@@ -40,7 +40,9 @@ const getTronBalanceDefault = async (
         return withDedupe(
           async () => {
             const contract = await tronWeb.contract().at(token.address)
-            const balance = await contract.balanceOf(walletAddress).call()
+            const balance = await contract
+              .balanceOf(walletAddress)
+              .call({ from: walletAddress })
             return BigInt(balance.toString())
           },
           {
