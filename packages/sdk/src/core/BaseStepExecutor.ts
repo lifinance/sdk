@@ -102,9 +102,8 @@ export abstract class BaseStepExecutor implements StepExecutor {
 
       return step
     } catch (error: any) {
-      const action = step.execution?.lastActionType
-        ? this.statusManager.findAction(step, step.execution.lastActionType)
-        : undefined
+      // Derive failing action from last in execution.actions
+      const action = step.execution?.actions?.at(-1)
       const parsed = await this.parseErrors(error, step, action, retryParams)
       if (!(parsed instanceof ExecuteStepRetryError)) {
         if (action) {
