@@ -82,10 +82,10 @@ export class HTTPError extends BaseError {
     try {
       this.responseBody = await this.response.json()
 
-      if (this.responseBody) {
+      if (this.responseBody?.message) {
         this.message += this.message.endsWith('.')
-          ? ` ${this.responseBody?.message.toString()}`
-          : `. ${this.responseBody?.message.toString()}`
+          ? ` ${this.responseBody.message.toString()}`
+          : `. ${this.responseBody.message.toString()}`
       }
     } catch {}
 
