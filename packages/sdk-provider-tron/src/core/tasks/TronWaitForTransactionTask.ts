@@ -11,6 +11,8 @@ import {
   getTronWebInstance,
 } from '../../rpc/callTronRpcsWithRetry.js'
 import type { TronStepExecutorContext } from '../../types.js'
+import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
+import { TRON_POLL_INTERVAL_MS, TRON_POLL_MAX_RETRIES } from '../constants.js'
 
 export class TronWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: TronStepExecutorContext): Promise<TaskResult> {
@@ -52,7 +54,7 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    const txHash = broadcastResult.transaction.txID
+    const txHash = stripHexPrefix(broadcastResult.transaction.txID)
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,
@@ -72,8 +74,8 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
 async function waitForTronConfirmation(
   client: SDKClient,
   txHash: string,
-  maxRetries = 20,
-  intervalMs = 3000
+  maxRetries = TRON_POLL_MAX_RETRIES,
+  intervalMs = TRON_POLL_INTERVAL_MS
 ): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     try {
