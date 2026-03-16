@@ -15,7 +15,7 @@
   "author": "Eugene Chybisov <eugene@li.finance>",
   "type": "module",
   "sideEffects": false,
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/esm/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
   "typings": "./dist/types/index.d.ts",
@@ -23,7 +23,7 @@
     ".": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/esm/index.js",
-      "default": "./dist/cjs/index.js"
+      "default": "./dist/esm/index.js"
     },
     "./package.json": "./package.json"
   },
