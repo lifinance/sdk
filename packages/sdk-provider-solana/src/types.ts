@@ -9,6 +9,7 @@ import type { Wallet, WalletAccount } from '@wallet-standard/base'
 
 export interface SolanaProviderOptions {
   getWallet?: () => Promise<Wallet>
+  skipSimulation?: boolean
 }
 
 export interface SolanaTaskContext {
@@ -20,6 +21,7 @@ export interface SolanaStepExecutorContext
     SolanaTaskContext {
   wallet: Wallet
   walletAccount: WalletAccount
+  skipSimulation: boolean
 }
 
 export interface SolanaSDKProvider extends SDKProvider {
@@ -34,4 +36,5 @@ export function isSolanaProvider(
 
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   wallet: Wallet
+  skipSimulation?: boolean
 }
