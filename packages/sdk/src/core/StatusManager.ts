@@ -47,7 +47,6 @@ export class StatusManager {
       step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
       step.execution.signedAt = undefined
-      step.execution.lastActionType = undefined
       step.execution.error = undefined
       this.updateStepInRoute(step)
     }
@@ -122,7 +121,6 @@ export class StatusManager {
     }
 
     step.execution.actions.push(newAction)
-    step.execution.lastActionType = type
     this.updateStepInRoute(step)
     return newAction
   }
@@ -200,8 +198,6 @@ export class StatusManager {
       default:
         break
     }
-
-    step.execution.lastActionType = type
 
     currentAction.status = status
     currentAction.message = getActionMessage(type, status)
