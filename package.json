@@ -46,17 +46,17 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.6",
-    "@commitlint/cli": "^20.4.4",
-    "@commitlint/config-conventional": "^20.4.4",
+    "@biomejs/biome": "^2.4.7",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "husky": "^9.1.7",
-    "knip": "^5.85.0",
-    "lerna": "^9.0.6",
+    "knip": "^5.87.0",
+    "lerna": "^9.0.7",
     "standard-version": "^9.5.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "publishConfig": {
     "access": "public"

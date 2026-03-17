@@ -40,11 +40,13 @@ export async function getTokens(
   const urlSearchParams = new URLSearchParams(
     params as Record<string, string>
   ).toString()
-  const isExtended = params?.extended === true
+  const _isExtended = params?.extended === true
   const response = await withDedupe(
     () =>
       request<
-        typeof isExtended extends true ? TokensExtendedResponse : TokensResponse
+        typeof _isExtended extends true
+          ? TokensExtendedResponse
+          : TokensResponse
       >(client.config, `${client.config.apiUrl}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),
