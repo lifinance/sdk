@@ -23,6 +23,7 @@ export async function waitForTransactionStatus(
       toChain: step.action.toChainId,
       txHash,
       ...(step.tool !== 'custom' && { bridge: step.tool }),
+      ...(step.transactionId && { transactionId: step.transactionId }),
     })
       .then((statusResponse) => {
         switch (statusResponse.status) {
