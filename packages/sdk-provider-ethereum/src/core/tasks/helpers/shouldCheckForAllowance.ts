@@ -5,7 +5,7 @@ export const shouldCheckForAllowance = (
   isBridgeExecution: boolean,
   isFromNativeToken: boolean,
   statusManager: StatusManager
-) => {
+): boolean => {
   const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
   const swapOrBridgeAction = statusManager.findAction(step, exchangeActionType)

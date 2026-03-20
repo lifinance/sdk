@@ -11,7 +11,7 @@ export class LruMap<value = unknown> extends Map<string, value> {
     this.maxSize = size
   }
 
-  override set(key: string, value: value) {
+  override set(key: string, value: value): this {
     super.set(key, value)
     if (this.maxSize && this.size > this.maxSize) {
       this.delete(this.keys().next().value!)

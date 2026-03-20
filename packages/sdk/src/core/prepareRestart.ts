@@ -1,6 +1,6 @@
 import type { RouteExtended } from '../types/core.js'
 
-export const prepareRestart = (route: RouteExtended) => {
+export const prepareRestart = (route: RouteExtended): void => {
   for (let index = 0; index < route.steps.length; index++) {
     const step = route.steps[index]
     if (step.execution) {

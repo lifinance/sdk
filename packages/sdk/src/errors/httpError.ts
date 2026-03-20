@@ -74,7 +74,7 @@ export class HTTPError extends BaseError {
     this.fetchOptions = options
   }
 
-  async buildAdditionalDetails() {
+  async buildAdditionalDetails(): Promise<void> {
     if (this.type) {
       this.message = `[${this.type}] ${this.message}`
     }
@@ -88,7 +88,5 @@ export class HTTPError extends BaseError {
           : `. ${this.responseBody.message.toString()}`
       }
     } catch {}
-
-    return this
   }
 }

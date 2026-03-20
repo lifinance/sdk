@@ -106,7 +106,7 @@ const handleSpecificErrors = async (
       step.action.fromChainId
     )
 
-    const errorMessage = response?.error_message
+    const errorMessage = (response as Record<string, string>)?.error_message
 
     if (errorMessage?.toLowerCase().includes('out of gas')) {
       return new TransactionError(
@@ -124,7 +124,7 @@ const handleSpecificErrors = async (
   return new UnknownError(e.message || ErrorMessage.UnknownError, e)
 }
 
-export const isAtomicReadyWalletRejectedUpgradeError = (e: any) => {
+export const isAtomicReadyWalletRejectedUpgradeError = (e: any): boolean => {
   if (e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code) {
     return true
   }

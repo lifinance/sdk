@@ -68,7 +68,10 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     parseEthereumErrors(error, step, action, retryParams)
 
   // Ensure that we are using the right chain and wallet when executing transactions.
-  checkClient = async (step: LiFiStepExtended, targetChainId?: number) => {
+  checkClient = async (
+    step: LiFiStepExtended,
+    targetChainId?: number
+  ): Promise<Client | undefined> => {
     const updatedClient = await switchChain(
       this.client,
       targetChainId ?? step.action.fromChainId,
@@ -128,7 +131,9 @@ export class EthereumStepExecutor extends BaseStepExecutor {
     }
   }
 
-  override createPipeline = (context: EthereumStepExecutorContext) => {
+  override createPipeline = (
+    context: EthereumStepExecutorContext
+  ): TaskPipeline => {
     const { step, isBridgeExecution, isFromNativeToken } = context
 
     const tasks = [

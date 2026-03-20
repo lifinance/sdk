@@ -31,7 +31,7 @@ export const getPermitTransferFromValues = async (
       amount: amount,
     },
     spender: chain.permit2Proxy as Address,
-    nonce: nonce,
+    nonce: nonce as bigint,
     deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60), // 30 minutes
   }
 }

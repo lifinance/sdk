@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @lifi/sdk build && pnpm -r --parallel --filter './packages/**' --filter '!@lifi/sdk' build",
+    "build": "pnpm -r --parallel --filter './packages/**' build",
     "clean": "pnpm -r --parallel --filter './packages/**' clean",
     "clean:cache": "pnpm store prune",
     "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
@@ -55,6 +55,7 @@
     "knip": "^5.87.0",
     "lerna": "^9.0.7",
     "standard-version": "^9.5.0",
+    "tsdown": "^0.21.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
