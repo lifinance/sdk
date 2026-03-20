@@ -503,7 +503,8 @@ export const getChains = async (
 ): Promise<ExtendedChain[]> => {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof ChainsRequest]) {
+      const value = params[key as keyof ChainsRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof ChainsRequest]
       }
     }
@@ -544,7 +545,8 @@ export async function getTokens(
 ): Promise<TokensResponse> {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof TokensRequest]) {
+      const value = params[key as keyof TokensRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof TokensRequest]
       }
     }
@@ -611,7 +613,8 @@ export const getTools = async (
 ): Promise<ToolsResponse> => {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof ToolsRequest]) {
+      const value = params[key as keyof ToolsRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof ToolsRequest]
       }
     }
