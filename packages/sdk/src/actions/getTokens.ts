@@ -32,7 +32,8 @@ export async function getTokens(
 ): Promise<TokensResponse> {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof TokensRequest]) {
+      const value = params[key as keyof TokensRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof TokensRequest]
       }
     }
