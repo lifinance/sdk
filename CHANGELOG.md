@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.16.3](https://github.com/lifinance/sdk/compare/v3.16.2...v3.16.3) (2026-03-20)
+
+
+### Bug Fixes
+
+* preserve falsy values (0, false) in getTokens, getChains, getTools ([#367](https://github.com/lifinance/sdk/issues/367)) ([143f09f](https://github.com/lifinance/sdk/commit/143f09f5cbfce88aac6bb8665669d744ae9c95c3))
+
 ### [3.16.2](https://github.com/lifinance/sdk/compare/v3.16.1...v3.16.2) (2026-03-16)
 
 
