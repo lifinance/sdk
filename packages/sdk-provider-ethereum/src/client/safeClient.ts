@@ -66,7 +66,19 @@ async function request<T>(
   return response.json() as Promise<T>
 }
 
-export const getSafeClient = (chainId: number, apiKey?: string) => ({
+export interface SafeClientInterface {
+  getInfo: (address: Address) => Promise<SafeInfo>
+  getTransaction: (safeTxHash: Hash) => Promise<SafeMultisigTransaction>
+  getTransactions: (
+    safeAddress: Address,
+    options?: { executed?: boolean; limit?: number }
+  ) => Promise<SafeMultisigTransactionList>
+}
+
+export const getSafeClient = (
+  chainId: number,
+  apiKey?: string
+): SafeClientInterface => ({
   getInfo: (address: Address) =>
     request<SafeInfo>(chainId, `/api/v1/safes/${address}/`, apiKey),
 

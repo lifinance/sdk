@@ -1,5 +1,11 @@
 import type { SDKClient } from '@lifi/sdk'
 import { getJitoRpcs, getSolanaRpcs } from './registry.js'
+import type { JitoRpcType, SolanaRpcType } from './types.js'
+
+type RetryFn<Rpc> = <R>(
+  client: SDKClient,
+  fn: (rpc: Rpc) => Promise<R>
+) => Promise<R>
 
 /**
  * Calls a function on RPC instances with retry logic.
@@ -70,7 +76,8 @@ const createRetryFn =
  * )
  * ```
  */
-export const callSolanaRpcsWithRetry = createRetryFn(getSolanaRpcs)
+export const callSolanaRpcsWithRetry: RetryFn<SolanaRpcType> =
+  createRetryFn(getSolanaRpcs)
 
 /**
  * Calls a function on Jito RPC instances with retry logic.
@@ -90,4 +97,5 @@ export const callSolanaRpcsWithRetry = createRetryFn(getSolanaRpcs)
  * )
  * ```
  */
-export const callJitoRpcsWithRetry = createRetryFn(getJitoRpcs)
+export const callJitoRpcsWithRetry: RetryFn<JitoRpcType> =
+  createRetryFn(getJitoRpcs)

@@ -6,7 +6,14 @@ import type { RPCUrls, SDKBaseConfig } from '../types/core.js'
 // 6 hours in milliseconds
 const chainsRefreshInterval = 1000 * 60 * 60 * 6
 
-export const getClientStorage = (config: SDKBaseConfig) => {
+export interface ClientStorage {
+  readonly needReset: boolean
+  setChains(chains: ExtendedChain[]): void
+  getChains(): Promise<ExtendedChain[]>
+  getRpcUrls(): Promise<RPCUrls>
+}
+
+export const getClientStorage = (config: SDKBaseConfig): ClientStorage => {
   let _chains = [] as ExtendedChain[]
   let _rpcUrls = { ...config.rpcUrls } as RPCUrls
   let _chainsUpdatedAt: number | undefined

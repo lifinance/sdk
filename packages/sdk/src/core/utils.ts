@@ -34,7 +34,7 @@ export function getRpcUrlsFromChains(
   existingRpcUrls: RPCUrls,
   chains: ExtendedChain[],
   skipChains?: ChainId[]
-) {
+): RPCUrls {
   const rpcUrlsFromChains = chains.reduce((rpcUrls, chain) => {
     if (chain.metamask?.rpcUrls?.length) {
       rpcUrls[chain.id as ChainId] = chain.metamask.rpcUrls

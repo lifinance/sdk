@@ -15,7 +15,7 @@ export const getEthereumBalance = async (
   client: SDKClient,
   walletAddress: Address,
   tokens: Token[]
-) => {
+): Promise<TokenAmount[]> => {
   if (tokens.length === 0) {
     return []
   }

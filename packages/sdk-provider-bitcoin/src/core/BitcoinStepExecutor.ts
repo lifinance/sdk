@@ -31,7 +31,7 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     this.client = options.client
   }
 
-  checkClient = (step: LiFiStepExtended) => {
+  checkClient = (step: LiFiStepExtended): void => {
     // TODO: check chain and possibly implement chain switch?
     // Prevent execution of the quote by wallet different from the one which requested the quote
     if (this.client.account?.address !== step.action.fromAddress) {
@@ -42,7 +42,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
     }
   }
 
-  override createPipeline = (context: BitcoinStepExecutorContext) => {
+  override createPipeline = (
+    context: BitcoinStepExecutorContext
+  ): TaskPipeline => {
     const { step, isBridgeExecution } = context
 
     const tasks = [
