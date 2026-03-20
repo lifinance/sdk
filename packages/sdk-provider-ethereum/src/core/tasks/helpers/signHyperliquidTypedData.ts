@@ -4,6 +4,7 @@ import { getAction } from 'viem/utils'
 import { getOrCreateAgentWallet } from '../../../hyperliquid/agentWallet.js'
 import {
   isApproveAgentMessage,
+  isApproveBuilderFeeMessage,
   isHyperliquidOrderMessage,
 } from '../../../hyperliquid/isHyperliquidAgentStep.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
@@ -73,6 +74,27 @@ export const signHyperliquidTypedData = async (
         message,
       })
       signedResults.push({ ...typedData, message, signature })
+    } else if (isApproveBuilderFeeMessage(typedData)) {
+      const typedDataChainId =
+        getDomainChainId(typedData.domain) || fromChain.id
+
+      const updatedClient = await checkClient(step, typedDataChainId)
+      if (!updatedClient) {
+        return
+      }
+
+      const signature = await getAction(
+        updatedClient,
+        signTypedData,
+        'signTypedData'
+      )({
+        account: updatedClient.account!,
+        primaryType: typedData.primaryType,
+        domain: typedData.domain,
+        types: typedData.types,
+        message: typedData.message,
+      })
+      signedResults.push({ ...typedData, signature })
     } else if (isHyperliquidOrderMessage(typedData)) {
       const signature = await agentAccount.signTypedData({
         domain: typedData.domain,
