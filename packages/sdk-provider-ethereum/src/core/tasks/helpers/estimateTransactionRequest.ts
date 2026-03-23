@@ -9,7 +9,7 @@ export const estimateTransactionRequest = async (
   client: SDKClient,
   viemClient: Client,
   transactionRequest: TransactionParameters
-) => {
+): Promise<TransactionParameters> => {
   try {
     // Try to re-estimate the gas due to additional Permit data
     const estimatedGas = await getActionWithFallback(

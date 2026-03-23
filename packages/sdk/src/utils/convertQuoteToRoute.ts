@@ -64,7 +64,7 @@ export function formatTokenPrice(
   amount?: string | bigint,
   price?: string,
   decimals?: number
-) {
+): number {
   if (!amount || !price) {
     return 0
   }

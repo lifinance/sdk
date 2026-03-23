@@ -3,7 +3,10 @@ import { getBase58Codec } from '@solana/kit'
 const nativeCrypto = globalThis.crypto
 
 // Helper to generate a valid test keypair
-export const generateTestKeypair = async () => {
+export const generateTestKeypair = async (): Promise<{
+  secretKey: string
+  publicKey: Uint8Array
+}> => {
   if (!nativeCrypto?.subtle) {
     throw new Error('SubtleCrypto is not available in this environment')
   }

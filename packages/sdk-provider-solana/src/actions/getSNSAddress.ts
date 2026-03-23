@@ -7,7 +7,9 @@ interface SNSResult {
 
 // Subject to change
 // https://github.com/Bonfida/sns-sdk?tab=readme-ov-file#sdk-proxy
-export const getSNSAddress = async (name: string) => {
+export const getSNSAddress = async (
+  name: string
+): Promise<string | undefined> => {
   try {
     if (!name.endsWith('.sol')) {
       return

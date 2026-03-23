@@ -31,7 +31,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     this.signer = options.signer
   }
 
-  checkWallet = (step: LiFiStepExtended) => {
+  checkWallet = (step: LiFiStepExtended): void => {
     // Prevent execution of the quote by wallet different from the one which requested the quote
     const address = this.signer.toSuiAddress()
     if (address !== step.action.fromAddress) {
@@ -59,7 +59,7 @@ export class SuiStepExecutor extends BaseStepExecutor {
     }
   }
 
-  override createPipeline = (context: SuiStepExecutorContext) => {
+  override createPipeline = (context: SuiStepExecutorContext): TaskPipeline => {
     const { step, isBridgeExecution } = context
 
     const tasks = [

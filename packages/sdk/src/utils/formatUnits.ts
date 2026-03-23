@@ -1,7 +1,7 @@
 /**
  *  Divides a number by a given exponent of base 10 (10exponent), and formats it into a string representation of the number.
  */
-export function formatUnits(value: bigint, decimals: number) {
+export function formatUnits(value: bigint, decimals: number): string {
   let display = value.toString()
 
   const negative = display.startsWith('-')

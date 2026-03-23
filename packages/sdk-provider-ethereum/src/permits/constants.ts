@@ -1,17 +1,19 @@
 import type { Hex } from 'viem'
 
-export const MaxUint48 = BigInt('0xffffffffffff')
-export const MaxUint160 = BigInt('0xffffffffffffffffffffffffffffffffffffffff')
-export const MaxUint256 =
+export const MaxUint48: bigint = BigInt('0xffffffffffff')
+export const MaxUint160: bigint = BigInt(
+  '0xffffffffffffffffffffffffffffffffffffffff'
+)
+export const MaxUint256: bigint =
   BigInt(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn)
 
-export const MaxAllowanceTransferAmount = MaxUint160
-export const MaxAllowanceExpiration = MaxUint48
-export const MaxOrderedNonce = MaxUint48
+export const MaxAllowanceTransferAmount: bigint = MaxUint160
+export const MaxAllowanceExpiration: bigint = MaxUint48
+export const MaxOrderedNonce: bigint = MaxUint48
 
-export const MaxSignatureTransferAmount = MaxUint256
-export const MaxUnorderedNonce = MaxUint256
-export const MaxSigDeadline = MaxUint256
+export const MaxSignatureTransferAmount: bigint = MaxUint256
+export const MaxUnorderedNonce: bigint = MaxUint256
+export const MaxSigDeadline: bigint = MaxUint256
 
 export const InstantExpiration = 0n
 
@@ -42,7 +44,7 @@ export const EIP712_DOMAIN_TYPEHASH =
 export const EIP712_DOMAIN_TYPEHASH_WITH_SALT =
   '0x36c25de3e541d5d970f66e4210d728721220fff5c077cc6cd008b3a0c62adab7' as Hex
 
-export const EIP712_DOMAINS_WITHOUT_VERSION = [
+export const EIP712_DOMAINS_WITHOUT_VERSION: Hex[] = [
   /** @signature 'EIP712Domain(string name,uint chainId,address verifyingContract)' */
   '0x797cfab58fcb15f590eb8e4252d5c228ff88f94f907e119e80c4393a946e8f35' as Hex,
   /** @signature 'EIP712Domain(string name,uint256 chainId,address verifyingContract)' */
@@ -59,7 +61,7 @@ export const DAI_LIKE_PERMIT_TYPEHASH =
  * @example `${tokenAddress}:${chainId}.toLowerCase()`
  * @warning Only toLowerCase string
  * */
-export const TOKEN_ADDRESSES_WITH_SALT = [
+export const TOKEN_ADDRESSES_WITH_SALT: string[] = [
   '0x2791bca1f2de4661ed88a30c99a7a9449aa84174:137', // USDC Proxy Polygon
   '0x8f3cf7ad23cd3cadbd9735aff958023239c6a063:137', // DAI Proxy Polygon
 ]

@@ -11,7 +11,7 @@ import {
   TransactionError,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
-import type { Wallet } from '@wallet-standard/base'
+import type { Wallet, WalletAccount } from '@wallet-standard/base'
 import { parseSolanaErrors } from '../errors/parseSolanaErrors.js'
 import type {
   SolanaStepExecutorContext,
@@ -30,7 +30,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     this.skipSimulation = options.skipSimulation ?? false
   }
 
-  getWalletAccount = (step: LiFiStepExtended) => {
+  getWalletAccount = (step: LiFiStepExtended): WalletAccount => {
     const account = this.wallet.accounts.find(
       (account) => account.address === step.action.fromAddress
     )
@@ -66,7 +66,9 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     }
   }
 
-  override createPipeline = (context: SolanaStepExecutorContext) => {
+  override createPipeline = (
+    context: SolanaStepExecutorContext
+  ): TaskPipeline => {
     const { step, isBridgeExecution } = context
 
     const tasks = [

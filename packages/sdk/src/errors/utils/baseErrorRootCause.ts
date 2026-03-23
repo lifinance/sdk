@@ -1,7 +1,7 @@
 import { BaseError } from '../baseError.js'
 import { HTTPError } from '../httpError.js'
 
-export const getRootCauseBaseError = (e: Error) => {
+export const getRootCauseBaseError = (e: Error): BaseError => {
   let rootCause = e
   while (rootCause.cause && rootCause.cause instanceof BaseError) {
     rootCause = rootCause.cause as BaseError
@@ -9,7 +9,7 @@ export const getRootCauseBaseError = (e: Error) => {
   return rootCause as BaseError
 }
 
-export const getRootCauseBaseErrorMessage = (e: Error) => {
+export const getRootCauseBaseErrorMessage = (e: Error): string => {
   const rootCause = getRootCauseBaseError(e)
 
   return rootCause instanceof HTTPError
