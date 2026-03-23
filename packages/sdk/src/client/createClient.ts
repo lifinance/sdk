@@ -20,16 +20,18 @@ export function createClient(options: SDKConfig): SDKClient {
     checkPackageUpdates(name, version)
   }
 
+  const { providers, ...configOptions } = options
+
   const _config: SDKBaseConfig = {
-    ...options,
-    apiUrl: options?.apiUrl ?? 'https://li.quest/v1',
-    rpcUrls: options?.rpcUrls ?? {},
-    debug: options?.debug ?? false,
-    preloadChains: options?.preloadChains ?? true,
-    integrator: options?.integrator ?? 'lifi-sdk',
+    ...configOptions,
+    apiUrl: configOptions?.apiUrl ?? 'https://li.quest/v1',
+    rpcUrls: configOptions?.rpcUrls ?? {},
+    debug: configOptions?.debug ?? false,
+    preloadChains: configOptions?.preloadChains ?? true,
+    integrator: configOptions?.integrator ?? 'lifi-sdk',
   }
 
-  let _providers: SDKProvider[] = []
+  let _providers: SDKProvider[] = providers ?? []
   const _storage = getClientStorage(_config)
 
   const client: SDKClient = {

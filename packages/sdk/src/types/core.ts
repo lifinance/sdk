@@ -40,6 +40,7 @@ export interface SDKBaseConfig {
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
   integrator: string
+  providers?: SDKProvider[]
 }
 
 export type RPCUrls = Partial<Record<ChainId, string[]>>

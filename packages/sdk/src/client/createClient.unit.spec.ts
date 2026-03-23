@@ -111,6 +111,51 @@ describe('createClient', () => {
       expect(client.getProvider(ChainType.EVM)).toBeUndefined()
     })
 
+    it('should initialize providers from config', () => {
+      const evmProvider = EVM()
+      const solanaProvider = Solana()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider, solanaProvider],
+      })
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider)
+      expect(client.getProvider(ChainType.SVM)).toBe(solanaProvider)
+    })
+
+    it('should merge providers set via setProviders with initial providers', () => {
+      const evmProvider = EVM()
+      const utxoProvider = UTXO()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider],
+      })
+
+      client.setProviders([utxoProvider])
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider)
+      expect(client.getProvider(ChainType.UTXO)).toBe(utxoProvider)
+    })
+
+    it('should replace initial providers of the same type via setProviders', () => {
+      const evmProvider1 = EVM()
+      const evmProvider2 = EVM()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider1],
+      })
+
+      client.setProviders([evmProvider2])
+
+      expect(client.providers).toHaveLength(1)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider2)
+    })
+
     it('should set and get providers', () => {
       const client = createClient({ integrator: 'test-app' })
       const evmProvider = EVM()
