@@ -46,11 +46,11 @@
     "@lifi/types": "17.68.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.67.0",
+    "@lifi/data-types": "^6.69.0",
     "@vitest/coverage-v8": "^4.1.0",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
-    "msw": "^2.12.13",
+    "msw": "^2.12.14",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   },
