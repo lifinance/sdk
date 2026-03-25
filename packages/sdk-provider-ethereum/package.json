@@ -47,12 +47,12 @@
     "viem": "^2.47.6"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.69.0",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@lifi/data-types": "^6.70.0",
+    "@vitest/coverage-v8": "^4.1.1",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.1"
   },
   "publishConfig": {
     "access": "public"
