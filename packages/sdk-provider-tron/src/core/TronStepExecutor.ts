@@ -31,7 +31,7 @@ export class TronStepExecutor extends BaseStepExecutor {
     this.wallet = options.wallet
   }
 
-  checkWallet = (step: LiFiStepExtended) => {
+  checkWallet = (step: LiFiStepExtended): void => {
     const address = this.wallet.address
     if (address && address !== step.action.fromAddress) {
       throw new TransactionError(
@@ -57,7 +57,9 @@ export class TronStepExecutor extends BaseStepExecutor {
     }
   }
 
-  override createPipeline = (context: TronStepExecutorContext) => {
+  override createPipeline = (
+    context: TronStepExecutorContext
+  ): TaskPipeline => {
     const { step, isBridgeExecution } = context
 
     const isFromNativeToken = isZeroAddress(step.action.fromToken.address)
