@@ -12,6 +12,7 @@ import type {
 
 export interface TronProviderOptions {
   getWallet?: () => Promise<Adapter>
+  multicallBatchSize?: number
 }
 
 export interface TronTaskContext {

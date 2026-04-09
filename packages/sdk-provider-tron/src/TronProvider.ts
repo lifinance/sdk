@@ -18,7 +18,13 @@ export function TronProvider(options?: TronProviderOptions): TronSDKProvider {
     },
     isAddress: (address: string) => TronWeb.isAddress(address),
     resolveAddress: resolveTronAddress,
-    getBalance: getTronBalance,
+    getBalance: (client, walletAddress, tokens) =>
+      getTronBalance(
+        client,
+        walletAddress,
+        tokens,
+        _options.multicallBatchSize
+      ),
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<TronStepExecutor> {
