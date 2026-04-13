@@ -4,6 +4,7 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStep,
+  ProviderError,
   SDKError,
   TransactionError,
   UnknownError,
@@ -54,11 +55,11 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(LiFiErrorCode.SignatureRejected, message, e)
   }
 
-  if (
-    e instanceof WalletNotFoundError ||
-    e instanceof WalletNotSelectedError ||
-    e instanceof WalletDisconnectedError
-  ) {
+  if (e instanceof WalletNotFoundError || e instanceof WalletNotSelectedError) {
+    return new ProviderError(LiFiErrorCode.ProviderUnavailable, message, e)
+  }
+
+  if (e instanceof WalletDisconnectedError) {
     return new TransactionError(
       LiFiErrorCode.WalletChangedDuringExecution,
       message,
