@@ -2,6 +2,7 @@ import {
   BaseError,
   ErrorName,
   LiFiErrorCode,
+  ProviderError,
   SDKError,
   TransactionError,
   UnknownError,
@@ -57,8 +58,8 @@ describe('parseTronErrors', () => {
     const result = await parseTronErrors(error)
 
     expect(result).toBeInstanceOf(SDKError)
-    expect(result.cause).toBeInstanceOf(TransactionError)
-    expect(result.cause.code).toBe(LiFiErrorCode.WalletChangedDuringExecution)
+    expect(result.cause).toBeInstanceOf(ProviderError)
+    expect(result.cause.code).toBe(LiFiErrorCode.ProviderUnavailable)
   })
 
   it('should handle WalletNotSelectedError', async () => {
@@ -67,8 +68,8 @@ describe('parseTronErrors', () => {
     const result = await parseTronErrors(error)
 
     expect(result).toBeInstanceOf(SDKError)
-    expect(result.cause).toBeInstanceOf(TransactionError)
-    expect(result.cause.code).toBe(LiFiErrorCode.WalletChangedDuringExecution)
+    expect(result.cause).toBeInstanceOf(ProviderError)
+    expect(result.cause.code).toBe(LiFiErrorCode.ProviderUnavailable)
   })
 
   it('should handle WalletDisconnectedError', async () => {
