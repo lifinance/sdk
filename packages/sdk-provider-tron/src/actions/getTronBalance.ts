@@ -106,7 +106,12 @@ const getTronBalanceMulticall = async (
   )
 
   return tokens.map((token, i) => {
-    const [success, returnData] = results[i] as [boolean, string]
+    // Guard against an unexpected length mismatch between tokens and flattened batch results.
+    const entry = results[i] as [boolean, string] | undefined
+    if (!entry) {
+      return { ...token, blockNumber }
+    }
+    const [success, returnData] = entry
     if (!success) {
       // RPC failure: amount is omitted (undefined)
       // Consumers must treat a missing amount as "balance unavailable", not zero.

@@ -98,6 +98,8 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
       }
     )
 
+    // DUP_TRANSACTION_ERROR responses omit the `transaction` field — fall back
+    // to the txID computed locally from the signed transaction in that case.
     const txHash = stripHexPrefix(
       broadcastResult.transaction?.txID ?? signedTransaction.txID
     )
