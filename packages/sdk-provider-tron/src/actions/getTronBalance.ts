@@ -108,6 +108,8 @@ const getTronBalanceMulticall = async (
   return tokens.map((token, i) => {
     const [success, returnData] = results[i] as [boolean, string]
     if (!success) {
+      // RPC failure: amount is omitted (undefined)
+      // Consumers must treat a missing amount as "balance unavailable", not zero.
       return { ...token, blockNumber }
     }
     return { ...token, amount: BigInt(returnData), blockNumber }
@@ -160,6 +162,8 @@ const getTronBalanceDefault = async (
   const tokenAmounts: TokenAmount[] = tokens.map((token, index) => {
     const result = results[index]
     if (result.status === 'rejected') {
+      // RPC failure: amount is omitted (undefined), matching getSolanaBalance's contract.
+      // Consumers must treat a missing amount as "balance unavailable", not zero.
       return { ...token, blockNumber }
     }
     return { ...token, amount: result.value, blockNumber }

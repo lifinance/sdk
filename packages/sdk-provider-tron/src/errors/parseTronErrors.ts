@@ -17,7 +17,8 @@ import {
   WalletWindowClosedError,
 } from '@tronweb3/tronwallet-abstract-adapter'
 
-// "BANDWITH" is the Tron protocol's own misspelling
+// "BANDWITH" is the Tron protocol's own misspelling. Matched by substring because
+// the error code can appear embedded within a larger error message from TronWeb.
 const isBandwidthError = (message?: string): boolean =>
   !!message?.includes('BANDWITH_ERROR')
 
@@ -46,7 +47,8 @@ export const parseTronErrors = async (
 }
 
 const handleSpecificErrors = (e: unknown): BaseError => {
-  const message: string = typeof e === 'string' ? e : (e instanceof Error ? e.message : '')
+  const message: string =
+    typeof e === 'string' ? e : e instanceof Error ? e.message : ''
   const cause: Error | undefined = e instanceof Error ? e : undefined
 
   if (
@@ -68,13 +70,18 @@ const handleSpecificErrors = (e: unknown): BaseError => {
     )
   }
 
-  // TronWeb trx.sign() validation errors
+  // TronWeb trx.sign() validation errors — string literals from tronweb@^6 (src/lib/trx.ts).
+  // If upgrading tronweb, verify these strings haven't changed.
   if (
     message === 'Invalid transaction provided' ||
     message === 'Invalid transaction' ||
     message === 'Transaction is not signed'
   ) {
-    return new TransactionError(LiFiErrorCode.TransactionUnprepared, message, cause)
+    return new TransactionError(
+      LiFiErrorCode.TransactionUnprepared,
+      message,
+      cause
+    )
   }
 
   if (message === 'Transaction is already signed') {
