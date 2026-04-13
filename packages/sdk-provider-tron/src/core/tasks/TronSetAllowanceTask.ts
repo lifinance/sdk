@@ -51,9 +51,17 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
     const approveGasCost = step.estimate.gasCosts?.find(
       (gc) => gc.type === 'APPROVE'
     )
-    const feeLimit = approveGasCost?.limit
-      ? parseInt(approveGasCost.limit, 10)
-      : DEFAULT_APPROVE_FEE_LIMIT
+    const parsedLimit = approveGasCost?.limit ? Number(approveGasCost.limit) : 0
+    if (
+      approveGasCost?.limit &&
+      (!Number.isFinite(parsedLimit) || parsedLimit <= 0)
+    ) {
+      console.warn(
+        '[TronSetAllowanceTask] Invalid fee limit estimate, using default:',
+        approveGasCost.limit
+      )
+    }
+    const feeLimit = parsedLimit > 0 ? parsedLimit : DEFAULT_APPROVE_FEE_LIMIT
 
     const transaction = await callTronRpcsWithRetry(client, async (tronWeb) => {
       const { transaction } =
@@ -90,7 +98,9 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
       }
     )
 
-    const txHash = stripHexPrefix(broadcastResult.transaction.txID)
+    const txHash = stripHexPrefix(
+      broadcastResult.transaction?.txID ?? signedTransaction.txID
+    )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,

@@ -1,2 +1,2 @@
 export const TRON_POLL_INTERVAL_MS = 3000
-export const TRON_POLL_MAX_RETRIES = 20
+export const TRON_POLL_MAX_RETRIES = 40
