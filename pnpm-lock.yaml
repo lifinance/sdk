@@ -224,6 +224,9 @@ importers:
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.9.3)
+      tsdown:
+        specifier: ^0.21.7
+        version: 0.21.7(oxc-resolver@11.19.1)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
