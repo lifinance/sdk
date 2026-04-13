@@ -45,8 +45,9 @@ export const parseTronErrors = async (
   return new SDKError(baseError, step, action)
 }
 
-const handleSpecificErrors = (e: any) => {
-  const message: string = typeof e === 'string' ? e : e.message || ''
+const handleSpecificErrors = (e: unknown): BaseError => {
+  const message: string = typeof e === 'string' ? e : (e instanceof Error ? e.message : '')
+  const cause: Error | undefined = e instanceof Error ? e : undefined
 
   if (
     e instanceof WalletSignTransactionError ||
@@ -73,18 +74,18 @@ const handleSpecificErrors = (e: any) => {
     message === 'Invalid transaction' ||
     message === 'Transaction is not signed'
   ) {
-    return new TransactionError(LiFiErrorCode.TransactionUnprepared, message, e)
+    return new TransactionError(LiFiErrorCode.TransactionUnprepared, message, cause)
   }
 
   if (message === 'Transaction is already signed') {
-    return new TransactionError(LiFiErrorCode.TransactionFailed, message, e)
+    return new TransactionError(LiFiErrorCode.TransactionFailed, message, cause)
   }
 
   if (message === 'Private key does not match address in transaction') {
     return new TransactionError(
       LiFiErrorCode.WalletChangedDuringExecution,
       message,
-      e
+      cause
     )
   }
 
@@ -92,7 +93,7 @@ const handleSpecificErrors = (e: any) => {
     return new TransactionError(
       LiFiErrorCode.InsufficientFunds,
       'Insufficient TRX for network bandwidth. The account needs more TRX to cover transaction fees.',
-      e
+      cause
     )
   }
 
@@ -100,5 +101,5 @@ const handleSpecificErrors = (e: any) => {
     return e
   }
 
-  return new UnknownError(message || ErrorMessage.UnknownError, e)
+  return new UnknownError(message || ErrorMessage.UnknownError, cause)
 }

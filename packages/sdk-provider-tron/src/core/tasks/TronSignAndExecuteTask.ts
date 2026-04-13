@@ -28,6 +28,12 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
 
     checkWallet(step)
 
+    statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
+
+    if (!context.allowUserInteraction) {
+      return { status: 'PAUSED' }
+    }
+
     if (!step.transactionRequest?.data) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,

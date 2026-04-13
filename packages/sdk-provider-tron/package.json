@@ -50,6 +50,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
+    "tsdown": "^0.21.7",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
@@ -88,10 +89,7 @@
     "lifi",
     "multi-chain",
     "sdk",
-    "ethers",
     "viem",
-    "wagmi",
-    "web3",
-    "web3-react"
+    "web3"
   ]
 }
