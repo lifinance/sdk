@@ -21,14 +21,26 @@ export const getBitcoinBalance = async (
     }
   }
   const bigmiClient = await getBitcoinPublicClient(client, ChainId.BTC)
-  const [balance, blockCount] = await Promise.all([
+  const [balance, blockCount] = await Promise.allSettled([
     bigmiClient.getBalance({ address: walletAddress }),
     bigmiClient.getBlockCount(),
   ])
 
+  const blockNumber =
+    blockCount.status === 'fulfilled' ? BigInt(blockCount.value) : 0n
+
+  if (balance.status !== 'fulfilled') {
+    // RPC failed — leave amount undefined so callers can distinguish
+    // an unknown balance from a known zero.
+    return tokens.map((token) => ({
+      ...token,
+      blockNumber,
+    }))
+  }
+
   return tokens.map((token) => ({
     ...token,
-    amount: balance,
-    blockNumber: BigInt(blockCount),
+    amount: balance.value,
+    blockNumber,
   }))
 }
