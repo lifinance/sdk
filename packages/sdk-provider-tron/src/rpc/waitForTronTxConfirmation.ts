@@ -29,7 +29,7 @@ export async function waitForTronTxConfirmation(
   let polls = 0
   await waitForResult(
     async () => {
-      if (polls++ >= TRON_POLL_MAX_POLLS) {
+      if (++polls > TRON_POLL_MAX_POLLS) {
         throw new TransactionError(
           LiFiErrorCode.TransactionFailed,
           'Transaction confirmation timeout.'
