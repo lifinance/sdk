@@ -29,10 +29,12 @@ export const parseTronErrors = async (
 ): Promise<SDKError> => {
   if (e instanceof SDKError) {
     if (isBandwidthError(e.message)) {
+      // Preserve the original cause (e.g. the TronWeb error) rather than wrapping
+      // the outer SDKError — keeps log/stack traces pointing at the true origin.
       const baseError = new TransactionError(
         LiFiErrorCode.InsufficientFunds,
         'Insufficient TRX for network bandwidth. The account needs more TRX to cover transaction fees.',
-        e
+        (e.cause as Error | undefined) ?? e
       )
       return new SDKError(baseError, step ?? e.step, action ?? e.action)
     }

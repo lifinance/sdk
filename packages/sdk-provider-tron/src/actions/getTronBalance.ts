@@ -1,6 +1,7 @@
 import type { SDKClient, Token, TokenAmount } from '@lifi/sdk'
 import { withDedupe } from '@lifi/sdk'
 import { TronWeb } from 'tronweb'
+import { DEFAULT_MULTICALL_BATCH_SIZE } from '../core/constants.js'
 import { callTronRpcsWithRetry } from '../rpc/callTronRpcsWithRetry.js'
 import { encodeAddressCalldata, toEvmHex } from '../utils/address.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
@@ -12,8 +13,6 @@ const GET_ETH_BALANCE_SELECTOR = TronWeb.sha3('getEthBalance(address)').slice(
   2,
   10
 )
-
-const DEFAULT_MULTICALL_BATCH_SIZE = 50
 
 export const getTronBalance = async (
   client: SDKClient,
@@ -98,8 +97,9 @@ const getTronBalanceMulticall = async (
         ),
       ])
 
+      const blockNumber = block.block_header?.raw_data?.number
       return [
-        BigInt(block.block_header?.raw_data?.number ?? 0),
+        blockNumber !== undefined ? BigInt(blockNumber) : undefined,
         batchResults.flat(),
       ]
     }
@@ -148,9 +148,10 @@ const getTronBalanceDefault = async (
 
       return Promise.all([
         withDedupe(
-          async () => {
+          async (): Promise<bigint | undefined> => {
             const block = await tronWeb.trx.getCurrentBlock()
-            return BigInt(block.block_header?.raw_data?.number ?? 0)
+            const n = block.block_header?.raw_data?.number
+            return n !== undefined ? BigInt(n) : undefined
           },
           { id: `${getTronBalanceDefault.name}.getCurrentBlock.${host}` }
         ),

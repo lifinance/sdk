@@ -3,7 +3,11 @@ import { TronWeb } from 'tronweb'
 // TronWeb.address.toHex returns a 41-prefixed hex string for valid Tron base58 addresses.
 // Replacing the leading '41' with '0x' yields the standard EVM-format hex address.
 export function toEvmHex(tronAddress: string): string {
-  return TronWeb.address.toHex(tronAddress).replace(/^41/, '0x')
+  const hex = TronWeb.address.toHex(tronAddress)
+  if (!hex.startsWith('41')) {
+    throw new Error(`Unexpected Tron address hex prefix: ${hex}`)
+  }
+  return `0x${hex.slice(2)}`
 }
 
 export function encodeAddressCalldata(

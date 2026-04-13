@@ -153,4 +153,35 @@ describe('parseTronErrors', () => {
     expect(result).toBeInstanceOf(SDKError)
     expect(result.cause).toBeInstanceOf(UnknownError)
   })
+
+  it('maps a raw BANDWITH_ERROR string to InsufficientFunds', async () => {
+    const error = new Error('contract revert: BANDWITH_ERROR no resource')
+
+    const result = await parseTronErrors(error)
+
+    expect(result).toBeInstanceOf(SDKError)
+    expect(result.cause).toBeInstanceOf(TransactionError)
+    expect(result.cause.code).toBe(LiFiErrorCode.InsufficientFunds)
+  })
+
+  it('rewraps an SDKError with bandwidth message and preserves the original cause', async () => {
+    const original = new Error('contract revert: BANDWITH_ERROR no resource')
+    const wrapped = new SDKError(
+      new BaseError(
+        ErrorName.UnknownError,
+        LiFiErrorCode.InternalError,
+        'contract revert: BANDWITH_ERROR no resource',
+        original
+      )
+    )
+
+    const result = await parseTronErrors(wrapped)
+
+    expect(result).toBeInstanceOf(SDKError)
+    expect(result.cause).toBeInstanceOf(TransactionError)
+    expect(result.cause.code).toBe(LiFiErrorCode.InsufficientFunds)
+    // Original TronWeb-style error must remain reachable through the cause chain:
+    // SDKError → TransactionError → wrapped BaseError → original.
+    expect(result.cause.cause?.cause).toBe(original)
+  })
 })

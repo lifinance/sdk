@@ -3,12 +3,11 @@ import {
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
-  waitForResult,
 } from '@lifi/sdk'
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
+import { waitForTronTxConfirmation } from '../../rpc/waitForTronTxConfirmation.js'
 import type { TronStepExecutorContext } from '../../types.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
-import { TRON_POLL_INTERVAL_MS, TRON_POLL_MAX_RETRIES } from '../constants.js'
 
 const DEFAULT_APPROVE_FEE_LIMIT = 100_000_000
 
@@ -107,25 +106,10 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
     })
 
-    // Wait for confirmation
-    await waitForResult(
-      async () => {
-        const txInfo = await callTronRpcsWithRetry(client, (tronWeb) =>
-          tronWeb.trx.getTransactionInfo(txHash)
-        )
-        if (txInfo?.id) {
-          if (txInfo.receipt?.result === 'FAILED') {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionFailed,
-              'Approval transaction failed on-chain.'
-            )
-          }
-          return txInfo
-        }
-        return undefined
-      },
-      TRON_POLL_INTERVAL_MS,
-      TRON_POLL_MAX_RETRIES
+    await waitForTronTxConfirmation(
+      client,
+      txHash,
+      'Approval transaction failed on-chain.'
     )
 
     statusManager.updateAction(step, action.type, 'DONE', {

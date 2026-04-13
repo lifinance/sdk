@@ -1,7 +1,8 @@
 import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
 import { TronWeb } from 'tronweb'
 
-const tronWebCache = new LruMap<TronWeb>(12)
+/** @internal Exposed so unit tests can clear between cases (e.g. `tronWebCache.clear()`). */
+export const tronWebCache: LruMap<TronWeb> = new LruMap<TronWeb>(12)
 
 export async function callTronRpcsWithRetry<R>(
   client: SDKClient,

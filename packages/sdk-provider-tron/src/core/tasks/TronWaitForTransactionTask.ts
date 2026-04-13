@@ -3,12 +3,11 @@ import {
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
-  waitForResult,
 } from '@lifi/sdk'
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
+import { waitForTronTxConfirmation } from '../../rpc/waitForTronTxConfirmation.js'
 import type { TronStepExecutorContext } from '../../types.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
-import { TRON_POLL_INTERVAL_MS, TRON_POLL_MAX_RETRIES } from '../constants.js'
 
 export class TronWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: TronStepExecutorContext): Promise<TaskResult> {
@@ -64,25 +63,7 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
     })
 
-    await waitForResult(
-      async () => {
-        const txInfo = await callTronRpcsWithRetry(client, (tronWeb) =>
-          tronWeb.trx.getTransactionInfo(txHash)
-        )
-        if (txInfo?.id) {
-          if (txInfo.receipt?.result === 'FAILED') {
-            throw new TransactionError(
-              LiFiErrorCode.TransactionFailed,
-              `Transaction failed on-chain: ${txInfo.receipt.result}`
-            )
-          }
-          return txInfo
-        }
-        return undefined
-      },
-      TRON_POLL_INTERVAL_MS,
-      TRON_POLL_MAX_RETRIES
-    )
+    await waitForTronTxConfirmation(client, txHash)
 
     if (isBridgeExecution) {
       statusManager.updateAction(step, action.type, 'DONE')

@@ -26,6 +26,13 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    if (!step.transactionRequest?.data) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Transaction request is not found.'
+      )
+    }
+
     checkWallet(step)
 
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
@@ -34,19 +41,16 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    if (!step.transactionRequest?.data) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionUnprepared,
-        'Unable to prepare transaction. Transaction request is not found.'
-      )
-    }
-
     const rawDataHex = stripHexPrefix(step.transactionRequest.data as string)
 
     const contractType =
       (step.transactionRequest.customData?.contractType as string) ??
       'TriggerSmartContract'
 
+    // The API ships the transaction as a raw protobuf hex; TronWeb's wallet adapter
+    // needs the decoded `raw_data` plus a `txID`. We decode the hex into raw_data,
+    // then compute txID locally from it. Computing rather than trusting an upstream
+    // txID also defends against raw_data_hex / txID mismatches.
     const raw_data = utils.deserializeTx.deserializeTransaction(
       contractType,
       rawDataHex
