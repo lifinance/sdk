@@ -7,6 +7,7 @@ import {
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import { waitForTronTxConfirmation } from '../../rpc/waitForTronTxConfirmation.js'
 import type { TronStepExecutorContext } from '../../types.js'
+import { getTronTxLink } from '../../utils/getTronTxLink.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
 
 export class TronWaitForTransactionTask extends BaseStepExecutionTask {
@@ -60,7 +61,7 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
+      txLink: getTronTxLink(fromChain, txHash),
     })
 
     await waitForTronTxConfirmation(client, txHash)

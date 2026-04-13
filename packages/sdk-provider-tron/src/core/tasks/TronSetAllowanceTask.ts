@@ -7,6 +7,7 @@ import {
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import { waitForTronTxConfirmation } from '../../rpc/waitForTronTxConfirmation.js'
 import type { TronStepExecutorContext } from '../../types.js'
+import { getTronTxLink } from '../../utils/getTronTxLink.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
 
 const DEFAULT_APPROVE_FEE_LIMIT = 100_000_000
@@ -103,7 +104,7 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
+      txLink: getTronTxLink(fromChain, txHash),
     })
 
     await waitForTronTxConfirmation(
@@ -114,7 +115,7 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE', {
       txHash,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
+      txLink: getTronTxLink(fromChain, txHash),
     })
 
     return {
