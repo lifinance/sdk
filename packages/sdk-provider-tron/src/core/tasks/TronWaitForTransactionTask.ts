@@ -1,11 +1,10 @@
 import {
   BaseStepExecutionTask,
   LiFiErrorCode,
-  type SDKClient,
   type TaskResult,
   TransactionError,
+  waitForResult,
 } from '@lifi/sdk'
-import type { TronWeb } from 'tronweb'
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import type { TronStepExecutorContext } from '../../types.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
@@ -65,7 +64,25 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}#/transaction/${txHash}`,
     })
 
-    await waitForTronConfirmation(client, txHash)
+    await waitForResult(
+      async () => {
+        const txInfo = await callTronRpcsWithRetry(client, (tronWeb) =>
+          tronWeb.trx.getTransactionInfo(txHash)
+        )
+        if (txInfo?.id) {
+          if (txInfo.receipt?.result === 'FAILED') {
+            throw new TransactionError(
+              LiFiErrorCode.TransactionFailed,
+              `Transaction failed on-chain: ${txInfo.receipt.result}`
+            )
+          }
+          return txInfo
+        }
+        return undefined
+      },
+      TRON_POLL_INTERVAL_MS,
+      TRON_POLL_MAX_RETRIES
+    )
 
     if (isBridgeExecution) {
       statusManager.updateAction(step, action.type, 'DONE')
@@ -73,40 +90,4 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
 
     return { status: 'COMPLETED' }
   }
-}
-
-async function waitForTronConfirmation(
-  client: SDKClient,
-  txHash: string,
-  maxRetries = TRON_POLL_MAX_RETRIES,
-  intervalMs = TRON_POLL_INTERVAL_MS
-): Promise<void> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const txInfo = await callTronRpcsWithRetry(client, (tronWeb: TronWeb) =>
-        tronWeb.trx.getTransactionInfo(txHash)
-      )
-
-      if (txInfo?.id) {
-        if (txInfo.receipt?.result === 'FAILED') {
-          throw new TransactionError(
-            LiFiErrorCode.TransactionFailed,
-            `Transaction failed on-chain: ${txInfo.receipt.result}`
-          )
-        }
-        return
-      }
-    } catch (error) {
-      if (error instanceof TransactionError) {
-        throw error
-      }
-      // Transaction info not yet available, continue polling
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs))
-  }
-
-  throw new TransactionError(
-    LiFiErrorCode.TransactionFailed,
-    'Transaction confirmation timeout.'
-  )
 }

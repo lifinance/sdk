@@ -1,5 +1,7 @@
-import { ChainId, type SDKClient } from '@lifi/sdk'
+import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
 import { TronWeb } from 'tronweb'
+
+const tronWebCache = new LruMap<TronWeb>(12)
 
 export async function callTronRpcsWithRetry<R>(
   client: SDKClient,
@@ -14,7 +16,12 @@ export async function callTronRpcsWithRetry<R>(
   const errors: Error[] = []
   for (const url of urls) {
     try {
-      return await fn(new TronWeb({ fullHost: url }))
+      let tronWeb = tronWebCache.get(url)
+      if (!tronWeb) {
+        tronWeb = new TronWeb({ fullHost: url })
+        tronWebCache.set(url, tronWeb)
+      }
+      return await fn(tronWeb)
     } catch (error) {
       errors.push(error instanceof Error ? error : new Error(String(error)))
     }

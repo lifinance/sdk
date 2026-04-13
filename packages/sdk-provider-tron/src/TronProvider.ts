@@ -40,9 +40,7 @@ export function TronProvider(options?: TronProviderOptions): TronSDKProvider {
       const executor = new TronStepExecutor({
         wallet,
         routeId: options.routeId,
-        executionOptions: {
-          ...options.executionOptions,
-        },
+        executionOptions: options.executionOptions,
       })
 
       return executor
