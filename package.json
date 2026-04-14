@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0-alpha.24",
+  "version": "4.0.0-beta.5",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -46,21 +46,20 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
+    "@biomejs/biome": "^2.4.11",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.4",
     "husky": "^9.1.7",
-    "knip": "^6.3.1",
+    "knip": "^6.4.1",
     "lerna": "^9.0.7",
     "standard-version": "^9.5.0",
-    "tsdown": "^0.21.7",
+    "tsdown": "^0.21.8",
     "typescript": "^5.9.3",
     "vitest": "^4.1.4"
   },
   "pnpm": {
-    "//": "axios override pins transitive axios (pulled via nx \u2192 lerna, devDeps only) to \u22651.15.0 to avoid known DoS CVE in earlier versions.",
     "overrides": {
       "axios": ">=1.15.0"
     }

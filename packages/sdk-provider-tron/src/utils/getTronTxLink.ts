@@ -8,6 +8,8 @@ export const getTronTxLink = (
   if (!explorerUrl) {
     return undefined
   }
-  const base = explorerUrl.endsWith('/') ? explorerUrl.slice(0, -1) : explorerUrl
+  const base = explorerUrl.endsWith('/')
+    ? explorerUrl.slice(0, -1)
+    : explorerUrl
   return `${base}#/transaction/${txHash}`
 }

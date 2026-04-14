@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-tron",
-  "version": "4.0.0-alpha.24",
+  "version": "4.0.0-beta.5",
   "description": "LI.FI Tron SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -43,16 +43,16 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@tronweb3/tronwallet-abstract-adapter": "^1.1.10",
-    "tronweb": "^6.0.4"
+    "@tronweb3/tronwallet-abstract-adapter": "^1.1.12",
+    "tronweb": "^6.2.2"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.4",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
-    "tsdown": "^0.21.7",
+    "tsdown": "^0.21.8",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.4"
   },
   "publishConfig": {
     "access": "public"

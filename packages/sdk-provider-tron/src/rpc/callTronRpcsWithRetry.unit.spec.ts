@@ -24,7 +24,10 @@ describe('callTronRpcsWithRetry', () => {
   })
 
   it('returns the result from the first URL on success', async () => {
-    const client = makeClient(['https://rpc-a.example', 'https://rpc-b.example'])
+    const client = makeClient([
+      'https://rpc-a.example',
+      'https://rpc-b.example',
+    ])
     const fn = vi.fn(async () => 'ok')
 
     const result = await callTronRpcsWithRetry(client, fn)
@@ -34,7 +37,10 @@ describe('callTronRpcsWithRetry', () => {
   })
 
   it('falls through to the next URL when the first fails', async () => {
-    const client = makeClient(['https://rpc-a.example', 'https://rpc-b.example'])
+    const client = makeClient([
+      'https://rpc-a.example',
+      'https://rpc-b.example',
+    ])
     const fn = vi
       .fn<(tw: unknown) => Promise<string>>()
       .mockRejectedValueOnce(new Error('boom-a'))
@@ -47,7 +53,10 @@ describe('callTronRpcsWithRetry', () => {
   })
 
   it('throws AggregateError when every URL fails', async () => {
-    const client = makeClient(['https://rpc-a.example', 'https://rpc-b.example'])
+    const client = makeClient([
+      'https://rpc-a.example',
+      'https://rpc-b.example',
+    ])
     const fn = vi
       .fn()
       .mockRejectedValueOnce(new Error('boom-a'))

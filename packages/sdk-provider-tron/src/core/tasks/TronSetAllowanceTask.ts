@@ -10,6 +10,7 @@ import type { TronStepExecutorContext } from '../../types.js'
 import { getTronTxLink } from '../../utils/getTronTxLink.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
 
+// 100 TRX in sun (1 TRX = 1_000_000 sun) — generous default for TRC-20 approve calls.
 const DEFAULT_APPROVE_FEE_LIMIT = 100_000_000
 
 export class TronSetAllowanceTask extends BaseStepExecutionTask {
