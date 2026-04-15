@@ -15,7 +15,7 @@
   "author": "Eugene Chybisov <eugene@li.finance>",
   "type": "module",
   "sideEffects": false,
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/esm/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/esm/index.d.ts",
   "typings": "./dist/esm/index.d.ts",
@@ -23,7 +23,7 @@
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
-      "default": "./dist/cjs/index.js"
+      "default": "./dist/esm/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -47,7 +47,7 @@
     "@mysten/sui": "^2.15.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.77.1",
+    "@lifi/data-types": "^6.77.3",
     "@vitest/coverage-v8": "^4.1.4",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",

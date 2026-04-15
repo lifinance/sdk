@@ -49,6 +49,7 @@ export const getClientStorage = (config: SDKBaseConfig): ClientStorage => {
             ChainType.SVM,
             ChainType.UTXO,
             ChainType.MVM,
+            ChainType.TVM,
           ],
         })
         _chainsUpdatedAt = Date.now()
