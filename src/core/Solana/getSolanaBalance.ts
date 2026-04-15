@@ -76,15 +76,14 @@ const getSolanaBalanceDefault = async (
       ),
     ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
-  const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
+  const nativeBalanceOk = balance.status === 'fulfilled'
+  const solBalance = nativeBalanceOk ? BigInt(balance.value) : 0n
+  const tokenProgramOk = tokenAccountsByOwner.status === 'fulfilled'
+  const token2022ProgramOk = token2022AccountsByOwner.status === 'fulfilled'
 
   const walletTokenAmounts = [
-    ...(tokenAccountsByOwner.status === 'fulfilled'
-      ? tokenAccountsByOwner.value.value
-      : []),
-    ...(token2022AccountsByOwner.status === 'fulfilled'
-      ? token2022AccountsByOwner.value.value
-      : []),
+    ...(tokenProgramOk ? tokenAccountsByOwner.value.value : []),
+    ...(token2022ProgramOk ? token2022AccountsByOwner.value.value : []),
   ].reduce(
     (tokenAmounts: Record<string, bigint>, value: any) => {
       const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
@@ -96,19 +95,27 @@ const getSolanaBalanceDefault = async (
     {} as Record<string, bigint>
   )
 
-  walletTokenAmounts[SolSystemProgram] = solBalance
+  // We can only confidently report 0n for an SPL mint when both Token and
+  // Token2022 program queries succeeded — otherwise the mint may live in the
+  // program whose query failed (e.g. PYUSD on Token2022).
+  const splZeroIsKnown = tokenProgramOk && token2022ProgramOk
+
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
-    if (walletTokenAmounts[token.address]) {
-      return {
-        ...token,
-        amount: walletTokenAmounts[token.address],
-        blockNumber,
+    const isNative = token.address === SolSystemProgram
+    if (isNative) {
+      if (!nativeBalanceOk) {
+        return { ...token, blockNumber }
       }
+      return { ...token, amount: solBalance, blockNumber }
     }
-    return {
-      ...token,
-      blockNumber,
+    const found = walletTokenAmounts[token.address]
+    if (found !== undefined) {
+      return { ...token, amount: found, blockNumber }
     }
+    if (splZeroIsKnown) {
+      return { ...token, amount: 0n, blockNumber }
+    }
+    return { ...token, blockNumber }
   })
   return tokenAmounts
 }

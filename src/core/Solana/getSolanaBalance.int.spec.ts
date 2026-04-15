@@ -75,12 +75,13 @@ describe.sequential('Solana token balance', async () => {
     )
     expect(tokenBalances.length).toBe(2)
 
-    // invalid tokens should be returned with balance 0
+    // A mint the wallet doesn't hold resolves to a known-zero balance
+    // (0n) when both Token and Token2022 program queries succeed.
     const invalidBalance = tokenBalances.find(
       (token) => token.address === invalidToken.address
     )
     expect(invalidBalance).toBeDefined()
-    expect(invalidBalance!.amount).toBeUndefined()
+    expect(invalidBalance!.amount).toBe(0n)
   })
 
   // it(
