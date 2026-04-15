@@ -4,13 +4,13 @@ import {
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
+  withTimeout,
 } from '@lifi/sdk'
 import { getTransactionCodec } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { getWalletFeature } from '../../utils/getWalletFeature.js'
-import { withTimeout } from '../../utils/withTimeout.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {

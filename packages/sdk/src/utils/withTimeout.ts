@@ -10,7 +10,7 @@
 export function withTimeout<T>(
   fn: ({ signal }: { signal: AbortController['signal'] | null }) => Promise<T>,
   {
-    errorInstance = new Error('timed out'),
+    errorInstance = new Error('Timed out after waiting for too long.'),
     timeout,
     signal,
   }: {
