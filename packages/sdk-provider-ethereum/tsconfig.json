@@ -5,8 +5,8 @@
     "composite": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "moduleResolution": "Node",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["node"]
   },
   "include": ["./src/**/*", "./src/**/*.json"],
   "exclude": [
