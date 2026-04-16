@@ -205,10 +205,6 @@ export interface ExecutionOptions {
   getContractCalls?: GetContractCallsHook
   adjustZeroOutputFromPreviousStep?: boolean
   executeInBackground?: boolean
-  /**
-   * @deprecated
-   */
-  infiniteApproval?: boolean
 }
 
 export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
