@@ -4,9 +4,7 @@
     // NOTE: Enabling incremental builds speeds up `tsc`. Keep in mind though that it does not reliably bust the cache when the `tsconfig.json` file changes.
     "incremental": true,
     "allowJs": false,
-    "allowSyntheticDefaultImports": true,
     "composite": true,
-    "esModuleInterop": false,
     "forceConsistentCasingInFileNames": true,
     "isolatedDeclarations": true,
     "isolatedModules": true,

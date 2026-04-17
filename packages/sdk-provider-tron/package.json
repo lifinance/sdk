@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-tron",
-  "version": "4.0.0-beta.6",
+  "version": "4.0.0-beta.7",
   "description": "LI.FI Tron SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -51,7 +51,7 @@
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "tsdown": "^0.21.8",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "vitest": "^4.1.4"
   },
   "publishConfig": {
