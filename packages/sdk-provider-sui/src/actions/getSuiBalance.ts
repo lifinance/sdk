@@ -51,7 +51,8 @@ const getSuiBalanceDefault = async (
     ),
   ])
 
-  const coinsResult = coins.status === 'fulfilled' ? coins.value : []
+  const coinsOk = coins.status === 'fulfilled'
+  const coinsResult = coinsOk ? coins.value : []
   const blockNumber =
     checkpoint.status === 'fulfilled' ? BigInt(checkpoint.value) : 0n
 
@@ -76,17 +77,16 @@ const getSuiBalanceDefault = async (
   }
 
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
-    if (walletTokenAmounts[token.address]) {
-      return {
-        ...token,
-        amount: walletTokenAmounts[token.address],
-        blockNumber,
-      }
+    const found = walletTokenAmounts[token.address]
+    if (found !== undefined) {
+      return { ...token, amount: found, blockNumber }
     }
-    return {
-      ...token,
-      blockNumber,
+    if (coinsOk) {
+      // Wallet genuinely has no coins of this type.
+      return { ...token, amount: 0n, blockNumber }
     }
+    // RPC failed — leave amount undefined.
+    return { ...token, blockNumber }
   })
   return tokenAmounts
 }

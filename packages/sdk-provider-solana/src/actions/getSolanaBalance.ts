@@ -5,8 +5,9 @@ import {
   type TokenAmount,
   withDedupe,
 } from '@lifi/sdk'
-import { PublicKey } from '@solana/web3.js'
-import { callSolanaWithRetry } from '../client/connection.js'
+import { address, type JsonParsedTokenAccount } from '@solana/kit'
+
+import { callSolanaRpcsWithRetry } from '../rpc/utils.js'
 
 const SolSystemProgram = '11111111111111111111111111111111'
 const TokenProgramId = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -36,90 +37,112 @@ const getSolanaBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
-  const accountPublicKey = new PublicKey(walletAddress)
-  const tokenProgramIdPublicKey = new PublicKey(TokenProgramId)
-  const token2022ProgramIdPublicKey = new PublicKey(Token2022ProgramId)
+  // Convert addresses to Solana Kit's address type
+  const accountAddress = address(walletAddress)
+  const tokenProgramAddress = address(TokenProgramId)
+  const token2022ProgramAddress = address(Token2022ProgramId)
+
+  // Use Solana Kit's RPC API with the retry wrapper
   const [slot, balance, tokenAccountsByOwner, token2022AccountsByOwner] =
     await Promise.allSettled([
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getSlot('confirmed')
+          callSolanaRpcsWithRetry(client, (rpc) =>
+            rpc.getSlot({ commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getSlot` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getBalance(accountPublicKey, 'confirmed')
+          callSolanaRpcsWithRetry(client, (rpc) =>
+            rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
         { id: `${getSolanaBalanceDefault.name}.getBalance` }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: tokenProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaRpcsWithRetry(client, (rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: tokenProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${TokenProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${TokenProgramId}`,
         }
       ),
       withDedupe(
         () =>
-          callSolanaWithRetry(client, (connection) =>
-            connection.getParsedTokenAccountsByOwner(
-              accountPublicKey,
-              {
-                programId: token2022ProgramIdPublicKey,
-              },
-              'confirmed'
-            )
+          callSolanaRpcsWithRetry(client, (rpc) =>
+            rpc
+              .getTokenAccountsByOwner(
+                accountAddress,
+                {
+                  programId: token2022ProgramAddress,
+                },
+                {
+                  commitment: 'confirmed',
+                  encoding: 'jsonParsed',
+                }
+              )
+              .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getParsedTokenAccountsByOwner.${Token2022ProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${Token2022ProgramId}`,
         }
       ),
     ])
   const blockNumber = slot.status === 'fulfilled' ? BigInt(slot.value) : 0n
-  const solBalance = balance.status === 'fulfilled' ? BigInt(balance.value) : 0n
+  const nativeBalanceOk = balance.status === 'fulfilled'
+  const solBalance = nativeBalanceOk ? BigInt(balance.value.value) : 0n
+  const tokenProgramOk = tokenAccountsByOwner.status === 'fulfilled'
+  const token2022ProgramOk = token2022AccountsByOwner.status === 'fulfilled'
 
   const walletTokenAmounts = [
-    ...(tokenAccountsByOwner.status === 'fulfilled'
-      ? tokenAccountsByOwner.value.value
-      : []),
-    ...(token2022AccountsByOwner.status === 'fulfilled'
-      ? token2022AccountsByOwner.value.value
-      : []),
+    ...(tokenProgramOk ? tokenAccountsByOwner.value.value : []),
+    ...(token2022ProgramOk ? token2022AccountsByOwner.value.value : []),
   ].reduce(
-    (tokenAmounts: Record<string, bigint>, value: any) => {
-      const amount = BigInt(value.account.data.parsed.info.tokenAmount.amount)
+    (tokenAmounts: Record<string, bigint>, value) => {
+      const tokenAccount: JsonParsedTokenAccount =
+        value.account.data.parsed.info
+      const amount = BigInt(tokenAccount.tokenAmount.amount)
       if (amount > 0n) {
-        tokenAmounts[value.account.data.parsed.info.mint] = amount
+        tokenAmounts[tokenAccount.mint] = amount
       }
       return tokenAmounts
     },
     {} as Record<string, bigint>
   )
 
-  walletTokenAmounts[SolSystemProgram] = solBalance
+  // We can only confidently report 0n for an SPL mint when both Token and
+  // Token2022 program queries succeeded — otherwise the mint may live in the
+  // program whose query failed (e.g. PYUSD on Token2022).
+  const splZeroIsKnown = tokenProgramOk && token2022ProgramOk
+
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
-    if (walletTokenAmounts[token.address]) {
-      return {
-        ...token,
-        amount: walletTokenAmounts[token.address],
-        blockNumber,
+    const isNative = token.address === SolSystemProgram
+    if (isNative) {
+      if (!nativeBalanceOk) {
+        return { ...token, blockNumber }
       }
+      return { ...token, amount: solBalance, blockNumber }
     }
-    return {
-      ...token,
-      blockNumber,
+    const found = walletTokenAmounts[token.address]
+    if (found !== undefined) {
+      return { ...token, amount: found, blockNumber }
     }
+    if (splZeroIsKnown) {
+      return { ...token, amount: 0n, blockNumber }
+    }
+    return { ...token, blockNumber }
   })
   return tokenAmounts
 }

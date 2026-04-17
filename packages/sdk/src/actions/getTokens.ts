@@ -32,7 +32,8 @@ export async function getTokens(
 ): Promise<TokensResponse> {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof TokensRequest]) {
+      const value = params[key as keyof TokensRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof TokensRequest]
       }
     }
@@ -40,11 +41,13 @@ export async function getTokens(
   const urlSearchParams = new URLSearchParams(
     params as Record<string, string>
   ).toString()
-  const isExtended = params?.extended === true
+  const _isExtended = params?.extended === true
   const response = await withDedupe(
     () =>
       request<
-        typeof isExtended extends true ? TokensExtendedResponse : TokensResponse
+        typeof _isExtended extends true
+          ? TokensExtendedResponse
+          : TokensResponse
       >(client.config, `${client.config.apiUrl}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),

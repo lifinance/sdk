@@ -6,12 +6,14 @@ import {
   type ExtendedChain,
 } from '@lifi/types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { _getChains } from '../actions/getChains.js'
+import { getRpcUrlsFromChains } from '../core/utils.js'
 import type { RPCUrls, SDKBaseConfig } from '../types/core.js'
 import { getClientStorage } from './getClientStorage.js'
 
 // Mock the dependencies
 vi.mock('../actions/getChains.js', () => ({
-  getChainsFromConfig: vi.fn(),
+  _getChains: vi.fn(),
 }))
 
 vi.mock('../core/utils.js', () => ({
@@ -28,6 +30,7 @@ describe('getClientStorage', () => {
       integrator: 'test-app',
       apiUrl: 'https://li.quest/v1',
       debug: false,
+      preloadChains: true,
       rpcUrls: {
         [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
       },
@@ -109,11 +112,8 @@ describe('getClientStorage', () => {
       expect(storage.needReset).toBe(true) // Because _chainsUpdatedAt is undefined
     })
 
-    it('should return true when chains are older than 24 hours', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+    it('should return true when chains are older than 6 hours', async () => {
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const storage = getClientStorage(mockConfig)
@@ -121,9 +121,9 @@ describe('getClientStorage', () => {
       // First call to getChains sets the timestamp
       await storage.getChains()
 
-      // Mock Date.now to return a time 25 hours later
+      // Mock Date.now to return a time 7 hours later
       const originalDateNow = Date.now
-      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
 
       expect(storage.needReset).toBe(true)
 
@@ -132,10 +132,7 @@ describe('getClientStorage', () => {
     })
 
     it('should return false when chains are fresh', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const storage = getClientStorage(mockConfig)
@@ -150,50 +147,43 @@ describe('getClientStorage', () => {
 
   describe('getChains method', () => {
     it('should fetch chains when needReset is true', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const storage = getClientStorage(mockConfig)
       const chains = await storage.getChains()
 
-      expect(getChainsFromConfig).toHaveBeenCalledWith(mockConfig, {
+      expect(_getChains).toHaveBeenCalledWith(mockConfig, {
         chainTypes: [
           ChainType.EVM,
           ChainType.SVM,
           ChainType.UTXO,
           ChainType.MVM,
+          ChainType.TVM,
         ],
       })
       expect(chains).toEqual(mockChains)
     })
 
     it('should return cached chains when not needReset and chains exist', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const storage = getClientStorage(mockConfig)
 
       // First call fetches chains
       const chains1 = await storage.getChains()
-      expect(getChainsFromConfig).toHaveBeenCalledTimes(1)
+      expect(_getChains).toHaveBeenCalledTimes(1)
 
       // Second call should return cached chains
       const chains2 = await storage.getChains()
-      expect(getChainsFromConfig).toHaveBeenCalledTimes(1)
+      expect(_getChains).toHaveBeenCalledTimes(1)
       expect(chains1).toBe(chains2) // Same reference
     })
 
-    it('should handle errors from getChainsFromConfig', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-
+    it('should handle errors from _getChains', async () => {
       const error = new Error('Failed to fetch chains')
-      vi.mocked(getChainsFromConfig).mockRejectedValue(error)
+      vi.mocked(_getChains).mockRejectedValue(error)
 
       const configWithoutRpcUrls = {
         ...mockConfig,
@@ -209,10 +199,7 @@ describe('getClientStorage', () => {
 
   describe('getRpcUrls method', () => {
     it('should fetch RPC URLs when needReset is true', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const configWithoutRpcUrls = {
@@ -229,10 +216,7 @@ describe('getClientStorage', () => {
     })
 
     it('should cache RPC URLs after initial merge', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const storage = getClientStorage(mockConfig)
@@ -248,10 +232,7 @@ describe('getClientStorage', () => {
     })
 
     it('should handle errors from getRpcUrlsFromChains', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       const error = new Error('Failed to process RPC URLs')
       vi.mocked(getRpcUrlsFromChains).mockImplementation(() => {
         throw error
@@ -271,10 +252,7 @@ describe('getClientStorage', () => {
 
   describe('caching behavior', () => {
     it('should reset cache when needReset becomes true', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
-      vi.mocked(getChainsFromConfig).mockResolvedValue(mockChains)
+      vi.mocked(_getChains).mockResolvedValue(mockChains)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
 
       const configWithoutRpcUrls = {
@@ -287,15 +265,15 @@ describe('getClientStorage', () => {
       await storage.getChains()
       await storage.getRpcUrls()
 
-      // Mock Date.now to return a time 25 hours later
+      // Mock Date.now to return a time 7 hours later (beyond 6h refresh interval)
       const originalDateNow = Date.now
-      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 25 * 60 * 60 * 1000)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 7 * 60 * 60 * 1000)
 
       // Should refetch when needReset is true - chains are refreshed and RPC URLs are merged again
       await storage.getChains()
       await storage.getRpcUrls()
 
-      expect(getChainsFromConfig).toHaveBeenCalledTimes(2)
+      expect(_getChains).toHaveBeenCalledTimes(2)
       expect(getRpcUrlsFromChains).toHaveBeenCalledTimes(2) // Called once per chain refresh
 
       // Restore Date.now
@@ -303,11 +281,60 @@ describe('getClientStorage', () => {
     })
   })
 
+  describe('setChains method', () => {
+    it('should set chains and update timestamp', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const storage = getClientStorage(mockConfig)
+
+      // Set chains externally
+      storage.setChains(mockChains)
+
+      // Should return the set chains without fetching
+      const chains = await storage.getChains()
+
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual(mockChains)
+      expect(storage.needReset).toBe(false)
+    })
+
+    it('should update RPC URLs when setChains is called', async () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+
+      const configWithoutRpcUrls = {
+        ...mockConfig,
+        rpcUrls: {},
+      }
+      const storage = getClientStorage(configWithoutRpcUrls)
+
+      storage.setChains(mockChains)
+
+      expect(getRpcUrlsFromChains).toHaveBeenCalledWith({}, mockChains, [
+        ChainId.SOL,
+      ])
+    })
+  })
+
+  describe('preloadChains mode', () => {
+    it('should not auto-fetch chains when preloadChains is false', async () => {
+      const configWithoutPreload: SDKBaseConfig = {
+        integrator: 'test-app',
+        apiUrl: 'https://li.quest/v1',
+        preloadChains: false,
+        rpcUrls: {},
+        debug: false,
+      }
+      const storage = getClientStorage(configWithoutPreload)
+
+      const chains = await storage.getChains()
+
+      expect(_getChains).not.toHaveBeenCalled()
+      expect(chains).toEqual([])
+    })
+  })
+
   describe('edge cases', () => {
     it('should handle chains without metamask RPC URLs', async () => {
-      const { getChainsFromConfig } = await import('../actions/getChains.js')
-      const { getRpcUrlsFromChains } = await import('../core/utils.js')
-
       const chainsWithoutRpcUrls = [
         {
           id: ChainId.ETH,
@@ -338,7 +365,7 @@ describe('getClientStorage', () => {
         },
       ]
 
-      vi.mocked(getChainsFromConfig).mockResolvedValue(chainsWithoutRpcUrls)
+      vi.mocked(_getChains).mockResolvedValue(chainsWithoutRpcUrls)
       vi.mocked(getRpcUrlsFromChains).mockReturnValue({})
 
       const configWithoutRpcUrls = {

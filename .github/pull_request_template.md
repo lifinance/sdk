@@ -1,4 +1,4 @@
-## Which Jira task is linked to this PR?  
+## Which Linear task is linked to this PR?  
 
 ## Why was it implemented this way?  
 _Explain the reasoning behind the implementation. Were there alternative approaches? Why was this solution chosen?_  

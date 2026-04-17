@@ -1,27 +1,26 @@
 import type { RouteExtended } from '../types/core.js'
 
-export const prepareRestart = (route: RouteExtended) => {
+export const prepareRestart = (route: RouteExtended): void => {
   for (let index = 0; index < route.steps.length; index++) {
     const step = route.steps[index]
     if (step.execution) {
-      // Find the index of the last process that has tx hash, taskId, or signed messages
-      const lastValidIndex = step.execution.process.findLastIndex(
-        (process) =>
-          (!!process.txHash ||
-            !!process.taskId ||
-            !!process.signedTypedData?.length) &&
-          process.status !== 'FAILED'
+      // Find the index of the last action that has tx hash, taskId, or signed messages
+      const lastValidIndex = step.execution.actions.findLastIndex(
+        (action) =>
+          ['SWAP', 'CROSS_CHAIN', 'RECEIVING_CHAIN'].includes(action.type) &&
+          (!!action.txHash || !!action.taskId) &&
+          action.status !== 'FAILED'
       )
 
-      // Keep all processes up to the one with tx hash
+      // Keep all actions up to the one with tx hash
       if (lastValidIndex >= 0) {
-        step.execution.process = step.execution.process.slice(
+        step.execution.actions = step.execution.actions.slice(
           0,
           lastValidIndex + 1
         )
       } else {
-        // If no tx hash exists, reset the process array
-        step.execution.process = []
+        // If no tx hash exists, reset the actions array
+        step.execution.actions = []
       }
     }
     step.transactionRequest = undefined

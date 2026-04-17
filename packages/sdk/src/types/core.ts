@@ -2,6 +2,7 @@ import type {
   ChainId,
   ChainType,
   CoinKey,
+  ContractCall,
   ExtendedChain,
   FeeCost,
   GasCost,
@@ -13,7 +14,12 @@ import type {
   Token,
   TokenAmount,
 } from '@lifi/types'
-import type { Client } from 'viem'
+import type { SDKStorage } from '../core/storage.js'
+import type { ExtendedRequestInit } from './request.js'
+
+export type RequestInterceptor = (
+  request: ExtendedRequestInit
+) => ExtendedRequestInit | Promise<ExtendedRequestInit>
 
 export interface SDKBaseConfig {
   apiKey?: string
@@ -26,10 +32,15 @@ export interface SDKBaseConfig {
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean
+  preloadChains?: boolean
+  chainsRefetchInterval?: number
+  requestInterceptor?: RequestInterceptor
+  storage?: SDKStorage
 }
 
 export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
   integrator: string
+  providers?: SDKProvider[]
 }
 
 export type RPCUrls = Partial<Record<ChainId, string[]>>
@@ -56,6 +67,7 @@ export interface SDKClient {
   providers: SDKProvider[]
   getProvider(type: ChainType): SDKProvider | undefined
   setProviders(providers: SDKProvider[]): void
+  setChains(chains: ExtendedChain[]): void
   getChains(): Promise<ExtendedChain[]>
   getChainById(chainId: ChainId): Promise<ExtendedChain>
   getRpcUrls(): Promise<RPCUrls>
@@ -73,13 +85,20 @@ export interface InteractionSettings {
   allowExecution?: boolean
 }
 
+/**
+ * Params passed when retrying executeStep after an ExecuteStepRetryError.
+ * Providers can use this to pass strategy-specific retry options (e.g. atomicityNotReady for Ethereum 7702).
+ */
+export type ExecuteStepRetryParams = Record<string, unknown>
+
 export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
   executeStep(
     client: SDKClient,
-    step: LiFiStepExtended
+    step: LiFiStepExtended,
+    retryParams?: ExecuteStepRetryParams
   ): Promise<LiFiStepExtended>
 }
 
@@ -130,8 +149,6 @@ export type TransactionRequestUpdateHook = (
   updatedTxRequest: TransactionRequestParameters
 ) => Promise<TransactionParameters>
 
-export type SwitchChainHook = (chainId: number) => Promise<Client | undefined>
-
 export interface AcceptSlippageUpdateHookParams {
   toToken: Token
   oldToAmount: string
@@ -154,13 +171,40 @@ export type AcceptExchangeRateUpdateHook = (
   params: ExchangeRateUpdateParams
 ) => Promise<boolean | undefined>
 
+export interface ContractCallParams {
+  fromChainId: number
+  toChainId: number
+  fromTokenAddress: string
+  toTokenAddress: string
+  fromAddress: string
+  toAddress?: string
+  fromAmount: bigint
+  toAmount: bigint
+  slippage?: number
+}
+
+export interface ContractTool {
+  name: string
+  logoURI: string
+}
+
+export interface GetContractCallsResult {
+  contractCalls: ContractCall[]
+  patcher?: boolean
+  contractTool?: ContractTool
+}
+
+export type GetContractCallsHook = (
+  params: ContractCallParams
+) => Promise<GetContractCallsResult>
+
 export interface ExecutionOptions {
   acceptExchangeRateUpdateHook?: AcceptExchangeRateUpdateHook
-  switchChainHook?: SwitchChainHook
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
+  getContractCalls?: GetContractCallsHook
+  adjustZeroOutputFromPreviousStep?: boolean
   executeInBackground?: boolean
-  disableMessageSigning?: boolean
   /**
    * @deprecated
    */
@@ -169,7 +213,7 @@ export interface ExecutionOptions {
 
 export type ExecutionStatus = 'ACTION_REQUIRED' | 'PENDING' | 'FAILED' | 'DONE'
 
-export type ProcessStatus =
+export type ExecutionActionStatus =
   | 'STARTED'
   | 'ACTION_REQUIRED'
   | 'MESSAGE_REQUIRED'
@@ -179,43 +223,37 @@ export type ProcessStatus =
   | 'DONE'
   | 'CANCELLED'
 
-export type ProcessType =
-  | 'TOKEN_ALLOWANCE'
+export type ExecutionActionType =
   | 'PERMIT'
+  | 'CHECK_ALLOWANCE'
+  | 'NATIVE_PERMIT'
+  | 'RESET_ALLOWANCE'
+  | 'SET_ALLOWANCE'
   | 'SWAP'
   | 'CROSS_CHAIN'
   | 'RECEIVING_CHAIN'
 
-export type Process = {
-  type: ProcessType
-  status: ProcessStatus
+export type ExecutionAction = {
+  type: ExecutionActionType
+  status: ExecutionActionStatus
+  message?: string
   substatus?: Substatus
+  substatusMessage?: string
   chainId?: number
   txHash?: string
-  taskId?: string
   txLink?: string
+  taskId?: string
   txType?: TransactionMethodType
-  actionRequiredAt?: number
-  doneAt?: number
-  failedAt?: number
-  pendingAt?: number
-  startedAt: number
-  message?: string
-  error?: {
-    code: string | number
-    message: string
-    htmlMessage?: string
-  }
-
-  // additional information
-  [key: string]: any
+  txHex?: string
+  // Errors occured during the action execution (within tasks)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export interface Execution {
   startedAt: number
-  doneAt?: number
+  signedAt?: number
   status: ExecutionStatus
-  process: Array<Process>
+  actions: Array<ExecutionAction>
   fromAmount?: string
   toAmount?: string
   toToken?: Token
@@ -223,6 +261,8 @@ export interface Execution {
   gasCosts?: GasCost[]
   internalTxLink?: string
   externalTxLink?: string
+  // Errors occured outside of actions (e.g. during context creation)
+  error?: { code: string | number; message: string; htmlMessage?: string }
 }
 
 export type TransactionMethodType = 'standard' | 'relayed' | 'batched'

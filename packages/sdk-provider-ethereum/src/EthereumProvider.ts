@@ -2,7 +2,7 @@ import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { isAddress } from 'viem'
 import { getEthereumBalance } from './actions/getEthereumBalance.js'
 import { resolveEthereumAddress } from './actions/resolveEthereumAddress.js'
-import { EthereumStepExecutor } from './EthereumStepExecutor.js'
+import { EthereumStepExecutor } from './core/EthereumStepExecutor.js'
 import type { EthereumProviderOptions, EthereumSDKProvider } from './types.js'
 
 export function EthereumProvider(
@@ -31,11 +31,11 @@ export function EthereumProvider(
 
       const executor = new EthereumStepExecutor({
         client: walletClient,
+        switchChain: _options.switchChain,
+        disableMessageSigning: _options.disableMessageSigning,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,
-          switchChainHook:
-            _options.switchChain ?? options.executionOptions?.switchChainHook,
         },
       })
 

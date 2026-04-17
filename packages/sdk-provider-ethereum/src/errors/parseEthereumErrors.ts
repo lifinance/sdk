@@ -1,10 +1,12 @@
 import {
   BaseError,
   ErrorMessage,
+  ExecuteStepRetryError,
+  type ExecuteStepRetryParams,
+  type ExecutionAction,
   fetchTxErrorDetails,
   LiFiErrorCode,
   type LiFiStep,
-  type Process,
   SDKError,
   TransactionError,
   UnknownError,
@@ -14,23 +16,35 @@ import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 export const parseEthereumErrors = async (
   e: Error,
   step?: LiFiStep,
-  process?: Process
-): Promise<SDKError> => {
+  action?: ExecutionAction,
+  retryParams?: ExecuteStepRetryParams
+): Promise<SDKError | ExecuteStepRetryError> => {
+  if (
+    isAtomicReadyWalletRejectedUpgradeError(e) &&
+    !retryParams?.atomicityNotReady
+  ) {
+    return new ExecuteStepRetryError(
+      'Wallet rejected 7702 upgrade based on the EIP-5792 capabilities; retry with atomicityNotReady',
+      { atomicityNotReady: true },
+      e
+    )
+  }
+
   if (e instanceof SDKError) {
     e.step = e.step ?? step
-    e.process = e.process ?? process
+    e.action = e.action ?? action
     return e
   }
 
-  const baseError = await handleSpecificErrors(e, step, process)
+  const baseError = await handleSpecificErrors(e, step, action)
 
-  return new SDKError(baseError, step, process)
+  return new SDKError(baseError, step, action)
 }
 
 const handleSpecificErrors = async (
   e: any,
   step?: LiFiStep,
-  process?: Process
+  action?: ExecutionAction
 ) => {
   if (
     e.name === 'UserRejectedRequestError' ||
@@ -83,16 +97,16 @@ const handleSpecificErrors = async (
 
   if (
     step &&
-    process?.txHash &&
+    action?.txHash &&
     e.code === LiFiErrorCode.TransactionFailed &&
     e.message === ErrorMessage.TransactionReverted
   ) {
     const response = await fetchTxErrorDetails(
-      process.txHash,
+      action.txHash,
       step.action.fromChainId
     )
 
-    const errorMessage = response?.error_message
+    const errorMessage = (response as Record<string, string>)?.error_message
 
     if (errorMessage?.toLowerCase().includes('out of gas')) {
       return new TransactionError(
@@ -110,7 +124,7 @@ const handleSpecificErrors = async (
   return new UnknownError(e.message || ErrorMessage.UnknownError, e)
 }
 
-export const isAtomicReadyWalletRejectedUpgradeError = (e: any) => {
+export const isAtomicReadyWalletRejectedUpgradeError = (e: any): boolean => {
   if (e.cause?.code === AtomicReadyWalletRejectedUpgradeError.code) {
     return true
   }

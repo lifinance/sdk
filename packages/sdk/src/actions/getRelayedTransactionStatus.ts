@@ -39,7 +39,7 @@ export const getRelayedTransactionStatus = async (
 
   const decodedTaskId = decodeTaskId(taskId)
   // Temporary solution during the transition between status endpoints
-  if (decodedTaskId.length === 3) {
+  if (decodedTaskId.length >= 3) {
     return (await getStatus(
       client,
       params,

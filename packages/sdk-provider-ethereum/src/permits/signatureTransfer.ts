@@ -1,4 +1,4 @@
-import type { Address, TypedData, TypedDataDomain } from 'viem'
+import type { Address, Hex, TypedData, TypedDataDomain } from 'viem'
 import { hashTypedData } from 'viem'
 import {
   MaxSigDeadline,
@@ -183,7 +183,7 @@ export function hash<T extends PermitTransferFrom | PermitBatchTransferFrom>(
   permit2Address: Address,
   chainId: number,
   witness?: Witness
-) {
+): Hex {
   if (isPermitTransferFrom(permit)) {
     const { domain, types, message } = getPermitTransferData(
       permit,

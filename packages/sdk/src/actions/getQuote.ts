@@ -85,7 +85,10 @@ export async function getQuote(
   params.preferExchanges ??= client.config.routeOptions?.exchanges?.prefer
 
   for (const key of Object.keys(params)) {
-    if (!params[key as keyof QuoteRequest]) {
+    if (
+      params[key as keyof QuoteRequest] === undefined ||
+      params[key as keyof QuoteRequest] === null
+    ) {
       delete params[key as keyof QuoteRequest]
     }
   }

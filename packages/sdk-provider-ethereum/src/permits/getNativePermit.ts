@@ -186,7 +186,7 @@ const getEIP712DomainData = async (
   tokenAddress: Address
 ) => {
   try {
-    const multicallAddress = await getMulticallAddress(client.config, chainId)
+    const multicallAddress = await getMulticallAddress(client, chainId)
 
     const contractCalls = [
       {
@@ -226,7 +226,15 @@ const getEIP712DomainData = async (
         }
 
         const [, name, version, tokenChainId, verifyingContract, salt] =
-          eip712DomainResult.result
+          eip712DomainResult.result as [
+            Hex,
+            string,
+            string,
+            bigint,
+            Address,
+            Hex,
+            bigint[],
+          ]
 
         if (
           Number(tokenChainId) !== chainId ||
@@ -347,7 +355,7 @@ const getContractData = async (
     }
 
     // Fallback to legacy approach - validates and returns domain object
-    const multicallAddress = await getMulticallAddress(client.config, chainId)
+    const multicallAddress = await getMulticallAddress(client, chainId)
 
     const contractCalls = [
       {
@@ -411,11 +419,11 @@ const getContractData = async (
 
         // Validate domain separator and create domain object
         const { isValid, domain } = validateDomainSeparator({
-          name: nameResult.result,
-          version: versionResult.result ?? '1',
+          name: nameResult.result as string,
+          version: (versionResult.result ?? '1') as string,
           chainId,
           verifyingContract: tokenAddress,
-          domainSeparator: domainSeparatorResult.result,
+          domainSeparator: domainSeparatorResult.result as Hex,
         })
 
         if (!isValid) {
@@ -423,11 +431,11 @@ const getContractData = async (
         }
 
         return {
-          name: nameResult.result,
+          name: nameResult.result as string,
           domain,
-          permitTypehash: permitTypehashResult.result,
-          nonce: noncesResult.result,
-          version: versionResult.result ?? '1',
+          permitTypehash: permitTypehashResult.result as Hex,
+          nonce: noncesResult.result as bigint,
+          version: (versionResult.result ?? '1') as string,
         }
       } catch {
         // Fall through to individual calls
@@ -545,7 +553,7 @@ export const getNativePermit = async (
     owner: viemClient.account!.address,
     spender: spenderAddress,
     value: amount.toString(),
-    nonce: contractData.nonce.toString(),
+    nonce: contractData.nonce!.toString(),
     deadline,
   }
 

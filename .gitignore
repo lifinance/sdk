@@ -1,7 +1,10 @@
 # build
 cjs
 esm
-types
+/types
+_esm/
+_cjs/
+_types/
 
 # idea
 .idea/
@@ -110,3 +113,5 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+.claude/
+.omc/
