@@ -23,6 +23,10 @@ export type BundleResult = {
   signatureResults: (SignatureStatus | null)[]
 }
 
+const NULL_BUNDLE_RESULT = new Error(
+  'Bundle was not confirmed by this RPC'
+)
+
 /**
  * Send and confirm a bundle of transactions using Jito.
  * Automatically selects a Jito-enabled RPC connection and polls for confirmation
@@ -135,7 +139,15 @@ export async function sendAndConfirmBundle(
   })
 
   // Wait for first successful confirmation
-  const result = await Promise.any(confirmPromises).catch(() => null)
+  const result = await Promise.any(
+    confirmPromises.map(async (promise) => {
+      const bundleResult = await promise
+      if (!bundleResult) {
+        throw NULL_BUNDLE_RESULT
+      }
+      return bundleResult
+    })
+  ).catch(() => null)
 
   if (!abortController.signal.aborted) {
     abortController.abort()
