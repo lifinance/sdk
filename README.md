@@ -19,7 +19,7 @@
 - Easy tracking of the route and quote execution through the robust event and hooks handling
 - Highly customizable settings to tailor the SDK to your specific needs including configuration of RPCs and options to allow or deny certain chains, tokens, bridges, exchanges, solvers
 - Supports widely adopted industry standards, including [EIP-5792](https://eips.ethereum.org/EIPS/eip-5792), [ERC-2612](https://eips.ethereum.org/EIPS/eip-2612), [EIP-712](https://eips.ethereum.org/EIPS/eip-712), and [Permit2](https://github.com/Uniswap/permit2)
-- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/) for EVM, [Wallet Standard](https://github.com/wallet-standard/wallet-standard) for Solana, [Bigmi](https://github.com/lifinance/bigmi) for Bitcoin, [TronWeb](https://tronweb.network/) for Tron)
+- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/) for EVM, [Wallet Standard](https://github.com/wallet-standard/wallet-standard) for Solana, [Bigmi](https://github.com/lifinance/bigmi) for Bitcoin, [Mysten Sui SDK](https://github.com/MystenLabs/sui/tree/main/sdk) for Sui, [TronWeb](https://tronweb.network/) for Tron)
 - Support for arbitrary contract calls on the destination chain
 - Designed for optimal performance with tree-shaking and dead-code elimination, ensuring minimal bundle sizes and faster page load times in front-end environments
 - Compatibility tested with Node.js and popular front-end tools like Vite
@@ -116,6 +116,7 @@ import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import { SolanaProvider } from '@lifi/sdk-provider-solana'
 import { BitcoinProvider } from '@lifi/sdk-provider-bitcoin'
 import { SuiProvider } from '@lifi/sdk-provider-sui'
+import { TronProvider } from '@lifi/sdk-provider-tron'
 
 const client = createClient({
   integrator: 'Your dApp/company name',
@@ -124,6 +125,7 @@ const client = createClient({
     SolanaProvider({ /* options */ }),
     BitcoinProvider({ /* options */ }),
     SuiProvider({ /* options */ }),
+    TronProvider({ /* options */ }),
   ],
 })
 ```
