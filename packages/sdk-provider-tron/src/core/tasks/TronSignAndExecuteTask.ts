@@ -6,13 +6,20 @@ import {
 } from '@lifi/sdk'
 import type { Transaction } from '@tronweb3/tronwallet-abstract-adapter'
 import { utils } from 'tronweb'
+import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import type { TronStepExecutorContext } from '../../types.js'
 import { stripHexPrefix } from '../../utils/stripHexPrefix.js'
 
 export class TronSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: TronStepExecutorContext): Promise<TaskResult> {
-    const { step, wallet, statusManager, isBridgeExecution, checkWallet } =
-      context
+    const {
+      step,
+      wallet,
+      statusManager,
+      isBridgeExecution,
+      checkWallet,
+      client,
+    } = context
 
     const action = statusManager.findAction(
       step,
@@ -47,27 +54,25 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
       (step.transactionRequest.customData?.contractType as string) ??
       'TriggerSmartContract'
 
-    // The API ships the transaction as a raw protobuf hex; TronWeb's wallet adapter
-    // needs the decoded `raw_data` plus a `txID`. We decode the hex into raw_data,
-    // then compute txID locally from it. Computing rather than trusting an upstream
-    // txID also defends against raw_data_hex / txID mismatches.
-    const raw_data = utils.deserializeTx.deserializeTransaction(
-      contractType,
-      rawDataHex
+    // Re-anchor to a fresh block — a stale `ref_block_hash` falls outside TronLink's
+    // recent-block window and surfaces as a generic "Network mismatched" error. Then
+    // `newTxID` re-runs the tx through TronWeb's `createTransaction`, dropping the
+    // deserializer's non-protobuf artifacts and producing a consistent `txID` /
+    // `raw_data_hex` pair.
+    const transaction: Transaction = await callTronRpcsWithRetry(
+      client,
+      async (tronWeb) => {
+        const rawData = utils.deserializeTx.deserializeTransaction(
+          contractType,
+          rawDataHex
+        )
+        Object.assign(rawData, await tronWeb.trx.getCurrentRefBlockParams())
+        return tronWeb.transactionBuilder.newTxID(
+          { visible: false, txID: '', raw_data: rawData, raw_data_hex: '' },
+          { txLocal: true }
+        )
+      }
     )
-
-    const transactionPb = utils.transaction.txJsonToPb({
-      visible: false,
-      raw_data,
-    })
-    const txID = stripHexPrefix(utils.transaction.txPbToTxID(transactionPb))
-
-    const transaction: Transaction = {
-      visible: false,
-      txID,
-      raw_data,
-      raw_data_hex: rawDataHex,
-    }
 
     const signedTransaction = await wallet.signTransaction(transaction)
 
