@@ -44,7 +44,10 @@ export {
 } from './core/storage.js'
 export { TaskPipeline } from './core/TaskPipeline.js'
 export { CheckBalanceTask } from './core/tasks/CheckBalanceTask.js'
-export { checkBalance } from './core/tasks/helpers/checkBalance.js'
+export {
+  type CheckBalanceOptions,
+  checkBalance,
+} from './core/tasks/helpers/checkBalance.js'
 export { getTransactionRequestData } from './core/tasks/helpers/getTransactionRequestData.js'
 export { stepComparison } from './core/tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './core/tasks/PrepareTransactionTask.js'

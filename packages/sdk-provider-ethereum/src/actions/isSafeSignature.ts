@@ -1,5 +1,5 @@
 import type { SDKClient } from '@lifi/sdk'
-import type { Address, Client } from 'viem'
+import type { Address } from 'viem'
 import { getSafeApiKey } from '../utils/getSafeApiKey.js'
 import { isSafeWallet } from './isSafeWallet.js'
 
@@ -7,7 +7,6 @@ export interface IsSafeSignatureProps {
   hash: string
   chainId: number
   address?: Address
-  viemClient?: Client
 }
 
 /**
@@ -18,7 +17,7 @@ export interface IsSafeSignatureProps {
  */
 export async function isSafeSignature(
   client: SDKClient,
-  { hash, chainId, address, viemClient }: IsSafeSignatureProps
+  { hash, chainId, address }: IsSafeSignatureProps
 ): Promise<boolean> {
   // Signature: 65 bytes = 130 hex chars + 0x prefix = 132 chars
   // Tx hash: 32 bytes = 64 hex chars + 0x prefix = 66 chars
@@ -31,5 +30,5 @@ export async function isSafeSignature(
   }
 
   const safeApiKey = getSafeApiKey(client)
-  return isSafeWallet({ chainId, address, viemClient, safeApiKey })
+  return isSafeWallet({ client, chainId, address, safeApiKey })
 }

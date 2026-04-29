@@ -11,10 +11,24 @@ const BACKOFF_BASE_MS = 150
 const OVERALL_TIMEOUT_MS = 10_000
 const SLIPPAGE_PRECISION = 1_000_000_000n
 
+type Bucket = 'source' | 'gas' | 'fee'
+
 type Requirement = {
   token: Token
-  sourcePart: bigint // 0n for pure overhead tokens
-  overheadPart: bigint // gas + non-included fees in this token
+  sourcePart: bigint // step.action.fromAmount
+  gasPart: bigint // step.estimate.gasCosts in this token
+  feePart: bigint // non-included step.estimate.feeCosts in this token
+}
+
+export type CheckBalanceOptions = {
+  /**
+   * Set to `false` when outer-tx gas is paid by something other than
+   * `walletAddress` (SCA executor, 4337 bundler / paymaster, relayer):
+   * `gasPart` is excluded from the sufficiency check and slippage rescue.
+   * Source amount and non-included fees (e.g. LZ `msg.value`) are still
+   * verified. Defaults to `true` (strict, today's behavior).
+   */
+  walletPaysGas?: boolean
 }
 
 /**
@@ -32,11 +46,13 @@ type Requirement = {
 export const checkBalance = async (
   client: SDKClient,
   walletAddress: string,
-  step: LiFiStep
+  step: LiFiStep,
+  options: CheckBalanceOptions = {}
 ): Promise<void> => {
+  const walletPaysGas = options.walletPaysGas ?? true
   const fromChainId = step.action.fromChainId
   const requirements = new Map<string, Requirement>()
-  const add = (token: Token, amount: bigint, source: boolean): void => {
+  const add = (token: Token, amount: bigint, bucket: Bucket): void => {
     if (token.chainId !== fromChainId || amount === 0n) {
       return
     }
@@ -44,25 +60,41 @@ export const checkBalance = async (
     const req = requirements.get(key) ?? {
       token,
       sourcePart: 0n,
-      overheadPart: 0n,
+      gasPart: 0n,
+      feePart: 0n,
     }
-    if (source) {
+    if (bucket === 'source') {
       req.sourcePart += amount
+    } else if (bucket === 'gas') {
+      req.gasPart += amount
     } else {
-      req.overheadPart += amount
+      req.feePart += amount
     }
     requirements.set(key, req)
   }
-  add(step.action.fromToken, BigInt(step.action.fromAmount), true)
+  add(step.action.fromToken, BigInt(step.action.fromAmount), 'source')
   for (const gas of step.estimate?.gasCosts ?? []) {
-    add(gas.token, BigInt(gas.amount), false)
+    add(gas.token, BigInt(gas.amount), 'gas')
   }
   for (const fee of step.estimate?.feeCosts ?? []) {
     // Included fees are already part of fromAmount — don't count twice.
     if (!fee.included) {
-      add(fee.token, BigInt(fee.amount), false)
+      add(fee.token, BigInt(fee.amount), 'fee')
     }
   }
+
+  const reservedOverhead = (r: Requirement): bigint =>
+    r.feePart + (walletPaysGas ? r.gasPart : 0n)
+  const need = (r: Requirement): bigint => r.sourcePart + reservedOverhead(r)
+
+  // Drop pure-gas entries when `walletPaysGas` is false (e.g. native ETH
+  // on Safe Apps with only `gasPart`) — saves one balance read each.
+  for (const [key, req] of requirements) {
+    if (need(req) === 0n) {
+      requirements.delete(key)
+    }
+  }
+
   if (requirements.size === 0) {
     return
   }
@@ -110,7 +142,7 @@ export const checkBalance = async (
           const have = balanceByAddress.get(req.token.address.toLowerCase())
           if (have === undefined) {
             unknown.push(req.token)
-          } else if (have < req.sourcePart + req.overheadPart) {
+          } else if (have < need(req)) {
             insufficient.push({ req, have })
           }
         }
@@ -119,9 +151,9 @@ export const checkBalance = async (
           return
         }
 
-        // Final-attempt slippage rescue: only when the sole shortfall is the
-        // source-token portion. Trim source down to (balance − overhead) so
-        // the overhead reserve is preserved.
+        // Final-attempt slippage rescue: only when the sole shortfall is
+        // the source-token portion. Trim source to (balance − reserved
+        // overhead) so the overhead reserve is preserved.
         if (
           isFinal &&
           unknown.length === 0 &&
@@ -129,11 +161,11 @@ export const checkBalance = async (
           insufficient[0].req.sourcePart > 0n
         ) {
           const { req, have } = insufficient[0]
+          const reserved = reservedOverhead(req)
           const minAcceptable =
-            (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION +
-            req.overheadPart
+            (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
           if (have >= minAcceptable) {
-            step.action.fromAmount = (have - req.overheadPart).toString()
+            step.action.fromAmount = (have - reserved).toString()
             return
           }
         }
@@ -150,12 +182,12 @@ export const checkBalance = async (
             )
           }
           const lines = insufficient.map(({ req, have }) => {
-            const needed = formatUnits(
-              req.sourcePart + req.overheadPart,
-              req.token.decimals
-            )
+            const needed = formatUnits(need(req), req.token.decimals)
             const current = formatUnits(have, req.token.decimals)
             const symbol = req.token.symbol
+            // The "fees" branch covers pure-overhead tokens; with
+            // walletPaysGas=false, gas is excluded from `need(req)` so it
+            // only fires for genuine fee shortfalls.
             return req.sourcePart > 0n
               ? `Your ${symbol} balance is too low, you try to transfer ${needed} ${symbol}, but your wallet only holds ${current} ${symbol}.`
               : `Insufficient ${symbol} for fees: need ${needed} ${symbol}, have ${current} ${symbol}.`

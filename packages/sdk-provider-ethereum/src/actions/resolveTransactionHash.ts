@@ -10,7 +10,6 @@ export const resolveTransactionHash = async (
   chainId: number
 ): Promise<Hash> => {
   const isSignature = await isSafeSignature(client, {
-    viemClient: viemClient,
     hash: txHashOrSignature,
     chainId,
     address: viemClient.account?.address,

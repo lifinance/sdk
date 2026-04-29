@@ -383,6 +383,163 @@ describe('checkBalance — overhead tokens', () => {
   })
 })
 
+describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)', () => {
+  it('passes when source token is sufficient even though native gas balance is zero (the reported Safe Apps bug)', async () => {
+    // Headline regression — before the fix, gas (paid by the signer, not
+    // the Safe) was checked against the Safe's own ETH balance.
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000',
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    const { client, getBalance } = buildClient([
+      { [USDC.address.toLowerCase()]: 1_000_000n },
+    ])
+    await expect(
+      checkBalance(client, WALLET, step, { walletPaysGas: false })
+    ).resolves.toBeUndefined()
+    // Pre-filter dropped the pure-gas native entry — only USDC is queried.
+    const tokensQueried = (getBalance.mock.calls[0][2] as Token[]).map(
+      (t) => t.address
+    )
+    expect(tokensQueried).toEqual([USDC.address])
+  })
+
+  it('still enforces non-included native fees (LayerZero msg.value, bridge native fee) on the wallet', async () => {
+    // Non-included fees ride in the inner call's `value` and are paid by
+    // the wallet even when gas isn't — must not be over-relaxed.
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000', // 0.005 ETH gas — dropped
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    step.estimate!.feeCosts = [
+      {
+        name: 'lz fee',
+        description: '',
+        percentage: '0',
+        token: NATIVE_ETH,
+        amount: '2000000000000000', // 0.002 ETH non-included fee — kept
+        amountUSD: '0',
+        included: false,
+      },
+    ]
+
+    // Wallet 0.001 ETH — fee alone (0.002) unmet.
+    const insufficient = buildClient([
+      {
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: 1_000_000_000_000_000n,
+      },
+    ])
+    await expect(
+      checkBalance(insufficient.client, WALLET, step, { walletPaysGas: false })
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+    })
+
+    // Wallet 0.003 ETH — covers the fee even with gas excluded.
+    const stepOk = buildStep()
+    stepOk.estimate!.gasCosts = step.estimate!.gasCosts
+    stepOk.estimate!.feeCosts = step.estimate!.feeCosts
+    const sufficient = buildClient([
+      {
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: 3_000_000_000_000_000n,
+      },
+    ])
+    await expect(
+      checkBalance(sufficient.client, WALLET, stepOk, {
+        walletPaysGas: false,
+      })
+    ).resolves.toBeUndefined()
+  })
+
+  it('slippage rescue trims source down to (have - feePart) — gas no longer reserved', async () => {
+    // Without walletPaysGas=false the rescue would reserve gas+fee; with
+    // it, only the fee is reserved, leaving more headroom to trim.
+    const step = buildStep({
+      fromToken: NATIVE_ETH,
+      fromAmount: '1000000000000000000', // 1 ETH
+      slippage: 0.01,
+    })
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000', // 0.005 ETH gas, dropped
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    step.estimate!.feeCosts = [
+      {
+        name: 'lz fee',
+        description: '',
+        percentage: '0',
+        token: NATIVE_ETH,
+        amount: '2000000000000000', // 0.002 ETH fee, kept
+        amountUSD: '0',
+        included: false,
+      },
+    ]
+    // Wallet 0.999 ETH. minAcceptable = 1 * 0.99 + 0.002 = 0.992 ≤ 0.999.
+    // Trim source to 0.999 - 0.002 = 0.997 ETH (would be 0.994 with gas).
+    const { client } = buildClient(
+      Array(6).fill({
+        [NATIVE_ETH.address.toLowerCase()]: 999_000_000_000_000_000n,
+      })
+    )
+    await expect(
+      checkBalance(client, WALLET, step, { walletPaysGas: false })
+    ).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe('997000000000000000')
+  })
+
+  it('default (walletPaysGas omitted) preserves the strict gas check — no behavior change for EOA executions', async () => {
+    // Gates the new path behind an explicit opt-in from a chain subclass.
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000',
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    const { client } = buildClient(
+      Array(6).fill({
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_ETH.address.toLowerCase()]: 0n,
+      })
+    )
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+    })
+  })
+})
+
 describe('checkBalance — RPC failures', () => {
   it('throws "Could not read wallet balance" when provider rejects every attempt', async () => {
     const { client } = buildClient(Array(6).fill('reject') as AttemptScript[])

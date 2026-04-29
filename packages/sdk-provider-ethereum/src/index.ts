@@ -1,10 +1,12 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 export { checkPermitSupport } from './actions/checkPermitSupport.js'
+export { getAccountCode } from './actions/getAccountCode.js'
 export {
   getTokenAllowance,
   getTokenAllowanceMulticall,
 } from './actions/getAllowance.js'
 export { isBatchingSupported } from './actions/isBatchingSupported.js'
+export { isSmartContractWalletCode } from './actions/isSmartContractWallet.js'
 export {
   revokeTokenApproval,
   setAllowance,
