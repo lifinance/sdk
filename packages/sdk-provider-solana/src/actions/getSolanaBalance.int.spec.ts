@@ -83,13 +83,19 @@ describe.sequential('Solana token balance', async () => {
     )
     expect(tokenBalances.length).toBe(2)
 
-    // A mint the wallet doesn't hold resolves to a known-zero balance
-    // (0n) when both Token and Token2022 program queries succeed.
+    // Post-#372 contract: a mint the wallet doesn't hold is reported as a
+    // known zero (`0n`) when both Token and Token2022 program queries
+    // succeed, and as unknown (`undefined`) when either query was rejected
+    // (rate-limit / RPC flake). Both are valid graceful-degradation
+    // outcomes for "invalid data" — assert that we got one of them and
+    // didn't crash.
     const invalidBalance = tokenBalances.find(
       (token) => token.address === invalidToken.address
     )
     expect(invalidBalance).toBeDefined()
-    expect(invalidBalance!.amount).toBe(0n)
+    expect(
+      invalidBalance!.amount === 0n || invalidBalance!.amount === undefined
+    ).toBe(true)
   })
 
   // it(
