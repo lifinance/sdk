@@ -35,15 +35,6 @@ describe('isSafeWallet — short-circuit via eth_getCode', () => {
     expect(getSafeClient).not.toHaveBeenCalled()
   })
 
-  it('returns false without hitting the Safe API for a missing/undefined code', async () => {
-    vi.mocked(getAccountCode).mockResolvedValue(undefined)
-
-    expect(
-      await isSafeWallet({ client, chainId: CHAIN_ID, address: freshAddress() })
-    ).toBe(false)
-    expect(getSafeClient).not.toHaveBeenCalled()
-  })
-
   it('returns false without hitting the Safe API for an EIP-7702 delegated EOA', async () => {
     vi.mocked(getAccountCode).mockResolvedValue(
       '0xef0100a94f5374fce5edbc8e2a8697c15331677e6ebf0b' as `0x${string}`
@@ -52,6 +43,50 @@ describe('isSafeWallet — short-circuit via eth_getCode', () => {
     expect(
       await isSafeWallet({ client, chainId: CHAIN_ID, address: freshAddress() })
     ).toBe(false)
+    expect(getSafeClient).not.toHaveBeenCalled()
+  })
+})
+
+describe('isSafeWallet — RPC-failure fallback', () => {
+  it('falls through to the Safe API when getAccountCode returns undefined (RPC unavailable)', async () => {
+    // Locks the "independent fallback" semantic: Safe Transaction Service
+    // doesn't depend on the chain RPC, so a flaky chain shouldn't blind us
+    // to a real Safe.
+    vi.mocked(getAccountCode).mockResolvedValue(undefined)
+    vi.mocked(getSafeClient).mockReturnValue({
+      getInfo: vi.fn(async () => ({}) as any),
+    } as any)
+
+    expect(
+      await isSafeWallet({ client, chainId: CHAIN_ID, address: freshAddress() })
+    ).toBe(true)
+    expect(getSafeClient).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns false after Safe API rejects, when getAccountCode returned undefined', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue(undefined)
+    vi.mocked(getSafeClient).mockReturnValue({
+      getInfo: vi.fn(async () => {
+        throw new Error('not found')
+      }),
+    } as any)
+
+    expect(
+      await isSafeWallet({ client, chainId: CHAIN_ID, address: freshAddress() })
+    ).toBe(false)
+  })
+})
+
+describe('isSafeWallet — defensive guards', () => {
+  it('returns false without any RPC when address is missing', async () => {
+    expect(
+      await isSafeWallet({
+        client,
+        chainId: CHAIN_ID,
+        address: undefined as unknown as Address,
+      })
+    ).toBe(false)
+    expect(getAccountCode).not.toHaveBeenCalled()
     expect(getSafeClient).not.toHaveBeenCalled()
   })
 })

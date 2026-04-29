@@ -81,24 +81,16 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     })
   })
 
-  it('EOA + relayer step → walletPaysGas: false (relayer pays gas regardless of wallet kind)', async () => {
-    vi.mocked(getAccountCode).mockResolvedValue('0x')
+  it('relayer step short-circuits to walletPaysGas: false without reading account code', async () => {
+    // Pins the short-circuit so a future refactor can't silently re-introduce
+    // an `eth_getCode` round-trip on the relayer hot path.
     const step = buildStep({
       typedData: [{ domain: {}, types: {}, value: {} }],
     })
     expect(await task.exposed(buildContext(step))).toEqual({
       walletPaysGas: false,
     })
-  })
-
-  it('smart-contract wallet + relayer step → walletPaysGas: false (both reasons hold)', async () => {
-    vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
-    const step = buildStep({
-      typedData: [{ domain: {}, types: {}, value: {} }],
-    })
-    expect(await task.exposed(buildContext(step))).toEqual({
-      walletPaysGas: false,
-    })
+    expect(getAccountCode).not.toHaveBeenCalled()
   })
 
   it('RPC failure (getAccountCode → undefined) for non-relayer step → walletPaysGas: true (conservative: keep strict gas check)', async () => {

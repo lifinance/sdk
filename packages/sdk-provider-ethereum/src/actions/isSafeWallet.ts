@@ -25,16 +25,21 @@ export async function isSafeWallet({
   address,
   safeApiKey,
 }: IsSafeWalletParams): Promise<boolean> {
+  if (!address) {
+    return false
+  }
   const cacheKey = `${chainId}:${address.toLowerCase()}`
   const cached = safeWalletCache.get(cacheKey)
   if (cached !== undefined) {
     return cached
   }
 
-  // RPC failure → `code === undefined` → treat as not-a-Safe (conservative,
-  // also avoids a Safe API hit on a flaky chain).
+  // Defined-and-EOA-shaped (`'0x'` or 7702 designator) → short-circuit. RPC
+  // failure (`code === undefined`) falls through to the Safe API as an
+  // independent fallback — Safe Transaction Service doesn't depend on the
+  // chain RPC, so a flaky chain shouldn't blind us to a real Safe.
   const code = await getAccountCode({ client, chainId, address })
-  if (!isSmartContractWalletCode(code)) {
+  if (code !== undefined && !isSmartContractWalletCode(code)) {
     safeWalletCache.set(cacheKey, false)
     return false
   }

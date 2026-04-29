@@ -20,6 +20,12 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
   ): Promise<CheckBalanceOptions> {
     const { client, step } = context
 
+    // Relayer pays gas regardless of wallet shape — answer is fixed, no RPC
+    // needed.
+    if (isRelayerStep(step)) {
+      return { walletPaysGas: false }
+    }
+
     // Funding wallet (NOT signer) — for Safe Apps these usually match, but
     // the balance question is about the funder. Compare with
     // `canAccountUseNativePermits`, which uses the signer.
@@ -39,8 +45,6 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
     // `code === undefined` on RPC failure → falls through to "treat as EOA"
     // since `isSmartContractWalletCode(undefined)` is `false` (conservative:
     // strict gas check stays on, today's behavior).
-    return {
-      walletPaysGas: !isSmartContractWalletCode(code) && !isRelayerStep(step),
-    }
+    return { walletPaysGas: !isSmartContractWalletCode(code) }
   }
 }
