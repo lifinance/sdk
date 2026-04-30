@@ -44,16 +44,16 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "viem": "^2.48.0"
+    "viem": "^2.48.4"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.78.0",
+    "@lifi/data-types": "^6.79.1",
     "@types/node": "^25.6.0",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.5",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   },
   "publishConfig": {
     "access": "public"

@@ -43,17 +43,17 @@
     "watch": "tsdown --watch"
   },
   "dependencies": {
-    "@lifi/types": "17.76.0"
+    "@lifi/types": "17.78.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.78.0",
+    "@lifi/data-types": "^6.79.1",
     "@types/node": "^25.6.0",
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.5",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
-    "msw": "^2.13.3",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "msw": "^2.14.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   },
   "publishConfig": {
     "access": "public"
