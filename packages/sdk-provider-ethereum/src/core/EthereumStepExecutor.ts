@@ -1,6 +1,5 @@
 import {
   BaseStepExecutor,
-  CheckBalanceTask,
   createDefaultStorage,
   type ExecuteStepRetryError,
   type ExecuteStepRetryParams,
@@ -22,6 +21,7 @@ import { parseEthereumErrors } from '../errors/parseEthereumErrors.js'
 import type { EthereumStepExecutorContext } from '../types.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
 import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
+import { EthereumCheckBalanceTask } from './tasks/EthereumCheckBalanceTask.js'
 import { EthereumCheckPermitsTask } from './tasks/EthereumCheckPermitsTask.js'
 import { EthereumNativePermitTask } from './tasks/EthereumNativePermitTask.js'
 import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
@@ -142,7 +142,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       new EthereumNativePermitTask(),
       new EthereumResetAllowanceTask(),
       new EthereumSetAllowanceTask(),
-      new CheckBalanceTask(),
+      new EthereumCheckBalanceTask(),
       new EthereumPrepareTransactionTask(),
       new EthereumSignAndExecuteTask(),
       new EthereumWaitForTransactionTask(),
@@ -169,7 +169,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
           ? swapOrBridgeAction?.status === 'DONE'
             ? EthereumWaitForTransactionStatusTask.name
             : EthereumWaitForTransactionTask.name
-          : CheckBalanceTask.name
+          : EthereumCheckBalanceTask.name
     }
 
     const firstTaskIndex = tasks.findIndex(

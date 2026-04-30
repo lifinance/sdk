@@ -1,46 +1,47 @@
-import { LruMap } from '@lifi/sdk'
-import type { Address, Client } from 'viem'
-import { getCode } from 'viem/actions'
-import { getAction } from 'viem/utils'
+import { LruMap, type SDKClient } from '@lifi/sdk'
+import type { Address } from 'viem'
 import { getSafeClient } from '../client/safeClient.js'
+import { getAccountCode } from './getAccountCode.js'
+import { isSmartContractWalletCode } from './isSmartContractWallet.js'
 
-// Cache for isSafeWallet results per chainId:address
+// Caches the Safe Transaction Service verdict (network round trip). The
+// underlying `eth_getCode` is intentionally uncached — see `getAccountCode`.
 const safeWalletCache = new LruMap<boolean>(12)
 
 type IsSafeWalletParams = {
+  client: SDKClient
   chainId: number
   address: Address
-  viemClient?: Client
   safeApiKey?: string
 }
 
 /**
- * Check if an address is a Safe wallet by querying the Safe Transaction Service
+ * Check if an address is a Safe wallet via the Safe Transaction Service,
+ * short-circuiting on `eth_getCode` for EOAs (incl. EIP-7702 delegated).
  */
 export async function isSafeWallet({
+  client,
   chainId,
   address,
-  viemClient,
   safeApiKey,
 }: IsSafeWalletParams): Promise<boolean> {
+  if (!address) {
+    return false
+  }
   const cacheKey = `${chainId}:${address.toLowerCase()}`
   const cached = safeWalletCache.get(cacheKey)
   if (cached !== undefined) {
     return cached
   }
 
-  // If a client is available, check if the address has contract code.
-  // EOA wallets have no code and can never be Safe wallets.
-  if (viemClient) {
-    try {
-      const code = await getAction(viemClient, getCode, 'getCode')({ address })
-      if (!code || code === '0x') {
-        safeWalletCache.set(cacheKey, false)
-        return false
-      }
-    } catch {
-      // If getCode fails, fall through to the Safe API check
-    }
+  // Defined-and-EOA-shaped (`'0x'` or 7702 designator) → short-circuit. RPC
+  // failure (`code === undefined`) falls through to the Safe API as an
+  // independent fallback — Safe Transaction Service doesn't depend on the
+  // chain RPC, so a flaky chain shouldn't blind us to a real Safe.
+  const code = await getAccountCode({ client, chainId, address })
+  if (code !== undefined && !isSmartContractWalletCode(code)) {
+    safeWalletCache.set(cacheKey, false)
+    return false
   }
 
   try {
