@@ -165,7 +165,11 @@ export const checkBalance = async (
           const minAcceptable =
             (req.sourcePart * slippageScaled) / SLIPPAGE_PRECISION + reserved
           if (have >= minAcceptable) {
-            step.action.fromAmount = (have - reserved).toString()
+            const newFromAmount = (have - reserved).toString()
+            step.action.fromAmount = newFromAmount
+            if (step.includedSteps?.length) {
+              step.includedSteps[0].action.fromAmount = newFromAmount
+            }
             return
           }
         }
