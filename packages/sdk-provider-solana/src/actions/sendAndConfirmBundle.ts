@@ -1,7 +1,9 @@
 import { type SDKClient, sleep } from '@lifi/sdk'
 import {
+  type Blockhash,
   type Commitment,
   getBase64EncodedWireTransaction,
+  getCompiledTransactionMessageDecoder,
   type Signature,
   type Transaction,
   type TransactionError,
@@ -21,6 +23,13 @@ export type BundleResult = {
   bundleId: string
   txSignatures: Signature[]
   signatureResults: (SignatureStatus | null)[]
+}
+
+function extractBlockhash(signedTransaction: Transaction): Blockhash {
+  const compiledMessage = getCompiledTransactionMessageDecoder().decode(
+    signedTransaction.messageBytes
+  )
+  return compiledMessage.lifetimeToken as Blockhash
 }
 
 /**
@@ -48,6 +57,8 @@ export async function sendAndConfirmBundle(
     getBase64EncodedWireTransaction(tx)
   )
 
+  const txBlockhash = extractBlockhash(signedTransactions[0])
+
   const abortController = new AbortController()
 
   const confirmPromises = jitoRpcs.map(async (jitoRpc) => {
@@ -60,26 +71,9 @@ export async function sendAndConfirmBundle(
         return null
       }
 
-      const [{ value: blockhashResult }, initialBlockHeight] =
-        await Promise.all([
-          jitoRpc
-            .getLatestBlockhash({
-              commitment: 'confirmed',
-            })
-            .send(),
-          jitoRpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send(),
-        ])
+      let blockhashValid = true
 
-      let currentBlockHeight = initialBlockHeight
-
-      while (
-        currentBlockHeight < blockhashResult.lastValidBlockHeight &&
-        !abortController.signal.aborted
-      ) {
+      while (blockhashValid && !abortController.signal.aborted) {
         const statusResponse = await jitoRpc
           .getBundleStatuses([bundleId])
           .send()
@@ -117,11 +111,12 @@ export async function sendAndConfirmBundle(
 
         await sleep(400)
         if (!abortController.signal.aborted) {
-          currentBlockHeight = await jitoRpc
-            .getBlockHeight({
+          const { value: isValid } = await jitoRpc
+            .isBlockhashValid(txBlockhash, {
               commitment: 'confirmed',
             })
             .send()
+          blockhashValid = isValid
         }
       }
 
