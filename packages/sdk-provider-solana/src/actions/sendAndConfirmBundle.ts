@@ -1,15 +1,14 @@
 import { type SDKClient, sleep } from '@lifi/sdk'
 import {
-  type Blockhash,
   type Commitment,
   getBase64EncodedWireTransaction,
-  getCompiledTransactionMessageDecoder,
   type Signature,
   type Transaction,
   type TransactionError,
 } from '@solana/kit'
 
 import { getJitoRpcs } from '../rpc/registry.js'
+import { extractBlockhash } from '../utils/extractBlockhash.js'
 
 type SignatureStatus = {
   slot: bigint
@@ -23,13 +22,6 @@ export type BundleResult = {
   bundleId: string
   txSignatures: Signature[]
   signatureResults: (SignatureStatus | null)[]
-}
-
-function extractBlockhash(signedTransaction: Transaction): Blockhash {
-  const compiledMessage = getCompiledTransactionMessageDecoder().decode(
-    signedTransaction.messageBytes
-  )
-  return compiledMessage.lifetimeToken as Blockhash
 }
 
 /**
@@ -117,6 +109,35 @@ export async function sendAndConfirmBundle(
             })
             .send()
           blockhashValid = isValid
+        }
+      }
+
+      // Final status check — the bundle may have confirmed between the
+      // last poll and the blockhash expiring.
+      if (!abortController.signal.aborted) {
+        const statusResponse = await jitoRpc
+          .getBundleStatuses([bundleId])
+          .send()
+
+        const bundleStatus = statusResponse.value[0]
+        if (
+          bundleStatus &&
+          (bundleStatus.confirmation_status === 'confirmed' ||
+            bundleStatus.confirmation_status === 'finalized')
+        ) {
+          const txSignatures = bundleStatus.transactions
+          const sigResponse = await jitoRpc
+            .getSignatureStatuses(txSignatures)
+            .send()
+
+          if (sigResponse?.value && Array.isArray(sigResponse.value)) {
+            abortController.abort()
+            return {
+              bundleId,
+              txSignatures,
+              signatureResults: sigResponse.value,
+            }
+          }
         }
       }
 

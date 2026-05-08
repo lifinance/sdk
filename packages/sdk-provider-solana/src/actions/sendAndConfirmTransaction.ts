@@ -1,14 +1,13 @@
 import { type SDKClient, sleep } from '@lifi/sdk'
 import {
-  type Blockhash,
   type Commitment,
   getBase64EncodedWireTransaction,
-  getCompiledTransactionMessageDecoder,
   getSignatureFromTransaction,
   type Transaction,
   type TransactionError,
 } from '@solana/kit'
 import { getSolanaRpcs } from '../rpc/registry.js'
+import { extractBlockhash } from '../utils/extractBlockhash.js'
 
 type SignatureStatus = {
   slot: bigint
@@ -37,13 +36,6 @@ function getConfirmedStatus(
     return status
   }
   return null
-}
-
-function extractBlockhash(signedTransaction: Transaction): Blockhash {
-  const compiledMessage = getCompiledTransactionMessageDecoder().decode(
-    signedTransaction.messageBytes
-  )
-  return compiledMessage.lifetimeToken as Blockhash
 }
 
 /**
@@ -125,6 +117,7 @@ export async function sendAndConfirmTransaction(
         return null
       })()
 
+      // Sending loop runs in the background — only pollingPromise produces results.
       const sendingPromise = (async () => {
         while (
           blockhashValid &&
@@ -149,11 +142,10 @@ export async function sendAndConfirmTransaction(
             blockhashValid = isValid
           }
         }
-        return null
       })()
+      sendingPromise.catch(() => {})
 
-      // Wait for polling to find the result
-      const result = await Promise.race([pollingPromise, sendingPromise])
+      const result = await pollingPromise
       return result
     } catch (error) {
       if (abortController.signal.aborted) {
