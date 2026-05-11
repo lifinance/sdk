@@ -4,4 +4,4 @@ allowBuilds:
   msw: true
   nx: true
 overrides:
-  axios: ^1.15.1
+  axios: ^1.16.0
