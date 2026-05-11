@@ -60,11 +60,6 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
-  "pnpm": {
-    "overrides": {
-      "axios": "1.15.1"
-    }
-  },
   "publishConfig": {
     "access": "public"
   },

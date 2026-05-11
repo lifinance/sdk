@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   msw: true
   nx: true
+overrides:
+  axios: ^1.15.1
