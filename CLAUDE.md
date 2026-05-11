@@ -34,3 +34,9 @@ TypeScript monorepo (pnpm workspaces) with 5 packages under `packages/`:
 - `pnpm release` → `pnpm release:publish` (uses lerna + standard-version)
 - Pre-publish strips devDependencies via `scripts/prerelease.js`, restores via `scripts/postrelease.js`
 - `scripts/version.js` inlines package name/version into `src/version.ts` at build time
+
+## pnpm config
+- pnpm 11 only reads `pnpm-workspace.yaml`; `pnpm.overrides` in `package.json` and non-auth `.npmrc` settings are silently ignored
+- After moving/changing overrides, run `pnpm install --lockfile-only` and grep the lockfile to confirm — "Already up to date" can be misleading
+- Verify a setting is applied: `pnpm config get <kebab-name>` returns `undefined` if pnpm isn't reading it
+- Publish provenance comes from `NPM_CONFIG_PROVENANCE: true` env in `.github/workflows/publish.yaml` (not a valid pnpm-workspace.yaml field)
