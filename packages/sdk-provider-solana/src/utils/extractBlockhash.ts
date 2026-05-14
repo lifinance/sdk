@@ -7,11 +7,11 @@ import {
 
 const decoder = getCompiledTransactionMessageDecoder()
 
-export function extractBlockhash(signedTransaction: Transaction): Blockhash {
+export function extractBlockhash(
+  signedTransaction: Transaction
+): Blockhash | null {
   if (isTransactionWithDurableNonceLifetime(signedTransaction)) {
-    throw new Error(
-      'Durable nonce transactions are not supported by sendAndConfirmTransaction'
-    )
+    return null
   }
   const compiledMessage = decoder.decode(signedTransaction.messageBytes)
   return compiledMessage.lifetimeToken as Blockhash

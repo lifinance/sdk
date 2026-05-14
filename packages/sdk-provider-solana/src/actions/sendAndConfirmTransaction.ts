@@ -87,6 +87,15 @@ export async function sendAndConfirmTransaction(
       let signatureResult: SignatureStatus | null = null
       let blockhashValid = true
 
+      // For durable nonce txs, fall back to block-height-based timeout
+      let expiryBlockHeight: bigint | undefined
+      if (!txBlockhash) {
+        const { value: blockhashResult } = await rpc
+          .getLatestBlockhash({ commitment: 'confirmed' })
+          .send()
+        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+      }
+
       const pollingPromise = (async () => {
         while (blockhashValid && !abortController.signal.aborted) {
           const confirmed = getConfirmedStatus(
@@ -134,12 +143,19 @@ export async function sendAndConfirmTransaction(
 
           await sleep(1000)
           if (!abortController.signal.aborted) {
-            const { value: isValid } = await rpc
-              .isBlockhashValid(txBlockhash, {
-                commitment: 'confirmed',
-              })
-              .send()
-            blockhashValid = isValid
+            if (txBlockhash) {
+              const { value: isValid } = await rpc
+                .isBlockhashValid(txBlockhash, {
+                  commitment: 'confirmed',
+                })
+                .send()
+              blockhashValid = isValid
+            } else {
+              const blockHeight = await rpc
+                .getBlockHeight({ commitment: 'confirmed' })
+                .send()
+              blockhashValid = blockHeight < expiryBlockHeight!
+            }
           }
         }
       })()

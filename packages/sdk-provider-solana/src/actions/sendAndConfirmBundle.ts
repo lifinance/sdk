@@ -65,6 +65,15 @@ export async function sendAndConfirmBundle(
 
       let blockhashValid = true
 
+      // For durable nonce txs, fall back to block-height-based timeout
+      let expiryBlockHeight: bigint | undefined
+      if (!txBlockhash) {
+        const { value: blockhashResult } = await jitoRpc
+          .getLatestBlockhash({ commitment: 'confirmed' })
+          .send()
+        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+      }
+
       while (blockhashValid && !abortController.signal.aborted) {
         const statusResponse = await jitoRpc
           .getBundleStatuses([bundleId])
@@ -103,12 +112,19 @@ export async function sendAndConfirmBundle(
 
         await sleep(400)
         if (!abortController.signal.aborted) {
-          const { value: isValid } = await jitoRpc
-            .isBlockhashValid(txBlockhash, {
-              commitment: 'confirmed',
-            })
-            .send()
-          blockhashValid = isValid
+          if (txBlockhash) {
+            const { value: isValid } = await jitoRpc
+              .isBlockhashValid(txBlockhash, {
+                commitment: 'confirmed',
+              })
+              .send()
+            blockhashValid = isValid
+          } else {
+            const blockHeight = await jitoRpc
+              .getBlockHeight({ commitment: 'confirmed' })
+              .send()
+            blockhashValid = blockHeight < expiryBlockHeight!
+          }
         }
       }
 
