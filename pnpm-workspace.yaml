@@ -1,2 +1,7 @@
 packages:
   - packages/*
+allowBuilds:
+  msw: true
+  nx: true
+overrides:
+  axios: ^1.16.0
