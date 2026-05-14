@@ -45,7 +45,8 @@ type ProviderResultMap = { [address: string]: bigint | undefined }
 type AttemptScript = ProviderResultMap | 'reject'
 
 const buildClient = (
-  attempts: AttemptScript[]
+  attempts: AttemptScript[],
+  chainOverrides: { nonStandardNativeDecimals?: boolean } = {}
 ): { client: SDKClient; getBalance: ReturnType<typeof vi.fn> } => {
   let lastScript: AttemptScript = attempts[attempts.length - 1] ?? {}
   const getBalance = vi.fn(async (_client, _wallet, tokens: Token[]) => {
@@ -77,6 +78,10 @@ const buildClient = (
   const client = {
     providers: [provider],
     getProvider: () => provider,
+    getChainById: vi.fn(async (chainId: number) => ({
+      id: chainId,
+      nonStandardNativeDecimals: chainOverrides.nonStandardNativeDecimals,
+    })),
   } as unknown as SDKClient
 
   return { client, getBalance }
@@ -532,6 +537,74 @@ describe('checkBalance — smart-contract wallet / relayed (walletPaysGas=false)
         [USDC.address.toLowerCase()]: 1_000_000n,
         [NATIVE_ETH.address.toLowerCase()]: 0n,
       })
+    )
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+    })
+  })
+})
+
+describe('checkBalance — non-standard native decimals chains', () => {
+  it('skips the gas check on chains with nonStandardNativeDecimals=true', async () => {
+    // Tempo / Stable report gas in units that don't match wallet balances;
+    // gas would otherwise be over-counted and trip the check.
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000',
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    const { client, getBalance } = buildClient(
+      [{ [USDC.address.toLowerCase()]: 1_000_000n }],
+      { nonStandardNativeDecimals: true }
+    )
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    // The pure-gas native entry is dropped — only the source token is queried.
+    const tokensQueried = (getBalance.mock.calls[0][2] as Token[]).map(
+      (t) => t.address
+    )
+    expect(tokensQueried).toEqual([USDC.address])
+  })
+
+  it('still enforces non-included native fees on nonStandardNativeDecimals chains', async () => {
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '5000000000000000', // gas — dropped
+        amountUSD: '0',
+        token: NATIVE_ETH,
+      },
+    ] as any
+    step.estimate!.feeCosts = [
+      {
+        name: 'lz fee',
+        description: '',
+        percentage: '0',
+        token: NATIVE_ETH,
+        amount: '2000000000000000', // non-included native fee — kept
+        amountUSD: '0',
+        included: false,
+      },
+    ]
+    const { client } = buildClient(
+      [
+        {
+          [USDC.address.toLowerCase()]: 1_000_000n,
+          [NATIVE_ETH.address.toLowerCase()]: 1_000_000_000_000_000n,
+        },
+      ],
+      { nonStandardNativeDecimals: true }
     )
     await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
       code: LiFiErrorCode.BalanceError,

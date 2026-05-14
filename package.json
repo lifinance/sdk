@@ -47,21 +47,21 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
-    "@commitlint/cli": "^21.0.0",
-    "@commitlint/config-conventional": "^21.0.0",
-    "@types/node": "^25.6.2",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@types/node": "^25.7.0",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/coverage-v8": "^4.1.6",
     "husky": "^9.1.7",
-    "knip": "^6.12.2",
+    "knip": "^6.13.1",
     "lerna": "^9.0.7",
     "standard-version": "^9.5.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   },
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38"
+  "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499"
 }

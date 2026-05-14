@@ -49,8 +49,13 @@ export const checkBalance = async (
   step: LiFiStep,
   options: CheckBalanceOptions = {}
 ): Promise<void> => {
-  const walletPaysGas = options.walletPaysGas ?? true
   const fromChainId = step.action.fromChainId
+  // Chains with non-standard native decimals (e.g. Tempo, Stable) report
+  // gas costs in units that don't align with wallet balances — drop the
+  // gas portion of the check on those chains.
+  const fromChain = await client.getChainById(fromChainId)
+  const walletPaysGas =
+    (options.walletPaysGas ?? true) && !fromChain.nonStandardNativeDecimals
   const requirements = new Map<string, Requirement>()
   const add = (token: Token, amount: bigint, bucket: Bucket): void => {
     if (token.chainId !== fromChainId || amount === 0n) {
