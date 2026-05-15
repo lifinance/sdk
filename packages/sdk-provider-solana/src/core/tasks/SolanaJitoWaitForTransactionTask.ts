@@ -31,6 +31,13 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
+    if (!signedTransactions.length) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. Signed transactions are not found.'
+      )
+    }
+
     // Use Jito bundle for transaction submission
     const bundleResult = await sendAndConfirmBundle(client, signedTransactions)
 

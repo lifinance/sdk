@@ -21,6 +21,10 @@ type ConfirmedTransactionResult = {
   txSignature: string
 }
 
+const NULL_CONFIRMATION_RESULT = new Error(
+  'Transaction was not confirmed by this RPC'
+)
+
 /**
  * Sends a Solana transaction to multiple RPC endpoints and returns the confirmation
  * as soon as any of them confirm the transaction.
@@ -145,7 +149,15 @@ export async function sendAndConfirmTransaction(
     }
   })
 
-  const signatureResult = await Promise.any(confirmPromises).catch(() => null)
+  const signatureResult = await Promise.any(
+    confirmPromises.map(async (promise) => {
+      const result = await promise
+      if (!result) {
+        throw NULL_CONFIRMATION_RESULT
+      }
+      return result
+    })
+  ).catch(() => null)
 
   if (!abortController.signal.aborted) {
     abortController.abort()
