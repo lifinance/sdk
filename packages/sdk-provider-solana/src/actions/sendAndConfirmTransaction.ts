@@ -4,38 +4,17 @@ import {
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   type Transaction,
-  type TransactionError,
 } from '@solana/kit'
 import { getSolanaRpcs } from '../rpc/registry.js'
 import { extractBlockhash } from '../utils/extractBlockhash.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
+import {
+  getConfirmedStatus,
+  type SignatureStatus,
+} from '../utils/getConfirmedStatus.js'
 
 type ConfirmedTransactionResult = {
   signatureResult: SignatureStatus | null
   txSignature: string
-}
-
-function getConfirmedStatus(
-  statusResponse: Readonly<{
-    value: readonly (SignatureStatus | null)[]
-  }>
-): SignatureStatus | null {
-  const status = statusResponse.value[0]
-  if (
-    status &&
-    (status.confirmationStatus === 'confirmed' ||
-      status.confirmationStatus === 'finalized')
-  ) {
-    return status
-  }
-  return null
 }
 
 /**
@@ -143,22 +122,30 @@ export async function sendAndConfirmTransaction(
 
           await sleep(1000)
           if (!abortController.signal.aborted) {
-            if (txBlockhash) {
-              const { value: isValid } = await rpc
-                .isBlockhashValid(txBlockhash, {
-                  commitment: 'confirmed',
-                })
-                .send()
-              blockhashValid = isValid
-            } else {
-              const blockHeight = await rpc
-                .getBlockHeight({ commitment: 'confirmed' })
-                .send()
-              blockhashValid = blockHeight < expiryBlockHeight!
+            try {
+              if (txBlockhash) {
+                const { value: isValid } = await rpc
+                  .isBlockhashValid(txBlockhash, {
+                    commitment: 'confirmed',
+                  })
+                  .send()
+                blockhashValid = isValid
+              } else {
+                const blockHeight = await rpc
+                  .getBlockHeight({ commitment: 'confirmed' })
+                  .send()
+                blockhashValid = blockHeight < expiryBlockHeight!
+              }
+            } catch (_) {
+              // If the validity check fails, keep resending — the blockhash
+              // may still be valid and other RPCs can confirm independently.
             }
           }
         }
       })()
+      // Fire-and-forget: the sending loop only resends and checks blockhash
+      // validity. Confirmation is handled by pollingPromise, so errors here
+      // can be safely ignored.
       sendingPromise.catch(() => {})
 
       const result = await pollingPromise

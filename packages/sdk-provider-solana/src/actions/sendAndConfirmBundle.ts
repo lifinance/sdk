@@ -1,22 +1,16 @@
 import { type SDKClient, sleep } from '@lifi/sdk'
 import {
-  type Commitment,
   getBase64EncodedWireTransaction,
   type Signature,
   type Transaction,
-  type TransactionError,
 } from '@solana/kit'
 
 import { getJitoRpcs } from '../rpc/registry.js'
 import { extractBlockhash } from '../utils/extractBlockhash.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
+import {
+  isConfirmedCommitment,
+  type SignatureStatus,
+} from '../utils/getConfirmedStatus.js'
 
 export type BundleResult = {
   bundleId: string
@@ -81,11 +75,9 @@ export async function sendAndConfirmBundle(
 
         const bundleStatus = statusResponse.value[0]
 
-        // Check if bundle is confirmed or finalized
         if (
           bundleStatus &&
-          (bundleStatus.confirmation_status === 'confirmed' ||
-            bundleStatus.confirmation_status === 'finalized')
+          isConfirmedCommitment(bundleStatus.confirmation_status)
         ) {
           // Bundle confirmed! Extract transaction signatures from bundle status
           const txSignatures = bundleStatus.transactions
@@ -112,18 +104,23 @@ export async function sendAndConfirmBundle(
 
         await sleep(400)
         if (!abortController.signal.aborted) {
-          if (txBlockhash) {
-            const { value: isValid } = await jitoRpc
-              .isBlockhashValid(txBlockhash, {
-                commitment: 'confirmed',
-              })
-              .send()
-            blockhashValid = isValid
-          } else {
-            const blockHeight = await jitoRpc
-              .getBlockHeight({ commitment: 'confirmed' })
-              .send()
-            blockhashValid = blockHeight < expiryBlockHeight!
+          try {
+            if (txBlockhash) {
+              const { value: isValid } = await jitoRpc
+                .isBlockhashValid(txBlockhash, {
+                  commitment: 'confirmed',
+                })
+                .send()
+              blockhashValid = isValid
+            } else {
+              const blockHeight = await jitoRpc
+                .getBlockHeight({ commitment: 'confirmed' })
+                .send()
+              blockhashValid = blockHeight < expiryBlockHeight!
+            }
+          } catch (_) {
+            // If the validity check fails, keep polling — the blockhash
+            // may still be valid and other RPCs can confirm independently.
           }
         }
       }
@@ -138,8 +135,7 @@ export async function sendAndConfirmBundle(
         const bundleStatus = statusResponse.value[0]
         if (
           bundleStatus &&
-          (bundleStatus.confirmation_status === 'confirmed' ||
-            bundleStatus.confirmation_status === 'finalized')
+          isConfirmedCommitment(bundleStatus.confirmation_status)
         ) {
           const txSignatures = bundleStatus.transactions
           const sigResponse = await jitoRpc
