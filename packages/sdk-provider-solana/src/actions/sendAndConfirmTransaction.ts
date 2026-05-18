@@ -4,17 +4,13 @@ import {
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   type Transaction,
-  type TransactionError,
 } from '@solana/kit'
 import { getSolanaRpcs } from '../rpc/registry.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
+import { extractBlockhash } from '../utils/extractBlockhash.js'
+import {
+  getConfirmedStatus,
+  type SignatureStatus,
+} from '../utils/getConfirmedStatus.js'
 
 type ConfirmedTransactionResult = {
   signatureResult: SignatureStatus | null
@@ -35,12 +31,13 @@ export async function sendAndConfirmTransaction(
   const solanaRpcs = await getSolanaRpcs(client)
 
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
-  // Create transaction hash (signature)
   const txSignature = getSignatureFromTransaction(signedTransaction)
 
   if (!txSignature) {
     throw new Error('Transaction signature is missing.')
   }
+
+  const txBlockhash = extractBlockhash(signedTransaction)
 
   const rawTransactionOptions = {
     // We can skip preflight check after the first transaction has been sent
@@ -66,51 +63,52 @@ export async function sendAndConfirmTransaction(
         // Continue with confirmation even if initial send fails
       }
 
-      const [{ value: blockhashResult }, initialBlockHeight] =
-        await Promise.all([
-          rpc
-            .getLatestBlockhash({
-              commitment: 'confirmed',
-            })
-            .send(),
-          rpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send(),
-        ])
-
       let signatureResult: SignatureStatus | null = null
-      let blockHeight = initialBlockHeight
-      const pollingPromise = (async () => {
-        while (
-          blockHeight < blockhashResult.lastValidBlockHeight &&
-          !abortController.signal.aborted
-        ) {
-          const statusResponse = await rpc
-            .getSignatureStatuses([txSignature])
-            .send()
+      let blockhashValid = true
 
-          const status = statusResponse.value[0]
-          if (
-            status &&
-            (status.confirmationStatus === 'confirmed' ||
-              status.confirmationStatus === 'finalized')
-          ) {
-            signatureResult = status
-            // Immediately abort all other RPCs when we find a result
+      // For durable nonce txs, fall back to block-height-based timeout
+      let expiryBlockHeight: bigint | undefined
+      if (!txBlockhash) {
+        const { value: blockhashResult } = await rpc
+          .getLatestBlockhash({ commitment: 'confirmed' })
+          .send()
+        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+      }
+
+      const pollingPromise = (async () => {
+        while (blockhashValid && !abortController.signal.aborted) {
+          const confirmed = getConfirmedStatus(
+            await rpc.getSignatureStatuses([txSignature]).send()
+          )
+          if (confirmed) {
+            signatureResult = confirmed
             abortController.abort()
-            return status
+            return confirmed
           }
 
           await sleep(400)
         }
+
+        // Final status check — the tx may have confirmed between the last
+        // poll and the blockhash expiring.
+        if (!abortController.signal.aborted) {
+          const confirmed = getConfirmedStatus(
+            await rpc.getSignatureStatuses([txSignature]).send()
+          )
+          if (confirmed) {
+            signatureResult = confirmed
+            abortController.abort()
+            return confirmed
+          }
+        }
+
         return null
       })()
 
+      // Sending loop runs in the background — only pollingPromise produces results.
       const sendingPromise = (async () => {
         while (
-          blockHeight < blockhashResult.lastValidBlockHeight &&
+          blockhashValid &&
           !abortController.signal.aborted &&
           !signatureResult
         ) {
@@ -124,18 +122,33 @@ export async function sendAndConfirmTransaction(
 
           await sleep(1000)
           if (!abortController.signal.aborted) {
-            blockHeight = await rpc
-              .getBlockHeight({
-                commitment: 'confirmed',
-              })
-              .send()
+            try {
+              if (txBlockhash) {
+                const { value: isValid } = await rpc
+                  .isBlockhashValid(txBlockhash, {
+                    commitment: 'confirmed',
+                  })
+                  .send()
+                blockhashValid = isValid
+              } else {
+                const blockHeight = await rpc
+                  .getBlockHeight({ commitment: 'confirmed' })
+                  .send()
+                blockhashValid = blockHeight < expiryBlockHeight!
+              }
+            } catch (_) {
+              // If the validity check fails, keep resending — the blockhash
+              // may still be valid and other RPCs can confirm independently.
+            }
           }
         }
-        return null
       })()
+      // Fire-and-forget: the sending loop only resends and checks blockhash
+      // validity. Confirmation is handled by pollingPromise, so errors here
+      // can be safely ignored.
+      sendingPromise.catch(() => {})
 
-      // Wait for polling to find the result
-      const result = await Promise.race([pollingPromise, sendingPromise])
+      const result = await pollingPromise
       return result
     } catch (error) {
       if (abortController.signal.aborted) {

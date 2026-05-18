@@ -1,21 +1,16 @@
 import { type SDKClient, sleep } from '@lifi/sdk'
 import {
-  type Commitment,
   getBase64EncodedWireTransaction,
   type Signature,
   type Transaction,
-  type TransactionError,
 } from '@solana/kit'
 
 import { getJitoRpcs } from '../rpc/registry.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
+import { extractBlockhash } from '../utils/extractBlockhash.js'
+import {
+  isConfirmedCommitment,
+  type SignatureStatus,
+} from '../utils/getConfirmedStatus.js'
 
 export type BundleResult = {
   bundleId: string
@@ -48,6 +43,8 @@ export async function sendAndConfirmBundle(
     getBase64EncodedWireTransaction(tx)
   )
 
+  const txBlockhash = extractBlockhash(signedTransactions[0])
+
   const abortController = new AbortController()
 
   const confirmPromises = jitoRpcs.map(async (jitoRpc) => {
@@ -60,37 +57,27 @@ export async function sendAndConfirmBundle(
         return null
       }
 
-      const [{ value: blockhashResult }, initialBlockHeight] =
-        await Promise.all([
-          jitoRpc
-            .getLatestBlockhash({
-              commitment: 'confirmed',
-            })
-            .send(),
-          jitoRpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send(),
-        ])
+      let blockhashValid = true
 
-      let currentBlockHeight = initialBlockHeight
+      // For durable nonce txs, fall back to block-height-based timeout
+      let expiryBlockHeight: bigint | undefined
+      if (!txBlockhash) {
+        const { value: blockhashResult } = await jitoRpc
+          .getLatestBlockhash({ commitment: 'confirmed' })
+          .send()
+        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+      }
 
-      while (
-        currentBlockHeight < blockhashResult.lastValidBlockHeight &&
-        !abortController.signal.aborted
-      ) {
+      while (blockhashValid && !abortController.signal.aborted) {
         const statusResponse = await jitoRpc
           .getBundleStatuses([bundleId])
           .send()
 
         const bundleStatus = statusResponse.value[0]
 
-        // Check if bundle is confirmed or finalized
         if (
           bundleStatus &&
-          (bundleStatus.confirmation_status === 'confirmed' ||
-            bundleStatus.confirmation_status === 'finalized')
+          isConfirmedCommitment(bundleStatus.confirmation_status)
         ) {
           // Bundle confirmed! Extract transaction signatures from bundle status
           const txSignatures = bundleStatus.transactions
@@ -117,11 +104,52 @@ export async function sendAndConfirmBundle(
 
         await sleep(400)
         if (!abortController.signal.aborted) {
-          currentBlockHeight = await jitoRpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
+          try {
+            if (txBlockhash) {
+              const { value: isValid } = await jitoRpc
+                .isBlockhashValid(txBlockhash, {
+                  commitment: 'confirmed',
+                })
+                .send()
+              blockhashValid = isValid
+            } else {
+              const blockHeight = await jitoRpc
+                .getBlockHeight({ commitment: 'confirmed' })
+                .send()
+              blockhashValid = blockHeight < expiryBlockHeight!
+            }
+          } catch (_) {
+            // If the validity check fails, keep polling — the blockhash
+            // may still be valid and other RPCs can confirm independently.
+          }
+        }
+      }
+
+      // Final status check — the bundle may have confirmed between the
+      // last poll and the blockhash expiring.
+      if (!abortController.signal.aborted) {
+        const statusResponse = await jitoRpc
+          .getBundleStatuses([bundleId])
+          .send()
+
+        const bundleStatus = statusResponse.value[0]
+        if (
+          bundleStatus &&
+          isConfirmedCommitment(bundleStatus.confirmation_status)
+        ) {
+          const txSignatures = bundleStatus.transactions
+          const sigResponse = await jitoRpc
+            .getSignatureStatuses(txSignatures)
             .send()
+
+          if (sigResponse?.value && Array.isArray(sigResponse.value)) {
+            abortController.abort()
+            return {
+              bundleId,
+              txSignatures,
+              signatureResults: sigResponse.value,
+            }
+          }
         }
       }
 
