@@ -115,7 +115,8 @@ const getSolanaBalanceDefault = async (
         value.account.data.parsed.info
       const amount = BigInt(tokenAccount.tokenAmount.amount)
       if (amount > 0n) {
-        tokenAmounts[tokenAccount.mint] = amount
+        tokenAmounts[tokenAccount.mint] =
+          (tokenAmounts[tokenAccount.mint] ?? 0n) + amount
       }
       return tokenAmounts
     },
