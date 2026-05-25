@@ -6,6 +6,7 @@ import {
 } from '@lifi/sdk'
 import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
+import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
 export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
@@ -50,13 +51,11 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       (result) => result?.err
     )
     if (failedResult?.err) {
-      const reason =
-        typeof failedResult.err === 'object'
-          ? JSON.stringify(failedResult.err)
-          : String(failedResult.err)
+      const cause = new SolanaTransactionDetailsError(failedResult.err)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
-        `Transaction failed: ${reason}`
+        `Transaction failed: ${cause.message}`,
+        cause
       )
     }
 
