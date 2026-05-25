@@ -60,16 +60,23 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       )
 
       if (simulationResult.value.err) {
+        const simulationErrorDetails = {
+          err: simulationResult.value.err,
+          logs: simulationResult.value.logs,
+        }
         const errorMessage =
           typeof simulationResult.value.err === 'object'
             ? JSON.stringify(simulationResult.value.err, (_, v) =>
                 typeof v === 'bigint' ? v.toString() : v
               )
             : simulationResult.value.err
+        const simulationError = new Error(errorMessage, {
+          cause: simulationErrorDetails,
+        })
         throw new TransactionError(
           LiFiErrorCode.TransactionSimulationFailed,
           `Transaction simulation failed: ${errorMessage}`,
-          new Error(errorMessage)
+          simulationError
         )
       }
     }
