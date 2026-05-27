@@ -1,0 +1,83 @@
+name: 'Release · Linear Sync'
+
+# Reusable: syncs a published release into the Linear "SDK" pipeline.
+# Called by publish.yaml after `changeset publish` succeeds; not triggered on its own.
+#
+# Unlike a tag-driven sync, the caller already knows the concrete (version, channel)
+# from the Changesets `publishedPackages` output, so this workflow takes them as
+# inputs instead of parsing a git tag.
+on:
+  workflow_call:
+    inputs:
+      release_name:
+        description: 'Linear release name prefix (anchor display name, e.g. "SDK")'
+        required: true
+        type: string
+      version:
+        description: 'Published semver, e.g. 4.0.0-beta.12'
+        required: true
+        type: string
+      channel:
+        description: 'Release channel: alpha | beta | stable'
+        required: true
+        type: string
+    secrets:
+      access_key:
+        description: 'Linear pipeline access key'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  linear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Resolve release coordinates
+        id: meta
+        env:
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          # Linear releases are keyed on the marketing X.Y.Z version (prerelease suffix stripped),
+          # so alpha/beta/stable of the same line attach to one release entry.
+          BASE_VERSION="${VERSION%%-*}"
+          echo "version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Resolved release_version=$BASE_VERSION (from $VERSION) channel=$CHANNEL"
+
+      # Attach merged issues to the X.Y.Z release and record this build as a link.
+      - name: Sync issues to release
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: sync
+          release_version: ${{ steps.meta.outputs.version }}
+          name: ${{ inputs.release_name }} ${{ steps.meta.outputs.version }}
+          links: |
+            ${{ github.server_url }}/${{ github.repository }}/releases/tag/@lifi/sdk@${{ inputs.version }}
+
+      # Prerelease: advance the stage only (release stays open -> tickets stay "Ready for Release").
+      - name: Advance stage (alpha/beta)
+        if: steps.meta.outputs.channel != 'stable'
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: update
+          release_version: ${{ steps.meta.outputs.version }}
+          stage: ${{ steps.meta.outputs.channel == 'alpha' && 'Alpha' || 'Beta' }}
+
+      # Stable: complete the release -> fires the "On release completion -> Done" automation.
+      - name: Complete release (stable)
+        if: steps.meta.outputs.channel == 'stable'
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: complete
+          release_version: ${{ steps.meta.outputs.version }}

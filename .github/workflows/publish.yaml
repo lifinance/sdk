@@ -1,44 +1,137 @@
 name: Release & Publish
 
+# Changesets-driven release pipeline (wagmi model).
+#
+# On every push to main:
+#   1. verify     — reuse Tests workflow (build + test) as the release gate.
+#   2. changesets — open/refresh the "chore: version packages" PR. When that PR is
+#                   merged there are no pending changesets, so hasChangesets == 'false'.
+#   3. release    — runs only when hasChangesets == 'false' (the version PR just landed).
+#                   Publishes to npm via `changeset publish` and creates GitHub Releases.
+#                   Holds the OIDC `id-token: write` permission for npm provenance.
+#   4. linear-release — single static anchor: only when @lifi/sdk was published,
+#                   sync the published version into the Linear "SDK" pipeline.
+#
+# NOTE: filename is intentionally kept as `publish.yaml` — the npmjs.com trusted
+# publisher (OIDC) is pinned to this workflow path. Do not rename.
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  verify:
+    name: Verify
+    uses: ./.github/workflows/tests.yaml
+
+  changesets:
+    name: Version
+    needs: verify
+    # Prevent this job from running on forks.
+    if: github.repository == 'lifinance/sdk'
     permissions:
-      contents: write
+      contents: write # to push the version branch / create the version PR
+      pull-requests: write # to open the "chore: version packages" PR
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          generate_release_notes: true
-          name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          # Full history so Changesets can build correct changelogs.
+          fetch-depth: 0
 
-  publish:
-    permissions:
-      contents: write
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
-      - name: Build
-        run: pnpm build
-      - name: Publish to npm
-        run: |
-          pnpm release:publish${{ contains(github.ref_name, 'alpha') && ':alpha' || contains(github.ref_name, 'beta') && ':beta' || '' }}
+
+      - name: Create version PR
+        id: changesets
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
+        with:
+          version: pnpm changeset:version
+          title: 'chore: version packages'
+          commit: 'chore: version packages'
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    name: Release
+    needs: changesets
+    # Only publish once the version PR has been merged (no pending changesets left).
+    if: needs.changesets.outputs.hasChangesets == 'false'
+    permissions:
+      contents: write # to create GitHub Releases / tags
+      id-token: write # OIDC token for npm provenance (trusted publishing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        uses: ./.github/actions/pnpm-install
+
+      - name: Publish to npm
+        id: changesets
+        uses: changesets/action@e0145edc7d9d8679003495b11f87bd8ef63c0cba # v1.5.3
+        with:
+          publish: pnpm changeset:publish
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+  # Extract the @lifi/sdk version + channel from publishedPackages so the reusable
+  # Linear workflow receives concrete (version, channel) inputs rather than parsing
+  # the JSON itself. Single static anchor — keyed on @lifi/sdk only.
+  linear-meta:
+    name: Linear Meta (SDK)
+    needs: release
+    # Only when @lifi/sdk itself was published. publishedPackages is a JSON string like
+    # [{"name":"@lifi/sdk","version":"4.0.0-beta.12"},...]. A provider-only release cycle
+    # won't bump @lifi/sdk, so the "SDK" Linear release is intentionally skipped for that
+    # cycle (no fallback anchor — see CLAUDE.md "Anchor coverage policy").
+    if: needs.release.result == 'success' && contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      channel: ${{ steps.meta.outputs.channel }}
+    steps:
+      - name: Resolve SDK version and channel
+        id: meta
+        env:
+          PUBLISHED: ${{ needs.release.outputs.publishedPackages }}
+        run: |
+          VERSION="$(echo "$PUBLISHED" | jq -r '.[] | select(.name=="@lifi/sdk") | .version')"
+          case "$VERSION" in
+            *-alpha.*) CHANNEL=alpha ;;
+            *-beta.*)  CHANNEL=beta ;;
+            *)         CHANNEL=stable ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "Resolved @lifi/sdk version=$VERSION channel=$CHANNEL"
+
+  linear-release:
+    name: Linear Sync (SDK)
+    needs: linear-meta
+    permissions:
+      contents: read
+    uses: ./.github/workflows/linear-release.yaml
+    with:
+      release_name: SDK
+      version: ${{ needs.linear-meta.outputs.version }}
+      channel: ${{ needs.linear-meta.outputs.channel }}
+    secrets:
+      access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
