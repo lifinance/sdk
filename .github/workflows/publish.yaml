@@ -105,6 +105,7 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     outputs:
+      full: ${{ steps.meta.outputs.full }}
       version: ${{ steps.meta.outputs.version }}
       channel: ${{ steps.meta.outputs.channel }}
     steps:
@@ -113,15 +114,17 @@ jobs:
         env:
           PUBLISHED: ${{ needs.release.outputs.publishedPackages }}
         run: |
-          VERSION="$(echo "$PUBLISHED" | jq -r '.[] | select(.name=="@lifi/sdk") | .version')"
-          case "$VERSION" in
+          FULL="$(echo "$PUBLISHED" | jq -r '.[] | select(.name=="@lifi/sdk") | .version')"
+          VERSION="${FULL%%-*}" # 4.0.0-beta.12 -> 4.0.0
+          case "$FULL" in
             *-alpha.*) CHANNEL=alpha ;;
             *-beta.*)  CHANNEL=beta ;;
             *)         CHANNEL=stable ;;
           esac
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "Resolved @lifi/sdk version=$VERSION channel=$CHANNEL"
+          echo "Resolved @lifi/sdk $FULL -> version=$VERSION channel=$CHANNEL"
 
   linear-release:
     name: Linear Sync (SDK)
@@ -133,5 +136,6 @@ jobs:
       release_name: SDK
       version: ${{ needs.linear-meta.outputs.version }}
       channel: ${{ needs.linear-meta.outputs.channel }}
+      release_tag: '@lifi/sdk@${{ needs.linear-meta.outputs.full }}'
     secrets:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
