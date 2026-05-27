@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm changeset status:*)",
+      "Bash(pnpm changeset --help:*)",
+      "Bash(pnpm exec changeset status:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(npm view:*)",
+      "Bash(ls .changeset:*)",
+      "Bash(cat .changeset/*)"
+    ]
+  }
+}
