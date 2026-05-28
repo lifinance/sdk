@@ -33,10 +33,12 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # List files changed in this PR, then keep only those under a publishable
-          # package's source (packages/*/{src,package.json}). Docs, root config, CI,
-          # scripts, examples and *.md are NOT publishable surface -> exempt.
-          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          # List files changed in this PR (three-dot = merge-base diff, so an
+          # out-of-date PR doesn't pick up unrelated main commits), then keep only
+          # those under a publishable package's source (packages/*/{src,package.json}).
+          # Docs, root config, CI, scripts, examples and *.md are NOT publishable
+          # surface -> exempt.
+          CHANGED="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           echo "Changed files:"; echo "$CHANGED"
           PUBLISHABLE="$(echo "$CHANGED" \
             | grep -E '^packages/[^/]+/(src/|package\.json)' \

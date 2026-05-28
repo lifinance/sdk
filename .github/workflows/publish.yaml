@@ -100,7 +100,7 @@ jobs:
     # [{"name":"@lifi/sdk","version":"4.0.0-beta.12"},...]. A provider-only release cycle
     # won't bump @lifi/sdk, so the "SDK" Linear release is intentionally skipped for that
     # cycle (no fallback anchor — see CLAUDE.md "Anchor coverage policy").
-    if: needs.release.result == 'success' && contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
+    if: contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
     permissions:
       contents: read
     runs-on: ubuntu-latest
