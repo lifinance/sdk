@@ -45,7 +45,7 @@ jobs:
 
       # Attach merged issues to the X.Y.Z release and record a link.
       - name: Sync issues to release
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
         with:
           access_key: ${{ secrets.access_key }}
           command: sync
@@ -57,7 +57,7 @@ jobs:
       # Prerelease: advance the stage only (release stays open -> tickets stay "Ready for Release").
       - name: Advance stage (alpha/beta)
         if: inputs.channel != 'stable'
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
         with:
           access_key: ${{ secrets.access_key }}
           command: update
@@ -67,7 +67,7 @@ jobs:
       # Stable: complete the release -> fires the "On release completion -> Done" automation.
       - name: Complete release (stable)
         if: inputs.channel == 'stable'
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
         with:
           access_key: ${{ secrets.access_key }}
           command: complete
