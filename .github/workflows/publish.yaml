@@ -200,9 +200,7 @@ jobs:
 
       # Snapshot-publish to the `canary` dist-tag + comment the install command.
       # Composite (not reusable workflow) so OIDC stays bound to publish.yaml.
-      # pre_mode: true — sdk is in Changesets pre mode (snapshot needs an
-      # ephemeral `pre exit`, done inside the action; never committed).
+      # The action auto-detects pre mode from .changeset/pre.json and exits it
+      # ephemerally when present (sdk is currently in pre-beta).
       - name: Publish canary
         uses: ./.github/actions/canary-publish
-        with:
-          pre_mode: 'true'
