@@ -180,15 +180,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.event.sender.login }}
         run: |
-          # `.permission` returns the legacy base role: admin | write | read | none
-          # (maintain maps to write, triage maps to read). Write access or higher is
-          # the trust bar — the same people who can push branches and who could
-          # publish via the old `v*-beta.N` tag flow.
-          PERM=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.permission' 2>/dev/null || echo none)
-          echo "Actor ${ACTOR} has '${PERM}' access to ${{ github.repository }}."
-          case "$PERM" in
-            admin|write) : ;;
-            *) echo "::error::release-canary requires write access to ${{ github.repository }}; '${ACTOR}' has '${PERM}'."; exit 1 ;;
+          # role_name is GitHub's granular permission role: admin | maintain |
+          # write | triage | read (+ any custom roles). Write access or higher
+          # (write/maintain/admin) is the trust bar — the same people who can push
+          # branches and who could publish via the old `v*-beta.N` tag flow. Fully
+          # automatic; no manual approval. (If you add a CUSTOM role that grants
+          # write, add its name to the case below.)
+          ROLE=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.role_name // "none"' 2>/dev/null || echo none)
+          echo "Actor ${ACTOR} has role '${ROLE}' on ${{ github.repository }}."
+          case "$ROLE" in
+            admin|maintain|write) : ;;
+            *) echo "::error::release-canary requires write access to ${{ github.repository }}; '${ACTOR}' has role '${ROLE}'."; exit 1 ;;
           esac
 
       - name: Checkout PR head
