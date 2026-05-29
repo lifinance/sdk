@@ -34,7 +34,7 @@ is the hub; each provider depends on it via `workspace:*` as a **regular** depen
 - `sdk-provider-ethereum/src/utils/abi.ts` — parseAbi results typed as `Abi` (broader than inferred); downstream code uses `as` casts for readContract results
 
 ## Release
-Releases use **Changesets** (independent versioning, wagmi model). Lerna and
+Releases use **Changesets** (independent versioning). Lerna and
 standard-version are gone.
 
 ### Per-PR rule (add a changeset to every publishable PR)

@@ -1,6 +1,6 @@
 name: Release & Publish
 
-# Changesets-driven release pipeline (wagmi model).
+# Changesets-driven release pipeline.
 #
 # On every push to main:
 #   1. verify     — reuse Tests workflow (build + test) as the release gate.
