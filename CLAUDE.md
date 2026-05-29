@@ -41,8 +41,8 @@ standard-version are gone.
 - Run `pnpm changeset`, pick the affected package(s), choose a bump:
   - `feat:` → **minor**, `fix:` → **patch**, breaking change → **major**.
 - **Skip** a changeset for: docs-only, chore-only, CI/config, tests, examples.
-  (`changeset-check.yaml` enforces this — fail-closed when publishable source changes
-  with no changeset; docs/chore PRs are exempt.)
+  (`changeset-bot` comments a reminder when publishable source changes with no changeset;
+  docs/chore PRs simply don't need one. The Version PR is the real publish gate.)
 - Only declare changesets for packages you *intentionally* changed. Do **not** author
   cascade-only changesets for dependents — `updateInternalDependencies: "minor"` makes
   Changesets bump providers automatically when `@lifi/sdk`'s range moves.

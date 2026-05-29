@@ -16,8 +16,9 @@ description: >-
 This repo releases with **Changesets**: every PR that changes a publishable package
 carries a small `.changeset/*.md` file declaring which packages bump and by how much.
 `changeset version` later consumes those files into per-package `CHANGELOG.md`s and
-version bumps. No changeset → no release for that change, and CI (`changeset-check.yaml`)
-fails the PR. Your job here is to write a correct changeset for the work in progress.
+version bumps. No changeset → no release for that change; `changeset-bot` comments a
+reminder on the PR (a nudge, not a hard block — the maintainer-reviewed Version PR is the
+real gate). Your job here is to write a correct changeset for the work in progress.
 
 ## Steps
 
