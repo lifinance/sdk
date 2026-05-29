@@ -78,7 +78,7 @@ removed after a successful publish (one-shot — re-add it to cut another canary
   `changeset pre exit` in the **throwaway CI checkout only** (never committed or pushed)
   before snapshotting. `.changeset/pre.json` on the branch is untouched.
 - Guardrails: same-repo branches only (forks can't trigger it), the label must be applied
-  by a maintainer (write+), and the job is isolated (no Linear secrets). It mirrors the
+  by someone with write access, and the job is isolated (no Linear secrets). It mirrors the
   trust boundary of the old `pnpm release:beta` + `v*-beta.N` tag flow.
 
 ### Root scripts
