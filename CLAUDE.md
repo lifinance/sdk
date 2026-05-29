@@ -77,9 +77,11 @@ removed after a successful publish (one-shot — re-add it to cut another canary
 - This repo is in **pre mode**, where `--snapshot` is disallowed — the job therefore runs
   `changeset pre exit` in the **throwaway CI checkout only** (never committed or pushed)
   before snapshotting. `.changeset/pre.json` on the branch is untouched.
-- Guardrails: same-repo branches only (forks can't trigger it), the label must be applied
-  by someone with write access, and the job is isolated (no Linear secrets). It mirrors the
-  trust boundary of the old `pnpm release:beta` + `v*-beta.N` tag flow.
+- Guardrails: applying a label requires Triage+ on the repo, so external people / fork-PR
+  authors can't trigger it; the same-repo guard means the published code was pushed by
+  someone with Write access (forks excluded); and the job is isolated (no Linear secrets).
+  This is GitHub's native label-permission gate — no in-workflow role check — mirroring
+  (slightly broader than) the old `pnpm release:beta` + `v*-beta.N` tag flow.
 
 ### Root scripts
 - `changeset:version` — `changeset version` + `pnpm install --lockfile-only` + `pnpm check:write`.

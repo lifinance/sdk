@@ -155,11 +155,16 @@ jobs:
   # with external integrators). One-shot: the label is removed after a publish;
   # re-add it to cut another canary.
   #
-  # Trust boundary — matches the OLD `v*-beta.N` tag-push flow, which already
-  # let anyone with write access publish unreviewed branch code to npm via OIDC:
-  #   * same-repo branches only (forks/external PRs cannot trigger it)
-  #   * the label-applier must have write access, verified fail-closed
-  #   * isolated job: only id-token/contents/PR perms; no deploy/Linear secrets
+  # Trust boundary — gated by GitHub's native label permissions, no in-workflow
+  # role check needed:
+  #   * applying a label requires Triage+ on the repo, so external people and
+  #     fork-PR authors cannot trigger this (GitHub has no per-label permission;
+  #     the trigger population is "collaborators with Triage+", matching — and
+  #     slightly broader than — the old `v*-beta.N` tag-push flow that needed Write).
+  #   * same-repo branches only (forks excluded) → the published code was pushed
+  #     to the repo, which requires Write access.
+  #   * isolated job: only id-token/contents/PR perms; no deploy/Linear secrets.
+  #   * versions are throwaway 0.0.0-canary — they can never become `latest`/`beta`.
   # NEVER convert this to pull_request_target.
   canary:
     name: Canary release (PR preview)
@@ -167,7 +172,6 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.label.name == 'release-canary'
       && github.event.pull_request.head.repo.full_name == github.repository
-      && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -175,24 +179,6 @@ jobs:
       id-token: write # npm OIDC trusted publishing + provenance
       pull-requests: write # post the install comment + remove the label
     steps:
-      - name: Verify the actor has write access (fail-closed)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ACTOR: ${{ github.event.sender.login }}
-        run: |
-          # role_name is GitHub's granular permission role: admin | maintain |
-          # write | triage | read (+ any custom roles). Write access or higher
-          # (write/maintain/admin) is the trust bar — the same people who can push
-          # branches and who could publish via the old `v*-beta.N` tag flow. Fully
-          # automatic; no manual approval. (If you add a CUSTOM role that grants
-          # write, add its name to the case below.)
-          ROLE=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.role_name // "none"' 2>/dev/null || echo none)
-          echo "Actor ${ACTOR} has role '${ROLE}' on ${{ github.repository }}."
-          case "$ROLE" in
-            admin|maintain|write) : ;;
-            *) echo "::error::release-canary requires write access to ${{ github.repository }}; '${ACTOR}' has role '${ROLE}'."; exit 1 ;;
-          esac
-
       - name: Checkout PR head
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
