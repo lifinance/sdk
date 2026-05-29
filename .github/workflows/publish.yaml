@@ -17,6 +17,9 @@ name: Release & Publish
 on:
   push:
     branches: [main]
+  # Canary preview releases are opt-in via the `release-canary` PR label.
+  pull_request:
+    types: [labeled]
 
 concurrency:
   group: release-${{ github.ref }}
@@ -25,6 +28,9 @@ concurrency:
 jobs:
   verify:
     name: Verify
+    # The main-release chain runs on push only — never on the pull_request
+    # (labeled) event that drives canary previews.
+    if: github.event_name != 'pull_request'
     uses: ./.github/workflows/tests.yaml
 
   changesets:
@@ -139,3 +145,102 @@ jobs:
       release_tag: '@lifi/sdk@${{ needs.linear-meta.outputs.full }}'
     secrets:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
+
+  # ---------------------------------------------------------------------------
+  # Canary preview release (opt-in, per PR).
+  #
+  # Add the `release-canary` label to a PR to publish a throwaway
+  # 0.0.0-canary-<timestamp> build of the changed packages to npm under the
+  # `canary` dist-tag, so the branch can be shared for testing (internally or
+  # with external integrators). One-shot: the label is removed after a publish;
+  # re-add it to cut another canary.
+  #
+  # Trust boundary — matches the OLD `v*-beta.N` tag-push flow, which already
+  # let any maintainer publish unreviewed branch code to npm via OIDC:
+  #   * same-repo branches only (forks/external PRs cannot trigger it)
+  #   * the label must be applied by a maintainer (write+), verified fail-closed
+  #   * isolated job: only id-token/contents/PR perms; no deploy/Linear secrets
+  # NEVER convert this to pull_request_target.
+  canary:
+    name: Canary release (PR preview)
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.label.name == 'release-canary'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # npm OIDC trusted publishing + provenance
+      pull-requests: write # post the install comment + remove the label
+    steps:
+      - name: Verify the label was applied by a maintainer (fail-closed)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.event.sender.login }}
+        run: |
+          PERM=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.permission' 2>/dev/null || echo none)
+          echo "Actor ${ACTOR} has '${PERM}' permission."
+          case "$PERM" in
+            admin|maintain|write) : ;;
+            *) echo "::error::release-canary may only be triggered by a maintainer (write+); '${ACTOR}' has '${PERM}'."; exit 1 ;;
+          esac
+
+      - name: Checkout PR head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Install dependencies
+        uses: ./.github/actions/pnpm-install
+      # sdk is in Changesets pre mode; `--snapshot` is disallowed in pre
+      # mode, so exit it in THIS throwaway checkout only. Never committed/pushed.
+      - name: Exit pre mode (ephemeral)
+        run: pnpm changeset pre exit
+
+      - name: Version changed packages as canary
+        run: pnpm changeset version --snapshot canary
+
+      - name: Detect whether a canary version was produced
+        id: detect
+        run: |
+          VER=$(grep -hoE '0\.0\.0-canary-[0-9]+' packages/*/package.json | head -1 || true)
+          if [ -n "$VER" ]; then
+            echo "version=$VER" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Will publish canary $VER"
+          else
+            echo "::warning::No changeset in this PR — nothing to publish as canary."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build + prerelease transform
+        if: steps.detect.outputs.publish == 'true'
+        run: pnpm changeset:prepublish
+
+      - name: Publish canary to npm
+        if: steps.detect.outputs.publish == 'true'
+        run: pnpm changeset publish --tag canary --no-git-tag
+        env:
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Comment the install command on the PR
+        if: steps.detect.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VER: ${{ steps.detect.outputs.version }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body "📦 **Canary published** under the \`canary\` dist-tag at \`${VER}\`.
+
+          Install the exact version (recommended — \`@canary\` moves with the newest canary across PRs):
+          \`\`\`bash
+          npm i @lifi/sdk@${VER}
+          \`\`\`"
+
+      - name: Remove the release-canary label (one-shot)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr edit "${{ github.event.pull_request.number }}" --remove-label release-canary || true
