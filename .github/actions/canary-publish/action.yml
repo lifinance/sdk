@@ -1,17 +1,13 @@
 name: Canary publish
 description: >-
-  Snapshot-publish the changed workspace packages to the npm `canary` dist-tag as
-  0.0.0-canary-<timestamp> versions, then comment the exact install command(s) on
-  the PR and remove the `release-canary` label. Runs as a composite action inside
-  the calling job, so the npm OIDC trusted-publisher identity stays bound to the
-  caller workflow (publish.yaml). Expects pnpm + deps already installed.
+  Snapshot-publish changed workspace packages to the npm `canary` dist-tag,
+  comment the install command on the PR, and remove the `release-canary` label.
 
 runs:
   using: composite
   steps:
-    # Snapshots are disallowed in Changesets pre mode. If this repo is in pre mode
-    # (committed .changeset/pre.json), exit it in THIS throwaway checkout only —
-    # never committed or pushed. Stable-line repos have no pre.json and skip this.
+    # Snapshots are disallowed in Changesets pre mode — exit it in THIS throwaway
+    # checkout only (never committed/pushed). Stable-line repos have no pre.json.
     - name: Exit pre mode if active (ephemeral)
       shell: bash
       run: |

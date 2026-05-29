@@ -4,9 +4,8 @@ description: 'Run pnpm install (pnpm store cache on by default)'
 inputs:
   cache:
     description: >-
-      Use the pnpm store cache. Set to "false" in privileged jobs
-      (publish / version PR / canary) so a poisoned cache can't be restored
-      into a context that holds publish (id-token) or write permissions.
+      Use the pnpm store cache. Set "false" in privileged jobs (publish / version
+      PR / canary) so a poisoned cache can't reach a context with publish/write perms.
     default: 'true'
 
 runs:
