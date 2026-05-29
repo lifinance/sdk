@@ -195,14 +195,21 @@ jobs:
       - name: Version changed packages as canary
         run: pnpm changeset version --snapshot canary
 
-      - name: Detect whether a canary version was produced
+      - name: Detect canary packages
         id: detect
         run: |
-          VER=$(grep -hoE '0\.0\.0-canary-[0-9]+' packages/*/package.json | head -1 || true)
-          if [ -n "$VER" ]; then
-            echo "version=$VER" >> "$GITHUB_OUTPUT"
+          # List every non-private package that `changeset version --snapshot`
+          # bumped to a 0.0.0-canary version — i.e. exactly what will be published.
+          : > "$RUNNER_TEMP/canary-pkgs.txt"
+          for f in packages/*/package.json; do
+            v=$(jq -r '.version' "$f")
+            case "$v" in *-canary-*) ;; *) continue ;; esac
+            [ "$(jq -r '.private // false' "$f")" = "true" ] && continue
+            printf '%s@%s\n' "$(jq -r '.name' "$f")" "$v" >> "$RUNNER_TEMP/canary-pkgs.txt"
+          done
+          if [ -s "$RUNNER_TEMP/canary-pkgs.txt" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "Will publish canary $VER"
+            echo "Canary versions to publish:"; cat "$RUNNER_TEMP/canary-pkgs.txt"
           else
             echo "::warning::No changeset in this PR — nothing to publish as canary."
             echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -222,14 +229,17 @@ jobs:
         if: steps.detect.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VER: ${{ steps.detect.outputs.version }}
         run: |
-          gh pr comment "${{ github.event.pull_request.number }}" --body "📦 **Canary published** under the \`canary\` dist-tag at \`${VER}\`.
-
-          Install the exact version (recommended — \`@canary\` moves with the newest canary across PRs):
-          \`\`\`bash
-          npm i @lifi/sdk@${VER}
-          \`\`\`"
+          {
+            echo "📦 **Canary published** under the \`canary\` dist-tag."
+            echo
+            echo "Install the exact version(s) — \`@canary\` moves with the newest canary across PRs:"
+            echo
+            echo '```bash'
+            while IFS= read -r pkg; do echo "npm i $pkg"; done < "$RUNNER_TEMP/canary-pkgs.txt"
+            echo '```'
+          } > "$RUNNER_TEMP/canary-comment.md"
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/canary-comment.md"
 
       - name: Remove the release-canary label (one-shot)
         if: always()
