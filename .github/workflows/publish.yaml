@@ -25,12 +25,16 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {} # each job declares only the permissions it needs
+
 jobs:
   verify:
     name: Verify
     # The main-release chain runs on push only — never on the pull_request
     # (labeled) event that drives canary previews.
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
     uses: ./.github/workflows/tests.yaml
 
   changesets:
@@ -54,6 +58,8 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
+        with:
+          cache: 'false' # privileged job — don't restore a potentially poisoned cache
 
       - name: Create version PR
         id: changesets
@@ -85,6 +91,8 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
+        with:
+          cache: 'false' # privileged job — don't restore a potentially poisoned cache
 
       - name: Publish to npm
         id: changesets
@@ -187,6 +195,8 @@ jobs:
 
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
+        with:
+          cache: 'false' # privileged job — don't restore a potentially poisoned cache
 
       # Snapshot-publish to the `canary` dist-tag + comment the install command.
       # Composite (not reusable workflow) so OIDC stays bound to publish.yaml.

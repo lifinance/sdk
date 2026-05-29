@@ -1,5 +1,13 @@
 name: 'PNPM install'
-description: 'Run pnpm install with node_modules and cache enabled'
+description: 'Run pnpm install (pnpm store cache on by default)'
+
+inputs:
+  cache:
+    description: >-
+      Use the pnpm store cache. Set to "false" in privileged jobs
+      (publish / version PR / canary) so a poisoned cache can't be restored
+      into a context that holds publish (id-token) or write permissions.
+    default: 'true'
 
 runs:
   using: 'composite'
@@ -11,7 +19,8 @@ runs:
       with:
         node-version: lts/*
         registry-url: 'https://registry.npmjs.org'
-        cache: 'pnpm' # https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-dependencies
+        # '' disables caching entirely (no restore, no save) for privileged jobs.
+        cache: ${{ inputs.cache == 'true' && 'pnpm' || '' }}
     - name: Install dependencies
       env:
         HUSKY: '0' # By default do not run HUSKY install
