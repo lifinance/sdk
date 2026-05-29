@@ -1,0 +1,84 @@
+name: Canary publish
+description: >-
+  Snapshot-publish the changed workspace packages to the npm `canary` dist-tag as
+  0.0.0-canary-<timestamp> versions, then comment the exact install command(s) on
+  the PR and remove the `release-canary` label. Runs as a composite action inside
+  the calling job, so the npm OIDC trusted-publisher identity stays bound to the
+  caller workflow (publish.yaml). Expects pnpm + deps already installed.
+
+inputs:
+  pre_mode:
+    description: >-
+      Set to "true" when the repo is in Changesets pre mode. Snapshots are
+      disallowed in pre mode, so the action exits it in this throwaway checkout
+      only (never committed or pushed).
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Exit pre mode (ephemeral)
+      if: inputs.pre_mode == 'true'
+      shell: bash
+      run: pnpm changeset pre exit
+
+    - name: Version changed packages as canary
+      shell: bash
+      run: pnpm changeset version --snapshot canary
+
+    - name: Detect canary packages
+      id: detect
+      shell: bash
+      run: |
+        # List every non-private package that `changeset version --snapshot`
+        # bumped to a 0.0.0-canary version — i.e. exactly what will be published.
+        : > "$RUNNER_TEMP/canary-pkgs.txt"
+        for f in packages/*/package.json; do
+          v=$(jq -r '.version' "$f")
+          case "$v" in *-canary-*) ;; *) continue ;; esac
+          [ "$(jq -r '.private // false' "$f")" = "true" ] && continue
+          printf '%s@%s\n' "$(jq -r '.name' "$f")" "$v" >> "$RUNNER_TEMP/canary-pkgs.txt"
+        done
+        if [ -s "$RUNNER_TEMP/canary-pkgs.txt" ]; then
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "Canary versions to publish:"; cat "$RUNNER_TEMP/canary-pkgs.txt"
+        else
+          echo "::warning::No changeset in this PR — nothing to publish as canary."
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Build + prerelease transform
+      if: steps.detect.outputs.publish == 'true'
+      shell: bash
+      run: pnpm changeset:prepublish
+
+    - name: Publish canary to npm
+      if: steps.detect.outputs.publish == 'true'
+      shell: bash
+      run: pnpm changeset publish --tag canary --no-git-tag
+      env:
+        NPM_CONFIG_PROVENANCE: true
+
+    - name: Comment the install command on the PR
+      if: steps.detect.outputs.publish == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        {
+          echo "📦 **Canary published** under the \`canary\` dist-tag."
+          echo
+          echo "Install the exact version(s) — \`@canary\` moves with the newest canary across PRs:"
+          echo
+          echo '```bash'
+          while IFS= read -r pkg; do echo "npm i $pkg"; done < "$RUNNER_TEMP/canary-pkgs.txt"
+          echo '```'
+        } > "$RUNNER_TEMP/canary-comment.md"
+        gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/canary-comment.md"
+
+    - name: Remove the release-canary label (one-shot)
+      if: always()
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh pr edit "${{ github.event.pull_request.number }}" --remove-label release-canary || true
