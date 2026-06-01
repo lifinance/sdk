@@ -18,6 +18,9 @@ runs:
 
     - name: Version changed packages as canary
       shell: bash
+      # changeset version runs @changesets/changelog-github, which calls the GitHub API.
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: pnpm changeset version --snapshot canary
 
     - name: Detect canary packages
@@ -66,7 +69,8 @@ runs:
         gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/canary-comment.md"
 
     - name: Remove the release-canary label (one-shot)
-      if: always()
+      # On success only: a failed run keeps the label as a visible signal (remove + re-add to retry).
+      if: success()
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

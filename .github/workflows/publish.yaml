@@ -17,6 +17,7 @@ name: Release & Publish
 on:
   push:
     branches: [main]
+  workflow_dispatch: # manual re-trigger if a Version-PR merge push needs re-running
   # Canary preview releases are opt-in via the `release-canary` PR label.
   pull_request:
     types: [labeled]

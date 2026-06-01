@@ -2,15 +2,9 @@ name: Tests
 
 on:
   # Allow the release pipeline (publish.yaml) to reuse this as its verify gate.
+  # No push:[main] trigger — main coverage runs exactly once via publish.yaml's
+  # verify job (which reuses this workflow); PRs are covered by pull_request below.
   workflow_call:
-  push:
-    paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - 'LICENSE'
-      - '.editorconfig'
-    branches:
-      - main
   pull_request:
     paths-ignore:
       - 'docs/**'
@@ -31,6 +25,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
+      - name: Lint and format check
+        run: pnpm check
+      - name: Check types
+        run: pnpm check:types
       - name: Build packages
         run: pnpm build
       - name: Run tests
