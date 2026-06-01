@@ -12,7 +12,7 @@
     "regen": "rm -rf pnpm-lock.yaml && pnpm clean:modules && corepack use pnpm@latest",
     "changeset:version": "changeset version && pnpm install --lockfile-only && pnpm check:write",
     "changeset:prepublish": "pnpm build && pnpm -r --parallel build:prerelease",
-    "changeset:publish": "pnpm changeset:prepublish && changeset publish",
+    "changeset:publish": "pnpm changeset:prepublish && pnpm --config.verify-deps-before-run=false changeset publish",
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",

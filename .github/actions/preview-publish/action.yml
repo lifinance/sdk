@@ -48,7 +48,7 @@ runs:
     - name: Publish preview to npm
       if: steps.detect.outputs.publish == 'true'
       shell: bash
-      run: pnpm changeset publish --tag preview --no-git-tag
+      run: pnpm --config.verify-deps-before-run=false changeset publish --tag preview --no-git-tag
       env:
         NPM_CONFIG_PROVENANCE: true
 
