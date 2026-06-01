@@ -1,19 +1,9 @@
 name: Release & Publish
 
-# Changesets-driven release pipeline.
+# Changesets-driven release pipeline: push to main → version PR → publish → Linear sync.
 #
-# On every push to main:
-#   1. verify     — reuse Tests workflow (build + test) as the release gate.
-#   2. changesets — open/refresh the "chore: version packages" PR. When that PR is
-#                   merged there are no pending changesets, so hasChangesets == 'false'.
-#   3. release    — runs only when hasChangesets == 'false' (the version PR just landed).
-#                   Publishes to npm via `changeset publish` and creates GitHub Releases.
-#                   Holds the OIDC `id-token: write` permission for npm provenance.
-#   4. linear-release — single static anchor: only when @lifi/sdk was published,
-#                   sync the published version into the Linear "SDK" pipeline.
-#
-# NOTE: filename is intentionally kept as `publish.yaml` — the npmjs.com trusted
-# publisher (OIDC) is pinned to this workflow path. Do not rename.
+# npm auth = OIDC trusted publishing, pinned to this workflow path. Do not rename
+# `publish.yaml` — renaming breaks publishing.
 on:
   push:
     branches: [main]
@@ -31,8 +21,7 @@ permissions: {} # each job declares only the permissions it needs
 jobs:
   verify:
     name: Verify
-    # The main-release chain runs on push only — never on the pull_request
-    # (labeled) event that drives preview releases.
+    # Main release chain runs on push only, not the preview label event.
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -105,10 +94,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-  # Sync the published @lifi/sdk release into the Linear "SDK" pipeline. Single
-  # static anchor — a provider-only cycle won't bump @lifi/sdk, so it's
-  # intentionally skipped (no fallback anchor). linear-release.yaml derives the
-  # version + channel from publishedPackages internally.
+  # Linear "SDK" sync, anchored on @lifi/sdk. Provider-only cycles (no sdk bump)
+  # are skipped — no fallback anchor.
   linear-release:
     name: Linear Sync (SDK)
     needs: release
@@ -123,17 +110,9 @@ jobs:
     secrets:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
 
-  # ---------------------------------------------------------------------------
-  # Preview release (opt-in, per PR).
-  #
-  # Add the `release-preview` label to a PR to publish a throwaway
-  # 0.0.0-preview-<sha> build to the npm `preview` dist-tag for testing.
-  # One-shot: the label is removed after a publish; re-add to cut another.
-  #
-  # Trust boundary (no in-workflow role check): applying a label requires Triage+,
-  # and the same-repo guard means the code was pushed with Write access — so
-  # forks/externals can't trigger it. The job is isolated (no deploy/Linear
-  # secrets), and 0.0.0-preview can never become `latest`/`beta`.
+  # Preview release (opt-in): the `release-preview` label publishes a throwaway
+  # 0.0.0-preview-<sha> to the `preview` dist-tag. Gated by same-repo + Triage+-to-label
+  # (forks can't trigger); secret-isolated; 0.0.0-preview can't become latest/beta.
   # NEVER convert this to pull_request_target.
   preview:
     name: Preview release (PR)
@@ -159,9 +138,6 @@ jobs:
         with:
           cache: 'false' # privileged job — don't restore a potentially poisoned cache
 
-      # Snapshot-publish to the `preview` dist-tag + comment the install command.
-      # Composite (not reusable workflow) so OIDC stays bound to publish.yaml.
-      # The action auto-detects pre mode from .changeset/pre.json and exits it
-      # ephemerally when present (sdk is currently in pre-beta).
+      # Composite (not a reusable workflow) so npm OIDC stays bound to publish.yaml.
       - name: Publish preview
         uses: ./.github/actions/preview-publish

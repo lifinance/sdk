@@ -6,8 +6,8 @@ description: >-
 runs:
   using: composite
   steps:
-    # Snapshots are disallowed in Changesets pre mode — exit it in THIS throwaway
-    # checkout only (never committed/pushed). Stable-line repos have no pre.json.
+    # --snapshot is disallowed in pre mode; exit it in this throwaway checkout
+    # only (never pushed). Stable-line repos have no pre.json.
     - name: Exit pre mode if active (ephemeral)
       shell: bash
       run: |
@@ -18,12 +18,10 @@ runs:
 
     - name: Version changed packages as a preview snapshot
       shell: bash
-      # The snapshot tag carries the short commit SHA so the version is traceable:
-      # 0.0.0-preview-<sha> (config snapshot.prereleaseTemplate is "{tag}"). changeset
-      # version also runs @changesets/changelog-github, which calls the GitHub API.
       env:
-        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_TOKEN: ${{ github.token }} # changeset version hits the GitHub API (changelog-github)
       run: |
+        # snapshot tag = short SHA → version 0.0.0-preview-<sha> (prereleaseTemplate "{tag}")
         SHA=$(git rev-parse --short HEAD)
         pnpm changeset version --snapshot "preview-$SHA"
 
@@ -31,8 +29,7 @@ runs:
       id: detect
       shell: bash
       run: |
-        # Every non-private package that `changeset version --snapshot` bumped to a
-        # 0.0.0-preview version — i.e. exactly what will be published.
+        # non-private packages the snapshot bumped = exactly what gets published
         jq -r 'select((.private // false) | not) | select(.version | test("-preview-")) | "\(.name)@\(.version)"' \
           packages/*/package.json > "$RUNNER_TEMP/preview-pkgs.txt"
         if [ -s "$RUNNER_TEMP/preview-pkgs.txt" ]; then
@@ -72,8 +69,8 @@ runs:
         } > "$RUNNER_TEMP/preview-comment.md"
         gh pr comment "${{ github.event.pull_request.number }}" --body-file "$RUNNER_TEMP/preview-comment.md"
 
+    # success only: a failed run keeps the label as a signal (remove + re-add to retry)
     - name: Remove the release-preview label (one-shot)
-      # On success only: a failed run keeps the label as a visible signal (remove + re-add to retry).
       if: success()
       shell: bash
       env:

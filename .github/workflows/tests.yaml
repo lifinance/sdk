@@ -1,9 +1,8 @@
 name: Tests
 
 on:
-  # Allow the release pipeline (publish.yaml) to reuse this as its verify gate.
-  # No push:[main] trigger — main coverage runs exactly once via publish.yaml's
-  # verify job (which reuses this workflow); PRs are covered by pull_request below.
+  # Reused as publish.yaml's verify gate (workflow_call). No push:[main] trigger —
+  # main is covered once via that gate; PRs via pull_request below.
   workflow_call:
   pull_request:
     paths-ignore:
