@@ -23,9 +23,7 @@ export type BundleResult = {
   signatureResults: (SignatureStatus | null)[]
 }
 
-const NULL_BUNDLE_RESULT = new Error(
-  'Bundle was not confirmed by this RPC'
-)
+const NULL_BUNDLE_RESULT = new Error('Bundle was not confirmed by this RPC')
 
 /**
  * Send and confirm a bundle of transactions using Jito.
