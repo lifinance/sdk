@@ -48,7 +48,9 @@ runs:
     - name: Publish preview to npm
       if: steps.detect.outputs.publish == 'true'
       shell: bash
-      run: pnpm changeset publish --tag preview --no-git-tag
+      # the prerelease transform intentionally strips devDeps, so package.json no longer
+      # matches the lockfile; skip pnpm's pre-run deps check for this one publish call.
+      run: pnpm --config.verify-deps-before-run=false changeset publish --tag preview --no-git-tag
       env:
         NPM_CONFIG_PROVENANCE: true
 
