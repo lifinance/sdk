@@ -13,7 +13,7 @@ package names to bump types, followed by a summary that becomes the changelog en
 
 A human-readable summary of the change. This text is copied verbatim into each listed
 package's CHANGELOG.md and its GitHub Release, so write it for someone reading release
-notes — what changed and why it matters, not "fix bug".
+notes — what changed and why it matters, not "fix bug". Keep it to 1–2 lines max.
 ```
 
 - **Bump values:** `major`, `minor`, or `patch`.
@@ -22,9 +22,9 @@ notes — what changed and why it matters, not "fix bug".
   `fix-solana-balance-race.md` is also fine.
 - **Multiple packages:** list each on its own frontmatter line. Use **separate** changeset
   files when distinct changes deserve distinct changelog entries.
-- **Summary:** the first paragraph is the changelog line. Markdown is allowed; keep it
-  tight. Reference a PR/issue if useful — the changelog generator
-  (`@svitejs/changesets-changelog-github-compact`) adds the PR/author links automatically.
+- **Summary:** the first paragraph is the changelog line. **Keep it to 1–2 lines max —
+  short but descriptive.** Markdown is allowed; the changelog generator adds the PR/author
+  links automatically, so there's no need to add them by hand.
 
 ## Worked examples
 

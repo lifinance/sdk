@@ -39,10 +39,21 @@ real gate). Your job here is to write a correct changeset for the work in progre
 
 4. **Write the file.** Create `.changeset/<short-kebab-name>.md` in the exact frontmatter
    format from `references/format.md`. The summary becomes the changelog line, so write it
-   for a reader of the release notes, not a commit log.
+   for a reader of the release notes, not a commit log — **1–2 lines max, short but
+   descriptive**.
 
 5. **Confirm.** Run `pnpm changeset status` to verify Changesets sees your file and the
    intended packages bump (including the automatic dependent cascade).
+
+6. **Commit and push it.** A changeset only counts once it's on the PR — don't leave it as
+   a loose working-tree file. Commit and push to the current branch:
+   ```bash
+   git add .changeset/*.md
+   git commit -m "chore: add changeset"
+   git push   # no upstream yet? git push -u origin HEAD
+   ```
+   Pushing to the PR's head branch updates the open PR automatically; if there's no PR
+   yet, open one with `gh pr create` after pushing.
 
 ## Key rules (full detail in `references/`)
 

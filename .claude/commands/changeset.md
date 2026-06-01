@@ -14,7 +14,9 @@ Use the **`changeset` skill** to do this. In short:
    changes — see the skill's `references/bump-rules.md`).
 3. Choose a bump per package (`feat:` → minor, `fix:` → patch, breaking → major) and
    write `.changeset/<short-name>.md` in the format from the skill's
-   `references/format.md`.
+   `references/format.md`. Keep the summary to **1–2 lines** — short but descriptive.
+4. Commit the changeset and push it so it lands on the open PR:
+   `git add .changeset/*.md && git commit -m "chore: add changeset" && git push`.
 
 Only declare the packages you actually changed — dependents bump automatically via the
 internal-dependency cascade.
