@@ -38,6 +38,14 @@ describe('getTokenBalancesByChain', () => {
       ).rejects.toThrow('Invalid tokens passed.')
     })
 
+    it('should throw Error because of an invalid chain id', async () => {
+      await expect(
+        getTokenBalancesByChain(client, SOME_WALLET_ADDRESS, {
+          ['1abc' as unknown as ChainId]: [SOME_TOKEN],
+        })
+      ).rejects.toThrow('Invalid chainId passed.')
+    })
+
     it('should return empty token list as it is', async () => {
       mockedGetTokenBalancesForChains.mockReturnValue(Promise.resolve([]))
 
