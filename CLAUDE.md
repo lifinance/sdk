@@ -45,8 +45,9 @@ standard-version are gone.
   docs/chore PRs simply don't need one. The Version PR is the real publish gate.)
 - Only declare changesets for packages you *intentionally* changed. Do **not** author
   cascade-only changesets for dependents — Changesets bumps providers automatically from the
-  dependency graph when `@lifi/sdk` changes. (`updateInternalDependencies: "minor"` only tunes
-  the threshold at which a provider's internal `@lifi/sdk` *range* is rewritten — minor/major, not patch.)
+  dependency graph when `@lifi/sdk` changes. (`updateInternalDependencies: "patch"` — the
+  default — re-releases every provider on *any* `@lifi/sdk` bump, including a patch, so their
+  `workspace:*` pins stay current.)
 
 ### PRE-MODE (beta) — do not exit until cutting stable 4.0.0
 - The repo is in Changesets **pre-mode** (`.changeset/pre.json`, `tag: beta`). Latest on

@@ -29,7 +29,7 @@ There are no private/ignored workspace packages (`.changeset/config.json` `ignor
 ```
 
 Providers depend on `@lifi/sdk` via `workspace:*` regular `dependencies`. With
-`updateInternalDependencies: minor`, bumping `@lifi/sdk` **re-releases every provider
+`updateInternalDependencies: patch`, bumping `@lifi/sdk` **re-releases every provider
 automatically** with an updated range. So:
 
 - Changed `@lifi/sdk` source only → declare a changeset for **just** `@lifi/sdk`; the five
