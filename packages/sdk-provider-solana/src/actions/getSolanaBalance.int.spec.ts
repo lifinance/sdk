@@ -67,36 +67,9 @@ describe.sequential('Solana token balance', async () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it('should return even with invalid data', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const walletAddress = defaultWalletAddress
-    const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SOL)
-    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-    const tokens = [findDefaultToken(CoinKey.USDC, ChainId.SOL), invalidToken]
-
-    const tokenBalances = await getSolanaBalance(
-      client,
-      walletAddress,
-      tokens as Token[]
-    )
-    expect(tokenBalances.length).toBe(2)
-
-    // Post-#372 contract: a mint the wallet doesn't hold is reported as a
-    // known zero (`0n`) when both Token and Token2022 program queries
-    // succeed, and as unknown (`undefined`) when either query was rejected
-    // (rate-limit / RPC flake). Both are valid graceful-degradation
-    // outcomes for "invalid data" — assert that we got one of them and
-    // didn't crash.
-    const invalidBalance = tokenBalances.find(
-      (token) => token.address === invalidToken.address
-    )
-    expect(invalidBalance).toBeDefined()
-    expect(
-      invalidBalance!.amount === 0n || invalidBalance!.amount === undefined
-    ).toBe(true)
-  })
+  // Graceful degradation for unheld / "invalid" mints (known-zero vs unknown)
+  // is covered deterministically in getSolanaBalance.unit.spec.ts — that path
+  // makes no per-token RPC call, so it needs no live endpoint.
 
   // it(
   //   'should execute route',
