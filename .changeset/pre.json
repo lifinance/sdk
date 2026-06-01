@@ -9,5 +9,8 @@
     "@lifi/sdk-provider-sui": "4.0.0-beta.11",
     "@lifi/sdk-provider-tron": "4.0.0-beta.11"
   },
-  "changesets": []
+  "changesets": [
+    "migrate-release-pipeline",
+    "preserve-solana-rpc-error-details"
+  ]
 }
