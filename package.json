@@ -10,15 +10,9 @@
     "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
     "clean:modules:trash": "find . -name \"node_modules\" -type d -prune -exec trash {} +",
     "regen": "rm -rf pnpm-lock.yaml && pnpm clean:modules && corepack use pnpm@latest",
-    "release": "pnpm release:version && pnpm build && pnpm standard-version -a -s",
-    "release:alpha": "pnpm release:version --preid alpha && pnpm build && pnpm standard-version -a -s --prerelease alpha --skip.changelog",
-    "release:beta": "pnpm release:version --preid beta && pnpm build && pnpm standard-version -a -s --prerelease beta --skip.changelog",
-    "release:version": "lerna version --no-changelog --no-push --no-git-tag-version --no-private",
-    "release:publish:build": "pnpm -r --parallel build:prerelease",
-    "release:publish": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag latest && pnpm release:clean",
-    "release:publish:alpha": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag alpha && pnpm release:clean",
-    "release:publish:beta": "pnpm release:publish:build && pnpm -r publish --access public --no-git-checks --tag beta && pnpm release:clean",
-    "release:clean": "pnpm -r --parallel exec sh -c \"node ../../scripts/postrelease.js && rm -rf *.md\"",
+    "changeset:version": "changeset version && pnpm install --lockfile-only && pnpm check:write",
+    "changeset:prepublish": "pnpm build && pnpm -r --parallel build:prerelease",
+    "changeset:publish": "pnpm changeset:prepublish && changeset publish",
     "check": "biome check",
     "check:write": "biome check --write",
     "check:write:unsafe": "biome check --write --unsafe",
@@ -39,14 +33,10 @@
     "prepare": "husky",
     "postinstall": "husky"
   },
-  "standard-version": {
-    "scripts": {
-      "prerelease": "pnpm install && git add .",
-      "postbump": "pnpm check:write && git add ."
-    }
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
+    "@changesets/cli": "^2.31.0",
+    "@changesets/changelog-github": "^0.7.0",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
     "@types/node": "^25.7.0",
@@ -54,8 +44,6 @@
     "@vitest/coverage-v8": "^4.1.6",
     "husky": "^9.1.7",
     "knip": "^6.13.1",
-    "lerna": "^9.0.7",
-    "standard-version": "^9.5.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"

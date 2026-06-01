@@ -1,0 +1,83 @@
+name: 'Release · Linear Sync'
+
+# Reusable: sync one anchor package's published release into its Linear pipeline.
+# Version + channel are derived from the changesets publishedPackages output (not a git tag).
+on:
+  workflow_call:
+    inputs:
+      release_name:
+        description: 'Linear release name prefix (e.g. "Widget" or "Checkout")'
+        required: true
+        type: string
+      package_name:
+        description: 'Anchor package whose published version drives this release (e.g. @lifi/widget)'
+        required: true
+        type: string
+      published_packages:
+        description: 'Raw changesets publishedPackages JSON: [{name, version}, …]'
+        required: true
+        type: string
+    secrets:
+      access_key:
+        description: 'Linear pipeline access key'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  linear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Derive version and channel
+        id: meta
+        env:
+          PUBLISHED: ${{ inputs.published_packages }}
+          PACKAGE: ${{ inputs.package_name }}
+        run: |
+          FULL="$(echo "$PUBLISHED" | jq -r --arg p "$PACKAGE" '.[] | select(.name==$p) | .version')"
+          VERSION="${FULL%%-*}" # 4.0.0-beta.12 -> 4.0.0
+          case "$FULL" in
+            *-alpha*) CHANNEL=alpha ;;
+            *-beta*)  CHANNEL=beta ;;
+            *)        CHANNEL=stable ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${PACKAGE}@${FULL}" >> "$GITHUB_OUTPUT"
+          echo "Resolved $PACKAGE $FULL -> version=$VERSION channel=$CHANNEL"
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Sync issues to release
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: sync
+          release_version: ${{ steps.meta.outputs.version }}
+          name: ${{ inputs.release_name }} ${{ steps.meta.outputs.version }}
+          links: |
+            ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.release_tag }}
+
+      # prerelease: advance the stage; the release stays open
+      - name: Advance stage (alpha/beta)
+        if: steps.meta.outputs.channel != 'stable'
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: update
+          release_version: ${{ steps.meta.outputs.version }}
+          stage: ${{ steps.meta.outputs.channel == 'alpha' && 'Alpha' || 'Beta' }}
+
+      # stable: complete the release (fires the "→ Done" automation)
+      - name: Complete release (stable)
+        if: steps.meta.outputs.channel == 'stable'
+        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        with:
+          access_key: ${{ secrets.access_key }}
+          command: complete
+          release_version: ${{ steps.meta.outputs.version }}
