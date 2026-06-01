@@ -5,7 +5,7 @@ inputs:
   cache:
     description: >-
       Use the pnpm store cache. Set "false" in privileged jobs (publish / version
-      PR / canary) so a poisoned cache can't reach a context with publish/write perms.
+      PR / preview) so a poisoned cache can't reach a context with publish/write perms.
     default: 'true'
 
 runs:

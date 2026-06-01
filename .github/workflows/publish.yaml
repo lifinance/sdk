@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch: # manual re-trigger if a Version-PR merge push needs re-running
-  # Canary preview releases are opt-in via the `release-canary` PR label.
+  # Preview releases are opt-in via the `release-preview` PR label.
   pull_request:
     types: [labeled]
 
@@ -32,7 +32,7 @@ jobs:
   verify:
     name: Verify
     # The main-release chain runs on push only — never on the pull_request
-    # (labeled) event that drives canary previews.
+    # (labeled) event that drives preview releases.
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -124,22 +124,22 @@ jobs:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
 
   # ---------------------------------------------------------------------------
-  # Canary preview release (opt-in, per PR).
+  # Preview release (opt-in, per PR).
   #
-  # Add the `release-canary` label to a PR to publish a throwaway
-  # 0.0.0-canary-<timestamp> build to the npm `canary` dist-tag for testing.
+  # Add the `release-preview` label to a PR to publish a throwaway
+  # 0.0.0-preview-<sha> build to the npm `preview` dist-tag for testing.
   # One-shot: the label is removed after a publish; re-add to cut another.
   #
   # Trust boundary (no in-workflow role check): applying a label requires Triage+,
   # and the same-repo guard means the code was pushed with Write access — so
   # forks/externals can't trigger it. The job is isolated (no deploy/Linear
-  # secrets), and 0.0.0-canary can never become `latest`/`beta`.
+  # secrets), and 0.0.0-preview can never become `latest`/`beta`.
   # NEVER convert this to pull_request_target.
-  canary:
-    name: Canary release (PR preview)
+  preview:
+    name: Preview release (PR)
     if: >-
       github.event_name == 'pull_request'
-      && github.event.label.name == 'release-canary'
+      && github.event.label.name == 'release-preview'
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -159,9 +159,9 @@ jobs:
         with:
           cache: 'false' # privileged job — don't restore a potentially poisoned cache
 
-      # Snapshot-publish to the `canary` dist-tag + comment the install command.
+      # Snapshot-publish to the `preview` dist-tag + comment the install command.
       # Composite (not reusable workflow) so OIDC stays bound to publish.yaml.
       # The action auto-detects pre mode from .changeset/pre.json and exits it
       # ephemerally when present (sdk is currently in pre-beta).
-      - name: Publish canary
-        uses: ./.github/actions/canary-publish
+      - name: Publish preview
+        uses: ./.github/actions/preview-publish

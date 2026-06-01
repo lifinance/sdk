@@ -65,16 +65,17 @@ standard-version are gone.
 4. `linear-release` — single **static** anchor: only when `@lifi/sdk` is in
    `release.outputs.publishedPackages` does it sync the "SDK" Linear release.
 
-### Canary previews (per-PR, opt-in)
+### Preview releases (per-PR, opt-in)
 
 To share an unmerged PR build with other teams or external integrators, add the
-**`release-canary`** label to the PR. The `canary` job in `publish.yaml` publishes a
-throwaway `0.0.0-canary-<timestamp>` build of the changed packages to npm under the
-**`canary`** dist-tag and comments the exact install command on the PR. The label is
-removed after a successful publish (one-shot — re-add it to cut another canary).
+**`release-preview`** label to the PR. The `preview` job in `publish.yaml` publishes a
+throwaway `0.0.0-preview-<sha>` build of the changed packages to npm under the
+**`preview`** dist-tag and comments the exact install command on the PR. The label is
+removed after a successful publish (one-shot — re-add it to cut another preview).
 
-- Install the **exact** version it prints (e.g. `npm i @lifi/sdk@0.0.0-canary-…`);
-  `@canary` moves with the newest canary across PRs. `0.0.0` can never become `latest`/`beta`.
+- Install the **exact** version it prints (e.g. `npm i @lifi/sdk@0.0.0-preview-<sha>`);
+  `@preview` moves with the newest preview across PRs. `0.0.0` can never become `latest`/`beta`.
+  The `<sha>` is the PR head's short commit hash, so the version traces to the exact source.
 - This repo is in **pre mode**, where `--snapshot` is disallowed — the job therefore runs
   `changeset pre exit` in the **throwaway CI checkout only** (never committed or pushed)
   before snapshotting. `.changeset/pre.json` on the branch is untouched.

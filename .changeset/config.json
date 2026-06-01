@@ -10,5 +10,6 @@
   "linked": [],
   "baseBranch": "main",
   "updateInternalDependencies": "minor",
-  "ignore": []
+  "ignore": [],
+  "snapshot": { "prereleaseTemplate": "{tag}" }
 }
