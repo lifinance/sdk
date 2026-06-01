@@ -27,9 +27,9 @@ jobs:
         uses: ./.github/actions/pnpm-install
       - name: Lint and format check
         run: pnpm check
-      - name: Check types
-        run: pnpm check:types
       - name: Build packages
         run: pnpm build
+      - name: Check types
+        run: pnpm check:types
       - name: Run tests
         run: pnpm test
