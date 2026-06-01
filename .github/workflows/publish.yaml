@@ -105,50 +105,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
-  # Resolve @lifi/sdk's version + channel from publishedPackages for the reusable
-  # Linear workflow. Single static anchor — keyed on @lifi/sdk only.
-  linear-meta:
-    name: Linear Meta (SDK)
-    needs: release
-    # Only when @lifi/sdk itself was published. A provider-only cycle won't bump
-    # @lifi/sdk, so the "SDK" Linear release is intentionally skipped (no fallback anchor).
-    if: contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    outputs:
-      full: ${{ steps.meta.outputs.full }}
-      version: ${{ steps.meta.outputs.version }}
-      channel: ${{ steps.meta.outputs.channel }}
-    steps:
-      - name: Resolve SDK version and channel
-        id: meta
-        env:
-          PUBLISHED: ${{ needs.release.outputs.publishedPackages }}
-        run: |
-          FULL="$(echo "$PUBLISHED" | jq -r '.[] | select(.name=="@lifi/sdk") | .version')"
-          VERSION="${FULL%%-*}" # 4.0.0-beta.12 -> 4.0.0
-          case "$FULL" in
-            *-alpha.*) CHANNEL=alpha ;;
-            *-beta.*)  CHANNEL=beta ;;
-            *)         CHANNEL=stable ;;
-          esac
-          echo "full=$FULL" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "Resolved @lifi/sdk $FULL -> version=$VERSION channel=$CHANNEL"
-
+  # Sync the published @lifi/sdk release into the Linear "SDK" pipeline. Single
+  # static anchor — a provider-only cycle won't bump @lifi/sdk, so it's
+  # intentionally skipped (no fallback anchor). linear-release.yaml derives the
+  # version + channel from publishedPackages internally.
   linear-release:
     name: Linear Sync (SDK)
-    needs: linear-meta
+    needs: release
+    if: contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
     permissions:
       contents: read
     uses: ./.github/workflows/linear-release.yaml
     with:
       release_name: SDK
-      version: ${{ needs.linear-meta.outputs.version }}
-      channel: ${{ needs.linear-meta.outputs.channel }}
-      release_tag: '@lifi/sdk@${{ needs.linear-meta.outputs.full }}'
+      package_name: '@lifi/sdk'
+      published_packages: ${{ needs.release.outputs.publishedPackages }}
     secrets:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
 

@@ -4,8 +4,9 @@ name: 'Release · Linear Sync'
 # Called by publish.yaml once per anchor package after `changeset publish`
 # succeeds; not triggered on its own.
 #
-# Version + channel are DERIVED by the caller from the changesets
-# publishedPackages output (NOT from a git tag) and passed in here.
+# The caller passes the raw changesets publishedPackages JSON + the anchor
+# package name; this workflow derives the version + channel from that output
+# (NOT from a git tag) internally.
 on:
   workflow_call:
     inputs:
@@ -13,16 +14,12 @@ on:
         description: 'Linear release name prefix (e.g. "Widget" or "Checkout")'
         required: true
         type: string
-      version:
-        description: 'Released semver, prerelease stripped (e.g. 4.0.0)'
+      package_name:
+        description: 'Anchor package whose published version drives this release (e.g. @lifi/widget)'
         required: true
         type: string
-      channel:
-        description: 'Release channel: alpha | beta | stable'
-        required: true
-        type: string
-      release_tag:
-        description: 'Full per-package GitHub release tag (e.g. @lifi/widget@4.0.0-beta.21)'
+      published_packages:
+        description: 'Raw changesets publishedPackages JSON: [{name, version}, …]'
         required: true
         type: string
     secrets:
@@ -37,6 +34,26 @@ jobs:
   linear:
     runs-on: ubuntu-latest
     steps:
+      # Derive the released version + channel for the anchor package from the
+      # changesets publishedPackages output (jq is preinstalled on the runner).
+      - name: Derive version and channel
+        id: meta
+        env:
+          PUBLISHED: ${{ inputs.published_packages }}
+          PACKAGE: ${{ inputs.package_name }}
+        run: |
+          FULL="$(echo "$PUBLISHED" | jq -r --arg p "$PACKAGE" '.[] | select(.name==$p) | .version')"
+          VERSION="${FULL%%-*}" # 4.0.0-beta.12 -> 4.0.0
+          case "$FULL" in
+            *-alpha*) CHANNEL=alpha ;;
+            *-beta*)  CHANNEL=beta ;;
+            *)        CHANNEL=stable ;;
+          esac
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${PACKAGE}@${FULL}" >> "$GITHUB_OUTPUT"
+          echo "Resolved $PACKAGE $FULL -> version=$VERSION channel=$CHANNEL"
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -49,26 +66,26 @@ jobs:
         with:
           access_key: ${{ secrets.access_key }}
           command: sync
-          release_version: ${{ inputs.version }}
-          name: ${{ inputs.release_name }} ${{ inputs.version }}
+          release_version: ${{ steps.meta.outputs.version }}
+          name: ${{ inputs.release_name }} ${{ steps.meta.outputs.version }}
           links: |
-            ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.release_tag }}
+            ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.meta.outputs.release_tag }}
 
       # Prerelease: advance the stage only (release stays open -> tickets stay "Ready for Release").
       - name: Advance stage (alpha/beta)
-        if: inputs.channel != 'stable'
+        if: steps.meta.outputs.channel != 'stable'
         uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
         with:
           access_key: ${{ secrets.access_key }}
           command: update
-          release_version: ${{ inputs.version }}
-          stage: ${{ inputs.channel == 'alpha' && 'Alpha' || 'Beta' }}
+          release_version: ${{ steps.meta.outputs.version }}
+          stage: ${{ steps.meta.outputs.channel == 'alpha' && 'Alpha' || 'Beta' }}
 
       # Stable: complete the release -> fires the "On release completion -> Done" automation.
       - name: Complete release (stable)
-        if: inputs.channel == 'stable'
+        if: steps.meta.outputs.channel == 'stable'
         uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
         with:
           access_key: ${{ secrets.access_key }}
           command: complete
-          release_version: ${{ inputs.version }}
+          release_version: ${{ steps.meta.outputs.version }}
