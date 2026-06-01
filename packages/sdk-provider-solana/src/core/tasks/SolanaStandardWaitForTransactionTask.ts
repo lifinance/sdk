@@ -8,6 +8,7 @@ import { getBase64EncodedWireTransaction } from '@solana/kit'
 import { sendAndConfirmTransaction } from '../../actions/sendAndConfirmTransaction.js'
 import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
+import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
@@ -59,16 +60,14 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       )
 
       if (simulationResult.value.err) {
-        const errorMessage =
-          typeof simulationResult.value.err === 'object'
-            ? JSON.stringify(simulationResult.value.err, (_, v) =>
-                typeof v === 'bigint' ? v.toString() : v
-              )
-            : simulationResult.value.err
+        const cause = new SolanaTransactionDetailsError(
+          simulationResult.value.err,
+          simulationResult.value.logs
+        )
         throw new TransactionError(
           LiFiErrorCode.TransactionSimulationFailed,
-          `Transaction simulation failed: ${errorMessage}`,
-          new Error(errorMessage)
+          `Transaction simulation failed: ${cause.message}`,
+          cause
         )
       }
     }
@@ -83,15 +82,13 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     }
 
     if (result.signatureResult.err) {
-      const reason =
-        typeof result.signatureResult.err === 'object'
-          ? JSON.stringify(result.signatureResult.err, (_, v) =>
-              typeof v === 'bigint' ? v.toString() : v
-            )
-          : result.signatureResult.err
+      const cause = new SolanaTransactionDetailsError(
+        result.signatureResult.err
+      )
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
-        `Transaction failed: ${reason}`
+        `Transaction failed: ${cause.message}`,
+        cause
       )
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-solana",
-  "version": "4.0.0-beta.11",
+  "version": "4.0.0-beta.12",
   "description": "LI.FI Solana SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -29,7 +29,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && node ../../scripts/version.js && node ../../scripts/build.js && printf '{\"type\":\"commonjs\"}' > ./dist/cjs/package.json && printf '{\"type\":\"module\",\"sideEffects\":false}' > ./dist/esm/package.json",
-    "build:prerelease": "node ../../scripts/prerelease.js && cpy '../../*.md' .",
+    "build:prerelease": "node ../../scripts/prerelease.js && cpy '../../README.md' .",
     "build:postrelease": "node ../../scripts/postrelease.js && rm -rf *.md",
     "build:version": "node ../../scripts/version.js",
     "clean": "rm -rf dist",
@@ -60,6 +60,7 @@
     "access": "public"
   },
   "files": [
+    "CHANGELOG.md",
     "dist/**",
     "!dist/**/*.tsbuildinfo",
     "src/**/*.ts",

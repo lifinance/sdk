@@ -7,3 +7,4 @@ export type {
 } from './types.js'
 export { isSolanaProvider } from './types.js'
 export { KeypairWalletAdapter } from './utils/KeypairWalletAdapter.js'
+export { SolanaTransactionDetailsError } from './utils/solanaErrorCause.js'

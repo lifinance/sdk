@@ -1,0 +1,16 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "@lifi/sdk": "4.0.0-beta.11",
+    "@lifi/sdk-provider-ethereum": "4.0.0-beta.11",
+    "@lifi/sdk-provider-bitcoin": "4.0.0-beta.11",
+    "@lifi/sdk-provider-solana": "4.0.0-beta.11",
+    "@lifi/sdk-provider-sui": "4.0.0-beta.11",
+    "@lifi/sdk-provider-tron": "4.0.0-beta.11"
+  },
+  "changesets": [
+    "migrate-release-pipeline",
+    "preserve-solana-rpc-error-details"
+  ]
+}

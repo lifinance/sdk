@@ -113,5 +113,6 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
-.claude/
+.claude/settings.local.json
+.claude/worktrees/
 .omc/
