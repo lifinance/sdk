@@ -52,8 +52,7 @@ real gate). Your job here is to write a correct changeset for the work in progre
    git commit -m "chore: add changeset"
    git push   # no upstream yet? git push -u origin HEAD
    ```
-   Pushing to the PR's head branch updates the open PR automatically; if there's no PR
-   yet, open one with `gh pr create` after pushing.
+   Pushing to the PR's head branch updates the open PR automatically.
 
 ## Key rules (full detail in `references/`)
 
