@@ -10,7 +10,7 @@ import { extractBlockhash } from '../utils/extractBlockhash.js'
 import {
   getConfirmedStatus,
   type SignatureStatus,
-} from '../utils/getConfirmedStatus.js'
+} from '../utils/signatureStatus.js'
 
 type ConfirmedTransactionResult = {
   signatureResult: SignatureStatus | null
@@ -70,13 +70,25 @@ export async function sendAndConfirmTransaction(
       let signatureResult: SignatureStatus | null = null
       let blockhashValid = true
 
-      // For durable nonce txs, fall back to block-height-based timeout
-      let expiryBlockHeight: bigint | undefined
-      if (!txBlockhash) {
+      let checkBlockhashExpired: () => Promise<boolean>
+      if (txBlockhash) {
+        checkBlockhashExpired = async () => {
+          const { value } = await rpc
+            .isBlockhashValid(txBlockhash, { commitment: 'confirmed' })
+            .send()
+          return !value
+        }
+      } else {
         const { value: blockhashResult } = await rpc
           .getLatestBlockhash({ commitment: 'confirmed' })
           .send()
-        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+        const expiryBlockHeight = blockhashResult.lastValidBlockHeight
+        checkBlockhashExpired = async () => {
+          const blockHeight = await rpc
+            .getBlockHeight({ commitment: 'confirmed' })
+            .send()
+          return blockHeight >= expiryBlockHeight
+        }
       }
 
       const pollingPromise = (async () => {
@@ -127,18 +139,8 @@ export async function sendAndConfirmTransaction(
           await sleep(1000)
           if (!abortController.signal.aborted) {
             try {
-              if (txBlockhash) {
-                const { value: isValid } = await rpc
-                  .isBlockhashValid(txBlockhash, {
-                    commitment: 'confirmed',
-                  })
-                  .send()
-                blockhashValid = isValid
-              } else {
-                const blockHeight = await rpc
-                  .getBlockHeight({ commitment: 'confirmed' })
-                  .send()
-                blockhashValid = blockHeight < expiryBlockHeight!
+              if (await checkBlockhashExpired()) {
+                blockhashValid = false
               }
             } catch (_) {
               // If the validity check fails, keep resending — the blockhash

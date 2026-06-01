@@ -3,7 +3,7 @@ import {
   getConfirmedStatus,
   isConfirmedCommitment,
   type SignatureStatus,
-} from './getConfirmedStatus.js'
+} from './signatureStatus.js'
 
 describe('isConfirmedCommitment', () => {
   it('returns true for confirmed', () => {

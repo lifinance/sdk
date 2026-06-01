@@ -10,7 +10,7 @@ import { extractBlockhash } from '../utils/extractBlockhash.js'
 import {
   isConfirmedCommitment,
   type SignatureStatus,
-} from '../utils/getConfirmedStatus.js'
+} from '../utils/signatureStatus.js'
 
 export type BundleResult = {
   bundleId: string
@@ -61,13 +61,25 @@ export async function sendAndConfirmBundle(
 
       let blockhashValid = true
 
-      // For durable nonce txs, fall back to block-height-based timeout
-      let expiryBlockHeight: bigint | undefined
-      if (!txBlockhash) {
+      let checkBlockhashExpired: () => Promise<boolean>
+      if (txBlockhash) {
+        checkBlockhashExpired = async () => {
+          const { value } = await jitoRpc
+            .isBlockhashValid(txBlockhash, { commitment: 'confirmed' })
+            .send()
+          return !value
+        }
+      } else {
         const { value: blockhashResult } = await jitoRpc
           .getLatestBlockhash({ commitment: 'confirmed' })
           .send()
-        expiryBlockHeight = blockhashResult.lastValidBlockHeight
+        const expiryBlockHeight = blockhashResult.lastValidBlockHeight
+        checkBlockhashExpired = async () => {
+          const blockHeight = await jitoRpc
+            .getBlockHeight({ commitment: 'confirmed' })
+            .send()
+          return blockHeight >= expiryBlockHeight
+        }
       }
 
       while (blockhashValid && !abortController.signal.aborted) {
@@ -89,7 +101,7 @@ export async function sendAndConfirmBundle(
             .getSignatureStatuses(txSignatures)
             .send()
 
-          if (!sigResponse?.value || !Array.isArray(sigResponse.value)) {
+          if (!sigResponse?.value) {
             // Keep polling if can't find signature results
             await sleep(400)
             continue
@@ -100,25 +112,15 @@ export async function sendAndConfirmBundle(
           return {
             bundleId,
             txSignatures,
-            signatureResults: sigResponse.value,
+            signatureResults: [...sigResponse.value],
           }
         }
 
         await sleep(400)
         if (!abortController.signal.aborted) {
           try {
-            if (txBlockhash) {
-              const { value: isValid } = await jitoRpc
-                .isBlockhashValid(txBlockhash, {
-                  commitment: 'confirmed',
-                })
-                .send()
-              blockhashValid = isValid
-            } else {
-              const blockHeight = await jitoRpc
-                .getBlockHeight({ commitment: 'confirmed' })
-                .send()
-              blockhashValid = blockHeight < expiryBlockHeight!
+            if (await checkBlockhashExpired()) {
+              blockhashValid = false
             }
           } catch (_) {
             // If the validity check fails, keep polling — the blockhash
@@ -144,12 +146,12 @@ export async function sendAndConfirmBundle(
             .getSignatureStatuses(txSignatures)
             .send()
 
-          if (sigResponse?.value && Array.isArray(sigResponse.value)) {
+          if (sigResponse?.value) {
             abortController.abort()
             return {
               bundleId,
               txSignatures,
-              signatureResults: sigResponse.value,
+              signatureResults: [...sigResponse.value],
             }
           }
         }
