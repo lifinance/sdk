@@ -47,7 +47,7 @@ export async function sendAndConfirmBundle(
     getBase64EncodedWireTransaction(tx)
   )
 
-  const txBlockhash = extractBlockhash(signedTransactions[0])
+  const txBlockhash = await extractBlockhash(signedTransactions[0])
 
   const abortController = new AbortController()
 

@@ -41,7 +41,7 @@ export async function sendAndConfirmTransaction(
     throw new Error('Transaction signature is missing.')
   }
 
-  const txBlockhash = extractBlockhash(signedTransaction)
+  const txBlockhash = await extractBlockhash(signedTransaction)
 
   const rawTransactionOptions = {
     // We can skip preflight check after the first transaction has been sent
