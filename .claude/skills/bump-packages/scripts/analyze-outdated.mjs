@@ -12,12 +12,12 @@
 // than the registry `latest` (which is only a hint). Predicting it before any mutation is
 // what lets the skill gate majors and report held-back deps accurately.
 //
-// Flags (all optional; the skill runs it with none): --root <dir>, --min-age-hours <N>,
-// and the offline-test seam --json-file / --time-file / --now. Always exits 0.
+// Flags (both optional; the skill runs it with none): --root <dir>, --min-age-hours <N>.
+// Every file read is confined to <root> (see `confine`). Always exits 0.
 
 import { execFile, execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs, promisify } from 'node:util'
 
 const execFileP = promisify(execFile)
@@ -26,24 +26,32 @@ function getArgs() {
   const { values } = parseArgs({
     options: {
       root: { type: 'string' },
-      'json-file': { type: 'string' },
-      'time-file': { type: 'string' },
-      now: { type: 'string' },
       'min-age-hours': { type: 'string' },
     },
   })
   return {
     root: values.root ? resolve(values.root) : process.cwd(),
-    jsonFile: values['json-file'] ? resolve(values['json-file']) : null,
-    timeFile: values['time-file'] ? resolve(values['time-file']) : null,
-    now: values.now ?? null,
     minAgeHours: values['min-age-hours']
       ? Number(values['min-age-hours'])
       : null,
   }
 }
 
-function readJson(p) {
+// Resolve `segments` under `base`; return the path only if it stays inside `base`
+// (rejects path-traversal escapes), else null.
+function confine(base, ...segments) {
+  const target = resolve(base, ...segments)
+  const rel = relative(base, target)
+  return rel.startsWith('..') || isAbsolute(rel) ? null : target
+}
+
+// Read+parse a JSON file confined to `base`. Every JSON read in this script goes through
+// here, so nothing outside the repo root can be read.
+function readJson(base, ...segments) {
+  const p = confine(base, ...segments)
+  if (!p) {
+    return null
+  }
   try {
     return JSON.parse(readFileSync(p, 'utf8'))
   } catch {
@@ -51,10 +59,7 @@ function readJson(p) {
   }
 }
 
-function getOutdatedJson({ root, jsonFile }) {
-  if (jsonFile) {
-    return readJson(jsonFile) ?? {}
-  }
+function getOutdatedJson(root) {
   // `pnpm outdated` exits non-zero when deps are outdated, so capture stdout regardless.
   let out = ''
   try {
@@ -72,23 +77,20 @@ function getOutdatedJson({ root, jsonFile }) {
 
 // Best-effort read of an explicit minimumReleaseAge (minutes) from pnpm-workspace.yaml.
 function configuredMinAgeHours(root) {
-  const yaml = (() => {
-    try {
-      return readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8')
-    } catch {
-      return ''
-    }
-  })()
+  const p = confine(root, 'pnpm-workspace.yaml')
+  let yaml = ''
+  try {
+    yaml = p ? readFileSync(p, 'utf8') : ''
+  } catch {
+    yaml = ''
+  }
   const m = yaml.match(/^\s*minimumReleaseAge\s*:\s*(\d+)/m)
   return m ? Number(m[1]) / 60 : null
 }
 
 // Fetch publish timestamps for every candidate, concurrently. `npm view` (not a raw
 // registry fetch) so it honors .npmrc registry/auth/proxy config. Returns Map<name, map|null>.
-async function fetchTimes(names, root, injected) {
-  if (injected) {
-    return new Map(names.map((n) => [n, injected[n] ?? null]))
-  }
+async function fetchTimes(names, root) {
   const entries = await Promise.all(
     names.map(async (name) => {
       try {
@@ -195,7 +197,7 @@ function classify(currentRaw, targetRaw) {
 // Map every workspace location (root + packages/*) to { name, private, json }.
 function listWorkspacePackages(root) {
   const map = new Map()
-  const rootPkg = readJson(join(root, 'package.json'))
+  const rootPkg = readJson(root, 'package.json')
   if (rootPkg) {
     map.set(root, {
       name: rootPkg.name || '(root)',
@@ -206,7 +208,7 @@ function listWorkspacePackages(root) {
   const pkgsDir = join(root, 'packages')
   if (existsSync(pkgsDir)) {
     for (const entry of readdirSync(pkgsDir)) {
-      const pj = readJson(join(pkgsDir, entry, 'package.json'))
+      const pj = readJson(pkgsDir, entry, 'package.json')
       if (pj) {
         map.set(join(pkgsDir, entry), {
           name: pj.name,
@@ -237,15 +239,14 @@ function depField(pkgJson, depName) {
 
 async function main() {
   const args = getArgs()
-  const outdated = getOutdatedJson(args)
+  const outdated = getOutdatedJson(args.root)
   const workspaces = listWorkspacePackages(args.root)
-  const injected = args.timeFile ? readJson(args.timeFile) : null
 
   const minAgeHours =
     Math.max(args.minAgeHours || 24, configuredMinAgeHours(args.root) || 0) ||
     24
   const minAgeMs = minAgeHours * 3600 * 1000
-  const nowMs = args.now ? Date.parse(args.now) : Date.now()
+  const nowMs = Date.now()
 
   // Candidates: external deps with a newer registry version. Fetch all publish times at once.
   const candidates = Object.entries(outdated).filter(
@@ -253,8 +254,7 @@ async function main() {
   )
   const times = await fetchTimes(
     candidates.map(([name]) => name),
-    args.root,
-    injected
+    args.root
   )
 
   const safe = []
