@@ -82,8 +82,11 @@ function getOutdatedJson(root) {
 
 function readWorkspaceYaml(root) {
   const p = confine(root, 'pnpm-workspace.yaml')
+  if (!p) {
+    return ''
+  }
   try {
-    return p ? readFileSync(p, 'utf8') : ''
+    return readFileSync(p, 'utf8')
   } catch {
     return ''
   }
