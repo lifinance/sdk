@@ -9,7 +9,7 @@
   "fixed": [],
   "linked": [],
   "baseBranch": "main",
-  "updateInternalDependencies": "minor",
+  "updateInternalDependencies": "patch",
   "ignore": [],
   "snapshot": { "prereleaseTemplate": "{tag}" }
 }
