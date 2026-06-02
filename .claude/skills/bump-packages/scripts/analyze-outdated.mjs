@@ -75,17 +75,85 @@ function getOutdatedJson(root) {
   return start === -1 ? {} : JSON.parse(out.slice(start))
 }
 
-// Best-effort read of an explicit minimumReleaseAge (minutes) from pnpm-workspace.yaml.
-function configuredMinAgeHours(root) {
+// --- pnpm-workspace.yaml: age floor + exclude list -------------------------
+// Mirror pnpm's `minimumReleaseAge` / `minimumReleaseAgeExclude` so the plan predicts
+// exactly what pnpm will install — excluded packages (trusted first-party, or a knowingly
+// fast-tracked release) bypass the floor and must not be reported as held back.
+
+function readWorkspaceYaml(root) {
   const p = confine(root, 'pnpm-workspace.yaml')
-  let yaml = ''
-  try {
-    yaml = p ? readFileSync(p, 'utf8') : ''
-  } catch {
-    yaml = ''
+  if (!p) {
+    return ''
   }
+  try {
+    return readFileSync(p, 'utf8')
+  } catch {
+    return ''
+  }
+}
+
+function minAgeHoursFromYaml(yaml) {
   const m = yaml.match(/^\s*minimumReleaseAge\s*:\s*(\d+)/m)
   return m ? Number(m[1]) / 60 : null
+}
+
+// Pull the `minimumReleaseAgeExclude:` list entries (quoted or bare) out of the yaml.
+function excludesFromYaml(yaml) {
+  const block = yaml.match(
+    /^minimumReleaseAgeExclude:\s*\n((?:[ \t]+-.*\n?)+)/m
+  )
+  if (!block) {
+    return []
+  }
+  return [...block[1].matchAll(/^[ \t]+-\s*['"]?([^'"\n]+?)['"]?\s*$/gm)].map(
+    (x) => x[1].trim()
+  )
+}
+
+// '*' is the only wildcard; everything else is literal.
+function globToRegExp(glob) {
+  const body = glob
+    .split('*')
+    .map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('.*')
+  return new RegExp(`^${body}$`)
+}
+
+// Build matchers from exclude entries: a name/glob, an exact `name@version`, or a `||`
+// disjunction of versions for one name (e.g. `webpack@4.47.0 || 5.102.1`).
+function parseExcludes(entries) {
+  const matchers = []
+  for (const raw of entries) {
+    let lastName = null
+    for (const piece of String(raw)
+      .split('||')
+      .map((s) => s.trim())
+      .filter(Boolean)) {
+      const at = piece.lastIndexOf('@')
+      let name
+      let version
+      if (at > 0) {
+        name = piece.slice(0, at)
+        version = piece.slice(at + 1)
+      } else if (lastName && /^[0-9]/.test(piece)) {
+        name = lastName // bare version continuing the previous name
+        version = piece
+      } else {
+        name = piece // a name or glob — all versions
+        version = null
+      }
+      lastName = name
+      matchers.push({ re: globToRegExp(name), version })
+    }
+  }
+  return matchers
+}
+
+// Does `name@version` bypass the age floor per the exclude matchers?
+function isExcluded(matchers, name, version) {
+  return matchers.some(
+    (m) => m.re.test(name) && (m.version == null || m.version === version)
+  )
 }
 
 // Fetch publish timestamps for every candidate, concurrently. `npm view` (not a raw
@@ -146,9 +214,9 @@ function cmp(a, b) {
   return 0
 }
 
-// Newest version strictly above `current` that is already older than the age floor.
-// Skips prereleases unless `current` is itself a prerelease. Returns version string | null.
-function pickAgedTarget(timeMap, currentRaw, minAgeMs, nowMs) {
+// Newest version strictly above `current` that has aged past the floor — or is exempt via
+// minimumReleaseAgeExclude. Skips prereleases unless `current` is itself a prerelease.
+function pickAgedTarget(timeMap, currentRaw, minAgeMs, nowMs, isExempt) {
   if (!timeMap) {
     return null
   }
@@ -163,9 +231,11 @@ function pickAgedTarget(timeMap, currentRaw, minAgeMs, nowMs) {
     if ((p.pre && !cur.pre) || cmp(p, cur) <= 0) {
       continue
     }
+    // Eligible once it has aged past the floor, or if it's exempt from the floor entirely.
     const published = Date.parse(iso)
-    if (!Number.isFinite(published) || nowMs - published < minAgeMs) {
-      continue // missing date, or too fresh — held back by the floor
+    const aged = Number.isFinite(published) && nowMs - published >= minAgeMs
+    if (!(aged || isExempt(ver))) {
+      continue
     }
     if (!best || cmp(p, best) > 0) {
       best = p
@@ -245,10 +315,11 @@ async function main() {
   const args = getArgs()
   const outdated = getOutdatedJson(args.root)
   const workspaces = listWorkspacePackages(args.root)
+  const wsYaml = readWorkspaceYaml(args.root)
+  const excludeMatchers = parseExcludes(excludesFromYaml(wsYaml))
 
   const minAgeHours =
-    Math.max(args.minAgeHours || 24, configuredMinAgeHours(args.root) || 0) ||
-    24
+    Math.max(args.minAgeHours || 24, minAgeHoursFromYaml(wsYaml) || 0) || 24
   const minAgeMs = minAgeHours * 3600 * 1000
   const nowMs = Date.now()
 
@@ -273,7 +344,13 @@ async function main() {
       deprecated.push(name)
     }
 
-    const target = pickAgedTarget(times.get(name), current, minAgeMs, nowMs)
+    const target = pickAgedTarget(
+      times.get(name),
+      current,
+      minAgeMs,
+      nowMs,
+      (ver) => isExcluded(excludeMatchers, name, ver)
+    )
     if (!target) {
       // Updates exist but the newest is younger than the floor — report, don't bump.
       const latestIso = times.get(name)?.[registryLatest]

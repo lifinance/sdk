@@ -34,7 +34,9 @@ external dependencies current is routine maintenance, but three things make a bl
    pnpm, holds a too-fresh release back to the newest aged version on its own — and preserves
    each dependency's existing prefix (`^`, `~`, or a deliberate exact pin) — verified for all
    three. So you don't hand-write versions; you let pnpm resolve, and report what it held
-   back.
+   back. Packages matched by **`minimumReleaseAgeExclude`** in `pnpm-workspace.yaml` (our
+   trusted first-party scopes — `@bigmi/*`, `@lifi/*`) bypass the floor; the analysis script
+   reads that list and won't predict holding them back, matching pnpm.
 
 The deterministic parts — discovering outdated deps, predicting the aged target pnpm will
 land on, classifying each by SemVer risk, and working out which publishable packages need a

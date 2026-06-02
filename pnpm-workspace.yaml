@@ -3,5 +3,8 @@ packages:
 allowBuilds:
   msw: true
   nx: true
+minimumReleaseAgeExclude:
+  - '@bigmi/*'
+  - '@lifi/*'
 overrides:
   axios: ^1.16.0
