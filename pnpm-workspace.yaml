@@ -3,5 +3,11 @@ packages:
 allowBuilds:
   msw: true
   nx: true
+# First-party scopes we publish and consume across repos: trusted by our own pipeline
+# (CI-only publish, npm provenance, 2FA), so they bypass the 24h minimumReleaseAge floor
+# that protects against third-party supply-chain compromise. Set once; no per-release churn.
+minimumReleaseAgeExclude:
+  - '@bigmi/*'
+  - '@lifi/*'
 overrides:
   axios: ^1.16.0
