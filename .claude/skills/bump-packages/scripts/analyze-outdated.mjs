@@ -17,7 +17,7 @@
 
 import { execFile, execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
 import { parseArgs, promisify } from 'node:util'
 
 const execFileP = promisify(execFile)
@@ -205,12 +205,16 @@ function listWorkspacePackages(root) {
       json: rootPkg,
     })
   }
-  const pkgsDir = join(root, 'packages')
+  const pkgsDir = resolve(root, 'packages')
   if (existsSync(pkgsDir)) {
     for (const entry of readdirSync(pkgsDir)) {
-      const pj = readJson(pkgsDir, entry, 'package.json')
+      const dir = confine(pkgsDir, entry) // skip any entry that escapes packages/
+      if (!dir) {
+        continue
+      }
+      const pj = readJson(dir, 'package.json')
       if (pj) {
-        map.set(join(pkgsDir, entry), {
+        map.set(dir, {
           name: pj.name,
           private: !!pj.private,
           json: pj,
