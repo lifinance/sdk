@@ -44,15 +44,15 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@mysten/sui": "^2.16.2"
+    "@mysten/sui": "^2.17.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.79.1",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@lifi/data-types": "^6.80.1",
+    "@vitest/coverage-v8": "^4.1.8",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.8"
   },
   "publishConfig": {
     "access": "public"
