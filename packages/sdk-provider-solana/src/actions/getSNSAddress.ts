@@ -1,4 +1,4 @@
-import { isSolanaAddress } from './isSolanaAddress.js'
+import { isAddress } from '@solana/kit'
 
 interface SNSResult {
   s: 'ok' | 'error'
@@ -7,7 +7,9 @@ interface SNSResult {
 
 // Subject to change
 // https://github.com/Bonfida/sns-sdk?tab=readme-ov-file#sdk-proxy
-export const getSNSAddress = async (name: string) => {
+export const getSNSAddress = async (
+  name: string
+): Promise<string | undefined> => {
   try {
     if (!name.endsWith('.sol')) {
       return
@@ -20,7 +22,7 @@ export const getSNSAddress = async (name: string) => {
 
     const data: SNSResult = await response.json()
 
-    if (!isSolanaAddress(data.result)) {
+    if (!isAddress(data.result)) {
       return
     }
 

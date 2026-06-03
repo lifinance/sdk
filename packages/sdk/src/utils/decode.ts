@@ -1,4 +1,4 @@
-export const decodeTaskId = (taskId: string) => {
+export const decodeTaskId = (taskId: string): string[] => {
   const decoded = new TextDecoder()
     .decode(
       new Uint8Array(

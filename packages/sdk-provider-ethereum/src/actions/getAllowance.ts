@@ -32,7 +32,7 @@ export const getAllowance = async (
         args: [ownerAddress, spenderAddress] as const,
       }
     )
-    return approved
+    return approved as bigint
   } catch (_e) {
     return 0n
   }

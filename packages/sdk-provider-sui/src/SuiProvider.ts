@@ -1,8 +1,13 @@
-import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
+import {
+  ChainType,
+  LiFiErrorCode,
+  ProviderError,
+  type StepExecutorOptions,
+} from '@lifi/sdk'
 import { isValidSuiAddress } from '@mysten/sui/utils'
 import { getSuiBalance } from './actions/getSuiBalance.js'
 import { resolveSuiAddress } from './actions/resolveSuiAddress.js'
-import { SuiStepExecutor } from './SuiStepExecutor.js'
+import { SuiStepExecutor } from './core/SuiStepExecutor.js'
 import type { SuiProviderOptions, SuiSDKProvider } from './types.js'
 
 export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
@@ -17,14 +22,25 @@ export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
     async getStepExecutor(
       options: StepExecutorOptions
     ): Promise<SuiStepExecutor> {
-      if (!_options.getWallet) {
-        throw new Error('getWallet is not provided.')
+      if (!_options.getClient) {
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'getClient is not provided.'
+        )
+      }
+      if (!_options.getSigner) {
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'getSigner is not provided.'
+        )
       }
 
-      const wallet = await _options.getWallet()
+      const client = await _options.getClient()
+      const signer = await _options.getSigner()
 
       const executor = new SuiStepExecutor({
-        wallet,
+        client,
+        signer,
         routeId: options.routeId,
         executionOptions: {
           ...options.executionOptions,

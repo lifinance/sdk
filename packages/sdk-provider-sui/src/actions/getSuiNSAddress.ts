@@ -1,14 +1,17 @@
-import { SuiClient } from '@mysten/sui/client'
+import type { SuiClientTypes } from '@mysten/sui/client'
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
 
 const SNS_REGISTRY_ID =
   '0x6e0ddefc0ad3ed64f53f5f91b7023077b2f7c131d7e6d5e0d1a0e4e6f1a2c3b4'
 
 export async function getSuiNSAddress(
   name: string,
-  rpcUrl?: string
+  rpcUrl?: string,
+  network?: SuiClientTypes.Network
 ): Promise<string | undefined> {
-  const client = new SuiClient({
+  const client = new SuiJsonRpcClient({
     url: rpcUrl || 'https://fullnode.mainnet.sui.io:443',
+    network: network || 'mainnet',
   })
 
   try {

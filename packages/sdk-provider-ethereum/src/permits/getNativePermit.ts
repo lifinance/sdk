@@ -9,17 +9,17 @@ import {
   toHex,
   zeroHash,
 } from 'viem'
-import { getCode, multicall, readContract } from 'viem/actions'
+import { multicall, readContract } from 'viem/actions'
 import { getMulticallAddress } from '../actions/getMulticallAddress.js'
 import { eip2612Abi } from '../utils/abi.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
+import { canAccountUseNativePermits } from './canAccountUseNativePermits.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH_WITH_SALT,
   eip2612Types,
 } from './constants.js'
-import { isDelegationDesignatorCode } from './isDelegationDesignatorCode.js'
 import type { NativePermitData } from './types.js'
 
 type GetNativePermitParams = {
@@ -127,50 +127,6 @@ function validateDomainSeparator({
 }
 
 /**
- * Checks if the account can use native permits based on its code.
- * Returns true if:
- * 1. Account has no code (EOA)
- * 2. Account is EOA and has EIP-7702 delegation designator code
- *
- * @param client - The SDK client
- * @param viemClient - The Viem client instance
- * @returns Promise<boolean> - Whether the account can use native permits
- */
-const canAccountUseNativePermits = async (
-  client: SDKClient,
-  viemClient: Client
-): Promise<boolean> => {
-  try {
-    const accountCode = await getActionWithFallback(
-      client,
-      viemClient,
-      getCode,
-      'getCode',
-      {
-        address: viemClient.account!.address,
-      }
-    )
-
-    // If no code (0x or undefined), it's an EOA - can use native permits
-    if (!accountCode || accountCode === '0x') {
-      return true
-    }
-
-    // If has code but it's EIP-7702 delegation designator - can use native permits
-    if (isDelegationDesignatorCode(accountCode)) {
-      return true
-    }
-
-    // If has code but not EIP-7702 delegation - cannot use native permits
-    // Smart Accounts like Kernel (ZeroDev) can't produce ECDSA signatures, so we can't use native permits in current implementation
-    return false
-  } catch {
-    // If we can't check the code, assume it's not safe to use native permits
-    return false
-  }
-}
-
-/**
  * Attempts to retrieve contract data using EIP-5267 eip712Domain() function
  * @link https://eips.ethereum.org/EIPS/eip-5267
  * @param client - The SDK client
@@ -226,7 +182,15 @@ const getEIP712DomainData = async (
         }
 
         const [, name, version, tokenChainId, verifyingContract, salt] =
-          eip712DomainResult.result
+          eip712DomainResult.result as [
+            Hex,
+            string,
+            string,
+            bigint,
+            Address,
+            Hex,
+            bigint[],
+          ]
 
         if (
           Number(tokenChainId) !== chainId ||
@@ -411,11 +375,11 @@ const getContractData = async (
 
         // Validate domain separator and create domain object
         const { isValid, domain } = validateDomainSeparator({
-          name: nameResult.result,
-          version: versionResult.result ?? '1',
+          name: nameResult.result as string,
+          version: (versionResult.result ?? '1') as string,
           chainId,
           verifyingContract: tokenAddress,
-          domainSeparator: domainSeparatorResult.result,
+          domainSeparator: domainSeparatorResult.result as Hex,
         })
 
         if (!isValid) {
@@ -423,11 +387,11 @@ const getContractData = async (
         }
 
         return {
-          name: nameResult.result,
+          name: nameResult.result as string,
           domain,
-          permitTypehash: permitTypehashResult.result,
-          nonce: noncesResult.result,
-          version: versionResult.result ?? '1',
+          permitTypehash: permitTypehashResult.result as Hex,
+          nonce: noncesResult.result as bigint,
+          version: (versionResult.result ?? '1') as string,
         }
       } catch {
         // Fall through to individual calls
@@ -545,7 +509,7 @@ export const getNativePermit = async (
     owner: viemClient.account!.address,
     spender: spenderAddress,
     value: amount.toString(),
-    nonce: contractData.nonce.toString(),
+    nonce: contractData.nonce!.toString(),
     deadline,
   }
 

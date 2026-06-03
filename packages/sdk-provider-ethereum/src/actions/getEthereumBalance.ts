@@ -15,7 +15,7 @@ export const getEthereumBalance = async (
   client: SDKClient,
   walletAddress: Address,
   tokens: Token[]
-) => {
+): Promise<TokenAmount[]> => {
   if (tokens.length === 0) {
     return []
   }
@@ -76,9 +76,18 @@ const getEVMBalanceMulticall = async (
   }
 
   return tokens.map((token, i: number) => {
+    const result = results[i]
+    if (result.status !== 'success') {
+      // RPC sub-call failed — leave amount undefined so callers can
+      // distinguish an unknown balance from a known zero.
+      return {
+        ...token,
+        blockNumber,
+      }
+    }
     return {
       ...token,
-      amount: results[i].result as bigint,
+      amount: result.result as bigint,
       blockNumber,
     }
   })

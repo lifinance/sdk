@@ -1,4 +1,4 @@
-import type { ChainId, ChainType } from '@lifi/types'
+import type { ChainId, ChainType, ExtendedChain } from '@lifi/types'
 import type {
   SDKBaseConfig,
   SDKClient,
@@ -20,15 +20,18 @@ export function createClient(options: SDKConfig): SDKClient {
     checkPackageUpdates(name, version)
   }
 
+  const { providers, ...configOptions } = options
+
   const _config: SDKBaseConfig = {
-    ...options,
-    apiUrl: options?.apiUrl ?? 'https://li.quest/v1',
-    rpcUrls: options?.rpcUrls ?? {},
-    debug: options?.debug ?? false,
-    integrator: options?.integrator ?? 'lifi-sdk',
+    ...configOptions,
+    apiUrl: configOptions?.apiUrl ?? 'https://li.quest/v1',
+    rpcUrls: configOptions?.rpcUrls ?? {},
+    debug: configOptions?.debug ?? false,
+    preloadChains: configOptions?.preloadChains ?? true,
+    integrator: configOptions?.integrator ?? 'lifi-sdk',
   }
 
-  let _providers: SDKProvider[] = []
+  let _providers: SDKProvider[] = providers ?? []
   const _storage = getClientStorage(_config)
 
   const client: SDKClient = {
@@ -49,6 +52,9 @@ export function createClient(options: SDKConfig): SDKClient {
         providerMap.set(provider.type, provider)
       }
       _providers = Array.from(providerMap.values())
+    },
+    setChains(chains: ExtendedChain[]) {
+      _storage.setChains(chains)
     },
     async getChains() {
       return await _storage.getChains()

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
+  "changelog": [
+    "@changesets/changelog-github",
+    { "repo": "lifinance/sdk" }
+  ],
+  "commit": false,
+  "access": "public",
+  "fixed": [],
+  "linked": [],
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "snapshot": { "prereleaseTemplate": "{tag}" }
+}

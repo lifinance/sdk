@@ -19,5 +19,5 @@
  *
  * @see https://eips.ethereum.org/EIPS/eip-7702
  */
-export const isDelegationDesignatorCode = (code?: string) =>
-  code?.startsWith('0xef0100')
+export const isDelegationDesignatorCode = (code?: string): boolean =>
+  !!code?.startsWith('0xef0100')

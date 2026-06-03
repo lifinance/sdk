@@ -1,5 +1,5 @@
 import { ChainId, ChainType } from '@lifi/types'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SDKConfig } from '../types/core.js'
 import { createClient } from './createClient.js'
 
@@ -23,6 +23,7 @@ vi.mock('../utils/checkPackageUpdates.js', () => ({
 }))
 
 // Mock the client storage
+const mockSetChains = vi.fn()
 vi.mock('./getClientStorage.js', () => ({
   getClientStorage: vi.fn(() => ({
     getChains: vi.fn().mockResolvedValue([
@@ -33,10 +34,15 @@ vi.mock('./getClientStorage.js', () => ({
       [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
       [ChainId.POL]: ['https://polygon-rpc.com'],
     }),
+    setChains: mockSetChains,
   })),
 }))
 
 describe('createClient', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   describe('basic functionality', () => {
     it('should create a client with minimal config', () => {
       const client = createClient({
@@ -73,6 +79,7 @@ describe('createClient', () => {
         userId: 'user-123',
         debug: true,
         disableVersionCheck: true,
+        preloadChains: true,
         widgetVersion: '1.0.0',
         rpcUrls: {
           [ChainId.ETH]: ['https://eth-mainnet.alchemyapi.io/v2/test'],
@@ -102,6 +109,51 @@ describe('createClient', () => {
       const client = createClient({ integrator: 'test-app' })
       expect(client.providers).toEqual([])
       expect(client.getProvider(ChainType.EVM)).toBeUndefined()
+    })
+
+    it('should initialize providers from config', () => {
+      const evmProvider = EVM()
+      const solanaProvider = Solana()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider, solanaProvider],
+      })
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider)
+      expect(client.getProvider(ChainType.SVM)).toBe(solanaProvider)
+    })
+
+    it('should merge providers set via setProviders with initial providers', () => {
+      const evmProvider = EVM()
+      const utxoProvider = UTXO()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider],
+      })
+
+      client.setProviders([utxoProvider])
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider)
+      expect(client.getProvider(ChainType.UTXO)).toBe(utxoProvider)
+    })
+
+    it('should replace initial providers of the same type via setProviders', () => {
+      const evmProvider1 = EVM()
+      const evmProvider2 = EVM()
+
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [evmProvider1],
+      })
+
+      client.setProviders([evmProvider2])
+
+      expect(client.providers).toHaveLength(1)
+      expect(client.getProvider(ChainType.EVM)).toBe(evmProvider2)
     })
 
     it('should set and get providers', () => {
@@ -170,6 +222,15 @@ describe('createClient', () => {
       await expect(client.getChainById(999)).rejects.toThrow(
         'ChainId 999 not found'
       )
+    })
+
+    it('should set chains via storage', () => {
+      const client = createClient({ integrator: 'test-app' })
+      const chains = [{ id: 1, name: 'Ethereum', type: ChainType.EVM }] as any
+
+      client.setChains(chains)
+
+      expect(mockSetChains).toHaveBeenCalledWith(chains)
     })
   })
 
@@ -263,6 +324,7 @@ describe('createClient', () => {
         needReset: false,
         getChains: vi.fn().mockRejectedValue(new Error('Storage error')),
         getRpcUrls: vi.fn().mockRejectedValue(new Error('Storage error')),
+        setChains: vi.fn(),
       })
 
       const newClient = createClient({ integrator: 'test-app' })

@@ -3,7 +3,7 @@
  *
  * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
  */
-class LruMap<value = unknown> extends Map<string, value> {
+export class LruMap<value = unknown> extends Map<string, value> {
   maxSize: number
 
   constructor(size: number) {
@@ -11,7 +11,7 @@ class LruMap<value = unknown> extends Map<string, value> {
     this.maxSize = size
   }
 
-  override set(key: string, value: value) {
+  override set(key: string, value: value): this {
     super.set(key, value)
     if (this.maxSize && this.size > this.maxSize) {
       this.delete(this.keys().next().value!)

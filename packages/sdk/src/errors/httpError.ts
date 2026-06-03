@@ -74,7 +74,7 @@ export class HTTPError extends BaseError {
     this.fetchOptions = options
   }
 
-  async buildAdditionalDetails() {
+  async buildAdditionalDetails(): Promise<void> {
     if (this.type) {
       this.message = `[${this.type}] ${this.message}`
     }
@@ -82,13 +82,11 @@ export class HTTPError extends BaseError {
     try {
       this.responseBody = await this.response.json()
 
-      if (this.responseBody) {
+      if (this.responseBody?.message) {
         this.message += this.message.endsWith('.')
-          ? ` ${this.responseBody?.message.toString()}`
-          : `. ${this.responseBody?.message.toString()}`
+          ? ` ${this.responseBody.message.toString()}`
+          : `. ${this.responseBody.message.toString()}`
       }
     } catch {}
-
-    return this
   }
 }

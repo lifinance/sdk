@@ -1,7 +1,7 @@
 # build
 cjs
 esm
-types
+/types
 _esm/
 _cjs/
 _types/
@@ -113,3 +113,6 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+.claude/settings.local.json
+.claude/worktrees/
+.omc/

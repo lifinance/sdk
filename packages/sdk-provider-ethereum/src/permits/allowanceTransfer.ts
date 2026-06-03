@@ -8,9 +8,9 @@ import { MaxSigDeadline, MaxUint48, MaxUint160 } from './constants.js'
 import { permit2Domain } from './domain.js'
 import { invariant } from './invariant.js'
 
-export const MaxAllowanceTransferAmount = MaxUint160
-export const MaxAllowanceExpiration = MaxUint48
-export const MaxOrderedNonce = MaxUint48
+export const MaxAllowanceTransferAmount: bigint = MaxUint160
+export const MaxAllowanceExpiration: bigint = MaxUint48
+export const MaxOrderedNonce: bigint = MaxUint48
 
 export interface PermitDetails {
   token: Address
@@ -76,7 +76,7 @@ export function getPermitSingleData(
   permit: PermitSingle,
   permit2Address: Address,
   chainId: number
-) {
+): { domain: TypedDataDomain; message: PermitSingle } {
   invariant(MaxSigDeadline >= permit.sigDeadline, 'SIG_DEADLINE_OUT_OF_RANGE')
 
   const domain = permit2Domain(permit2Address, chainId)
@@ -92,7 +92,7 @@ export function getPermitBatchData(
   permit: PermitBatch,
   permit2Address: Address,
   chainId: number
-) {
+): { domain: TypedDataDomain; message: PermitBatch } {
   invariant(MaxSigDeadline >= permit.sigDeadline, 'SIG_DEADLINE_OUT_OF_RANGE')
 
   const domain = permit2Domain(permit2Address, chainId)

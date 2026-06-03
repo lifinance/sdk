@@ -3,7 +3,7 @@ import { name, version } from '../version.js'
 export const checkPackageUpdates = async (
   packageName?: string,
   packageVersion?: string
-) => {
+): Promise<void> => {
   try {
     const pkgName = packageName ?? name
     const response = await fetch(`https://registry.npmjs.org/${pkgName}/latest`)

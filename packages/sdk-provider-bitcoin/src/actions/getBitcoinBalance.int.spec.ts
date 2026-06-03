@@ -50,17 +50,16 @@ describe('getBitcoinBalance integration tests', () => {
     }
   }
 
-  it(
-    'should work for ERC20 on POL',
-    { retry: retryTimes, timeout },
-    async () => {
-      const walletAddress = defaultWalletAddress
-      const tokens = [
-        findDefaultToken(CoinKey.USDC, ChainId.POL),
-        findDefaultToken(CoinKey.USDT, ChainId.POL),
-      ]
+  it('should work for ERC20 on POL', {
+    retry: retryTimes,
+    timeout,
+  }, async () => {
+    const walletAddress = defaultWalletAddress
+    const tokens = [
+      findDefaultToken(CoinKey.USDC, ChainId.POL),
+      findDefaultToken(CoinKey.USDT, ChainId.POL),
+    ]
 
-      await loadAndCompareTokenAmounts(client, walletAddress, tokens)
-    }
-  )
+    await loadAndCompareTokenAmounts(client, walletAddress, tokens)
+  })
 })

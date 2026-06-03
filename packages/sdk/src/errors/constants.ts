@@ -9,6 +9,8 @@ export enum ErrorName {
   UnknownError = 'UnknownError',
   SlippageError = 'SlippageError',
   HTTPError = 'HTTPError',
+  ConfigError = 'ConfigError',
+  ExecuteStepRetryError = 'ExecuteStepRetryError',
 }
 
 export type ErrorCode = LiFiErrorCode
@@ -40,6 +42,7 @@ export enum LiFiErrorCode {
   RateLimitExceeded = 1023,
   ThirdPartyError = 1024,
   InsufficientGas = 1025,
+  ConfigError = 1026,
 }
 
 export enum ErrorMessage {

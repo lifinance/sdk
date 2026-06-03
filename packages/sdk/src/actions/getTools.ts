@@ -16,7 +16,8 @@ export const getTools = async (
 ): Promise<ToolsResponse> => {
   if (params) {
     for (const key of Object.keys(params)) {
-      if (!params[key as keyof ToolsRequest]) {
+      const value = params[key as keyof ToolsRequest]
+      if (value === undefined || value === null) {
         delete params[key as keyof ToolsRequest]
       }
     }
