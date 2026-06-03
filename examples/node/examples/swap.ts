@@ -45,10 +45,10 @@ async function run() {
   const routeRequest = {
     toAddress: account.address,
     fromAddress: account.address,
-    fromChainId: ChainId.OPT, // Optimisim
+    fromChainId: ChainId.OPT, // Optimism
     fromAmount: '100000', // USDT
     fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
-    toChainId: ChainId.OPT, // Optimisim
+    toChainId: ChainId.OPT, // Optimism
     toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.OPT).address,
     options: {
       slippage: 0.03, // = 3%
