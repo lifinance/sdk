@@ -3,11 +3,11 @@ import type { ContractCallsQuoteRequest, StatusResponse } from '@lifi/sdk'
 import {
   ChainId,
   CoinKey,
-  createConfig,
-  EVM,
+  createClient,
   getContractCallsQuote,
   getStatus,
 } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import { createWalletClient, http, publicActions } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -18,7 +18,7 @@ import { checkTokenAllowance } from './utils/checkTokenAllowance'
 import { transformTxRequestToSendTxParams } from './utils/transformTxRequestToSendTxParams'
 
 const run = async () => {
-  console.info('>> Starting Multihop demo - route USDC.ARB to USDC.OPT')
+  console.info('>> Starting toAmount demo - route USDC.ARB to USDC.OPT')
 
   try {
     console.info('>> Initialize LiFi SDK')
@@ -28,7 +28,7 @@ const run = async () => {
     // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
     const account = privateKeyToAccount(privateKey)
 
-    const client = createWalletClient({
+    const walletClient = createWalletClient({
       account,
       chain: arbitrum,
       transport: http(),
@@ -36,24 +36,25 @@ const run = async () => {
 
     const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
 
-    createConfig({
+    const client = createClient({
       integrator: 'lifi-sdk-example',
-      providers: [
-        EVM({
-          getWalletClient: () => Promise.resolve(client),
-          switchChain: (chainId) =>
-            Promise.resolve(
-              createWalletClient({
-                account,
-                chain: switchChains.find(
-                  (chain) => chain.id === chainId
-                ) as Chain,
-                transport: http(),
-              })
-            ),
-        }),
-      ],
     })
+
+    client.setProviders([
+      EthereumProvider({
+        getWalletClient: () => Promise.resolve(walletClient),
+        switchChain: (chainId) =>
+          Promise.resolve(
+            createWalletClient({
+              account,
+              chain: switchChains.find(
+                (chain) => chain.id === chainId
+              ) as Chain,
+              transport: http(),
+            })
+          ),
+      }),
+    ])
 
     // config for toAmount run
     const config = {
@@ -61,7 +62,7 @@ const run = async () => {
       fromToken: findDefaultToken(CoinKey.USDC, ChainId.ARB).address, // USDC ARB
       toChain: ChainId.OPT, // Optimism
       toToken: findDefaultToken(CoinKey.USDC, ChainId.OPT).address, // USDC OPT
-      toAmount: '1000000', // 1 USDC
+      toAmount: '100000', // 0.1 USDC
     }
 
     const quoteRequest: ContractCallsQuoteRequest = {
@@ -76,7 +77,10 @@ const run = async () => {
 
     console.info('>> get contract calls quote', quoteRequest)
 
-    const contactCallsQuoteResponse = await getContractCallsQuote(quoteRequest)
+    const contactCallsQuoteResponse = await getContractCallsQuote(
+      client,
+      quoteRequest
+    )
 
     console.info(
       '>> got contract calls quote response',
@@ -87,23 +91,28 @@ const run = async () => {
       return
     }
 
-    await checkTokenAllowance(contactCallsQuoteResponse, account, client)
+    await checkTokenAllowance(
+      client,
+      contactCallsQuoteResponse,
+      account,
+      walletClient
+    )
 
     console.info(
       '>> Execute transaction',
       contactCallsQuoteResponse.transactionRequest
     )
 
-    const hash = await client.sendTransaction(
+    const hash = await walletClient.sendTransaction(
       transformTxRequestToSendTxParams(
-        client.account,
+        walletClient.account,
         contactCallsQuoteResponse.transactionRequest
       )
     )
 
     console.info('>> Transaction sent', hash)
 
-    const receipt = await client.waitForTransactionReceipt({
+    const receipt = await walletClient.waitForTransactionReceipt({
       hash,
     })
 
@@ -118,7 +127,7 @@ const run = async () => {
         }, 5000)
       })
 
-      result = await getStatus({
+      result = await getStatus(client, {
         txHash: receipt.transactionHash,
         bridge: contactCallsQuoteResponse.tool,
         fromChain: contactCallsQuoteResponse.action.fromChainId,
