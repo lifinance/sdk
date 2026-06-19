@@ -30,7 +30,6 @@ is the hub; each provider depends on it via `workspace:*` as a **regular** depen
 - Import types with `import type` syntax
 
 ## Known Issues
-- `sdk-provider-ethereum/src/errors/parseEthereumErrors.ts` — pre-existing TS2339 error in check:types
 - `sdk-provider-ethereum/src/utils/abi.ts` — parseAbi results typed as `Abi` (broader than inferred); downstream code uses `as` casts for readContract results
 
 ## Release
@@ -49,13 +48,13 @@ standard-version are gone.
   default — re-releases every provider on *any* `@lifi/sdk` bump, including a patch, so their
   `workspace:*` pins stay current.)
 
-### PRE-MODE (beta) — do not exit until cutting stable 4.0.0
-- The repo is in Changesets **pre-mode** (`.changeset/pre.json`, `tag: beta`). Latest on
-  npm is v3 (`3.16.3`); the repo is mid `4.0.0-beta.x`. A bare `changeset version` would
-  jump to a **stable 4.0.0** and regress the dist-tags — pre-mode prevents that, keeping
-  versions on `4.0.0-beta.N` and the npm dist-tag on `beta`.
-- **Never run `changeset pre exit`** until you are deliberately cutting the stable 4.0.0
-  release. Exiting then re-versioning is the only correct way to land stable.
+### Versioning: stable 4.x line (pre-mode exited)
+- The repo has **exited** Changesets pre-mode and cut **stable `4.0.0`** (now the npm
+  `latest` dist-tag). There is no `.changeset/pre.json`, so normal `changeset version` runs
+  produce stable semver bumps — no beta suffix, no dist-tag regression to guard against.
+- To start a **new beta cycle**, re-enter pre-mode with `changeset pre enter beta` (recreates
+  `.changeset/pre.json`); `changeset pre exit` ends it before cutting the next stable. Both
+  move the npm dist-tags, so don't toggle pre-mode casually.
 
 ### Pipeline (`.github/workflows/publish.yaml`, push to `main`)
 1. `verify` — reuses `tests.yaml` (build + test).
@@ -77,9 +76,10 @@ removed after a successful publish (one-shot — re-add it to cut another previe
 - Install the **exact** version it prints (e.g. `npm i @lifi/sdk@0.0.0-preview-<sha>`);
   `@preview` moves with the newest preview across PRs. `0.0.0` can never become `latest`/`beta`.
   The `<sha>` is the PR head's short commit hash, so the version traces to the exact source.
-- This repo is in **pre mode**, where `--snapshot` is disallowed — the job therefore runs
-  `changeset pre exit` in the **throwaway CI checkout only** (never committed or pushed)
-  before snapshotting. `.changeset/pre.json` on the branch is untouched.
+- `--snapshot` is disallowed while in pre mode. The repo is on the **stable line** (no
+  `.changeset/pre.json`), so snapshotting works directly. As a safeguard the preview action
+  still runs `changeset pre exit` **only if** a `pre.json` is present, in the **throwaway CI
+  checkout only** (never committed or pushed) — so a future beta cycle won't break previews.
 - Guardrails: applying a label requires Triage+ on the repo, so external people / fork-PR
   authors can't trigger it; the same-repo guard means the published code was pushed by
   someone with Write access (forks excluded); and the job is isolated (no Linear secrets).
