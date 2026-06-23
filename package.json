@@ -39,11 +39,11 @@
     "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.9",
     "husky": "^9.1.7",
-    "knip": "^6.17.1",
+    "knip": "^6.17.2",
     "tsdown": "^0.22.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9"
