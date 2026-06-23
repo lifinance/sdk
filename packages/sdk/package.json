@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@lifi/data-types": "^6.82.1",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.9",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
