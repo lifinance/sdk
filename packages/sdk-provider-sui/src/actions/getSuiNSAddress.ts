@@ -1,5 +1,6 @@
 import type { SuiClientTypes } from '@mysten/sui/client'
 import { SuiGrpcClient } from '@mysten/sui/grpc'
+import { getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc'
 
 export async function getSuiNSAddress(
   name: string,
@@ -8,7 +9,7 @@ export async function getSuiNSAddress(
 ): Promise<string | undefined> {
   const client = new SuiGrpcClient({
     network: network || 'mainnet',
-    baseUrl: rpcUrl || 'https://fullnode.mainnet.sui.io:443',
+    baseUrl: rpcUrl || getJsonRpcFullnodeUrl('mainnet'),
   })
 
   try {
