@@ -4,6 +4,7 @@ import {
   type TokenAmount,
   withDedupe,
 } from '@lifi/sdk'
+import type { SuiClientTypes } from '@mysten/sui/client'
 import { callSuiWithRetry } from '../client/suiClient.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from '../types.js'
 
@@ -35,30 +36,39 @@ const getSuiBalanceDefault = async (
   const [coins, checkpoint] = await Promise.allSettled([
     withDedupe(
       () =>
-        callSuiWithRetry(client, (client) =>
-          client.getAllBalances({
-            owner: walletAddress,
-          })
-        ),
-      { id: `${getSuiBalanceDefault.name}.getAllBalances` }
+        callSuiWithRetry(client, async (suiClient) => {
+          // listBalances is paginated; page through to collect every coin type.
+          const balances: SuiClientTypes.Balance[] = []
+          let cursor: string | null | undefined
+          do {
+            const page = await suiClient.core.listBalances({
+              owner: walletAddress,
+              cursor,
+            })
+            balances.push(...page.balances)
+            cursor = page.hasNextPage ? page.cursor : null
+          } while (cursor)
+          return balances
+        }),
+      { id: `${getSuiBalanceDefault.name}.listBalances` }
     ),
     withDedupe(
       () =>
-        callSuiWithRetry(client, (client) =>
-          client.getLatestCheckpointSequenceNumber()
-        ),
-      { id: `${getSuiBalanceDefault.name}.getLatestCheckpointSequenceNumber` }
+        callSuiWithRetry(client, async (suiClient) => {
+          const { response } = await suiClient.ledgerService.getServiceInfo({})
+          return response.checkpointHeight ?? 0n
+        }),
+      { id: `${getSuiBalanceDefault.name}.getServiceInfo` }
     ),
   ])
 
   const coinsOk = coins.status === 'fulfilled'
   const coinsResult = coinsOk ? coins.value : []
-  const blockNumber =
-    checkpoint.status === 'fulfilled' ? BigInt(checkpoint.value) : 0n
+  const blockNumber = checkpoint.status === 'fulfilled' ? checkpoint.value : 0n
 
   const walletTokenAmounts = coinsResult.reduce(
     (tokenAmounts, coin) => {
-      const amount = BigInt(coin.totalBalance)
+      const amount = BigInt(coin.balance)
       if (amount > 0n) {
         tokenAmounts[coin.coinType] = amount
       }
@@ -67,13 +77,18 @@ const getSuiBalanceDefault = async (
     {} as Record<string, bigint>
   )
 
+  // The native SUI coin type can be returned in short (`0x2::sui::SUI`) or
+  // fully-normalized (`0x0000…0002::sui::SUI`) form depending on the RPC.
+  // Map both so token lists using either format resolve.
   const suiTokenBalance = coinsResult.find(
-    (coin) => coin.coinType === SuiTokenShortAddress
+    (coin) =>
+      coin.coinType === SuiTokenShortAddress ||
+      coin.coinType === SuiTokenLongAddress
   )
-  if (suiTokenBalance?.totalBalance) {
-    walletTokenAmounts[SuiTokenLongAddress] = BigInt(
-      suiTokenBalance.totalBalance
-    )
+  if (suiTokenBalance?.balance) {
+    const suiAmount = BigInt(suiTokenBalance.balance)
+    walletTokenAmounts[SuiTokenShortAddress] = suiAmount
+    walletTokenAmounts[SuiTokenLongAddress] = suiAmount
   }
 
   const tokenAmounts: TokenAmount[] = tokens.map((token) => {
