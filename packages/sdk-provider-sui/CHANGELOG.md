@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.0
+
+### Minor Changes
+
+- [#404](https://github.com/lifinance/sdk/pull/404) [`e85d5e7`](https://github.com/lifinance/sdk/commit/e85d5e7c2da581a2397429392e14f2d47b4efa87) Thanks [@chybisov](https://github.com/chybisov)! - Migrate the Sui integration off the deprecated JSON-RPC client (`SuiJsonRpcClient`) to the gRPC Core API (`SuiGrpcClient` / `client.core.*`) ahead of Sui's JSON-RPC sunset. Balance fetching (`listBalances`, now paginated), latest-checkpoint lookup (`ledgerService.getServiceInfo`), transaction confirmation (`core.waitForTransaction`), and SuiNS resolution (`nameService.lookupName`) now use gRPC. No public API changes.
+
 ## 4.0.1
 
 ### Patch Changes
