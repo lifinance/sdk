@@ -8,8 +8,10 @@ export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
 }
 
-export type RoutesRequest = RoutesRequestBase & {
-  private?: boolean
+export type RoutesRequest = Omit<RoutesRequestBase, 'options'> & {
+  options?: RoutesRequestBase['options'] & {
+    private?: boolean
+  }
 }
 
 export type QuoteRequestFromAmount = QuoteRequestBase
