@@ -1,6 +1,7 @@
-import type { RequestOptions, RoutesRequest, RoutesResponse } from '@lifi/types'
+import type { RequestOptions, RoutesResponse } from '@lifi/types'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
+import type { RoutesRequest } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { isRoutesRequest } from '../utils/isRoutesRequest.js'
 import { request } from '../utils/request.js'

@@ -1,10 +1,15 @@
 import type {
   GetStatusRequest,
   QuoteRequest as QuoteRequestBase,
+  RoutesRequest as RoutesRequestBase,
 } from '@lifi/types'
 
 export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
+}
+
+export type RoutesRequest = RoutesRequestBase & {
+  private?: boolean
 }
 
 export type QuoteRequestFromAmount = QuoteRequestBase
