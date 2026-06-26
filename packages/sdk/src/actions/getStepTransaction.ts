@@ -1,5 +1,6 @@
-import type { LiFiStep, RequestOptions, SignedLiFiStep } from '@lifi/types'
+import type { LiFiStep, RequestOptions } from '@lifi/types'
 import { ChainId } from '@lifi/types'
+import type { LiFiStepRequest } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { isStep } from '../utils/isStep.js'
 import { request } from '../utils/request.js'
@@ -14,7 +15,7 @@ import { request } from '../utils/request.js'
  */
 export const getStepTransaction = async (
   client: SDKClient,
-  step: LiFiStep | SignedLiFiStep,
+  step: LiFiStepRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {

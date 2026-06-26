@@ -17,7 +17,6 @@ import type {
   RelayStatusResponseData,
   RequestOptions,
   RoutesResponse,
-  SignedLiFiStep,
   StatusResponse,
   Token,
   TokenAmount,
@@ -33,6 +32,7 @@ import type {
 } from '@lifi/types'
 import type {
   GetStatusRequestExtended,
+  LiFiStepRequest,
   QuoteRequestFromAmount,
   RoutesRequest,
 } from '../types/actions.js'
@@ -152,7 +152,9 @@ export type Actions = {
   ) => Promise<LiFiStep>
 
   /**
-   * Get a set of routes for a request that describes a transfer of tokens
+   * Get a set of routes for a request that describes a transfer of tokens.
+   * Optional limit-order fields (`toAmount`, `validUntil`, `partiallyFillable`)
+   * may be supplied and are resolved on the backend.
    * @param params - A description of the transfer
    * @param options - Request options
    * @returns The resulting routes that can be used to realize the described transfer
@@ -174,13 +176,14 @@ export type Actions = {
   ) => Promise<StatusResponse>
 
   /**
-   * Get a step transaction
+   * Get a step transaction. The step's `action` may carry the optional
+   * limit-order fields, which are resolved on the backend.
    * @param params - The configuration of the requested step transaction
    * @param options - Request options
    * @returns Step transaction
    */
   getStepTransaction: (
-    params: LiFiStep | SignedLiFiStep,
+    params: LiFiStepRequest,
     options?: RequestOptions
   ) => Promise<LiFiStep>
 
