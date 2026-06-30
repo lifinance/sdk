@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.2
+
+### Patch Changes
+
+- [#419](https://github.com/lifinance/sdk/pull/419) [`a3be034`](https://github.com/lifinance/sdk/commit/a3be034330f9815d462d526accece8f630c83345) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @mysten/sui to 2.20.1 and tronweb to 6.4.0.
+
 ## 4.1.1
 
 ### Patch Changes
