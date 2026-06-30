@@ -16,7 +16,6 @@ import type {
   RelayStatusRequest,
   RelayStatusResponseData,
   RequestOptions,
-  RoutesRequest,
   RoutesResponse,
   SignedLiFiStep,
   StatusResponse,
@@ -35,6 +34,7 @@ import type {
 import type {
   GetStatusRequestExtended,
   QuoteRequestFromAmount,
+  RoutesRequest,
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { getChains } from './getChains.js'
