@@ -44,7 +44,7 @@
   "dependencies": {
     "@lifi/sdk": "workspace:*",
     "@tronweb3/tronwallet-abstract-adapter": "^1.2.0",
-    "tronweb": "^6.3.0"
+    "tronweb": "^6.4.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.9",
