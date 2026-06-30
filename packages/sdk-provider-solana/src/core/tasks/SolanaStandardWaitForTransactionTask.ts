@@ -54,7 +54,6 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
           connection
             .simulateTransaction(encodedTransaction, {
               commitment: 'confirmed',
-              replaceRecentBlockhash: true,
               encoding: 'base64',
             })
             .send()
