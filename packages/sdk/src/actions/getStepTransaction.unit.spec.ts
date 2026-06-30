@@ -1,7 +1,8 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { Action, Estimate, LiFiStep, StepTool, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import type { LiFiStepRequest } from '../types/actions.js'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getStepTransaction } from './getStepTransaction.js'
@@ -135,6 +136,29 @@ describe('getStepTransaction', () => {
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
+    })
+  })
+
+  describe('with optional limit-order fields', () => {
+    const getOrderStep = (): LiFiStepRequest => ({
+      ...getStep({}),
+      action: {
+        ...getAction({}),
+        toAmount: '5000000000000',
+        validUntil: 1750000000,
+        partiallyFillable: true,
+      },
+    })
+
+    it('calls the server once', async () => {
+      await getStepTransaction(client, getOrderStep())
+      expect(mockedFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('resolves to the step shape', () => {
+      expectTypeOf(getStepTransaction(client, getOrderStep())).toEqualTypeOf<
+        Promise<LiFiStep>
+      >()
     })
   })
 })

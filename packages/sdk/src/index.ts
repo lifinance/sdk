@@ -69,6 +69,7 @@ export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
 export type {
   GetStatusRequestExtended,
+  LiFiStepRequest,
   QuoteRequest,
   QuoteRequestFromAmount,
   QuoteRequestToAmount,
