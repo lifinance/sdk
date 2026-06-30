@@ -8,6 +8,7 @@ import type {
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { request } from '../utils/request.js'
+import { toQueryString } from '../utils/toQueryString.js'
 
 /**
  * Get a quote for a token transfer
@@ -95,8 +96,8 @@ export async function getQuote(
 
   return await request<LiFiStep>(
     client.config,
-    `${client.config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${new URLSearchParams(
-      params as unknown as Record<string, string>
+    `${client.config.apiUrl}/${isFromAmountRequest ? 'quote' : 'quote/toAmount'}?${toQueryString(
+      params as Record<string, unknown>
     )}`,
     {
       signal: options?.signal,
