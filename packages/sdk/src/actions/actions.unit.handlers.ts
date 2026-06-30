@@ -19,6 +19,9 @@ export const handlers = [
   ),
   http.get(`${client.config.apiUrl}/token`, async () => HttpResponse.json({})),
   http.get(`${client.config.apiUrl}/quote`, async () => HttpResponse.json({})),
+  http.get(`${client.config.apiUrl}/quote/toAmount`, async () =>
+    HttpResponse.json({})
+  ),
   http.get(`${client.config.apiUrl}/status`, async () => HttpResponse.json({})),
   http.get(`${client.config.apiUrl}/chains`, async () =>
     HttpResponse.json({ chains: [{ id: 1 }] })

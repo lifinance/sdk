@@ -67,7 +67,13 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
-export type { LiFiStepRequest } from './types/actions.js'
+export type {
+  GetStatusRequestExtended,
+  LiFiStepRequest,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types/actions.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,
