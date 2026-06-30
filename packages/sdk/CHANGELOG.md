@@ -1,5 +1,19 @@
 # @lifi/sdk
 
+## 4.1.0
+
+### Minor Changes
+
+- [#411](https://github.com/lifinance/sdk/pull/411) [`82b6c17`](https://github.com/lifinance/sdk/commit/82b6c17ceadfe3968e27e2c7bb3b8a1a0ded1840) Thanks [@effie-ms](https://github.com/effie-ms)! - Add an optional `private` flag to `getRoutes` route options, allowing callers to request private routes.
+
+- [#410](https://github.com/lifinance/sdk/pull/410) [`6e1b100`](https://github.com/lifinance/sdk/commit/6e1b1009700561571d0dca864f539129951c162b) Thanks [@effie-ms](https://github.com/effie-ms)! - Add optional limit-order fields (`toAmount`, `validUntil`, `partiallyFillable`) to `getRoutes` and to a step's `action` in `getStepTransaction`. The fields are passed through and resolved on the backend; classic calls are unchanged. Steps without an `estimate` no longer fail validation. New exported type: `LiFiStepRequest`.
+
+### Patch Changes
+
+- [#414](https://github.com/lifinance/sdk/pull/414) [`e8c8b69`](https://github.com/lifinance/sdk/commit/e8c8b6999ba8ffc127d47ba4a648d0a2792a4870) Thanks [@chybisov](https://github.com/chybisov)! - Export `getStatus`/`getQuote` param types from the entrypoint: `GetStatusRequestExtended`, `QuoteRequest`, `QuoteRequestFromAmount`, `QuoteRequestToAmount`.
+
+- [#415](https://github.com/lifinance/sdk/pull/415) [`2ced1e4`](https://github.com/lifinance/sdk/commit/2ced1e4881923ac14e110b3009150a5bd4f9d318) Thanks [@chybisov](https://github.com/chybisov)! - Fix `getQuote` dropping `distributionFees` (and other nested array/object params). `getQuote` built its GET query string with `URLSearchParams`, which stringifies an array of objects to `[object Object]`, so multi-recipient fee splits never reached the backend (which parses query params with `qs.parse(..., { comma: true })`). A new `toQueryString` util encodes nested params in qs indices notation (`distributionFees[0][receiver]=...`), so `distributionFees` now serializes correctly on `/quote` and `/quote/toAmount`. Scalar and scalar-array params are unchanged.
+
 ## 4.0.1
 
 ### Patch Changes
