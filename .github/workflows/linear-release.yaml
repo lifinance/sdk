@@ -47,14 +47,14 @@ jobs:
           echo "release_tag=${PACKAGE}@${FULL}" >> "$GITHUB_OUTPUT"
           echo "Resolved $PACKAGE $FULL -> version=$VERSION channel=$CHANNEL"
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
 
       - name: Sync issues to release
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        uses: linear/linear-release-action@c0cb8354a362c24c6d3e0948f37fd66d07588e3f # v0.14.5
         with:
           access_key: ${{ secrets.access_key }}
           command: sync
@@ -66,7 +66,7 @@ jobs:
       # prerelease: advance the stage; the release stays open
       - name: Advance stage (alpha/beta)
         if: steps.meta.outputs.channel != 'stable'
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        uses: linear/linear-release-action@c0cb8354a362c24c6d3e0948f37fd66d07588e3f # v0.14.5
         with:
           access_key: ${{ secrets.access_key }}
           command: update
@@ -76,7 +76,7 @@ jobs:
       # stable: complete the release (fires the "→ Done" automation)
       - name: Complete release (stable)
         if: steps.meta.outputs.channel == 'stable'
-        uses: linear/linear-release-action@ad7da502eec3a93dd17e2e249e6c1cd84e3ee588 # v0.14.0
+        uses: linear/linear-release-action@c0cb8354a362c24c6d3e0948f37fd66d07588e3f # v0.14.5
         with:
           access_key: ${{ secrets.access_key }}
           command: complete
