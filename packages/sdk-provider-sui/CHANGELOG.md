@@ -1,5 +1,14 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.1
+
+### Patch Changes
+
+- [#407](https://github.com/lifinance/sdk/pull/407) [`2254196`](https://github.com/lifinance/sdk/commit/2254196129bccec1ba8d3afe8e7a4cb714230831) Thanks [@chybisov](https://github.com/chybisov)! - Use the `getJsonRpcFullnodeUrl` helper for the default Sui fullnode URL in SuiNS resolution instead of a hardcoded string. No behavior change — the helper returns the same mainnet endpoint.
+
+- Updated dependencies [[`e8c8b69`](https://github.com/lifinance/sdk/commit/e8c8b6999ba8ffc127d47ba4a648d0a2792a4870), [`82b6c17`](https://github.com/lifinance/sdk/commit/82b6c17ceadfe3968e27e2c7bb3b8a1a0ded1840), [`2ced1e4`](https://github.com/lifinance/sdk/commit/2ced1e4881923ac14e110b3009150a5bd4f9d318), [`6e1b100`](https://github.com/lifinance/sdk/commit/6e1b1009700561571d0dca864f539129951c162b)]:
+  - @lifi/sdk@4.1.0
+
 ## 4.1.0
 
 ### Minor Changes
