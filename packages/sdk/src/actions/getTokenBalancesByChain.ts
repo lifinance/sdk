@@ -36,6 +36,12 @@ export async function getTokenBalancesByChain(
   if (invalidTokens.length) {
     throw new ValidationError('Invalid tokens passed.')
   }
+  const chainIds = Object.keys(tokensByChain).map((chainIdStr) => {
+    if (!/^\d+$/u.test(chainIdStr)) {
+      throw new ValidationError('Invalid chainId passed.')
+    }
+    return Number.parseInt(chainIdStr, 10)
+  })
 
   const provider = client.providers.find((provider) =>
     provider.isAddress(walletAddress)
@@ -48,8 +54,7 @@ export async function getTokenBalancesByChain(
     [chainId: number]: TokenAmount[] | TokenAmountExtended[]
   } = {}
   const tokenAmountsSettled = await Promise.allSettled(
-    Object.keys(tokensByChain).map(async (chainIdStr) => {
-      const chainId = Number.parseInt(chainIdStr, 10)
+    chainIds.map(async (chainId) => {
       const chain = await client.getChainById(chainId)
       if (provider.type === chain.chainType) {
         const tokenAmounts = await provider.getBalance(
