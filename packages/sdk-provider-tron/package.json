@@ -47,12 +47,12 @@
     "tronweb": "^6.4.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.10",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "tsdown": "^0.22.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "publishConfig": {
     "access": "public"
