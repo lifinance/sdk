@@ -52,7 +52,7 @@
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "msw": "^2.15.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "publishConfig": {
