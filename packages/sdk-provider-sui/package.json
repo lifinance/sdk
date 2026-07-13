@@ -47,12 +47,12 @@
     "@mysten/sui": "^2.20.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.82.2",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@lifi/data-types": "^6.82.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "publishConfig": {
     "access": "public"

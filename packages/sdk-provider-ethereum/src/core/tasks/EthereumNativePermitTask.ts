@@ -10,6 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { isValidSignature } from '../../utils/isValidSignature.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
 export class EthereumNativePermitTask extends BaseStepExecutionTask {
@@ -110,6 +111,14 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
         primaryType: nativePermitData.primaryType,
         message: nativePermitData.message,
       })
+
+      // Some wallets resolve signTypedData with a nullish or empty value
+      // instead of rejecting — skip the permit and fall back to the
+      // Permit2/standard approval flow
+      if (!isValidSignature(signature)) {
+        statusManager.updateAction(step, action.type, 'DONE')
+        return { status: 'COMPLETED' }
+      }
 
       // Add the new permit to the signed permits array
       const signedPermit: SignedTypedData = {
