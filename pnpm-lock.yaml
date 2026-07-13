@@ -85,8 +85,8 @@ importers:
   packages/sdk-provider-bitcoin:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.8.1
-        version: 0.8.1(bs58@6.0.0)(typescript@7.0.2)
+        specifier: ^0.9.0
+        version: 0.9.0(bs58@6.0.0)(typescript@7.0.2)
       '@bitcoinerlab/secp256k1':
         specifier: ^1.2.0
         version: 1.2.0
@@ -298,8 +298,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.8.1':
-    resolution: {integrity: sha512-PX0x2iid3p4cWugP4qI4SPqsGuiogQGcwOLDnsMRkifr4z9rKFZl7CE4I9ynUSVDsqkw0PL/0iPIpN4EqhRqNQ==}
+  '@bigmi/core@0.9.0':
+    resolution: {integrity: sha512-jMYZ9fx4+gSVl+VongD7ZCZsPahKjAFEodsRPz3QI15DC3o1ISfcji1Srwc1uQtPKmjq3da2ERugIQamW0CVmg==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -1525,9 +1525,6 @@ packages:
 
   '@types/node@22.7.5':
     resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
-
-  '@types/node@26.1.0':
-    resolution: {integrity: sha512-O0A1G3xPGy4w7AgQdAQYUlQ+BKk2Oovw8eRpofyp5KdBZULnbe+WqaOVNrm705SHphCiG4XHsACrSmPu1f+Kgw==}
 
   '@types/node@26.1.1':
     resolution: {integrity: sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw==}
@@ -3695,7 +3692,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.8.1(bs58@6.0.0)(typescript@7.0.2)':
+  '@bigmi/core@0.9.0(bs58@6.0.0)(typescript@7.0.2)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -5032,17 +5029,13 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
-  '@types/node@26.1.0':
-    dependencies:
-      undici-types: 8.3.0
-
   '@types/node@26.1.1':
     dependencies:
       undici-types: 8.3.0
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 26.1.0
+      '@types/node': 26.1.1
 
   '@types/statuses@2.0.6': {}
 
