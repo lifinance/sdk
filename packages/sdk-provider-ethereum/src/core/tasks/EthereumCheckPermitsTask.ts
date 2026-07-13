@@ -7,6 +7,7 @@ import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { assertValidSignature } from '../../utils/isValidSignature.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -71,6 +72,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         primaryType: typedData.primaryType,
         message: typedData.message,
       })
+      assertValidSignature(signature)
       const signedPermit: SignedTypedData = {
         ...typedData,
         signature,
