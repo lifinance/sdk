@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.0.6
+
+### Patch Changes
+
+- [#429](https://github.com/lifinance/sdk/pull/429) [`1de76f9`](https://github.com/lifinance/sdk/commit/1de76f93fcbdddc9df269581822036e4eecd3e78) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.55.1 (ethereum), @bigmi/core to 0.9.0 (bitcoin), and @mysten/sui to 2.20.3 (sui).
+
 ## 4.0.5
 
 ### Patch Changes
