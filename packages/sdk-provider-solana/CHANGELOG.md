@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-solana
 
+## 4.0.3
+
+### Patch Changes
+
+- [#422](https://github.com/lifinance/sdk/pull/422) [`e7f2f97`](https://github.com/lifinance/sdk/commit/e7f2f975031cd43f3e39c03dd6bb16b661d4bf0b) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.54.6 and @solana/kit to 7.0.0.
+
 ## 4.0.2
 
 ### Patch Changes

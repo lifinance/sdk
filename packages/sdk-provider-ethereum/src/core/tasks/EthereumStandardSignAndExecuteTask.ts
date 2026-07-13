@@ -14,6 +14,7 @@ import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { isValidSignature } from '../../utils/isValidSignature.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { isPermit2Supported } from './helpers/isPermit2Supported.js'
@@ -68,7 +69,8 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
-        getDomainChainId(p.domain) === fromChain.id
+        getDomainChainId(p.domain) === fromChain.id &&
+        isValidSignature(p.signature)
     )
     if (signedNativePermitTypedData) {
       transactionRequest.data = encodeNativePermitData(
