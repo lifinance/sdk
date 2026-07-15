@@ -1,5 +1,23 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.0.6
+
+### Patch Changes
+
+- [#429](https://github.com/lifinance/sdk/pull/429) [`1de76f9`](https://github.com/lifinance/sdk/commit/1de76f93fcbdddc9df269581822036e4eecd3e78) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.55.1 (ethereum), @bigmi/core to 0.9.0 (bitcoin), and @mysten/sui to 2.20.3 (sui).
+
+## 4.0.5
+
+### Patch Changes
+
+- [#425](https://github.com/lifinance/sdk/pull/425) [`7ebebde`](https://github.com/lifinance/sdk/commit/7ebebde35415024f9966123556b882fdb2d7b1bc) Thanks [@chybisov](https://github.com/chybisov)! - Handle wallets that resolve `signTypedData` with a nullish or empty signature instead of rejecting ([#424](https://github.com/lifinance/sdk/issues/424)). The EIP-2612 native permit flow now falls back to the Permit2/standard approval path instead of crashing later with `TypeError: Cannot read properties of null (reading 'slice')`, and the other signing flows (API permits, relayed intents, Permit2 messages) throw a descriptive `SignatureRejected` error. Permit lookups also ignore stored entries without a usable signature.
+
+## 4.0.4
+
+### Patch Changes
+
+- [#422](https://github.com/lifinance/sdk/pull/422) [`e7f2f97`](https://github.com/lifinance/sdk/commit/e7f2f975031cd43f3e39c03dd6bb16b661d4bf0b) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.54.6 and @solana/kit to 7.0.0.
+
 ## 4.0.3
 
 ### Patch Changes
