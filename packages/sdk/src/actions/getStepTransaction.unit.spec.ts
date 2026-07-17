@@ -1,7 +1,8 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { Action, Estimate, LiFiStep, StepTool, Token } from '@lifi/types'
-import { ChainId, CoinKey } from '@lifi/types'
+import { ChainId, CoinKey, SVMPriorityFeeLevel } from '@lifi/types'
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { createClient } from '../client/createClient.js'
 import type { LiFiStepRequest } from '../types/actions.js'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
@@ -136,6 +137,47 @@ describe('getStepTransaction', () => {
           expect(mockedFetch).toHaveBeenCalledTimes(1)
         })
       })
+    })
+  })
+
+  describe('with a Solana step', () => {
+    const getSolanaStep = (): LiFiStep =>
+      getStep({ action: getAction({ fromChainId: ChainId.SOL }) })
+
+    const requestedUrl = (): string => mockedFetch.mock.calls[0][1]
+
+    it.each([
+      SVMPriorityFeeLevel.NORMAL,
+      SVMPriorityFeeLevel.FAST,
+      SVMPriorityFeeLevel.ULTRA,
+    ])('forwards svmPriorityFeeLevel=%s from routeOptions as a query param', async (svmPriorityFeeLevel) => {
+      const solanaClient = createClient({
+        integrator: 'lifi-sdk',
+        routeOptions: { svmPriorityFeeLevel },
+      })
+
+      await getStepTransaction(solanaClient, getSolanaStep())
+
+      expect(requestedUrl()).toContain(
+        `/advanced/stepTransaction?svmPriorityFeeLevel=${svmPriorityFeeLevel}`
+      )
+    })
+
+    it('omits svmPriorityFeeLevel when not configured', async () => {
+      await getStepTransaction(client, getSolanaStep())
+
+      expect(requestedUrl()).not.toContain('svmPriorityFeeLevel')
+    })
+
+    it('omits svmPriorityFeeLevel for non-Solana steps', async () => {
+      const solanaClient = createClient({
+        integrator: 'lifi-sdk',
+        routeOptions: { svmPriorityFeeLevel: SVMPriorityFeeLevel.FAST },
+      })
+
+      await getStepTransaction(solanaClient, getStep({}))
+
+      expect(requestedUrl()).not.toContain('svmPriorityFeeLevel')
     })
   })
 
