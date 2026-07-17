@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-tron
 
+## 4.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`0990a5d`](https://github.com/lifinance/sdk/commit/0990a5d2dcb148c113e41aeeab38eb1bcc5c684e)]:
+  - @lifi/sdk@4.2.0
+
 ## 4.0.3
 
 ### Patch Changes

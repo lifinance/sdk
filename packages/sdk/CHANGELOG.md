@@ -1,5 +1,11 @@
 # @lifi/sdk
 
+## 4.2.0
+
+### Minor Changes
+
+- [#433](https://github.com/lifinance/sdk/pull/433) [`0990a5d`](https://github.com/lifinance/sdk/commit/0990a5d2dcb148c113e41aeeab38eb1bcc5c684e) Thanks [@chmanie](https://github.com/chmanie)! - Forward `routeOptions.svmPriorityFeeLevel` (`NORMAL` | `FAST` | `ULTRA`) to `/advanced/stepTransaction` for Solana steps, letting integrators pick the priority-fee tier used when building Solana transactions.
+
 ## 4.1.0
 
 ### Minor Changes
