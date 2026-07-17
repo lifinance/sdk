@@ -28,6 +28,7 @@ export const getStepTransaction = async (
   let requestUrl = `${config.apiUrl}/advanced/stepTransaction`
   const jitoBundle = config.routeOptions?.jitoBundle
   const svmSponsor = config.routeOptions?.svmSponsor
+  const svmPriorityFeeLevel = config.routeOptions?.svmPriorityFeeLevel
 
   if (step.action.fromChainId === ChainId.SOL) {
     const queryParams = new URLSearchParams()
@@ -36,6 +37,9 @@ export const getStepTransaction = async (
     }
     if (svmSponsor) {
       queryParams.set('svmSponsor', svmSponsor)
+    }
+    if (svmPriorityFeeLevel) {
+      queryParams.set('svmPriorityFeeLevel', svmPriorityFeeLevel)
     }
     if (queryParams.size > 0) {
       requestUrl = `${requestUrl}?${queryParams}`
