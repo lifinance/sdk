@@ -14,6 +14,11 @@ export interface SolanaProviderOptions {
 
 export interface SolanaTaskContext {
   signedTransactions?: Transaction[]
+  /**
+   * Whether the backend returned a Jito bundle (array `transactionRequest.data`)
+   * that must be submitted via `sendBundle` instead of `sendTransaction`.
+   */
+  isBundleExecution?: boolean
 }
 
 export interface SolanaStepExecutorContext

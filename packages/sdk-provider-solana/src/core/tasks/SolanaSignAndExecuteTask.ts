@@ -34,13 +34,17 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
-    const transactionRequestData = await getTransactionRequestData(
+    const transactionRequestData = (await getTransactionRequestData(
       step,
       executionOptions
-    )
+    )) as string | string[]
 
-    // Handle both single transaction (string) and multiple transactions (array)
-    const transactionDataArray = Array.isArray(transactionRequestData)
+    // The backend returns an array when it produced a Jito bundle and a string
+    // for a single transaction. The shape determines how we submit it later:
+    // array -> sendBundle, string -> sendTransaction.
+    const isBundleExecution = Array.isArray(transactionRequestData)
+
+    const transactionDataArray = isBundleExecution
       ? transactionRequestData
       : [transactionRequestData]
 
@@ -93,7 +97,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
 
     return {
       status: 'COMPLETED',
-      context: { signedTransactions },
+      context: { signedTransactions, isBundleExecution },
     }
   }
 }
