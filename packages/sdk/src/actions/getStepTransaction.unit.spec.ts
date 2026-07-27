@@ -150,18 +150,21 @@ describe('getStepTransaction', () => {
       SVMPriorityFeeLevel.NORMAL,
       SVMPriorityFeeLevel.FAST,
       SVMPriorityFeeLevel.ULTRA,
-    ])('forwards svmPriorityFeeLevel=%s from routeOptions as a query param', async (svmPriorityFeeLevel) => {
-      const solanaClient = createClient({
-        integrator: 'lifi-sdk',
-        routeOptions: { svmPriorityFeeLevel },
-      })
+    ])(
+      'forwards svmPriorityFeeLevel=%s from routeOptions as a query param',
+      async (svmPriorityFeeLevel) => {
+        const solanaClient = createClient({
+          integrator: 'lifi-sdk',
+          routeOptions: { svmPriorityFeeLevel },
+        })
 
-      await getStepTransaction(solanaClient, getSolanaStep())
+        await getStepTransaction(solanaClient, getSolanaStep())
 
-      expect(requestedUrl()).toContain(
-        `/advanced/stepTransaction?svmPriorityFeeLevel=${svmPriorityFeeLevel}`
-      )
-    })
+        expect(requestedUrl()).toContain(
+          `/advanced/stepTransaction?svmPriorityFeeLevel=${svmPriorityFeeLevel}`
+        )
+      }
+    )
 
     it('omits svmPriorityFeeLevel when not configured', async () => {
       await getStepTransaction(client, getSolanaStep())
