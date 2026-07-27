@@ -44,10 +44,10 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@mysten/sui": "^2.20.3"
+    "@mysten/sui": "^2.22.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.82.4",
+    "@lifi/data-types": "^6.83.0",
     "@vitest/coverage-v8": "^4.1.10",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
