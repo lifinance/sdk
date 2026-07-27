@@ -1,5 +1,14 @@
 # @lifi/sdk-provider-solana
 
+## 4.0.5
+
+### Patch Changes
+
+- [#409](https://github.com/lifinance/sdk/pull/409) [`f6f8865`](https://github.com/lifinance/sdk/commit/f6f88653ead19f0f2279d7ad9af6851892211912) Thanks [@chybisov](https://github.com/chybisov)! - Fix Solana Jito bundle execution (EMB-462). The executor now routes by the shape of the backend's `transactionRequest.data` — an array is submitted via `sendBundle`, a string via `sendTransaction` — instead of inferring it from the signed-transaction count. The Jito-capable RPC probe now uses `getBundleStatuses` instead of `getTipAccounts`, so providers such as Helius (which support `sendBundle`/`getBundleStatuses` but not `getTipAccounts`) are correctly detected and bundles submit successfully.
+
+- Updated dependencies [[`d8b7adb`](https://github.com/lifinance/sdk/commit/d8b7adb6f797734f25d8c7d458121752a2567998), [`08b54da`](https://github.com/lifinance/sdk/commit/08b54dadebef063bc20af06630f0e43ec5850dca)]:
+  - @lifi/sdk@4.3.0
+
 ## 4.0.4
 
 ### Patch Changes
