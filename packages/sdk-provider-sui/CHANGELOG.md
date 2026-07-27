@@ -1,5 +1,14 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.5
+
+### Patch Changes
+
+- [#435](https://github.com/lifinance/sdk/pull/435) [`d8b7adb`](https://github.com/lifinance/sdk/commit/d8b7adb6f797734f25d8c7d458121752a2567998) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 17.86.0 (sdk), viem to 2.55.8 (ethereum), and @mysten/sui to 2.22.1 (sui).
+
+- Updated dependencies [[`d8b7adb`](https://github.com/lifinance/sdk/commit/d8b7adb6f797734f25d8c7d458121752a2567998), [`08b54da`](https://github.com/lifinance/sdk/commit/08b54dadebef063bc20af06630f0e43ec5850dca)]:
+  - @lifi/sdk@4.3.0
+
 ## 4.1.4
 
 ### Patch Changes
