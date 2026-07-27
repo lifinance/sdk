@@ -7,12 +7,28 @@ const solanaRpcs = new LruMap<SolanaRpcType>(12)
 const jitoRpcs = new LruMap<JitoRpcType>(12)
 
 /**
- * Checks if an RPC URL supports Jito methods by calling getTipAccounts.
+ * A well-formed but non-existent Jito bundle id used solely to probe RPC
+ * capability. It forces `getBundleStatuses` to actually execute, so we can tell
+ * a Jito-capable RPC (resolves with `{ value: [null] }` — bundle not found)
+ * apart from a standard Solana RPC (throws "Method not found").
+ *
+ * Uses all `1`s: 64 chars, valid as both hex and base-58 (base-58 excludes
+ * `0`/`O`/`I`/`l`), so a provider that validates the id in either encoding
+ * still accepts it and performs the lookup instead of rejecting the probe.
+ */
+const PROBE_BUNDLE_ID =
+  '1111111111111111111111111111111111111111111111111111111111111111'
+
+/**
+ * Checks if an RPC URL supports Jito methods by calling getBundleStatuses.
+ * We probe with getBundleStatuses (rather than getTipAccounts) because it is the
+ * method actually used during bundle confirmation, and providers such as Helius
+ * support sendBundle/getBundleStatuses without exposing getTipAccounts.
  */
 export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
   try {
     const rpc = createJitoRpc(rpcUrl)
-    await rpc.getTipAccounts().send()
+    await rpc.getBundleStatuses([PROBE_BUNDLE_ID]).send()
     return true
   } catch {
     return false
