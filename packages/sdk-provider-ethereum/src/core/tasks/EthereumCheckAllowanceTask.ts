@@ -3,7 +3,7 @@ import type { Address } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
-import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
 
 export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -13,15 +13,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const {
-      step,
-      checkClient,
-      fromChain,
-      client,
-      statusManager,
-      isFromNativeToken,
-      disableMessageSigning,
-    } = context
+    const { step, checkClient, fromChain, client, statusManager } = context
 
     // Start new allowance check
     const action = statusManager.initializeAction({
@@ -32,11 +24,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     })
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
-    const permit2Supported = isPermit2Supported(
-      step,
-      fromChain,
-      isFromNativeToken,
-      disableMessageSigning,
+    const permit2Supported = await resolvePermit2Support(
+      context,
       executionStrategy
     )
     const spenderAddress = permit2Supported

@@ -1,6 +1,7 @@
 import { ChainType, type ExtendedChain, type SDKClient } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getPublicClient } from '../client/publicClient.js'
+import { canAccountUsePermit2 } from '../permits/canAccountUsePermit2.js'
 import { getNativePermit } from '../permits/getNativePermit.js'
 import type { EthereumSDKProvider } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
@@ -65,8 +66,16 @@ export const checkPermitSupport = async (
   )
 
   let permit2Allowance: bigint | undefined
-  // Check Permit2 allowance if available on chain
-  if (chain.permit2) {
+  // Check Permit2 allowance if available on chain and the owner can actually
+  // sign for it — code-bearing accounts are rejected by Permit2's EIP-1271
+  // path, so an existing allowance is not usable. See `canAccountUsePermit2`.
+  if (
+    chain.permit2 &&
+    (await canAccountUsePermit2(client, {
+      chainId: chain.id,
+      address: ownerAddress,
+    }))
+  ) {
     permit2Allowance = await getAllowance(
       client,
       viemClient,

@@ -17,7 +17,7 @@ import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import { isValidSignature } from '../../utils/isValidSignature.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { getTxLink } from './helpers/getTxLink.js'
-import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -26,13 +26,11 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       client,
       fromChain,
       statusManager,
-      isFromNativeToken,
       checkClient,
       transactionRequest,
       signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
-      disableMessageSigning,
     } = context
 
     if (!transactionRequest) {
@@ -59,13 +57,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const permit2Supported = isPermit2Supported(
-      step,
-      fromChain,
-      isFromNativeToken,
-      disableMessageSigning,
-      'standard'
-    )
+    const permit2Supported = await resolvePermit2Support(context, 'standard')
     const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
