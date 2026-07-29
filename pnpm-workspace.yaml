@@ -34,3 +34,4 @@ minimumReleaseAgeExclude:
   - yuku-parser@0.6.1
 overrides:
   axios: ^1.16.0
+  ws@<=8.21.1: 8.21.1
