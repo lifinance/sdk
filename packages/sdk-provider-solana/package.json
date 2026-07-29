@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk-provider-solana",
-  "version": "4.0.3",
+  "version": "4.0.5",
   "description": "LI.FI Solana SDK Provider for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -49,7 +49,7 @@
     "@wallet-standard/base": "^1.1.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^6.82.4",
+    "@lifi/data-types": "^6.83.0",
     "@vitest/coverage-v8": "^4.1.10",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",

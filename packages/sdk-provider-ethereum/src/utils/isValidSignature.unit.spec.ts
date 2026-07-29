@@ -18,12 +18,12 @@ describe('isValidSignature', () => {
     [SIG_64_BYTES_COMPACT, true],
     // Smart account (ERC-1271) signatures can be arbitrary length
     [SIG_SMART_ACCOUNT, true],
-  ] as [
-    Hex | null | undefined,
-    boolean,
-  ][])('isValidSignature(%s) → %s', (signature, expected) => {
-    expect(isValidSignature(signature)).toBe(expected)
-  })
+  ] as [Hex | null | undefined, boolean][])(
+    'isValidSignature(%s) → %s',
+    (signature, expected) => {
+      expect(isValidSignature(signature)).toBe(expected)
+    }
+  )
 })
 
 describe('assertValidSignature', () => {

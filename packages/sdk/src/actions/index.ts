@@ -28,7 +28,6 @@ import type {
   ToolsResponse,
   TransactionAnalyticsRequest,
   TransactionAnalyticsResponse,
-  WalletTokenExtended,
 } from '@lifi/types'
 import type {
   GetStatusRequestExtended,
@@ -55,7 +54,6 @@ import { getTokenBalancesByChain } from './getTokenBalancesByChain.js'
 import { getTokens } from './getTokens.js'
 import { getTools } from './getTools.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
-import { getWalletBalances } from './getWalletBalances.js'
 import {
   type PatchContractCallsResponse,
   patchContractCalls,
@@ -275,17 +273,6 @@ export type Actions = {
   ) => Promise<TransactionAnalyticsResponse>
 
   /**
-   * Get wallet balances
-   * @param params - The configuration of the requested wallet balances
-   * @param options - Request options
-   * @returns Wallet balances
-   */
-  getWalletBalances: (
-    walletAddress: string,
-    options?: RequestOptions
-  ) => Promise<Record<number, WalletTokenExtended[]>>
-
-  /**
    * Relay a transaction through the relayer service
    * @param params - The configuration for the relay request
    * @param options - Request options
@@ -340,8 +327,6 @@ export function actions(client: SDKClient): Actions {
       getTokenBalancesByChain(client, walletAddress, tokensByChain),
     getTransactionHistory: (params, options) =>
       getTransactionHistory(client, params, options),
-    getWalletBalances: (walletAddress, options) =>
-      getWalletBalances(client, walletAddress, options),
     relayTransaction: (params, options) =>
       relayTransaction(client, params, options),
     patchContractCalls: (params, options) =>
