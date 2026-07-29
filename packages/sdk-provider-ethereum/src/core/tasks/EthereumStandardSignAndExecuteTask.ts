@@ -57,13 +57,19 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const permit2Supported = await resolvePermit2Support(context, 'standard')
     const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
         getDomainChainId(p.domain) === fromChain.id &&
         isValidSignature(p.signature)
     )
+    // Resolved *after* the native-permit lookup, and short-circuited when one
+    // is found: a matching permit always wins, so resolving the gate first
+    // would spend an `eth_getCode` on a verdict this task never reads. The
+    // ternary also makes the two routes explicitly exclusive.
+    const permit2Supported = signedNativePermitTypedData
+      ? false
+      : await resolvePermit2Support(context, 'standard')
     if (signedNativePermitTypedData) {
       transactionRequest.data = encodeNativePermitData(
         step.action.fromToken.address as Address,
