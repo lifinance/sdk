@@ -11,6 +11,7 @@ import {
 import { Networks, StrKey } from '@stellar/stellar-sdk'
 import { getStellarBalance } from './actions/getStellarBalance.js'
 import { resolveStellarAddress } from './actions/resolveStellarAddress.js'
+import { StellarStepExecutor } from './core/StellarStepExecutor.js'
 import type { StellarProviderOptions, StellarSDKProvider } from './types.js'
 
 /**
@@ -43,16 +44,22 @@ export function StellarProvider(
         tokens,
         _options.networkPassphrase ?? Networks.PUBLIC
       ),
-    async getStepExecutor(
-      _stepOptions: StepExecutorOptions
-    ): Promise<StepExecutor> {
-      // Phase 2: transaction execution is gated on backend tx-generation
-      // (EXBE-227). Until StellarStepExecutor lands, fail loudly rather than
-      // silently.
-      throw new ProviderError(
-        LiFiErrorCode.ConfigError,
-        'Stellar transaction execution is not yet implemented.'
-      )
+    async getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor> {
+      if (!_options.getWallet) {
+        throw new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'getWallet is not provided.'
+        )
+      }
+      const wallet = await _options.getWallet()
+      return new StellarStepExecutor({
+        wallet,
+        networkPassphrase:
+          _options.networkPassphrase ?? wallet.networkPassphrase,
+        approvalSpenderOverride: _options.approvalSpender,
+        routeId: options.routeId,
+        executionOptions: { ...options.executionOptions },
+      })
     },
     setOptions(options: StellarProviderOptions) {
       Object.assign(_options, options)

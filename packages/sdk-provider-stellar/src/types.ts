@@ -1,5 +1,6 @@
 import {
   ChainType,
+  type LiFiStepExtended,
   type SDKProvider,
   type StepExecutorContext,
   type StepExecutorOptions,
@@ -65,6 +66,18 @@ export interface StellarProviderOptions {
    * the provider falls back to the Stellar RPC URLs resolved from the SDK client.
    */
   horizonUrl?: string
+  /**
+   * Overrides the SAC approval spender (a Soroban `C`-address, normally the
+   * LI.FI router) instead of taking it from `step.estimate.approvalAddress`.
+   *
+   * Needed because the backend currently fills `approvalAddress` with a
+   * placeholder for Stellar steps — a `G`-address fallback wallet for soroswap
+   * and the EVM diamond for polymer/nearIntents — none of which is a real
+   * spender. {@link resolveApprovalSpender} rejects those, so without this
+   * override the approval flow cannot be exercised until the backend emits the
+   * router address.
+   */
+  approvalSpender?: string
 }
 
 export interface StellarSDKProvider extends SDKProvider {
@@ -77,10 +90,17 @@ export function isStellarProvider(
   return provider.type === ChainType.STL
 }
 
-/** Phase 2 (execution) context — consumed by StellarStepExecutor + its tasks. */
+/** Execution context passed between {@link StellarStepExecutor} tasks. */
 export interface StellarTaskContext {
-  /** Hash of the submitted transaction. */
+  /** Hash of the submitted route transaction. */
   transactionHash?: string
+  /**
+   * Resolved SAC approval spender, or `undefined` when this step needs no
+   * approval. Set by `StellarCheckAllowanceTask`.
+   */
+  approvalSpender?: string
+  /** Whether the sender's SAC allowance already covers `action.fromAmount`. */
+  hasSufficientAllowance?: boolean
 }
 
 export interface StellarStepExecutorContext
@@ -88,12 +108,12 @@ export interface StellarStepExecutorContext
     StellarTaskContext {
   wallet: StellarWallet
   networkPassphrase: string
-  /** Base URLs for the Stellar RPC (JSON-RPC) endpoints used to submit + poll. */
-  rpcUrls: string[]
+  approvalSpenderOverride?: string
+  checkWallet: (step: LiFiStepExtended) => void
 }
 
 export interface StellarStepExecutorOptions extends StepExecutorOptions {
   wallet: StellarWallet
   networkPassphrase: string
-  rpcUrls: string[]
+  approvalSpenderOverride?: string
 }
