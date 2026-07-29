@@ -31,9 +31,10 @@ const isPermit2SupportedForStep = (
  *
  * On top of the step/chain checks this verifies that the *signer* can actually
  * produce a Permit2-verifiable signature — see {@link canAccountUsePermit2}.
- * Accounts with on-chain code (EIP-7702 delegated EOAs, smart-contract
- * wallets) send Permit2 down its EIP-1271 path, where our plain ECDSA
- * signature is rejected; those fall back to approve + execute.
+ * Accounts with on-chain code send Permit2 down its EIP-1271 path, where
+ * whether our plain ECDSA signature is accepted depends on the account
+ * implementation, so it is probed rather than assumed. Accounts that reject it
+ * fall back to approve + execute.
  *
  * Named `resolve…` rather than `is…` because it is not a pure predicate: the
  * signer verdict is memoized onto `context.permit2SignerSupported`.
