@@ -191,7 +191,7 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       '@stellar/stellar-sdk':
-        specifier: ^16.0.1
+        specifier: ^16.1.0
         version: 16.1.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
     devDependencies:
       '@lifi/data-types':
