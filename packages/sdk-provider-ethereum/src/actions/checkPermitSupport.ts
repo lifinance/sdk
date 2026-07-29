@@ -15,10 +15,12 @@ type PermitSupport = {
 }
 
 /**
- * Checks what permit types are supported for a token on a specific chain.
+ * Checks what permit types are *usable* for a token on a specific chain.
  * Checks in order:
  * 1. Native permit (EIP-2612) support
- * 2. Permit2 availability and allowance
+ * 2. Permit2 — deployed on the chain, signable by the owner (an account with
+ *    on-chain code is rejected by Permit2's EIP-1271 path, so any allowance it
+ *    holds is unusable — see `canAccountUsePermit2`), and allowance sufficient
  *
  * @param client - The SDK client
  * @param chain - The chain to check permit support on
