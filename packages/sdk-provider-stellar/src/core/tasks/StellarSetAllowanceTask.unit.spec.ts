@@ -156,17 +156,26 @@ describe('StellarSetAllowanceTask', () => {
   // sequence number and fail with tx_bad_seq.
   it('waits for on-chain confirmation, and only after submitting', async () => {
     const order: string[] = []
+    let confirmed = false
     submitStellarTransaction.mockImplementation(async () => {
       order.push('submit')
       return 'rpc-hash'
     })
+    // Resolve on a later tick so a fire-and-forget confirmation would be
+    // observable: run() must not return until this has actually settled.
     waitForStellarTransaction.mockImplementation(async () => {
       order.push('wait')
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      confirmed = true
     })
     const { context, hash } = makeContext()
 
     const result = await new StellarSetAllowanceTask().run(context)
 
+    // The whole point of this task: the route envelope is fetched by the NEXT
+    // task from a live getAccount read, so the approval must be in a closed
+    // ledger before run() hands control back.
+    expect(confirmed).toBe(true)
     expect(order).toEqual(['submit', 'wait'])
     expect(waitForStellarTransaction).toHaveBeenCalledWith({}, hash, undefined)
     expect(result).toEqual({

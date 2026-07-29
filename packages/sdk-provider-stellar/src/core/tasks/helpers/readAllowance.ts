@@ -42,9 +42,9 @@ export const readAllowance = async (
 
     const simulation = await server.simulateTransaction(transaction)
     // Fail rather than degrade to 0n: an unreadable allowance treated as "needs
-    // approval" would prompt the user for an approval that cannot help. The
-    // error is classified here because the message would otherwise contain the
-    // word "allowance" and be mapped to AllowanceRequired by parseStellarErrors.
+    // approval" would prompt the user for an approval that cannot help.
+    // Classified here rather than left as a bare Error so parseStellarErrors
+    // passes it through untouched instead of pattern-matching the message.
     if (!rpc.Api.isSimulationSuccess(simulation) || !simulation.result) {
       throw new TransactionError(
         LiFiErrorCode.TransactionSimulationFailed,
