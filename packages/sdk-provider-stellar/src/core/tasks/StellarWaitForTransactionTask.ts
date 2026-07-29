@@ -5,17 +5,17 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
-import { getStellarTxLink } from './helpers/getStellarTxLink.js'
-import { waitForStellarTransaction } from './helpers/submitStellarTransaction.js'
+import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
+import { waitForStellarTransaction } from './helpers/waitForStellarTransaction.js'
 
 export class StellarWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: StellarStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       client,
-      fromChain,
       statusManager,
       isBridgeExecution,
+      networkPassphrase,
       pollingIntervalMs,
       transactionHash,
     } = context
@@ -33,7 +33,9 @@ export class StellarWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     // On a resumed route the signing task didn't run, so fall back to the hash
-    // persisted on the action.
+    // and envelope it persisted on the action. This is the entry point
+    // StellarStepExecutor.createPipeline resumes to when a step was signed but
+    // never confirmed.
     const hash = transactionHash ?? action.txHash
 
     if (!hash) {
@@ -43,12 +45,17 @@ export class StellarWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    await waitForStellarTransaction(client, hash, pollingIntervalMs)
+    // Resuming: the hash is persisted before submission, so the envelope may
+    // never have reached the network. Re-submit it before polling — Soroban
+    // submission is idempotent by hash and reports an already-known envelope as
+    // DUPLICATE, which submitStellarTransaction treats as success. Without this,
+    // a crash between persisting and submitting would strand the step polling
+    // for a transaction that was never broadcast.
+    if (!transactionHash && action.txHex) {
+      await submitStellarTransaction(client, action.txHex, networkPassphrase)
+    }
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: hash,
-      txLink: getStellarTxLink(fromChain, hash),
-    })
+    await waitForStellarTransaction(client, hash, pollingIntervalMs)
 
     if (isBridgeExecution) {
       statusManager.updateAction(step, action.type, 'DONE')

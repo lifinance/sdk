@@ -1,11 +1,10 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
 import { buildApproveTransaction } from './helpers/buildApproveTransaction.js'
+import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
 import { getStellarTxLink } from './helpers/getStellarTxLink.js'
-import {
-  submitStellarTransaction,
-  waitForStellarTransaction,
-} from './helpers/submitStellarTransaction.js'
+import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
+import { waitForStellarTransaction } from './helpers/waitForStellarTransaction.js'
 
 export class StellarSetAllowanceTask extends BaseStepExecutionTask {
   override shouldRun(context: StellarStepExecutorContext): Promise<boolean> {
@@ -61,8 +60,9 @@ export class StellarSetAllowanceTask extends BaseStepExecutionTask {
       networkPassphrase,
     })
 
-    const transactionHash = await submitStellarTransaction(
-      client,
+    // Derived locally, like the route transaction, so the hash is recorded even
+    // if the submit response is lost.
+    const transactionHash = deriveTransactionHash(
       signedTxXdr,
       networkPassphrase
     )
@@ -72,6 +72,8 @@ export class StellarSetAllowanceTask extends BaseStepExecutionTask {
       txLink: getStellarTxLink(fromChain, transactionHash),
     })
 
+    await submitStellarTransaction(client, signedTxXdr, networkPassphrase)
+
     // Wait for on-chain confirmation, not just acceptance. The route envelope is
     // built by the backend from a live `getAccount(sender)` read, so it must be
     // requested only after this approval has consumed the sender's sequence
@@ -80,10 +82,7 @@ export class StellarSetAllowanceTask extends BaseStepExecutionTask {
     // `tx_bad_seq`.
     await waitForStellarTransaction(client, transactionHash, pollingIntervalMs)
 
-    statusManager.updateAction(step, action.type, 'DONE', {
-      txHash: transactionHash,
-      txLink: getStellarTxLink(fromChain, transactionHash),
-    })
+    statusManager.updateAction(step, action.type, 'DONE')
 
     return { status: 'COMPLETED', context: { hasSufficientAllowance: true } }
   }

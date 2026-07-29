@@ -72,13 +72,29 @@ describe('StellarStepExecutor', () => {
       expect(names).toEqual([WaitForTransactionStatusTask.name])
     })
 
-    it('does not skip ahead when a hash exists but the action is still pending', () => {
-      const names = taskNames(
-        makeExecutor(),
-        contextWith([{ type: 'SWAP', status: 'PENDING', txHash: '0xabc' }])
-      )
+    // Stellar persists the derived hash BEFORE submitting, so a hash on a
+    // not-yet-DONE action means an envelope was signed and very likely
+    // broadcast. Restarting at CheckBalanceTask would re-prepare, re-sign and
+    // submit a second transaction — executing the swap twice.
+    it('resumes at the confirmation poll when a hash exists but the action is not DONE', () => {
+      for (const status of [
+        'PENDING',
+        'STARTED',
+        'ACTION_REQUIRED',
+        'FAILED',
+      ]) {
+        const names = taskNames(
+          makeExecutor(),
+          contextWith([{ type: 'SWAP', status, txHash: '0xabc' }])
+        )
 
-      expect(names[0]).toBe(CheckBalanceTask.name)
+        expect(names[0], `status=${status}`).toBe(
+          'StellarWaitForTransactionTask'
+        )
+        expect(names, `status=${status}`).not.toContain(
+          'StellarSignAndExecuteTask'
+        )
+      }
     })
   })
 

@@ -5,8 +5,8 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { type Transaction, TransactionBuilder } from '@stellar/stellar-sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
+import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
 import { getStellarTxLink } from './helpers/getStellarTxLink.js'
 import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
 
@@ -51,15 +51,14 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
       }
     )
 
-    // A Stellar transaction hash is derivable from the signed envelope, so it can
-    // be recorded before the network ever sees it. Persisting it here means a
-    // crash between submit and confirmation resumes by polling for this hash
-    // instead of re-signing and double-spending the sequence number.
-    const signedTransaction = TransactionBuilder.fromXDR(
+    // Recorded before the network ever sees the envelope, so a crash between
+    // submit and confirmation resumes by polling for this hash rather than
+    // re-signing and executing the swap twice. StellarStepExecutor.createPipeline
+    // relies on this ordering for its resume entry point.
+    const transactionHash = deriveTransactionHash(
       signedTxXdr,
       networkPassphrase
-    ) as Transaction
-    const transactionHash = signedTransaction.hash().toString('hex')
+    )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       txHash: transactionHash,

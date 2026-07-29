@@ -55,6 +55,7 @@ export class StellarStepExecutor extends BaseStepExecutor {
   ): Promise<StellarStepExecutorContext> => {
     return {
       ...baseContext,
+      pollingIntervalMs: 3_000,
       wallet: this.wallet,
       networkPassphrase: this.networkPassphrase,
       approvalSpenderOverride: this.approvalSpenderOverride,
@@ -89,10 +90,17 @@ export class StellarStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName =
-      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+    // Three-way entry, as Bitcoin does. Stellar derives and persists the
+    // transaction hash BEFORE submitting, so a hash on the action means an
+    // envelope was signed and very likely broadcast. Resuming such a step at
+    // CheckBalanceTask would re-prepare, re-sign and submit a SECOND
+    // transaction — executing the swap twice. Resume at the confirmation poll
+    // instead and let the already-broadcast transaction settle.
+    const taskName = swapOrBridgeAction?.txHash
+      ? swapOrBridgeAction.status === 'DONE'
         ? WaitForTransactionStatusTask.name
-        : CheckBalanceTask.name
+        : StellarWaitForTransactionTask.name
+      : CheckBalanceTask.name
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task.constructor.name === taskName
