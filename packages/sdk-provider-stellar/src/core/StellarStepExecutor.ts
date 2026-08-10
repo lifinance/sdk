@@ -25,13 +25,11 @@ import { StellarWaitForTransactionTask } from './tasks/StellarWaitForTransaction
 export class StellarStepExecutor extends BaseStepExecutor {
   private wallet: StellarWallet
   private networkPassphrase: string
-  private approvalSpenderOverride?: string
 
   constructor(options: StellarStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
     this.networkPassphrase = options.networkPassphrase
-    this.approvalSpenderOverride = options.approvalSpenderOverride
   }
 
   checkWallet = (step: LiFiStepExtended): void => {
@@ -58,7 +56,6 @@ export class StellarStepExecutor extends BaseStepExecutor {
       pollingIntervalMs: 3_000,
       wallet: this.wallet,
       networkPassphrase: this.networkPassphrase,
-      approvalSpenderOverride: this.approvalSpenderOverride,
       checkWallet: this.checkWallet,
     }
   }

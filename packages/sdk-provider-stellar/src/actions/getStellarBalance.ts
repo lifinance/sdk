@@ -16,6 +16,13 @@ import {
 } from '@stellar/stellar-sdk'
 import { callStellarRpcsWithRetry } from '../client/getStellarRpc.js'
 
+type SacBalanceResult = {
+  /** Absent when the balance could not be read. */
+  amount: bigint | undefined
+  /** Ledger the simulation was evaluated against. */
+  latestLedger: bigint
+}
+
 /**
  * Fetches Stellar token balances for a wallet.
  *
@@ -44,23 +51,38 @@ export const getStellarBalance = async (
     )
   )
 
+  // Consumers treat a missing blockNumber as an unsettled read and keep
+  // polling, so every token must carry one. The ledger rides along on the
+  // simulation response; a token whose read threw borrows the batch's newest.
+  const fallbackBlockNumber = results.reduce<bigint | undefined>(
+    (latest, result) =>
+      result && (latest === undefined || result.latestLedger > latest)
+        ? result.latestLedger
+        : latest,
+    undefined
+  )
+
   return tokens.map((token, index) => {
-    const amount = results[index]
-    return amount !== undefined ? { ...token, amount } : { ...token }
+    const result = results[index]
+    const blockNumber = result?.latestLedger ?? fallbackBlockNumber
+    return result?.amount !== undefined
+      ? { ...token, amount: result.amount, blockNumber }
+      : { ...token, blockNumber }
   })
 }
 
 /**
  * Simulates a read-only `balance(account)` call on the token's SAC and decodes
- * the returned i128 into a bigint. Returns `undefined` when the balance cannot
- * be read (e.g. contract not found, account not funded).
+ * the returned i128 into a bigint. The amount is `undefined` when the balance
+ * cannot be read (e.g. contract not found, account not funded); the ledger the
+ * simulation ran against is reported either way.
  */
 const getSacBalance = async (
   client: SDKClient,
   walletAddress: string,
   token: Token,
   networkPassphrase: string
-): Promise<bigint | undefined> => {
+): Promise<SacBalanceResult> => {
   return callStellarRpcsWithRetry(client, async (server) => {
     // A zero-sequence account is sufficient for read-only simulation.
     const source = new Account(walletAddress, '0')
@@ -76,10 +98,14 @@ const getSacBalance = async (
       .build()
 
     const simulation = await server.simulateTransaction(transaction)
+    const latestLedger = BigInt(simulation.latestLedger)
     if (!rpc.Api.isSimulationSuccess(simulation) || !simulation.result) {
-      return undefined
+      return { amount: undefined, latestLedger }
     }
     const value = scValToNative(simulation.result.retval)
-    return value != null ? BigInt(value) : undefined
+    return {
+      amount: value != null ? BigInt(value) : undefined,
+      latestLedger,
+    }
   })
 }

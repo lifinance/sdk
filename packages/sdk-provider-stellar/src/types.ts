@@ -66,18 +66,6 @@ export interface StellarProviderOptions {
    * the provider falls back to the Stellar RPC URLs resolved from the SDK client.
    */
   horizonUrl?: string
-  /**
-   * Overrides the SAC approval spender (a Soroban `C`-address, normally the
-   * LI.FI router) instead of taking it from `step.estimate.approvalAddress`.
-   *
-   * Needed because the backend currently fills `approvalAddress` with a
-   * placeholder for Stellar steps — a `G`-address fallback wallet for soroswap
-   * and the EVM diamond for polymer/nearIntents — none of which is a real
-   * spender. {@link resolveApprovalSpender} rejects those, so without this
-   * override the approval flow cannot be exercised until the backend emits the
-   * router address.
-   */
-  approvalSpender?: string
 }
 
 export interface StellarSDKProvider extends SDKProvider {
@@ -90,16 +78,29 @@ export function isStellarProvider(
   return provider.type === ChainType.STL
 }
 
+/**
+ * A SAC allowance an included leg of a Stellar route needs before the route can
+ * be executed. Resolved by {@link resolveApprovalRequirement}.
+ */
+export interface StellarApprovalRequirement {
+  /** Soroban `C`-address that calls `transfer_from` and so consumes the allowance. */
+  spender: string
+  /** SAC contract id of the token the allowance is written against. */
+  tokenAddress: string
+  /** Amount the allowance has to cover. */
+  amount: bigint
+}
+
 /** Execution context passed between {@link StellarStepExecutor} tasks. */
 export interface StellarTaskContext {
   /** Hash of the submitted route transaction. */
   transactionHash?: string
   /**
-   * Resolved SAC approval spender, or `undefined` when this step needs no
-   * approval. Set by `StellarCheckAllowanceTask`.
+   * Resolved SAC allowance requirement, or `undefined` when no included leg
+   * needs one. Set by `StellarCheckAllowanceTask`.
    */
-  approvalSpender?: string
-  /** Whether the sender's SAC allowance already covers `action.fromAmount`. */
+  approval?: StellarApprovalRequirement
+  /** Whether the sender's SAC allowance already covers {@link approval}. */
   hasSufficientAllowance?: boolean
 }
 
@@ -108,12 +109,10 @@ export interface StellarStepExecutorContext
     StellarTaskContext {
   wallet: StellarWallet
   networkPassphrase: string
-  approvalSpenderOverride?: string
   checkWallet: (step: LiFiStepExtended) => void
 }
 
 export interface StellarStepExecutorOptions extends StepExecutorOptions {
   wallet: StellarWallet
   networkPassphrase: string
-  approvalSpenderOverride?: string
 }

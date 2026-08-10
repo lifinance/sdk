@@ -74,8 +74,8 @@ describe('StellarStepExecutor', () => {
 
     // Stellar persists the derived hash BEFORE submitting, so a hash on a
     // not-yet-DONE action means an envelope was signed and very likely
-    // broadcast. Restarting at CheckBalanceTask would re-prepare, re-sign and
-    // submit a second transaction — executing the swap twice.
+    // broadcast. Restarting from the top would re-prepare, re-sign and submit a
+    // second transaction — executing the swap twice.
     it('resumes at the confirmation poll when a hash exists but the action is not DONE', () => {
       for (const status of [
         'PENDING',

@@ -67,7 +67,7 @@ const makeContext = (overrides: Record<string, unknown> = {}) => {
       wallet: { address: keypair.publicKey(), signTransaction },
       fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
       networkPassphrase: NETWORK,
-      approvalSpender: ROUTER,
+      approval: { spender: ROUTER, tokenAddress: TOKEN, amount: 1000n },
       allowUserInteraction: true,
       checkWallet: () => {},
       step: {
@@ -94,11 +94,13 @@ describe('StellarSetAllowanceTask', () => {
     waitForStellarTransaction.mockReset().mockResolvedValue({})
   })
 
+  const approval = { spender: ROUTER, tokenAddress: TOKEN, amount: 1000n }
+
   describe('shouldRun', () => {
-    it('runs when a spender resolved and the allowance is short', async () => {
+    it('runs when a leg needs an approval and the allowance is short', async () => {
       await expect(
         new StellarSetAllowanceTask().shouldRun({
-          approvalSpender: ROUTER,
+          approval,
           hasSufficientAllowance: false,
         } as never)
       ).resolves.toBe(true)
@@ -107,23 +109,23 @@ describe('StellarSetAllowanceTask', () => {
     it('skips when the allowance already suffices', async () => {
       await expect(
         new StellarSetAllowanceTask().shouldRun({
-          approvalSpender: ROUTER,
+          approval,
           hasSufficientAllowance: true,
         } as never)
       ).resolves.toBe(false)
     })
 
-    it('skips when no spender resolved', async () => {
+    it('skips when no leg needs an approval', async () => {
       await expect(
         new StellarSetAllowanceTask().shouldRun({
-          approvalSpender: undefined,
+          approval: undefined,
           hasSufficientAllowance: false,
         } as never)
       ).resolves.toBe(false)
     })
   })
 
-  it('approves exactly fromAmount', async () => {
+  it('approves the resolved leg token, spender and amount', async () => {
     const { context } = makeContext()
 
     await new StellarSetAllowanceTask().run(context)
@@ -134,6 +136,28 @@ describe('StellarSetAllowanceTask', () => {
       keypair.publicKey(),
       ROUTER,
       1000n,
+      NETWORK
+    )
+  })
+
+  it('approves the leg token even when it differs from the route source token', async () => {
+    const intermediateToken = StrKey.encodeContract(Buffer.alloc(32, 5))
+    const { context } = makeContext({
+      approval: {
+        spender: ROUTER,
+        tokenAddress: intermediateToken,
+        amount: 990n,
+      },
+    })
+
+    await new StellarSetAllowanceTask().run(context)
+
+    expect(buildApproveTransaction).toHaveBeenCalledWith(
+      {},
+      intermediateToken,
+      keypair.publicKey(),
+      ROUTER,
+      990n,
       NETWORK
     )
   })

@@ -9,7 +9,7 @@ import { waitForStellarTransaction } from './helpers/waitForStellarTransaction.j
 export class StellarSetAllowanceTask extends BaseStepExecutionTask {
   override shouldRun(context: StellarStepExecutorContext): Promise<boolean> {
     return Promise.resolve(
-      !!context.approvalSpender && !context.hasSufficientAllowance
+      !!context.approval && !context.hasSufficientAllowance
     )
   }
 
@@ -21,11 +21,13 @@ export class StellarSetAllowanceTask extends BaseStepExecutionTask {
       fromChain,
       statusManager,
       networkPassphrase,
-      approvalSpender,
+      approval,
       allowUserInteraction,
       pollingIntervalMs,
       checkWallet,
     } = context
+    // Guaranteed by shouldRun.
+    const { spender, tokenAddress, amount } = approval!
 
     const action = statusManager.initializeAction({
       step,
@@ -48,10 +50,10 @@ export class StellarSetAllowanceTask extends BaseStepExecutionTask {
 
     const envelopeXdr = await buildApproveTransaction(
       client,
-      step.action.fromToken.address,
+      tokenAddress,
       wallet.address,
-      approvalSpender!,
-      BigInt(step.action.fromAmount),
+      spender,
+      amount,
       networkPassphrase
     )
 

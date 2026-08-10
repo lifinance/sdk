@@ -56,7 +56,6 @@ export function StellarProvider(
         wallet,
         networkPassphrase:
           _options.networkPassphrase ?? wallet.networkPassphrase,
-        approvalSpenderOverride: _options.approvalSpender,
         routeId: options.routeId,
         executionOptions: { ...options.executionOptions },
       })
