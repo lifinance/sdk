@@ -1,14 +1,16 @@
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { createFundingOrder } from './createFundingOrder.js'
+import { buildFundingOrder } from './fundingOrders.unit.mock.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('createFundingOrder', () => {
-  setupTestServer()
+  const server = setupTestServer()
 
   const params = {
     partnerOrderId: 'partner-order-1',
@@ -30,8 +32,19 @@ describe('createFundingOrder', () => {
   })
 
   it('posts the body and returns the order', async () => {
+    let requestBody: unknown
+    server.use(
+      http.post(
+        `${client.config.apiUrl}/funding/orders`,
+        async ({ request: req }) => {
+          requestBody = await req.json()
+          return HttpResponse.json(buildFundingOrder())
+        }
+      )
+    )
     const order = await createFundingOrder(client, params)
     expect(order.orderId).toBe('3f2a6c1e-0000-4000-8000-000000000001')
+    expect(requestBody).toEqual(params)
     expect(mockedFetch).toHaveBeenCalledTimes(1)
   })
 })
