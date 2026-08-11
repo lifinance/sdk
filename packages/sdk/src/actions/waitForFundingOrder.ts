@@ -1,5 +1,5 @@
 import { LiFiErrorCode } from '../errors/constants.js'
-import { TransactionError } from '../errors/errors.js'
+import { TransactionError, ValidationError } from '../errors/errors.js'
 import { HTTPError } from '../errors/httpError.js'
 import { SDKError } from '../errors/SDKError.js'
 import type { SDKClient } from '../types/core.js'
@@ -16,7 +16,7 @@ import { getFundingOrder } from './getFundingOrder.js'
  * @param client - The SDK client
  * @param orderId - The orderId to poll
  * @param options - Polling interval, timeout, and transition callback
- * @throws {SDKError} Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses. The order stays PENDING and can be waited on again. Also rejects immediately on client errors (HTTP 400, 401, 404, 422); other failures retry until the timeout.
+ * @throws {SDKError} ValidationError when orderId is missing. Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses. The order stays PENDING and can be waited on again. Also rejects immediately on client errors (HTTP 400, 401, 404, 422); other failures retry until the timeout.
  * @returns The terminal funding order.
  */
 export const waitForFundingOrder = async (
@@ -24,6 +24,11 @@ export const waitForFundingOrder = async (
   orderId: string,
   options?: WaitForFundingOrderOptions
 ): Promise<FundingOrder> => {
+  if (!orderId) {
+    throw new SDKError(
+      new ValidationError('Required parameter "orderId" is missing.')
+    )
+  }
   const pollingInterval = options?.pollingInterval ?? 10_000
   const timeout = options?.timeout ?? 1_200_000
   const deadline = Date.now() + timeout

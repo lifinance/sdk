@@ -1,12 +1,22 @@
 import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { LiFiErrorCode } from '../errors/constants.js'
+import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { buildFundingOrder } from './fundingOrders.unit.mock.js'
 import { waitForFundingOrder } from './waitForFundingOrder.js'
 
+const mockedFetch = vi.spyOn(request, 'request')
+
 describe('waitForFundingOrder', () => {
   const server = setupTestServer()
+
+  it('rejects with a ValidationError when orderId is empty, without polling', async () => {
+    await expect(
+      waitForFundingOrder(client, '', { pollingInterval: 10 })
+    ).rejects.toMatchObject({ code: LiFiErrorCode.ValidationError })
+    expect(mockedFetch).toHaveBeenCalledTimes(0)
+  })
 
   it('polls until DONE and reports each transition once', async () => {
     let calls = 0

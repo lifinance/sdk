@@ -70,11 +70,37 @@ describe('WaitForFundingOrderTask', () => {
       step,
       'RECEIVING_CHAIN',
       'DONE',
-      expect.objectContaining({ txHash: '0xdest', chainId: 137 })
+      expect.objectContaining({
+        txHash: '0xdest',
+        chainId: 137,
+        substatus: 'COMPLETED',
+        txLink: 'https://x/tx/0xdest',
+      })
     )
     expect(context.statusManager.updateExecution).toHaveBeenCalledWith(
       step,
       expect.objectContaining({ status: 'DONE', toAmount: '990000' })
+    )
+  })
+
+  it('forwards a clamped pollingInterval and the timeout from executionOptions', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const step = buildStep()
+    const context = buildContext(step)
+    context.executionOptions = {
+      pollingInterval: 3_000,
+      timeout: 60_000,
+    } as any
+
+    await new WaitForFundingOrderTask('RECEIVING_CHAIN').run(context)
+
+    expect(vi.mocked(waitForFundingOrder)).toHaveBeenCalledWith(
+      context.client,
+      'order-1',
+      expect.objectContaining({ pollingInterval: 10_000, timeout: 60_000 })
     )
   })
 

@@ -79,6 +79,16 @@ describe('executeFundingOrder', () => {
     expect(final.status).toBe('DONE')
     expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
   })
+
+  it('only polls for ONRAMP orders', async () => {
+    const order = buildFundingOrder({ type: 'ONRAMP' })
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const final = await executeFundingOrder({} as any, order)
+    expect(final.status).toBe('DONE')
+    expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
+  })
 })
 
 describe('resumeFundingOrder', () => {

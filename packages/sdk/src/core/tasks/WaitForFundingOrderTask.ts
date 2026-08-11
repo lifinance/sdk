@@ -20,7 +20,7 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
   }
 
   async run(context: StepExecutorContext): Promise<TaskResult> {
-    const { client, step, statusManager, isBridgeExecution } = context
+    const { client, step, statusManager, isBridgeExecution, toChain } = context
     const orderId = step.fundingOrderId!
 
     const sourceAction = statusManager.findAction(
@@ -45,11 +45,14 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
       await getFundingOrder(client, orderId, { txHash }).catch(() => undefined)
     }
 
-    const onOrderUpdate = (
-      context.executionOptions as
-        | { onOrderUpdate?: (order: FundingOrder) => void }
-        | undefined
-    )?.onOrderUpdate
+    const fundingOptions = context.executionOptions as
+      | {
+          onOrderUpdate?: (order: FundingOrder) => void
+          pollingInterval?: number
+          timeout?: number
+        }
+      | undefined
+    const onOrderUpdate = fundingOptions?.onOrderUpdate
 
     const order = await waitForFundingOrder(client, orderId, {
       onUpdate: (updatedOrder) => {
@@ -64,7 +67,13 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
           })
         }
       },
-      pollingInterval: context.pollingIntervalMs,
+      // Enforce the 10s floor - non-terminal reads trigger a backend-side
+      // refresh, so polling faster just wastes requests.
+      pollingInterval: Math.max(
+        fundingOptions?.pollingInterval ?? context.pollingIntervalMs ?? 10_000,
+        10_000
+      ),
+      timeout: fundingOptions?.timeout,
     })
 
     if (order.status === 'FAILED') {
@@ -76,7 +85,12 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE', {
       chainId: step.action.toChainId,
+      // Deliberate cast: see the substatus comment above.
+      substatus: order.substatus as any,
       txHash: order.result?.toTxHash,
+      txLink: order.result?.toTxHash
+        ? `${toChain.metamask.blockExplorerUrls[0]}tx/${order.result.toTxHash}`
+        : undefined,
     })
 
     statusManager.updateExecution(step, {

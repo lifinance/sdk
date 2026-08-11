@@ -38,7 +38,7 @@ describe('createFundingOrder', () => {
         `${client.config.apiUrl}/funding/orders`,
         async ({ request: req }) => {
           requestBody = await req.json()
-          return HttpResponse.json(buildFundingOrder())
+          return HttpResponse.json(buildFundingOrder(), { status: 201 })
         }
       )
     )

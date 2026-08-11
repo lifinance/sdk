@@ -33,11 +33,16 @@ const waitOnly = async (
  * execution pipeline (allowance, sign, send) and then track the order to a
  * terminal state. SMART_DEPOSIT and ONRAMP orders only poll - rendering the
  * deposit QR or the on-ramp widget is the caller's job.
+ *
+ * FAILED outcome is asymmetric by order type: a STANDARD order that ends
+ * FAILED rejects (the route execution pipeline throws). A SMART_DEPOSIT or
+ * ONRAMP order that ends FAILED resolves with the terminal order - the
+ * caller must check `order.status` to detect failure.
  * @param client - The SDK client.
  * @param order - The funding order to execute. Must not be FAILED.
  * @param options - Execution options, including route execution hooks for STANDARD orders.
- * @throws {SDKError} ValidationError for a FAILED order - create a new order instead.
- * @returns The terminal funding order.
+ * @throws {SDKError} ValidationError for a FAILED order - create a new order instead. Also rejects on a STANDARD order that ends FAILED during execution (pipeline throw).
+ * @returns The terminal funding order. For SMART_DEPOSIT/ONRAMP orders this resolves even when the terminal status is FAILED.
  */
 export const executeFundingOrder = async (
   client: SDKClient,
@@ -66,10 +71,17 @@ export const executeFundingOrder = async (
  * Resume a funding order. Re-fetches the order first: terminal orders return
  * immediately; orders whose source transaction was already sent skip straight
  * to polling; otherwise the STANDARD route pipeline resumes.
+ *
+ * FAILED outcome depends on which of the three branches above handles the
+ * refreshed order, not just its type. The refetched order is already FAILED,
+ * or it is a STANDARD order whose source transaction was already sent (so
+ * this call only polls): resolves with the FAILED order either way - check
+ * `order.status`. Only the third branch - a STANDARD order still resuming
+ * the route pipeline - rejects when it ends FAILED (pipeline throw).
  * @param client - The SDK client.
  * @param order - The funding order to resume.
  * @param options - Execution options.
- * @returns The terminal funding order.
+ * @returns The terminal funding order. Resolves even when the terminal status is FAILED, except when the route pipeline itself rejects.
  */
 export const resumeFundingOrder = async (
   client: SDKClient,
