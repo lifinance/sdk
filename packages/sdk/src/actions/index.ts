@@ -40,6 +40,7 @@ import type {
   CreateFundingOrderRequest,
   FundingOrder,
   GetFundingOrderParams,
+  WaitForFundingOrderOptions,
 } from '../types/funding.js'
 import { createFundingOrder } from './createFundingOrder.js'
 import { getChains } from './getChains.js'
@@ -66,6 +67,7 @@ import {
   patchContractCalls,
 } from './patchContractCalls.js'
 import { relayTransaction } from './relayTransaction.js'
+import { waitForFundingOrder } from './waitForFundingOrder.js'
 
 export type Actions = {
   /**
@@ -324,6 +326,17 @@ export type Actions = {
     params: PatchCallDataRequest,
     options?: RequestOptions
   ) => Promise<PatchContractCallsResponse[]>
+
+  /**
+   * Poll a funding order until it reaches a terminal state
+   * @param orderId - The orderId to poll
+   * @param options - Polling options
+   * @returns The terminal funding order
+   */
+  waitForFundingOrder: (
+    orderId: string,
+    options?: WaitForFundingOrderOptions
+  ) => Promise<FundingOrder>
 }
 
 export function actions(client: SDKClient): Actions {
@@ -366,5 +379,7 @@ export function actions(client: SDKClient): Actions {
       relayTransaction(client, params, options),
     patchContractCalls: (params, options) =>
       patchContractCalls(client, params, options),
+    waitForFundingOrder: (orderId, options) =>
+      waitForFundingOrder(client, orderId, options),
   }
 }
