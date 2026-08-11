@@ -1,5 +1,6 @@
 import { LiFiErrorCode } from '../errors/constants.js'
 import { TransactionError } from '../errors/errors.js'
+import { HTTPError } from '../errors/httpError.js'
 import { SDKError } from '../errors/SDKError.js'
 import type { SDKClient } from '../types/core.js'
 import type {
@@ -15,7 +16,7 @@ import { getFundingOrder } from './getFundingOrder.js'
  * @param client - The SDK client
  * @param orderId - The orderId to poll
  * @param options - Polling interval, timeout, and transition callback
- * @throws {SDKError} Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses. The order stays PENDING and can be waited on again.
+ * @throws {SDKError} Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses. The order stays PENDING and can be waited on again. Also rejects immediately on client errors (HTTP 400, 401, 404, 422); other failures retry until the timeout.
  * @returns The terminal funding order.
  */
 export const waitForFundingOrder = async (
@@ -29,7 +30,19 @@ export const waitForFundingOrder = async (
   let previous: FundingOrder | undefined
   while (true) {
     const order = await getFundingOrder(client, orderId).catch(
-      () => undefined
+      (error: unknown) => {
+        const cause = (error as SDKError).cause
+        if (
+          cause instanceof HTTPError &&
+          (cause.status === 400 ||
+            cause.status === 401 ||
+            cause.status === 404 ||
+            cause.status === 422)
+        ) {
+          throw error
+        }
+        return undefined
+      }
     )
     if (order) {
       const transitioned =

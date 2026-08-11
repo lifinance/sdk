@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { LiFiErrorCode } from '../errors/constants.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
@@ -68,5 +68,16 @@ describe('waitForFundingOrder', () => {
       pollingInterval: 10,
     })
     expect(order.status).toBe('DONE')
+  })
+
+  it('rejects immediately on a client error instead of retrying', async () => {
+    server.use(
+      http.get(`${client.config.apiUrl}/funding/orders/:orderId`, async () =>
+        HttpResponse.json({ message: 'not found' }, { status: 404 })
+      )
+    )
+    await expect(
+      waitForFundingOrder(client, 'missing-order', { pollingInterval: 10 })
+    ).rejects.toMatchObject({ code: LiFiErrorCode.NotFound })
   })
 })
