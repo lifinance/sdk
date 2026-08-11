@@ -140,6 +140,7 @@ describe('HTTPError funding status classification', () => {
       'https://li.quest/v1/funding/orders',
       {}
     )
+    expect(error.type).toBe(ErrorName.ValidationError)
     expect(error.code).toBe(LiFiErrorCode.TransactionConflict)
   })
 
@@ -149,6 +150,7 @@ describe('HTTPError funding status classification', () => {
       'https://li.quest/v1/funding/orders',
       {}
     )
+    expect(error.type).toBe(ErrorName.ValidationError)
     expect(error.code).toBe(LiFiErrorCode.ValidationError)
   })
 })
