@@ -66,10 +66,64 @@ describe('WaitForFundingOrderTask', () => {
       'order-1',
       { txHash: '0xsource' }
     )
+    expect(context.statusManager.updateAction).toHaveBeenCalledWith(
+      step,
+      'RECEIVING_CHAIN',
+      'DONE',
+      expect.objectContaining({ txHash: '0xdest', chainId: 137 })
+    )
     expect(context.statusManager.updateExecution).toHaveBeenCalledWith(
       step,
       expect.objectContaining({ status: 'DONE', toAmount: '990000' })
     )
+  })
+
+  it('drives the onUpdate closure: writes PENDING substatus and forwards every transition to onOrderUpdate', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({
+        status: 'DONE',
+        substatus: 'COMPLETED',
+        result: { toTxHash: '0xdest', toAmount: '990000' },
+      })
+    )
+    const step = buildStep()
+    const context = buildContext(step)
+    const onOrderUpdate = vi.fn()
+    context.executionOptions = { onOrderUpdate } as any
+
+    const result = await new WaitForFundingOrderTask('RECEIVING_CHAIN').run(
+      context
+    )
+    expect(result.status).toBe('COMPLETED')
+
+    const onUpdate = vi.mocked(waitForFundingOrder).mock.calls[0][2]!.onUpdate!
+
+    const pendingOrder = buildFundingOrder({
+      status: 'PENDING',
+      substatus: 'WAIT_SOURCE_CONFIRMATIONS',
+    })
+    onUpdate(pendingOrder)
+
+    expect(context.statusManager.updateAction).toHaveBeenCalledWith(
+      step,
+      'RECEIVING_CHAIN',
+      'PENDING',
+      expect.objectContaining({ substatus: 'WAIT_SOURCE_CONFIRMATIONS' })
+    )
+    expect(onOrderUpdate).toHaveBeenCalledWith(pendingOrder)
+
+    vi.mocked(context.statusManager.updateAction).mockClear()
+    onOrderUpdate.mockClear()
+
+    const doneOrder = buildFundingOrder({
+      status: 'DONE',
+      substatus: 'COMPLETED',
+    })
+    onUpdate(doneOrder)
+
+    expect(onOrderUpdate).toHaveBeenCalledWith(doneOrder)
+    expect(context.statusManager.updateAction).not.toHaveBeenCalled()
   })
 
   it('throws TransactionFailed when the order ends FAILED', async () => {
