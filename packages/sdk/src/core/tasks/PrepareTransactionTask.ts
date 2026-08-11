@@ -2,6 +2,10 @@ import { getStepTransaction } from '../../actions/getStepTransaction.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import {
+  getFundingOrderUpdatedStep,
+  isFundingOrderStep,
+} from '../../utils/fundingOrderStep.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
@@ -29,19 +33,26 @@ export class PrepareTransactionTask extends BaseStepExecutionTask {
     }
 
     if (!step.transactionRequest) {
-      const { execution, ...stepBase } = step
-      const updatedStep = await getStepTransaction(client, stepBase)
-      const comparedStep = await stepComparison(
-        statusManager,
-        step,
-        updatedStep,
-        allowUserInteraction,
-        executionOptions
-      )
-      Object.assign(step, {
-        ...comparedStep,
-        execution: step.execution,
-      })
+      if (isFundingOrderStep(step)) {
+        // Funding orders have no re-quote endpoint - restore the committed
+        // quote from the order itself and skip the rate-change comparison.
+        const updatedStep = await getFundingOrderUpdatedStep(client, step)
+        Object.assign(step, updatedStep)
+      } else {
+        const { execution, ...stepBase } = step
+        const updatedStep = await getStepTransaction(client, stepBase)
+        const comparedStep = await stepComparison(
+          statusManager,
+          step,
+          updatedStep,
+          allowUserInteraction,
+          executionOptions
+        )
+        Object.assign(step, {
+          ...comparedStep,
+          execution: step.execution,
+        })
+      }
     }
 
     if (!step.transactionRequest?.data) {
