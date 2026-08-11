@@ -24,6 +24,15 @@ describe('isFundingOrderStep', () => {
     expect(isFundingOrderStep(step)).toBe(true)
     expect(isFundingOrderStep({ id: 'x' } as LiFiStepExtended)).toBe(false)
   })
+
+  it('returns false for fundingOrderId with an empty string', () => {
+    expect(
+      isFundingOrderStep({
+        id: 'step-1',
+        fundingOrderId: '',
+      } as LiFiStepExtended)
+    ).toBe(false)
+  })
 })
 
 describe('getFundingOrderUpdatedStep', () => {
@@ -47,5 +56,14 @@ describe('getFundingOrderUpdatedStep', () => {
     await expect(
       getFundingOrderUpdatedStep({} as any, step)
     ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionUnprepared })
+  })
+
+  it('throws ValidationError when the step has no fundingOrderId and does not call getFundingOrder', async () => {
+    const stepWithoutFundingOrderId = { id: 'step-1' } as LiFiStepExtended
+    vi.mocked(getFundingOrder).mockClear()
+    await expect(
+      getFundingOrderUpdatedStep({} as any, stepWithoutFundingOrderId)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.ValidationError })
+    expect(vi.mocked(getFundingOrder)).not.toHaveBeenCalled()
   })
 })

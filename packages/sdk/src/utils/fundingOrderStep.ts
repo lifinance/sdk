@@ -1,7 +1,7 @@
 import type { LiFiStep } from '@lifi/types'
 import { getFundingOrder } from '../actions/getFundingOrder.js'
 import { LiFiErrorCode } from '../errors/constants.js'
-import { TransactionError } from '../errors/errors.js'
+import { TransactionError, ValidationError } from '../errors/errors.js'
 import type { LiFiStepExtended, SDKClient } from '../types/core.js'
 
 /**
@@ -17,13 +17,19 @@ export function isFundingOrderStep(step: LiFiStep | LiFiStepExtended): boolean {
  * Restore the committed quote of a funding order onto a step.
  * Funding orders have no re-quote endpoint — the order itself stores the
  * committed quote, so a refresh is a plain order read.
+ * @throws {ValidationError} when the step is not a funding order step (no fundingOrderId).
  * @throws {TransactionError} TransactionUnprepared when the order has no executable quote.
  */
 export async function getFundingOrderUpdatedStep(
   client: SDKClient,
   step: LiFiStepExtended
 ): Promise<LiFiStepExtended> {
-  const order = await getFundingOrder(client, step.fundingOrderId!)
+  if (!step.fundingOrderId) {
+    throw new ValidationError(
+      'Step is not a funding order step. getFundingOrderUpdatedStep requires a step with fundingOrderId.'
+    )
+  }
+  const order = await getFundingOrder(client, step.fundingOrderId)
   if (!order.quote?.transactionRequest) {
     throw new TransactionError(
       LiFiErrorCode.TransactionUnprepared,
