@@ -14,6 +14,10 @@ const statusCodeToErrorClassificationMap = new Map([
     400,
     { type: ErrorName.ValidationError, code: LiFiErrorCode.ValidationError },
   ],
+  [
+    401,
+    { type: ErrorName.ValidationError, code: LiFiErrorCode.ValidationError },
+  ],
   [404, { type: ErrorName.NotFoundError, code: LiFiErrorCode.NotFound }],
   [
     409,
@@ -21,6 +25,13 @@ const statusCodeToErrorClassificationMap = new Map([
       type: ErrorName.SlippageError,
       code: LiFiErrorCode.SlippageError,
       message: ErrorMessage.SlippageError,
+    },
+  ],
+  [
+    422,
+    {
+      type: ErrorName.ValidationError,
+      code: LiFiErrorCode.TransactionConflict,
     },
   ],
   [424, { type: ErrorName.ServerError, code: LiFiErrorCode.ThirdPartyError }],

@@ -126,3 +126,29 @@ describe('HTTPError', () => {
     }
   )
 })
+
+describe('HTTPError funding status classification', () => {
+  const makeResponse = (status: number, statusText: string): Response =>
+    new Response(JSON.stringify({ message: 'x', code: 1000 }), {
+      status,
+      statusText,
+    })
+
+  it('classifies 422 as a conflict', () => {
+    const error = new HTTPError(
+      makeResponse(422, 'Unprocessable Entity'),
+      'https://li.quest/v1/funding/orders',
+      {}
+    )
+    expect(error.code).toBe(LiFiErrorCode.TransactionConflict)
+  })
+
+  it('classifies 401 as a validation error', () => {
+    const error = new HTTPError(
+      makeResponse(401, 'Unauthorized'),
+      'https://li.quest/v1/funding/orders',
+      {}
+    )
+    expect(error.code).toBe(LiFiErrorCode.ValidationError)
+  })
+})
