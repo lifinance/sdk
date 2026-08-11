@@ -57,6 +57,7 @@ export {
 export { getTransactionRequestData } from './core/tasks/helpers/getTransactionRequestData.js'
 export { stepComparison } from './core/tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './core/tasks/PrepareTransactionTask.js'
+export { WaitForFundingOrderTask } from './core/tasks/WaitForFundingOrderTask.js'
 export { WaitForTransactionStatusTask } from './core/tasks/WaitForTransactionStatusTask.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'

@@ -1,0 +1,114 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('../../actions/getFundingOrder.js', () => ({
+  getFundingOrder: vi.fn(),
+}))
+vi.mock('../../actions/waitForFundingOrder.js', () => ({
+  waitForFundingOrder: vi.fn(),
+}))
+
+import { buildFundingOrder } from '../../actions/fundingOrders.unit.mock.js'
+import { getFundingOrder } from '../../actions/getFundingOrder.js'
+import { waitForFundingOrder } from '../../actions/waitForFundingOrder.js'
+import { LiFiErrorCode } from '../../errors/constants.js'
+import type { LiFiStepExtended } from '../../types/core.js'
+import type { StepExecutorContext } from '../../types/execution.js'
+import { WaitForFundingOrderTask } from './WaitForFundingOrderTask.js'
+import { WaitForTransactionStatusTask } from './WaitForTransactionStatusTask.js'
+
+const buildStep = (): LiFiStepExtended =>
+  ({
+    id: 'step-1',
+    fundingOrderId: 'order-1',
+    action: { fromChainId: 1, toChainId: 137 },
+  }) as unknown as LiFiStepExtended
+
+const buildContext = (step: LiFiStepExtended): StepExecutorContext => {
+  const action = { type: 'SWAP', txHash: '0xsource' }
+  return {
+    client: {} as any,
+    step,
+    statusManager: {
+      findAction: vi.fn(() => action),
+      initializeAction: vi.fn(() => ({ type: 'RECEIVING_CHAIN' })),
+      updateAction: vi.fn(),
+      updateExecution: vi.fn(),
+    } as any,
+    isBridgeExecution: false,
+    toChain: { id: 137, metamask: { blockExplorerUrls: ['https://x/'] } },
+  } as unknown as StepExecutorContext
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('WaitForFundingOrderTask', () => {
+  it('reports the txHash, polls to DONE, and marks the execution DONE with the order result', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({
+        status: 'DONE',
+        substatus: 'COMPLETED',
+        result: { toTxHash: '0xdest', toAmount: '990000' },
+      })
+    )
+    const step = buildStep()
+    const context = buildContext(step)
+
+    const result = await new WaitForFundingOrderTask('RECEIVING_CHAIN').run(
+      context
+    )
+
+    expect(result.status).toBe('COMPLETED')
+    expect(vi.mocked(getFundingOrder)).toHaveBeenCalledWith(
+      context.client,
+      'order-1',
+      { txHash: '0xsource' }
+    )
+    expect(context.statusManager.updateExecution).toHaveBeenCalledWith(
+      step,
+      expect.objectContaining({ status: 'DONE', toAmount: '990000' })
+    )
+  })
+
+  it('throws TransactionFailed when the order ends FAILED', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'FAILED', substatus: 'ONRAMP_FAILED' })
+    )
+    await expect(
+      new WaitForFundingOrderTask('RECEIVING_CHAIN').run(
+        buildContext(buildStep())
+      )
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: expect.stringContaining('ONRAMP_FAILED'),
+    })
+  })
+
+  it('still polls when reporting the txHash fails', async () => {
+    vi.mocked(getFundingOrder).mockRejectedValue(new Error('report failed'))
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const result = await new WaitForFundingOrderTask('RECEIVING_CHAIN').run(
+      buildContext(buildStep())
+    )
+    expect(result.status).toBe('COMPLETED')
+  })
+})
+
+describe('WaitForTransactionStatusTask — funding delegation', () => {
+  it('routes funding steps to WaitForFundingOrderTask', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const result = await new WaitForTransactionStatusTask(
+      'RECEIVING_CHAIN'
+    ).run(buildContext(buildStep()))
+    expect(result.status).toBe('COMPLETED')
+    expect(vi.mocked(waitForFundingOrder)).toHaveBeenCalledTimes(1)
+  })
+})
