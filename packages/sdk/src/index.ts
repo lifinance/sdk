@@ -41,6 +41,11 @@ export {
   stopRouteExecution,
   updateRouteExecution,
 } from './core/execution.js'
+export {
+  executeFundingOrder,
+  type FundingExecutionOptions,
+  resumeFundingOrder,
+} from './core/fundingExecution.js'
 export { StatusManager } from './core/StatusManager.js'
 export type { SDKStorage } from './core/storage.js'
 export {
