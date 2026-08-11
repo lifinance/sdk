@@ -118,6 +118,8 @@ export interface RouteExtended extends Omit<Route, 'steps'> {
 
 export interface LiFiStepExtended extends LiFiStep {
   execution?: Execution
+  /** Present when this step was derived from a funding order. Selects the funding execution branch. */
+  fundingOrderId?: string
 }
 
 export type StepExtended = Step & {

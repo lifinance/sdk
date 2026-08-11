@@ -147,9 +147,14 @@ export type {
   WaitForFundingOrderOptions,
 } from './types/funding.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
+export { convertOrderToRoute } from './utils/convertOrderToRoute.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export { formatUnits } from './utils/formatUnits.js'
+export {
+  getFundingOrderUpdatedStep,
+  isFundingOrderStep,
+} from './utils/fundingOrderStep.js'
 export { isHex } from './utils/isHex.js'
 export { parseUnits } from './utils/parseUnits.js'
 export { sleep } from './utils/sleep.js'
