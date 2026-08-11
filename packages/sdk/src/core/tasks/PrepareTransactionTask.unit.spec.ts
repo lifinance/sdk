@@ -66,15 +66,18 @@ describe('PrepareTransactionTask — funding branch', () => {
     expect(result.status).toBe('COMPLETED')
     expect(vi.mocked(getFundingOrderUpdatedStep)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(getStepTransaction)).not.toHaveBeenCalled()
+    expect(vi.mocked(stepComparison)).not.toHaveBeenCalled()
     expect(step.transactionRequest).toEqual({ to: '0xTo', data: '0xdata' })
   })
 })
 
 describe('PrepareTransactionTask — standard path (regression)', () => {
   it('calls getStepTransaction for standard steps without fundingOrderId', async () => {
+    const execution = { status: 'PENDING', actions: [] }
     const step = {
       id: 'step-1',
       action: { fromChainId: 1, toChainId: 137 },
+      execution,
     } as unknown as LiFiStepExtended
     const updatedStep = buildFundingStep({
       transactionRequest: { to: '0xTo', data: '0x' },
@@ -87,5 +90,6 @@ describe('PrepareTransactionTask — standard path (regression)', () => {
     expect(vi.mocked(getStepTransaction)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(stepComparison)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(getFundingOrderUpdatedStep)).not.toHaveBeenCalled()
+    expect(step.execution).toBe(execution)
   })
 })
