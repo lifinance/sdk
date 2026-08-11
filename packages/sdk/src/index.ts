@@ -116,6 +116,29 @@ export type {
   TaskResult,
   TaskStatus,
 } from './types/execution.js'
+export type {
+  CexSessionRequest,
+  CexSessionResult,
+  CreateFundingOrderRequest,
+  FundingOrder,
+  FundingOrderDestination,
+  FundingOrderLateDelivery,
+  FundingOrderOnramp,
+  FundingOrderResult,
+  FundingOrderStatus,
+  FundingOrderType,
+  GetFundingOrderParams,
+  OnrampDelivery,
+  OnrampFiatCurrenciesRequest,
+  OnrampFiatCurrenciesResult,
+  OnrampFiatCurrency,
+  OnrampPaymentOption,
+  OnrampQuoteRequest,
+  OnrampQuoteResult,
+  OnrampSessionRequest,
+  OnrampSessionResult,
+  WaitForFundingOrderOptions,
+} from './types/funding.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
