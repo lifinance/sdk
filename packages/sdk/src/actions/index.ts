@@ -36,9 +36,16 @@ import type {
   RoutesRequest,
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
+import type {
+  CreateFundingOrderRequest,
+  FundingOrder,
+  GetFundingOrderParams,
+} from '../types/funding.js'
+import { createFundingOrder } from './createFundingOrder.js'
 import { getChains } from './getChains.js'
 import { getConnections } from './getConnections.js'
 import { getContractCallsQuote } from './getContractCallsQuote.js'
+import { getFundingOrder } from './getFundingOrder.js'
 import { getGasRecommendation } from './getGasRecommendation.js'
 import { getNameServiceAddress } from './getNameServiceAddress.js'
 import { getQuote } from './getQuote.js'
@@ -61,6 +68,17 @@ import {
 import { relayTransaction } from './relayTransaction.js'
 
 export type Actions = {
+  /**
+   * Create a funding order
+   * @param params - The funding order creation request
+   * @param options - Request options
+   * @returns The created funding order
+   */
+  createFundingOrder: (
+    params: CreateFundingOrderRequest,
+    options?: RequestOptions
+  ) => Promise<FundingOrder>
+
   /**
    * Get all available chains
    * @param params - The configuration of the requested chains
@@ -93,6 +111,19 @@ export type Actions = {
     params: ContractCallsQuoteRequest,
     options?: RequestOptions
   ) => Promise<LiFiStep>
+
+  /**
+   * Get a funding order by id
+   * @param orderId - The orderId or partnerOrderId
+   * @param params - Optional txHash / integrator query parameters
+   * @param options - Request options
+   * @returns The funding order
+   */
+  getFundingOrder: (
+    orderId: string,
+    params?: GetFundingOrderParams,
+    options?: RequestOptions
+  ) => Promise<FundingOrder>
 
   /**
    * Get gas recommendation for a chain
@@ -297,11 +328,15 @@ export type Actions = {
 
 export function actions(client: SDKClient): Actions {
   return {
+    createFundingOrder: (params, options) =>
+      createFundingOrder(client, params, options),
     getChains: (params, options) => getChains(client, params, options),
     getConnections: (params, options) =>
       getConnections(client, params, options),
     getContractCallsQuote: (params, options) =>
       getContractCallsQuote(client, params, options),
+    getFundingOrder: (orderId, params, options) =>
+      getFundingOrder(client, orderId, params, options),
     getGasRecommendation: (params, options) =>
       getGasRecommendation(client, params, options),
     getNameServiceAddress: (name, chainType) =>

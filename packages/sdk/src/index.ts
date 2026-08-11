@@ -1,9 +1,11 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { createFundingOrder } from './actions/createFundingOrder.js'
 export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
+export { getFundingOrder } from './actions/getFundingOrder.js'
 export { getGasRecommendation } from './actions/getGasRecommendation.js'
 export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
 export { getQuote } from './actions/getQuote.js'
