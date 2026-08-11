@@ -2,8 +2,10 @@ import {
   convertQuoteToRoute,
   type ExecutionOptions,
   getContractCallsQuote,
+  getFundingOrderUpdatedStep,
   getRelayerQuote,
   getStepTransaction,
+  isFundingOrderStep,
   LiFiErrorCode,
   type LiFiStepExtended,
   patchContractCalls,
@@ -22,6 +24,9 @@ export const getUpdatedStep = async (
   executionOptions?: ExecutionOptions,
   signedTypedData?: SignedTypedData[]
 ): Promise<LiFiStepExtended> => {
+  if (isFundingOrderStep(step)) {
+    return getFundingOrderUpdatedStep(client, step)
+  }
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
