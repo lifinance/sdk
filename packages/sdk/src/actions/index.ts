@@ -37,18 +37,30 @@ import type {
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import type {
+  CexSessionRequest,
+  CexSessionResult,
   CreateFundingOrderRequest,
   FundingOrder,
   GetFundingOrderParams,
+  OnrampFiatCurrenciesRequest,
+  OnrampFiatCurrenciesResult,
+  OnrampQuoteRequest,
+  OnrampQuoteResult,
+  OnrampSessionRequest,
+  OnrampSessionResult,
   WaitForFundingOrderOptions,
 } from '../types/funding.js'
+import { createCexSession } from './createCexSession.js'
 import { createFundingOrder } from './createFundingOrder.js'
+import { createOnrampSession } from './createOnrampSession.js'
 import { getChains } from './getChains.js'
 import { getConnections } from './getConnections.js'
 import { getContractCallsQuote } from './getContractCallsQuote.js'
 import { getFundingOrder } from './getFundingOrder.js'
 import { getGasRecommendation } from './getGasRecommendation.js'
 import { getNameServiceAddress } from './getNameServiceAddress.js'
+import { getOnrampFiatCurrencies } from './getOnrampFiatCurrencies.js'
+import { getOnrampQuote } from './getOnrampQuote.js'
 import { getQuote } from './getQuote.js'
 import { getRelayedTransactionStatus } from './getRelayedTransactionStatus.js'
 import { getRelayerQuote } from './getRelayerQuote.js'
@@ -71,6 +83,17 @@ import { waitForFundingOrder } from './waitForFundingOrder.js'
 
 export type Actions = {
   /**
+   * Create a CEX session for a token
+   * @param params - The CEX session request
+   * @param options - Request options
+   * @returns The CEX session
+   */
+  createCexSession: (
+    params: CexSessionRequest,
+    options?: RequestOptions
+  ) => Promise<CexSessionResult>
+
+  /**
    * Create a funding order
    * @param params - The funding order creation request
    * @param options - Request options
@@ -80,6 +103,17 @@ export type Actions = {
     params: CreateFundingOrderRequest,
     options?: RequestOptions
   ) => Promise<FundingOrder>
+
+  /**
+   * Create an on-ramp session for a token
+   * @param params - The on-ramp session request
+   * @param options - Request options
+   * @returns The on-ramp session
+   */
+  createOnrampSession: (
+    params: OnrampSessionRequest,
+    options?: RequestOptions
+  ) => Promise<OnrampSessionResult>
 
   /**
    * Get all available chains
@@ -148,6 +182,28 @@ export type Actions = {
     name: string,
     chainType?: ChainType
   ) => Promise<string | undefined>
+
+  /**
+   * Get available fiat currencies for an on-ramp token
+   * @param params - The on-ramp fiat currencies request
+   * @param options - Request options
+   * @returns The available fiat currencies
+   */
+  getOnrampFiatCurrencies: (
+    params: OnrampFiatCurrenciesRequest,
+    options?: RequestOptions
+  ) => Promise<OnrampFiatCurrenciesResult>
+
+  /**
+   * Get an on-ramp fiat quote for a token
+   * @param params - The on-ramp quote request
+   * @param options - Request options
+   * @returns The on-ramp quote
+   */
+  getOnrampQuote: (
+    params: OnrampQuoteRequest,
+    options?: RequestOptions
+  ) => Promise<OnrampQuoteResult>
 
   /**
    * Get a quote for a token transfer
@@ -341,8 +397,12 @@ export type Actions = {
 
 export function actions(client: SDKClient): Actions {
   return {
+    createCexSession: (params, options) =>
+      createCexSession(client, params, options),
     createFundingOrder: (params, options) =>
       createFundingOrder(client, params, options),
+    createOnrampSession: (params, options) =>
+      createOnrampSession(client, params, options),
     getChains: (params, options) => getChains(client, params, options),
     getConnections: (params, options) =>
       getConnections(client, params, options),
@@ -354,6 +414,10 @@ export function actions(client: SDKClient): Actions {
       getGasRecommendation(client, params, options),
     getNameServiceAddress: (name, chainType) =>
       getNameServiceAddress(client, name, chainType),
+    getOnrampFiatCurrencies: (params, options) =>
+      getOnrampFiatCurrencies(client, params, options),
+    getOnrampQuote: (params, options) =>
+      getOnrampQuote(client, params, options),
     getTokens: (params, options) => getTokens(client, params as any, options),
     getTools: (params, options) => getTools(client, params, options),
     getQuote: (params, options) => getQuote(client, params, options),

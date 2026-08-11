@@ -55,6 +55,19 @@ export const handlers = [
   http.get(`${client.config.apiUrl}/funding/orders/:orderId`, async () =>
     HttpResponse.json(buildFundingOrder())
   ),
+  http.post(`${client.config.apiUrl}/funding/onramp/quote`, async () =>
+    HttpResponse.json({})
+  ),
+  http.post(
+    `${client.config.apiUrl}/funding/onramp/fiat-currencies`,
+    async () => HttpResponse.json({})
+  ),
+  http.post(`${client.config.apiUrl}/funding/onramp/session`, async () =>
+    HttpResponse.json({})
+  ),
+  http.post(`${client.config.apiUrl}/funding/cex/session`, async () =>
+    HttpResponse.json({})
+  ),
 ]
 
 /**

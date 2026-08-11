@@ -1,13 +1,17 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { createCexSession } from './actions/createCexSession.js'
 export { createFundingOrder } from './actions/createFundingOrder.js'
+export { createOnrampSession } from './actions/createOnrampSession.js'
 export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
 export { getFundingOrder } from './actions/getFundingOrder.js'
 export { getGasRecommendation } from './actions/getGasRecommendation.js'
 export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
+export { getOnrampFiatCurrencies } from './actions/getOnrampFiatCurrencies.js'
+export { getOnrampQuote } from './actions/getOnrampQuote.js'
 export { getQuote } from './actions/getQuote.js'
 export { getRelayedTransactionStatus } from './actions/getRelayedTransactionStatus.js'
 export { getRelayerQuote } from './actions/getRelayerQuote.js'
