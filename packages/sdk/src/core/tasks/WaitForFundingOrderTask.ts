@@ -1,10 +1,11 @@
 import { getFundingOrder } from '../../actions/getFundingOrder.js'
 import { waitForFundingOrder } from '../../actions/waitForFundingOrder.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
-import { TransactionError } from '../../errors/errors.js'
+import { TransactionError, ValidationError } from '../../errors/errors.js'
 import type { ExecutionActionType } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
 import type { FundingOrder } from '../../types/funding.js'
+import { isFundingOrderStep } from '../../utils/fundingOrderStep.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 
 /**
@@ -21,7 +22,12 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
 
   async run(context: StepExecutorContext): Promise<TaskResult> {
     const { client, step, statusManager, isBridgeExecution, toChain } = context
-    const orderId = step.fundingOrderId!
+    if (!isFundingOrderStep(step)) {
+      throw new ValidationError(
+        'WaitForFundingOrderTask requires a step with fundingOrderId.'
+      )
+    }
+    const orderId = step.fundingOrderId
 
     const sourceAction = statusManager.findAction(
       step,

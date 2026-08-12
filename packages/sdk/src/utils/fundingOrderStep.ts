@@ -8,7 +8,9 @@ import type { LiFiStepExtended, SDKClient } from '../types/core.js'
  * Whether a step was derived from a funding order and must use the funding
  * execution branch (committed quote, order-endpoint status).
  */
-export function isFundingOrderStep(step: LiFiStep | LiFiStepExtended): boolean {
+export function isFundingOrderStep(
+  step: LiFiStep | LiFiStepExtended
+): step is LiFiStepExtended & { fundingOrderId: string } {
   const id = (step as LiFiStepExtended).fundingOrderId
   return typeof id === 'string' && id.length > 0
 }

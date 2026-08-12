@@ -177,6 +177,14 @@ describe('WaitForFundingOrderTask', () => {
     )
     expect(result.status).toBe('COMPLETED')
   })
+
+  it('throws a ValidationError for a step without fundingOrderId', async () => {
+    const step = { id: 'step-1', action: {} } as unknown as LiFiStepExtended
+    await expect(
+      new WaitForFundingOrderTask('RECEIVING_CHAIN').run(buildContext(step))
+    ).rejects.toMatchObject({ code: LiFiErrorCode.ValidationError })
+    expect(vi.mocked(waitForFundingOrder)).not.toHaveBeenCalled()
+  })
 })
 
 describe('WaitForTransactionStatusTask — funding delegation', () => {
