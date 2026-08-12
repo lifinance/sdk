@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('./execution.js', () => ({
   executeRoute: vi.fn(),
   resumeRoute: vi.fn(),
+  getActiveRoute: vi.fn(),
 }))
 vi.mock('../actions/getFundingOrder.js', () => ({
   getFundingOrder: vi.fn(),
@@ -14,8 +15,12 @@ vi.mock('../actions/waitForFundingOrder.js', () => ({
 import { buildFundingOrder } from '../actions/fundingOrders.unit.mock.js'
 import { getFundingOrder } from '../actions/getFundingOrder.js'
 import { waitForFundingOrder } from '../actions/waitForFundingOrder.js'
-import { executeRoute, resumeRoute } from './execution.js'
+import { LiFiErrorCode } from '../errors/constants.js'
+import { executeRoute, getActiveRoute, resumeRoute } from './execution.js'
 import { executeFundingOrder, resumeFundingOrder } from './fundingExecution.js'
+
+/** The id every buildFundingOrder() order carries. */
+const orderId = buildFundingOrder().orderId
 
 const quote = {
   id: 'quote-1',
@@ -40,12 +45,20 @@ const quote = {
   includedSteps: [],
 } as any
 
+/** Resolves executeRoute/resumeRoute after firing one terminal transition. */
+const fireTerminal = (order: ReturnType<typeof buildFundingOrder>) =>
+  vi.fn(async (_client: unknown, _route: unknown, options?: any) => {
+    options?.onOrderUpdate?.(order)
+    return {} as any
+  })
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(getActiveRoute).mockReturnValue(undefined)
 })
 
 describe('executeFundingOrder', () => {
-  it('rejects a FAILED order', async () => {
+  it('rejects a FAILED input order', async () => {
     await expect(
       executeFundingOrder({} as any, buildFundingOrder({ status: 'FAILED' }))
     ).rejects.toThrowError(/new order/)
@@ -57,38 +70,72 @@ describe('executeFundingOrder', () => {
     expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
   })
 
-  it('executes a STANDARD order through executeRoute and returns the final order', async () => {
-    const order = buildFundingOrder({ quote })
+  it('resolves with the captured terminal order and makes no extra read', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    vi.mocked(executeRoute).mockImplementation(fireTerminal(terminal))
+    const final = await executeFundingOrder(
+      {} as any,
+      buildFundingOrder({ quote })
+    )
+    expect(final).toBe(terminal)
+    expect(vi.mocked(getFundingOrder)).not.toHaveBeenCalled()
+  })
+
+  it('resolves with a FAILED terminal order rather than throwing', async () => {
+    const terminal = buildFundingOrder({ status: 'FAILED' })
+    vi.mocked(executeRoute).mockImplementation(fireTerminal(terminal))
+    const final = await executeFundingOrder(
+      {} as any,
+      buildFundingOrder({ quote })
+    )
+    expect(final.status).toBe('FAILED')
+  })
+
+  it('rejects with Timeout when the order never reaches a terminal state', async () => {
+    vi.mocked(executeRoute).mockResolvedValue({} as any)
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder())
+    await expect(
+      executeFundingOrder({} as any, buildFundingOrder({ quote }))
+    ).rejects.toMatchObject({ code: LiFiErrorCode.Timeout })
+  })
+
+  it('falls back to one read when no transition fired', async () => {
     vi.mocked(executeRoute).mockResolvedValue({} as any)
     vi.mocked(getFundingOrder).mockResolvedValue(
       buildFundingOrder({ status: 'DONE' })
     )
-    const final = await executeFundingOrder({} as any, order)
-    expect(vi.mocked(executeRoute)).toHaveBeenCalledTimes(1)
-    const [, route] = vi.mocked(executeRoute).mock.calls[0]
-    expect(route.id).toBe(order.orderId)
+    const final = await executeFundingOrder(
+      {} as any,
+      buildFundingOrder({ quote })
+    )
     expect(final.status).toBe('DONE')
+    expect(vi.mocked(getFundingOrder)).toHaveBeenCalledTimes(1)
   })
 
-  it('only polls for SMART_DEPOSIT orders', async () => {
-    const order = buildFundingOrder({ type: 'SMART_DEPOSIT' })
-    vi.mocked(waitForFundingOrder).mockResolvedValue(
-      buildFundingOrder({ status: 'DONE' })
-    )
-    const final = await executeFundingOrder({} as any, order)
-    expect(final.status).toBe('DONE')
-    expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
+  it('still forwards the caller onOrderUpdate callback', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    vi.mocked(executeRoute).mockImplementation(fireTerminal(terminal))
+    const onOrderUpdate = vi.fn()
+    await executeFundingOrder({} as any, buildFundingOrder({ quote }), {
+      onOrderUpdate,
+    })
+    expect(onOrderUpdate).toHaveBeenCalledWith(terminal)
   })
 
-  it('only polls for ONRAMP orders', async () => {
-    const order = buildFundingOrder({ type: 'ONRAMP' })
-    vi.mocked(waitForFundingOrder).mockResolvedValue(
-      buildFundingOrder({ status: 'DONE' })
-    )
-    const final = await executeFundingOrder({} as any, order)
-    expect(final.status).toBe('DONE')
-    expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
-  })
+  it.each(['SMART_DEPOSIT', 'ONRAMP'] as const)(
+    'only polls for %s orders',
+    async (type) => {
+      vi.mocked(waitForFundingOrder).mockResolvedValue(
+        buildFundingOrder({ status: 'DONE' })
+      )
+      const final = await executeFundingOrder(
+        {} as any,
+        buildFundingOrder({ type })
+      )
+      expect(final.status).toBe('DONE')
+      expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
+    }
+  )
 })
 
 describe('resumeFundingOrder', () => {
@@ -101,7 +148,20 @@ describe('resumeFundingOrder', () => {
     expect(vi.mocked(resumeRoute)).not.toHaveBeenCalled()
   })
 
-  it('skips the pipeline and polls when the source transaction was already sent', async () => {
+  it('resumes the live route when one is still in memory', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    const live = { id: orderId, steps: [] } as any
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder({ quote }))
+    vi.mocked(getActiveRoute).mockReturnValue(live)
+    vi.mocked(resumeRoute).mockImplementation(fireTerminal(terminal))
+
+    const final = await resumeFundingOrder({} as any, buildFundingOrder())
+
+    expect(vi.mocked(resumeRoute).mock.calls[0][1]).toBe(live)
+    expect(final.status).toBe('DONE')
+  })
+
+  it('polls only when the order already reports a source transaction', async () => {
     vi.mocked(getFundingOrder).mockResolvedValue(
       buildFundingOrder({ quote, result: { fromTxHash: '0xsent' } })
     )
@@ -111,15 +171,47 @@ describe('resumeFundingOrder', () => {
     const final = await resumeFundingOrder({} as any, buildFundingOrder())
     expect(final.status).toBe('DONE')
     expect(vi.mocked(resumeRoute)).not.toHaveBeenCalled()
+    expect(vi.mocked(executeRoute)).not.toHaveBeenCalled()
   })
 
-  it('resumes the route pipeline when nothing was sent yet', async () => {
-    vi.mocked(getFundingOrder)
-      .mockResolvedValueOnce(buildFundingOrder({ quote }))
-      .mockResolvedValueOnce(buildFundingOrder({ status: 'DONE' }))
-    vi.mocked(resumeRoute).mockResolvedValue({} as any)
+  it('polls only when the caller supplies sourceTxHash, and reports it', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder({ quote }))
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const final = await resumeFundingOrder({} as any, buildFundingOrder(), {
+      sourceTxHash: '0xbroadcast',
+    })
+    expect(final.status).toBe('DONE')
+    expect(vi.mocked(resumeRoute)).not.toHaveBeenCalled()
+    expect(vi.mocked(waitForFundingOrder)).toHaveBeenCalledWith(
+      expect.anything(),
+      orderId,
+      expect.objectContaining({ txHash: '0xbroadcast' })
+    )
+  })
+
+  it('rebuilds and resumes only when nothing was sent yet', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    vi.mocked(getFundingOrder).mockResolvedValue(buildFundingOrder({ quote }))
+    vi.mocked(resumeRoute).mockImplementation(fireTerminal(terminal))
     const final = await resumeFundingOrder({} as any, buildFundingOrder())
     expect(vi.mocked(resumeRoute)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(resumeRoute).mock.calls[0][1].id).toBe(orderId)
     expect(final.status).toBe('DONE')
+  })
+
+  it('scopes the refresh with integrator', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    await resumeFundingOrder({} as any, buildFundingOrder(), {
+      integrator: 'jumper',
+    })
+    expect(vi.mocked(getFundingOrder)).toHaveBeenCalledWith(
+      expect.anything(),
+      orderId,
+      { integrator: 'jumper' }
+    )
   })
 })

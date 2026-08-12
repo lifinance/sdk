@@ -214,4 +214,10 @@ export interface FundingExecutionOptions extends ExecutionOptions {
   integrator?: string
   /** Cancels the wait between polls and aborts the in-flight request. */
   signal?: AbortSignal
+  /**
+   * Source transaction the caller already broadcast, if any. Guards the window
+   * between broadcast and backend attribution, where result.fromTxHash is
+   * still empty and a rebuilt route would re-send.
+   */
+  sourceTxHash?: string
 }

@@ -1,24 +1,77 @@
+import type { Route } from '@lifi/types'
 import { getFundingOrder } from '../actions/getFundingOrder.js'
 import { waitForFundingOrder } from '../actions/waitForFundingOrder.js'
-import { ValidationError } from '../errors/errors.js'
+import { LiFiErrorCode } from '../errors/constants.js'
+import { TransactionError, ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import type { SDKClient } from '../types/core.js'
 import type { FundingExecutionOptions, FundingOrder } from '../types/funding.js'
 import { convertOrderToRoute } from '../utils/convertOrderToRoute.js'
-import { executeRoute, resumeRoute } from './execution.js'
+import { executeRoute, getActiveRoute, resumeRoute } from './execution.js'
 
 export type { FundingExecutionOptions } from '../types/funding.js'
+
+const isTerminal = (order: FundingOrder | undefined): boolean =>
+  order?.status === 'DONE' || order?.status === 'FAILED'
 
 const waitOnly = async (
   client: SDKClient,
   order: FundingOrder,
-  options?: FundingExecutionOptions
-): Promise<FundingOrder> => {
-  return waitForFundingOrder(client, order.orderId, {
+  options?: FundingExecutionOptions,
+  sourceTxHash?: string
+): Promise<FundingOrder> =>
+  waitForFundingOrder(client, order.orderId, {
     pollingInterval: options?.pollingInterval,
     timeout: options?.timeout,
+    integrator: options?.integrator,
+    signal: options?.signal,
+    txHash: sourceTxHash,
     onUpdate: options?.onOrderUpdate,
   })
+
+/**
+ * Run a route through the pipeline and return the terminal order.
+ * The terminal order arrives through the onOrderUpdate capture, so no extra
+ * read is needed on the common path.
+ */
+const runAndCapture = async (
+  client: SDKClient,
+  route: Route,
+  orderId: string,
+  options: FundingExecutionOptions | undefined,
+  run: (
+    client: SDKClient,
+    route: Route,
+    options?: FundingExecutionOptions
+  ) => Promise<unknown>
+): Promise<FundingOrder> => {
+  let latest: FundingOrder | undefined
+  await run(client, route, {
+    ...options,
+    onOrderUpdate: (order: FundingOrder) => {
+      latest = order
+      options?.onOrderUpdate?.(order)
+    },
+  })
+  if (isTerminal(latest)) {
+    return latest!
+  }
+  // No transition fired - read once before giving up.
+  const refetched = await getFundingOrder(client, orderId, {
+    ...(options?.integrator && { integrator: options.integrator }),
+  })
+  if (isTerminal(refetched)) {
+    return refetched
+  }
+  // The execution stopped before a terminal state: a poll timeout, a PAUSED
+  // task under executeInBackground, or stopRouteExecution. All three mean the
+  // same thing to the caller - resume later.
+  throw new SDKError(
+    new TransactionError(
+      LiFiErrorCode.Timeout,
+      `Funding order ${orderId} execution stopped before a terminal state. Resume it.`
+    )
+  )
 }
 
 /**
@@ -27,15 +80,14 @@ const waitOnly = async (
  * terminal state. SMART_DEPOSIT and ONRAMP orders only poll - rendering the
  * deposit QR or the on-ramp widget is the caller's job.
  *
- * FAILED outcome is asymmetric by order type: a STANDARD order that ends
- * FAILED rejects (the route execution pipeline throws). A SMART_DEPOSIT or
- * ONRAMP order that ends FAILED resolves with the terminal order - the
- * caller must check `order.status` to detect failure.
+ * A resolve always means the order is terminal, DONE or FAILED, for every
+ * order type. Check `order.status` to tell them apart.
  * @param client - The SDK client.
  * @param order - The funding order to execute. Must not be FAILED.
  * @param options - Execution options, including route execution hooks for STANDARD orders.
- * @throws {SDKError} ValidationError for a FAILED order - create a new order instead. Also rejects on a STANDARD order that ends FAILED during execution (pipeline throw).
- * @returns The terminal funding order. For SMART_DEPOSIT/ONRAMP orders this resolves even when the terminal status is FAILED.
+ * @throws {SDKError} ValidationError for a FAILED input order - create a new order instead. TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed.
+ * @throws {DOMException} The bare `options.signal.reason` - an AbortError DOMException by default, or whatever value the caller passed to `abort(reason)` - when the signal aborts. This is NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation.
+ * @returns The terminal funding order, DONE or FAILED.
  */
 export const executeFundingOrder = async (
   client: SDKClient,
@@ -55,40 +107,64 @@ export const executeFundingOrder = async (
   if (order.type !== 'STANDARD') {
     return waitOnly(client, order, options)
   }
-  const route = convertOrderToRoute(order)
-  await executeRoute(client, route, options)
-  return getFundingOrder(client, order.orderId)
+  return runAndCapture(
+    client,
+    convertOrderToRoute(order),
+    order.orderId,
+    options,
+    executeRoute
+  )
 }
 
 /**
- * Resume a funding order. Re-fetches the order first: terminal orders return
- * immediately; orders whose source transaction was already sent skip straight
- * to polling; otherwise the STANDARD route pipeline resumes.
+ * Resume a funding order. Re-reads the order first, then takes the first
+ * layer that applies:
  *
- * FAILED outcome depends on which of the three branches above handles the
- * refreshed order, not just its type. The refetched order is already FAILED,
- * or it is a STANDARD order whose source transaction was already sent (so
- * this call only polls): resolves with the FAILED order either way - check
- * `order.status`. Only the third branch - a STANDARD order still resuming
- * the route pipeline - rejects when it ends FAILED (pipeline throw).
+ * 1. terminal order - return it;
+ * 2. a live in-memory route - resume that, so provider resume-slicing works;
+ * 3. a source transaction already exists (reported by the order, or supplied
+ *    as `options.sourceTxHash`) - poll only, never re-send;
+ * 4. nothing sent yet - rebuild the route and resume.
+ *
+ * Layer 3 needs `sourceTxHash` because the backend sets `result.fromTxHash`
+ * only after it attributes the transfer. Without it, a reload inside that
+ * window would send the funding transaction a second time.
+ *
+ * A resolve always means the order is terminal, DONE or FAILED.
  * @param client - The SDK client.
  * @param order - The funding order to resume.
- * @param options - Execution options.
- * @returns The terminal funding order. Resolves even when the terminal status is FAILED, except when the route pipeline itself rejects.
+ * @param options - Execution options. Pass `sourceTxHash` when the caller persisted one.
+ * @throws {SDKError} TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed again.
+ * @throws {DOMException} The bare `options.signal.reason` - an AbortError DOMException by default, or whatever value the caller passed to `abort(reason)` - when the signal aborts. This is NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation.
+ * @returns The terminal funding order, DONE or FAILED.
  */
 export const resumeFundingOrder = async (
   client: SDKClient,
   order: FundingOrder,
   options?: FundingExecutionOptions
 ): Promise<FundingOrder> => {
-  const fresh = await getFundingOrder(client, order.orderId)
-  if (fresh.status === 'DONE' || fresh.status === 'FAILED') {
+  const fresh = await getFundingOrder(client, order.orderId, {
+    ...(options?.integrator && { integrator: options.integrator }),
+  })
+  if (isTerminal(fresh)) {
     return fresh
   }
-  if (fresh.type !== 'STANDARD' || fresh.result?.fromTxHash) {
-    return waitOnly(client, fresh, options)
+
+  const live = getActiveRoute(fresh.orderId)
+  if (live) {
+    return runAndCapture(client, live, fresh.orderId, options, resumeRoute)
   }
-  const route = convertOrderToRoute(fresh)
-  await resumeRoute(client, route, options)
-  return getFundingOrder(client, fresh.orderId)
+
+  const sourceTxHash = fresh.result?.fromTxHash ?? options?.sourceTxHash
+  if (fresh.type !== 'STANDARD' || sourceTxHash) {
+    return waitOnly(client, fresh, options, sourceTxHash)
+  }
+
+  return runAndCapture(
+    client,
+    convertOrderToRoute(fresh),
+    fresh.orderId,
+    options,
+    resumeRoute
+  )
 }
