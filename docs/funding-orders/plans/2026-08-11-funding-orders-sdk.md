@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (strict, `isolatedDeclarations: true`), pnpm monorepo, vitest + msw (`*.unit.spec.ts`), Biome, Changesets.
 
-**Spec:** `docs/superpowers/specs/2026-08-11-funding-orders-sdk-widget-integration-design.md` (§5, §7, §8 are the SDK sections). Backend contract reference: `/Users/eugene/Projects/lifi-backend` branch `funding-orders`, `apps/backend-api/src/packages/FundingOrders/fundingOrders.types.ts` and `docs/funding-api/funding-orders-api-design.md`.
+**Spec:** `docs/funding-orders/specs/2026-08-11-funding-orders-sdk-widget-integration-design.md` (§5, §7, §8 are the SDK sections). Backend contract reference: `/Users/eugene/Projects/lifi-backend` branch `funding-orders`, `apps/backend-api/src/packages/FundingOrders/fundingOrders.types.ts` and `docs/funding-api/funding-orders-api-design.md`.
 
 ## Global Constraints
 
