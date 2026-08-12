@@ -63,7 +63,10 @@ export const waitForFundingOrder = async (
         throw error
       }
       if (signal?.aborted) {
-        throw error
+        // Normalise: an abort during the request would otherwise surface as an
+        // SDKError wrapper while an abort during sleep surfaces as the bare
+        // DOMException. One shape, so one catch works for both paths.
+        throw signal.reason
       }
       return undefined
     })

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { sleep } from './sleep.js'
 
 describe('sleep', () => {
@@ -13,5 +13,43 @@ describe('sleep', () => {
   it('should return null', async () => {
     const result = await sleep(10)
     expect(result).toBeNull()
+  })
+
+  it('rejects with the abort reason when the signal is already aborted, without waiting out the delay', async () => {
+    const events: string[] = []
+    // Any macrotask turn — even a 0ms one — would land before a 60s timer.
+    setTimeout(() => events.push('macrotask'), 0)
+    const reason = await sleep(60_000, AbortSignal.abort()).then(
+      () => {
+        events.push('resolved')
+        return undefined
+      },
+      (error: unknown) => {
+        events.push('rejected')
+        return error
+      }
+    )
+    // No macrotask ran, so sleep rejected without ever starting a timer.
+    expect(events).toEqual(['rejected'])
+    expect(reason).toMatchObject({ name: 'AbortError' })
+  })
+
+  it('rejects with the abort reason when the signal aborts during the delay', async () => {
+    const controller = new AbortController()
+    const pending = sleep(60_000, controller.signal)
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    // The reason is passed through, not reconstructed.
+    await expect(pending).rejects.toBe(controller.signal.reason)
+  })
+
+  it('resolves and detaches its abort listener when a live signal never aborts', async () => {
+    const controller = new AbortController()
+    const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+    const result = await sleep(10, controller.signal)
+    expect(result).toBeNull()
+    expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+    // A late abort must not resurface on the already-resolved promise.
+    expect(() => controller.abort()).not.toThrow()
   })
 })

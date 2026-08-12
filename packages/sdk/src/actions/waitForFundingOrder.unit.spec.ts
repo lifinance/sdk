@@ -173,4 +173,21 @@ describe('waitForFundingOrder', () => {
     ).rejects.toMatchObject({ name: 'AbortError' })
     expect(mockedFetch.mock.calls.length).toBe(before)
   })
+
+  it('rejects with the same abort shape when the signal aborts mid-request', async () => {
+    const controller = new AbortController()
+    server.use(
+      http.get(`${client.config.apiUrl}/funding/orders/:orderId`, async () => {
+        controller.abort()
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        return HttpResponse.json(buildFundingOrder())
+      })
+    )
+    await expect(
+      waitForFundingOrder(client, 'order-1', {
+        pollingInterval: 10,
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' })
+  })
 })
