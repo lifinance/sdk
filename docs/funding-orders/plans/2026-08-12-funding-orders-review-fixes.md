@@ -294,7 +294,9 @@ git commit -m "fix(funding): clone the committed quote and skip the permit path"
 
 `getUpdatedStep`'s funding branch ignores its `signedTypedData` argument. Combined with a native permit that the user already signed, that produced the revert of finding 1. Task 2 stops the permit from being signed; this task removes the branch that could drop the signature at all.
 
-`EthereumPrepareTransactionTask` also calls `getUpdatedStep` unconditionally and always calls `stepComparison`. The core `PrepareTransactionTask` guards both on `!step.transactionRequest`. After this task the two slots have the same shape.
+`EthereumPrepareTransactionTask` also calls `getUpdatedStep` unconditionally and always calls `stepComparison`, for funding and non-funding steps alike. After this task the **funding** path in both slots has the same shape: refresh from the order only when `transactionRequest` is missing, and never compare rates.
+
+The non-funding path is deliberately left unguarded here, unlike the core task. Ethereum's `getUpdatedStep` also refreshes typed data and re-quotes contract-call and relayer steps, so gating it on `!step.transactionRequest` would break retries and gas refresh for ordinary routes. That is out of scope. The code block below is authoritative on this point.
 
 **Files:**
 - Modify: `packages/sdk-provider-ethereum/src/core/tasks/EthereumPrepareTransactionTask.ts:40-60`
@@ -1909,7 +1911,19 @@ Expected:
 ---
 ```
 
-- [ ] **Step 3: Run every gate**
+- [ ] **Step 3: Rebuild before verifying**
+
+The checked-in `packages/*/dist/**` is from an Aug 11 build, so it predates every fix in this plan. Provider packages resolve `@lifi/sdk` through `dist/esm/index.d.ts`, which means a branch-wide verification against the stale dist can pass while the built artifact still lacks Task 2's `skipPermit` marker.
+
+Run: `pnpm build`
+Expected: all 6 packages build. Then confirm the marker reached the artifact:
+
+```bash
+grep -n "skipPermit" packages/sdk/dist/esm/utils/fundingOrderStep.js
+```
+Expected: a match. If there is none, the build did not pick up Task 2 and the remaining gates are meaningless.
+
+- [ ] **Step 4: Run every gate**
 
 Run each in turn and read the output. Do not proceed past a failure.
 
@@ -1924,17 +1938,17 @@ pnpm --filter @lifi/sdk-provider-ethereum test:unit
 
 Expected: all six PASS. The `@lifi/sdk` suite should report more tests than the 278 it had before this plan.
 
-- [ ] **Step 4: Confirm no stray `as any` substatus cast survives**
+- [ ] **Step 5: Confirm no stray `as any` substatus cast survives**
 
 Run: `grep -rn "substatus.*as any" packages/sdk/src packages/sdk-provider-ethereum/src`
 Expected: no matches. Both casts were removed in Task 5.
 
-- [ ] **Step 5: Confirm the version files are still untouched**
+- [ ] **Step 6: Confirm the version files are still untouched**
 
 Run: `git status --short packages/*/src/version.ts`
 Expected: exactly six ` M` lines and nothing staged. These are unrelated working-tree changes that must not enter any commit.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add .changeset/funding-orders-surface.md
