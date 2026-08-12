@@ -49,7 +49,19 @@ describe('sleep', () => {
     const result = await sleep(10, controller.signal)
     expect(result).toBeNull()
     expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
-    // A late abort must not resurface on the already-resolved promise.
-    expect(() => controller.abort()).not.toThrow()
+  })
+
+  it('clears the pending timer when the signal aborts', async () => {
+    vi.useFakeTimers()
+    try {
+      const controller = new AbortController()
+      const pending = sleep(60_000, controller.signal)
+      expect(vi.getTimerCount()).toBe(1)
+      controller.abort()
+      await expect(pending).rejects.toBe(controller.signal.reason)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

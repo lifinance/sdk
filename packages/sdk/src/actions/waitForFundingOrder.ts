@@ -16,7 +16,8 @@ import { getFundingOrder } from './getFundingOrder.js'
  * @param client - The SDK client
  * @param orderId - The orderId to poll
  * @param options - Polling interval, timeout, transition callback, txHash to report, integrator scope, and abort signal
- * @throws {SDKError} ValidationError when orderId is missing. Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses. The order stays PENDING and can be waited on again. Also rejects immediately on client errors (HTTP 400, 401, 404, 422); other failures retry until the timeout. Rejects with the abort reason when options.signal aborts.
+ * @throws {SDKError} ValidationError when orderId is missing. Wraps TransactionError(LiFiErrorCode.Timeout) when the timeout elapses — the order stays PENDING and can be waited on again. Also rejects immediately on client errors (HTTP 400, 401, 404, 422); other failures retry until the timeout.
+ * @throws {DOMException} The bare `options.signal.reason` — an AbortError DOMException by default, or whatever value the caller passed to `abort(reason)` — when the signal aborts. This is NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation.
  * @returns The terminal funding order.
  */
 export const waitForFundingOrder = async (
