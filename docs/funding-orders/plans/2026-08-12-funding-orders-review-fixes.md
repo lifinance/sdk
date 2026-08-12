@@ -1637,6 +1637,7 @@ const runAndCapture = async (
  * @param order - The funding order to execute. Must not be FAILED.
  * @param options - Execution options, including route execution hooks for STANDARD orders.
  * @throws {SDKError} ValidationError for a FAILED input order - create a new order instead. TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed.
+ * @throws {DOMException} The bare `options.signal.reason` - an AbortError DOMException by default, or whatever value the caller passed to `abort(reason)` - when the signal aborts. This is NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation.
  * @returns The terminal funding order, DONE or FAILED.
  */
 export const executeFundingOrder = async (
@@ -1685,6 +1686,7 @@ export const executeFundingOrder = async (
  * @param order - The funding order to resume.
  * @param options - Execution options. Pass `sourceTxHash` when the caller persisted one.
  * @throws {SDKError} TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed again.
+ * @throws {DOMException} The bare `options.signal.reason` - an AbortError DOMException by default, or whatever value the caller passed to `abort(reason)` - when the signal aborts. This is NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation.
  * @returns The terminal funding order, DONE or FAILED.
  */
 export const resumeFundingOrder = async (
