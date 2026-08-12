@@ -2,19 +2,12 @@ import { getFundingOrder } from '../actions/getFundingOrder.js'
 import { waitForFundingOrder } from '../actions/waitForFundingOrder.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
-import type { ExecutionOptions, SDKClient } from '../types/core.js'
-import type { FundingOrder } from '../types/funding.js'
+import type { SDKClient } from '../types/core.js'
+import type { FundingExecutionOptions, FundingOrder } from '../types/funding.js'
 import { convertOrderToRoute } from '../utils/convertOrderToRoute.js'
 import { executeRoute, resumeRoute } from './execution.js'
 
-export interface FundingExecutionOptions extends ExecutionOptions {
-  /** Fires on every order status/substatus transition for every order type. */
-  onOrderUpdate?: (order: FundingOrder) => void
-  /** Poll interval for the order endpoint. Default 10_000. */
-  pollingInterval?: number
-  /** Timeout for reaching a terminal order state. Default 1_200_000 (20 min). */
-  timeout?: number
-}
+export type { FundingExecutionOptions } from '../types/funding.js'
 
 const waitOnly = async (
   client: SDKClient,

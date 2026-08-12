@@ -1,16 +1,23 @@
-import { getFundingOrder } from '../../actions/getFundingOrder.js'
 import { waitForFundingOrder } from '../../actions/waitForFundingOrder.js'
 import { LiFiErrorCode } from '../../errors/constants.js'
-import { TransactionError, ValidationError } from '../../errors/errors.js'
+import { ValidationError } from '../../errors/errors.js'
+import { SDKError } from '../../errors/SDKError.js'
 import type { ExecutionActionType } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
-import type { FundingOrder } from '../../types/funding.js'
+import type {
+  FundingExecutionOptions,
+  FundingOrder,
+} from '../../types/funding.js'
 import { isFundingOrderStep } from '../../utils/fundingOrderStep.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 
 /**
- * Wait slot for funding-order steps. Reports the source txHash to the order
- * endpoint, then polls the order (not /status) to a terminal state.
+ * Wait slot for funding-order steps. Polls the order (not /status) to a
+ * terminal state, reporting the source txHash until the order acknowledges it.
+ *
+ * A FAILED order is marked, not thrown: executeFundingOrder resolves with the
+ * terminal order. A poll timeout returns PAUSED, so the execution stays
+ * PENDING and resumable.
  */
 export class WaitForFundingOrderTask extends BaseStepExecutionTask {
   readonly actionType: ExecutionActionType
@@ -33,7 +40,6 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
       step,
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
-    const txHash = sourceAction?.txHash
 
     const action = statusManager.initializeAction({
       step,
@@ -45,58 +51,75 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
       status: 'PENDING',
     })
 
-    // Report the source transaction. Non-fatal: the backend can also find
-    // it through its own indexers, so a failed report must not stop polling.
-    if (txHash) {
-      await getFundingOrder(client, orderId, { txHash }).catch(() => undefined)
-    }
-
-    const fundingOptions = context.executionOptions as
-      | {
-          onOrderUpdate?: (order: FundingOrder) => void
-          pollingInterval?: number
-          timeout?: number
-        }
-      | undefined
-    const onOrderUpdate = fundingOptions?.onOrderUpdate
-
-    const order = await waitForFundingOrder(client, orderId, {
-      onUpdate: (updatedOrder) => {
-        onOrderUpdate?.(updatedOrder)
-        if (updatedOrder.status === 'PENDING') {
-          statusManager.updateAction(step, action.type, 'PENDING', {
-            // Deliberate cast: the funding order's substatus is an open
-            // string (server-documented, not enumerated), while
-            // ExecutionAction.substatus is typed as the @lifi/types
-            // Substatus union. Do not widen that core type for this.
-            substatus: updatedOrder.substatus as any,
-          })
-        }
-      },
-      // Enforce the 10s floor - non-terminal reads trigger a backend-side
-      // refresh, so polling faster just wastes requests.
-      pollingInterval: Math.max(
-        fundingOptions?.pollingInterval ?? context.pollingIntervalMs ?? 10_000,
-        10_000
-      ),
-      timeout: fundingOptions?.timeout,
+    // initializeAction cannot carry a substatus (ActionProps has no such
+    // field), and it leaves an existing action's substatus untouched. Write
+    // the sentinel explicitly so the Ethereum wait task's chain-check guard
+    // treats this step like a normal bridge on every re-entry.
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      substatus: 'WAIT_DESTINATION_TRANSACTION',
     })
 
+    const fundingOptions = context.executionOptions as
+      | FundingExecutionOptions
+      | undefined
+
+    // Annotate: an un-annotated `let` assigned only inside try/catch is an
+    // implicit any under strict mode.
+    let order: FundingOrder
+    try {
+      order = await waitForFundingOrder(client, orderId, {
+        // Re-reported on every non-terminal poll until the order acknowledges
+        // it. One failed report can no longer strand the order.
+        txHash: sourceAction?.txHash,
+        integrator: fundingOptions?.integrator,
+        signal: fundingOptions?.signal,
+        onUpdate: (updatedOrder) => {
+          // The funding substatus is an open string, so it never reaches
+          // ExecutionAction.substatus. The caller gets it here instead.
+          fundingOptions?.onOrderUpdate?.(updatedOrder)
+        },
+        // Enforce the 10s floor - non-terminal reads trigger a backend-side
+        // refresh, so polling faster just wastes requests.
+        pollingInterval: Math.max(
+          fundingOptions?.pollingInterval ??
+            context.pollingIntervalMs ??
+            10_000,
+          10_000
+        ),
+        timeout: fundingOptions?.timeout,
+      })
+    } catch (error) {
+      // A timeout is not a failure: the order stays PENDING and the UI keeps
+      // the resume path alive. Pausing leaves the execution status untouched,
+      // where a throw would let BaseStepExecutor mark it FAILED.
+      if (error instanceof SDKError && error.code === LiFiErrorCode.Timeout) {
+        return { status: 'PAUSED' }
+      }
+      throw error
+    }
+
     if (order.status === 'FAILED') {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionFailed,
-        `Funding order ${orderId} failed${order.substatus ? ` (${order.substatus})` : ''}.`
-      )
+      // Marked, not thrown - the caller resolves with the terminal order.
+      statusManager.updateAction(step, action.type, 'FAILED', {
+        error: {
+          code: LiFiErrorCode.TransactionFailed,
+          message: `Funding order ${orderId} failed${
+            order.substatus ? ` (${order.substatus})` : ''
+          }.`,
+        },
+      })
+      return { status: 'COMPLETED' }
     }
 
     statusManager.updateAction(step, action.type, 'DONE', {
       chainId: step.action.toChainId,
-      // Deliberate cast: see the substatus comment above.
-      substatus: order.substatus as any,
-      txHash: order.result?.toTxHash,
-      txLink: order.result?.toTxHash
-        ? `${toChain.metamask.blockExplorerUrls[0]}tx/${order.result.toTxHash}`
-        : undefined,
+      // Object.assign in updateAction copies an explicit undefined, so these
+      // two must be absent rather than undefined - otherwise a DONE order
+      // without toTxHash erases the source hash from a same-chain SWAP action.
+      ...(order.result?.toTxHash && {
+        txHash: order.result.toTxHash,
+        txLink: `${toChain.metamask.blockExplorerUrls[0]}tx/${order.result.toTxHash}`,
+      }),
     })
 
     statusManager.updateExecution(step, {

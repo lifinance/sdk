@@ -1,4 +1,5 @@
 import type { LiFiStep, RouteOptions } from '@lifi/types'
+import type { ExecutionOptions } from './core.js'
 
 export type FundingOrderType = 'STANDARD' | 'SMART_DEPOSIT' | 'ONRAMP'
 
@@ -200,4 +201,17 @@ export interface CexSessionRequest {
 
 export interface CexSessionResult {
   linkToken: string
+}
+
+export interface FundingExecutionOptions extends ExecutionOptions {
+  /** Fires on every order status/substatus transition for every order type. */
+  onOrderUpdate?: (order: FundingOrder) => void
+  /** Poll interval for the order endpoint. Default 10_000. */
+  pollingInterval?: number
+  /** Timeout for reaching a terminal order state. Default 1_200_000 (20 min). */
+  timeout?: number
+  /** Scopes every order read. Required for keyless partnerOrderId lookups. */
+  integrator?: string
+  /** Cancels the wait between polls and aborts the in-flight request. */
+  signal?: AbortSignal
 }
