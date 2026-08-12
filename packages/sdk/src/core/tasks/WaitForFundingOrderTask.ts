@@ -113,6 +113,12 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
 
     statusManager.updateAction(step, action.type, 'DONE', {
       chainId: step.action.toChainId,
+      // Clear the sentinel. Without this the completed action still reads
+      // WAIT_DESTINATION_TRANSACTION and a consumer UI renders "waiting for
+      // destination transaction" on a finished step. 'COMPLETED' is a member
+      // of the closed SubstatusDone union, so no cast is needed - the order's
+      // own open-string substatus still never reaches the action.
+      substatus: 'COMPLETED',
       // Object.assign in updateAction copies an explicit undefined, so these
       // two must be absent rather than undefined - otherwise a DONE order
       // without toTxHash erases the source hash from a same-chain SWAP action.
