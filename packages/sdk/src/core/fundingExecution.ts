@@ -126,6 +126,12 @@ export const executeFundingOrder = async (
  *    as `options.sourceTxHash`) - poll only, never re-send;
  * 4. nothing sent yet - rebuild the route and resume.
  *
+ * Layer 2 applies less often than it looks: `getActiveRoute` reads `executionState`,
+ * and `stopRouteExecution` deletes that entry, which `executeSteps` calls on every
+ * non-DONE step outcome - including a poll timeout. So layer 2 covers a resume issued
+ * while an execution is still live, not a resume after a pause, a background/foreground
+ * transition, or a retry. Layer 3 carries the guard in all of those.
+ *
  * Layer 3 needs `sourceTxHash` because the backend sets `result.fromTxHash`
  * only after it attributes the transfer. Without it, a reload inside that
  * window would send the funding transaction a second time.
