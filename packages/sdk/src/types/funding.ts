@@ -95,6 +95,15 @@ export interface WaitForFundingOrderOptions {
   timeout?: number
   /** Fires on every status/substatus transition, including the terminal one. */
   onUpdate?: (order: FundingOrder) => void
+  /**
+   * Source transaction to report. Re-sent on every non-terminal poll until the
+   * order reports result.fromTxHash, so one failed report cannot strand the order.
+   */
+  txHash?: string
+  /** Scopes every poll. Required for keyless partnerOrderId lookups. */
+  integrator?: string
+  /** Cancels the wait between polls and aborts the in-flight request. */
+  signal?: AbortSignal
 }
 
 export interface OnrampQuoteRequest {

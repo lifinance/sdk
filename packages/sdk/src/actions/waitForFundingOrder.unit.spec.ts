@@ -90,4 +90,87 @@ describe('waitForFundingOrder', () => {
       waitForFundingOrder(client, 'missing-order', { pollingInterval: 10 })
     ).rejects.toMatchObject({ code: LiFiErrorCode.NotFound })
   })
+
+  it('re-reports txHash on every poll until the order acknowledges it', async () => {
+    const seen: (string | null)[] = []
+    let calls = 0
+    server.use(
+      http.get(
+        `${client.config.apiUrl}/funding/orders/:orderId`,
+        async ({ request: req }) => {
+          calls++
+          seen.push(new URL(req.url).searchParams.get('txHash'))
+          if (calls < 3) {
+            return HttpResponse.json(buildFundingOrder())
+          }
+          if (calls === 3) {
+            return HttpResponse.json(
+              buildFundingOrder({ result: { fromTxHash: '0xsource' } })
+            )
+          }
+          return HttpResponse.json(buildFundingOrder({ status: 'DONE' }))
+        }
+      )
+    )
+    const order = await waitForFundingOrder(client, 'order-1', {
+      pollingInterval: 10,
+      txHash: '0xsource',
+    })
+    expect(order.status).toBe('DONE')
+    expect(seen.slice(0, 3)).toEqual(['0xsource', '0xsource', '0xsource'])
+    expect(seen[3]).toBeNull()
+  })
+
+  it('forwards integrator on every poll', async () => {
+    const seen: (string | null)[] = []
+    let calls = 0
+    server.use(
+      http.get(
+        `${client.config.apiUrl}/funding/orders/:orderId`,
+        async ({ request: req }) => {
+          calls++
+          seen.push(new URL(req.url).searchParams.get('integrator'))
+          return HttpResponse.json(
+            buildFundingOrder(calls < 2 ? {} : { status: 'DONE' })
+          )
+        }
+      )
+    )
+    await waitForFundingOrder(client, 'order-1', {
+      pollingInterval: 10,
+      integrator: 'jumper',
+    })
+    expect(seen).toEqual(['jumper', 'jumper'])
+  })
+
+  it('rejects and stops polling when the signal aborts', async () => {
+    let calls = 0
+    server.use(
+      http.get(`${client.config.apiUrl}/funding/orders/:orderId`, async () => {
+        calls++
+        return HttpResponse.json(buildFundingOrder())
+      })
+    )
+    const controller = new AbortController()
+    const pending = waitForFundingOrder(client, 'order-1', {
+      pollingInterval: 10_000,
+      signal: controller.signal,
+    })
+    // Let the first poll land, then abort during the sleep.
+    await vi.waitFor(() => expect(calls).toBe(1))
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(calls).toBe(1)
+  })
+
+  it('rejects before the first request when the signal is already aborted', async () => {
+    const before = mockedFetch.mock.calls.length
+    await expect(
+      waitForFundingOrder(client, 'order-1', {
+        pollingInterval: 10,
+        signal: AbortSignal.abort(),
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(mockedFetch.mock.calls.length).toBe(before)
+  })
 })
