@@ -255,28 +255,42 @@ if (fresh.status !== 'PENDING') {
   return fresh
 }
 
-// 1. a live in-memory route wins - provider resume-slicing works on it
+// Layer 2: a live in-memory route wins - provider resume-slicing works on it
 const live = getActiveRoute(fresh.orderId)
 if (live) {
   return resumeAndCapture(client, live, options)
 }
 
-// 2. a source transaction exists -> never re-send
+// Layer 3: a source transaction exists -> never re-send
 const sourceTxHash = fresh.result?.fromTxHash ?? options?.sourceTxHash
 if (fresh.type !== 'STANDARD' || sourceTxHash) {
   return waitOnly(client, fresh, options, sourceTxHash)
 }
 
-// 3. nothing sent yet -> rebuild and resume
+// Layer 4: nothing sent yet -> rebuild and resume
 return executeAndCapture(client, convertOrderToRoute(fresh), options)
 ```
 
 `resumeAndCapture` and `executeAndCapture` are the §6.3 capture wrappers around `resumeRoute` and
 `executeRoute`. Both entry points share them, so the §6.4 contract holds on every layer.
 
-Layer 1 covers background/foreground, a `PAUSED` task, and retry. Today none of those slice
-correctly, because `convertOrderToRoute` produces a step with no `execution`, and
-`EthereumStepExecutor.createPipeline` slices on `step.execution.actions`.
+Layers are numbered to match the `resumeFundingOrder` JSDoc: 1 is the terminal-order early
+return, 2 the live route, 3 the already-sent guard, 4 the rebuild. Use these numbers everywhere.
+
+**Layer 2 is much narrower than it looks, and the implementation proved it.** `getActiveRoute`
+reads `executionState`, and `stopRouteExecution` deletes that entry (`execution.ts:222`).
+`executeSteps` calls `stopRouteExecution` on *every* non-DONE step outcome (`execution.ts:157`),
+including the §6.2 `PAUSED` timeout. So layer 2 does **not** cover a resume after a pause, a
+background/foreground transition, or a retry — in all of those the state is already gone and
+`getActiveRoute` returns `undefined`. What it does cover is a resume issued while an execution is
+still live in `executionState`, i.e. a duplicate or concurrent resume call; `resumeRoute` then
+attaches to the running execution rather than starting a second one.
+
+**Consequence: layer 3 carries the guard almost alone.** Since layer 2 rarely applies, the
+protection against a double send is `options.sourceTxHash` plus the order's own
+`result.fromTxHash`. A caller that does not persist `sourceTxHash` is unguarded for exactly the
+window this design set out to close — the interval between broadcast and backend attribution.
+That makes the widget change in §9 a requirement, not an enhancement.
 
 Layer 2 closes the attribution window. The backend sets `result.fromTxHash` only after it sees the
 transfer, so the current guard leaves the interval between broadcast and attribution unprotected.
@@ -436,10 +450,13 @@ failure. Funding semantics belong at the funding action.
 
 ## 9. Out of scope — the widget follow-up
 
-Two widget changes follow from this design and belong in a separate spec in the `widget` repo:
+Two widget changes follow from this design and belong in a separate spec in the `widget` repo.
+**The first is required, not optional** — see the consequence note in §7.1. Without it the
+double-send window this design set out to close stays open, because layer 2 almost never applies.
 
 - The thin localStorage list of the original spec §137 needs a `sourceTxHash` field, so §7.1
-  layer 2 has something to pass.
+  layer 3 has something to pass. The widget must write it as soon as the funding transaction is
+  broadcast — not after the backend attributes it, which is the very window being guarded.
 - The single completion observer of the original spec §6.4 changes shape, because a FAILED order
   now resolves instead of throwing.
 
