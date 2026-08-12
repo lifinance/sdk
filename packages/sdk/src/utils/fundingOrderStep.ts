@@ -40,6 +40,8 @@ export async function getFundingOrderUpdatedStep(
   }
   return {
     ...order.quote,
+    // Copy the estimate so the marker cannot leak into the fetched order.
+    estimate: { ...order.quote.estimate, skipPermit: true },
     id: step.id,
     fundingOrderId: step.fundingOrderId,
     execution: step.execution,

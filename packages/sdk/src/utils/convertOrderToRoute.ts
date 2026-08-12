@@ -25,9 +25,14 @@ export const convertOrderToRoute = (order: FundingOrder): Route => {
       new ValidationError(`Funding order ${order.orderId} has no quote.`)
     )
   }
-  const route = convertQuoteToRoute(order.quote)
+  // Clone before marking: convertQuoteToRoute puts the quote into steps[0] by
+  // reference, so writing the markers would pollute the caller's order.
+  const route = convertQuoteToRoute(structuredClone(order.quote))
   route.id = order.orderId
   const step = route.steps[0] as LiFiStepExtended
   step.fundingOrderId = order.orderId
+  // A funding order can never use permit: transactionRequest is committed at
+  // order creation and targets estimate.approvalAddress.
+  step.estimate.skipPermit = true
   return route
 }

@@ -74,6 +74,20 @@ describe('getFundingOrderUpdatedStep', () => {
     ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionUnprepared })
   })
 
+  it('sets skipPermit without mutating the fetched order estimate', async () => {
+    const quote = {
+      id: 'server-quote-id',
+      estimate: { approvalAddress: '0xApproval', toAmount: '990000' },
+      transactionRequest: { to: '0xTo', data: '0xdata' },
+    }
+    const order = buildFundingOrder({ quote: quote as any })
+    vi.mocked(getFundingOrder).mockResolvedValue(order)
+    const updated = await getFundingOrderUpdatedStep({} as any, step)
+    expect(updated.estimate.skipPermit).toBe(true)
+    expect(updated.estimate.approvalAddress).toBe('0xApproval')
+    expect(order.quote!.estimate).not.toBe(updated.estimate)
+  })
+
   it('throws ValidationError when the step has no fundingOrderId and does not call getFundingOrder', async () => {
     const stepWithoutFundingOrderId = { id: 'step-1' } as LiFiStepExtended
     vi.mocked(getFundingOrder).mockClear()

@@ -56,4 +56,17 @@ describe('convertOrderToRoute', () => {
     const order = buildFundingOrder()
     expect(() => convertOrderToRoute(order)).toThrowError(/has no quote/)
   })
+
+  it('sets skipPermit on the produced step', () => {
+    const order = buildFundingOrder({ quote: buildQuote() })
+    const route = convertOrderToRoute(order)
+    expect(route.steps[0].estimate.skipPermit).toBe(true)
+  })
+
+  it('leaves the caller order untouched', () => {
+    const order = buildFundingOrder({ quote: buildQuote() })
+    const before = structuredClone(order)
+    convertOrderToRoute(order)
+    expect(order).toEqual(before)
+  })
 })
