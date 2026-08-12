@@ -16,6 +16,7 @@
 - No default exports in library code.
 - Test files are named `*.unit.spec.ts`; shared fixtures `*.unit.mock.ts`; msw handlers live in `packages/sdk/src/actions/actions.unit.handlers.ts` (`setupTestServer()` pattern).
 - Run tests with `pnpm --filter @lifi/sdk test:unit` and `pnpm --filter @lifi/sdk-provider-ethereum test:unit`. Type-check with `pnpm check:types`. Lint with `pnpm check` (Biome).
+- **`test:unit -- <name>` does not narrow the run.** The script is `pnpm test .unit.spec.ts --passWithNoTests`, and vitest ORs positional filters, so an appended name matches `.unit.spec.ts` **OR** `<name>` — i.e. the whole suite. Every `test:unit -- <name>` command below therefore runs everything; read the named file's own results out of the output. To genuinely narrow while iterating, use `pnpm --filter @lifi/sdk test <path-or-name>` (the `test` script, not `test:unit`).
 - The husky pre-commit hook runs `pnpm check && pnpm check:types && pnpm check:circular-deps && pnpm knip:check`. Every commit must pass all four. `check:circular-deps` is madge — do not introduce an import from `core/tasks/**` to `core/fundingExecution.js`, not even a type import.
 - Commits follow the repo's scoped conventional style (`fix(funding): …`, `refactor(funding): …`, `test(funding): …`).
 - Do **not** add a new changeset. Task 8 amends the existing `.changeset/funding-orders-surface.md`.
@@ -76,8 +77,10 @@ Append to `packages/sdk/src/utils/fundingOrderStep.unit.spec.ts`, inside the exi
     if (!isFundingOrderStep(candidate)) {
       throw new Error('expected a funding order step')
     }
-    // No non-null assertion below. This line fails to compile if the
-    // predicate returns plain boolean instead of narrowing.
+    // Documents the intent at runtime only. tsconfig excludes *.spec.ts and
+    // vitest does not type-check, so nothing compiles this annotation. The
+    // real gate is WaitForFundingOrderTask.run, where check:types rejects
+    // `step.fundingOrderId` as `string | undefined` if this stops narrowing.
     const orderId: string = candidate.fundingOrderId
     expect(orderId).toBe('order-1')
   })
