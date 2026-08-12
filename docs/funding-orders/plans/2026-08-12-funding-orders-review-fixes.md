@@ -21,6 +21,8 @@
 - Do **not** add a new changeset. Task 8 amends the existing `.changeset/funding-orders-surface.md`.
 - Do **not** touch `packages/*/src/version.ts`. Those 6 files are modified in the working tree for unrelated reasons. Never use `git commit -a`; always stage explicit paths.
 - The open-string funding `substatus` must never be written to `ExecutionAction.substatus`. It reaches callers through `onOrderUpdate` only. No `as any` casts remain when this plan is done.
+- **`check:types` does not type-check spec files.** `packages/sdk/tsconfig.json:12-17` excludes `./src/**/*.spec.ts`, `*.mock.ts` and `*.handlers.ts`. Vitest transpiles without type-checking, so no automated gate enforces a type-level assertion inside a spec. Where a step below expects a *type* error, verify it in an isolated scratch file outside `src/`, then delete that file. Never loosen the tsconfig to make a step work.
+- **Provider packages type-check against built dist, not src.** `@lifi/sdk`'s `types` field is `./dist/esm/index.d.ts`, and no provider tsconfig declares `paths` or `references`. If a task in `packages/sdk-provider-*` needs a signature this plan just changed in `packages/sdk/src`, run `pnpm --filter @lifi/sdk build` before `check:types`.
 
 ## File Structure
 
@@ -81,10 +83,28 @@ Append to `packages/sdk/src/utils/fundingOrderStep.unit.spec.ts`, inside the exi
   })
 ```
 
-- [ ] **Step 2: Run the type check to verify it fails**
+- [ ] **Step 2: Prove the type error in a scratch file**
+
+`check:types` excludes spec files, so the assertion above is documentation, not a gate. Prove the red state in a file the tsconfig does include. Create `packages/sdk/src/utils/__narrow-probe.ts`:
+
+```ts
+import type { LiFiStepExtended } from '../types/core.js'
+import { isFundingOrderStep } from './fundingOrderStep.js'
+
+const candidate = { id: 'x', fundingOrderId: 'order-1' } as LiFiStepExtended
+
+export function probe(): string {
+  if (!isFundingOrderStep(candidate)) {
+    throw new Error('not a funding order step')
+  }
+  return candidate.fundingOrderId
+}
+```
 
 Run: `pnpm --filter @lifi/sdk check:types`
-Expected: FAIL with `Type 'string | undefined' is not assignable to type 'string'` in `fundingOrderStep.unit.spec.ts`.
+Expected: FAIL with `Type 'string | undefined' is not assignable to type 'string'`.
+
+Delete the probe file after Step 3 turns it green — it must not be committed.
 
 - [ ] **Step 3: Narrow the predicate**
 
@@ -604,7 +624,12 @@ Append to `packages/sdk/src/actions/waitForFundingOrder.unit.spec.ts`, inside `d
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @lifi/sdk test:unit -- waitForFundingOrder`
-Expected: FAIL — the type check rejects `txHash`, `integrator` and `signal` as unknown properties on `WaitForFundingOrderOptions`.
+
+Vitest does not type-check, so the three unknown options are silently ignored rather than rejected. Expected failures:
+- `re-reports txHash…` — the `txHash` query param is `null` on every poll, so `seen.slice(0, 3)` is `[null, null, null]`.
+- `forwards integrator…` — same, `seen` is `[null, null]`.
+- `rejects before the first request…` — a request still goes out, so the `mockedFetch` call count assertion fails.
+- `rejects and stops polling when the signal aborts` — **this one hangs** rather than failing fast. `sleep` is not yet abortable and the default timeout is 1_200_000 ms, so the promise never settles and vitest kills the case on its own timeout. That is the expected red; do not "fix" it by shortening the interval.
 
 - [ ] **Step 3: Add the option fields**
 
