@@ -434,8 +434,8 @@ describe('EthereumPrepareTransactionTask — standard branch', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm --filter @lifi/sdk-provider-ethereum test:unit -- EthereumPrepareTransactionTask`
-Expected: FAIL — `stepComparison` and `getUpdatedStep` are called for the funding step, because the task has no funding branch yet.
+Run: `pnpm --filter @lifi/sdk-provider-ethereum test EthereumPrepareTransactionTask`
+Expected: the 4 funding tests FAIL and test 5 passes. The failure surfaces as `TypeError: Cannot read properties of undefined (reading 'typedData')` — the spec mocks `getUpdatedStep`, so it resolves `undefined` and the unguarded `else` path dereferences it. That is the right red: without the funding branch, a funding step still enters the standard re-quote path.
 
 - [ ] **Step 3: Add the funding branch to the Ethereum prepare task**
 
@@ -510,10 +510,12 @@ Expected: PASS. No unused-import errors in `getUpdatedStep.ts`.
 - [ ] **Step 7: Commit**
 
 ```bash
+# Do NOT re-list helpers/getUpdatedStep.unit.spec.ts here. Step 5's `git rm`
+# already staged its deletion, and `git add` on a path that no longer exists
+# fails on the bad pathspec and stages nothing at all.
 git add packages/sdk-provider-ethereum/src/core/tasks/EthereumPrepareTransactionTask.ts \
         packages/sdk-provider-ethereum/src/core/tasks/EthereumPrepareTransactionTask.unit.spec.ts \
-        packages/sdk-provider-ethereum/src/core/tasks/helpers/getUpdatedStep.ts \
-        packages/sdk-provider-ethereum/src/core/tasks/helpers/getUpdatedStep.unit.spec.ts
+        packages/sdk-provider-ethereum/src/core/tasks/helpers/getUpdatedStep.ts
 git commit -m "refactor(funding): move the ethereum funding branch into the prepare task"
 ```
 
