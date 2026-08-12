@@ -66,7 +66,8 @@ describe('convertOrderToRoute', () => {
   it('leaves the caller order untouched', () => {
     const order = buildFundingOrder({ quote: buildQuote() })
     const before = structuredClone(order)
-    convertOrderToRoute(order)
+    const route = convertOrderToRoute(order)
     expect(order).toEqual(before)
+    expect(route.steps[0]).not.toBe(order.quote)
   })
 })

@@ -85,7 +85,7 @@ describe('getFundingOrderUpdatedStep', () => {
     const updated = await getFundingOrderUpdatedStep({} as any, step)
     expect(updated.estimate.skipPermit).toBe(true)
     expect(updated.estimate.approvalAddress).toBe('0xApproval')
-    expect(order.quote!.estimate).not.toBe(updated.estimate)
+    expect(order.quote!.estimate.skipPermit).toBeUndefined()
   })
 
   it('throws ValidationError when the step has no fundingOrderId and does not call getFundingOrder', async () => {
