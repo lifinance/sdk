@@ -180,10 +180,12 @@ describe('WaitForFundingOrderTask', () => {
 
   it('throws a ValidationError for a step without fundingOrderId', async () => {
     const step = { id: 'step-1', action: {} } as unknown as LiFiStepExtended
+    const context = buildContext(step)
     await expect(
-      new WaitForFundingOrderTask('RECEIVING_CHAIN').run(buildContext(step))
+      new WaitForFundingOrderTask('RECEIVING_CHAIN').run(context)
     ).rejects.toMatchObject({ code: LiFiErrorCode.ValidationError })
     expect(vi.mocked(waitForFundingOrder)).not.toHaveBeenCalled()
+    expect(context.statusManager.initializeAction).not.toHaveBeenCalled()
   })
 })
 

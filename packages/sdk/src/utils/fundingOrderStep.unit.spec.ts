@@ -42,8 +42,10 @@ describe('isFundingOrderStep', () => {
     if (!isFundingOrderStep(candidate)) {
       throw new Error('expected a funding order step')
     }
-    // No non-null assertion below. This line fails to compile if the
-    // predicate returns plain boolean instead of narrowing.
+    // Documents the intent at runtime only. tsconfig excludes *.spec.ts and
+    // vitest does not type-check, so nothing compiles this annotation. The
+    // real gate is WaitForFundingOrderTask.run, where check:types rejects
+    // `step.fundingOrderId` as `string | undefined` if this stops narrowing.
     const orderId: string = candidate.fundingOrderId
     expect(orderId).toBe('order-1')
   })
