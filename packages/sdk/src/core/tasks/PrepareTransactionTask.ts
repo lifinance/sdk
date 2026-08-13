@@ -10,6 +10,16 @@ import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { stepComparison } from './helpers/stepComparison.js'
 
 export class PrepareTransactionTask extends BaseStepExecutionTask {
+  /**
+   * Whether `run()` has to fetch a fresh transaction request. The default asks
+   * only when the step carries none, which keeps every existing provider
+   * unchanged. Chains whose payload cannot be reused override it — see
+   * `StellarPrepareTransactionTask`.
+   */
+  protected shouldRefetchTransaction(context: StepExecutorContext): boolean {
+    return !context.step.transactionRequest
+  }
+
   async run(context: StepExecutorContext): Promise<TaskResult> {
     const {
       client,
@@ -32,7 +42,7 @@ export class PrepareTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    if (!step.transactionRequest) {
+    if (this.shouldRefetchTransaction(context)) {
       if (isFundingOrderStep(step)) {
         // Funding orders have no re-quote endpoint - restore the committed
         // quote from the order itself and skip the rate-change comparison.
