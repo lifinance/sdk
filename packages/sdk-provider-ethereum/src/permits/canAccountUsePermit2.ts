@@ -41,6 +41,14 @@ const PROBE_SIGNATURE =
  * reverts with `ValidationSignatureSegmentMissing()` for a malformed signature
  * but with no data for a well-formed one. An empty return counts as unusable —
  * it fails Permit2's magic-value comparison too.
+ *
+ * Accepted limit: an implementation that returns the failure value for *every*
+ * signature is indistinguishable from one that would accept ours, so it is
+ * classified capable here and still fails on-chain. Return-vs-revert is the only
+ * signal available — the probe signature recovers to a third party on purpose,
+ * so a correct implementation must return a non-magic value, and comparing
+ * against the magic value would reject every wallet this probe exists to
+ * accept. Only verifying the real signature after signing closes that gap.
  */
 const acceptsRawEcdsaSignature = async (
   client: SDKClient,
@@ -50,7 +58,19 @@ const acceptsRawEcdsaSignature = async (
   try {
     const publicClient = await getPublicClient(client, chainId)
     const { data } = await getAction(
-      publicClient,
+      // Never follow an `OffchainLookup` revert. Following it would send an
+      // outbound request to a URL this contract chose, and would hand back a
+      // return where the account actually reverted — inverting the one signal
+      // read below. viem gates CCIP-Read on the client rather than on the call,
+      // so the probe runs on a copy with it disabled; the shared public client
+      // still needs CCIP for ENS.
+      //
+      // NOTE: this works because `getPublicClient` returns a bare `createClient`
+      // with no `publicActions`, so `getAction` falls through to the `call`
+      // imported here. If that client is ever extended with `publicActions`,
+      // `getAction` would prefer its decorated `client.call`, which closes over
+      // the original client and would silently re-enable CCIP-Read.
+      { ...publicClient, ccipRead: false },
       call,
       'call'
     )({
@@ -61,8 +81,10 @@ const acceptsRawEcdsaSignature = async (
         args: [PROBE_HASH, PROBE_SIGNATURE],
       }),
     })
-    // At least 4 bytes — enough for a bytes4 the caller could compare.
-    return !!data && data.length >= 10
+    // A full 32-byte word or nothing (`0x` + 64 hex characters = 66). Permit2
+    // compares the return against its magic value, so anything shorter can
+    // never satisfy it on-chain and would only be a false positive here.
+    return !!data && data.length >= 66
   } catch {
     // Revert, or an RPC failure we can't tell apart from one. Either way we
     // must not promise Permit2 will work.
@@ -82,6 +104,12 @@ const acceptsRawEcdsaSignature = async (
  * needless approval.
  *
  * `false` on RPC failure — the approve + execute fallback always works.
+ *
+ * Accepted downgrade: an implementation that *reverts* on a signer mismatch
+ * (`require(recovered == owner)` 7702 delegates, Sequence contract signatures)
+ * fails the probe although it would accept the real signature. Those accounts
+ * pay one exact-amount approval per step instead of using Permit2 — a gas cost
+ * on a route that works, not a failure.
  */
 export const canAccountUsePermit2 = async (
   client: SDKClient,

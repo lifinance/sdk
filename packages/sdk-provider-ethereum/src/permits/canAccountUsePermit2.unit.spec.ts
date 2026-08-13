@@ -93,6 +93,34 @@ describe('canAccountUsePermit2 — code-bearing accounts are probed, not assumed
       expect.objectContaining({ to: ADDRESS })
     )
   })
+
+  it('blocks an account whose return is too short to be a magic value', async () => {
+    // A bare 4-byte return, not padded to a word. Permit2 compares a full
+    // 32-byte word, so a short return can never satisfy it on-chain —
+    // accepting it here would only manufacture a false positive, which is the
+    // same symptom this probe exists to prevent.
+    vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
+    vi.mocked(call).mockResolvedValue({ data: '0x1626ba7e' })
+
+    expect(await subject()).toBe(false)
+  })
+
+  it('never follows a CCIP-Read revert while probing', async () => {
+    // Following an `OffchainLookup` revert would make an outbound request to a
+    // URL this contract chose, and would turn a revert into a return —
+    // inverting the revert-vs-return rule the whole probe is keyed on.
+    vi.mocked(getAccountCode).mockResolvedValue(ALCHEMY_7702)
+    vi.mocked(call).mockResolvedValue({ data: SIG_VALIDATION_FAILED })
+
+    await subject()
+
+    // `ccipRead` is a client option in viem, not a call parameter, so it is
+    // asserted on the first argument — the client — not the second.
+    expect(call).toHaveBeenCalledWith(
+      expect.objectContaining({ ccipRead: false }),
+      expect.anything()
+    )
+  })
 })
 
 describe('canAccountUsePermit2 — failure handling', () => {
