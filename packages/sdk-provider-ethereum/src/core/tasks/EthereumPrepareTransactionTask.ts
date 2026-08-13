@@ -1,5 +1,7 @@
 import {
   BaseStepExecutionTask,
+  getFundingOrderUpdatedStep,
+  isFundingOrderStep,
   LiFiErrorCode,
   stepComparison,
   type TaskResult,
@@ -37,27 +39,37 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    // Try to prepare a new transaction request and update the step with typed data
-    const updatedStep = await getUpdatedStep(
-      client,
-      step,
-      executionOptions,
-      signedTypedData
-    )
+    if (isFundingOrderStep(step)) {
+      // Funding orders have no re-quote endpoint - the order holds the
+      // committed quote, so restore it only when the request is missing and
+      // never run the rate-change comparison.
+      if (!step.transactionRequest) {
+        const updatedStep = await getFundingOrderUpdatedStep(client, step)
+        Object.assign(step, updatedStep, { execution: step.execution })
+      }
+    } else {
+      // Try to prepare a new transaction request and update the step with typed data
+      const updatedStep = await getUpdatedStep(
+        client,
+        step,
+        executionOptions,
+        signedTypedData
+      )
 
-    const comparedStep = await stepComparison(
-      statusManager,
-      step,
-      updatedStep,
-      allowUserInteraction,
-      executionOptions
-    )
+      const comparedStep = await stepComparison(
+        statusManager,
+        step,
+        updatedStep,
+        allowUserInteraction,
+        executionOptions
+      )
 
-    Object.assign(step, {
-      ...comparedStep,
-      execution: step.execution,
-      typedData: updatedStep.typedData ?? step.typedData,
-    })
+      Object.assign(step, {
+        ...comparedStep,
+        execution: step.execution,
+        typedData: updatedStep.typedData ?? step.typedData,
+      })
+    }
 
     if (!step.transactionRequest && !step.typedData?.length) {
       throw new TransactionError(

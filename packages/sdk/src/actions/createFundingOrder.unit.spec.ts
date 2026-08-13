@@ -1,0 +1,81 @@
+import { HttpResponse, http } from 'msw'
+import { describe, expect, it, vi } from 'vitest'
+import { LiFiErrorCode } from '../errors/constants.js'
+import { ValidationError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
+import * as request from '../utils/request.js'
+import { client, setupTestServer } from './actions.unit.handlers.js'
+import { createFundingOrder } from './createFundingOrder.js'
+import { buildFundingOrder } from './fundingOrders.unit.mock.js'
+
+const mockedFetch = vi.spyOn(request, 'request')
+
+describe('createFundingOrder', () => {
+  const server = setupTestServer()
+
+  const params = {
+    partnerOrderId: 'partner-order-1',
+    type: 'STANDARD' as const,
+    toChainId: 137,
+    toTokenAddress: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+    toAddress: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0',
+  }
+
+  it('throws a ValidationError when partnerOrderId is empty', async () => {
+    await expect(
+      createFundingOrder(client, { ...params, partnerOrderId: '' })
+    ).rejects.toThrowError(
+      new SDKError(
+        new ValidationError('Required parameter "partnerOrderId" is missing.')
+      )
+    )
+    expect(mockedFetch).toHaveBeenCalledTimes(0)
+  })
+
+  it('posts the body and returns the order', async () => {
+    let requestBody: unknown
+    server.use(
+      http.post(
+        `${client.config.apiUrl}/funding/orders`,
+        async ({ request: req }) => {
+          requestBody = await req.json()
+          return HttpResponse.json(buildFundingOrder(), { status: 201 })
+        }
+      )
+    )
+    const order = await createFundingOrder(client, params)
+    expect(order.orderId).toBe('3f2a6c1e-0000-4000-8000-000000000001')
+    expect(requestBody).toEqual(params)
+    expect(mockedFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('names partnerOrderId reuse when the server returns 422', async () => {
+    server.use(
+      http.post(`${client.config.apiUrl}/funding/orders`, async () =>
+        HttpResponse.json({ message: 'conflict' }, { status: 422 })
+      )
+    )
+    await expect(createFundingOrder(client, params)).rejects.toThrowError(
+      /partnerOrderId/
+    )
+    await expect(createFundingOrder(client, params)).rejects.toMatchObject({
+      code: LiFiErrorCode.ValidationError,
+    })
+    // The substituted cause drops status and responseBody, so the server's own
+    // reason has to survive in the message.
+    await expect(createFundingOrder(client, params)).rejects.toThrowError(
+      /Server response: conflict/
+    )
+  })
+
+  it('leaves non-422 failures untranslated', async () => {
+    server.use(
+      http.post(`${client.config.apiUrl}/funding/orders`, async () =>
+        HttpResponse.json({ message: 'provider down' }, { status: 424 })
+      )
+    )
+    await expect(createFundingOrder(client, params)).rejects.not.toThrowError(
+      /partnerOrderId/
+    )
+  })
+})

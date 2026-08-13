@@ -95,6 +95,30 @@ describe('getAccountCode — concurrent dedupe', () => {
   })
 })
 
+describe('getAccountCode — empty code is not an error', () => {
+  it('returns "0x" for an account with no code, so callers can tell an EOA from a failed RPC', async () => {
+    // viem's `getCode` normalizes empty code to `undefined`. Without the
+    // `?? '0x'` normalization every plain EOA looks like an RPC failure, and
+    // "if unsure, don't use permits" callers silently stop offering permits
+    // to *all* EOAs.
+    vi.mocked(getPublicClient).mockResolvedValue({} as any)
+    vi.mocked(getCode).mockResolvedValue(undefined)
+
+    await expect(
+      getAccountCode({ client, chainId: SOURCE_CHAIN, address: ADDRESS })
+    ).resolves.toBe('0x')
+  })
+
+  it('passes through real bytecode untouched', async () => {
+    vi.mocked(getPublicClient).mockResolvedValue({} as any)
+    vi.mocked(getCode).mockResolvedValue('0x6080' as `0x${string}`)
+
+    await expect(
+      getAccountCode({ client, chainId: SOURCE_CHAIN, address: ADDRESS })
+    ).resolves.toBe('0x6080')
+  })
+})
+
 describe('getAccountCode — failure handling', () => {
   it('returns undefined when getPublicClient throws', async () => {
     vi.mocked(getPublicClient).mockRejectedValue(new Error('chain unknown'))

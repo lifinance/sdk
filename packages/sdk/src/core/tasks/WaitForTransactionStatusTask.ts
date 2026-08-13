@@ -3,9 +3,11 @@ import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionActionType } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import { isFundingOrderStep } from '../../utils/fundingOrderStep.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
+import { WaitForFundingOrderTask } from './WaitForFundingOrderTask.js'
 
 export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
   readonly actionType: ExecutionActionType
@@ -16,6 +18,10 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
   }
 
   async run(context: StepExecutorContext): Promise<TaskResult> {
+    if (isFundingOrderStep(context.step)) {
+      return new WaitForFundingOrderTask(this.actionType).run(context)
+    }
+
     const {
       client,
       step,

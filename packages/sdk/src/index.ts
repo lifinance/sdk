@@ -1,11 +1,17 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
 // biome-ignore lint/performance/noReExportAll: types
 export * from '@lifi/types'
+export { createCexSession } from './actions/createCexSession.js'
+export { createFundingOrder } from './actions/createFundingOrder.js'
+export { createOnrampSession } from './actions/createOnrampSession.js'
 export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'
 export { getContractCallsQuote } from './actions/getContractCallsQuote.js'
+export { getFundingOrder } from './actions/getFundingOrder.js'
 export { getGasRecommendation } from './actions/getGasRecommendation.js'
 export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
+export { getOnrampFiatCurrencies } from './actions/getOnrampFiatCurrencies.js'
+export { getOnrampQuote } from './actions/getOnrampQuote.js'
 export { getQuote } from './actions/getQuote.js'
 export { getRelayedTransactionStatus } from './actions/getRelayedTransactionStatus.js'
 export { getRelayerQuote } from './actions/getRelayerQuote.js'
@@ -22,6 +28,7 @@ export { getTransactionHistory } from './actions/getTransactionHistory.js'
 export { actions } from './actions/index.js'
 export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
+export { waitForFundingOrder } from './actions/waitForFundingOrder.js'
 export { createClient } from './client/createClient.js'
 export { getActionMessage, getSubstatusMessage } from './core/actionMessages.js'
 export { BaseStepExecutionTask } from './core/BaseStepExecutionTask.js'
@@ -34,6 +41,11 @@ export {
   stopRouteExecution,
   updateRouteExecution,
 } from './core/execution.js'
+export {
+  executeFundingOrder,
+  type FundingExecutionOptions,
+  resumeFundingOrder,
+} from './core/fundingExecution.js'
 export { StatusManager } from './core/StatusManager.js'
 export type { SDKStorage } from './core/storage.js'
 export {
@@ -50,6 +62,7 @@ export {
 export { getTransactionRequestData } from './core/tasks/helpers/getTransactionRequestData.js'
 export { stepComparison } from './core/tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './core/tasks/PrepareTransactionTask.js'
+export { WaitForFundingOrderTask } from './core/tasks/WaitForFundingOrderTask.js'
 export { WaitForTransactionStatusTask } from './core/tasks/WaitForTransactionStatusTask.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
@@ -116,10 +129,38 @@ export type {
   TaskResult,
   TaskStatus,
 } from './types/execution.js'
+export type {
+  CexSessionRequest,
+  CexSessionResult,
+  CreateFundingOrderRequest,
+  FundingOrder,
+  FundingOrderDestination,
+  FundingOrderLateDelivery,
+  FundingOrderOnramp,
+  FundingOrderResult,
+  FundingOrderStatus,
+  FundingOrderType,
+  GetFundingOrderParams,
+  OnrampDelivery,
+  OnrampFiatCurrenciesRequest,
+  OnrampFiatCurrenciesResult,
+  OnrampFiatCurrency,
+  OnrampPaymentOption,
+  OnrampQuoteRequest,
+  OnrampQuoteResult,
+  OnrampSessionRequest,
+  OnrampSessionResult,
+  WaitForFundingOrderOptions,
+} from './types/funding.js'
 export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
+export { convertOrderToRoute } from './utils/convertOrderToRoute.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export { formatUnits } from './utils/formatUnits.js'
+export {
+  getFundingOrderUpdatedStep,
+  isFundingOrderStep,
+} from './utils/fundingOrderStep.js'
 export { isHex } from './utils/isHex.js'
 export { parseUnits } from './utils/parseUnits.js'
 export { sleep } from './utils/sleep.js'

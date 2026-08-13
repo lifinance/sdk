@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
 import { requestSettings } from '../utils/request.js'
+import { buildFundingOrder } from './fundingOrders.unit.mock.js'
 
 const client = createClient({
   integrator: 'lifi-sdk',
@@ -46,6 +47,25 @@ export const handlers = [
     HttpResponse.json({ connections: [] })
   ),
   http.get(`${client.config.apiUrl}/analytics/transfers`, async () =>
+    HttpResponse.json({})
+  ),
+  http.post(`${client.config.apiUrl}/funding/orders`, async () =>
+    HttpResponse.json(buildFundingOrder(), { status: 201 })
+  ),
+  http.get(`${client.config.apiUrl}/funding/orders/:orderId`, async () =>
+    HttpResponse.json(buildFundingOrder())
+  ),
+  http.post(`${client.config.apiUrl}/funding/onramp/quote`, async () =>
+    HttpResponse.json({})
+  ),
+  http.post(
+    `${client.config.apiUrl}/funding/onramp/fiat-currencies`,
+    async () => HttpResponse.json({})
+  ),
+  http.post(`${client.config.apiUrl}/funding/onramp/session`, async () =>
+    HttpResponse.json({})
+  ),
+  http.post(`${client.config.apiUrl}/funding/cex/session`, async () =>
     HttpResponse.json({})
   ),
 ]

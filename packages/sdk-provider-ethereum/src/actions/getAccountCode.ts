@@ -19,9 +19,14 @@ type GetAccountCodeParams = {
  * client) so cross-chain steps and post-chain-switch flows read from the
  * chain the step actually executes on.
  *
- * Returns `undefined` on RPC failure. Each caller MUST classify that
- * explicitly (e.g. "treat as EOA" vs. "treat as not-permittable") — there
- * is no single safe default.
+ * Returns `'0x'` for an account with no code and `undefined` *only* on RPC
+ * failure. Each caller MUST classify the failure case explicitly (e.g.
+ * "treat as EOA" vs. "treat as not-permittable") — there is no single safe
+ * default.
+ *
+ * The `?? '0x'` is load-bearing: viem's `getCode` normalizes empty code to
+ * `undefined`, which would otherwise make a plain EOA indistinguishable from
+ * a failed RPC and silently push every EOA down the failure path.
  */
 export const getAccountCode = ({
   client,
@@ -32,7 +37,12 @@ export const getAccountCode = ({
     async () => {
       try {
         const publicClient = await getPublicClient(client, chainId)
-        return await getAction(publicClient, getCode, 'getCode')({ address })
+        const code = await getAction(
+          publicClient,
+          getCode,
+          'getCode'
+        )({ address })
+        return code ?? '0x'
       } catch {
         return undefined
       }
