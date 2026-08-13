@@ -36,6 +36,15 @@ export interface EthereumTaskContext {
   hasMatchingPermit?: boolean
   hasAllowance?: boolean
   hasSufficientAllowance?: boolean
+  /**
+   * Whether the signer can produce a Permit2-verifiable signature — the
+   * in-flight or settled lookup, memoized per execution by
+   * `resolvePermit2Support` so the allowance tasks and the sign-and-execute task
+   * can't disagree. Deliberately the promise and not a `boolean`: that would
+   * be a tri-state (unresolved / yes / no) whose `false` case is
+   * indistinguishable from "not looked up yet" under a truthiness check.
+   */
+  permit2SignerSupported?: Promise<boolean>
 }
 
 export interface EthereumStepExecutorContext
