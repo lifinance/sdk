@@ -134,14 +134,16 @@ describe('HTTPError funding status classification', () => {
       statusText,
     })
 
-  it('classifies 422 as a conflict', () => {
+  it('classifies 422 as a validation error, not a transaction conflict', () => {
     const error = new HTTPError(
       makeResponse(422, 'Unprocessable Entity'),
       'https://li.quest/v1/funding/orders',
       {}
     )
     expect(error.type).toBe(ErrorName.ValidationError)
-    expect(error.code).toBe(LiFiErrorCode.TransactionConflict)
+    expect(error.code).toBe(LiFiErrorCode.ValidationError)
+    // 1020 is already taken by parseBitcoinErrors for a real mempool conflict.
+    expect(error.code).not.toBe(LiFiErrorCode.TransactionConflict)
   })
 
   it('classifies 401 as a validation error', () => {

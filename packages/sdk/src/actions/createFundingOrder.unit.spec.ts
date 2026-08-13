@@ -47,4 +47,26 @@ describe('createFundingOrder', () => {
     expect(requestBody).toEqual(params)
     expect(mockedFetch).toHaveBeenCalledTimes(1)
   })
+
+  it('names partnerOrderId reuse when the server returns 422', async () => {
+    server.use(
+      http.post(`${client.config.apiUrl}/funding/orders`, async () =>
+        HttpResponse.json({ message: 'conflict' }, { status: 422 })
+      )
+    )
+    await expect(createFundingOrder(client, params)).rejects.toThrowError(
+      /partnerOrderId/
+    )
+  })
+
+  it('leaves non-422 failures untranslated', async () => {
+    server.use(
+      http.post(`${client.config.apiUrl}/funding/orders`, async () =>
+        HttpResponse.json({ message: 'provider down' }, { status: 424 })
+      )
+    )
+    await expect(createFundingOrder(client, params)).rejects.not.toThrowError(
+      /partnerOrderId/
+    )
+  })
 })

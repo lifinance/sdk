@@ -31,7 +31,7 @@ const statusCodeToErrorClassificationMap = new Map([
     422,
     {
       type: ErrorName.ValidationError,
-      code: LiFiErrorCode.TransactionConflict,
+      code: LiFiErrorCode.ValidationError,
     },
   ],
   [424, { type: ErrorName.ServerError, code: LiFiErrorCode.ThirdPartyError }],
