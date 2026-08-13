@@ -370,28 +370,33 @@ Probe first, and let the poll decide the outcome:
 let resubmitError: unknown
 
 if (!transactionHash && action.txHex) {
-  const landed = await hasStellarTransactionLanded(client, hash)
-  if (!landed) {
+  const probe = await probeStellarTransaction(client, hash)
+  if (probe !== 'landed') {
     try {
       await submitStellarTransaction(client, action.txHex, networkPassphrase)
     } catch (error) {
       // The poll below is the source of truth. A settled transaction must not
-      // fail here, and a genuinely dead envelope surfaces via §8.2.
-      resubmitError = error
+      // fail here, and a genuinely dead envelope surfaces via §8.2. Keep the
+      // error only when the probe was definite: after a failed probe this may
+      // be a txBAD_SEQ from a swap that already succeeded.
+      resubmitError = probe === 'not-found' ? error : undefined
     }
   }
 }
 ```
 
-`hasStellarTransactionLanded` is a new helper next to `waitForStellarTransaction`:
+`probeStellarTransaction` is a new helper next to `waitForStellarTransaction`. It returns a
+three-way result, because "the probe failed" and "the network does not know this hash" must not be
+collapsed:
 
-- `SUCCESS` or `FAILED` → `true` (skip the re-submit; the poll reports the real outcome).
-- `NOT_FOUND` → `false`. The status is ambiguous — never broadcast, or broadcast and pending — and
-  re-submitting a pending envelope is idempotent by hash and answers `DUPLICATE`.
-- A transport failure → `false`, for the same reason.
+- `SUCCESS` or `FAILED` → `'landed'`. Skip the re-submit; the poll reports the real outcome.
+- `NOT_FOUND` → `'not-found'`. Still ambiguous — never broadcast, or broadcast and pending — so
+  re-submit. That is safe: submission is idempotent by hash and answers `DUPLICATE`.
+- A transport failure → `'unknown'`. Re-submit for the same reason, but do not trust any error it
+  produces.
 
 To keep the diagnosis accurate when the envelope truly never reached the network, prefer the
-swallowed submit error over a bare timeout:
+swallowed submit error over a bare timeout — and only then:
 
 ```ts
 try {
@@ -403,6 +408,10 @@ try {
   throw error
 }
 ```
+
+The `'unknown'` branch is what keeps this honest. Without it, an outage that outlasts the 330 s
+budget would surface the swallowed `txBAD_SEQ` — a `TransactionConflict` for a route that in fact
+settled — instead of the timeout, which is strictly worse than the bug this section fixes.
 
 ### 8.2 `waitForStellarTransaction` — a deadline instead of an attempt count
 
@@ -453,12 +462,14 @@ successes; the `default:` branch stays terminal.
 
 ### 8.5 Tests
 
-- Resume with a landed transaction: `hasStellarTransactionLanded` returns `true`,
+- Resume with a landed transaction: `probeStellarTransaction` returns `'landed'`,
   `submitStellarTransaction` is never called, the step completes.
-- Resume with `NOT_FOUND`: the envelope is re-submitted, then the poll completes.
+- Resume with `'not-found'`: the envelope is re-submitted, then the poll completes.
 - Resume where the re-submit throws and the poll then succeeds: the step completes, no error.
-- Resume where the re-submit throws and the poll times out: the submit error surfaces, not
-  `Timeout`.
+- Resume with `'not-found'` where the re-submit throws and the poll times out: the submit error
+  surfaces, not `Timeout`.
+- Resume with `'unknown'` where the re-submit throws and the poll times out: `Timeout` surfaces,
+  and the swallowed `txBAD_SEQ` does not.
 - The poll survives one all-RPC failure and succeeds on the next interval.
 - The poll spends the full 330 s budget with fake timers, then throws `Timeout` carrying the last
   transport error as `cause`.
@@ -532,6 +543,12 @@ Add `core/tasks/helpers/assertApprovalStillCovers.ts`:
 export const assertApprovalStillCovers = async (
   context: StellarStepExecutorContext
 ): Promise<void> => {
+  // Nothing was resolved before the refresh, so there is no grant to invalidate
+  // and no read to pay for. This is the whole `getRoutes` path, where the base
+  // guard already fetched the envelope after the allowance tasks.
+  if (!context.approval) {
+    return
+  }
   const refreshed = resolveApprovalRequirement(context.step)
   if (!refreshed) {
     return
@@ -575,7 +592,8 @@ failed tokens borrow the batch's newest ledger as their `blockNumber` and carry 
 - A leg whose `approvalAddress` is missing is skipped, not fatal.
 - `assertApprovalStillCovers`: passes when the on-chain allowance covers the refreshed amount;
   throws when the spender changed (allowance reads `0n`); throws when the refreshed amount exceeds
-  the allowance; returns early when the refreshed route needs no approval.
+  the allowance; returns early when the refreshed route needs no approval; and reads nothing at all
+  when `context.approval` is unset.
 - `getStellarBalance`: throws when every read fails; keeps the fallback `blockNumber` when one
   read succeeds.
 
@@ -592,7 +610,9 @@ failed tokens borrow the batch's newest ledger as their `blockNumber` and carry 
   must currently ship a stub — `StellarStepExecutor.unit.spec.ts:19` already writes one. Keep the
   member and `StellarSignedAuthEntry`: they document the Stellar Wallets Kit surface at no cost.
 
-Run `pnpm knip` afterwards to confirm the retained exports are still reachable.
+Run `pnpm knip:all` afterwards. It is a local tool, not a CI gate — no workflow invokes it — and
+`StellarSignedAuthEntry` stays reachable either way, because `src/index.ts` re-exports it as public
+API.
 
 ### 10.2 `resolveStellarAddress` — refuse a lossy resolution
 
@@ -683,7 +703,7 @@ Per §4.3, unit tests only. At every commit:
 pnpm build && pnpm lint && pnpm test
 ```
 
-Plus, once at the end: `pnpm knip` (§10.1) and the esbuild measurement (§10.4).
+Plus, once at the end: `pnpm knip:all` (§10.1) and the esbuild measurement (§10.4).
 
 The integration suites stay skipped. `getStellarBalance.int.spec.ts`'s skip comment stays accurate
 and needs no edit.
