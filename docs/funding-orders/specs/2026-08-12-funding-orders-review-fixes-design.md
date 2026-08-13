@@ -292,11 +292,19 @@ protection against a double send is `options.sourceTxHash` plus the order's own
 window this design set out to close — the interval between broadcast and backend attribution.
 That makes the widget change in §9 a requirement, not an enhancement.
 
-Layer 2 closes the attribution window. The backend sets `result.fromTxHash` only after it sees the
-transfer, so the current guard leaves the interval between broadcast and attribution unprotected.
-`sourceTxHash` is a new optional field on `FundingExecutionOptions`; the caller stores it beside
-the orderId in its thin list. That costs one field and keeps the original spec §137 decision
-("the order response is the schema") intact.
+Layer 3 closes the attribution window. The backend sets `result.fromTxHash` only after it sees the
+transfer, so the order-derived guard alone leaves the interval between broadcast and attribution
+unprotected. `sourceTxHash` is a new optional field on `FundingExecutionOptions`; the caller stores
+it beside the orderId in its thin list. That costs one field and keeps the original spec §137
+decision ("the order response is the schema") intact.
+
+Layer 2 is nevertheless the strongest guard where it applies, but not for the reason first
+assumed. It does not restore provider resume-slicing: `stopRouteExecution` sets
+`allowExecution: false` at `execution.ts:219` and deletes the state entry at `:222`, while
+`updateRouteExecution` resets the flag through `defaultInteractionSettings` — so `executionHalted`
+(`execution.ts:62-64`) can never be true while an entry exists, and `prepareRestart` is unreachable
+on that path. What layer 2 does is attach to the running execution instead of starting a second
+one, which is why a duplicate resume cannot double-send.
 
 ### 7.2 The sentinel substatus
 
