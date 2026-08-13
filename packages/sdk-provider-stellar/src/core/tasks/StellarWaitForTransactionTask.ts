@@ -1,10 +1,12 @@
 import {
+  BaseError,
   BaseStepExecutionTask,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
+import { probeStellarTransaction } from './helpers/probeStellarTransaction.js'
 import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
 import { waitForStellarTransaction } from './helpers/waitForStellarTransaction.js'
 
@@ -46,16 +48,42 @@ export class StellarWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     // Resuming: the hash is persisted before submission, so the envelope may
-    // never have reached the network. Re-submit it before polling — Soroban
-    // submission is idempotent by hash and reports an already-known envelope as
-    // DUPLICATE, which submitStellarTransaction treats as success. Without this,
-    // a crash between persisting and submitting would strand the step polling
-    // for a transaction that was never broadcast.
+    // never have reached the network — but it may equally have been applied
+    // already, in which case its sequence number is spent and re-submitting can
+    // only fail. Ask the network first, and let the poll below decide the
+    // outcome either way.
+    let resubmitError: unknown
     if (!transactionHash && action.txHex) {
-      await submitStellarTransaction(client, action.txHex, networkPassphrase)
+      const probe = await probeStellarTransaction(client, hash)
+      if (probe !== 'landed') {
+        try {
+          await submitStellarTransaction(
+            client,
+            action.txHex,
+            networkPassphrase
+          )
+        } catch (error) {
+          // Keep it only when the probe was definite. After a failed probe this
+          // may be a txBAD_SEQ from a swap that in fact settled.
+          resubmitError = probe === 'not-found' ? error : undefined
+        }
+      }
     }
 
-    await waitForStellarTransaction(client, hash, pollingIntervalMs)
+    try {
+      await waitForStellarTransaction(client, hash, pollingIntervalMs)
+    } catch (error) {
+      // The envelope never reached the network, and the poll can only report
+      // that as a timeout. The submission error says why.
+      if (
+        resubmitError &&
+        error instanceof BaseError &&
+        error.code === LiFiErrorCode.Timeout
+      ) {
+        throw resubmitError
+      }
+      throw error
+    }
 
     if (isBridgeExecution) {
       statusManager.updateAction(step, action.type, 'DONE')

@@ -1,3 +1,4 @@
+import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import { Networks } from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,6 +12,12 @@ const waitForStellarTransaction = vi.fn()
 vi.mock('./helpers/waitForStellarTransaction.js', () => ({
   waitForStellarTransaction: (...args: unknown[]) =>
     waitForStellarTransaction(...args),
+}))
+
+const probeStellarTransaction = vi.fn()
+vi.mock('./helpers/probeStellarTransaction.js', () => ({
+  probeStellarTransaction: (...args: unknown[]) =>
+    probeStellarTransaction(...args),
 }))
 
 const { StellarWaitForTransactionTask } = await import(
@@ -39,6 +46,7 @@ describe('StellarWaitForTransactionTask', () => {
   beforeEach(() => {
     submitStellarTransaction.mockReset().mockResolvedValue('hash')
     waitForStellarTransaction.mockReset().mockResolvedValue({})
+    probeStellarTransaction.mockReset().mockResolvedValue('not-found')
   })
 
   it('polls the hash produced by the signing task in the same run', async () => {
@@ -59,8 +67,8 @@ describe('StellarWaitForTransactionTask', () => {
   })
 
   // The hash is persisted BEFORE submission, so on resume the envelope may never
-  // have reached the network. Re-submitting is idempotent (DUPLICATE = success).
-  it('re-submits the persisted envelope on resume before polling', async () => {
+  // have reached the network.
+  it('re-submits on resume when the network does not know the hash', async () => {
     const order: string[] = []
     submitStellarTransaction.mockImplementation(async () => {
       order.push('submit')
@@ -87,6 +95,78 @@ describe('StellarWaitForTransactionTask', () => {
       {},
       'persisted-hash',
       undefined
+    )
+  })
+
+  // Re-submitting an applied envelope can only fail: its sequence number is
+  // spent. That failure used to mark a settled swap FAILED.
+  it('does not re-submit a transaction the network has already applied', async () => {
+    probeStellarTransaction.mockResolvedValue('landed')
+    const { context } = makeContext({
+      type: 'SWAP',
+      txHash: 'persisted-hash',
+      txHex: 'PERSISTED_XDR',
+    })
+
+    await new StellarWaitForTransactionTask().run(context)
+
+    expect(submitStellarTransaction).not.toHaveBeenCalled()
+    expect(waitForStellarTransaction).toHaveBeenCalledWith(
+      {},
+      'persisted-hash',
+      undefined
+    )
+  })
+
+  it('polls anyway when the re-submit fails', async () => {
+    submitStellarTransaction.mockRejectedValue(new Error('txBadSeq'))
+    const { context } = makeContext({
+      type: 'SWAP',
+      txHash: 'persisted-hash',
+      txHex: 'PERSISTED_XDR',
+    })
+
+    await expect(
+      new StellarWaitForTransactionTask().run(context)
+    ).resolves.toEqual({ status: 'COMPLETED' })
+    expect(waitForStellarTransaction).toHaveBeenCalled()
+  })
+
+  it('reports the re-submit failure when a definite probe is followed by a timeout', async () => {
+    const submitError = new Error('txTooLate')
+    submitStellarTransaction.mockRejectedValue(submitError)
+    waitForStellarTransaction.mockRejectedValue(
+      new TransactionError(LiFiErrorCode.Timeout, 'not confirmed in time')
+    )
+    const { context } = makeContext({
+      type: 'SWAP',
+      txHash: 'persisted-hash',
+      txHex: 'PERSISTED_XDR',
+    })
+
+    await expect(new StellarWaitForTransactionTask().run(context)).rejects.toBe(
+      submitError
+    )
+  })
+
+  // After a failed probe the re-submit error may be a txBAD_SEQ from a swap that
+  // in fact settled. Reporting it would be worse than the timeout.
+  it('keeps the timeout when the probe itself failed', async () => {
+    probeStellarTransaction.mockResolvedValue('unknown')
+    submitStellarTransaction.mockRejectedValue(new Error('txBadSeq'))
+    const timeout = new TransactionError(
+      LiFiErrorCode.Timeout,
+      'not confirmed in time'
+    )
+    waitForStellarTransaction.mockRejectedValue(timeout)
+    const { context } = makeContext({
+      type: 'SWAP',
+      txHash: 'persisted-hash',
+      txHex: 'PERSISTED_XDR',
+    })
+
+    await expect(new StellarWaitForTransactionTask().run(context)).rejects.toBe(
+      timeout
     )
   })
 
