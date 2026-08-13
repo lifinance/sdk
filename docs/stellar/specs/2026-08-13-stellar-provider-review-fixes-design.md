@@ -610,9 +610,10 @@ failed tokens borrow the batch's newest ledger as their `blockNumber` and carry 
   must currently ship a stub — `StellarStepExecutor.unit.spec.ts:19` already writes one. Keep the
   member and `StellarSignedAuthEntry`: they document the Stellar Wallets Kit surface at no cost.
 
-Run `pnpm knip:all` afterwards. It is a local tool, not a CI gate — no workflow invokes it — and
-`StellarSignedAuthEntry` stays reachable either way, because `src/index.ts` re-exports it as public
-API.
+Run `pnpm knip:all` afterwards. No GitHub workflow invokes knip, but the husky `pre-commit` hook
+runs `pnpm pre-commit`, which ends in `pnpm knip:check` — the `--dependencies --files` variant,
+which reports unused files and dependencies rather than unused exports. `StellarSignedAuthEntry`
+stays reachable either way, because `src/index.ts` re-exports it as public API.
 
 ### 10.2 `resolveStellarAddress` — refuse a lossy resolution
 
@@ -697,11 +698,17 @@ protected hook, so no new changeset and no bump change is needed.
 
 ## 11. Verification
 
-Per §4.3, unit tests only. At every commit:
+Per §4.3, unit tests only. At every commit, in the order `.github/workflows/tests.yaml` uses:
 
 ```
-pnpm build && pnpm lint && pnpm test
+pnpm check:write && pnpm build && pnpm check:types && pnpm test
 ```
+
+`pnpm build` has to precede `pnpm test`, because the provider packages resolve `@lifi/sdk` to
+`packages/sdk/dist`. There is no `pnpm lint`; biome runs as `pnpm check` (CI) or `pnpm check:write`
+(local). The husky `pre-commit` hook additionally runs `pnpm check:types`,
+`pnpm check:circular-deps` and `pnpm knip:check` on every commit, and `commit-msg` runs commitlint,
+so commit subjects must stay conventional.
 
 Plus, once at the end: `pnpm knip:all` (§10.1) and the esbuild measurement (§10.4).
 
