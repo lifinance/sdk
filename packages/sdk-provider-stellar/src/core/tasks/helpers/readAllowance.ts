@@ -4,10 +4,10 @@ import {
   Address,
   BASE_FEE,
   Contract,
-  rpc,
   scValToNative,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
+import { Api } from '@stellar/stellar-sdk/rpc'
 import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
 
 /**
@@ -54,11 +54,11 @@ export const readAllowance = async (
 
   // Fail rather than degrade to 0n: an unreadable allowance treated as "needs
   // approval" would prompt the user for an approval that cannot help.
-  if (!rpc.Api.isSimulationSuccess(simulation) || !simulation.result) {
+  if (!Api.isSimulationSuccess(simulation) || !simulation.result) {
     throw new TransactionError(
       LiFiErrorCode.TransactionSimulationFailed,
       `Could not read the ${token} spending allowance for ${spender}${
-        rpc.Api.isSimulationError(simulation) ? `: ${simulation.error}` : ''
+        Api.isSimulationError(simulation) ? `: ${simulation.error}` : ''
       }`
     )
   }

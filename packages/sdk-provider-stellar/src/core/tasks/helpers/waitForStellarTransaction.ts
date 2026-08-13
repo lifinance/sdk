@@ -1,5 +1,5 @@
 import { LiFiErrorCode, type SDKClient, TransactionError } from '@lifi/sdk'
-import { rpc } from '@stellar/stellar-sdk'
+import { Api } from '@stellar/stellar-sdk/rpc'
 import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
 
 const CONFIRM_POLL_INTERVAL_MS = 3_000
@@ -31,7 +31,7 @@ export const waitForStellarTransaction = async (
   client: SDKClient,
   transactionHash: string,
   pollingIntervalMs: number = CONFIRM_POLL_INTERVAL_MS
-): Promise<rpc.Api.GetSuccessfulTransactionResponse> => {
+): Promise<Api.GetSuccessfulTransactionResponse> => {
   const deadline = Date.now() + CONFIRM_TIMEOUT_MS
   let lastTransportError: Error | undefined
 
@@ -41,11 +41,11 @@ export const waitForStellarTransaction = async (
         server.getTransaction(transactionHash)
       )
 
-      if (response.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+      if (response.status === Api.GetTransactionStatus.SUCCESS) {
         return response
       }
 
-      if (response.status === rpc.Api.GetTransactionStatus.FAILED) {
+      if (response.status === Api.GetTransactionStatus.FAILED) {
         throw new TransactionError(
           LiFiErrorCode.TransactionFailed,
           `Stellar transaction ${transactionHash} failed: ${

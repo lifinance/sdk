@@ -40,6 +40,17 @@ export class StellarStepExecutor extends BaseStepExecutor {
         'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
       )
     }
+
+    // The provider resolves this from options first and the wallet second, so a
+    // disagreement means the integrator configured one network while the user
+    // connected to another. Signing would produce a txBAD_AUTH the user pays
+    // for in a wasted signature.
+    if (this.networkPassphrase !== this.wallet.networkPassphrase) {
+      throw new TransactionError(
+        LiFiErrorCode.ChainSwitchError,
+        'The connected Stellar wallet is on a different network than the route.'
+      )
+    }
   }
 
   override parseErrors = (

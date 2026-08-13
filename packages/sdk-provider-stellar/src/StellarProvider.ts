@@ -15,6 +15,13 @@ import { StellarStepExecutor } from './core/StellarStepExecutor.js'
 import type { StellarProviderOptions, StellarSDKProvider } from './types.js'
 
 /**
+ * The network every read defaults to when the integrator configures none.
+ * Signing prefers the connected wallet's passphrase instead, and
+ * `StellarStepExecutor.checkWallet` refuses a route whose networks disagree.
+ */
+export const DEFAULT_NETWORK_PASSPHRASE: string = Networks.PUBLIC
+
+/**
  * Validates a Stellar account address. Only ed25519 G-addresses are accepted as
  * senders — muxed `M`-addresses and contract `C`-addresses are intentionally
  * rejected (see backend EXBE-227: muxed senders validate-and-throw).
@@ -42,7 +49,7 @@ export function StellarProvider(
         client,
         walletAddress,
         tokens,
-        _options.networkPassphrase ?? Networks.PUBLIC
+        _options.networkPassphrase ?? DEFAULT_NETWORK_PASSPHRASE
       ),
     async getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor> {
       if (!_options.getWallet) {

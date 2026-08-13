@@ -16,7 +16,6 @@ const makeExecutor = () =>
       address: keypair.publicKey(),
       networkPassphrase: 'Test SDF Network ; September 2015',
       signTransaction: async () => ({ signedTxXdr: '' }),
-      signAuthEntry: async () => ({ signedAuthEntry: '' }),
     },
     networkPassphrase: 'Test SDF Network ; September 2015',
     routeId: 'route-1',
@@ -114,6 +113,36 @@ describe('StellarStepExecutor', () => {
       expect(thrown).toBeInstanceOf(TransactionError)
       expect((thrown as TransactionError).code).toBe(
         LiFiErrorCode.WalletChangedDuringExecution
+      )
+    })
+
+    // Balances are simulated against the configured network while the envelope
+    // is signed against the wallet's. A mismatch used to surface only as
+    // txBAD_AUTH, after the user had signed.
+    it('throws when the wallet is connected to a different network', () => {
+      const executor = new StellarStepExecutor({
+        wallet: {
+          address: keypair.publicKey(),
+          networkPassphrase: 'Test SDF Network ; September 2015',
+          signTransaction: async () => ({ signedTxXdr: '' }),
+        },
+        networkPassphrase: 'Public Global Stellar Network ; September 2015',
+        routeId: 'route-1',
+      })
+
+      const thrown = (() => {
+        try {
+          executor.checkWallet({
+            action: { fromAddress: keypair.publicKey() },
+          } as never)
+        } catch (error) {
+          return error
+        }
+      })()
+
+      expect(thrown).toBeInstanceOf(TransactionError)
+      expect((thrown as TransactionError).code).toBe(
+        LiFiErrorCode.ChainSwitchError
       )
     })
 

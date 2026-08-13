@@ -1,5 +1,5 @@
 import type { SDKClient } from '@lifi/sdk'
-import { rpc } from '@stellar/stellar-sdk'
+import { Api } from '@stellar/stellar-sdk/rpc'
 import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
 
 /**
@@ -25,7 +25,7 @@ export const probeStellarTransaction = async (
     const response = await callStellarRpcsWithRetry(client, (server) =>
       server.getTransaction(transactionHash)
     )
-    return response.status === rpc.Api.GetTransactionStatus.NOT_FOUND
+    return response.status === Api.GetTransactionStatus.NOT_FOUND
       ? 'not-found'
       : 'landed'
   } catch {

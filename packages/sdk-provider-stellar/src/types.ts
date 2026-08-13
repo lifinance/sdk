@@ -48,7 +48,11 @@ export interface StellarWallet {
     xdr: string,
     opts?: StellarSignOptions
   ) => Promise<StellarSignedTransaction>
-  signAuthEntry: (
+  /**
+   * Optional: the router routes use source-account auth, so the SDK never calls
+   * this. Present so an adapter can forward the Stellar Wallets Kit method.
+   */
+  signAuthEntry?: (
     authEntry: string,
     opts?: StellarSignOptions
   ) => Promise<StellarSignedAuthEntry>
@@ -59,13 +63,13 @@ export interface StellarProviderOptions {
   /**
    * Network passphrase for the Stellar network this provider targets.
    * Defaults to the public (mainnet) network.
+   *
+   * Balance reads follow this option alone. Signing prefers it and falls back
+   * to the connected wallet's passphrase, and `StellarStepExecutor.checkWallet`
+   * refuses to sign when the two disagree — so a wallet on a different network
+   * fails before the user signs, while balances still read against the option.
    */
   networkPassphrase?: string
-  /**
-   * Optional Horizon REST endpoint used for balance/account reads. When omitted
-   * the provider falls back to the Stellar RPC URLs resolved from the SDK client.
-   */
-  horizonUrl?: string
 }
 
 export interface StellarSDKProvider extends SDKProvider {

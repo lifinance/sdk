@@ -1,7 +1,7 @@
 import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
-import { rpc } from '@stellar/stellar-sdk'
+import { Server } from '@stellar/stellar-sdk/rpc'
 
-const stellarRpcs = new LruMap<rpc.Server>(12)
+const stellarRpcs = new LruMap<Server>(12)
 
 /**
  * Resolves and caches a Stellar RPC (JSON-RPC / Soroban RPC) server for each RPC
@@ -11,19 +11,17 @@ const ensureStellarRpcs = async (client: SDKClient): Promise<string[]> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.XLM)
   for (const rpcUrl of rpcUrls) {
     if (!stellarRpcs.has(rpcUrl)) {
-      stellarRpcs.set(rpcUrl, new rpc.Server(rpcUrl, { allowHttp: true }))
+      stellarRpcs.set(rpcUrl, new Server(rpcUrl, { allowHttp: true }))
     }
   }
   return rpcUrls
 }
 
-export const getStellarRpcs = async (
-  client: SDKClient
-): Promise<rpc.Server[]> => {
+export const getStellarRpcs = async (client: SDKClient): Promise<Server[]> => {
   const rpcUrls = await ensureStellarRpcs(client)
   return rpcUrls
     .map((rpcUrl) => stellarRpcs.get(rpcUrl))
-    .filter((server): server is rpc.Server => Boolean(server))
+    .filter((server): server is Server => Boolean(server))
 }
 
 /**
@@ -32,7 +30,7 @@ export const getStellarRpcs = async (
  */
 export const callStellarRpcsWithRetry = async <R>(
   client: SDKClient,
-  fn: (server: rpc.Server) => Promise<R>
+  fn: (server: Server) => Promise<R>
 ): Promise<R> => {
   const servers = await getStellarRpcs(client)
   if (servers.length === 0) {

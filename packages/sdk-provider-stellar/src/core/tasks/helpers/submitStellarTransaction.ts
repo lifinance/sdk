@@ -1,9 +1,6 @@
 import { LiFiErrorCode, type SDKClient, TransactionError } from '@lifi/sdk'
-import {
-  type rpc,
-  type Transaction,
-  TransactionBuilder,
-} from '@stellar/stellar-sdk'
+import { type Transaction, TransactionBuilder } from '@stellar/stellar-sdk'
+import type { Api } from '@stellar/stellar-sdk/rpc'
 import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
 
 /**
@@ -42,7 +39,7 @@ export const submitStellarTransaction = async (
   ) as Transaction
 
   for (let attempt = 0; attempt < TRY_AGAIN_ATTEMPTS; attempt++) {
-    const response: rpc.Api.SendTransactionResponse =
+    const response: Api.SendTransactionResponse =
       await callStellarRpcsWithRetry(client, (server) =>
         server.sendTransaction(transaction)
       )

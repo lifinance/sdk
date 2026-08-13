@@ -10,10 +10,10 @@ import {
   BASE_FEE,
   Contract,
   Networks,
-  rpc,
   scValToNative,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
+import { Api } from '@stellar/stellar-sdk/rpc'
 import { callStellarRpcsWithRetry } from '../client/getStellarRpc.js'
 
 type SacBalanceResult = {
@@ -115,7 +115,7 @@ const getSacBalance = async (
 
     const simulation = await server.simulateTransaction(transaction)
     const latestLedger = BigInt(simulation.latestLedger)
-    if (!rpc.Api.isSimulationSuccess(simulation) || !simulation.result) {
+    if (!Api.isSimulationSuccess(simulation) || !simulation.result) {
       return { amount: undefined, latestLedger }
     }
     const value = scValToNative(simulation.result.retval)

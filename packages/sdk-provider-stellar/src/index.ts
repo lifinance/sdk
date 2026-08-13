@@ -1,5 +1,8 @@
 // biome-ignore lint/performance/noBarrelFile: module entrypoint
-export { StellarProvider } from './StellarProvider.js'
+export {
+  DEFAULT_NETWORK_PASSPHRASE,
+  StellarProvider,
+} from './StellarProvider.js'
 export type {
   StellarProviderOptions,
   StellarSDKProvider,
