@@ -1,7 +1,7 @@
 name: 'Release · Linear Sync'
 
 # Reusable: sync one anchor package's published release into its Linear pipeline.
-# Version + channel are derived from the changesets publishedPackages output (not a git tag).
+# Version + channel are derived from the changesets published-packages output (not a git tag).
 on:
   workflow_call:
     inputs:
@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       published_packages:
-        description: 'Raw changesets publishedPackages JSON: [{name, version}, …]'
+        description: 'Raw changesets published-packages JSON: [{name, version}, …]'
         required: true
         type: string
     secrets:
@@ -54,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Sync issues to release
-        uses: linear/linear-release-action@3858a5d7892435dc63302ac76b0cdb587435caa9 # v0.14.6
+        uses: linear/linear-release-action@17b8c24f8ceb2b98cabaf1965ff83c55dd596fac # v0.15.1
         with:
           access_key: ${{ secrets.access_key }}
           command: sync
@@ -66,7 +66,7 @@ jobs:
       # prerelease: advance the stage; the release stays open
       - name: Advance stage (alpha/beta)
         if: steps.meta.outputs.channel != 'stable'
-        uses: linear/linear-release-action@3858a5d7892435dc63302ac76b0cdb587435caa9 # v0.14.6
+        uses: linear/linear-release-action@17b8c24f8ceb2b98cabaf1965ff83c55dd596fac # v0.15.1
         with:
           access_key: ${{ secrets.access_key }}
           command: update
@@ -76,7 +76,7 @@ jobs:
       # stable: complete the release (fires the "→ Done" automation)
       - name: Complete release (stable)
         if: steps.meta.outputs.channel == 'stable'
-        uses: linear/linear-release-action@3858a5d7892435dc63302ac76b0cdb587435caa9 # v0.14.6
+        uses: linear/linear-release-action@17b8c24f8ceb2b98cabaf1965ff83c55dd596fac # v0.15.1
         with:
           access_key: ${{ secrets.access_key }}
           command: complete
