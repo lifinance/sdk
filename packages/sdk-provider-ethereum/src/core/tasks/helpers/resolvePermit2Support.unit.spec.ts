@@ -52,8 +52,8 @@ describe('resolvePermit2Support — signer gate (JUMEMB-32)', () => {
 
   it('is NOT supported when the signer has on-chain code', async () => {
     // The whole point: a 7702-delegated EOA passes every step/chain check but
-    // its ECDSA signature is rejected by Permit2's EIP-1271 path, so the tx
-    // reverts before reaching the diamond. Must fall back to approve+execute.
+    // may be rejected by Permit2's EIP-1271 path, so the probe asks rather than
+    // assumes. A `false` verdict must fall back to approve+execute.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
     expect(await run(buildContext())).toBe(false)
   })

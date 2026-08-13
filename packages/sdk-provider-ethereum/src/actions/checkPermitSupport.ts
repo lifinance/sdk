@@ -19,8 +19,9 @@ type PermitSupport = {
  * Checks in order:
  * 1. Native permit (EIP-2612) support
  * 2. Permit2 — deployed on the chain, signable by the owner (an account with
- *    on-chain code is rejected by Permit2's EIP-1271 path, so any allowance it
- *    holds is unusable — see `canAccountUsePermit2`), and allowance sufficient
+ *    on-chain code may be rejected by Permit2's EIP-1271 path, so any
+ *    allowance it holds may be unusable — see `canAccountUsePermit2`), and
+ *    allowance sufficient
  *
  * @param client - The SDK client
  * @param chain - The chain to check permit support on
@@ -69,8 +70,9 @@ export const checkPermitSupport = async (
 
   let permit2Allowance: bigint | undefined
   // Check Permit2 allowance if available on chain and the owner can actually
-  // sign for it — code-bearing accounts are rejected by Permit2's EIP-1271
-  // path, so an existing allowance is not usable. See `canAccountUsePermit2`.
+  // sign for it — code-bearing accounts may be rejected by Permit2's EIP-1271
+  // path, so an existing allowance may not be usable. See
+  // `canAccountUsePermit2`.
   if (
     chain.permit2 &&
     (await canAccountUsePermit2(client, {

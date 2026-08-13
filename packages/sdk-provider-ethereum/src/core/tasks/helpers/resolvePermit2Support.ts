@@ -29,12 +29,12 @@ const isPermit2SupportedForStep = (
 /**
  * Whether this step should use the Permit2 signature flow.
  *
- * On top of the step/chain checks this verifies that the *signer* can actually
- * produce a Permit2-verifiable signature — see {@link canAccountUsePermit2}.
- * Accounts with on-chain code send Permit2 down its EIP-1271 path, where
- * whether our plain ECDSA signature is accepted depends on the account
- * implementation, so it is probed rather than assumed. Accounts that reject it
- * fall back to approve + execute.
+ * On top of the step/chain checks, the `standard` strategy also verifies that
+ * the *signer* can actually produce a Permit2-verifiable signature — see
+ * {@link canAccountUsePermit2}. Accounts with on-chain code send Permit2 down
+ * its EIP-1271 path, where whether our plain ECDSA signature is accepted
+ * depends on the account implementation, so it is probed rather than assumed.
+ * Accounts that reject it fall back to approve + execute.
  *
  * Only the `standard` strategy consults the signer probe. `signPermit2Message`
  * has a single call site — `EthereumStandardSignAndExecuteTask` — so that is the
@@ -43,6 +43,14 @@ const isPermit2SupportedForStep = (
  * supplied, and it has no approve + execute fallback, so a signer verdict has
  * nothing to steer and must never move the allowance spender away from
  * `fromChain.permit2`.
+ *
+ * This does not make relayed steps immune to the underlying problem.
+ * `EthereumRelayedSignAndExecuteTask` signs the step's typed data and the
+ * relayer submits that signature to Permit2, which branches on `code.length`
+ * the same way, so an account that genuinely fails the probe also fails the
+ * relayer's pull. Moving the spender cannot rescue that account, and it breaks
+ * every account that would have succeeded — which is why the verdict is not
+ * consulted here.
  *
  * Named `resolve…` rather than `is…` because it is not a pure predicate: the
  * signer verdict is memoized onto `context.permit2SignerSupported`.
@@ -60,8 +68,9 @@ const isPermit2SupportedForStep = (
  * flipped to `true` would then route the sign task through Permit2 with no
  * Permit2 allowance, turning a needless approval into a revert.
  *
- * Resolved lazily, after the cheap checks, so steps that can never use Permit2
- * (native token, batched, `skipPermit`, …) don't pay for the RPC at all.
+ * Resolved lazily, after the cheap checks and the strategy guard, so steps that
+ * never consult the probe (native token, batched, relayed, `skipPermit`, …)
+ * don't pay for the RPC at all.
  */
 export const resolvePermit2Support = async (
   context: EthereumStepExecutorContext,
