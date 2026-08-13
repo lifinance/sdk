@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-bitcoin
 
+## 4.0.6
+
+### Patch Changes
+
+- Updated dependencies [[`91a35b6`](https://github.com/lifinance/sdk/commit/91a35b656e602209fecb0286923499f786e439af), [`3ec63b2`](https://github.com/lifinance/sdk/commit/3ec63b27e9b77601a4ad6b23e092e01f83c9d570)]:
+  - @lifi/sdk@4.4.0
+
 ## 4.0.5
 
 ### Patch Changes

@@ -1,5 +1,21 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.1.0
+
+### Minor Changes
+
+- [`91a35b6`](https://github.com/lifinance/sdk/commit/91a35b656e602209fecb0286923499f786e439af) Thanks [@chybisov](https://github.com/chybisov)! - Add the unified funding orders surface: funding order types, `createFundingOrder`, `getFundingOrder`, `waitForFundingOrder`, the on-ramp/CEX helper actions, and `executeFundingOrder`/`resumeFundingOrder`, which run STANDARD orders through the existing route execution pipeline via `convertOrderToRoute`. Funding steps restore their committed quote from the order, opt out of the Permit2 path, and track status against the order endpoint. `executeFundingOrder` and `resumeFundingOrder` resolve only with a terminal order (DONE or FAILED) and reject with `LiFiErrorCode.Timeout` when execution stops earlier, so a single observer covers every funding source. `resumeFundingOrder` accepts `sourceTxHash` to avoid re-sending a funding transaction the backend has not attributed yet. `waitForFundingOrder` accepts `signal`, `integrator` and `txHash`, and `sleep` accepts an optional `AbortSignal`. HTTP 401 and 422 responses are now classified as `LiFiErrorCode.ValidationError` across all endpoints (previously `InternalError`). A 422 from `createFundingOrder` rejects with an `SDKError` wrapping a `ValidationError` that names `partnerOrderId` reuse, and appends the server's reason when present.
+
+### Patch Changes
+
+- [#438](https://github.com/lifinance/sdk/pull/438) [`d12b5b6`](https://github.com/lifinance/sdk/commit/d12b5b69d5559ffc3ced76a072658172d6bbcffc) Thanks [@chmanie](https://github.com/chmanie)! - Fix `getAccountCode` treating a code-less account as a failed RPC lookup (viem's `getCode` returns `undefined` for both), suppressing native EIP-2612 permits for every plain EOA. Permit-supporting tokens now route through `callDiamondWithEIP2612Signature` rather than `callDiamondWithPermit2`, skipping the `approve(permit2)`.
+  
+  Fix Permit2 reverting for EIP-7702 delegated accounts. Permit2 verifies code-bearing signers via EIP-1271, where acceptance is implementation-specific, so the signer is now probed with a read-only `isValidSignature` call — only accounts that reject it fall back to approve + execute. The probe gates the standard transaction flow only — relayer-settled steps keep the spender they already used.
+  
+  `isSafeWallet` no longer queries the Safe Transaction Service for an address with no on-chain code. Its code-less short-circuit was unreachable while `getAccountCode` conflated "no code" with "RPC failed", so an undeployed or counterfactual Safe now resolves as a non-Safe wallet instead of falling through to the API. This surfaces through `resolveTransactionHash`, which returns such a value as a plain transaction hash rather than tracking it as a Safe signature.
+- Updated dependencies [[`91a35b6`](https://github.com/lifinance/sdk/commit/91a35b656e602209fecb0286923499f786e439af), [`3ec63b2`](https://github.com/lifinance/sdk/commit/3ec63b27e9b77601a4ad6b23e092e01f83c9d570)]:
+  - @lifi/sdk@4.4.0
+
 ## 4.0.8
 
 ### Patch Changes
