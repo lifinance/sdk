@@ -1,16 +1,15 @@
-import { readFile, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-async function run() {
-  const packagePath = join(process.cwd(), './package.json')
+// Inlines the package's name/version into src/version.ts. Runs both at build time
+// and from the root `build:version` script during `changeset version`, so the
+// committed file never lags behind the bumped package.json. Read/write failures
+// must surface — a silent no-op here reintroduces the drift.
+const { name, version } = JSON.parse(
+  readFileSync(join(process.cwd(), 'package.json'), 'utf8')
+)
 
-  readFile(packagePath, 'utf8', (_err, data) => {
-    const { version, name } = JSON.parse(data)
-
-    const file = `export const name = '${name}'\nexport const version = '${version}'\n`
-
-    writeFileSync(`${process.cwd()}/src/version.ts`, file)
-  })
-}
-
-run()
+writeFileSync(
+  join(process.cwd(), 'src', 'version.ts'),
+  `export const name = '${name}'\nexport const version = '${version}'\n`
+)
