@@ -60,7 +60,34 @@ removed after a successful publish (one-shot — re-add it to cut another previe
   which strips `scripts`/`devDependencies`/`workspaces`/`nyc` from the **published**
   `package.json` in place (writing a `package.json.tmp` backup), then copies `README.md`.
   Restore (`postrelease.js`) is intentionally **not** run in CI.
-- `scripts/version.js` inlines package name/version into `src/version.ts` at build time.
+- `scripts/version.js` inlines package name/version into `src/version.ts`.
+
+## `src/version.ts` is regenerated during `changeset version`
+
+`changeset:version` runs the root **`build:version`** script right after `changeset version`
+and before `pnpm check:write`, so the Version PR carries the regenerated `src/version.ts`
+alongside the bumped `package.json`. Without that step the committed files fell one release
+behind per bumped package — the published artifacts were always correct (`changeset:prepublish`
+runs `build`, which regenerates them), but git was not, and every local `build` dirtied the
+tree.
+
+`build:version` uses `pnpm -r … exec node ../../scripts/version.js` rather than a per-package
+`build:version` script, because `pnpm -r run` silently **skips** packages that don't declare
+the script — which is how `sdk-provider-tron` was missed.
+
+## Changesets v3 notes
+
+- **`format: false` is required, not cosmetic.** The v3 default (`format: "auto"`) skips Biome
+  when versioning and falls through to the tracked root `.prettierrc`, then fails the job with
+  `pnpm exec prettier … exited with a non-zero status (1)` because prettier isn't installed.
+  Formatting is `pnpm check:write`'s job at the end of `changeset:version`.
+- **`changeset version` exits 1 when no changesets exist.** Any unconditional call needs a
+  guard — see the `Check for changesets` step in `.github/actions/preview-publish/action.yml`.
+- `changesets/action` v2 reads published packages from the `CHANGESETS_OUTPUT` file it injects
+  into the publish script's environment. Keep that env var flowing through
+  `changeset:publish` → `changeset publish`, or GitHub releases and git tags are silently
+  skipped. Do **not** set `env: GITHUB_TOKEN` on the action — v2 throws on a mismatch, and it
+  injects its own token into the version/publish script env already.
 
 ## Linear anchor coverage policy = SKIP
 
