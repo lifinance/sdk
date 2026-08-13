@@ -34,5 +34,17 @@ export const convertOrderToRoute = (order: FundingOrder): Route => {
   // A funding order can never use permit: transactionRequest is committed at
   // order creation and targets estimate.approvalAddress.
   step.estimate.skipPermit = true
+  // Defence in depth, not an expected path. The backend refuses `gasless` on a
+  // funding quote today, so a funding quote never carries typedData - but that
+  // is a backend contract, not a code guarantee. Nothing downstream consults
+  // skipPermit: EthereumCheckPermitsTask.shouldRun keys on typedData filtered
+  // by primaryType === 'Permit', and isRelayerStep is !!step.typedData?.length.
+  // So if the contract ever changed, getEthereumExecutionStrategy would answer
+  // 'relayed' and bypass the committed transactionRequest entirely. Strip here
+  // rather than throw: falling back to the committed request is the correct
+  // behaviour for a funding order, and this is the only choke point early
+  // enough - EthereumCheckPermitsTask is pipeline task 1, the prepare task is
+  // task 7, so clearing it in getFundingOrderUpdatedStep would be too late.
+  delete step.typedData
   return route
 }

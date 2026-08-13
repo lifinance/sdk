@@ -63,6 +63,30 @@ describe('convertOrderToRoute', () => {
     expect(route.steps[0].estimate.skipPermit).toBe(true)
   })
 
+  it('strips typedData so a funding step can never route to the relayer', () => {
+    // The backend refuses `gasless` on a funding quote today, so this shape is
+    // unreachable in production - but nothing in code enforces it, and
+    // isRelayerStep / EthereumCheckPermitsTask both key on typedData alone.
+    const quote = {
+      ...buildQuote(),
+      typedData: [
+        {
+          primaryType: 'Permit',
+          domain: { chainId: 1, name: 'USDC', version: '2' },
+          types: { Permit: [] },
+          message: {},
+        },
+      ],
+    } as unknown as LiFiStep
+    const order = buildFundingOrder({ quote })
+
+    const route = convertOrderToRoute(order)
+
+    expect((route.steps[0] as LiFiStepExtended).typedData).toBeUndefined()
+    // The strip must not reach back into the caller's order.
+    expect(order.quote?.typedData).toHaveLength(1)
+  })
+
   it('leaves the caller order untouched', () => {
     const order = buildFundingOrder({ quote: buildQuote() })
     const before = structuredClone(order)
