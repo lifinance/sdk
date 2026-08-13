@@ -38,10 +38,17 @@ export async function getFundingOrderUpdatedStep(
       'Unable to prepare transaction. The funding order quote has no transaction request.'
     )
   }
+  // Drop typedData for the reason convertOrderToRoute spells out in full: the
+  // two gates that act on it never consult skipPermit, so a funding step
+  // carrying typed data would route to the relayer and bypass the committed
+  // transactionRequest. convertOrderToRoute covers construction; this covers
+  // refresh, where a re-read quote could otherwise reintroduce it. An object
+  // literal cannot `delete`, so drop it by destructuring.
+  const { typedData: _, ...quote } = order.quote
   return {
-    ...order.quote,
+    ...quote,
     // Copy the estimate so the marker cannot leak into the fetched order.
-    estimate: { ...order.quote.estimate, skipPermit: true },
+    estimate: { ...quote.estimate, skipPermit: true },
     id: step.id,
     fundingOrderId: step.fundingOrderId,
     execution: step.execution,

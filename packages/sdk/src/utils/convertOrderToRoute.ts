@@ -36,15 +36,21 @@ export const convertOrderToRoute = (order: FundingOrder): Route => {
   step.estimate.skipPermit = true
   // Defence in depth, not an expected path. The backend refuses `gasless` on a
   // funding quote today, so a funding quote never carries typedData - but that
-  // is a backend contract, not a code guarantee. Nothing downstream consults
-  // skipPermit: EthereumCheckPermitsTask.shouldRun keys on typedData filtered
-  // by primaryType === 'Permit', and isRelayerStep is !!step.typedData?.length.
-  // So if the contract ever changed, getEthereumExecutionStrategy would answer
-  // 'relayed' and bypass the committed transactionRequest entirely. Strip here
-  // rather than throw: falling back to the committed request is the correct
-  // behaviour for a funding order, and this is the only choke point early
-  // enough - EthereumCheckPermitsTask is pipeline task 1, the prepare task is
-  // task 7, so clearing it in getFundingOrderUpdatedStep would be too late.
+  // is a backend contract, not a code guarantee. Two gates would act on it if
+  // it ever appeared: EthereumCheckPermitsTask.shouldRun keys on typedData
+  // filtered by primaryType === 'Permit', and isRelayerStep is true for any
+  // non-empty typedData array. Neither of those two consults skipPermit - the
+  // marker set above is read elsewhere, by EthereumNativePermitTask and
+  // isPermit2Supported - so setting it is not enough on its own. A contract
+  // change would make getEthereumExecutionStrategy answer 'relayed' and bypass
+  // the committed transactionRequest entirely. Strip rather than throw: falling
+  // back to the committed request is the correct behaviour for a funding order.
+  // This call covers construction, and getFundingOrderUpdatedStep drops
+  // typedData again on the refresh path, which rebuilds the step from a re-read
+  // quote. The two are complementary, not alternatives: stripping only here
+  // leaves the refresh path open, and stripping only there is too late for
+  // EthereumCheckPermitsTask, which is pipeline task 1 while the prepare task
+  // is task 7.
   delete step.typedData
   return route
 }
