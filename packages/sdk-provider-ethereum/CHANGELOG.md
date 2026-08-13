@@ -1,5 +1,17 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.0.9
+
+### Patch Changes
+
+- [#438](https://github.com/lifinance/sdk/pull/438) [`d12b5b6`](https://github.com/lifinance/sdk/commit/d12b5b69d5559ffc3ced76a072658172d6bbcffc) Thanks [@chmanie](https://github.com/chmanie)! - Fix `getAccountCode` treating a code-less account as a failed RPC lookup (viem's `getCode` returns `undefined` for both), suppressing native EIP-2612 permits for every plain EOA. Permit-supporting tokens now route through `callDiamondWithEIP2612Signature` rather than `callDiamondWithPermit2`, skipping the `approve(permit2)`.
+  
+  Fix Permit2 reverting for EIP-7702 delegated accounts. Permit2 verifies code-bearing signers via EIP-1271, where acceptance is implementation-specific, so the signer is now probed with a read-only `isValidSignature` call — only accounts that reject it fall back to approve + execute. The probe gates the standard transaction flow only — relayer-settled steps keep the spender they already used.
+  
+  `isSafeWallet` no longer queries the Safe Transaction Service for an address with no on-chain code. Its code-less short-circuit was unreachable while `getAccountCode` conflated "no code" with "RPC failed", so an undeployed or counterfactual Safe now resolves as a non-Safe wallet instead of falling through to the API. This surfaces through `resolveTransactionHash`, which returns such a value as a plain transaction hash rather than tracking it as a Safe signature.
+- Updated dependencies [[`fd1e9b5`](https://github.com/lifinance/sdk/commit/fd1e9b5ff481b35683d7b8557011c9c726446cdd)]:
+  - @lifi/sdk@4.4.0
+
 ## 4.0.8
 
 ### Patch Changes
