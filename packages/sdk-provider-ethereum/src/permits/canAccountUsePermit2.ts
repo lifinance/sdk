@@ -37,10 +37,11 @@ const PROBE_SIGNATURE =
  * - **Reverts** → it rejected the envelope before recovery and can't validate
  *   anything we produce (Alchemy's ERC-6900 `SemiModularAccount7702`).
  *
- * Keyed on revert-vs-return, not on revert data: the same ERC-6900 account
- * reverts with `ValidationSignatureSegmentMissing()` for a malformed signature
- * but with no data for a well-formed one. An empty return counts as unusable —
- * it fails Permit2's magic-value comparison too.
+ * Keyed on revert-vs-return, never on the value returned: the probe signature
+ * recovers to a third party on purpose, so a correct implementation must return
+ * a *non*-magic value, and comparing against the magic value would reject every
+ * wallet this exists to accept. Accepted cost: an implementation that returns
+ * failure for *everything* is classified capable and still fails on-chain.
  */
 const acceptsRawEcdsaSignature = async (
   client: SDKClient,
@@ -50,7 +51,12 @@ const acceptsRawEcdsaSignature = async (
   try {
     const publicClient = await getPublicClient(client, chainId)
     const { data } = await getAction(
-      publicClient,
+      // CCIP-Read off, or an `OffchainLookup` revert comes back as a return and
+      // inverts the signal read below. viem gates it on the client, not the
+      // call, so clone rather than disable it on the shared ENS-using client.
+      // Relies on `getPublicClient` staying bare: add `publicActions` and
+      // `getAction` prefers a decorated `client.call`, re-enabling CCIP-Read.
+      { ...publicClient, ccipRead: false },
       call,
       'call'
     )({
@@ -61,8 +67,9 @@ const acceptsRawEcdsaSignature = async (
         args: [PROBE_HASH, PROBE_SIGNATURE],
       }),
     })
-    // At least 4 bytes — enough for a bytes4 the caller could compare.
-    return !!data && data.length >= 10
+    // A full 32-byte word (`0x` + 64 chars) or nothing: Permit2 compares against
+    // a magic value, so anything shorter can only be a false positive.
+    return !!data && data.length >= 66
   } catch {
     // Revert, or an RPC failure we can't tell apart from one. Either way we
     // must not promise Permit2 will work.
@@ -74,14 +81,15 @@ const acceptsRawEcdsaSignature = async (
  * Whether the account can produce a signature Uniswap Permit2 will accept.
  *
  * Permit2's `SignatureVerification.verify` branches on
- * `claimedSigner.code.length`: no code → `ecrecover`, which every EOA satisfies
- * (and costs no extra RPC here); code → `owner.isValidSignature(...)`, whose
- * outcome depends on the implementation, so {@link acceptsRawEcdsaSignature}
- * tests it rather than guessing. Checking code length alone would exclude
- * EIP-7702 accounts that verify our signatures fine, costing those users a
- * needless approval.
+ * `claimedSigner.code.length`: no code → `ecrecover`, which every EOA satisfies;
+ * code → `owner.isValidSignature(...)`, so {@link acceptsRawEcdsaSignature}
+ * probes it. Checking code length alone would exclude EIP-7702 accounts that
+ * verify our signatures fine, costing those users a needless approval.
  *
- * `false` on RPC failure — the approve + execute fallback always works.
+ * `false` on RPC failure — approve + execute always works. Same for accounts
+ * that *revert* on a signer mismatch (strict 7702 delegates, Sequence): they
+ * would accept the real signature but fail the probe, and pay one exact-amount
+ * approval per step instead.
  */
 export const canAccountUsePermit2 = async (
   client: SDKClient,

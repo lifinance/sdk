@@ -29,23 +29,22 @@ const isPermit2SupportedForStep = (
 /**
  * Whether this step should use the Permit2 signature flow.
  *
- * On top of the step/chain checks this verifies that the *signer* can actually
- * produce a Permit2-verifiable signature — see {@link canAccountUsePermit2}.
- * Accounts with on-chain code send Permit2 down its EIP-1271 path, where
- * whether our plain ECDSA signature is accepted depends on the account
- * implementation, so it is probed rather than assumed. Accounts that reject it
- * fall back to approve + execute.
+ * Beyond the step/chain checks, the `standard` strategy also probes the
+ * *signer*: code-bearing accounts send Permit2 down its EIP-1271 path, where
+ * acceptance is implementation-specific — see {@link canAccountUsePermit2}.
+ * Accounts that fail it fall back to approve + execute.
  *
- * Named `resolve…` rather than `is…` because it is not a pure predicate: the
- * signer verdict is memoized onto `context.permit2SignerSupported`.
- * `TaskPipeline` threads one context object through the whole run, so every
- * task in a single execution agrees on the answer and only one `eth_getCode`
- * is issued — without that, a wallet gaining or losing its 7702 delegation
- * mid-swap could have the allowance tasks approve Permit2 while the
- * sign-and-execute task routes to the diamond, which then has no allowance.
+ * Only `standard` consults the probe. `signPermit2Message` has one call site,
+ * `EthereumStandardSignAndExecuteTask`, so that is the only flow where the SDK
+ * produces the Permit2 signature itself. A relayed step has no approve +
+ * execute fallback, so a verdict cannot rescue a failing account and would
+ * break a working one — it must never move the spender off `fromChain.permit2`.
  *
- * Resolved lazily, after the cheap checks, so steps that can never use Permit2
- * (native token, batched, `skipPermit`, …) don't pay for the RPC at all.
+ * The verdict is memoized on `context.permit2SignerSupported`, and a `false`
+ * stays sticky, a failed lookup included. `TaskPipeline` threads one context
+ * through every task, so a mid-run flip would let the allowance tasks approve
+ * one spender while the sign task routes to the other — turning a needless
+ * approval into a revert.
  */
 export const resolvePermit2Support = async (
   context: EthereumStepExecutorContext,
@@ -55,6 +54,11 @@ export const resolvePermit2Support = async (
     return false
   }
 
+  // Only `standard` consults the probe; `batched` is excluded above.
+  if (strategy !== 'standard') {
+    return true
+  }
+
   const { client, step, fromChain, ethereumClient } = context
   const address = (step.action.fromAddress ??
     ethereumClient.account?.address) as Address | undefined
@@ -62,8 +66,7 @@ export const resolvePermit2Support = async (
     return false
   }
 
-  // Safe to cache the promise: `canAccountUsePermit2` resolves `false` on RPC
-  // failure rather than rejecting, so this can never memoize a rejection.
+  // Caching the promise is safe: `canAccountUsePermit2` never rejects.
   context.permit2SignerSupported ??= canAccountUsePermit2(client, {
     chainId: fromChain.id,
     address,

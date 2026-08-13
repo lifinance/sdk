@@ -51,9 +51,8 @@ describe('resolvePermit2Support — signer gate (JUMEMB-32)', () => {
   })
 
   it('is NOT supported when the signer has on-chain code', async () => {
-    // The whole point: a 7702-delegated EOA passes every step/chain check but
-    // its ECDSA signature is rejected by Permit2's EIP-1271 path, so the tx
-    // reverts before reaching the diamond. Must fall back to approve+execute.
+    // A 7702-delegated EOA passes every step/chain check, but Permit2 may still
+    // reject it via EIP-1271 — so a `false` verdict must approve + execute.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
     expect(await run(buildContext())).toBe(false)
   })
@@ -187,5 +186,39 @@ describe('resolvePermit2Support — step/chain gate short-circuits before the RP
   it('returns false and issues no RPC for the batched strategy', async () => {
     expect(await run(buildContext(), 'batched')).toBe(false)
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolvePermit2Support — the probe gates the standard flow only', () => {
+  it('keeps a relayed step on Permit2 even when the signer would fail the probe', async () => {
+    // Moving the spender to `approvalAddress` leaves the relayer unable to pull
+    // through Permit2: the transfer fails and the approval was wasted.
+    vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
+
+    expect(await run(buildContext(), 'relayed')).toBe(true)
+  })
+
+  it('issues no signer RPC for a relayed step', async () => {
+    await run(buildContext(), 'relayed')
+
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+
+  it('leaves the memoized verdict unset for a relayed step', async () => {
+    // The guard returns before the memo write, so a later standard step in the
+    // same execution still resolves the signer for itself.
+    const context = buildContext()
+
+    await run(context, 'relayed')
+
+    expect(context.permit2SignerSupported).toBeUndefined()
+  })
+
+  it('still applies the step/chain checks to a relayed step', async () => {
+    // Regression guard: the strategy guard must not become a blanket `true`. A
+    // native from-token can never use Permit2, whoever signs.
+    expect(
+      await run(buildContext({ isFromNativeToken: true }), 'relayed')
+    ).toBe(false)
   })
 })

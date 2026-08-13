@@ -51,10 +51,8 @@ beforeEach(() => {
 
 describe('checkPermitSupport — Permit2 signer gate', () => {
   it('reports no usable Permit2 allowance for a code-bearing owner, and skips the allowance read', async () => {
-    // A 7702-delegated EOA may well hold a large Permit2 allowance from an
-    // earlier plain-EOA session. It is unusable — Permit2 would verify via
-    // EIP-1271 and reject — so reporting it as sufficient would tell callers
-    // to skip an approval they actually need.
+    // A 7702-delegated EOA can still hold a large allowance from its plain-EOA
+    // days. Reporting it as sufficient would skip an approval that is needed.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
 
     await expect(subject()).resolves.toEqual({
