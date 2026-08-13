@@ -51,9 +51,8 @@ describe('resolvePermit2Support — signer gate (JUMEMB-32)', () => {
   })
 
   it('is NOT supported when the signer has on-chain code', async () => {
-    // The whole point: a 7702-delegated EOA passes every step/chain check but
-    // may be rejected by Permit2's EIP-1271 path, so the probe asks rather than
-    // assumes. A `false` verdict must fall back to approve+execute.
+    // A 7702-delegated EOA passes every step/chain check, but Permit2 may still
+    // reject it via EIP-1271 — so a `false` verdict must approve + execute.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
     expect(await run(buildContext())).toBe(false)
   })
@@ -192,13 +191,8 @@ describe('resolvePermit2Support — step/chain gate short-circuits before the RP
 
 describe('resolvePermit2Support — the probe gates the standard flow only', () => {
   it('keeps a relayed step on Permit2 even when the signer would fail the probe', async () => {
-    // The relayer pulls the user's tokens through Permit2 using typed data the
-    // API supplied. `signPermit2Message` has one call site and it is in the
-    // standard sign task, so the SDK never produces that signature here — and a
-    // relayed step has no approve + execute fallback. A probe verdict therefore
-    // has nothing to steer, and letting it move the spender to
-    // `approvalAddress` leaves the relayer unable to pull: the transfer fails
-    // for missing allowance and the user paid for a useless approval.
+    // Moving the spender to `approvalAddress` leaves the relayer unable to pull
+    // through Permit2: the transfer fails and the approval was wasted.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
 
     expect(await run(buildContext(), 'relayed')).toBe(true)
@@ -211,8 +205,8 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
   })
 
   it('leaves the memoized verdict unset for a relayed step', async () => {
-    // The guard returns before the memo slot is touched, so a later standard
-    // step in the same execution still resolves the signer for itself.
+    // The guard returns before the memo write, so a later standard step in the
+    // same execution still resolves the signer for itself.
     const context = buildContext()
 
     await run(context, 'relayed')

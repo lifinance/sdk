@@ -95,10 +95,8 @@ describe('canAccountUsePermit2 — code-bearing accounts are probed, not assumed
   })
 
   it('blocks an account whose return is too short to be a magic value', async () => {
-    // A bare 4-byte return, not padded to a word. Permit2 compares a full
-    // 32-byte word, so a short return can never satisfy it on-chain —
-    // accepting it here would only manufacture a false positive, which is the
-    // same symptom this probe exists to prevent.
+    // A bare 4-byte return, not padded to a word. Permit2 could not decode it,
+    // so accepting it here would only manufacture a false positive.
     vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
     vi.mocked(call).mockResolvedValue({ data: '0x1626ba7e' })
 
@@ -106,9 +104,7 @@ describe('canAccountUsePermit2 — code-bearing accounts are probed, not assumed
   })
 
   it('blocks a return one byte short of a full word', async () => {
-    // 31 bytes, not 32. Pins the acceptance boundary at exactly one word: a
-    // looser threshold would let this through, and Permit2's magic-value
-    // comparison still could not be satisfied by it on-chain.
+    // 31 bytes, not 32 — pins the boundary at exactly one word.
     vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
     vi.mocked(call).mockResolvedValue({
       data: `0x${'ab'.repeat(31)}` as `0x${string}`,
@@ -118,22 +114,19 @@ describe('canAccountUsePermit2 — code-bearing accounts are probed, not assumed
   })
 
   it('never follows a CCIP-Read revert while probing', async () => {
-    // Following an `OffchainLookup` revert would make an outbound request to a
-    // URL this contract chose, and would turn a revert into a return —
-    // inverting the revert-vs-return rule the whole probe is keyed on.
+    // Following an `OffchainLookup` revert would turn a revert into a return,
+    // inverting the rule the probe is keyed on.
     vi.mocked(getAccountCode).mockResolvedValue(ALCHEMY_7702)
     vi.mocked(call).mockResolvedValue({ data: SIG_VALIDATION_FAILED })
-    // A sentinel client, so the assertion below also pins that the probe clones
-    // the real public client instead of replacing it with a bare object — the
-    // shared `{}` mock would let a dropped client pass.
+    // Sentinel, so the assertion also catches a client replaced rather than
+    // cloned — the shared `{}` mock would let that pass.
     vi.mocked(getPublicClient).mockResolvedValue({
       uid: 'probe-client',
     } as never)
 
     await subject()
 
-    // `ccipRead` is a client option in viem, not a call parameter, so it is
-    // asserted on the first argument — the client — not the second.
+    // viem takes `ccipRead` from the client, so assert on the first argument.
     expect(call).toHaveBeenCalledWith(
       expect.objectContaining({ uid: 'probe-client', ccipRead: false }),
       expect.anything()
