@@ -15,7 +15,7 @@ import { request } from '../utils/request.js'
  * @param client - The SDK client
  * @param params - The funding order creation request
  * @param options - Request options
- * @throws {SDKError} A missing partnerOrderId and a 422 response (partnerOrderId reuse with a different body) both reject with a `ValidationError` cause; the 422 message names partnerOrderId and appends the server's reason, but that cause carries no `status` and no `responseBody`. Every other HTTP failure keeps its `HTTPError` cause with `status` intact: 424 carries LiFiErrorCode.ThirdPartyError (on-ramp provider outage), 401 carries LiFiErrorCode.ValidationError (keyless ONRAMP).
+ * @throws {SDKError} A missing partnerOrderId and a 422 response (partnerOrderId reuse with a different body) both reject with a `ValidationError` cause; the 422 message names partnerOrderId and appends the server's reason when present, but that cause carries no `status` and no `responseBody`. Every other HTTP failure keeps its `HTTPError` cause with `status` intact: 424 carries LiFiErrorCode.ThirdPartyError (on-ramp provider outage), 401 carries LiFiErrorCode.ValidationError (keyless ONRAMP).
  * @returns The created (or replayed) funding order.
  */
 export const createFundingOrder = async (
