@@ -15,7 +15,7 @@ import { request } from '../utils/request.js'
  * @param client - The SDK client
  * @param params - The funding order creation request
  * @param options - Request options
- * @throws {SDKError} ValidationError when partnerOrderId is missing, or when the server rejects the body with 422 (partnerOrderId reuse with a different body). 424 wraps ThirdPartyError (on-ramp provider outage), 401 wraps ValidationError (keyless ONRAMP).
+ * @throws {SDKError} A missing partnerOrderId and a 422 response (partnerOrderId reuse with a different body) both reject with a `ValidationError` cause; the 422 message names partnerOrderId and appends the server's reason, but that cause carries no `status` and no `responseBody`. Every other HTTP failure keeps its `HTTPError` cause with `status` intact: 424 carries LiFiErrorCode.ThirdPartyError (on-ramp provider outage), 401 carries LiFiErrorCode.ValidationError (keyless ONRAMP).
  * @returns The created (or replayed) funding order.
  */
 export const createFundingOrder = async (
@@ -44,9 +44,13 @@ export const createFundingOrder = async (
     if (cause instanceof HTTPError && cause.status === 422) {
       // SDKError's constructor is (cause, step?, action?) - there is no slot
       // for a nested error, so do not pass the original as a second argument.
+      // Substituting the cause drops the HTTPError's status and responseBody,
+      // so carry the server's own reason forward in the message. request()
+      // awaits buildAdditionalDetails() before wrapping, so it is populated.
+      const detail = cause.responseBody?.message
       throw new SDKError(
         new ValidationError(
-          `Funding order ${params.partnerOrderId} was rejected: this partnerOrderId was already used with a different request body. Use a new partnerOrderId, or replay the original body byte-for-byte.`
+          `Funding order ${params.partnerOrderId} was rejected: this partnerOrderId was already used with a different request body. Use a new partnerOrderId, or replay the original body byte-for-byte.${detail ? ` Server response: ${detail}` : ''}`
         )
       )
     }

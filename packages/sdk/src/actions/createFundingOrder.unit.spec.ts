@@ -1,5 +1,6 @@
 import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
+import { LiFiErrorCode } from '../errors/constants.js'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../utils/request.js'
@@ -56,6 +57,14 @@ describe('createFundingOrder', () => {
     )
     await expect(createFundingOrder(client, params)).rejects.toThrowError(
       /partnerOrderId/
+    )
+    await expect(createFundingOrder(client, params)).rejects.toMatchObject({
+      code: LiFiErrorCode.ValidationError,
+    })
+    // The substituted cause drops status and responseBody, so the server's own
+    // reason has to survive in the message.
+    await expect(createFundingOrder(client, params)).rejects.toThrowError(
+      /Server response: conflict/
     )
   })
 
