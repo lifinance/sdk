@@ -637,12 +637,27 @@ return StrKey.isValidEd25519PublicKey(record.account_id)
   : undefined
 ```
 
-The dynamic `import()` is what removes `Federation` — and with it `StellarToml` and `smol-toml` —
-from the initial chunk. Tree-shaking works per export binding, so once no static import references
-the `Federation` export, a bundler can drop it even though other modules still import the root
-entrypoint for `StrKey` and friends (§3.1). Returning `undefined` is the right failure shape:
-`getNameServiceAddress` already swallows throws and returns `undefined`
-(`actions/getNameServiceAddress.ts:28-40`), so a thrown error would gain nothing there.
+**Corrected during implementation — the dynamic `import()` was dropped.** The reasoning above is
+wrong, and the measurement says so. Three esbuild runs with `--bundle --format=esm --minify
+--splitting`, comparing the transitive static closure from the entry chunk:
+
+| Variant | Initial load |
+|---|---|
+| Baseline, before any change in §10 | 362,814 B |
+| `await import('@stellar/stellar-sdk')` for `Federation` | 473,118 B |
+| Static `Federation` import + the guards above | 362,713 B |
+
+The lazy import costs **110 KB**, it does not save any. Tree-shaking works per export binding only
+while every importer names its bindings; a dynamic import asks for the whole *namespace*, which
+cannot be shaken, so `Horizon`, `WebAuth`, `Friendbot` and `StellarToml` all materialise — and the
+entry's own static import of the root keeps that chunk eager regardless. `Federation` therefore
+stays a static import, and the file carries a comment recording the measurement so nobody
+re-attempts it.
+
+The memo and G-address guards are what this section delivers, and they cost nothing (−101 B).
+Returning `undefined` is the right failure shape: `getNameServiceAddress` already swallows throws
+and returns `undefined` (`actions/getNameServiceAddress.ts:28-40`), so a thrown error would gain
+nothing there.
 
 ### 10.3 Network passphrase — one default and a signing guard
 
@@ -686,9 +701,12 @@ Files: `client/getStellarRpc.ts`, `core/tasks/helpers/submitStellarTransaction.t
 `Networks`, `StrKey`, `TransactionBuilder`, `nativeToScVal`, `scValToNative`) stay on the root
 entrypoint: v16 vendors them under `lib/base/` and publishes no subpath for them.
 
-Evidence, not a CI gate: bundle a one-line entry that imports the provider with esbuild
-(`--bundle --format=esm --minify`) before and after the commit, and record both sizes in the PR
-description.
+**Measured outcome: neutral.** Taken together with the §10.2 guards, the subpath imports moved the
+initial chunk from 362,814 B to 362,713 B — a 101-byte difference, which is noise. The change is
+kept because it narrows the import surface to what each module actually uses and it costs nothing,
+**not** because it shrinks a bundle. Finding #14's premise does not survive measurement: with
+`sideEffects` set and every importer naming its bindings, esbuild already drops what the root
+entrypoint does not need.
 
 ### 10.5 Changeset
 
@@ -765,7 +783,7 @@ and needs no edit.
 | 11 | Prepare task copy-pasted to drop one guard | `StellarPrepareTransactionTask.ts:29` | 2 (§6) |
 | 12 | Six unrelated generated `version.ts` files committed | `sdk/src/version.ts:2` | 1 (§5) |
 | 13 | `horizonUrl` and `signAuthEntry` are dead surface | `types.ts:68` | 6 (§10.1) |
-| 14 | Root `stellar-sdk` import inflates consumer bundles | `StellarProvider.ts:11` | 6 (§10.2, §10.4) |
+| 14 | Root `stellar-sdk` import inflates consumer bundles | `StellarProvider.ts:11` | 6 (§10.4) — **not reproduced**, see the measurement there |
 
 Also fixed along the way, from §3.2 and §8.2: the wrong retry-path claim in the prepare task's
 comment, and the 90 s confirmation budget against 300 s timebounds.
