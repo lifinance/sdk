@@ -108,6 +108,14 @@ export class WaitForFundingOrderTask extends BaseStepExecutionTask {
           }.`,
         },
       })
+      // COMPLETED on a FAILED order is safe only because of two facts. The
+      // wait-status task is the last entry in every provider pipeline
+      // (Ethereum reaches this through EthereumWaitForTransactionStatusTask,
+      // Solana, Sui, Tron and Bitcoin through WaitForTransactionStatusTask
+      // directly), and slicing the pipeline only trims from the front, so it
+      // stays last. And TaskPipeline.run short-circuits on PAUSED alone, never
+      // on COMPLETED. So no later task can read this COMPLETED as success and
+      // run on top of a failed order. Moving this task earlier would break it.
       return { status: 'COMPLETED' }
     }
 

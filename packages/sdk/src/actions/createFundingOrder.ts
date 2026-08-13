@@ -46,7 +46,9 @@ export const createFundingOrder = async (
       // for a nested error, so do not pass the original as a second argument.
       // Substituting the cause drops the HTTPError's status and responseBody,
       // so carry the server's own reason forward in the message. request()
-      // awaits buildAdditionalDetails() before wrapping, so it is populated.
+      // awaits buildAdditionalDetails() before wrapping, so it is populated
+      // when present - that method's bare catch leaves it undefined when the
+      // body is not JSON, which is why the message appends it conditionally.
       const detail = cause.responseBody?.message
       throw new SDKError(
         new ValidationError(

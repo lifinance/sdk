@@ -86,11 +86,26 @@ const runAndCapture = async (
  *
  * A resolve always means the order is terminal, DONE or FAILED, for every
  * order type. Check `order.status` to tell them apart.
+ * `onOrderUpdate` fires on order transitions only. It does NOT fire when a
+ * DONE order is returned unchanged on the early-return path below: the return
+ * value is authoritative, and firing there would invent a transition that
+ * never happened. Read the resolved order, do not rely on the callback alone.
  * @param client - The SDK client.
- * @param order - The funding order to execute. Must not be FAILED.
+ * @param order - The funding order to execute. Must be a newly created order
+ * that has not been sent yet. This function does not re-read the order: it
+ * converts the snapshot straight to a route and executes it. `executeRoute`
+ * dedupes by route id, so a second call issued while the execution is still
+ * live in the same process attaches to the running promise instead of sending
+ * twice. That is the only case it covers: `executionState` is in-memory, and
+ * `stopRouteExecution` deletes the entry on any non-DONE step outcome. So a
+ * reload, a second process, or a retry after a pause or a poll timeout rebuilds
+ * the route with no execution history, starts the pipeline from the front, and
+ * signs and sends a second funding transaction. Use `resumeFundingOrder` for
+ * any order that may have been sent - it re-reads the order and carries the
+ * source-transaction guard.
  * @param options - Execution options, including route execution hooks for STANDARD orders.
- * @throws {SDKError} ValidationError for a FAILED input order - create a new order instead. TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed.
- * @throws {DOMException} On the poll-only paths - SMART_DEPOSIT, ONRAMP, and the resume branch that only polls - an abort rejects with the bare `options.signal.reason`, NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation there. On a STANDARD order executing through the route pipeline, the abort is instead surfaced by the provider error parser as an SDKError; check `options.signal.aborted` if you need one test that covers both paths.
+ * @throws {SDKError} ValidationError for a FAILED input order - create a new order instead. ValidationError from `convertOrderToRoute` when a STANDARD order carries no `quote`, which a partial or hand-built order snapshot can hit. TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed.
+ * @throws {DOMException} On the poll-only paths - SMART_DEPOSIT, ONRAMP, and the resume branch that only polls - an abort rejects with the bare `options.signal.reason`, NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation there. On a STANDARD order executing through the route pipeline, the abort is instead surfaced by the provider error parser as an SDKError; check `options.signal.aborted` if you need one test that covers both paths. Mind the timing on a STANDARD order: `signal` reaches only the funding poll, through `context.executionOptions` into `WaitForFundingOrderTask`. Nothing else in route execution consumes it, so an abort during the allowance, signing or receipt phase has NO effect until polling starts.
  * @returns The terminal funding order, DONE or FAILED.
  */
 export const executeFundingOrder = async (
@@ -142,11 +157,17 @@ export const executeFundingOrder = async (
  * window would send the funding transaction a second time.
  *
  * A resolve always means the order is terminal, DONE or FAILED.
+ *
+ * `onOrderUpdate` fires on order transitions only. It does NOT fire on layer 1,
+ * where the re-read order is already terminal and is returned as is: the return
+ * value is authoritative, and firing there would invent a transition that never
+ * happened. Read the resolved order, do not rely on the callback alone.
  * @param client - The SDK client.
- * @param order - The funding order to resume.
+ * @param order - The funding order to resume. Only `orderId` is read - the
+ * function re-reads the order, so a stale snapshot is safe here.
  * @param options - Execution options. Pass `sourceTxHash` when the caller persisted one.
- * @throws {SDKError} TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed again.
- * @throws {DOMException} On the poll-only paths - SMART_DEPOSIT, ONRAMP, and the resume branch that only polls - an abort rejects with the bare `options.signal.reason`, NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation there. On a STANDARD order executing through the route pipeline, the abort is instead surfaced by the provider error parser as an SDKError; check `options.signal.aborted` if you need one test that covers both paths.
+ * @throws {SDKError} TransactionError with LiFiErrorCode.Timeout when the execution stops before a terminal order; the order stays PENDING and can be resumed again. ValidationError from `convertOrderToRoute` when the re-read STANDARD order carries no `quote`.
+ * @throws {DOMException} On the poll-only paths - SMART_DEPOSIT, ONRAMP, and the resume branch that only polls - an abort rejects with the bare `options.signal.reason`, NOT wrapped in an SDKError, so do not branch on `instanceof SDKError` to detect cancellation there. On a STANDARD order executing through the route pipeline, the abort is instead surfaced by the provider error parser as an SDKError; check `options.signal.aborted` if you need one test that covers both paths. Mind the timing on a STANDARD order: `signal` reaches only the funding poll, through `context.executionOptions` into `WaitForFundingOrderTask`. Nothing else in route execution consumes it, so an abort during the allowance, signing or receipt phase has NO effect until polling starts.
  * @returns The terminal funding order, DONE or FAILED.
  */
 export const resumeFundingOrder = async (
