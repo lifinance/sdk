@@ -25,7 +25,23 @@ export const parseStellarErrors = async (
   return new SDKError(baseError, step, action)
 }
 
-const handleSpecificErrors = (e: any) => {
+const handleSpecificErrors = (e: any): BaseError => {
+  // `callStellarRpcsWithRetry` collapses every rejection into an AggregateError,
+  // whose own message says nothing useful. Classify from the error it hides,
+  // preferring one this package already classified.
+  if (e instanceof AggregateError && e.errors.length) {
+    const classified = e.errors.find(
+      (error: unknown) => error instanceof BaseError
+    )
+    return handleSpecificErrors(classified ?? e.errors[0])
+  }
+
+  // A code this package set on purpose wins over message matching: an allowance
+  // the SDK could not read is not an allowance the user has to grant.
+  if (e instanceof BaseError) {
+    return e
+  }
+
   // Stellar Wallets Kit surfaces wallet rejections as messages rather than typed
   // errors, and the shape varies per wallet — match on the text, as Sui does.
   const message: string = typeof e === 'string' ? e : (e?.message ?? '')
@@ -87,10 +103,6 @@ const handleSpecificErrors = (e: any) => {
       message,
       e
     )
-  }
-
-  if (e instanceof BaseError) {
-    return e
   }
 
   return new UnknownError(message || ErrorMessage.UnknownError, e)

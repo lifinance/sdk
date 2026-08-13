@@ -83,4 +83,50 @@ describe('parseStellarErrors', () => {
     expect(parsed.cause.name).toBe('UnknownError')
     expect(parsed.cause.message).toBe('something odd')
   })
+
+  // The provider classifies its own failures on purpose. Message matching must
+  // not re-code them — an allowance the SDK could not READ is not an allowance
+  // the user must GRANT.
+  it('keeps a code the provider set, even when the message matches a pattern', async () => {
+    const classified = new TransactionError(
+      LiFiErrorCode.TransactionSimulationFailed,
+      'Could not read the CDEF spending allowance for CABC'
+    )
+
+    const parsed = await parseStellarErrors(classified)
+
+    expect((parsed.cause as TransactionError).code).toBe(
+      LiFiErrorCode.TransactionSimulationFailed
+    )
+  })
+
+  // callStellarRpcsWithRetry collapses every RPC rejection into an
+  // AggregateError. Classifying its message alone would surface UnknownError.
+  it('classifies from inside an AggregateError', async () => {
+    const aggregate = new AggregateError(
+      [new Error('User rejected the request')],
+      'All 2 Stellar RPCs failed'
+    )
+
+    const parsed = await parseStellarErrors(aggregate)
+
+    expect((parsed.cause as TransactionError).code).toBe(
+      LiFiErrorCode.SignatureRejected
+    )
+  })
+
+  it('prefers an already classified error inside an AggregateError', async () => {
+    const classified = new TransactionError(
+      LiFiErrorCode.TransactionSimulationFailed,
+      'simulation failed'
+    )
+    const aggregate = new AggregateError(
+      [new Error('connect ETIMEDOUT'), classified],
+      'All 2 Stellar RPCs failed'
+    )
+
+    const parsed = await parseStellarErrors(aggregate)
+
+    expect(parsed.cause).toBe(classified)
+  })
 })
