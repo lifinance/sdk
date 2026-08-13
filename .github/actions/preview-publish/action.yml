@@ -16,7 +16,22 @@ runs:
           pnpm changeset pre exit
         fi
 
+    # `changeset version` exits 1 when there are no changesets (Changesets v3), so
+    # gate it on a changeset actually being present. Top level only — pre-mode
+    # changesets live in .changeset/pre/ — and README.md is not a changeset.
+    - name: Check for changesets
+      id: changesets
+      shell: bash
+      run: |
+        if [ -n "$(find .changeset -maxdepth 1 -name '*.md' ! -name 'README.md' -print -quit)" ]; then
+          echo "present=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::No changeset in this PR — nothing to publish as a preview."
+          echo "present=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Version changed packages as a preview snapshot
+      if: steps.changesets.outputs.present == 'true'
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }} # changeset version hits the GitHub API (changelog-github)
@@ -25,8 +40,11 @@ runs:
         SHA=$(git rev-parse --short HEAD)
         pnpm changeset version --snapshot "preview-$SHA"
 
+    # Skipped when no changeset is present: `publish` is then empty, so every
+    # downstream step below skips too.
     - name: Detect preview packages
       id: detect
+      if: steps.changesets.outputs.present == 'true'
       shell: bash
       run: |
         # non-private packages the snapshot bumped = exactly what gets published
@@ -36,7 +54,7 @@ runs:
           echo "publish=true" >> "$GITHUB_OUTPUT"
           echo "Preview versions to publish:"; cat "$RUNNER_TEMP/preview-pkgs.txt"
         else
-          echo "::warning::No changeset in this PR — nothing to publish as a preview."
+          echo "::warning::No changeset bumps a publishable package — nothing to publish as a preview."
           echo "publish=false" >> "$GITHUB_OUTPUT"
         fi
 
