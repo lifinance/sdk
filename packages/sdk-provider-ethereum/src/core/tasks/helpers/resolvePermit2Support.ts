@@ -36,6 +36,14 @@ const isPermit2SupportedForStep = (
  * implementation, so it is probed rather than assumed. Accounts that reject it
  * fall back to approve + execute.
  *
+ * Only the `standard` strategy consults the signer probe. `signPermit2Message`
+ * has a single call site — `EthereumStandardSignAndExecuteTask` — so that is the
+ * only flow where the SDK produces the Permit2 signature itself. A relayed step
+ * is settled by the relayer pulling through Permit2 with typed data the API
+ * supplied, and it has no approve + execute fallback, so a signer verdict has
+ * nothing to steer and must never move the allowance spender away from
+ * `fromChain.permit2`.
+ *
  * Named `resolve…` rather than `is…` because it is not a pure predicate: the
  * signer verdict is memoized onto `context.permit2SignerSupported`.
  * `TaskPipeline` threads one context object through the whole run, so every
@@ -43,6 +51,14 @@ const isPermit2SupportedForStep = (
  * is issued — without that, a wallet gaining or losing its 7702 delegation
  * mid-swap could have the allowance tasks approve Permit2 while the
  * sign-and-execute task routes to the diamond, which then has no allowance.
+ *
+ * For the same reason a `false` stays sticky, including one caused by a failed
+ * code lookup: retrying it later in the pipeline is what makes the two sides
+ * disagree. `EthereumCheckAllowanceTask` reading `false` approves
+ * `step.estimate.approvalAddress` — or finds an existing allowance there and
+ * lets `EthereumSetAllowanceTask` skip entirely — and a later retry that
+ * flipped to `true` would then route the sign task through Permit2 with no
+ * Permit2 allowance, turning a needless approval into a revert.
  *
  * Resolved lazily, after the cheap checks, so steps that can never use Permit2
  * (native token, batched, `skipPermit`, …) don't pay for the RPC at all.
@@ -53,6 +69,12 @@ export const resolvePermit2Support = async (
 ): Promise<boolean> => {
   if (!isPermit2SupportedForStep(context, strategy)) {
     return false
+  }
+
+  // The signer probe gates only the flow where the SDK itself produces the
+  // Permit2 signature. `batched` was already excluded above.
+  if (strategy !== 'standard') {
+    return true
   }
 
   const { client, step, fromChain, ethereumClient } = context

@@ -189,3 +189,42 @@ describe('resolvePermit2Support — step/chain gate short-circuits before the RP
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 })
+
+describe('resolvePermit2Support — the probe gates the standard flow only', () => {
+  it('keeps a relayed step on Permit2 even when the signer would fail the probe', async () => {
+    // The relayer pulls the user's tokens through Permit2 using typed data the
+    // API supplied. `signPermit2Message` has one call site and it is in the
+    // standard sign task, so the SDK never produces that signature here — and a
+    // relayed step has no approve + execute fallback. A probe verdict therefore
+    // has nothing to steer, and letting it move the spender to
+    // `approvalAddress` leaves the relayer unable to pull: the transfer fails
+    // for missing allowance and the user paid for a useless approval.
+    vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
+
+    expect(await run(buildContext(), 'relayed')).toBe(true)
+  })
+
+  it('issues no signer RPC for a relayed step', async () => {
+    await run(buildContext(), 'relayed')
+
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+
+  it('leaves the memoized verdict unset for a relayed step', async () => {
+    // The guard returns before the memo slot is touched, so a later standard
+    // step in the same execution still resolves the signer for itself.
+    const context = buildContext()
+
+    await run(context, 'relayed')
+
+    expect(context.permit2SignerSupported).toBeUndefined()
+  })
+
+  it('still applies the step/chain checks to a relayed step', async () => {
+    // Regression guard: the strategy guard must not become a blanket `true`. A
+    // native from-token can never use Permit2, whoever signs.
+    expect(
+      await run(buildContext({ isFromNativeToken: true }), 'relayed')
+    ).toBe(false)
+  })
+})
