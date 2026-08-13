@@ -45,12 +45,18 @@ const quote = {
   includedSteps: [],
 } as any
 
-/** Resolves executeRoute/resumeRoute after firing one terminal transition. */
-const fireTerminal = (order: ReturnType<typeof buildFundingOrder>) =>
+/** Resolves executeRoute/resumeRoute after firing the given transitions. */
+const fireTransitions = (...orders: ReturnType<typeof buildFundingOrder>[]) =>
   vi.fn(async (_client: unknown, _route: unknown, options?: any) => {
-    options?.onOrderUpdate?.(order)
+    for (const order of orders) {
+      options?.onOrderUpdate?.(order)
+    }
     return {} as any
   })
+
+/** Resolves executeRoute/resumeRoute after firing one terminal transition. */
+const fireTerminal = (order: ReturnType<typeof buildFundingOrder>) =>
+  fireTransitions(order)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -122,6 +128,41 @@ describe('executeFundingOrder', () => {
     expect(onOrderUpdate).toHaveBeenCalledWith(terminal)
   })
 
+  it('forwards every transition and resolves with the last one', async () => {
+    const pending = buildFundingOrder({
+      substatus: 'WAIT_SOURCE_CONFIRMATIONS',
+    })
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    vi.mocked(executeRoute).mockImplementation(
+      fireTransitions(pending, terminal)
+    )
+    const onOrderUpdate = vi.fn()
+    const final = await executeFundingOrder(
+      {} as any,
+      buildFundingOrder({ quote }),
+      { onOrderUpdate }
+    )
+    expect(onOrderUpdate).toHaveBeenNthCalledWith(1, pending)
+    expect(onOrderUpdate).toHaveBeenNthCalledWith(2, terminal)
+    expect(final).toBe(terminal)
+    expect(vi.mocked(getFundingOrder)).not.toHaveBeenCalled()
+  })
+
+  it('reports the fallback order through onOrderUpdate', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    vi.mocked(executeRoute).mockResolvedValue({} as any)
+    vi.mocked(getFundingOrder).mockResolvedValue(terminal)
+    const onOrderUpdate = vi.fn()
+    const final = await executeFundingOrder(
+      {} as any,
+      buildFundingOrder({ quote }),
+      { onOrderUpdate }
+    )
+    expect(final).toBe(terminal)
+    expect(onOrderUpdate).toHaveBeenCalledTimes(1)
+    expect(onOrderUpdate).toHaveBeenCalledWith(terminal)
+  })
+
   it.each(['SMART_DEPOSIT', 'ONRAMP'] as const)(
     'only polls for %s orders',
     async (type) => {
@@ -148,6 +189,13 @@ describe('resumeFundingOrder', () => {
     expect(vi.mocked(resumeRoute)).not.toHaveBeenCalled()
   })
 
+  /**
+   * The mock deliberately simplifies: it fires onOrderUpdate, which the real
+   * layer 2 never does - resumeRoute attaches to the running execution and
+   * forwards only executeInBackground, so the already-polling wait task keeps
+   * the first call's callback. This test pins one thing only: the live route
+   * object is what gets resumed. The test below exercises the real shape.
+   */
   it('resumes the live route when one is still in memory', async () => {
     const terminal = buildFundingOrder({ status: 'DONE' })
     const live = { id: orderId, steps: [] } as any
@@ -159,6 +207,26 @@ describe('resumeFundingOrder', () => {
 
     expect(vi.mocked(resumeRoute).mock.calls[0][1]).toBe(live)
     expect(final.status).toBe('DONE')
+  })
+
+  it('decides the live-route resume by the fallback read and reports it', async () => {
+    const terminal = buildFundingOrder({ status: 'DONE' })
+    const live = { id: orderId, steps: [] } as any
+    vi.mocked(getFundingOrder)
+      .mockResolvedValueOnce(buildFundingOrder({ quote }))
+      .mockResolvedValueOnce(terminal)
+    vi.mocked(getActiveRoute).mockReturnValue(live)
+    // No transition: the running wait task never sees the wrapped callback.
+    vi.mocked(resumeRoute).mockResolvedValue({} as any)
+    const onOrderUpdate = vi.fn()
+
+    const final = await resumeFundingOrder({} as any, buildFundingOrder(), {
+      onOrderUpdate,
+    })
+
+    expect(vi.mocked(resumeRoute).mock.calls[0][1]).toBe(live)
+    expect(final).toBe(terminal)
+    expect(onOrderUpdate).toHaveBeenCalledWith(terminal)
   })
 
   it('polls only when the order already reports a source transaction', async () => {
@@ -188,6 +256,62 @@ describe('resumeFundingOrder', () => {
       expect.anything(),
       orderId,
       expect.objectContaining({ txHash: '0xbroadcast' })
+    )
+  })
+
+  it('treats an empty fromTxHash as no source transaction', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(
+      buildFundingOrder({ quote, result: { fromTxHash: '' } })
+    )
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    const final = await resumeFundingOrder({} as any, buildFundingOrder(), {
+      sourceTxHash: '0xbroadcast',
+    })
+    expect(final.status).toBe('DONE')
+    expect(vi.mocked(resumeRoute)).not.toHaveBeenCalled()
+    expect(vi.mocked(waitForFundingOrder)).toHaveBeenCalledWith(
+      expect.anything(),
+      orderId,
+      expect.objectContaining({ txHash: '0xbroadcast' })
+    )
+  })
+
+  it('never reports txHash on a non-STANDARD resume', async () => {
+    vi.mocked(getFundingOrder).mockResolvedValue(
+      buildFundingOrder({
+        type: 'SMART_DEPOSIT',
+        result: { fromTxHash: '0xsent' },
+      })
+    )
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    await resumeFundingOrder({} as any, buildFundingOrder(), {
+      sourceTxHash: '0xbroadcast',
+    })
+    expect(
+      vi.mocked(waitForFundingOrder).mock.calls[0][2]?.txHash
+    ).toBeUndefined()
+  })
+
+  it('forwards integrator and signal to the poll', async () => {
+    const signal = new AbortController().signal
+    vi.mocked(getFundingOrder).mockResolvedValue(
+      buildFundingOrder({ quote, result: { fromTxHash: '0xsent' } })
+    )
+    vi.mocked(waitForFundingOrder).mockResolvedValue(
+      buildFundingOrder({ status: 'DONE' })
+    )
+    await resumeFundingOrder({} as any, buildFundingOrder(), {
+      integrator: 'jumper',
+      signal,
+    })
+    expect(vi.mocked(waitForFundingOrder)).toHaveBeenCalledWith(
+      expect.anything(),
+      orderId,
+      expect.objectContaining({ integrator: 'jumper', signal })
     )
   })
 

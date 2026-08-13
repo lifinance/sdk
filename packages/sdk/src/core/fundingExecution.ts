@@ -61,6 +61,10 @@ const runAndCapture = async (
     ...(options?.integrator && { integrator: options.integrator }),
   })
   if (isTerminal(refetched)) {
+    // The wrapper above never saw this order, and on layer 2 this read is the
+    // only decider. Report it, or the caller resolves with a terminal order
+    // having received no transition at all.
+    options?.onOrderUpdate?.(refetched)
     return refetched
   }
   // The execution stopped before a terminal state: a poll timeout, a PAUSED
@@ -121,7 +125,8 @@ export const executeFundingOrder = async (
  * layer that applies:
  *
  * 1. terminal order - return it;
- * 2. a live in-memory route - resume that, so provider resume-slicing works;
+ * 2. a live in-memory route - resume that, so the call attaches to the running
+ *    execution instead of starting a second one;
  * 3. a source transaction already exists (reported by the order, or supplied
  *    as `options.sourceTxHash`) - poll only, never re-send;
  * 4. nothing sent yet - rebuild the route and resume.
@@ -161,7 +166,14 @@ export const resumeFundingOrder = async (
     return runAndCapture(client, live, fresh.orderId, options, resumeRoute)
   }
 
-  const sourceTxHash = fresh.result?.fromTxHash ?? options?.sourceTxHash
+  // Truthiness, not ??: an empty fromTxHash is no hash at all, and masking the
+  // caller's hash with one would send the funding transaction a second time.
+  // Only STANDARD orders may report a source transaction - ?txHash= is rejected
+  // for the other types - so the hash is scoped to that branch.
+  const sourceTxHash =
+    fresh.type === 'STANDARD'
+      ? fresh.result?.fromTxHash || options?.sourceTxHash
+      : undefined
   if (fresh.type !== 'STANDARD' || sourceTxHash) {
     return waitOnly(client, fresh, options, sourceTxHash)
   }
