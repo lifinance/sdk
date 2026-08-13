@@ -1,7 +1,7 @@
 name: 'Release · Linear Sync'
 
 # Reusable: sync one anchor package's published release into its Linear pipeline.
-# Version + channel are derived from the changesets publishedPackages output (not a git tag).
+# Version + channel are derived from the changesets published-packages output (not a git tag).
 on:
   workflow_call:
     inputs:
@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       published_packages:
-        description: 'Raw changesets publishedPackages JSON: [{name, version}, …]'
+        description: 'Raw changesets published-packages JSON: [{name, version}, …]'
         required: true
         type: string
     secrets:
