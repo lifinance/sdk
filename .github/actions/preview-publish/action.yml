@@ -17,8 +17,9 @@ runs:
         fi
 
     # `changeset version` exits 1 when there are no changesets (Changesets v3), so
-    # gate it on a changeset actually being present. Top level only — pre-mode
-    # changesets live in .changeset/pre/ — and README.md is not a changeset.
+    # gate it on a changeset actually being present. Top level only — pre-mode moves
+    # already-versioned changesets into .changeset/pre/, and those are not pending.
+    # README.md is not a changeset either.
     - name: Check for changesets
       id: changesets
       shell: bash
