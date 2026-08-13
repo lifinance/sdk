@@ -71,6 +71,40 @@ describe('PrepareTransactionTask — funding branch', () => {
   })
 })
 
+/** A provider whose payload can never be reused, as Stellar's cannot. */
+class AlwaysRefetchTask extends PrepareTransactionTask {
+  protected override shouldRefetchTransaction(): boolean {
+    return true
+  }
+}
+
+describe('PrepareTransactionTask — refetch hook', () => {
+  // Locks the contract the Stellar provider relies on. A Stellar envelope
+  // embeds the sender's sequence number, so the one a quote carried is already
+  // dead by the time the pipeline's own approval has consumed that sequence.
+  it('refetches when a subclass forces it, even with a request present', async () => {
+    const step = {
+      id: 'step-1',
+      action: { fromChainId: 1500 },
+      transactionRequest: { data: 'STALE_ENVELOPE' },
+      execution: { status: 'PENDING', actions: [] },
+    } as unknown as LiFiStepExtended
+    const updatedStep = {
+      id: 'step-1',
+      action: { fromChainId: 1500 },
+      transactionRequest: { data: 'FRESH_ENVELOPE' },
+    } as unknown as LiFiStepExtended
+    vi.mocked(getStepTransaction).mockResolvedValue(updatedStep)
+    vi.mocked(stepComparison).mockResolvedValue(updatedStep)
+
+    const result = await new AlwaysRefetchTask().run(buildContext(step))
+
+    expect(result.status).toBe('COMPLETED')
+    expect(vi.mocked(getStepTransaction)).toHaveBeenCalledTimes(1)
+    expect(step.transactionRequest).toEqual({ data: 'FRESH_ENVELOPE' })
+  })
+})
+
 describe('PrepareTransactionTask — standard path (regression)', () => {
   it('calls getStepTransaction for standard steps without fundingOrderId', async () => {
     const execution = { status: 'PENDING', actions: [] }
