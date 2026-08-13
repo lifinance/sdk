@@ -1498,6 +1498,7 @@ git commit -m "fix(stellar): make submission and confirmation survive transient 
 **Interfaces:**
 - Consumes: `resolveApprovalRequirement(step)`, `readAllowance(client, token, from, spender, networkPassphrase)`, `StellarStepExecutorContext.approval` / `.wallet` / `.networkPassphrase`
 - Produces: `assertApprovalStillCovers(context: StellarStepExecutorContext): Promise<void>`
+- **State of `StellarPrepareTransactionTask.ts` when this task starts:** Task 2 already reduced it to a subclass of `PrepareTransactionTask` holding one method, `shouldRefetchTransaction`, under a long doc comment. It is not the 40-line copy of the base task that `main` and the PR head still show. Step 11 adds a second method to that small class.
 
 - [ ] **Step 1: Write the failing predicate test**
 
@@ -2021,16 +2022,18 @@ git commit -m "fix(stellar): resolve and re-check the approval a route really ne
 
 Do this first. Once the edits below land there is no cheap way back to the "before" number.
 
+`--splitting --outdir` is required, not optional. Without it esbuild inlines a dynamic `import()` of an already-reachable module straight back into the single output file, and the before/after numbers would match no matter what Step 5 does. The number that matters is the **entry chunk**, which is what a consumer loads first.
+
 ```bash
 mkdir -p /tmp/stellar-bundle
 printf "export * from '@lifi/sdk-provider-stellar'\n" > /tmp/stellar-bundle/entry.js
 pnpm --filter @lifi/sdk-provider-stellar build
 npx esbuild /tmp/stellar-bundle/entry.js --bundle --format=esm --minify \
-  --outfile=/tmp/stellar-bundle/before.js
-wc -c /tmp/stellar-bundle/before.js
+  --splitting --outdir=/tmp/stellar-bundle/before
+wc -c /tmp/stellar-bundle/before/entry.js
 ```
 
-Write the byte count down. Step 13 produces the matching "after" number.
+Write the entry-chunk byte count down. Step 13 produces the matching "after" number.
 
 - [ ] **Step 1: Remove the dead options**
 
@@ -2340,13 +2343,13 @@ Expected: every suite passes, and types check — including `StellarStepExecutor
 ```bash
 pnpm --filter @lifi/sdk-provider-stellar build
 npx esbuild /tmp/stellar-bundle/entry.js --bundle --format=esm --minify \
-  --outfile=/tmp/stellar-bundle/after.js
-wc -c /tmp/stellar-bundle/before.js /tmp/stellar-bundle/after.js
+  --splitting --outdir=/tmp/stellar-bundle/after
+wc -c /tmp/stellar-bundle/before/entry.js /tmp/stellar-bundle/after/*.js
 ```
 
-Expected: `after.js` is smaller than the Step 0 baseline, because `Federation` — and the `StellarToml` resolver and TOML parser it drags in — is no longer reachable from the static graph. Put both numbers in the PR description.
+Expected: the **after entry chunk** is smaller than the Step 0 baseline, and a second chunk appears holding `Federation` with the `StellarToml` resolver and TOML parser it drags in. The total across both chunks stays roughly the same — the point is that a consumer no longer loads the federation stack to swap.
 
-If the two numbers are equal, the dynamic import did not split anything: check that no module still imports `Federation` statically. Report the finding either way rather than quietly dropping it — §10.4 is justified by this measurement.
+State the claim in the PR description the way the measurement supports it: the dynamic import lets a code-splitting consumer (Vite, Rollup, webpack) leave `Federation` out of the initial chunk. A consumer who bundles without splitting sees no change. If the entry chunk did not shrink, some module still references `Federation` from the static graph — find it, and report the finding either way rather than quietly dropping it.
 
 - [ ] **Step 14: Add the changeset line for the removed option**
 
