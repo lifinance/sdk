@@ -95,6 +95,21 @@ describe('resolveApprovalRequirement', () => {
     ).toBeUndefined()
   })
 
+  // The first leg needing an approval may name a placeholder spender. Bailing
+  // out there left the CCTP leg that actually pulls funds with no allowance,
+  // and the invocation reverted after the user had signed.
+  it('skips a non-contract spender and keeps looking', () => {
+    const placeholderLeg = leg(XLM_EURC, '1000', EVM_DIAMOND, false)
+
+    expect(
+      resolveApprovalRequirement(stepWith([placeholderLeg, cctpLeg]))
+    ).toEqual({
+      spender: CIRCLE_ADAPTER,
+      tokenAddress: XLM_USDC,
+      amount: 1089n,
+    })
+  })
+
   it('tolerates a step without included steps', () => {
     expect(
       resolveApprovalRequirement({

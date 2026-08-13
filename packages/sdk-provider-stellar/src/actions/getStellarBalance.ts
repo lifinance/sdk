@@ -47,23 +47,39 @@ export const getStellarBalance = async (
       withDedupe(
         () => getSacBalance(client, walletAddress, token, networkPassphrase),
         { id: `${getStellarBalance.name}.${walletAddress}.${token.address}` }
-      ).catch(() => undefined)
+      ).then(
+        (value) => ({ value, error: undefined as Error | undefined }),
+        (error) => ({
+          value: undefined,
+          error: error instanceof Error ? error : new Error(String(error)),
+        })
+      )
     )
   )
+
+  // Every read failed — the RPC list is unreachable, or the chain is not served
+  // at all. Returning tokens with neither an amount nor a blockNumber reads to
+  // consumers as a balance that has yet to settle, so they would poll forever
+  // instead of seeing the failure.
+  const firstError = results.find((result) => result.error)?.error
+  if (firstError && results.every((result) => !result.value)) {
+    throw firstError
+  }
 
   // Consumers treat a missing blockNumber as an unsettled read and keep
   // polling, so every token must carry one. The ledger rides along on the
   // simulation response; a token whose read threw borrows the batch's newest.
   const fallbackBlockNumber = results.reduce<bigint | undefined>(
     (latest, result) =>
-      result && (latest === undefined || result.latestLedger > latest)
-        ? result.latestLedger
+      result.value &&
+      (latest === undefined || result.value.latestLedger > latest)
+        ? result.value.latestLedger
         : latest,
     undefined
   )
 
   return tokens.map((token, index) => {
-    const result = results[index]
+    const result = results[index].value
     const blockNumber = result?.latestLedger ?? fallbackBlockNumber
     return result?.amount !== undefined
       ? { ...token, amount: result.amount, blockNumber }

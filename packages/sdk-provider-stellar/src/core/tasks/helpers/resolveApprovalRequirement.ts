@@ -35,22 +35,22 @@ export const resolveApprovalRequirement = (
   step: LiFiStep
 ): StellarApprovalRequirement | undefined => {
   // The pipeline grants at most one allowance per step, so the first leg that
-  // needs one wins. Routes today ask for a single approval; a route whose legs
-  // pull two different tokens would need the executor to loop instead.
+  // needs one wins. A spender also has to be a real Soroban contract (`C`)
+  // address: anything else — a `G` wallet, an EVM address — cannot call
+  // `transfer_from`, so it is a placeholder rather than a reason to stop
+  // looking. Routes today ask for a single approval; a route whose legs pull
+  // two different tokens would need the executor to loop instead.
   const includedStep = step.includedSteps?.find(
-    (includedStep) => !includedStep.estimate.skipApproval
+    (includedStep) =>
+      !includedStep.estimate.skipApproval &&
+      !!includedStep.estimate.approvalAddress &&
+      StrKey.isValidContract(includedStep.estimate.approvalAddress)
   )
   if (!includedStep) {
     return undefined
   }
 
-  const spender = includedStep.estimate.approvalAddress
-  // A spender has to be a real Soroban contract (`C`) address. Anything else —
-  // a `G` wallet, an EVM address — cannot call `transfer_from`, so approving it
-  // would be a wasted signature rather than a step towards a working route.
-  if (!spender || !StrKey.isValidContract(spender)) {
-    return undefined
-  }
+  const spender = includedStep.estimate.approvalAddress as string
 
   // `fromAmount` is a quote-time figure. A leg fed by an upstream swap is handed
   // whatever that swap actually produced, which can land above the quote, and
