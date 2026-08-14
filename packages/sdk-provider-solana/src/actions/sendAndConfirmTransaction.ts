@@ -51,7 +51,8 @@ export async function sendAndConfirmTransaction(
     // https://solana.com/docs/advanced/retry#the-cost-of-skipping-preflight
     skipPreflight: true,
     // Setting max retries to 0 as we are handling retries manually
-    maxRetries: BigInt(0),
+    // @solana/kit types this as bigint, but RPC servers require a JSON number
+    maxRetries: 0 as unknown as bigint,
     // https://solana.com/docs/advanced/confirmation#use-an-appropriate-preflight-commitment-level
     preflightCommitment: 'confirmed' as Commitment,
     encoding: 'base64' as const,
@@ -78,10 +79,11 @@ export async function sendAndConfirmTransaction(
             })
             .send(),
           rpc
-            .getBlockHeight({
+            .getEpochInfo({
               commitment: 'confirmed',
             })
-            .send(),
+            .send()
+            .then((info) => info.blockHeight),
         ])
 
       let signatureResult: SignatureStatus | null = null
@@ -129,10 +131,11 @@ export async function sendAndConfirmTransaction(
           await sleep(1000)
           if (!abortController.signal.aborted) {
             blockHeight = await rpc
-              .getBlockHeight({
+              .getEpochInfo({
                 commitment: 'confirmed',
               })
               .send()
+              .then((info) => info.blockHeight)
           }
         }
         return null

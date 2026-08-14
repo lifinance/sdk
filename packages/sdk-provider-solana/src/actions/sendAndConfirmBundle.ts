@@ -70,10 +70,11 @@ export async function sendAndConfirmBundle(
             })
             .send(),
           jitoRpc
-            .getBlockHeight({
+            .getEpochInfo({
               commitment: 'confirmed',
             })
-            .send(),
+            .send()
+            .then((info) => info.blockHeight),
         ])
 
       let currentBlockHeight = initialBlockHeight
@@ -120,10 +121,11 @@ export async function sendAndConfirmBundle(
         await sleep(400)
         if (!abortController.signal.aborted) {
           currentBlockHeight = await jitoRpc
-            .getBlockHeight({
+            .getEpochInfo({
               commitment: 'confirmed',
             })
             .send()
+            .then((info) => info.blockHeight)
         }
       }
 
