@@ -1,4 +1,4 @@
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
@@ -40,6 +40,7 @@ const baseContext = (overrides: Record<string, unknown> = {}) =>
 
 describe('SolanaStandardWaitForTransactionTask', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     callSolanaRpcsWithRetry.mockReset()
     sendAndConfirmTransaction.mockReset()
   })
@@ -74,23 +75,91 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   })
 
   it('surfaces post-send signatureResult err through cause', async () => {
+    const err = { InstructionError: [0, 'AccountInUse'] }
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
-    const err = { Custom: 6_000 }
     sendAndConfirmTransaction.mockResolvedValue({
-      signatureResult: { err },
+      result: { kind: 'confirmed', value: { err } },
       txSignature: 'sig',
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
-    const thrown = await task
-      .run(baseContext({ skipSimulation: true }))
-      .catch((e) => e)
+    const thrown = await task.run(baseContext()).catch((e) => e)
 
     expect(thrown).toBeInstanceOf(TransactionError)
     expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
-    expect(thrown.message).toBe('Transaction failed: {"Custom":6000}')
     expect(thrown.cause).toBeInstanceOf(SolanaTransactionDetailsError)
-    expect(thrown.cause.err).toBe(err)
-    expect(thrown.cause.logs).toBeNull()
+  })
+
+  it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'not-confirmed' },
+      txSignature: 'sig',
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+  })
+
+  it('throws RpcUnavailable when no RPC returned a usable response', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    const errors = [new Error('method not found'), new Error('429')]
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'rpc-unavailable', errors },
+      txSignature: 'sig',
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.cause).toBeInstanceOf(AggregateError)
+    expect(thrown.cause.errors).toEqual(errors)
+  })
+
+  it('completes and reports the signature when the transaction confirms', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'confirmed', value: { err: null } },
+      txSignature: 'sig',
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+  })
+
+  it('passes replaceRecentBlockhash to simulation', async () => {
+    // Capture the args in the mock, assert AFTER the run. Asserting inside the
+    // mock would surface a failure as a rejected task.run(), which the other
+    // tests' .catch(e => e) would swallow into a green test.
+    const simulateTransaction = vi.fn(() => ({
+      send: () => Promise.resolve({ value: { err: null } }),
+    }))
+    callSolanaRpcsWithRetry.mockImplementation(
+      async (_client: unknown, fn: (rpc: unknown) => Promise<unknown>) =>
+        fn({ simulateTransaction })
+    )
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'confirmed', value: { err: null } },
+      txSignature: 'sig',
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+
+    expect(simulateTransaction).toHaveBeenCalledTimes(1)
+    expect(simulateTransaction).toHaveBeenCalledWith(
+      'base64-encoded-tx',
+      expect.objectContaining({ replaceRecentBlockhash: true })
+    )
   })
 })

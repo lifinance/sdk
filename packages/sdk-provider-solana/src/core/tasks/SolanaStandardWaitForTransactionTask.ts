@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   LiFiErrorCode,
+  RPCError,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -73,19 +74,30 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       }
     }
 
-    const result = await sendAndConfirmTransaction(client, signedTransaction)
+    const { result, txSignature } = await sendAndConfirmTransaction(
+      client,
+      signedTransaction
+    )
 
-    if (!result.signatureResult) {
+    if (result.kind === 'rpc-unavailable') {
+      throw new RPCError(
+        LiFiErrorCode.RpcUnavailable,
+        'Unable to confirm transaction: no Solana RPC returned a usable response.',
+        result.errors.length
+          ? new AggregateError(result.errors, 'All Solana RPCs failed')
+          : undefined
+      )
+    }
+
+    if (result.kind === 'not-confirmed') {
       throw new TransactionError(
         LiFiErrorCode.TransactionExpired,
         'Transaction has expired: The block height has exceeded the maximum allowed limit.'
       )
     }
 
-    if (result.signatureResult.err) {
-      const cause = new SolanaTransactionDetailsError(
-        result.signatureResult.err
-      )
+    if (result.value.err) {
+      const cause = new SolanaTransactionDetailsError(result.value.err)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
         `Transaction failed: ${cause.message}`,
@@ -94,7 +106,7 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     }
 
     const confirmedTransaction = {
-      txSignature: result.txSignature,
+      txSignature,
     }
 
     // Transaction has been confirmed and we can update the action
