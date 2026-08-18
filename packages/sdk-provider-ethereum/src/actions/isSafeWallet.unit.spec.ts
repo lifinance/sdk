@@ -35,6 +35,18 @@ describe('isSafeWallet — short-circuit via eth_getCode', () => {
     expect(getSafeClient).not.toHaveBeenCalled()
   })
 
+  it('returns false for a code-less address even when the Safe API would claim it, without asking', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    vi.mocked(getSafeClient).mockReturnValue({
+      getInfo: vi.fn(async () => ({}) as any),
+    } as any)
+
+    expect(
+      await isSafeWallet({ client, chainId: CHAIN_ID, address: freshAddress() })
+    ).toBe(false)
+    expect(getSafeClient).not.toHaveBeenCalled()
+  })
+
   it('returns false without hitting the Safe API for an EIP-7702 delegated EOA', async () => {
     vi.mocked(getAccountCode).mockResolvedValue(
       '0xef0100a94f5374fce5edbc8e2a8697c15331677e6ebf0b' as `0x${string}`

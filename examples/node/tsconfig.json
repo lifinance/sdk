@@ -1,11 +1,9 @@
 {
   "compilerOptions": {
     "strict": true,
+    "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node"
-  },
-  "ts-node": {
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
+    "moduleResolution": "bundler",
+    "skipLibCheck": true
   }
 }

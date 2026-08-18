@@ -1,4 +1,5 @@
 import type { SignedTypedData, TypedData } from '@lifi/sdk'
+import { isValidSignature } from '../utils/isValidSignature.js'
 
 /**
  * Checks if an existing native permit is valid for the given requirements
@@ -7,6 +8,11 @@ export const isNativePermitValid = (
   permit: SignedTypedData,
   typedData: TypedData
 ): boolean => {
+  // Check if the permit has a usable signature
+  if (!isValidSignature(permit.signature)) {
+    return false
+  }
+
   // Only check native permits (EIP-2612)
   if (permit.primaryType !== 'Permit') {
     return false

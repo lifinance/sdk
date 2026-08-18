@@ -1,6 +1,7 @@
 import { ChainType, type ExtendedChain, type SDKClient } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { getPublicClient } from '../client/publicClient.js'
+import { canAccountUsePermit2 } from '../permits/canAccountUsePermit2.js'
 import { getNativePermit } from '../permits/getNativePermit.js'
 import type { EthereumSDKProvider } from '../types.js'
 import { getActionWithFallback } from '../utils/getActionWithFallback.js'
@@ -14,10 +15,11 @@ type PermitSupport = {
 }
 
 /**
- * Checks what permit types are supported for a token on a specific chain.
+ * Checks what permit types are *usable* for a token on a specific chain.
  * Checks in order:
  * 1. Native permit (EIP-2612) support
- * 2. Permit2 availability and allowance
+ * 2. Permit2 — deployed on the chain, signable by the owner (see
+ *    `canAccountUsePermit2`), and allowance sufficient
  *
  * @param client - The SDK client
  * @param chain - The chain to check permit support on
@@ -65,8 +67,15 @@ export const checkPermitSupport = async (
   )
 
   let permit2Allowance: bigint | undefined
-  // Check Permit2 allowance if available on chain
-  if (chain.permit2) {
+  // Only read the allowance if the owner can sign for it: Permit2 may reject a
+  // code-bearing account via EIP-1271, making any allowance unusable.
+  if (
+    chain.permit2 &&
+    (await canAccountUsePermit2(client, {
+      chainId: chain.id,
+      address: ownerAddress,
+    }))
+  ) {
     permit2Allowance = await getAllowance(
       client,
       viemClient,

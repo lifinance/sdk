@@ -15,6 +15,9 @@ const isAction = (action: Action): action is Action => {
 }
 
 const isEstimate = (estimate: Estimate): estimate is Estimate => {
+  if (!estimate) {
+    return false
+  }
   const { fromAmount, toAmount, toAmountMin, approvalAddress } = estimate
 
   return (
@@ -36,6 +39,6 @@ export const isStep = (step: LiFiStep): step is LiFiStep => {
     ['swap', 'cross', 'lifi'].includes(type) &&
     typeof tool === 'string' &&
     isAction(action) &&
-    isEstimate(estimate)
+    (!estimate || isEstimate(estimate))
   )
 }

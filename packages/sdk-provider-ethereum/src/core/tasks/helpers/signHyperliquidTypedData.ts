@@ -9,6 +9,7 @@ import {
 } from '../../../hyperliquid/isHyperliquidAgentStep.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
 import { getDomainChainId } from '../../../utils/getDomainChainId.js'
+import { assertValidSignature } from '../../../utils/isValidSignature.js'
 
 export const signHyperliquidTypedData = async (
   context: EthereumStepExecutorContext,
@@ -73,6 +74,7 @@ export const signHyperliquidTypedData = async (
         types: typedData.types,
         message,
       })
+      assertValidSignature(signature)
       signedResults.push({ ...typedData, message, signature })
     } else if (isApproveBuilderFeeMessage(typedData)) {
       const typedDataChainId =
@@ -94,6 +96,7 @@ export const signHyperliquidTypedData = async (
         types: typedData.types,
         message: typedData.message,
       })
+      assertValidSignature(signature)
       signedResults.push({ ...typedData, signature })
     } else if (isHyperliquidOrderMessage(typedData)) {
       const signature = await agentAccount.signTypedData({

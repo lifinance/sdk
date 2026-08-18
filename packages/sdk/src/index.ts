@@ -19,7 +19,6 @@ export { getTokenBalancesByChain } from './actions/getTokenBalancesByChain.js'
 export { getTokens } from './actions/getTokens.js'
 export { getTools } from './actions/getTools.js'
 export { getTransactionHistory } from './actions/getTransactionHistory.js'
-export { getWalletBalances } from './actions/getWalletBalances.js'
 export { actions } from './actions/index.js'
 export { patchContractCalls } from './actions/patchContractCalls.js'
 export { relayTransaction } from './actions/relayTransaction.js'
@@ -67,6 +66,13 @@ export {
 } from './errors/errors.js'
 export { HTTPError } from './errors/httpError.js'
 export { SDKError } from './errors/SDKError.js'
+export type {
+  GetStatusRequestExtended,
+  LiFiStepRequest,
+  QuoteRequest,
+  QuoteRequestFromAmount,
+  QuoteRequestToAmount,
+} from './types/actions.js'
 export type {
   AcceptExchangeRateUpdateHook,
   AcceptSlippageUpdateHook,

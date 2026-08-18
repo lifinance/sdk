@@ -2,11 +2,11 @@ import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
-  createConfig,
-  EVM,
+  createClient,
   executeRoute,
   getRoutes,
 } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -26,28 +26,29 @@ async function run() {
 
   console.info('>> Initialize LiFi SDK')
 
-  const client = createWalletClient({
+  const walletClient = createWalletClient({
     account,
     chain: optimism as Chain,
     transport: http(),
   })
 
-  createConfig({
+  const client = createClient({
     integrator: 'lifi-sdk-example',
-    providers: [
-      EVM({
-        getWalletClient: () => Promise.resolve(client),
-      }),
-    ],
   })
+
+  client.setProviders([
+    EthereumProvider({
+      getWalletClient: () => Promise.resolve(walletClient),
+    }),
+  ])
 
   const routeRequest = {
     toAddress: account.address,
     fromAddress: account.address,
-    fromChainId: ChainId.OPT, // Optimisim
+    fromChainId: ChainId.OPT, // Optimism
     fromAmount: '100000', // USDT
     fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address,
-    toChainId: ChainId.OPT, // Optimisim
+    toChainId: ChainId.OPT, // Optimism
     toTokenAddress: findDefaultToken(CoinKey.USDT, ChainId.OPT).address,
     options: {
       slippage: 0.03, // = 3%
@@ -56,7 +57,7 @@ async function run() {
   }
   console.info('>> Requesting route', routeRequest)
 
-  const routeResponse = await getRoutes(routeRequest)
+  const routeResponse = await getRoutes(client, routeRequest)
   const route = routeResponse.routes[0]
 
   console.info('>> Got Route', route)
@@ -71,7 +72,7 @@ async function run() {
   const executionOptions = {
     updateRouteHook: reportStepsExecutionToTerminal,
   }
-  await executeRoute(route, executionOptions)
+  await executeRoute(client, route, executionOptions)
 
   console.info('>> Done')
 }

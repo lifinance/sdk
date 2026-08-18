@@ -1,5 +1,8 @@
-import type { LiFiStep } from '@lifi/sdk'
-import { getTokenAllowance, setTokenAllowance } from '@lifi/sdk'
+import type { LiFiStep, SDKClient } from '@lifi/sdk'
+import {
+  getTokenAllowance,
+  setTokenAllowance,
+} from '@lifi/sdk-provider-ethereum'
 import type {
   Address,
   PrivateKeyAccount,
@@ -10,12 +13,14 @@ import type {
 const AddressZero = '0x0000000000000000000000000000000000000000'
 
 export const checkTokenAllowance = async (
+  client: SDKClient,
   contactCallsQuoteResponse: LiFiStep,
   account: PrivateKeyAccount,
-  client: WalletClient
+  walletClient: WalletClient
 ) => {
   if (contactCallsQuoteResponse.action.fromToken.address !== AddressZero) {
     const approval = await getTokenAllowance(
+      client,
       contactCallsQuoteResponse.action.fromToken,
       account.address,
       contactCallsQuoteResponse.estimate.approvalAddress as Address
@@ -26,18 +31,18 @@ export const checkTokenAllowance = async (
       approval !== undefined &&
       approval < BigInt(contactCallsQuoteResponse.action.fromAmount)
     ) {
-      const txHash = await setTokenAllowance({
-        walletClient: client,
+      const txHash = await setTokenAllowance(client, {
+        walletClient,
         spenderAddress: contactCallsQuoteResponse.estimate.approvalAddress,
         token: contactCallsQuoteResponse.action.fromToken,
         amount: BigInt(contactCallsQuoteResponse.action.fromAmount),
       })
 
       if (txHash) {
-        // client needs to be extended with public actions to have waitForTransactionReceipt function
+        // walletClient needs to be extended with public actions to have waitForTransactionReceipt function
         // there is currently no native type in viem for this so here we use WalletClient & PublicClient
         const transactionReceipt = await (
-          client as WalletClient & PublicClient
+          walletClient as WalletClient & PublicClient
         ).waitForTransactionReceipt({
           hash: txHash,
           retryCount: 20,

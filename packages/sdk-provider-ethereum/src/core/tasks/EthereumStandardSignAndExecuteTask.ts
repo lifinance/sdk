@@ -14,9 +14,10 @@ import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { isValidSignature } from '../../utils/isValidSignature.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { getTxLink } from './helpers/getTxLink.js'
-import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
 
 export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -25,13 +26,11 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       client,
       fromChain,
       statusManager,
-      isFromNativeToken,
       checkClient,
       transactionRequest,
       signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
-      disableMessageSigning,
     } = context
 
     if (!transactionRequest) {
@@ -58,18 +57,19 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const permit2Supported = isPermit2Supported(
-      step,
-      fromChain,
-      isFromNativeToken,
-      disableMessageSigning,
-      'standard'
-    )
     const signedNativePermitTypedData = signedTypedData.find(
       (p) =>
         p.primaryType === 'Permit' &&
-        getDomainChainId(p.domain) === fromChain.id
+        getDomainChainId(p.domain) === fromChain.id &&
+        isValidSignature(p.signature)
     )
+    // Resolved *after* the native-permit lookup, and short-circuited when one
+    // is found: a matching permit always wins, so resolving the gate first
+    // would spend an `eth_getCode` on a verdict this task never reads. The
+    // ternary also makes the two routes explicitly exclusive.
+    const permit2Supported = signedNativePermitTypedData
+      ? false
+      : await resolvePermit2Support(context, 'standard')
     if (signedNativePermitTypedData) {
       transactionRequest.data = encodeNativePermitData(
         step.action.fromToken.address as Address,

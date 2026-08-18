@@ -1,7 +1,8 @@
 import { findDefaultToken } from '@lifi/data-types'
-import type { RoutesRequest } from '@lifi/types'
+import type { RoutesResponse } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import type { RoutesRequest } from '../types/actions.js'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getRoutes } from './getRoutes.js'
@@ -107,6 +108,26 @@ describe('getRoutes', () => {
         await getRoutes(client, request)
         expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
+    })
+  })
+
+  describe('with optional limit-order fields', () => {
+    const orderRequest: RoutesRequest = {
+      ...getRoutesRequest({}),
+      toAmount: '5000000000000',
+      validUntil: 1750000000,
+      partiallyFillable: true,
+    }
+
+    it('calls the server once', async () => {
+      await getRoutes(client, orderRequest)
+      expect(mockedFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('resolves to the routes response shape', () => {
+      expectTypeOf(getRoutes(client, orderRequest)).toEqualTypeOf<
+        Promise<RoutesResponse>
+      >()
     })
   })
 })

@@ -150,5 +150,56 @@ describe('getQuote', () => {
         expect(mockedFetch).toHaveBeenCalledTimes(1)
       })
     })
+
+    describe('and distributionFees are provided', () => {
+      const distributionFees = [
+        { percentage: 0.0005, receiver: '0xTenantA' },
+        { percentage: 0.001, receiver: '0xTenantB' },
+      ]
+
+      it('serializes distributionFees as qs indices notation on /quote', async () => {
+        await getQuote(client, {
+          fromChain,
+          fromToken,
+          fromAddress,
+          fromAmount,
+          toChain,
+          toToken,
+          distributionFees,
+        })
+
+        const url = mockedFetch.mock.calls[0][1] as string
+        expect(url.startsWith(`${client.config.apiUrl}/quote?`)).toBe(true)
+        // Scalar params still serialize as before
+        expect(url).toContain(`fromChain=${fromChain}`)
+        expect(url).toContain(`fromAmount=${fromAmount}`)
+        // Array-of-objects param is expressed in bracket-indices notation
+        expect(url).toContain(
+          'distributionFees[0][percentage]=0.0005&distributionFees[0][receiver]=0xTenantA&distributionFees[1][percentage]=0.001&distributionFees[1][receiver]=0xTenantB'
+        )
+        // and is NOT the broken [object Object] form
+        expect(url).not.toContain('object+Object')
+      })
+
+      it('serializes distributionFees on the /quote/toAmount path', async () => {
+        await getQuote(client, {
+          fromChain,
+          fromToken,
+          fromAddress,
+          toChain,
+          toToken,
+          toAmount,
+          distributionFees,
+        })
+
+        const url = mockedFetch.mock.calls[0][1] as string
+        expect(url.startsWith(`${client.config.apiUrl}/quote/toAmount?`)).toBe(
+          true
+        )
+        expect(url).toContain(
+          'distributionFees[0][percentage]=0.0005&distributionFees[0][receiver]=0xTenantA'
+        )
+      })
+    })
   })
 })

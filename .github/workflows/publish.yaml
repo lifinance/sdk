@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
+      has-changesets: ${{ steps.changesets.outputs.has-changesets }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so Changesets can build correct changelogs.
           fetch-depth: 0
@@ -53,29 +53,30 @@ jobs:
 
       - name: Create version PR
         id: changesets
-        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
         with:
-          version: pnpm changeset:version
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm changeset:version
+          pr-title: 'chore: version packages'
+          commit-message: 'chore: version packages'
+        # No `env: GITHUB_TOKEN` — v2 throws when it is set and differs from the
+        # `github-token` input. The action injects its own token into the version
+        # script's environment, which is what changelog-github reads.
 
   release:
     name: Release
     needs: changesets
     # Only publish once the version PR has been merged (no pending changesets left).
-    if: needs.changesets.outputs.hasChangesets == 'false'
+    if: needs.changesets.outputs.has-changesets == 'false'
     permissions:
       contents: write # to create GitHub Releases / tags
       id-token: write # OIDC token for npm provenance (trusted publishing)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+      published-packages: ${{ steps.changesets.outputs.published-packages }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -86,12 +87,14 @@ jobs:
 
       - name: Publish to npm
         id: changesets
-        uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
+        uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
         with:
-          publish: pnpm changeset:publish
-          createGithubReleases: true
+          publish-script: pnpm changeset:publish
+          create-github-releases: true
+        # No `env: GITHUB_TOKEN` — see the Version job. v2 reads the published
+        # packages from the CHANGESETS_OUTPUT file it injects into the publish
+        # script's environment, not from stdout.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
 
   # Linear "SDK" sync, anchored on @lifi/sdk. Provider-only cycles (no sdk bump)
@@ -99,14 +102,14 @@ jobs:
   linear-release:
     name: Linear Sync (SDK)
     needs: release
-    if: contains(needs.release.outputs.publishedPackages, '"@lifi/sdk"')
+    if: contains(needs.release.outputs.published-packages, '"@lifi/sdk"')
     permissions:
       contents: read
     uses: ./.github/workflows/linear-release.yaml
     with:
       release_name: SDK
       package_name: '@lifi/sdk'
-      published_packages: ${{ needs.release.outputs.publishedPackages }}
+      published_packages: ${{ needs.release.outputs.published-packages }}
     secrets:
       access_key: ${{ secrets.LINEAR_RELEASE_ACCESS_KEY }}
 
@@ -128,7 +131,7 @@ jobs:
       pull-requests: write # post the install comment + remove the label
     steps:
       - name: Checkout PR head
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0

@@ -1,7 +1,7 @@
 import { ChainId, type SDKClient } from '@lifi/sdk'
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc'
+import { SuiGrpcClient } from '@mysten/sui/grpc'
 
-const clients = new Map<string, SuiJsonRpcClient>()
+const clients = new Map<string, SuiGrpcClient>()
 
 /**
  * Initializes the Sui clients if they haven't been initialized yet.
@@ -11,21 +11,21 @@ const ensureClients = async (client: SDKClient): Promise<void> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SUI)
   for (const rpcUrl of rpcUrls) {
     if (!clients.get(rpcUrl)) {
-      const client = new SuiJsonRpcClient({ url: rpcUrl, network: 'mainnet' })
+      const client = new SuiGrpcClient({ network: 'mainnet', baseUrl: rpcUrl })
       clients.set(rpcUrl, client)
     }
   }
 }
 
 /**
- * Calls a function on the SuiJsonRpcClient instances with retry logic.
+ * Calls a function on the SuiGrpcClient instances with retry logic.
  * @param client - The SDK client
- * @param fn - The function to call, which receives a SuiJsonRpcClient instance.
+ * @param fn - The function to call, which receives a SuiGrpcClient instance.
  * @returns - The result of the function call.
  */
 export async function callSuiWithRetry<R>(
   client: SDKClient,
-  fn: (client: SuiJsonRpcClient) => Promise<R>
+  fn: (client: SuiGrpcClient) => Promise<R>
 ): Promise<R> {
   // Ensure clients are initialized
   await ensureClients(client)

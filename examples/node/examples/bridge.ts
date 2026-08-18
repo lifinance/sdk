@@ -2,11 +2,11 @@ import { findDefaultToken } from '@lifi/data-types'
 import {
   ChainId,
   CoinKey,
-  createConfig,
-  EVM,
+  createClient,
   executeRoute,
   getRoutes,
 } from '@lifi/sdk'
+import { EthereumProvider } from '@lifi/sdk-provider-ethereum'
 import type { Address, Chain } from 'viem'
 import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -25,7 +25,7 @@ async function run() {
   // but you can also use a Mnemonic account - see https://viem.sh/docs/accounts/mnemonic
   const account = privateKeyToAccount(privateKey)
 
-  const client = createWalletClient({
+  const walletClient = createWalletClient({
     account,
     chain: optimism as Chain,
     transport: http(),
@@ -33,30 +33,29 @@ async function run() {
 
   const switchChains = [mainnet, arbitrum, optimism, polygon] as Chain[]
 
-  createConfig({
+  const client = createClient({
     integrator: 'lifi-sdk-example',
-    providers: [
-      EVM({
-        getWalletClient: () => Promise.resolve(client),
-        switchChain: (chainId) =>
-          Promise.resolve(
-            createWalletClient({
-              account,
-              chain: switchChains.find(
-                (chain) => chain.id === chainId
-              ) as Chain,
-              transport: http(),
-            })
-          ),
-      }),
-    ],
   })
+
+  client.setProviders([
+    EthereumProvider({
+      getWalletClient: () => Promise.resolve(walletClient),
+      switchChain: (chainId) =>
+        Promise.resolve(
+          createWalletClient({
+            account,
+            chain: switchChains.find((chain) => chain.id === chainId) as Chain,
+            transport: http(),
+          })
+        ),
+    }),
+  ])
 
   const routeRequest = {
     toAddress: account.address,
     fromAddress: account.address,
     fromChainId: ChainId.OPT, // Optimism
-    fromAmount: '1000000', // 1 USDC
+    fromAmount: '100000', // 0.1 USDC
     fromTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.OPT).address, // USDC on Optimism
     toChainId: ChainId.ARB, // Arbitrum
     toTokenAddress: findDefaultToken(CoinKey.USDC, ChainId.ARB).address,
@@ -67,7 +66,7 @@ async function run() {
 
   console.info('>> Requesting route', routeRequest)
 
-  const routeResponse = await getRoutes(routeRequest)
+  const routeResponse = await getRoutes(client, routeRequest)
   const route = routeResponse.routes[0]
 
   console.info('>> Got Route', routeResponse)
@@ -82,7 +81,7 @@ async function run() {
   const executionOptions = {
     updateRouteHook: reportStepsExecutionToTerminal,
   }
-  await executeRoute(route, executionOptions)
+  await executeRoute(client, route, executionOptions)
 
   console.info('>> Done')
 }

@@ -16,9 +16,7 @@ import type {
   RelayStatusRequest,
   RelayStatusResponseData,
   RequestOptions,
-  RoutesRequest,
   RoutesResponse,
-  SignedLiFiStep,
   StatusResponse,
   Token,
   TokenAmount,
@@ -30,11 +28,12 @@ import type {
   ToolsResponse,
   TransactionAnalyticsRequest,
   TransactionAnalyticsResponse,
-  WalletTokenExtended,
 } from '@lifi/types'
 import type {
   GetStatusRequestExtended,
+  LiFiStepRequest,
   QuoteRequestFromAmount,
+  RoutesRequest,
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { getChains } from './getChains.js'
@@ -55,7 +54,6 @@ import { getTokenBalancesByChain } from './getTokenBalancesByChain.js'
 import { getTokens } from './getTokens.js'
 import { getTools } from './getTools.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
-import { getWalletBalances } from './getWalletBalances.js'
 import {
   type PatchContractCallsResponse,
   patchContractCalls,
@@ -152,7 +150,9 @@ export type Actions = {
   ) => Promise<LiFiStep>
 
   /**
-   * Get a set of routes for a request that describes a transfer of tokens
+   * Get a set of routes for a request that describes a transfer of tokens.
+   * Optional limit-order fields (`toAmount`, `validUntil`, `partiallyFillable`)
+   * may be supplied and are resolved on the backend.
    * @param params - A description of the transfer
    * @param options - Request options
    * @returns The resulting routes that can be used to realize the described transfer
@@ -174,13 +174,14 @@ export type Actions = {
   ) => Promise<StatusResponse>
 
   /**
-   * Get a step transaction
+   * Get a step transaction. The step's `action` may carry the optional
+   * limit-order fields, which are resolved on the backend.
    * @param params - The configuration of the requested step transaction
    * @param options - Request options
    * @returns Step transaction
    */
   getStepTransaction: (
-    params: LiFiStep | SignedLiFiStep,
+    params: LiFiStepRequest,
     options?: RequestOptions
   ) => Promise<LiFiStep>
 
@@ -272,17 +273,6 @@ export type Actions = {
   ) => Promise<TransactionAnalyticsResponse>
 
   /**
-   * Get wallet balances
-   * @param params - The configuration of the requested wallet balances
-   * @param options - Request options
-   * @returns Wallet balances
-   */
-  getWalletBalances: (
-    walletAddress: string,
-    options?: RequestOptions
-  ) => Promise<Record<number, WalletTokenExtended[]>>
-
-  /**
    * Relay a transaction through the relayer service
    * @param params - The configuration for the relay request
    * @param options - Request options
@@ -337,8 +327,6 @@ export function actions(client: SDKClient): Actions {
       getTokenBalancesByChain(client, walletAddress, tokensByChain),
     getTransactionHistory: (params, options) =>
       getTransactionHistory(client, params, options),
-    getWalletBalances: (walletAddress, options) =>
-      getWalletBalances(client, walletAddress, options),
     relayTransaction: (params, options) =>
       relayTransaction(client, params, options),
     patchContractCalls: (params, options) =>

@@ -10,7 +10,8 @@
     "clean:modules": "find . -name \"node_modules\" -type d -prune -exec rm -rf {} +",
     "clean:modules:trash": "find . -name \"node_modules\" -type d -prune -exec trash {} +",
     "regen": "rm -rf pnpm-lock.yaml && pnpm clean:modules && corepack use pnpm@latest",
-    "changeset:version": "changeset version && pnpm install --lockfile-only && pnpm check:write",
+    "build:version": "pnpm -r --parallel --filter './packages/**' exec node ../../scripts/version.js",
+    "changeset:version": "changeset version && pnpm build:version && pnpm install --lockfile-only && pnpm check:write",
     "changeset:prepublish": "pnpm build && pnpm -r --parallel build:prerelease",
     "changeset:publish": "pnpm changeset:prepublish && pnpm --config.verify-deps-before-run=false changeset publish",
     "check": "biome check",
@@ -34,22 +35,22 @@
     "postinstall": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
-    "@changesets/cli": "^2.31.0",
-    "@changesets/changelog-github": "^0.7.0",
-    "@commitlint/cli": "^21.0.1",
-    "@commitlint/config-conventional": "^21.0.1",
-    "@types/node": "^25.7.0",
+    "@biomejs/biome": "^2.5.8",
+    "@changesets/changelog-github": "^1.0.0",
+    "@changesets/cli": "^3.0.0",
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
+    "@types/node": "^26.2.0",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@vitest/coverage-v8": "^4.1.10",
     "husky": "^9.1.7",
-    "knip": "^6.13.1",
-    "tsdown": "^0.22.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "knip": "^6.32.2",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@11.1.2+sha512.415a1cc25974731e75455c1468371be74c5aa5fb7621b50d4056d222451609f11412f23fd602e6169f1e060466641f798597e1be961a10688836a67b16569499"
+  "packageManager": "pnpm@11.22.0+sha512.1ff870c4c6133dfd88fb2afc46dd13d47f09c9794b438c6fdb47ca98caf3bc16381ee0be93a091b8e3824cf01f889f46d7d9e20910fb0be1ab0fb5baa80dd621"
 }

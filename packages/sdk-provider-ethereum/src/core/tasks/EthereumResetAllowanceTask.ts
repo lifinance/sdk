@@ -6,7 +6,7 @@ import { waitForTransactionReceipt } from '../../actions/waitForTransactionRecei
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
-import { isPermit2Supported } from './helpers/isPermit2Supported.js'
+import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -30,11 +30,9 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       allowUserInteraction,
       checkClient,
       fromChain,
-      isFromNativeToken,
       executionOptions,
       client,
       calls: currentCalls,
-      disableMessageSigning,
     } = context
 
     const action = statusManager.initializeAction({
@@ -55,11 +53,8 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-    const permit2Supported = isPermit2Supported(
-      step,
-      fromChain,
-      isFromNativeToken,
-      disableMessageSigning,
+    const permit2Supported = await resolvePermit2Support(
+      context,
       executionStrategy
     )
     const spenderAddress = permit2Supported

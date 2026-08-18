@@ -3,6 +3,7 @@ import type { Address, Client, Hex } from 'viem'
 import { keccak256 } from 'viem'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
+import { assertValidSignature } from '../utils/isValidSignature.js'
 import { getPermitTransferFromValues } from './getPermitTransferFromValues.js'
 import { getPermitData } from './signatureTransfer.js'
 
@@ -75,6 +76,8 @@ export async function signPermit2Message(
     types: permitData.types,
     message: permitData.message,
   })
+
+  assertValidSignature(signature)
 
   return {
     ...permitData,

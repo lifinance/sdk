@@ -37,25 +37,23 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     const result = await callSuiWithRetry(client, (client) =>
-      client.waitForTransaction({
+      client.core.waitForTransaction({
         digest: signedTransaction.digest,
-        options: {
-          showEffects: true,
-        },
       })
     )
 
-    if (result.effects?.status.status !== 'success') {
+    const transaction = result.Transaction ?? result.FailedTransaction
+    if (!transaction?.status.success) {
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
-        `Transaction failed: ${result.effects?.status.error}`
+        `Transaction failed: ${transaction?.status.error?.message ?? `Unexpected transaction result: ${result.$kind}`}`
       )
     }
 
     // Transaction has been confirmed and we can update the action
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: result.digest,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${result.digest}`,
+      txHash: transaction.digest,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}txblock/${transaction.digest}`,
     })
 
     if (isBridgeExecution) {

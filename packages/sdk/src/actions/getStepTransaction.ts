@@ -1,5 +1,6 @@
-import type { LiFiStep, RequestOptions, SignedLiFiStep } from '@lifi/types'
+import type { LiFiStep, RequestOptions } from '@lifi/types'
 import { ChainId } from '@lifi/types'
+import type { LiFiStepRequest } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { isStep } from '../utils/isStep.js'
 import { request } from '../utils/request.js'
@@ -14,7 +15,7 @@ import { request } from '../utils/request.js'
  */
 export const getStepTransaction = async (
   client: SDKClient,
-  step: LiFiStep | SignedLiFiStep,
+  step: LiFiStepRequest,
   options?: RequestOptions
 ): Promise<LiFiStep> => {
   if (!isStep(step)) {
@@ -27,6 +28,7 @@ export const getStepTransaction = async (
   let requestUrl = `${config.apiUrl}/advanced/stepTransaction`
   const jitoBundle = config.routeOptions?.jitoBundle
   const svmSponsor = config.routeOptions?.svmSponsor
+  const svmPriorityFeeLevel = config.routeOptions?.svmPriorityFeeLevel
 
   if (step.action.fromChainId === ChainId.SOL) {
     const queryParams = new URLSearchParams()
@@ -35,6 +37,9 @@ export const getStepTransaction = async (
     }
     if (svmSponsor) {
       queryParams.set('svmSponsor', svmSponsor)
+    }
+    if (svmPriorityFeeLevel) {
+      queryParams.set('svmPriorityFeeLevel', svmPriorityFeeLevel)
     }
     if (queryParams.size > 0) {
       requestUrl = `${requestUrl}?${queryParams}`

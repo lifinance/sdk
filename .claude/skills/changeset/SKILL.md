@@ -57,7 +57,7 @@ real gate). Your job here is to write a correct changeset for the work in progre
 ## Key rules (full detail in `references/`)
 
 - **Only declare packages you intentionally changed.** Internal dependents re-release
-  automatically (`updateInternalDependencies: minor`); authoring changesets for them
+  automatically (`updateInternalDependencies: patch`); authoring changesets for them
   double-counts and produces noisy changelogs.
 - **Skip** docs-only, chore-only, test-only, and private-package-only changes. For a
   deliberately release-less change, `pnpm changeset --empty`.

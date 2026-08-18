@@ -12,6 +12,7 @@ import { isHyperliquidAgentStep } from '../../hyperliquid/isHyperliquidAgentStep
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { assertValidSignature } from '../../utils/isValidSignature.js'
 import { signHyperliquidTypedData } from './helpers/signHyperliquidTypedData.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
@@ -93,6 +94,8 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
           types: typedData.types,
           message: typedData.message,
         })
+
+        assertValidSignature(signature)
 
         signedTypedData.push({
           ...typedData,
