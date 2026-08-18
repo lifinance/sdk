@@ -48,6 +48,11 @@ describe('sendAndConfirmBundle', () => {
   it('returns rpc-unavailable when sendBundle throws on every RPC', async () => {
     getJitoRpcs.mockResolvedValue([rpc])
     sendBundle.mockRejectedValue(new Error('jito rejected the bundle'))
+    // `confirmBundle` owns the submission now, so the failure surfaces through
+    // the callback it was handed.
+    confirmBundle.mockImplementation(
+      (options: { send: () => Promise<string> }) => options.send()
+    )
 
     const result = await sendAndConfirmBundle({} as never, TRANSACTIONS)
 
@@ -56,7 +61,29 @@ describe('sendAndConfirmBundle', () => {
       throw new Error('unreachable')
     }
     expect(result.errors[0].message).toBe('jito rejected the bundle')
-    expect(confirmBundle).not.toHaveBeenCalled()
+  })
+
+  it('hands the submission to confirmBundle instead of sending first', async () => {
+    // The deadline is built inside `confirmBundle`, on the same clock as
+    // `BRANCH_TIMEOUT_MS`. Submitting here first would spend part of that
+    // budget before the deadline exists.
+    getJitoRpcs.mockResolvedValue([rpc])
+    sendBundle.mockResolvedValue('bundle-1')
+    confirmBundle.mockResolvedValue({ kind: 'not-confirmed' })
+
+    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+
+    expect(confirmBundle).toHaveBeenCalledTimes(1)
+    expect(sendBundle).not.toHaveBeenCalled()
+
+    const { send } = confirmBundle.mock.calls[0][0] as {
+      send: () => Promise<string>
+    }
+    await expect(send()).resolves.toBe('bundle-1')
+    expect(sendBundle).toHaveBeenCalledWith([
+      'base64-encoded-tx',
+      'base64-encoded-tx',
+    ])
   })
 
   it('passes the lifetime of every signed transaction, not just the first', async () => {
@@ -78,7 +105,6 @@ describe('sendAndConfirmBundle', () => {
     expect(getTransactionLifetime).toHaveBeenCalledTimes(2)
     expect(confirmBundle).toHaveBeenCalledWith(
       expect.objectContaining({
-        bundleId: 'bundle-1',
         lifetimes: [
           { kind: 'blockhash', blockhash: 'A' },
           { kind: 'blockhash', blockhash: 'B' },

@@ -10,13 +10,18 @@ vi.mock('@lifi/sdk', async (importOriginal) => ({
 
 const reached = vi.fn<() => boolean>()
 const tick = vi.fn<() => Promise<void>>(() => Promise.resolve())
+/** Records what happened in which order, for the deadline-before-send test. */
+const events: string[] = []
 
 vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./createConfirmationDeadline.js')>()),
-  createConfirmationDeadline: () => ({
-    reached: () => reached(),
-    tick: () => tick(),
-  }),
+  createConfirmationDeadline: () => {
+    events.push('deadline')
+    return {
+      reached: () => reached(),
+      tick: () => tick(),
+    }
+  },
 }))
 
 const { confirmBundle } = await import('./confirmBundle.js')
@@ -42,17 +47,23 @@ const bundle = (confirmation_status: string | null) => ({
 })
 const noBundle = () => ({ value: [null] })
 
-const run = () =>
+const send = vi.fn(() => {
+  events.push('send')
+  return Promise.resolve('bundle-1')
+})
+
+const run = (signal: AbortSignal = new AbortController().signal) =>
   confirmBundle({
     rpc,
-    signal: new AbortController().signal,
-    bundleId: 'bundle-1',
+    signal,
     lifetimes: LIFETIMES,
+    send,
   })
 
 describe('confirmBundle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    events.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
   })
@@ -140,5 +151,43 @@ describe('confirmBundle', () => {
 
     await expect(run()).rejects.toThrow('method not found')
     expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS)
+  })
+
+  it('builds the deadline before it submits the bundle', async () => {
+    // `BRANCH_TIMEOUT_MS` starts when the branch starts. A deadline built
+    // after the submission returns would push the 90 s ceiling past the
+    // branch's own timeout, and a slow `sendBundle` would eat the margin that
+    // protects the final probe.
+    reached.mockReturnValue(true)
+    getBundleStatuses.mockResolvedValue(noBundle())
+
+    await run()
+
+    expect(events).toEqual(['deadline', 'send'])
+  })
+
+  it('propagates a submission failure instead of reporting not-confirmed', async () => {
+    send.mockRejectedValueOnce(new Error('jito rejected the bundle'))
+
+    await expect(run()).rejects.toThrow('jito rejected the bundle')
+    expect(getBundleStatuses).not.toHaveBeenCalled()
+  })
+
+  it('throws instead of returning not-confirmed when every status read hung', async () => {
+    // A hung endpoint: the read is still in flight when the branch timeout
+    // aborts it. That is one failure, so MAX_PROBE_ERRORS never fires; the
+    // loop then exits on the aborted signal and the final probe is skipped.
+    // Reporting `not-confirmed` here would turn a hung RPC into
+    // `TransactionExpired`, the exact misdiagnosis this rework removes.
+    const controller = new AbortController()
+    reached.mockReturnValue(false)
+    getBundleStatuses.mockImplementation(() => {
+      controller.abort()
+      return Promise.reject(new Error('request aborted'))
+    })
+
+    await expect(run(controller.signal)).rejects.toThrow(/never observed here/i)
+    // Exactly one read, so the throw cannot be the MAX_PROBE_ERRORS rule.
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 })

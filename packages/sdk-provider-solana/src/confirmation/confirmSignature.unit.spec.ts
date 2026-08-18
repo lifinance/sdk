@@ -40,10 +40,13 @@ const noStatus = () => ({ value: [null] })
 
 type Resend = (rpc: SolanaRpcType, signal: AbortSignal) => Promise<void>
 
-const run = (resend: Resend = vi.fn(() => Promise.resolve())) =>
+const run = (
+  resend: Resend = vi.fn(() => Promise.resolve()),
+  signal: AbortSignal = new AbortController().signal
+) =>
   confirmSignature({
     rpc,
-    signal: new AbortController().signal,
+    signal,
     signature: SIGNATURE,
     lifetimes: LIFETIMES,
     resend,
@@ -164,5 +167,28 @@ describe('confirmSignature', () => {
     const resend = vi.fn(() => Promise.resolve())
 
     await expect(run(resend)).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('throws instead of returning not-confirmed when every status read hung', async () => {
+    // A hung endpoint: the read is still in flight when the branch timeout
+    // aborts it. That is one failure, so MAX_PROBE_ERRORS never fires; the
+    // loop then exits on the aborted signal and the final probe is skipped.
+    // Reporting `not-confirmed` here would turn a hung RPC into
+    // `TransactionExpired`, the exact misdiagnosis this rework removes.
+    const controller = new AbortController()
+    reached.mockReturnValue(false)
+    getSignatureStatuses.mockImplementation(() => {
+      controller.abort()
+      return Promise.reject(new Error('request aborted'))
+    })
+    const resend = vi.fn(() => Promise.resolve())
+
+    await expect(run(resend, controller.signal)).rejects.toThrow(
+      /never observed here/i
+    )
+    // Exactly one read, so the throw cannot be the MAX_PROBE_ERRORS rule; and
+    // the send succeeded, so it cannot be the send rule either.
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
+    expect(resend).toHaveBeenCalled()
   })
 })

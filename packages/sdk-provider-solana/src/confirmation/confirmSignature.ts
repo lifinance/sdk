@@ -84,11 +84,17 @@ export async function confirmSignature(options: {
 
   try {
     let probeErrors = 0
+    // "Did this RPC ever answer a status read?" — a read that resolves `null`
+    // still answered. Only this separates "polled and saw nothing" from "never
+    // got a word out of this endpoint", and the two must never be reported the
+    // same way.
+    let probeSucceeded = false
 
     while (!deadline.reached() && !signal.aborted) {
       try {
         const status = await readStatus()
         probeErrors = 0
+        probeSucceeded = true
         if (status) {
           return { kind: 'confirmed', value: status }
         }
@@ -107,6 +113,7 @@ export async function confirmSignature(options: {
     if (!signal.aborted) {
       try {
         const status = await readStatus()
+        probeSucceeded = true
         if (status) {
           return { kind: 'confirmed', value: status }
         }
@@ -119,6 +126,16 @@ export async function confirmSignature(options: {
     if (!sendSucceeded) {
       throw new Error(
         'Every transaction send attempt against this RPC failed; the transaction was never submitted here.'
+      )
+    }
+
+    // Reached when every status read hung until the branch was aborted: one
+    // in-flight read is not `MAX_PROBE_ERRORS` consecutive failures, so the
+    // loop above never threw. Returning `not-confirmed` here would report a
+    // hung endpoint as an expired transaction.
+    if (!probeSucceeded) {
+      throw new Error(
+        'No signature status read against this RPC ever completed; the transaction was never observed here.'
       )
     }
 
