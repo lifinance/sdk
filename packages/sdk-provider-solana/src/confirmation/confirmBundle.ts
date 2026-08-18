@@ -5,14 +5,13 @@ import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 import {
   createConfirmationDeadline,
   MAX_PROBE_ERRORS,
+  POLL_INTERVAL_MS,
 } from './createConfirmationDeadline.js'
 import {
   type ConfirmationOutcome,
   isConfirmedCommitment,
   type SignatureStatus,
 } from './types.js'
-
-const POLL_INTERVAL_MS = 400
 
 export type BundleConfirmation = {
   bundleId: string

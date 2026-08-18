@@ -2,12 +2,52 @@ import type { Blockhash } from '@solana/kit'
 import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
-/** Absolute give-up point. Nothing can extend it. */
+/**
+ * Give-up point for a branch's own polling, measured from the moment that
+ * branch builds its deadline. Nothing in this module extends it.
+ *
+ * It is not by itself an absolute bound on a branch: `reached()` is only read
+ * between iterations, so a branch suspended inside an RPC call that never
+ * answers never gets to read it. `BRANCH_TIMEOUT_MS` is what closes that gap.
+ */
 export const CONFIRMATION_TIMEOUT_MS = 90_000
-/** Nothing may report expiry before this, whatever an RPC claims. */
+/**
+ * Hard bound on a single RPC branch, in-flight requests included. Handed to
+ * `raceRpcs` by the actions, which abort every branch's request with it.
+ *
+ * Deliberately above `CONFIRMATION_TIMEOUT_MS`: a branch that stops on its own
+ * deadline still runs one final status probe, and an abort fired at the same
+ * instant would pre-empt it. The gap is a backstop, not a second policy —
+ * nothing reaches it unless an endpoint has stopped answering entirely.
+ */
+export const BRANCH_TIMEOUT_MS: number = CONFIRMATION_TIMEOUT_MS + 5_000
+/** How often the poll loops re-read the RPC. */
+export const POLL_INTERVAL_MS = 400
+/**
+ * Backstop floor: nothing may report expiry before this, whatever an RPC
+ * claims. The probe cadence below already outlasts it, so this only matters if
+ * that cadence is ever made faster.
+ */
 export const MIN_CONFIRMATION_MS = 5_000
 /** Consecutive `false` results required before we believe a blockhash is dead. */
 export const EXPIRY_CONFIRMATIONS = 3
+/**
+ * Minimum wall-clock gap between two `isBlockhashValid` probes of the same
+ * deadline.
+ *
+ * This is the real guard against a false expiry. `isBlockhashValid` returns
+ * `false` both for a dead blockhash and for a node that has not yet seen it, so
+ * the consecutive-`false` rule only means anything if the probes are far enough
+ * apart that a node lagging the cluster cannot answer `false` three times in a
+ * row. At the poll cadence that would be ~1.2 s — about three slots, which a
+ * lagging node clears routinely. `EXPIRY_CONFIRMATIONS` probes at this interval
+ * instead span 6 s (~15 slots) before any verdict, and 9 s of probing budget
+ * against a 5 s floor.
+ *
+ * It also caps the probe cost: 30 `isBlockhashValid` calls per RPC across the
+ * whole ceiling instead of one per poll iteration.
+ */
+export const EXPIRY_PROBE_INTERVAL_MS = 3_000
 /** Consecutive probe failures after which we stop probing entirely. */
 export const MAX_PROBE_ERRORS = 5
 
@@ -20,7 +60,12 @@ export type BlockhashProbeRpc = Pick<SolanaRpcType, 'isBlockhashValid'>
 export interface ConfirmationDeadline {
   /** Checked at the top of every poll iteration. */
   reached(): boolean
-  /** Advances the policy once per poll iteration. Never throws. */
+  /**
+   * Advances the policy once per poll iteration. Never throws.
+   *
+   * Called every iteration, but only probes when `EXPIRY_PROBE_INTERVAL_MS`
+   * has passed since the last probe.
+   */
   tick(signal: AbortSignal): Promise<void>
 }
 
@@ -59,7 +104,22 @@ export function createConfirmationDeadline(options: {
   const expiredStreaks = new Map<Blockhash, number>()
   let errorStreak = 0
   let probing = blockhashes.length > 0
-  let expired = false
+  let lastProbeAt: number | undefined
+
+  /**
+   * Derived from the live streaks rather than latched. A blockhash that reads
+   * valid again zeroes its streak, and the verdict goes with it: a node that
+   * lagged long enough to answer `false` three times must not condemn a
+   * blockhash it then reports as alive.
+   */
+  const isExpired = (): boolean => {
+    for (const streak of expiredStreaks.values()) {
+      if (streak >= EXPIRY_CONFIRMATIONS) {
+        return true
+      }
+    }
+    return false
+  }
 
   return {
     reached(): boolean {
@@ -70,12 +130,22 @@ export function createConfirmationDeadline(options: {
       if (elapsed < MIN_CONFIRMATION_MS) {
         return false
       }
-      return expired
+      return isExpired()
     },
     async tick(signal: AbortSignal): Promise<void> {
-      if (!probing || expired || signal.aborted) {
+      if (!probing || signal.aborted) {
         return
       }
+      // The cadence is wall-clock, not iteration count, and it uses the
+      // injected `now` so the policy stays testable without timers.
+      const probeAt = now()
+      if (
+        lastProbeAt !== undefined &&
+        probeAt - lastProbeAt < EXPIRY_PROBE_INTERVAL_MS
+      ) {
+        return
+      }
+      lastProbeAt = probeAt
       try {
         const probes = await Promise.all(
           blockhashes.map(async (blockhash) => {
@@ -86,16 +156,11 @@ export function createConfirmationDeadline(options: {
           })
         )
         errorStreak = 0
-        // `isBlockhashValid` returns false both for a dead blockhash and for a
-        // node that has not seen it yet, so one false is not enough. Each
-        // blockhash keeps its own streak, so failures alternating between two
-        // blockhashes never add up to an expiry neither of them reached.
+        // Each blockhash keeps its own streak, so failures alternating between
+        // two blockhashes never add up to an expiry neither of them reached.
         for (const { blockhash, valid } of probes) {
           const streak = valid ? 0 : (expiredStreaks.get(blockhash) ?? 0) + 1
           expiredStreaks.set(blockhash, streak)
-          if (streak >= EXPIRY_CONFIRMATIONS) {
-            expired = true
-          }
         }
       } catch (_) {
         errorStreak += 1

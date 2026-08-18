@@ -5,6 +5,7 @@ import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 import {
   createConfirmationDeadline,
   MAX_PROBE_ERRORS,
+  POLL_INTERVAL_MS,
 } from './createConfirmationDeadline.js'
 import {
   type ConfirmationOutcome,
@@ -12,7 +13,6 @@ import {
   type SignatureStatus,
 } from './types.js'
 
-const POLL_INTERVAL_MS = 400
 const RESEND_INTERVAL_MS = 1000
 
 /**
