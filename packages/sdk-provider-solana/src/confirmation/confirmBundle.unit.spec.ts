@@ -58,7 +58,6 @@ describe('confirmBundle', () => {
   })
 
   it('confirms on a later poll, not only the first', async () => {
-    reached.mockReturnValueOnce(false).mockReturnValueOnce(false)
     getBundleStatuses
       .mockResolvedValueOnce(noBundle())
       .mockResolvedValueOnce(bundle('processed'))
@@ -76,10 +75,12 @@ describe('confirmBundle', () => {
       },
     })
     expect(getBundleStatuses).toHaveBeenCalledTimes(3)
+    // Three polls means two completed iterations, so the deadline advanced
+    // twice. A `continue` that skipped `deadline.tick` would make this zero.
+    expect(tick).toHaveBeenCalledTimes(2)
   })
 
   it('keeps polling when the bundle is confirmed but signature results are missing', async () => {
-    reached.mockReturnValueOnce(false).mockReturnValueOnce(false)
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
     getSignatureStatuses
       .mockResolvedValueOnce({ value: null })
@@ -115,6 +116,23 @@ describe('confirmBundle', () => {
     getBundleStatuses.mockResolvedValue(noBundle())
 
     await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('resets the probe-failure streak after a successful poll', async () => {
+    // MAX_PROBE_ERRORS failures, none of them consecutive. Only a streak that
+    // resets on every success stays below the throw threshold.
+    for (let i = 0; i < MAX_PROBE_ERRORS; i += 1) {
+      getBundleStatuses
+        .mockRejectedValueOnce(new Error('502'))
+        .mockResolvedValueOnce(noBundle())
+    }
+    getBundleStatuses.mockResolvedValueOnce(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+
+    const result = await run()
+
+    expect(result.kind).toBe('confirmed')
+    expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS * 2 + 1)
   })
 
   it('throws after MAX_PROBE_ERRORS consecutive probe failures', async () => {
