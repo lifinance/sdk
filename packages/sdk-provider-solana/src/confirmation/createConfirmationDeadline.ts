@@ -55,7 +55,8 @@ export function createConfirmationDeadline(options: {
     ? [...new Set(blockhashLifetimes.map((lifetime) => lifetime.blockhash))]
     : []
 
-  let expiredStreak = 0
+  // Keyed by blockhash: expiry is a property of a blockhash, not of the set.
+  const expiredStreaks = new Map<Blockhash, number>()
   let errorStreak = 0
   let probing = blockhashes.length > 0
   let expired = false
@@ -76,25 +77,29 @@ export function createConfirmationDeadline(options: {
         return
       }
       try {
-        const results = await Promise.all(
-          blockhashes.map((blockhash) =>
-            rpc
+        const probes = await Promise.all(
+          blockhashes.map(async (blockhash) => {
+            const result = await rpc
               .isBlockhashValid(blockhash, { commitment: 'confirmed' })
               .send({ abortSignal: signal })
-          )
+            return { blockhash, valid: result.value }
+          })
         )
         errorStreak = 0
         // `isBlockhashValid` returns false both for a dead blockhash and for a
-        // node that has not seen it yet, so one false is not enough.
-        expiredStreak = results.some((result) => !result.value)
-          ? expiredStreak + 1
-          : 0
-        if (expiredStreak >= EXPIRY_CONFIRMATIONS) {
-          expired = true
+        // node that has not seen it yet, so one false is not enough. Each
+        // blockhash keeps its own streak, so failures alternating between two
+        // blockhashes never add up to an expiry neither of them reached.
+        for (const { blockhash, valid } of probes) {
+          const streak = valid ? 0 : (expiredStreaks.get(blockhash) ?? 0) + 1
+          expiredStreaks.set(blockhash, streak)
+          if (streak >= EXPIRY_CONFIRMATIONS) {
+            expired = true
+          }
         }
       } catch (_) {
         errorStreak += 1
-        expiredStreak = 0
+        expiredStreaks.clear()
         if (errorStreak >= MAX_PROBE_ERRORS) {
           // Degrade to ceiling-only. A probe failure must never be read as
           // expiry, and it must never spin forever either.
