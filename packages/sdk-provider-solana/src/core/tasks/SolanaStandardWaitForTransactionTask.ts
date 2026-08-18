@@ -92,7 +92,7 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     if (result.kind === 'not-confirmed') {
       throw new TransactionError(
         LiFiErrorCode.TransactionExpired,
-        'Transaction has expired: The block height has exceeded the maximum allowed limit.'
+        'Transaction was not confirmed before the SDK stopped waiting.'
       )
     }
 

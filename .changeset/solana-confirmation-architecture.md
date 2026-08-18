@@ -21,6 +21,12 @@ throws `TransactionError` with `LiFiErrorCode.TransactionExpired`, and an
 unreachable Jito RPC throws `RPCError` with `LiFiErrorCode.RpcUnavailable`.
 Both previously surfaced as a bare `Error`.
 
+The messages on both `TransactionExpired` errors now describe what actually
+happened - the transaction or bundle was not confirmed before the SDK stopped
+waiting - instead of naming a block-height comparison the code no longer makes
+or a blockhash probe that a wall-clock timeout never performs. The
+`LiFiErrorCode` values are unchanged.
+
 A confirmed Jito bundle no longer fails when an RPC has not indexed one of its
 signatures yet. A bundle is atomic, so a `confirmed` or `finalized` bundle
 status means every transaction in it landed; a `null` entry from

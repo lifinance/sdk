@@ -56,7 +56,7 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
     if (result.kind === 'not-confirmed') {
       throw new TransactionError(
         LiFiErrorCode.TransactionExpired,
-        'Bundle has expired: it was not confirmed before its blockhash expired.'
+        'Bundle was not confirmed before the SDK stopped waiting.'
       )
     }
 

@@ -120,6 +120,11 @@ describe('SolanaJitoWaitForTransactionTask', () => {
 
     expect(thrown).toBeInstanceOf(TransactionError)
     expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    // `not-confirmed` also arrives from the wall-clock ceiling with no
+    // blockhash probe at all, so the message must not name a single mechanism.
+    expect(thrown.message).toBe(
+      'Bundle was not confirmed before the SDK stopped waiting.'
+    )
   })
 
   it('throws RpcUnavailable when no Jito RPC returned a usable response', async () => {
