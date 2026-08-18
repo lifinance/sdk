@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getBundleStatuses = vi.fn()
-const createJitoRpc = vi.fn(() => ({
+const createJitoRpc = vi.fn((..._args: unknown[]) => ({
   getBundleStatuses: (...args: unknown[]) => ({
     send: () => getBundleStatuses(...args),
   }),

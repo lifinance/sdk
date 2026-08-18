@@ -1,4 +1,8 @@
-import { getCompiledTransactionMessageEncoder } from '@solana/kit'
+import {
+  address,
+  getCompiledTransactionMessageEncoder,
+  type ReadonlyUint8Array,
+} from '@solana/kit'
 
 /**
  * A real LI.FI Solana swap transaction (tool `titan`, captured 2026-08-18):
@@ -12,9 +16,13 @@ export const SWAP_TRANSACTION_BASE64 =
 export const SWAP_TRANSACTION_BLOCKHASH =
   'EEHEraBRtRjL62AaGnup3J8XWuo8LivAM5aMBio3fEgv'
 
-const SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111'
-const NONCE_ACCOUNT_ADDRESS = 'SysvarRecentB1ockHashes11111111111111111111'
-const NONCE_AUTHORITY_ADDRESS = 'SysvarRent111111111111111111111111111111111'
+const SYSTEM_PROGRAM_ADDRESS = address('11111111111111111111111111111111')
+const NONCE_ACCOUNT_ADDRESS = address(
+  'SysvarRecentB1ockHashes11111111111111111111'
+)
+const NONCE_AUTHORITY_ADDRESS = address(
+  'SysvarRent111111111111111111111111111111111'
+)
 
 export const NONCE_VALUE = '7BpFqxP4VEXCVnT8HXMQ2KGeVxfmPz4dMwYSnFBHNzqL'
 
@@ -24,7 +32,7 @@ export const NONCE_VALUE = '7BpFqxP4VEXCVnT8HXMQ2KGeVxfmPz4dMwYSnFBHNzqL'
  * exactly 3 account indices). That is the only signal that distinguishes a
  * durable-nonce lifetime from a blockhash lifetime in wire format.
  */
-export function createNonceMessageBytes(): Uint8Array {
+export function createNonceMessageBytes(): ReadonlyUint8Array {
   return getCompiledTransactionMessageEncoder().encode({
     version: 'legacy',
     header: {
@@ -36,7 +44,7 @@ export function createNonceMessageBytes(): Uint8Array {
       NONCE_AUTHORITY_ADDRESS,
       NONCE_ACCOUNT_ADDRESS,
       SYSTEM_PROGRAM_ADDRESS,
-      'SysvarRecentB1ockHashes11111111111111111111',
+      address('SysvarRecentB1ockHashes11111111111111111111'),
     ],
     lifetimeToken: NONCE_VALUE,
     instructions: [
@@ -46,7 +54,5 @@ export function createNonceMessageBytes(): Uint8Array {
         data: new Uint8Array([4, 0, 0, 0]),
       },
     ],
-  } as Parameters<
-    ReturnType<typeof getCompiledTransactionMessageEncoder>['encode']
-  >[0])
+  })
 }
