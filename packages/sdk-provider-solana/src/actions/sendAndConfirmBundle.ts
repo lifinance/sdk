@@ -4,6 +4,7 @@ import {
   type BundleConfirmation,
   confirmBundle,
 } from '../confirmation/confirmBundle.js'
+import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import { getJitoRpcs } from '../rpc/registry.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
@@ -30,10 +31,14 @@ export async function sendAndConfirmBundle(
     signedTransactions.map((transaction) => getTransactionLifetime(transaction))
   )
 
-  return raceRpcs(jitoRpcs, async (rpc, signal) => {
-    const bundleId = await rpc.sendBundle(serializedTransactions).send({
-      abortSignal: signal,
-    })
-    return confirmBundle({ rpc, signal, bundleId, lifetimes })
-  })
+  return raceRpcs(
+    jitoRpcs,
+    async (rpc, signal) => {
+      const bundleId = await rpc.sendBundle(serializedTransactions).send({
+        abortSignal: signal,
+      })
+      return confirmBundle({ rpc, signal, bundleId, lifetimes })
+    },
+    { timeoutMs: BRANCH_TIMEOUT_MS }
+  )
 }

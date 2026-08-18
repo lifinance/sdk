@@ -7,6 +7,7 @@ import {
   type Transaction,
 } from '@solana/kit'
 import { confirmSignature } from '../confirmation/confirmSignature.js'
+import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import type { SignatureStatus } from '../confirmation/types.js'
 import { getSolanaRpcs } from '../rpc/registry.js'
@@ -62,14 +63,17 @@ export async function sendAndConfirmTransaction(
       .send({ abortSignal: signal })
   }
 
-  const result = await raceRpcs(solanaRpcs, (rpc, signal) =>
-    confirmSignature({
-      rpc,
-      signal,
-      signature: txSignature,
-      lifetimes: [lifetime],
-      resend,
-    })
+  const result = await raceRpcs(
+    solanaRpcs,
+    (rpc, signal) =>
+      confirmSignature({
+        rpc,
+        signal,
+        signature: txSignature,
+        lifetimes: [lifetime],
+        resend,
+      }),
+    { timeoutMs: BRANCH_TIMEOUT_MS }
   )
 
   return { result, txSignature }
