@@ -48,6 +48,28 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
     expect(thrown.message).toContain('Transaction failed:')
     expect(thrown.cause).toBeInstanceOf(SolanaTransactionDetailsError)
+    expect(thrown.cause.err).toBe(err)
+  })
+
+  it('serializes bigint payloads safely (regression: Jito used to call JSON.stringify without a replacer)', async () => {
+    const err = { amount: 9_007_199_254_740_993n }
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [{ err }],
+        txSignatures: ['sig'],
+        bundleId: 'bundle-id',
+      },
+    })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.message).toBe(
+      'Transaction failed: {"amount":"9007199254740993"}'
+    )
+    expect(thrown.cause.err).toBe(err)
   })
 
   it('throws TransactionFailed when a signature result is missing', async () => {

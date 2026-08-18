@@ -65,10 +65,16 @@ describe('sendAndConfirmBundle', () => {
     getTransactionLifetime
       .mockResolvedValueOnce({ kind: 'blockhash', blockhash: 'A' })
       .mockResolvedValueOnce({ kind: 'blockhash', blockhash: 'B' })
-    confirmBundle.mockResolvedValue({ kind: 'not-confirmed' })
+    const confirmation = {
+      bundleId: 'bundle-1',
+      txSignatures: ['sig0', 'sig1'],
+      signatureResults: [{ err: null }, { err: null }],
+    }
+    confirmBundle.mockResolvedValue({ kind: 'confirmed', value: confirmation })
 
-    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS)
 
+    expect(result).toEqual({ kind: 'confirmed', value: confirmation })
     expect(getTransactionLifetime).toHaveBeenCalledTimes(2)
     expect(confirmBundle).toHaveBeenCalledWith(
       expect.objectContaining({
