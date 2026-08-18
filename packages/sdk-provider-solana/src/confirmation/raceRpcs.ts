@@ -13,10 +13,11 @@ const toError = (reason: unknown): Error =>
  * elapses, whichever happens first.
  *
  * Deliberately not `AbortSignal.any([signal, AbortSignal.timeout(ms)])`. Both
- * of those are Baseline March 2024 (Node >= 20.3, Safari 17.4), this package
- * declares no `engines` and no browserslist, and the newest API it used before
- * was `structuredClone` (2022). A published SDK must not raise its runtime
- * floor for a convenience that one controller and one timer already cover.
+ * of those are Baseline March 2024 (Node >= 20.3, Safari 17.4), no package in
+ * this repo declares `engines` or a browserslist, and the newest API in any
+ * shipped source is `structuredClone` (2022, `@lifi/sdk`'s `execution.ts`).
+ * A published SDK must not raise its runtime floor for a convenience that one
+ * controller and one timer already cover.
  *
  * The caller's own signal is never aborted here, so "the caller aborted" and
  * "the timeout fired" stay two distinguishable facts. `raceRpcs` depends on
