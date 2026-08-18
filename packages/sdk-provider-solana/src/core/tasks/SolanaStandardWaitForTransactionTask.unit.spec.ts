@@ -23,13 +23,15 @@ const { SolanaStandardWaitForTransactionTask } = await import(
   './SolanaStandardWaitForTransactionTask.js'
 )
 
+const updateAction = vi.fn()
+
 const baseContext = (overrides: Record<string, unknown> = {}) =>
   ({
     client: {},
     step: {},
     statusManager: {
       findAction: () => ({ type: 'SWAP' }),
-      updateAction: () => {},
+      updateAction,
     },
     fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
     isBridgeExecution: false,
@@ -74,7 +76,7 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     expect(thrown.message).toBe('Transaction simulation failed: {"amount":"1"}')
   })
 
-  it('surfaces post-send signatureResult err through cause', async () => {
+  it('surfaces a confirmed-with-err result through the cause', async () => {
     const err = { InstructionError: [0, 'AccountInUse'] }
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
@@ -87,7 +89,12 @@ describe('SolanaStandardWaitForTransactionTask', () => {
 
     expect(thrown).toBeInstanceOf(TransactionError)
     expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
+    expect(thrown.message).toBe(
+      'Transaction failed: {"InstructionError":[0,"AccountInUse"]}'
+    )
     expect(thrown.cause).toBeInstanceOf(SolanaTransactionDetailsError)
+    expect(thrown.cause.err).toBe(err)
+    expect(thrown.cause.logs).toBeNull()
   })
 
   it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {
@@ -133,6 +140,16 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     await expect(task.run(baseContext())).resolves.toEqual({
       status: 'COMPLETED',
     })
+
+    expect(updateAction).toHaveBeenCalledWith(
+      expect.anything(),
+      'SWAP',
+      'PENDING',
+      {
+        txHash: 'sig',
+        txLink: 'https://explorer/tx/sig',
+      }
+    )
   })
 
   it('passes replaceRecentBlockhash to simulation', async () => {
