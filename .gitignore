@@ -116,3 +116,7 @@ dist
 .claude/settings.local.json
 .claude/worktrees/
 .omc/
+
+# superpowers
+docs/superpowers/
+.superpowers/
