@@ -5,6 +5,7 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
+import { getSignatureFromTransaction } from '@solana/kit'
 import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
@@ -85,15 +86,17 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    const confirmedTransaction = {
-      txSignature: bundleResult.txSignatures[0],
-      bundleId: bundleResult.bundleId,
-    }
+    // Derived from the signed transaction itself, with the same pure function
+    // `SolanaSignAndExecuteTask` used for the early `txHash` write, so the two
+    // writers cannot disagree. `bundleResult.txSignatures` is the RPC's report
+    // and the order of its entries is Jito's to choose; nothing here depends
+    // on it.
+    const txSignature = getSignatureFromTransaction(signedTransactions[0])
 
     // Transaction has been confirmed and we can update the action
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: confirmedTransaction.txSignature,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
+      txHash: txSignature,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`,
     })
 
     if (isBridgeExecution) {

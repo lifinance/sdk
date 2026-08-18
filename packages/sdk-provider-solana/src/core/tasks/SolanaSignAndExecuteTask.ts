@@ -103,24 +103,23 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // signing a replacement.
     //
     // A restart is a separate matter, and not a reason this write exists: a
-    // resumed route runs `prepareRestart`, which keeps only actions whose
-    // status is not `FAILED`, and `BaseStepExecutor` marks the failing action
-    // `FAILED` on every non-retry error. The actions array is therefore
-    // emptied, `txHash` included. Carrying the signature across a retry needs
-    // a change in `@lifi/sdk`.
+    // resumed route runs `prepareRestart`, which keeps only actions that hold
+    // a `txHash` and are not `FAILED`, and `BaseStepExecutor` marks the
+    // failing action `FAILED` on every non-retry error. After a failure the
+    // actions array is therefore emptied, `txHash` included; carrying the
+    // signature across a retry needs a change in `@lifi/sdk`. An action
+    // interrupted while still `PENDING` is the other case: this write is what
+    // makes `prepareRestart` keep it, and the kept action carries the stale
+    // hash and link until the pipeline re-runs this task and the new
+    // signature overwrites them.
     //
-    // `signedTransactions[0]` is the transaction both wait tasks report:
-    // the standard path derives its signature from this very object, and the
-    // Jito path reports the first signature of the bundle submitted from it.
-    //
-    // The standard path cannot disagree with this write - it calls the same
-    // pure function on the same object. The Jito path can: it reports what
-    // `getBundleStatuses` returned, so the two agree only while Jito lists a
-    // bundle's `transactions` in submission order. That is an assumption
-    // about the RPC, not a property of this code, and no mock can test it.
-    // What is tested is that the two writers pick the same index and the same
-    // source - see `reports the same signature the sign task recorded before
-    // the wait` in `SolanaJitoWaitForTransactionTask.unit.spec.ts`.
+    // `signedTransactions[0]` is the transaction both wait tasks report: each
+    // derives its signature from this very object with this same pure
+    // function, so neither can disagree with this write. Nothing reads the
+    // RPC-reported signature list, whose ordering would be Jito's to choose.
+    // The agreement is pinned by `reports the signature of the first signed
+    // transaction, not the RPC-reported list` in
+    // `SolanaJitoWaitForTransactionTask.unit.spec.ts`.
     const txSignature = getSignatureFromTransaction(signedTransactions[0])
 
     statusManager.updateAction(step, action.type, 'PENDING', {

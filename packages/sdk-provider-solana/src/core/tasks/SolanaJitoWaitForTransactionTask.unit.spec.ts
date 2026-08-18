@@ -22,7 +22,12 @@ const signedTransactionAt = (index: number): Transaction =>
     signatures: { feePayer: new Uint8Array(64).fill(index + 1) },
   }) as unknown as Transaction
 
-const baseContext = (signedTransactions: unknown[] = [{}, {}]) =>
+const baseContext = (
+  signedTransactions: unknown[] = [
+    signedTransactionAt(0),
+    signedTransactionAt(1),
+  ]
+) =>
   ({
     client: {},
     step: {},
@@ -98,27 +103,30 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     await expect(task.run(baseContext())).resolves.toEqual({
       status: 'COMPLETED',
     })
+    const expectedSignature = getSignatureFromTransaction(
+      signedTransactionAt(0)
+    )
     expect(updateAction).toHaveBeenCalledWith({}, 'SWAP', 'PENDING', {
-      txHash: 'sig0',
-      txLink: 'https://explorer/tx/sig0',
+      txHash: expectedSignature,
+      txLink: `https://explorer/tx/${expectedSignature}`,
     })
   })
 
-  it('reports the same signature the sign task recorded before the wait', async () => {
-    // One swap has two independent writers of `txHash`.
-    // `SolanaSignAndExecuteTask` records
-    // `getSignatureFromTransaction(signedTransactions[0])` the moment the
-    // wallet signs; this task later reports `bundleStatus.transactions[0]`,
-    // the RPC's own report. They agree only while Jito returns `transactions`
-    // in submission order, which is what this mock reproduces. The expected
-    // value is derived from the signed transaction rather than read back out
-    // of the mock, so a task that picked a different index - or a different
-    // source - would fail here instead of showing an integrator two hashes
-    // for one swap.
+  it('reports the signature of the first signed transaction, not the RPC-reported list', async () => {
+    // One swap has two writers of `txHash`. `SolanaSignAndExecuteTask`
+    // records `getSignatureFromTransaction(signedTransactions[0])` the moment
+    // the wallet signs; this task re-derives the same value from the same
+    // object after the wait, so the two cannot show an integrator two hashes
+    // for one swap. The RPC's own `txSignatures` list is returned *reversed*
+    // here to prove nothing depends on the order Jito reports - a task that
+    // read `txSignatures[0]` would report the second transaction's signature
+    // and fail below.
     const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
-    const txSignatures = signedTransactions.map((signedTransaction) =>
-      getSignatureFromTransaction(signedTransaction)
-    )
+    const txSignatures = signedTransactions
+      .map((signedTransaction) =>
+        getSignatureFromTransaction(signedTransaction)
+      )
+      .reverse()
     sendAndConfirmBundle.mockResolvedValue({
       kind: 'confirmed',
       value: {
