@@ -58,17 +58,30 @@ export async function confirmBundle(options: {
     }
 
     const txSignatures = bundleStatus.transactions
-    const sigResponse = await rpc
-      .getSignatureStatuses(txSignatures)
-      .send({ abortSignal: signal })
-    if (!sigResponse?.value) {
-      return null
+
+    // The bundle status above is the atomic fact: a bundle executes in a
+    // single slot, all of it or none of it, so `confirmed`/`finalized` means
+    // every transaction in it landed. `getSignatureStatuses` only enriches
+    // the confirmation with per-transaction `err` details for the
+    // defence-in-depth scan in `SolanaJitoWaitForTransactionTask`. An
+    // unusable response — a missing payload or a failed read — therefore
+    // degrades to all-`null` results; it must never veto a confirmation the
+    // bundle status already made, because that would report a landed bundle
+    // as expired.
+    let signatureResults: BundleConfirmation['signatureResults']
+    try {
+      const sigResponse = await rpc
+        .getSignatureStatuses(txSignatures)
+        .send({ abortSignal: signal })
+      signatureResults = sigResponse?.value ?? txSignatures.map(() => null)
+    } catch (_) {
+      signatureResults = txSignatures.map(() => null)
     }
 
     return {
       bundleId,
       txSignatures,
-      signatureResults: sigResponse.value,
+      signatureResults,
     }
   }
 
@@ -117,6 +130,20 @@ export async function confirmBundle(options: {
   if (!probeSucceeded) {
     throw new Error(
       'No bundle status read against this RPC ever completed; the bundle was never observed here.'
+    )
+  }
+
+  // The final probe only runs when the branch was not aborted, so exiting via
+  // `signal.aborted` means the final observation never happened — an in-flight
+  // read held the loop until the abort cut it off. An answer received early in
+  // the window must not stand in for one near the deadline: a branch that
+  // answered once and then went dark has no basis to call the bundle expired.
+  // (A branch aborted because another RPC already confirmed also throws here;
+  // `raceRpcs` drops a losing branch's error once its controller has aborted,
+  // so nothing is misreported.)
+  if (signal.aborted) {
+    throw new Error(
+      'This RPC stopped answering before a final bundle status read could run; the bundle was not observed near the deadline.'
     )
   }
 

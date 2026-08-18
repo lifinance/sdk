@@ -46,6 +46,29 @@ describe('raceRpcs', () => {
     expect(aborted).toEqual(['slow'])
   })
 
+  it('still reports the confirmation when the aborted loser throws instead of returning', async () => {
+    // The confirm loops throw when their signal aborts before a final probe
+    // completed. For a loser that abort comes from the winner's confirmation,
+    // so this composition must stay clean: `classify` drops a rejection once
+    // the winner's controller has aborted, and the confirmed result stands.
+    const result = await raceRpcs(
+      ['fast', 'slow'],
+      async (rpc, signal) => {
+        if (rpc === 'fast') {
+          return confirmed('status')
+        }
+        await sleep(10)
+        if (signal.aborted) {
+          throw new Error('aborted before a final probe completed')
+        }
+        return notConfirmed<string>()
+      },
+      timeout
+    )
+
+    expect(result).toEqual({ kind: 'confirmed', value: 'status' })
+  })
+
   it('returns not-confirmed when at least one branch polled and saw nothing', async () => {
     const result = await raceRpcs(
       ['good', 'broken'],

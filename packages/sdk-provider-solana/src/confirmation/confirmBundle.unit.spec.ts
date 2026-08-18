@@ -91,24 +91,65 @@ describe('confirmBundle', () => {
     expect(tick).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps polling when the bundle is confirmed but signature results are missing', async () => {
+  it('confirms with all-null signature results when the signature payload is unusable', async () => {
+    // The bundle status is the atomic fact: `confirmed` means every
+    // transaction in the bundle landed. A missing `getSignatureStatuses`
+    // payload must degrade to `null` results - the enrichment is for the
+    // `err` scan only - not veto a confirmation the bundle status already
+    // made and end in `TransactionExpired` for a landed bundle. The deadline
+    // is bounded so a regression that keeps polling exits into a clean
+    // assertion failure instead of spinning.
+    reached.mockReturnValueOnce(false).mockReturnValue(true)
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses
-      .mockResolvedValueOnce({ value: null })
-      .mockResolvedValueOnce({ value: [null, null] })
+    getSignatureStatuses.mockResolvedValue({ value: null })
 
-    const result = await run()
-
-    expect(result.kind).toBe('confirmed')
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: {
+        bundleId: 'bundle-1',
+        txSignatures: TX_SIGNATURES,
+        signatureResults: [null, null],
+      },
+    })
+    // Confirmed on the first read: a loop that kept polling for a usable
+    // payload would read more than once.
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
-  it('treats missing signature results identically in the final probe', async () => {
+  it('confirms with all-null signature results when the signature read fails', async () => {
+    // Same atomicity argument for a thrown read: a confirmed bundle status
+    // followed by a failing `getSignatureStatuses` must not count toward
+    // MAX_PROBE_ERRORS and end as `rpc-unavailable` for a landed bundle.
+    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
+    getSignatureStatuses.mockRejectedValue(new Error('502'))
+
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: {
+        bundleId: 'bundle-1',
+        txSignatures: TX_SIGNATURES,
+        signatureResults: [null, null],
+      },
+    })
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  it('confirms in the final probe even when the signature payload is unusable', async () => {
+    // The final probe and the loop body share `readBundle`, so the two must
+    // agree: a confirmed bundle status confirms here too, `null` payload or
+    // not.
     reached.mockReturnValue(true)
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
     getSignatureStatuses.mockResolvedValue({ value: null })
 
-    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: {
+        bundleId: 'bundle-1',
+        txSignatures: TX_SIGNATURES,
+        signatureResults: [null, null],
+      },
+    })
   })
 
   it('confirms in the final probe after the deadline is reached', async () => {
@@ -189,5 +230,29 @@ describe('confirmBundle', () => {
     await expect(run(controller.signal)).rejects.toThrow(/never observed here/i)
     // Exactly one read, so the throw cannot be the MAX_PROBE_ERRORS rule.
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws instead of returning not-confirmed when the endpoint answers once and then hangs', async () => {
+    // One good read, then a read that stays in flight until the branch is
+    // aborted. A flag that latches on the first answer would report
+    // `not-confirmed` on one second of actual observation; the branch must
+    // instead refuse the verdict, because it never observed the endpoint near
+    // the deadline and `not-confirmed` outranks every error in `raceRpcs`.
+    const controller = new AbortController()
+    reached.mockReturnValue(false)
+    getBundleStatuses
+      .mockResolvedValueOnce(noBundle())
+      .mockImplementationOnce(() => {
+        controller.abort()
+        return Promise.reject(new Error('request aborted'))
+      })
+
+    await expect(run(controller.signal)).rejects.toThrow(
+      /not observed near the deadline/i
+    )
+    // Two reads: the first answered, so the never-observed rule cannot be the
+    // thrower, and the second is one failure, so MAX_PROBE_ERRORS cannot be
+    // either.
+    expect(getBundleStatuses).toHaveBeenCalledTimes(2)
   })
 })

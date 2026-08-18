@@ -139,6 +139,20 @@ export async function confirmSignature(options: {
       )
     }
 
+    // The final probe only runs when the branch was not aborted, so exiting
+    // via `signal.aborted` means the final observation never happened — an
+    // in-flight read held the loop until the abort cut it off. An answer
+    // received early in the window must not stand in for one near the
+    // deadline: a branch that answered once and then went dark has no basis
+    // to call the transaction expired. (A branch aborted because another RPC
+    // already confirmed also throws here; `raceRpcs` drops a losing branch's
+    // error once its controller has aborted, so nothing is misreported.)
+    if (signal.aborted) {
+      throw new Error(
+        'This RPC stopped answering before a final signature status read could run; the transaction was not observed near the deadline.'
+      )
+    }
+
     return { kind: 'not-confirmed' }
   } finally {
     branch.abort()

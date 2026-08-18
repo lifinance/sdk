@@ -191,4 +191,29 @@ describe('confirmSignature', () => {
     expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
     expect(resend).toHaveBeenCalled()
   })
+
+  it('throws instead of returning not-confirmed when the endpoint answers once and then hangs', async () => {
+    // One good read, then a read that stays in flight until the branch is
+    // aborted. A flag that latches on the first answer would report
+    // `not-confirmed` on one second of actual observation; the branch must
+    // instead refuse the verdict, because it never observed the endpoint near
+    // the deadline and `not-confirmed` outranks every error in `raceRpcs`.
+    const controller = new AbortController()
+    reached.mockReturnValue(false)
+    getSignatureStatuses
+      .mockResolvedValueOnce(noStatus())
+      .mockImplementationOnce(() => {
+        controller.abort()
+        return Promise.reject(new Error('request aborted'))
+      })
+    const resend = vi.fn(() => Promise.resolve())
+
+    await expect(run(resend, controller.signal)).rejects.toThrow(
+      /not observed near the deadline/i
+    )
+    // Two reads: the first answered, so the never-observed rule cannot be the
+    // thrower, and the second is one failure, so MAX_PROBE_ERRORS cannot be
+    // either. The send succeeded, ruling out the send rule too.
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
+  })
 })
