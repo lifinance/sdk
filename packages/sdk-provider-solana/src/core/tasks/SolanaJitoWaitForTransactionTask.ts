@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   LiFiErrorCode,
+  RPCError,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -40,10 +41,29 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     // Use Jito bundle for transaction submission
-    const bundleResult = await sendAndConfirmBundle(client, signedTransactions)
+    const result = await sendAndConfirmBundle(client, signedTransactions)
+
+    if (result.kind === 'rpc-unavailable') {
+      throw new RPCError(
+        LiFiErrorCode.RpcUnavailable,
+        'Unable to confirm bundle: no Jito RPC returned a usable response.',
+        result.errors.length
+          ? new AggregateError(result.errors, 'All Jito RPCs failed')
+          : undefined
+      )
+    }
+
+    if (result.kind === 'not-confirmed') {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionExpired,
+        'Bundle has expired: it was not confirmed before its blockhash expired.'
+      )
+    }
+
+    const bundleResult = result.value
 
     const allConfirmed = bundleResult.signatureResults.every(
-      (result) => result !== null
+      (signatureResult) => signatureResult !== null
     )
 
     if (!allConfirmed) {
@@ -53,9 +73,8 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    // Check for errors in any of the transactions
     const failedResult = bundleResult.signatureResults.find(
-      (result) => result?.err
+      (signatureResult) => signatureResult?.err
     )
     if (failedResult?.err) {
       const cause = new SolanaTransactionDetailsError(failedResult.err)
