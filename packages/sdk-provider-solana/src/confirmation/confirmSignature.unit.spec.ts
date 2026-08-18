@@ -38,7 +38,9 @@ const status = (confirmationStatus: string) => ({
 })
 const noStatus = () => ({ value: [null] })
 
-const run = (resend = vi.fn(() => Promise.resolve())) =>
+type Resend = (rpc: SolanaRpcType, signal: AbortSignal) => Promise<void>
+
+const run = (resend: Resend = vi.fn(() => Promise.resolve())) =>
   confirmSignature({
     rpc,
     signal: new AbortController().signal,
@@ -60,12 +62,17 @@ describe('confirmSignature', () => {
       .mockResolvedValueOnce(noStatus())
       .mockResolvedValueOnce(noStatus())
       .mockResolvedValueOnce(status('confirmed'))
+    const resend = vi.fn<Resend>(() => Promise.resolve())
 
-    await expect(run()).resolves.toEqual({
+    await expect(run(resend)).resolves.toEqual({
       kind: 'confirmed',
       value: { confirmationStatus: 'confirmed', err: null },
     })
     expect(getSignatureStatuses).toHaveBeenCalledTimes(3)
+    // The detached resend loop kept sending after the awaited first send, and
+    // it passes its own branch signal rather than the caller's.
+    expect(resend.mock.calls.length).toBeGreaterThan(1)
+    expect(resend.mock.calls[1][1]).not.toBe(resend.mock.calls[0][1])
   })
 
   it('treats "finalized" as confirmed', async () => {
@@ -85,6 +92,10 @@ describe('confirmSignature', () => {
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
+    // The discriminating assertion: a 'processed' status must NOT confirm, so
+    // the second poll is what confirms. One call would mean 'processed' was
+    // accepted.
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
   })
 
   it('confirms in the final probe after the deadline is reached', async () => {

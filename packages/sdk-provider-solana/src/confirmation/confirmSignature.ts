@@ -32,8 +32,9 @@ export async function confirmSignature(options: {
   const { rpc, signal, signature, lifetimes, resend } = options
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
 
-  // Ends the resend loop when this branch finishes, without giving that loop
-  // any way to write state the polling loop reads.
+  // Ends the resend loop when this branch finishes. That loop can never change
+  // *when* polling stops: the poll loop's exit depends on the deadline and the
+  // caller's signal alone.
   const branch = new AbortController()
   const abortBranch = (): void => branch.abort()
   signal.addEventListener('abort', abortBranch, { once: true })
