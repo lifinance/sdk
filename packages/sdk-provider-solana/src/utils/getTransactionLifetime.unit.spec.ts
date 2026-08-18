@@ -1,5 +1,5 @@
 import { getTransactionCodec, type Transaction } from '@solana/kit'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { base64ToUint8Array } from './base64ToUint8Array.js'
 import { getTransactionLifetime } from './getTransactionLifetime.js'
 import {
@@ -9,10 +9,6 @@ import {
 } from './getTransactionLifetime.unit.mock.js'
 
 describe('getTransactionLifetime', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('returns the blockhash of a real v0 swap transaction with lookup tables', async () => {
     // Decoded exactly the way SolanaSignAndExecuteTask does it.
     const transaction = getTransactionCodec().decode(

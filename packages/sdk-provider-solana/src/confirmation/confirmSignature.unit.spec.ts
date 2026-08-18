@@ -127,6 +127,22 @@ describe('confirmSignature', () => {
     expect(result.kind).toBe('confirmed')
   })
 
+  it('resets the probe-failure streak after a successful poll', async () => {
+    // MAX_PROBE_ERRORS failures, none of them consecutive. Only a streak that
+    // resets on every success stays below the throw threshold.
+    for (let i = 0; i < MAX_PROBE_ERRORS; i += 1) {
+      getSignatureStatuses
+        .mockRejectedValueOnce(new Error('502'))
+        .mockResolvedValueOnce(noStatus())
+    }
+    getSignatureStatuses.mockResolvedValueOnce(status('confirmed'))
+
+    const result = await run()
+
+    expect(result.kind).toBe('confirmed')
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS * 2 + 1)
+  })
+
   it('throws after MAX_PROBE_ERRORS consecutive probe failures', async () => {
     getSignatureStatuses.mockRejectedValue(new Error('method not found'))
 

@@ -14,7 +14,8 @@ type GetBundleStatusesResponse = {
   context: {
     slot: number
   }
-  value: BundleStatus[]
+  /** Jito answers with `null` for a bundle id it does not know. */
+  value: (BundleStatus | null)[]
 }
 
 export type GetBundleStatusesApi = {

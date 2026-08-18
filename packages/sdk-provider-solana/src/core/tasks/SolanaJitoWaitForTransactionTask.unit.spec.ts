@@ -26,7 +26,6 @@ const baseContext = () =>
 
 describe('SolanaJitoWaitForTransactionTask', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     sendAndConfirmBundle.mockReset()
   })
 
