@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.0.10
+
+### Patch Changes
+
+- [#446](https://github.com/lifinance/sdk/pull/446) [`633eede`](https://github.com/lifinance/sdk/commit/633eededca5450ab1cdc89a871cc5f2d6038588b) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.55.17 (ethereum), @solana/kit to 7.1.0 (solana), and @mysten/sui to 2.26.1 (sui).
+
 ## 4.0.9
 
 ### Patch Changes
