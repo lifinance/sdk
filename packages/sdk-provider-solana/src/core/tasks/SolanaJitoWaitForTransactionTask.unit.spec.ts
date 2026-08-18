@@ -1,4 +1,5 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
+import { getSignatureFromTransaction, type Transaction } from '@solana/kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
@@ -13,7 +14,15 @@ const { SolanaJitoWaitForTransactionTask } = await import(
 
 const updateAction = vi.fn()
 
-const baseContext = () =>
+// A decoded signed transaction, filled by position so the two fixtures carry
+// distinct signatures. `getSignatureFromTransaction` reads nothing but the
+// first entry of `signatures`.
+const signedTransactionAt = (index: number): Transaction =>
+  ({
+    signatures: { feePayer: new Uint8Array(64).fill(index + 1) },
+  }) as unknown as Transaction
+
+const baseContext = (signedTransactions: unknown[] = [{}, {}]) =>
   ({
     client: {},
     step: {},
@@ -23,7 +32,7 @@ const baseContext = () =>
     },
     fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
     isBridgeExecution: false,
-    signedTransactions: [{}, {}],
+    signedTransactions,
   }) as never
 
 describe('SolanaJitoWaitForTransactionTask', () => {
@@ -92,6 +101,48 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(updateAction).toHaveBeenCalledWith({}, 'SWAP', 'PENDING', {
       txHash: 'sig0',
       txLink: 'https://explorer/tx/sig0',
+    })
+  })
+
+  it('reports the same signature the sign task recorded before the wait', async () => {
+    // One swap has two independent writers of `txHash`.
+    // `SolanaSignAndExecuteTask` records
+    // `getSignatureFromTransaction(signedTransactions[0])` the moment the
+    // wallet signs; this task later reports `bundleStatus.transactions[0]`,
+    // the RPC's own report. They agree only while Jito returns `transactions`
+    // in submission order, which is what this mock reproduces. The expected
+    // value is derived from the signed transaction rather than read back out
+    // of the mock, so a task that picked a different index - or a different
+    // source - would fail here instead of showing an integrator two hashes
+    // for one swap.
+    const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
+    const txSignatures = signedTransactions.map((signedTransaction) =>
+      getSignatureFromTransaction(signedTransaction)
+    )
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [{ err: null }, { err: null }],
+        txSignatures,
+        bundleId: 'bundle-id',
+      },
+    })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+
+    await expect(task.run(baseContext(signedTransactions))).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+
+    const recordedBeforeTheWait = getSignatureFromTransaction(
+      signedTransactions[0]
+    )
+    expect(recordedBeforeTheWait).not.toBe(
+      getSignatureFromTransaction(signedTransactions[1])
+    )
+    expect(updateAction).toHaveBeenCalledWith({}, 'SWAP', 'PENDING', {
+      txHash: recordedBeforeTheWait,
+      txLink: `https://explorer/tx/${recordedBeforeTheWait}`,
     })
   })
 
