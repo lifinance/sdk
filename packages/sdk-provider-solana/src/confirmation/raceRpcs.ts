@@ -146,11 +146,14 @@ export async function raceRpcs<Rpc, T>(
       settled.then(classify),
     ])
 
-    // Cancels every branch still in flight. It has to run before `dispose`,
-    // which detaches the listener that carries this abort to the branches.
-    controller.abort()
     return result
   } finally {
+    // Cancels every branch still in flight, on every path out of the race -
+    // a rejection included, which would otherwise leave the branches running
+    // to their own deadlines with nothing left to cancel them. It has to run
+    // before `dispose`, which detaches the listener that carries this abort
+    // to the branches.
+    controller.abort()
     branch.dispose()
   }
 }
