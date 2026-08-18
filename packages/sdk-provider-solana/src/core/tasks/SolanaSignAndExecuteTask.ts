@@ -95,10 +95,19 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // A Solana signature is fixed the moment the wallet signs, long before
     // anything reaches an RPC. Record it here rather than after the wait, so a
     // confirmation that fails - an unreachable RPC above all - still leaves the
-    // caller the signature of a transaction that may well have landed. An
-    // action carrying no `txHash` is indistinguishable from a step that never
-    // produced a transaction: `prepareRestart` discards it, and nobody - user
-    // or integrator - can check the chain before signing a replacement.
+    // caller the signature of a transaction that may well have landed. The
+    // write reaches the live route object and any `updateRouteHook` the
+    // integrator passed, and nothing later removes it - marking the action
+    // `FAILED` only adds an `error`. So at the moment the wait gives up, a
+    // user or an integrator can look the transaction up on chain before
+    // signing a replacement.
+    //
+    // A restart is a separate matter, and not a reason this write exists: a
+    // resumed route runs `prepareRestart`, which keeps only actions whose
+    // status is not `FAILED`, and `BaseStepExecutor` marks the failing action
+    // `FAILED` on every non-retry error. The actions array is therefore
+    // emptied, `txHash` included. Carrying the signature across a retry needs
+    // a change in `@lifi/sdk`.
     //
     // `signedTransactions[0]` is the transaction both wait tasks report:
     // the standard path derives its signature from this very object, and the
