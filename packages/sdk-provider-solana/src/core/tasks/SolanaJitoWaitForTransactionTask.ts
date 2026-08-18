@@ -62,17 +62,17 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
 
     const bundleResult = result.value
 
-    const allConfirmed = bundleResult.signatureResults.every(
-      (signatureResult) => signatureResult !== null
-    )
-
-    if (!allConfirmed) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionFailed,
-        'Bundle confirmation failed: Not all transactions were confirmed.'
-      )
-    }
-
+    // A Jito bundle is atomic: it executes in a single slot, all of it or none
+    // of it. Reaching this point means `getBundleStatuses` reported the bundle
+    // `confirmed` or `finalized`, so every transaction in it landed. A `null`
+    // entry in `signatureResults` therefore says only that this RPC has not
+    // indexed that signature yet - it is never evidence of a failed
+    // transaction, because a bundle holding a failed transaction would not have
+    // landed at all. Treating a `null` as a failure reported a completed swap
+    // as `TransactionFailed`.
+    //
+    // A reported `err` is the one real failure signal, and it is still scanned
+    // below as defence in depth.
     const failedResult = bundleResult.signatureResults.find(
       (signatureResult) => signatureResult?.err
     )

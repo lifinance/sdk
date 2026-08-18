@@ -11,13 +11,15 @@ const { SolanaJitoWaitForTransactionTask } = await import(
   './SolanaJitoWaitForTransactionTask.js'
 )
 
+const updateAction = vi.fn()
+
 const baseContext = () =>
   ({
     client: {},
     step: {},
     statusManager: {
       findAction: () => ({ type: 'SWAP' }),
-      updateAction: () => {},
+      updateAction,
     },
     fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
     isBridgeExecution: false,
@@ -27,6 +29,7 @@ const baseContext = () =>
 describe('SolanaJitoWaitForTransactionTask', () => {
   beforeEach(() => {
     sendAndConfirmBundle.mockReset()
+    updateAction.mockReset()
   })
 
   it('surfaces bundle err through cause when a bundled tx fails', async () => {
@@ -71,7 +74,7 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(thrown.cause.err).toBe(err)
   })
 
-  it('throws TransactionFailed when a signature result is missing', async () => {
+  it('completes when a signature is not indexed yet: a landed bundle is atomic, so a null result is not a failure', async () => {
     sendAndConfirmBundle.mockResolvedValue({
       kind: 'confirmed',
       value: {
@@ -82,10 +85,31 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     })
 
     const task = new SolanaJitoWaitForTransactionTask()
-    const thrown = await task.run(baseContext()).catch((e) => e)
 
-    expect(thrown).toBeInstanceOf(TransactionError)
-    expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+    expect(updateAction).toHaveBeenCalledWith({}, 'SWAP', 'PENDING', {
+      txHash: 'sig0',
+      txLink: 'https://explorer/tx/sig0',
+    })
+  })
+
+  it('completes when no signature is indexed yet', async () => {
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [null, null],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+      },
+    })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
   })
 
   it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {

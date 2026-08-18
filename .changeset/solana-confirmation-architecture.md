@@ -21,6 +21,12 @@ throws `TransactionError` with `LiFiErrorCode.TransactionExpired`, and an
 unreachable Jito RPC throws `RPCError` with `LiFiErrorCode.RpcUnavailable`.
 Both previously surfaced as a bare `Error`.
 
+A confirmed Jito bundle no longer fails when an RPC has not indexed one of its
+signatures yet. A bundle is atomic, so a `confirmed` or `finalized` bundle
+status means every transaction in it landed; a `null` entry from
+`getSignatureStatuses` is an indexing lag, not a failed transaction. Such a swap
+previously reported `LiFiErrorCode.TransactionFailed` despite having landed.
+
 The transaction signature is now recorded on the action as `txHash` (with
 `txLink`) as soon as the wallet signs, instead of only after the confirmation
 succeeds. A swap whose confirmation fails therefore reports the signature of the
