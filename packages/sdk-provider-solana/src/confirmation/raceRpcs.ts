@@ -9,6 +9,56 @@ const toError = (reason: unknown): Error =>
   reason instanceof Error ? reason : new Error(String(reason))
 
 /**
+ * Returns a signal that aborts when `signal` aborts or when `timeoutMs`
+ * elapses, whichever happens first.
+ *
+ * Deliberately not `AbortSignal.any([signal, AbortSignal.timeout(ms)])`. Both
+ * of those are Baseline March 2024 (Node >= 20.3, Safari 17.4), this package
+ * declares no `engines` and no browserslist, and the newest API it used before
+ * was `structuredClone` (2022). A published SDK must not raise its runtime
+ * floor for a convenience that one controller and one timer already cover.
+ *
+ * The caller's own signal is never aborted here, so "the caller aborted" and
+ * "the timeout fired" stay two distinguishable facts. `raceRpcs` depends on
+ * that difference to tell a cancelled branch from a dead endpoint.
+ *
+ * `dispose` must run once the race settles: it clears the timer and detaches
+ * the listener, so nothing is left behind on any path — including the
+ * confirmation path, which settles long before the timeout would fire.
+ */
+function abortAfter(
+  signal: AbortSignal,
+  timeoutMs: number
+): { signal: AbortSignal; dispose: () => void } {
+  const linked = new AbortController()
+  const forward = (): void => linked.abort(signal.reason)
+
+  const timer = setTimeout(() => {
+    linked.abort(new Error(`This RPC did not answer within ${timeoutMs}ms.`))
+  }, timeoutMs)
+  // Node keeps the event loop alive for a pending timer, which is what
+  // `AbortSignal.timeout` avoided by unref'ing its own. `dispose` is what
+  // really clears this one; the unref only covers a path that skips it. A
+  // browser returns a number, which has no `unref`.
+  const handle = timer as unknown as { unref?: () => void }
+  handle.unref?.()
+
+  if (signal.aborted) {
+    forward()
+  } else {
+    signal.addEventListener('abort', forward, { once: true })
+  }
+
+  return {
+    signal: linked.signal,
+    dispose: (): void => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', forward)
+    },
+  }
+}
+
+/**
  * Runs `run` against every RPC in parallel and reports the first confirmation.
  *
  * `Promise.any` is deliberately not used: it turns "polled and saw nothing"
@@ -35,10 +85,9 @@ export async function raceRpcs<Rpc, T>(
   // Two distinct sources, kept distinct on purpose: `controller` means "another
   // branch already confirmed, this one is redundant", while the timeout means
   // "this endpoint never answered". `classify` must not read them as the same
-  // thing. `AbortSignal.timeout` uses an unref'd timer, so it never keeps a
-  // process alive past the race.
-  const timeout = AbortSignal.timeout(options.timeoutMs)
-  const branchSignal = AbortSignal.any([controller.signal, timeout])
+  // thing, so the timeout aborts the linked signal only and leaves `controller`
+  // untouched.
+  const branch = abortAfter(controller.signal, options.timeoutMs)
 
   let resolveConfirmed: ((value: T) => void) | undefined
   const firstConfirmation = new Promise<T>((resolve) => {
@@ -47,7 +96,7 @@ export async function raceRpcs<Rpc, T>(
 
   const settled = Promise.allSettled(
     rpcs.map(async (rpc) => {
-      const outcome = await run(rpc, branchSignal)
+      const outcome = await run(rpc, branch.signal)
       if (outcome.kind === 'confirmed') {
         resolveConfirmed?.(outcome.value)
         controller.abort()
@@ -88,13 +137,19 @@ export async function raceRpcs<Rpc, T>(
     return { kind: 'rpc-unavailable', errors }
   }
 
-  const result = await Promise.race([
-    firstConfirmation.then(
-      (value): RaceResult<T> => ({ kind: 'confirmed', value })
-    ),
-    settled.then(classify),
-  ])
+  try {
+    const result = await Promise.race([
+      firstConfirmation.then(
+        (value): RaceResult<T> => ({ kind: 'confirmed', value })
+      ),
+      settled.then(classify),
+    ])
 
-  controller.abort()
-  return result
+    // Cancels every branch still in flight. It has to run before `dispose`,
+    // which detaches the listener that carries this abort to the branches.
+    controller.abort()
+    return result
+  } finally {
+    branch.dispose()
+  }
 }

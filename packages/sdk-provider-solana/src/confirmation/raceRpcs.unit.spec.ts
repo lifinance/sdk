@@ -1,5 +1,5 @@
 import { sleep } from '@lifi/sdk'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { raceRpcs } from './raceRpcs.js'
 import type { ConfirmationOutcome } from './types.js'
 
@@ -149,6 +149,26 @@ describe('raceRpcs', () => {
     expect(result.errors.map((error) => error.message)).toEqual([
       'request aborted',
     ])
+  })
+
+  it('leaves no timer armed once a branch confirms', async () => {
+    vi.useFakeTimers()
+    try {
+      const result = await raceRpcs(
+        ['only'],
+        async () => confirmed('status'),
+        timeout
+      )
+
+      expect(result).toEqual({ kind: 'confirmed', value: 'status' })
+      // The branch timeout is the only timer this module arms. The
+      // confirmation path settles long before it fires, so nothing may be
+      // left holding the event loop open — the property
+      // `AbortSignal.timeout` used to provide for free.
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('reports a confirmation without waiting for a branch that never settles', async () => {
