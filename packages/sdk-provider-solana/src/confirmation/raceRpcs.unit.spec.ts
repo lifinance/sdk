@@ -83,4 +83,15 @@ describe('raceRpcs', () => {
     expect(result.errors[0]).toBeInstanceOf(Error)
     expect(result.errors[0].message).toBe('plain string')
   })
+
+  it('waits for a slow confirmation instead of reporting the fast not-confirmed', async () => {
+    const result = await raceRpcs(['fast', 'slow'], async (rpc) => {
+      if (rpc === 'fast') {
+        return notConfirmed<string>()
+      }
+      await sleep(20)
+      return confirmed('status')
+    })
+    expect(result).toEqual({ kind: 'confirmed', value: 'status' })
+  })
 })

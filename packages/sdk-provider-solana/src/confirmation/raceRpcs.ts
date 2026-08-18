@@ -49,7 +49,9 @@ export async function raceRpcs<Rpc, T>(
 
     for (const entry of results) {
       if (entry.status === 'fulfilled') {
-        // A confirmation can land in the same tick the batch settles.
+        // Unreachable safeguard: `resolveConfirmed` runs before the branch
+        // promise settles, so `firstConfirmation` always wins the race
+        // today. This keeps `classify` correct if that structure changes.
         if (entry.value.kind === 'confirmed') {
           return { kind: 'confirmed', value: entry.value.value }
         }
