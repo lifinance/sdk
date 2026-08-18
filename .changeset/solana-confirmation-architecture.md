@@ -20,3 +20,8 @@ The Jito bundle path changes the same way: a bundle that never confirms now
 throws `TransactionError` with `LiFiErrorCode.TransactionExpired`, and an
 unreachable Jito RPC throws `RPCError` with `LiFiErrorCode.RpcUnavailable`.
 Both previously surfaced as a bare `Error`.
+
+The transaction signature is now recorded on the action as `txHash` (with
+`txLink`) as soon as the wallet signs, instead of only after the confirmation
+succeeds. A swap whose confirmation fails therefore reports the signature of the
+transaction that may have landed, rather than nothing at all.

@@ -6,7 +6,7 @@ import {
   TransactionError,
   withTimeout,
 } from '@lifi/sdk'
-import { getTransactionCodec } from '@solana/kit'
+import { getSignatureFromTransaction, getTransactionCodec } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
@@ -20,6 +20,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       walletAccount,
       statusManager,
       executionOptions,
+      fromChain,
       isBridgeExecution,
     } = context
 
@@ -84,16 +85,31 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
-    statusManager.updateAction(step, action.type, 'PENDING', {
-      signedAt: Date.now(),
-    })
-
     const transactionCodec = getTransactionCodec()
 
     // Decode all signed transactions
     const signedTransactions = signedTransactionOutputs.map((output) =>
       transactionCodec.decode(output.signedTransaction)
     )
+
+    // A Solana signature is fixed the moment the wallet signs, long before
+    // anything reaches an RPC. Record it here rather than after the wait, so a
+    // confirmation that fails - an unreachable RPC above all - still leaves the
+    // caller the signature of a transaction that may well have landed. An
+    // action carrying no `txHash` is indistinguishable from a step that never
+    // produced a transaction: `prepareRestart` discards it, and nobody - user
+    // or integrator - can check the chain before signing a replacement.
+    //
+    // `signedTransactions[0]` is the transaction both wait tasks report:
+    // the standard path derives its signature from this very object, and the
+    // Jito path reports the first signature of the bundle submitted from it.
+    const txSignature = getSignatureFromTransaction(signedTransactions[0])
+
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      signedAt: Date.now(),
+      txHash: txSignature,
+      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`,
+    })
 
     return {
       status: 'COMPLETED',
