@@ -112,6 +112,15 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // `signedTransactions[0]` is the transaction both wait tasks report:
     // the standard path derives its signature from this very object, and the
     // Jito path reports the first signature of the bundle submitted from it.
+    //
+    // The standard path cannot disagree with this write - it calls the same
+    // pure function on the same object. The Jito path can: it reports what
+    // `getBundleStatuses` returned, so the two agree only while Jito lists a
+    // bundle's `transactions` in submission order. That is an assumption
+    // about the RPC, not a property of this code, and no mock can test it.
+    // What is tested is that the two writers pick the same index and the same
+    // source - see `reports the same signature the sign task recorded before
+    // the wait` in `SolanaJitoWaitForTransactionTask.unit.spec.ts`.
     const txSignature = getSignatureFromTransaction(signedTransactions[0])
 
     statusManager.updateAction(step, action.type, 'PENDING', {
