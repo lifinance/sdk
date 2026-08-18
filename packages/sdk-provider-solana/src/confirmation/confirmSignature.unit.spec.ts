@@ -10,23 +10,33 @@ vi.mock('@lifi/sdk', async (importOriginal) => ({
 
 const reached = vi.fn<() => boolean>()
 const tick = vi.fn<() => Promise<void>>(() => Promise.resolve())
+/** Options every `createConfirmationDeadline` call received, in order. */
+const deadlineCalls: unknown[] = []
 
 vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./createConfirmationDeadline.js')>()),
-  createConfirmationDeadline: () => ({
-    reached: () => reached(),
-    tick: () => tick(),
-  }),
+  createConfirmationDeadline: (options: unknown) => {
+    deadlineCalls.push(options)
+    return {
+      reached: () => reached(),
+      tick: () => tick(),
+    }
+  },
 }))
 
 const { confirmSignature } = await import('./confirmSignature.js')
 const { MAX_PROBE_ERRORS } = await import('./createConfirmationDeadline.js')
 
 const getSignatureStatuses = vi.fn()
+/** Options every `getSignatureStatuses(...).send(...)` call received. */
+const statusSendOptions: unknown[] = []
 
 const rpc = {
   getSignatureStatuses: (...args: unknown[]) => ({
-    send: () => getSignatureStatuses(...args),
+    send: (options: unknown) => {
+      statusSendOptions.push(options)
+      return getSignatureStatuses(...args)
+    },
   }),
 } as unknown as SolanaRpcType
 
@@ -55,6 +65,8 @@ const run = (
 describe('confirmSignature', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    deadlineCalls.length = 0
+    statusSendOptions.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
   })
@@ -76,6 +88,38 @@ describe('confirmSignature', () => {
     // it passes its own branch signal rather than the caller's.
     expect(resend.mock.calls.length).toBeGreaterThan(1)
     expect(resend.mock.calls[1][1]).not.toBe(resend.mock.calls[0][1])
+  })
+
+  it('hands the caller signal to every status read', async () => {
+    // The abort signal is the only way `raceRpcs` and `BRANCH_TIMEOUT_MS` can
+    // end a read that hangs. A read sent without it never rejects, the race
+    // never settles, and the task hangs forever - so the *caller's* signal
+    // must reach the transport on every read, by identity, not a look-alike
+    // (the resend loop's branch signal is exactly such a look-alike).
+    const controller = new AbortController()
+    reached.mockReturnValueOnce(false)
+    getSignatureStatuses
+      .mockResolvedValueOnce(noStatus())
+      .mockResolvedValueOnce(status('confirmed'))
+
+    const result = await run(undefined, controller.signal)
+
+    expect(result.kind).toBe('confirmed')
+    expect(statusSendOptions).toHaveLength(2)
+    for (const options of statusSendOptions) {
+      expect(options).toEqual({ abortSignal: controller.signal })
+    }
+  })
+
+  it('builds the deadline from the caller lifetimes and rpc', async () => {
+    // The deadline factory owns the whole blockhash-expiry policy. Handing it
+    // an empty lifetime set silently disables that policy and degrades every
+    // confirmation to the 90 s ceiling, so the hand-off itself is pinned.
+    getSignatureStatuses.mockResolvedValue(status('confirmed'))
+
+    await run()
+
+    expect(deadlineCalls).toEqual([{ lifetimes: LIFETIMES, rpc }])
   })
 
   it('treats "finalized" as confirmed', async () => {

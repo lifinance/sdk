@@ -341,6 +341,26 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(true)
   })
 
+  it('hands the caller signal to every blockhash probe', async () => {
+    // The poll loop's signal is the only way a hung `isBlockhashValid` call
+    // ever ends. The probe must send the *caller's* signal, by identity - a
+    // probe sent without it outlives the branch that asked for it.
+    isBlockhashValid.mockResolvedValue(valid(true))
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A'), blockhash('B')],
+      rpc,
+      now,
+    })
+    const controller = new AbortController()
+
+    await deadline.tick(controller.signal)
+
+    expect(isBlockhashValid).toHaveBeenCalledTimes(2)
+    for (const call of isBlockhashValid.mock.calls) {
+      expect(call[2]).toEqual({ abortSignal: controller.signal })
+    }
+  })
+
   it('does not probe once the signal is aborted', async () => {
     isBlockhashValid.mockResolvedValue(valid(true))
     const deadline = createConfirmationDeadline({

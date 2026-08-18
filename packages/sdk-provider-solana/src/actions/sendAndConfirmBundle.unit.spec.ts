@@ -25,8 +25,15 @@ vi.mock('../confirmation/confirmBundle.js', () => ({
 const { sendAndConfirmBundle } = await import('./sendAndConfirmBundle.js')
 
 const sendBundle = vi.fn()
+/** Options every `sendBundle(...).send(...)` call received. */
+const sendBundleOptions: unknown[] = []
 const rpc = {
-  sendBundle: (...args: unknown[]) => ({ send: () => sendBundle(...args) }),
+  sendBundle: (...args: unknown[]) => ({
+    send: (options: unknown) => {
+      sendBundleOptions.push(options)
+      return sendBundle(...args)
+    },
+  }),
 }
 
 const TRANSACTIONS = [{}, {}] as Transaction[]
@@ -34,6 +41,7 @@ const TRANSACTIONS = [{}, {}] as Transaction[]
 describe('sendAndConfirmBundle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sendBundleOptions.length = 0
     getTransactionLifetime.mockResolvedValue({ kind: 'unknown' })
   })
 
@@ -84,6 +92,28 @@ describe('sendAndConfirmBundle', () => {
       'base64-encoded-tx',
       'base64-encoded-tx',
     ])
+  })
+
+  it('forwards the branch abort signal to the bundle submission', async () => {
+    // `BRANCH_TIMEOUT_MS` can only end a hung `sendBundle` through this
+    // signal. It must be the branch's own signal, by identity - the one
+    // `raceRpcs` hands to the branch and later aborts.
+    getJitoRpcs.mockResolvedValue([rpc])
+    sendBundle.mockResolvedValue('bundle-1')
+    confirmBundle.mockImplementation(
+      async (options: { send: () => Promise<string> }) => {
+        await options.send()
+        return { kind: 'not-confirmed' }
+      }
+    )
+
+    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+
+    const { signal } = confirmBundle.mock.calls[0][0] as {
+      signal: AbortSignal
+    }
+    expect(signal).toBeInstanceOf(AbortSignal)
+    expect(sendBundleOptions).toEqual([{ abortSignal: signal }])
   })
 
   it('passes the lifetime of every signed transaction, not just the first', async () => {

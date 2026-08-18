@@ -13,10 +13,14 @@ const tick = vi.fn<() => Promise<void>>(() => Promise.resolve())
 /** Records what happened in which order, for the deadline-before-send test. */
 const events: string[] = []
 
+/** Options every `createConfirmationDeadline` call received, in order. */
+const deadlineCalls: unknown[] = []
+
 vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./createConfirmationDeadline.js')>()),
-  createConfirmationDeadline: () => {
+  createConfirmationDeadline: (options: unknown) => {
     events.push('deadline')
+    deadlineCalls.push(options)
     return {
       reached: () => reached(),
       tick: () => tick(),
@@ -30,12 +34,23 @@ const { MAX_PROBE_ERRORS } = await import('./createConfirmationDeadline.js')
 const getBundleStatuses = vi.fn()
 const getSignatureStatuses = vi.fn()
 
+/** Options every `getBundleStatuses(...).send(...)` call received. */
+const bundleSendOptions: unknown[] = []
+/** Options every `getSignatureStatuses(...).send(...)` call received. */
+const signatureSendOptions: unknown[] = []
+
 const rpc = {
   getBundleStatuses: (...args: unknown[]) => ({
-    send: () => getBundleStatuses(...args),
+    send: (options: unknown) => {
+      bundleSendOptions.push(options)
+      return getBundleStatuses(...args)
+    },
   }),
   getSignatureStatuses: (...args: unknown[]) => ({
-    send: () => getSignatureStatuses(...args),
+    send: (options: unknown) => {
+      signatureSendOptions.push(options)
+      return getSignatureStatuses(...args)
+    },
   }),
 } as unknown as JitoRpcType
 
@@ -64,6 +79,9 @@ describe('confirmBundle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     events.length = 0
+    deadlineCalls.length = 0
+    bundleSendOptions.length = 0
+    signatureSendOptions.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
   })
@@ -89,6 +107,60 @@ describe('confirmBundle', () => {
     // Three polls means two completed iterations, so the deadline advanced
     // twice. A `continue` that skipped `deadline.tick` would make this zero.
     expect(tick).toHaveBeenCalledTimes(2)
+  })
+
+  it('hands the caller signal to the bundle and signature reads', async () => {
+    // The abort signal is the only way `raceRpcs` and `BRANCH_TIMEOUT_MS` can
+    // end a read that hangs. A read sent without it never rejects, the race
+    // never settles, and the task hangs forever - so the *caller's* signal
+    // must reach the transport on every read, by identity.
+    const controller = new AbortController()
+    reached.mockReturnValueOnce(false)
+    getBundleStatuses
+      .mockResolvedValueOnce(noBundle())
+      .mockResolvedValueOnce(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+
+    const result = await run(controller.signal)
+
+    expect(result.kind).toBe('confirmed')
+    expect(bundleSendOptions).toHaveLength(2)
+    for (const options of bundleSendOptions) {
+      expect(options).toEqual({ abortSignal: controller.signal })
+    }
+    expect(signatureSendOptions).toEqual([{ abortSignal: controller.signal }])
+  })
+
+  it('builds the deadline from the caller lifetimes and rpc', async () => {
+    // The deadline factory owns the whole blockhash-expiry policy. Handing it
+    // an empty lifetime set silently disables that policy and degrades every
+    // confirmation to the 90 s ceiling, so the hand-off itself is pinned.
+    reached.mockReturnValue(true)
+    getBundleStatuses.mockResolvedValue(noBundle())
+
+    await run()
+
+    expect(deadlineCalls).toEqual([{ lifetimes: LIFETIMES, rpc }])
+  })
+
+  it('enriches the confirmation with statuses for the transactions the bundle reported', async () => {
+    // The signature query must ask about the bundle's own transactions - a
+    // query for anything else silently strips the `err` details that the
+    // defence-in-depth scan in `SolanaJitoWaitForTransactionTask` relies on.
+    // The returned payload must also be the one surfaced: a usable response
+    // must not be replaced by the all-null degrade.
+    const err = { InstructionError: [0, 'AccountInUse'] }
+    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [{ err: null }, { err }] })
+
+    const result = await run()
+
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
+    expect(getSignatureStatuses).toHaveBeenCalledWith(TX_SIGNATURES)
+    if (result.kind !== 'confirmed') {
+      throw new Error('unreachable')
+    }
+    expect(result.value.signatureResults).toEqual([{ err: null }, { err }])
   })
 
   it('confirms with all-null signature results when the signature payload is unusable', async () => {

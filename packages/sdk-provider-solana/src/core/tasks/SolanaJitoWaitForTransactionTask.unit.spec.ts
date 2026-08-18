@@ -197,6 +197,49 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
   })
 
+  it('marks the CROSS_CHAIN action DONE for a bridge execution', async () => {
+    // A bridge step selects the CROSS_CHAIN action and must close it out:
+    // PENDING with the tx details, then DONE. Leaving it PENDING stalls the
+    // step in the integrator's UI even though the bundle landed.
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [{ err: null }, { err: null }],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+      },
+    })
+    const findAction = vi.fn(() => ({ type: 'CROSS_CHAIN' }))
+    const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
+    const context = {
+      client: {},
+      step: {},
+      statusManager: { findAction, updateAction },
+      fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
+      isBridgeExecution: true,
+      signedTransactions,
+    } as never
+
+    const task = new SolanaJitoWaitForTransactionTask()
+
+    await expect(task.run(context)).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(findAction).toHaveBeenCalledWith({}, 'CROSS_CHAIN')
+    const expectedSignature = getSignatureFromTransaction(signedTransactions[0])
+    expect(updateAction).toHaveBeenCalledTimes(2)
+    expect(updateAction).toHaveBeenNthCalledWith(
+      1,
+      {},
+      'CROSS_CHAIN',
+      'PENDING',
+      {
+        txHash: expectedSignature,
+        txLink: `https://explorer/tx/${expectedSignature}`,
+      }
+    )
+    expect(updateAction).toHaveBeenNthCalledWith(2, {}, 'CROSS_CHAIN', 'DONE')
+  })
+
   it('completes when every bundled transaction confirms', async () => {
     sendAndConfirmBundle.mockResolvedValue({
       kind: 'confirmed',

@@ -128,6 +128,10 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     const thrown = await task.run(baseContext()).catch((e) => e)
 
     expect(thrown).toBeInstanceOf(RPCError)
+    // Guards the whole family of RpcUnavailable assertions in this package:
+    // with a stale `packages/sdk/dist` the member is `undefined` on both
+    // sides and every `toBe(LiFiErrorCode.RpcUnavailable)` passes vacuously.
+    expect(LiFiErrorCode.RpcUnavailable).toBe(1027)
     expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
     expect(thrown.cause).toBeInstanceOf(AggregateError)
     expect(thrown.cause.errors).toEqual(errors)
@@ -154,6 +158,45 @@ describe('SolanaStandardWaitForTransactionTask', () => {
         txHash: 'sig',
         txLink: 'https://explorer/tx/sig',
       }
+    )
+  })
+
+  it('marks the CROSS_CHAIN action DONE for a bridge execution', async () => {
+    // A bridge step selects the CROSS_CHAIN action and must close it out:
+    // PENDING with the tx details, then DONE. Leaving it PENDING stalls the
+    // step in the integrator's UI even though the transaction confirmed.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'confirmed', value: { err: null } },
+      txSignature: 'sig',
+    })
+    const findAction = vi.fn(() => ({ type: 'CROSS_CHAIN' }))
+    const context = baseContext({
+      isBridgeExecution: true,
+      statusManager: { findAction, updateAction },
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+
+    await expect(task.run(context)).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(findAction).toHaveBeenCalledWith(expect.anything(), 'CROSS_CHAIN')
+    expect(updateAction).toHaveBeenCalledTimes(2)
+    expect(updateAction).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      'CROSS_CHAIN',
+      'PENDING',
+      {
+        txHash: 'sig',
+        txLink: 'https://explorer/tx/sig',
+      }
+    )
+    expect(updateAction).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      'CROSS_CHAIN',
+      'DONE'
     )
   })
 
