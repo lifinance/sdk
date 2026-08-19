@@ -1,0 +1,30 @@
+{
+  // Type-checks the files `tsconfig.json` excludes: `*.spec.ts`, `*.mock.ts`
+  // and `*.handlers.ts`. Vitest transpiles without type-checking, so without
+  // this config nothing in the repo ever type-checks a test file — which is how
+  // a wrong type assertion can sit in a green test asserting something other
+  // than what it claims.
+  //
+  // Everything else is inherited unchanged, so tests are held to the same
+  // `strict` / `isolatedDeclarations` / `noUnusedLocals` bar as `src`. Only
+  // three things are overridden: `exclude` (to stop dropping the test files),
+  // `tsBuildInfoFile` (the inherited path is the one `check:types` writes —
+  // sharing it would make the two runs invalidate each other's cache) and
+  // `types`.
+  //
+  // `types` is set here rather than in `tsconfig.json` because only the test
+  // files reach for node globals (`Buffer`) — `src` compiles clean without
+  // them, and widening the base config would change non-test compilation.
+  // `@types/node` resolves from the workspace root, so no devDependency is
+  // needed.
+  //
+  // Run with `--noEmit` (see the `check:types:specs` script): a composite
+  // project may not set `noEmit` in its config, only on the command line.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.spec.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["./src/**/*", "./src/**/*.json"],
+  "exclude": ["tests"]
+}

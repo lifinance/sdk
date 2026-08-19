@@ -1,6 +1,14 @@
+import type { TaskResult } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { StellarStepExecutorContext } from '../../types.js'
+import type { assertApprovalStillCovers as AssertApprovalStillCovers } from './helpers/assertApprovalStillCovers.js'
 
-const baseRun = vi.fn(async () => ({ status: 'COMPLETED' }))
+// Typed from the real signatures the stubs stand in for, so that
+// `toHaveBeenCalledWith` below is checked against the arguments those
+// functions actually take, and the mocked `TaskResult` against its real shape.
+const baseRun = vi.fn<
+  (context: StellarStepExecutorContext) => Promise<TaskResult>
+>(async () => ({ status: 'COMPLETED' }))
 
 // Stub the base class so this suite tests the override, not the shared task.
 // `PrepareTransactionTask.unit.spec.ts` in @lifi/sdk covers the base body — a
@@ -9,20 +17,25 @@ const baseRun = vi.fn(async () => ({ status: 'COMPLETED' }))
 vi.mock('@lifi/sdk', async () => {
   const actual = await vi.importActual<typeof import('@lifi/sdk')>('@lifi/sdk')
   class PrepareTransactionTask {
-    protected shouldRefetchTransaction(_context: unknown): boolean {
+    protected shouldRefetchTransaction(
+      _context: StellarStepExecutorContext
+    ): boolean {
       return false
     }
-    async run(context: unknown): Promise<unknown> {
-      return baseRun(context as never)
+    async run(context: StellarStepExecutorContext): Promise<TaskResult> {
+      return baseRun(context)
     }
   }
   return { ...actual, PrepareTransactionTask }
 })
 
-const assertApprovalStillCovers = vi.fn(async () => undefined)
+const assertApprovalStillCovers = vi.fn<typeof AssertApprovalStillCovers>(
+  async () => undefined
+)
 vi.mock('./helpers/assertApprovalStillCovers.js', () => ({
-  assertApprovalStillCovers: (...args: unknown[]) =>
-    assertApprovalStillCovers(...args),
+  assertApprovalStillCovers: (
+    ...args: Parameters<typeof AssertApprovalStillCovers>
+  ) => assertApprovalStillCovers(...args),
 }))
 
 const { StellarPrepareTransactionTask } = await import(

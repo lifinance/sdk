@@ -34,6 +34,21 @@ const contextWith = (actions: object[] = []) =>
     isBridgeExecution: false,
   }) as never
 
+/**
+ * Runs `call` and returns whatever it threw, or `undefined` when it returned
+ * normally. The explicit `undefined` keeps the caller's `toBeInstanceOf`
+ * assertion failing on a `checkWallet` that let the mismatch through, instead
+ * of relying on an implicit fall-through return.
+ */
+const thrownBy = (call: () => void): unknown => {
+  try {
+    call()
+  } catch (error) {
+    return error
+  }
+  return undefined
+}
+
 describe('StellarStepExecutor', () => {
   describe('createPipeline', () => {
     it('orders the allowance tasks BEFORE preparing the transaction', () => {
@@ -102,13 +117,9 @@ describe('StellarStepExecutor', () => {
       const executor = makeExecutor()
       const other = Keypair.random().publicKey()
 
-      const thrown = (() => {
-        try {
-          executor.checkWallet({ action: { fromAddress: other } } as never)
-        } catch (error) {
-          return error
-        }
-      })()
+      const thrown = thrownBy(() =>
+        executor.checkWallet({ action: { fromAddress: other } } as never)
+      )
 
       expect(thrown).toBeInstanceOf(TransactionError)
       expect((thrown as TransactionError).code).toBe(
@@ -130,15 +141,11 @@ describe('StellarStepExecutor', () => {
         routeId: 'route-1',
       })
 
-      const thrown = (() => {
-        try {
-          executor.checkWallet({
-            action: { fromAddress: keypair.publicKey() },
-          } as never)
-        } catch (error) {
-          return error
-        }
-      })()
+      const thrown = thrownBy(() =>
+        executor.checkWallet({
+          action: { fromAddress: keypair.publicKey() },
+        } as never)
+      )
 
       expect(thrown).toBeInstanceOf(TransactionError)
       expect((thrown as TransactionError).code).toBe(

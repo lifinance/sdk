@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project
-TypeScript monorepo (pnpm workspaces) with 6 packages under `packages/`. `@lifi/sdk`
+TypeScript monorepo (pnpm workspaces) with 7 packages under `packages/`. `@lifi/sdk`
 is the hub; each provider depends on it via `workspace:*` as a **regular** dependency
 (not peer), which resolves to the exact pinned version in published tarballs.
 
@@ -38,7 +38,7 @@ and the Linear anchor policy live in the **`release` skill**
 (`.claude/skills/release/SKILL.md`). Read it before touching the publish path.
 
 ### External pinned deps — bump MANUALLY (out of Changesets scope)
-- `@lifi/types` (17.x, in `@lifi/sdk` deps) and `@lifi/data-types` (devDep) are external
+- `@lifi/types` (18.x, in `@lifi/sdk` deps) and `@lifi/data-types` (devDep) are external
   pinned versions. Changesets does **not** track or bump them. When upgrading, edit the
   pins by hand and add a `fix:`/`feat:` changeset describing the bump.
 

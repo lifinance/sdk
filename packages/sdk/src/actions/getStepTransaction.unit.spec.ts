@@ -144,7 +144,19 @@ describe('getStepTransaction', () => {
     const getSolanaStep = (): LiFiStep =>
       getStep({ action: getAction({ fromChainId: ChainId.SOL }) })
 
-    const requestedUrl = (): string => mockedFetch.mock.calls[0][1]
+    // `request` accepts `RequestInfo | URL`; every call site here passes a
+    // string. Narrowing rather than coercing keeps the assertions below
+    // meaningful — `String(new Request(...))` is '[object Request]', which
+    // would quietly satisfy `not.toContain('svmPriorityFeeLevel')`.
+    const requestedUrl = (): string => {
+      const url = mockedFetch.mock.calls[0][1]
+      if (typeof url !== 'string') {
+        throw new TypeError(
+          `expected request() to receive a string URL, received ${typeof url}`
+        )
+      }
+      return url
+    }
 
     it.each([
       SVMPriorityFeeLevel.NORMAL,
