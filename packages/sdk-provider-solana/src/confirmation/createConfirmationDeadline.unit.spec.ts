@@ -329,6 +329,40 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(true)
   })
 
+  it('keeps probing a healthy blockhash after a sibling exhausts its error budget', async () => {
+    // The error budget and the probing switch used to be shared by the whole
+    // set, so one permanently broken sibling probe stopped probing for every
+    // blockhash after MAX_PROBE_ERRORS - killing the early exit for a
+    // blockhash whose own probes all succeeded.
+    let aValid = true
+    isBlockhashValid.mockImplementation((value: string) =>
+      value === 'A'
+        ? Promise.resolve(valid(aValid))
+        : Promise.reject(new Error('this endpoint never answered'))
+    )
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A'), blockhash('B')],
+      rpc,
+      now,
+    })
+
+    // 'B' spends its own budget and drops out. 'A' answers valid throughout,
+    // so nothing has expired yet.
+    for (let attempt = 0; attempt < MAX_PROBE_ERRORS + 1; attempt += 1) {
+      await probeTick(deadline)
+    }
+    expect(deadline.reached()).toBe(false)
+
+    // 'A' now dies. Its own probes still run, so the early exit still fires.
+    aValid = false
+    await probeTick(deadline)
+    await probeTick(deadline)
+    expect(deadline.reached()).toBe(false)
+
+    await probeTick(deadline)
+    expect(deadline.reached()).toBe(true)
+  })
+
   it('stops probing after MAX_PROBE_ERRORS and degrades to ceiling-only', async () => {
     isBlockhashValid.mockRejectedValue(new Error('method not supported'))
     const deadline = createConfirmationDeadline({

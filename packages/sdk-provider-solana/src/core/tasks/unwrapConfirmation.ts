@@ -16,11 +16,24 @@ export type ConfirmationMessages = {
   someRpcsFailed: string
 }
 
+/**
+ * Wraps the per-endpoint errors so they travel as the reported error's `cause`.
+ *
+ * `cause` is set to the first collected error on purpose. `BaseError`
+ * overwrites its own `stack` with `getRootCause(cause).stack`, and
+ * `getRootCause` walks `.cause` alone - an `AggregateError` has none, so
+ * without this the reported stack is wherever the `AggregateError` happened to
+ * be built, which is this file. Pointing it at a real endpoint failure makes
+ * the stack say where something actually went wrong. The full set stays on
+ * `AggregateError.errors`.
+ */
 const chainErrors = (
   errors: Error[],
   message: string
 ): AggregateError | undefined =>
-  errors.length ? new AggregateError(errors, message) : undefined
+  errors.length
+    ? new AggregateError(errors, message, { cause: errors[0] })
+    : undefined
 
 /**
  * Returns the confirmed value, or throws the error the integrator sees.

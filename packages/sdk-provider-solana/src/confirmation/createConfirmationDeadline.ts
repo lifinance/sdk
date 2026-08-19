@@ -51,13 +51,17 @@ export const EXPIRY_CONFIRMATIONS = 3
  */
 export const EXPIRY_PROBE_INTERVAL_MS = 7_000
 /**
- * Consecutive probe failures after which we stop probing entirely.
+ * Consecutive failures of one blockhash's own probe after which that
+ * blockhash stops being probed. The budget is per blockhash: a sibling whose
+ * endpoint never answers must not end the early exit for a blockhash whose
+ * own probes all succeed.
  *
  * This constant belongs to the blockhash prober alone — do not reuse it for
  * the status pollers. It counts failures at the probe cadence
  * (`EXPIRY_PROBE_INTERVAL_MS`, so five failures span ~28 s), and its
- * consequence is soft: probing stops and the deadline degrades to the
- * wall-clock ceiling, while status polling continues untouched. The status
+ * consequence is soft: that blockhash stops being probed and the deadline
+ * degrades toward the wall-clock ceiling, while status polling continues
+ * untouched. The status
  * pollers count failures at a far faster cadence and their consequence is a
  * throw; they have their own budget, `MAX_STATUS_READ_FAILURES` in
  * `pollUntilDeadline.ts`.
@@ -116,8 +120,12 @@ export function createConfirmationDeadline(options: {
 
   // Keyed by blockhash: expiry is a property of a blockhash, not of the set.
   const expiredStreaks = new Map<Blockhash, number>()
-  let errorStreak = 0
-  let probing = blockhashes.length > 0
+  // Keyed for the same reason: a sibling's broken probe is not evidence about
+  // this blockhash, so it must not spend this blockhash's error budget.
+  const errorStreaks = new Map<Blockhash, number>()
+  // The blockhashes still worth asking about. One leaves this set after
+  // MAX_PROBE_ERRORS failures of its own; the others keep being probed.
+  const probeable = new Set<Blockhash>(blockhashes)
   let lastProbeAt: number | undefined
 
   /**
@@ -144,7 +152,7 @@ export function createConfirmationDeadline(options: {
       return isExpired()
     },
     async tick(signal: AbortSignal): Promise<void> {
-      if (!probing || signal.aborted) {
+      if (probeable.size === 0 || signal.aborted) {
         return
       }
       // The cadence is wall-clock, not iteration count, and it uses the
@@ -159,13 +167,15 @@ export function createConfirmationDeadline(options: {
       lastProbeAt = probeAt
       // `allSettled`, not `all`: a round probes one blockhash per lifetime,
       // and `all` rejects on the first failure - discarding the answers the
-      // other probes already produced and, with the blanket reset that
-      // followed, every streak they had built. A bundle carrying several
-      // blockhashes could then never reach a verdict on any of them, which
-      // disabled the early exit exactly where it was needed most. A failed
-      // read is now evidence about one blockhash's probe and nothing else.
+      // other probes already produced. Every piece of state this round writes
+      // is keyed by blockhash, so a failing probe can neither reset another
+      // blockhash's expiry streak nor spend another blockhash's error budget.
+      // While they were shared, a single permanently broken probe disabled the
+      // early exit for the whole set - exactly where several lifetimes race
+      // expiry and the early exit matters most.
+      const active = [...probeable]
       const probes = await Promise.allSettled(
-        blockhashes.map(async (blockhash) => {
+        active.map(async (blockhash) => {
           const result = await rpc
             .isBlockhashValid(blockhash, { commitment: 'confirmed' })
             .send({ abortSignal: signal })
@@ -173,35 +183,29 @@ export function createConfirmationDeadline(options: {
         })
       )
 
-      let anyFailed = false
-      // Each blockhash keeps its own streak, so failures alternating between
-      // two blockhashes never add up to an expiry neither of them reached.
       probes.forEach((probe, index) => {
-        const blockhash = blockhashes[index]
+        const blockhash = active[index]
+
         if (probe.status === 'rejected') {
-          anyFailed = true
           // A failed read says nothing about this blockhash, so it must not
-          // be allowed to stand in for the `false` that would have continued
-          // a streak. Only this blockhash's streak resets.
+          // stand in for the `false` that would have continued a streak.
           expiredStreaks.set(blockhash, 0)
+          const errors = (errorStreaks.get(blockhash) ?? 0) + 1
+          errorStreaks.set(blockhash, errors)
+          if (errors >= MAX_PROBE_ERRORS) {
+            // This blockhash degrades to ceiling-only. A probe failure must
+            // never be read as expiry, and it must never spin forever either.
+            probeable.delete(blockhash)
+          }
           return
         }
+
+        errorStreaks.set(blockhash, 0)
         const streak = probe.value
           ? 0
           : (expiredStreaks.get(blockhash) ?? 0) + 1
         expiredStreaks.set(blockhash, streak)
       })
-
-      if (!anyFailed) {
-        errorStreak = 0
-        return
-      }
-      errorStreak += 1
-      if (errorStreak >= MAX_PROBE_ERRORS) {
-        // Degrade to ceiling-only. A probe failure must never be read as
-        // expiry, and it must never spin forever either.
-        probing = false
-      }
     },
   }
 }
