@@ -1,8 +1,25 @@
 ---
-'@lifi/sdk-provider-solana': patch
+'@lifi/sdk-provider-solana': minor
 ---
 
 Fix false `TransactionExpired` errors on Solana swaps that confirm on-chain.
+
+This is a minor release rather than a patch: no exported signature changes
+and nothing breaks at import time, but the error classification integrators
+branch on changes. The transitions, old → new (`LiFiErrorCode` values in
+parentheses — `SDKError.code` carries them):
+
+- Standard path, no configured RPC returned a usable response:
+  `TransactionError` with `TransactionExpired` (1018) → `RPCError` with
+  `RpcUnavailable` (1027).
+- Jito path, bundle never confirmed: `UnknownError` with `InternalError`
+  (1000) → `TransactionError` with `TransactionExpired` (1018).
+- Jito path, every configured Jito RPC failed: `UnknownError` with
+  `InternalError` (1000) → `RPCError` with `RpcUnavailable` (1027).
+- Jito path, no configured RPC supports Jito bundle methods: `UnknownError`
+  with `InternalError` (1000) → `RPCError` with `RpcUnavailable` (1027).
+- Jito path, confirmed bundle whose signatures an RPC had not indexed yet:
+  `TransactionError` with `TransactionFailed` (1003) → success.
 
 Confirmation previously stopped polling by comparing `getBlockHeight()` with a
 freshly fetched blockhash's `lastValidBlockHeight`. At least one endpoint in the
@@ -52,7 +69,11 @@ status means every transaction in it landed; a missing or `null`
 `getSignatureStatuses` result is an indexing lag, not a failed transaction. Such
 a swap previously threw `TransactionError` with `LiFiErrorCode.TransactionFailed`
 and the message `'Bundle confirmation failed: Not all transactions were
-confirmed.'` — that message no longer exists.
+confirmed.'` — that message no longer exists. The bundle-level `err` field of
+the confirming `getBundleStatuses` response is now read as well: an explicit
+`Err` payload there throws `TransactionError` with
+`LiFiErrorCode.TransactionFailed` even when the per-signature statuses are
+unavailable.
 
 The transaction signature is now recorded on the action as `txHash` as soon as
 the wallet signs, instead of only after the confirmation succeeds. A swap whose
@@ -61,3 +82,15 @@ have landed, rather than nothing at all. The explorer link (`txLink`) is
 written later, the moment the first RPC accepts the send: a link recorded at
 signing time would point at a transaction that a failed simulation — or the
 empty-Jito-RPC-list case, which never submits — leaves nonexistent on chain.
+
+For integrators:
+
+- Routes the backend builds as Jito bundles need a Jito-capable Solana RPC.
+  The default LI.FI set has none, so supply one via the `rpcUrls` client
+  config option; for `ChainId.SOL`, URLs supplied there replace the defaults
+  rather than merging with them. Without one, such a route now fails before
+  submission with `RpcUnavailable` (1027).
+- The confirmation wait is now hard-bounded: polling stops at the 90 second
+  ceiling and every RPC branch is aborted 5 seconds later, so a timeout
+  wrapped around step execution should allow at least ~95 seconds for the
+  confirmation phase.
