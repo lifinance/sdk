@@ -37,7 +37,18 @@ import {
 const BUNDLE_POLL_INTERVAL_MS = 2_000
 
 export type BundleConfirmation = {
+  /** The submission's own id, carried for diagnostics. */
   bundleId: string
+  /**
+   * The RPC's signature list, deliberately never read for a `txHash`: its
+   * order is Jito's to choose, and reading `txSignatures[0]` reported the
+   * wrong transaction's signature before this rework. Both wait tasks derive
+   * the signature from the signed transaction instead. Carried so that
+   * regression stays expressible - `SolanaJitoWaitForTransactionTask`'s
+   * `reports the signature of the first signed transaction, not the
+   * RPC-reported list` spec returns this list reversed, which is only a test
+   * if the field exists.
+   */
   txSignatures: Signature[]
   signatureResults: readonly (SignatureStatus | null)[]
   /**
@@ -102,7 +113,14 @@ export async function confirmBundle(options: {
       return null
     }
 
-    const txSignatures = bundleStatus.transactions
+    // Guarded for the same reason as the two payloads around it. Without
+    // this, a confirmed status carrying no `transactions` makes every `.map`
+    // below a `TypeError`, thrown out of the probe on every poll and charged
+    // to the read-failure budget - so a landed bundle would be reported as
+    // `rpc-unavailable`, the exact class of misreport this module exists to
+    // remove. An absent list confirms the bundle with no per-transaction
+    // detail; it never vetoes the atomic fact the status already established.
+    const txSignatures = bundleStatus.transactions ?? []
 
     // The bundle status above is the atomic fact: a bundle executes in a
     // single slot, all of it or none of it, so `confirmed`/`finalized` means
@@ -114,13 +132,19 @@ export async function confirmBundle(options: {
     // bundle status already made, because that would report a landed bundle
     // as expired.
     let signatureResults: BundleConfirmation['signatureResults']
-    try {
-      const sigResponse = await rpc
-        .getSignatureStatuses(txSignatures)
-        .send({ abortSignal: signal })
-      signatureResults = sigResponse?.value ?? txSignatures.map(() => null)
-    } catch (_) {
-      signatureResults = txSignatures.map(() => null)
+    if (txSignatures.length === 0) {
+      // No signatures to enrich with, and `getSignatureStatuses([])` is not
+      // worth asking. The bundle status already confirmed the bundle.
+      signatureResults = []
+    } else {
+      try {
+        const sigResponse = await rpc
+          .getSignatureStatuses(txSignatures)
+          .send({ abortSignal: signal })
+        signatureResults = sigResponse?.value ?? txSignatures.map(() => null)
+      } catch (_) {
+        signatureResults = txSignatures.map(() => null)
+      }
     }
 
     return {

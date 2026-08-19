@@ -301,6 +301,34 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(true)
   })
 
+  it('keeps a healthy blockhash streak when a sibling probe fails', async () => {
+    // The round used to be a `Promise.all` whose catch cleared every streak,
+    // so one failing probe threw away the answers the round had already
+    // produced for the other blockhashes. A bundle carrying several
+    // blockhashes could then never reach a verdict on any of them - the early
+    // exit was disabled exactly where several lifetimes race expiry.
+    isBlockhashValid.mockImplementation((value: string) =>
+      value === 'A'
+        ? Promise.resolve(valid(false))
+        : Promise.reject(new Error('this endpoint never answered'))
+    )
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A'), blockhash('B')],
+      rpc,
+      now,
+    })
+
+    await probeTick(deadline)
+    await probeTick(deadline)
+    expect(deadline.reached()).toBe(false)
+
+    // 'A' has now answered false three times. 'B' failing alongside it is not
+    // evidence about 'A', so it must not reset 'A' streak. Three rounds also
+    // stays under MAX_PROBE_ERRORS, so probing is still on.
+    await probeTick(deadline)
+    expect(deadline.reached()).toBe(true)
+  })
+
   it('stops probing after MAX_PROBE_ERRORS and degrades to ceiling-only', async () => {
     isBlockhashValid.mockRejectedValue(new Error('method not supported'))
     const deadline = createConfirmationDeadline({

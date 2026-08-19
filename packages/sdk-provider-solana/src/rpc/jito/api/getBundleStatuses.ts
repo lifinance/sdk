@@ -4,7 +4,13 @@ import type { JitoRegion } from '../types.js'
 
 type BundleStatus = {
   bundle_id: string
-  transactions: Signature[]
+  /**
+   * Optional because this is unvalidated wire data, not a guarantee. Jito
+   * documents the field, but nothing here parses the response, so a status
+   * that arrives without it must be a case the reader handles rather than a
+   * `TypeError` in the middle of a confirmation.
+   */
+  transactions?: Signature[]
   slot: number
   confirmation_status: 'processed' | 'confirmed' | 'finalized' | null
   err: unknown

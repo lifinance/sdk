@@ -119,14 +119,11 @@ describe('sendAndConfirmTransaction', () => {
     expect(onBroadcast).toHaveBeenCalledTimes(1)
   })
 
-  it('returns the raced result and the transaction signature', async () => {
+  it('returns the raced result', async () => {
     getSolanaRpcs.mockResolvedValue([createRpc()])
 
     await expect(
       sendAndConfirmTransaction({} as never, {} as never)
-    ).resolves.toEqual({
-      result: { kind: 'confirmed', value: { err: null } },
-      txSignature: 'tx-signature',
-    })
+    ).resolves.toEqual({ kind: 'confirmed', value: { err: null } })
   })
 })

@@ -20,6 +20,8 @@ parentheses — `SDKError.code` carries them):
   with `InternalError` (1000) → `RPCError` with `RpcUnavailable` (1027).
 - Jito path, confirmed bundle whose signatures an RPC had not indexed yet:
   `TransactionError` with `TransactionFailed` (1003) → success.
+- Jito path, confirmed bundle whose status carries no `transactions` list:
+  `UnknownError` with `InternalError` (1000) → success.
 
 Confirmation previously stopped polling by comparing `getBlockHeight()` with a
 freshly fetched blockhash's `lastValidBlockHeight`. At least one endpoint in the
@@ -61,10 +63,14 @@ comparison the code no longer makes. Its `LiFiErrorCode` is unchanged
 names the blockhash probe, because the wall-clock ceiling can end the wait
 without one. When other RPC branches died while the deciding branch polled to
 its deadline, their errors are chained as the expiry error's `cause` (an
-`AggregateError`), so an endpoint that never answered still leaves a trail.
+`AggregateError`). That trail is reachable from the error `executeRoute`
+throws, at `SDKError.cause.cause`; it does not reach `action.error`, which
+carries only `message` and `code`.
 
 A confirmed Jito bundle no longer fails when an RPC has not indexed its
-signatures yet. A bundle is atomic, so a `confirmed` or `finalized` bundle
+signatures yet, nor when the confirming status omits its `transactions` list
+altogether — that list is unvalidated wire data, and reading it unguarded made
+a landed bundle fail on a `TypeError`. A bundle is atomic, so a `confirmed` or `finalized` bundle
 status means every transaction in it landed; a missing or `null`
 `getSignatureStatuses` result is an indexing lag, not a failed transaction. Such
 a swap previously threw `TransactionError` with `LiFiErrorCode.TransactionFailed`

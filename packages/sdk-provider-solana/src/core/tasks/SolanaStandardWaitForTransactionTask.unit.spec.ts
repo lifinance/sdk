@@ -81,8 +81,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     const err = { InstructionError: [0, 'AccountInUse'] }
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'confirmed', value: { err } },
-      txSignature: 'sig',
+      kind: 'confirmed',
+      value: { err },
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
@@ -101,8 +101,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'not-confirmed', errors: [] },
-      txSignature: 'sig',
+      kind: 'not-confirmed',
+      errors: [],
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
@@ -126,8 +126,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     const errors = [new Error('this endpoint never answered')]
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'not-confirmed', errors },
-      txSignature: 'sig',
+      kind: 'not-confirmed',
+      errors,
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
@@ -151,10 +151,7 @@ describe('SolanaStandardWaitForTransactionTask', () => {
         options: { onBroadcast: () => void }
       ) => {
         options.onBroadcast()
-        return {
-          result: { kind: 'confirmed', value: { err: null } },
-          txSignature: 'sig',
-        }
+        return { kind: 'confirmed', value: { err: null } }
       }
     )
 
@@ -183,8 +180,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     const errors = [new Error('method not found'), new Error('429')]
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'rpc-unavailable', errors },
-      txSignature: 'sig',
+      kind: 'rpc-unavailable',
+      errors,
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
@@ -203,8 +200,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   it('completes and reports the signature when the transaction confirms', async () => {
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'confirmed', value: { err: null } },
-      txSignature: 'sig',
+      kind: 'confirmed',
+      value: { err: null },
     })
 
     const task = new SolanaStandardWaitForTransactionTask()
@@ -230,8 +227,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     // step in the integrator's UI even though the transaction confirmed.
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'confirmed', value: { err: null } },
-      txSignature: 'sig',
+      kind: 'confirmed',
+      value: { err: null },
     })
     const findAction = vi.fn(() => ({ type: 'CROSS_CHAIN' }))
     const context = baseContext({
@@ -275,8 +272,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
         fn({ simulateTransaction })
     )
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'confirmed', value: { err: null } },
-      txSignature: 'sig',
+      kind: 'confirmed',
+      value: { err: null },
     })
 
     const task = new SolanaStandardWaitForTransactionTask()

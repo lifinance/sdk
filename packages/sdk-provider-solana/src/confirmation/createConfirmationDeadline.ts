@@ -157,30 +157,50 @@ export function createConfirmationDeadline(options: {
         return
       }
       lastProbeAt = probeAt
-      try {
-        const probes = await Promise.all(
-          blockhashes.map(async (blockhash) => {
-            const result = await rpc
-              .isBlockhashValid(blockhash, { commitment: 'confirmed' })
-              .send({ abortSignal: signal })
-            return { blockhash, valid: result.value }
-          })
-        )
+      // `allSettled`, not `all`: a round probes one blockhash per lifetime,
+      // and `all` rejects on the first failure - discarding the answers the
+      // other probes already produced and, with the blanket reset that
+      // followed, every streak they had built. A bundle carrying several
+      // blockhashes could then never reach a verdict on any of them, which
+      // disabled the early exit exactly where it was needed most. A failed
+      // read is now evidence about one blockhash's probe and nothing else.
+      const probes = await Promise.allSettled(
+        blockhashes.map(async (blockhash) => {
+          const result = await rpc
+            .isBlockhashValid(blockhash, { commitment: 'confirmed' })
+            .send({ abortSignal: signal })
+          return result.value
+        })
+      )
+
+      let anyFailed = false
+      // Each blockhash keeps its own streak, so failures alternating between
+      // two blockhashes never add up to an expiry neither of them reached.
+      probes.forEach((probe, index) => {
+        const blockhash = blockhashes[index]
+        if (probe.status === 'rejected') {
+          anyFailed = true
+          // A failed read says nothing about this blockhash, so it must not
+          // be allowed to stand in for the `false` that would have continued
+          // a streak. Only this blockhash's streak resets.
+          expiredStreaks.set(blockhash, 0)
+          return
+        }
+        const streak = probe.value
+          ? 0
+          : (expiredStreaks.get(blockhash) ?? 0) + 1
+        expiredStreaks.set(blockhash, streak)
+      })
+
+      if (!anyFailed) {
         errorStreak = 0
-        // Each blockhash keeps its own streak, so failures alternating between
-        // two blockhashes never add up to an expiry neither of them reached.
-        for (const { blockhash, valid } of probes) {
-          const streak = valid ? 0 : (expiredStreaks.get(blockhash) ?? 0) + 1
-          expiredStreaks.set(blockhash, streak)
-        }
-      } catch (_) {
-        errorStreak += 1
-        expiredStreaks.clear()
-        if (errorStreak >= MAX_PROBE_ERRORS) {
-          // Degrade to ceiling-only. A probe failure must never be read as
-          // expiry, and it must never spin forever either.
-          probing = false
-        }
+        return
+      }
+      errorStreak += 1
+      if (errorStreak >= MAX_PROBE_ERRORS) {
+        // Degrade to ceiling-only. A probe failure must never be read as
+        // expiry, and it must never spin forever either.
+        probing = false
       }
     },
   }

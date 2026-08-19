@@ -239,6 +239,33 @@ describe('confirmBundle', () => {
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
+  it('confirms a status that carries no transactions list at all', async () => {
+    // `transactions` is unvalidated wire data. Before the guard, a confirmed
+    // status arriving without it made `txSignatures.map` a `TypeError` on the
+    // failing-read path - thrown out of the probe on every poll, charged to
+    // MAX_STATUS_READ_FAILURES, and ending as `rpc-unavailable` for a bundle
+    // that had already landed. That is the exact misreport this module exists
+    // to remove.
+    getBundleStatuses.mockResolvedValue({
+      value: [{ confirmation_status: 'confirmed' }],
+    })
+    getSignatureStatuses.mockRejectedValue(
+      new Error('invalid params: signatures must be an array')
+    )
+
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: {
+        bundleId: 'bundle-1',
+        txSignatures: [],
+        signatureResults: [],
+      },
+    })
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+    // Nothing to enrich, so the signature read is never attempted.
+    expect(getSignatureStatuses).not.toHaveBeenCalled()
+  })
+
   it('confirms in the final probe even when the signature payload is unusable', async () => {
     // The final probe and the loop body share `readBundle`, so the two must
     // agree: a confirmed bundle status confirms here too, `null` payload or

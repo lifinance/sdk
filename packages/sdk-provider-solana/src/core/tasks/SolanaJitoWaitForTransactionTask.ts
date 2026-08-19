@@ -1,7 +1,6 @@
 import {
   BaseStepExecutionTask,
   LiFiErrorCode,
-  RPCError,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
@@ -9,6 +8,7 @@ import { getSignatureFromTransaction } from '@solana/kit'
 import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import { unwrapConfirmation } from './unwrapConfirmation.js'
 
 /**
  * Extracts the failure payload from a bundle-level `err`, which Jito encodes
@@ -78,36 +78,17 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       },
     })
 
-    if (result.kind === 'rpc-unavailable') {
-      // Distinct from the empty-list throw above: RPCs were configured and
-      // every one of them failed. That is an outage, and the collected
-      // branch errors say what each endpoint did.
-      throw new RPCError(
-        LiFiErrorCode.RpcUnavailable,
+    // The `rpc-unavailable` message is distinct from the empty-list throw
+    // above: RPCs were configured and every one of them failed. That is an
+    // outage, and the collected branch errors say what each endpoint did.
+    const bundleResult = unwrapConfirmation(result, {
+      rpcUnavailable:
         'Unable to confirm bundle: every configured Jito RPC failed.',
-        result.errors.length
-          ? new AggregateError(result.errors, 'All Jito RPCs failed')
-          : undefined
-      )
-    }
-
-    if (result.kind === 'not-confirmed') {
-      // The verdict came from a branch that polled to its deadline and saw
-      // nothing, but other branches may have died trying - and their errors
-      // are the only trail explaining, say, an endpoint that never answered.
-      throw new TransactionError(
-        LiFiErrorCode.TransactionExpired,
-        'Bundle was not confirmed before the SDK stopped waiting.',
-        result.errors.length
-          ? new AggregateError(
-              result.errors,
-              'Some Jito RPCs failed while the confirmation window was open'
-            )
-          : undefined
-      )
-    }
-
-    const bundleResult = result.value
+      notConfirmed: 'Bundle was not confirmed before the SDK stopped waiting.',
+      allRpcsFailed: 'All Jito RPCs failed',
+      someRpcsFailed:
+        'Some Jito RPCs failed while the confirmation window was open',
+    })
 
     // A Jito bundle is atomic: it executes in a single slot, all of it or none
     // of it. Reaching this point means `getBundleStatuses` reported the bundle

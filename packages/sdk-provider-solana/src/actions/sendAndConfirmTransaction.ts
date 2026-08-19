@@ -3,7 +3,6 @@ import {
   type Commitment,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
-  type Signature,
   type Transaction,
 } from '@solana/kit'
 import { confirmSignature } from '../confirmation/confirmSignature.js'
@@ -13,11 +12,6 @@ import type { SignatureStatus } from '../confirmation/types.js'
 import { getSolanaRpcs } from '../rpc/registry.js'
 import type { SolanaRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
-
-export type ConfirmedTransactionResult = {
-  result: RaceResult<SignatureStatus>
-  txSignature: Signature
-}
 
 /**
  * Sends a Solana transaction to every configured RPC and returns as soon as
@@ -41,7 +35,7 @@ export async function sendAndConfirmTransaction(
      */
     onBroadcast?: () => void
   }
-): Promise<ConfirmedTransactionResult> {
+): Promise<RaceResult<SignatureStatus>> {
   const solanaRpcs = await getSolanaRpcs(client)
 
   let broadcastReported = false
@@ -54,10 +48,6 @@ export async function sendAndConfirmTransaction(
 
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
   const txSignature = getSignatureFromTransaction(signedTransaction)
-
-  if (!txSignature) {
-    throw new Error('Transaction signature is missing.')
-  }
 
   const lifetime = await getTransactionLifetime(signedTransaction)
 
@@ -81,7 +71,7 @@ export async function sendAndConfirmTransaction(
       .send({ abortSignal: signal })
   }
 
-  const result = await raceRpcs(
+  return raceRpcs(
     solanaRpcs,
     (rpc, signal) =>
       confirmSignature({
@@ -94,6 +84,4 @@ export async function sendAndConfirmTransaction(
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }
   )
-
-  return { result, txSignature }
 }
