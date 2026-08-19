@@ -47,8 +47,8 @@ export const EXPIRY_CONFIRMATIONS = 3
  * node must lag the tip for that entire window to produce one. The previous
  * 3 s interval allowed a verdict at ~6.4 s, inside a plausible lag window.
  *
- * It also caps the probe cost: ~13 `isBlockhashValid` calls per RPC across
- * the whole ceiling instead of one per tick.
+ * It also caps the probe cost: ~13 `isBlockhashValid` calls per distinct
+ * blockhash per RPC across the whole ceiling instead of one per tick.
  */
 export const EXPIRY_PROBE_INTERVAL_MS = 7_000
 /**

@@ -366,4 +366,81 @@ describe('confirmSignature', () => {
     // either. The send succeeded, ruling out the send rule too.
     expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
   })
+
+  it('does not report a resend that fulfils after the branch has settled', async () => {
+    // A resend from the detached loop can fulfil in the gap after the poll
+    // loop returned: the branch abort cannot retract an already-fulfilled
+    // transport promise. Reporting the broadcast then would let a wait task
+    // write PENDING over an execution it already marked DONE.
+    reached.mockReturnValue(false)
+    const onBroadcast = vi.fn()
+    let releaseLoopSend!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseLoopSend = resolve
+    })
+    let loopSendInFlight = false
+    const resend = vi
+      .fn<Resend>()
+      // The awaited first send fails, so the loop's send is the only call
+      // site that could report - the exact zero-sends-before-confirmation
+      // shape of the regression.
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockImplementation(() => {
+        loopSendInFlight = true
+        return gate
+      })
+    // Confirm only once the loop's send is in flight, so its fulfilment below
+    // is guaranteed to land after the branch has settled.
+    getSignatureStatuses.mockImplementation(() =>
+      Promise.resolve(loopSendInFlight ? status('confirmed') : noStatus())
+    )
+
+    const result = await confirmSignature({
+      rpc,
+      signal: new AbortController().signal,
+      signature: SIGNATURE,
+      lifetimes: LIFETIMES,
+      resend,
+      onBroadcast,
+    })
+
+    expect(result.kind).toBe('confirmed')
+    expect(loopSendInFlight).toBe(true)
+    releaseLoopSend()
+    // One macrotask turn lets the fulfilled resend run its continuation.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onBroadcast).not.toHaveBeenCalled()
+  })
+
+  it('does not report a first send that fulfils after the caller aborted', async () => {
+    // The awaited-first-send mirror of the loop guard above: a losing
+    // branch's first send can fulfil after another branch already won the
+    // race and `raceRpcs` aborted this one. That late fulfilment must not
+    // produce a broadcast report either.
+    const controller = new AbortController()
+    const onBroadcast = vi.fn()
+    let releaseSend!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseSend = resolve
+    })
+    const resend = vi.fn<Resend>().mockImplementation(() => gate)
+    getSignatureStatuses.mockResolvedValue(noStatus())
+
+    const pending = confirmSignature({
+      rpc,
+      signal: controller.signal,
+      signature: SIGNATURE,
+      lifetimes: LIFETIMES,
+      resend,
+      onBroadcast,
+    })
+    // The race settles elsewhere while this first send is still in flight.
+    controller.abort()
+    releaseSend()
+
+    // The branch never observed anything, so it refuses the verdict - but
+    // the assertion under test is the callback, not the throw.
+    await expect(pending).rejects.toThrow(/never observed here/i)
+    expect(onBroadcast).not.toHaveBeenCalled()
+  })
 })

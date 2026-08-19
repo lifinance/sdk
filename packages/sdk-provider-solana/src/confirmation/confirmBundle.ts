@@ -15,8 +15,19 @@ import {
  * Deliberately slower than the signature poller's 400 ms: Jito's own block
  * engine documents a default rate limit of 1 request per second per IP per
  * region, and 400 ms polling (2.5 req/s) exceeds it on its own. At 2 s this
- * poller holds 0.5 req/s, and with the deadline's `isBlockhashValid` probes
- * (≤0.15 req/s) on the same endpoint the branch stays under ~0.65 req/s.
+ * poller holds 0.5 req/s. The deadline's `isBlockhashValid` probes add
+ * ~k/7 req/s on the same endpoint — one request per distinct blockhash (k)
+ * per probe, every `EXPIRY_PROBE_INTERVAL_MS` — so the common
+ * single-blockhash bundle stays under ~0.65 req/s, and a bundle carrying
+ * k ≥ 4 distinct blockhashes crosses the documented limit (at Jito's
+ * 5-transaction bundle cap, at most ~1.21 req/s). That excess is accepted
+ * rather than paced away: the only casualty of the resulting 429s is the
+ * prober itself, which degrades to the wall-clock ceiling after
+ * `MAX_PROBE_ERRORS` and never turns a throttled probe into a verdict,
+ * while this poller keeps to its half of the budget. Scaling the probe
+ * interval by k would keep the sum under 1 req/s, but it would push the
+ * earliest possible expiry verdict from ~14 s to ~14·k s — gutting the
+ * early exit exactly when several lifetimes are racing expiry.
  * Integrator-supplied Jito-capable providers (the only way this path runs —
  * the default LI.FI RPC set contains none) have their own, unverified limits;
  * this cadence is chosen for the strictest documented one. A bundle lands
@@ -67,6 +78,12 @@ export async function confirmBundle(options: {
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
 
   const bundleId = await send()
+  // Unlike `confirmSignature`'s send sites, this call needs no aborted-guard:
+  // a bundle branch cannot confirm without its own `send` having succeeded
+  // first, so by the time any branch settles the race, the caller's
+  // once-guard has already latched and a late fulfilment here can no longer
+  // move an action status. (A branch whose send is still in flight has not
+  // settled, so the all-settled verdicts cannot outrun this call either.)
   options.onBroadcast?.()
 
   const readBundle = async (): Promise<BundleConfirmation | null> => {

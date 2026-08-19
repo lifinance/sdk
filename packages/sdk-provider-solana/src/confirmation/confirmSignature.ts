@@ -54,7 +54,14 @@ export async function confirmSignature(options: {
   try {
     await resend(rpc, signal)
     sendSucceeded = true
-    options.onBroadcast?.()
+    // A send can fulfil after this branch was aborted — an abort cannot
+    // retract an already-fulfilled transport promise. By then the race has
+    // settled, and reporting a broadcast would regress an action status the
+    // wait task already finalized. `sendSucceeded` still latches: the answer
+    // to "did this RPC ever accept the transaction?" is genuinely yes.
+    if (!signal.aborted) {
+      options.onBroadcast?.()
+    }
   } catch (_) {
     // Continue with confirmation even if the initial send fails — another RPC
     // may already have propagated the transaction.
@@ -69,7 +76,13 @@ export async function confirmSignature(options: {
       try {
         await resend(rpc, branch.signal)
         sendSucceeded = true
-        options.onBroadcast?.()
+        // Same late-fulfilment guard as the first send above. This loop is
+        // detached, so a resend can fulfil in the macrotask gap after the
+        // poll loop returned and the branch aborted; only the guard keeps
+        // that fulfilment from reporting a broadcast after the verdict.
+        if (!branch.signal.aborted) {
+          options.onBroadcast?.()
+        }
       } catch (_) {
         // Resending is best-effort. A total failure is caught by the
         // neverBroadcast check in the verdict.
