@@ -99,6 +99,26 @@ describe('sendAndConfirmTransaction', () => {
     )
   })
 
+  it('reports the broadcast once, however many branches call it', async () => {
+    // Each branch's resend loop reports every accepted send; the caller's
+    // callback must still fire a single time, because it drives one status
+    // write in the wait task. The once-guard lives here, not in the task.
+    getSolanaRpcs.mockResolvedValue([createRpc(), createRpc()])
+    confirmSignature.mockImplementation(
+      async (options: { onBroadcast?: () => void }) => {
+        options.onBroadcast?.()
+        options.onBroadcast?.()
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+    const onBroadcast = vi.fn()
+
+    await sendAndConfirmTransaction({} as never, {} as never, { onBroadcast })
+
+    expect(confirmSignature).toHaveBeenCalledTimes(2)
+    expect(onBroadcast).toHaveBeenCalledTimes(1)
+  })
+
   it('returns the raced result and the transaction signature', async () => {
     getSolanaRpcs.mockResolvedValue([createRpc()])
 

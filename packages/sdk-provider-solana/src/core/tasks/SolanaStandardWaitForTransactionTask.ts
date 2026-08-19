@@ -5,7 +5,10 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { getBase64EncodedWireTransaction } from '@solana/kit'
+import {
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
+} from '@solana/kit'
 import { sendAndConfirmTransaction } from '../../actions/sendAndConfirmTransaction.js'
 import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
@@ -74,9 +77,26 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       }
     }
 
-    const { result, txSignature } = await sendAndConfirmTransaction(
+    // Derived with the same pure function `SolanaSignAndExecuteTask` used for
+    // the early `txHash` write, so the two writers cannot disagree.
+    const txSignature = getSignatureFromTransaction(signedTransaction)
+    const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
+
+    const { result } = await sendAndConfirmTransaction(
       client,
-      signedTransaction
+      signedTransaction,
+      {
+        // The explorer link is written the moment the first RPC accepts the
+        // send - not at signing time, when it would point at a transaction
+        // that may never be broadcast, and not as late as confirmation, which
+        // would hide the link exactly while a user wants to watch the
+        // transaction land.
+        onBroadcast: () => {
+          statusManager.updateAction(step, action.type, 'PENDING', {
+            txLink,
+          })
+        },
+      }
     )
 
     if (result.kind === 'rpc-unavailable') {
@@ -90,9 +110,18 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
     }
 
     if (result.kind === 'not-confirmed') {
+      // The verdict came from a branch that polled to its deadline and saw
+      // nothing, but other branches may have died trying - and their errors
+      // are the only trail explaining, say, an endpoint that never answered.
       throw new TransactionError(
         LiFiErrorCode.TransactionExpired,
-        'Transaction was not confirmed before the SDK stopped waiting.'
+        'Transaction was not confirmed before the SDK stopped waiting.',
+        result.errors.length
+          ? new AggregateError(
+              result.errors,
+              'Some Solana RPCs failed while the confirmation window was open'
+            )
+          : undefined
       )
     }
 
@@ -105,14 +134,10 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       )
     }
 
-    const confirmedTransaction = {
-      txSignature,
-    }
-
     // Transaction has been confirmed and we can update the action
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: confirmedTransaction.txSignature,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
+      txHash: txSignature,
+      txLink,
     })
 
     if (isBridgeExecution) {

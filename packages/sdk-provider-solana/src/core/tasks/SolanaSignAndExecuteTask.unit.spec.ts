@@ -103,8 +103,23 @@ describe('SolanaSignAndExecuteTask', () => {
     const [, , status, params] = updateAction.mock.calls[0]
     expect(status).toBe('PENDING')
     expect(params.txHash).toBe(SIGNATURE_OF_FIRST)
-    expect(params.txLink).toBe(`https://explorer/tx/${SIGNATURE_OF_FIRST}`)
     expect(typeof params.signedAt).toBe('number')
+  })
+
+  it('does not record an explorer link at signing time, and clears any stale one', async () => {
+    // Nothing has been broadcast yet: simulation runs later in the wait task,
+    // and a bundle route with no Jito-capable RPC never submits at all. A
+    // link written here would 404 on those paths. The explicit
+    // `txLink: undefined` also overwrites the stale link a restarted
+    // `PENDING` action carried from its previous run, so an old link can
+    // never sit next to this run's fresh `txHash`.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    const [, , , params] = updateAction.mock.calls[0]
+    expect('txLink' in params).toBe(true)
+    expect(params.txLink).toBeUndefined()
   })
 
   it('records the first bundled transaction, the one the Jito wait task reports', async () => {

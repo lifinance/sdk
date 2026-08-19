@@ -69,7 +69,7 @@ describe('raceRpcs', () => {
     expect(result).toEqual({ kind: 'confirmed', value: 'status' })
   })
 
-  it('returns not-confirmed when at least one branch polled and saw nothing', async () => {
+  it('returns not-confirmed when at least one branch polled and saw nothing, carrying the failed branch error', async () => {
     const result = await raceRpcs(
       ['good', 'broken'],
       async (rpc) => {
@@ -81,7 +81,47 @@ describe('raceRpcs', () => {
       timeout
     )
 
-    expect(result).toEqual({ kind: 'not-confirmed' })
+    // The completed observation decides the verdict, but the failed branch's
+    // error must travel with it: it is the only trail explaining what the
+    // other endpoint did, and the wait tasks chain it as the expiry's cause.
+    expect(result.kind).toBe('not-confirmed')
+    if (result.kind !== 'not-confirmed') {
+      throw new Error('unreachable')
+    }
+    expect(result.errors.map((error) => error.message)).toEqual([
+      'connection refused',
+    ])
+  })
+
+  it('carries the timeout-killed branch error on a not-confirmed verdict', async () => {
+    // The case the collection exists for: one branch polls to its deadline
+    // and sees nothing, the other hangs until the branch timeout kills it.
+    // That endpoint really is unavailable, and dropping its error here left
+    // `TransactionExpired` with no trail at all.
+    const result = await raceRpcs(
+      ['observing', 'hung'],
+      (rpc, signal) => {
+        if (rpc === 'observing') {
+          return Promise.resolve(notConfirmed<string>())
+        }
+        return new Promise<ConfirmationOutcome<string>>((_resolve, reject) => {
+          signal.addEventListener(
+            'abort',
+            () => reject(new Error('request aborted')),
+            { once: true }
+          )
+        })
+      },
+      { timeoutMs: 25 }
+    )
+
+    expect(result.kind).toBe('not-confirmed')
+    if (result.kind !== 'not-confirmed') {
+      throw new Error('unreachable')
+    }
+    expect(result.errors.map((error) => error.message)).toEqual([
+      'request aborted',
+    ])
   })
 
   it('returns rpc-unavailable with every error when all branches throw', async () => {

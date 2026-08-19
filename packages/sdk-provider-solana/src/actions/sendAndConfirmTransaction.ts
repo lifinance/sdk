@@ -30,9 +30,27 @@ export type ConfirmedTransactionResult = {
  */
 export async function sendAndConfirmTransaction(
   client: SDKClient,
-  signedTransaction: Transaction
+  signedTransaction: Transaction,
+  options?: {
+    /**
+     * Runs once, when the first RPC accepts a send of the transaction. From
+     * that moment the transaction is genuinely in the network's hands, so
+     * this is the earliest honest point to show a user an explorer link.
+     * Branches keep resending; the once-guard lives here so the caller sees
+     * a single event however many sends succeed.
+     */
+    onBroadcast?: () => void
+  }
 ): Promise<ConfirmedTransactionResult> {
   const solanaRpcs = await getSolanaRpcs(client)
+
+  let broadcastReported = false
+  const reportBroadcast = (): void => {
+    if (!broadcastReported) {
+      broadcastReported = true
+      options?.onBroadcast?.()
+    }
+  }
 
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
   const txSignature = getSignatureFromTransaction(signedTransaction)
@@ -72,6 +90,7 @@ export async function sendAndConfirmTransaction(
         signature: txSignature,
         lifetimes: [lifetime],
         resend,
+        onBroadcast: reportBroadcast,
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }
   )

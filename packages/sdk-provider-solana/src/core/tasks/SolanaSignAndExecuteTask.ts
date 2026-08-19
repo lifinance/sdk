@@ -20,7 +20,6 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       walletAccount,
       statusManager,
       executionOptions,
-      fromChain,
       isBridgeExecution,
     } = context
 
@@ -102,6 +101,15 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // user or an integrator can look the transaction up on chain before
     // signing a replacement.
     //
+    // `txLink` is deliberately NOT written here. Nothing has been broadcast
+    // yet: simulation runs later in the wait task, and a bundle route with no
+    // Jito-capable RPC configured never submits at all. An explorer link
+    // recorded now would 404 on every one of those paths. The wait tasks
+    // write it the moment the first RPC accepts the send (`onBroadcast`), and
+    // again on confirmation. `txLink: undefined` also clears the stale link a
+    // restarted `PENDING` action carried over from its previous run, so the
+    // old link can never sit next to this run's fresh `txHash`.
+    //
     // A restart is a separate matter, and not a reason this write exists: a
     // resumed route runs `prepareRestart`, which keeps only actions that hold
     // a `txHash` and are not `FAILED`, and `BaseStepExecutor` marks the
@@ -125,7 +133,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
       txHash: txSignature,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`,
+      txLink: undefined,
     })
 
     return {

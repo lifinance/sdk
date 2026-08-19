@@ -1,3 +1,4 @@
+import { LiFiErrorCode, RPCError } from '@lifi/sdk'
 import type { Transaction } from '@solana/kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -45,12 +46,24 @@ describe('sendAndConfirmBundle', () => {
     getTransactionLifetime.mockResolvedValue({ kind: 'unknown' })
   })
 
-  it('returns rpc-unavailable when no Jito RPC is configured', async () => {
+  it('throws a configuration error, not a bare rpc-unavailable, when no Jito RPC is configured', async () => {
+    // The default LI.FI Solana RPCs answer `getBundleStatuses` with "method
+    // not found", so an integrator who configured nothing reaches this path
+    // on every bundle route. Racing zero RPCs would produce `rpc-unavailable`
+    // with an empty error list - indistinguishable from an outage - so the
+    // configuration gap must be named before anything is raced.
     getJitoRpcs.mockResolvedValue([])
 
-    await expect(
-      sendAndConfirmBundle({} as never, TRANSACTIONS)
-    ).resolves.toEqual({ kind: 'rpc-unavailable', errors: [] })
+    const thrown = await sendAndConfirmBundle({} as never, TRANSACTIONS).catch(
+      (e) => e
+    )
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(LiFiErrorCode.RpcUnavailable).toBe(1027)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.message).toContain('no configured Solana RPC supports Jito')
+    expect(thrown.message).toContain('rpcUrls')
+    expect(confirmBundle).not.toHaveBeenCalled()
   })
 
   it('returns rpc-unavailable when sendBundle throws on every RPC', async () => {
@@ -114,6 +127,38 @@ describe('sendAndConfirmBundle', () => {
     }
     expect(signal).toBeInstanceOf(AbortSignal)
     expect(sendBundleOptions).toEqual([{ abortSignal: signal }])
+  })
+
+  it('reports the broadcast once, however many branches submit successfully', async () => {
+    // Two Jito RPCs both accept the submission; the caller's callback fires
+    // for the first only. The once-guard lives here so the wait task's
+    // status write happens a single time.
+    const rpcB = {
+      sendBundle: (...args: unknown[]) => ({
+        send: (options: unknown) => {
+          sendBundleOptions.push(options)
+          return sendBundle(...args)
+        },
+      }),
+    }
+    getJitoRpcs.mockResolvedValue([rpc, rpcB])
+    sendBundle.mockResolvedValue('bundle-1')
+    confirmBundle.mockImplementation(
+      async (options: {
+        send: () => Promise<string>
+        onBroadcast: () => void
+      }) => {
+        await options.send()
+        options.onBroadcast()
+        return { kind: 'not-confirmed' }
+      }
+    )
+    const onBroadcast = vi.fn()
+
+    await sendAndConfirmBundle({} as never, TRANSACTIONS, { onBroadcast })
+
+    expect(confirmBundle).toHaveBeenCalledTimes(2)
+    expect(onBroadcast).toHaveBeenCalledTimes(1)
   })
 
   it('passes the lifetime of every signed transaction, not just the first', async () => {

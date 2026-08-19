@@ -31,6 +31,8 @@ export async function confirmSignature(options: {
   signature: Signature
   lifetimes: TransactionLifetime[]
   resend: (rpc: SolanaRpcType, signal: AbortSignal) => Promise<void>
+  /** Reports that this RPC accepted a send of the transaction. */
+  onBroadcast?: () => void
 }): Promise<ConfirmationOutcome<SignatureStatus>> {
   const { rpc, signal, signature, lifetimes, resend } = options
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
@@ -52,6 +54,7 @@ export async function confirmSignature(options: {
   try {
     await resend(rpc, signal)
     sendSucceeded = true
+    options.onBroadcast?.()
   } catch (_) {
     // Continue with confirmation even if the initial send fails — another RPC
     // may already have propagated the transaction.
@@ -66,6 +69,7 @@ export async function confirmSignature(options: {
       try {
         await resend(rpc, branch.signal)
         sendSucceeded = true
+        options.onBroadcast?.()
       } catch (_) {
         // Resending is best-effort. A total failure is caught by the
         // neverBroadcast check in the verdict.
@@ -78,7 +82,10 @@ export async function confirmSignature(options: {
     const response = await rpc
       .getSignatureStatuses([signature])
       .send({ abortSignal: signal })
-    const status = response.value[0]
+    // A `{ value: null }` answer is an endpoint that responded but said
+    // nothing, not a failed read: it must poll again rather than throw a
+    // `TypeError` into the read-failure budget.
+    const status = response?.value?.[0]
     if (status && isConfirmedCommitment(status.confirmationStatus)) {
       return status
     }

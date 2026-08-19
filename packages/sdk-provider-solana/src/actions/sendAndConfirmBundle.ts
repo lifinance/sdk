@@ -1,4 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
+import { LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
 import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
 import {
   type BundleConfirmation,
@@ -23,9 +23,41 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
-  signedTransactions: Transaction[]
+  signedTransactions: Transaction[],
+  options?: {
+    /**
+     * Runs once, when the first Jito RPC accepts the bundle submission. From
+     * that moment the bundle is genuinely in the network's hands, so this is
+     * the earliest honest point to show a user an explorer link. The
+     * once-guard lives here so the caller sees a single event however many
+     * branches submit successfully.
+     */
+    onBroadcast?: () => void
+  }
 ): Promise<RaceResult<BundleConfirmation>> {
   const jitoRpcs = await getJitoRpcs(client)
+
+  // An empty list is a configuration gap, not an outage, and the two must
+  // not share an error: this step's `transactionRequest.data` is a Jito
+  // bundle, `getJitoRpcs` filters the configured Solana RPC URLs through a
+  // `getBundleStatuses` probe, and the default LI.FI RPC set contains no
+  // endpoint that answers it. Racing zero RPCs would surface as a bare
+  // `rpc-unavailable` with no errors - indistinguishable from every endpoint
+  // being down - so the gap is named here, where the emptiness is known.
+  if (jitoRpcs.length === 0) {
+    throw new RPCError(
+      LiFiErrorCode.RpcUnavailable,
+      'This step must be submitted as a Jito bundle, but no configured Solana RPC supports Jito bundle methods (`sendBundle`/`getBundleStatuses`) - the default LI.FI RPCs do not. Configure a Jito-capable Solana RPC URL via the `rpcUrls` client config option to execute this route.'
+    )
+  }
+
+  let broadcastReported = false
+  const reportBroadcast = (): void => {
+    if (!broadcastReported) {
+      broadcastReported = true
+      options?.onBroadcast?.()
+    }
+  }
 
   const serializedTransactions = signedTransactions.map((transaction) =>
     getBase64EncodedWireTransaction(transaction)
@@ -44,6 +76,7 @@ export async function sendAndConfirmBundle(
         lifetimes,
         send: () =>
           rpc.sendBundle(serializedTransactions).send({ abortSignal: signal }),
+        onBroadcast: reportBroadcast,
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }
   )

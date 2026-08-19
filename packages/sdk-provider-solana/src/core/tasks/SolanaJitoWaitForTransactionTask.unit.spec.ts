@@ -172,7 +172,10 @@ describe('SolanaJitoWaitForTransactionTask', () => {
   })
 
   it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {
-    sendAndConfirmBundle.mockResolvedValue({ kind: 'not-confirmed' })
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'not-confirmed',
+      errors: [],
+    })
 
     const task = new SolanaJitoWaitForTransactionTask()
     const thrown = await task.run(baseContext()).catch((e) => e)
@@ -184,9 +187,27 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(thrown.message).toBe(
       'Bundle was not confirmed before the SDK stopped waiting.'
     )
+    // Every branch observed cleanly here, so there is no trail to chain.
+    expect(thrown.cause).toBeUndefined()
   })
 
-  it('throws RpcUnavailable when no Jito RPC returned a usable response', async () => {
+  it('chains the failed branch errors as the cause of TransactionExpired', async () => {
+    // One Jito RPC polled to its deadline and saw nothing; another died
+    // trying. That error is the only diagnostic explaining the expiry, so it
+    // must survive into the thrown cause.
+    const errors = [new Error('this endpoint never answered')]
+    sendAndConfirmBundle.mockResolvedValue({ kind: 'not-confirmed', errors })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.cause).toBeInstanceOf(AggregateError)
+    expect(thrown.cause.errors).toEqual(errors)
+  })
+
+  it('throws RpcUnavailable naming an outage when every configured Jito RPC failed', async () => {
     const errors = [new Error('no jito rpc')]
     sendAndConfirmBundle.mockResolvedValue({ kind: 'rpc-unavailable', errors })
 
@@ -195,6 +216,100 @@ describe('SolanaJitoWaitForTransactionTask', () => {
 
     expect(thrown).toBeInstanceOf(RPCError)
     expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    // The configuration gap (no Jito-capable RPC configured at all) throws
+    // inside `sendAndConfirmBundle` with its own message; this arm is the
+    // genuine outage and must say so, with the branch errors as the trail.
+    expect(thrown.message).toBe(
+      'Unable to confirm bundle: every configured Jito RPC failed.'
+    )
+    expect(thrown.cause).toBeInstanceOf(AggregateError)
+    expect(thrown.cause.errors).toEqual(errors)
+  })
+
+  it('completes when the bundle-level err is the Ok variant, which is truthy', async () => {
+    // Jito encodes the bundle-level `err` as a serialized Rust Result: a
+    // landed bundle carries `{ Ok: null }`. A truthiness check on it would
+    // fail every landed bundle.
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [null, null],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+        bundleErr: { Ok: null },
+      },
+    })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+  })
+
+  it('surfaces the bundle-level Err variant even when the signature results degraded to all-null', async () => {
+    // The degraded path is exactly where the per-signature scan sees nothing:
+    // a failed `getSignatureStatuses` read leaves all-`null` results. The
+    // bundle-level `err` rides the same response that confirmed the bundle,
+    // so it is the one failure signal that survives the degrade.
+    const failure = { InstructionError: [1, 'Custom'] }
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [null, null],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+        bundleErr: { Err: failure },
+      },
+    })
+
+    const task = new SolanaJitoWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
+    expect(thrown.message).toContain('Transaction failed:')
+    expect(thrown.cause).toBeInstanceOf(SolanaTransactionDetailsError)
+    expect(thrown.cause.err).toBe(failure)
+  })
+
+  it('records the explorer link when a Jito RPC accepts the submission, not at signing time', async () => {
+    // Before broadcast the link would point at a transaction that may never
+    // exist on chain - a failed submission, or the empty-Jito-list case,
+    // never submits at all. The callback is how `sendAndConfirmBundle`
+    // reports the moment the first RPC accepted the bundle.
+    const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
+    const expectedSignature = getSignatureFromTransaction(signedTransactions[0])
+    sendAndConfirmBundle.mockImplementation(
+      async (
+        _client: unknown,
+        _transactions: unknown,
+        options: { onBroadcast: () => void }
+      ) => {
+        options.onBroadcast()
+        return {
+          kind: 'confirmed',
+          value: {
+            signatureResults: [{ err: null }, { err: null }],
+            txSignatures: ['sig0', 'sig1'],
+            bundleId: 'bundle-id',
+          },
+        }
+      }
+    )
+
+    const task = new SolanaJitoWaitForTransactionTask()
+    await expect(task.run(baseContext(signedTransactions))).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+
+    expect(updateAction).toHaveBeenNthCalledWith(1, {}, 'SWAP', 'PENDING', {
+      txLink: `https://explorer/tx/${expectedSignature}`,
+    })
+    expect(updateAction).toHaveBeenNthCalledWith(2, {}, 'SWAP', 'PENDING', {
+      txHash: expectedSignature,
+      txLink: `https://explorer/tx/${expectedSignature}`,
+    })
   })
 
   it('marks the CROSS_CHAIN action DONE for a bridge execution', async () => {

@@ -27,7 +27,12 @@ Both previously surfaced as a bare
 to integrators as `UnknownError` with `LiFiErrorCode.InternalError`. An empty
 Jito RPC list — previously a bare
 `Error('No Jito-enabled RPC connection available for bundle submission')` —
-now also throws `RPCError` with `LiFiErrorCode.RpcUnavailable`.
+now also throws `RPCError` with `LiFiErrorCode.RpcUnavailable`, with a message
+naming the configuration gap rather than an outage: none of the configured
+Solana RPCs supports Jito bundle methods (the default LI.FI set does not), and
+a Jito-capable endpoint must be supplied via the `rpcUrls` client config
+option. The outage case — every configured Jito RPC failed — keeps its own
+message and chains the per-endpoint errors as the error's `cause`.
 
 The message on the standard path's `TransactionExpired` error is reworded:
 `'Transaction has expired: The block height has exceeded the maximum allowed
@@ -37,7 +42,9 @@ comparison the code no longer makes. Its `LiFiErrorCode` is unchanged
 (`TransactionExpired`). The bundle path's expiry message is new:
 `'Bundle was not confirmed before the SDK stopped waiting.'` Neither message
 names the blockhash probe, because the wall-clock ceiling can end the wait
-without one.
+without one. When other RPC branches died while the deciding branch polled to
+its deadline, their errors are chained as the expiry error's `cause` (an
+`AggregateError`), so an endpoint that never answered still leaves a trail.
 
 A confirmed Jito bundle no longer fails when an RPC has not indexed its
 signatures yet. A bundle is atomic, so a `confirmed` or `finalized` bundle
@@ -47,7 +54,10 @@ a swap previously threw `TransactionError` with `LiFiErrorCode.TransactionFailed
 and the message `'Bundle confirmation failed: Not all transactions were
 confirmed.'` — that message no longer exists.
 
-The transaction signature is now recorded on the action as `txHash` (with
-`txLink`) as soon as the wallet signs, instead of only after the confirmation
-succeeds. A swap whose confirmation fails therefore reports the signature of the
-transaction that may have landed, rather than nothing at all.
+The transaction signature is now recorded on the action as `txHash` as soon as
+the wallet signs, instead of only after the confirmation succeeds. A swap whose
+confirmation fails therefore reports the signature of the transaction that may
+have landed, rather than nothing at all. The explorer link (`txLink`) is
+written later, the moment the first RPC accepts the send: a link recorded at
+signing time would point at a transaction that a failed simulation — or the
+empty-Jito-RPC-list case, which never submits — leaves nonexistent on chain.

@@ -5,6 +5,7 @@ import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 vi.mock('@solana/kit', async () => ({
   ...(await vi.importActual<object>('@solana/kit')),
   getBase64EncodedWireTransaction: () => 'base64-encoded-tx',
+  getSignatureFromTransaction: () => 'sig',
 }))
 
 const callSolanaRpcsWithRetry = vi.fn()
@@ -100,7 +101,7 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   it('throws TransactionExpired when an RPC polled and saw no confirmation', async () => {
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockResolvedValue({
-      result: { kind: 'not-confirmed' },
+      result: { kind: 'not-confirmed', errors: [] },
       txSignature: 'sig',
     })
 
@@ -113,6 +114,68 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     // blockhash probe at all, so the message must not name a single mechanism.
     expect(thrown.message).toBe(
       'Transaction was not confirmed before the SDK stopped waiting.'
+    )
+    // Every branch observed cleanly here, so there is no trail to chain.
+    expect(thrown.cause).toBeUndefined()
+  })
+
+  it('chains the failed branch errors as the cause of TransactionExpired', async () => {
+    // One RPC polled to its deadline and saw nothing; the other never
+    // answered and its branch threw. That error is the only diagnostic
+    // explaining the expiry, so it must survive into the thrown cause.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    const errors = [new Error('this endpoint never answered')]
+    sendAndConfirmTransaction.mockResolvedValue({
+      result: { kind: 'not-confirmed', errors },
+      txSignature: 'sig',
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    const thrown = await task.run(baseContext()).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.cause).toBeInstanceOf(AggregateError)
+    expect(thrown.cause.errors).toEqual(errors)
+  })
+
+  it('records the explorer link when the first RPC accepts the send, not at signing time', async () => {
+    // Before broadcast the link would point at a transaction that may never
+    // exist on chain; after it, the user can watch the transaction land. The
+    // callback is how `sendAndConfirmTransaction` reports that moment.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockImplementation(
+      async (
+        _client: unknown,
+        _transaction: unknown,
+        options: { onBroadcast: () => void }
+      ) => {
+        options.onBroadcast()
+        return {
+          result: { kind: 'confirmed', value: { err: null } },
+          txSignature: 'sig',
+        }
+      }
+    )
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    await expect(task.run(baseContext())).resolves.toEqual({
+      status: 'COMPLETED',
+    })
+
+    expect(updateAction).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      'SWAP',
+      'PENDING',
+      { txLink: 'https://explorer/tx/sig' }
+    )
+    expect(updateAction).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      'SWAP',
+      'PENDING',
+      { txHash: 'sig', txLink: 'https://explorer/tx/sig' }
     )
   })
 

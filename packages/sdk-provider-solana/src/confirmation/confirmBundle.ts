@@ -29,6 +29,15 @@ export type BundleConfirmation = {
   bundleId: string
   txSignatures: Signature[]
   signatureResults: readonly (SignatureStatus | null)[]
+  /**
+   * The bundle-level `err` field of the confirming `getBundleStatuses`
+   * response, verbatim. Jito encodes it as a Rust `Result`: a landed bundle
+   * carries `{ Ok: null }`, so a truthiness check must never be applied to
+   * it. Carried so the defence-in-depth scan in
+   * `SolanaJitoWaitForTransactionTask` still has something to read when
+   * `signatureResults` degraded to all-`null` (see below).
+   */
+  bundleErr: unknown
 }
 
 /**
@@ -51,17 +60,24 @@ export async function confirmBundle(options: {
   signal: AbortSignal
   lifetimes: TransactionLifetime[]
   send: () => Promise<string>
+  /** Reports that this RPC accepted the bundle submission. */
+  onBroadcast?: () => void
 }): Promise<ConfirmationOutcome<BundleConfirmation>> {
   const { rpc, signal, lifetimes, send } = options
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
 
   const bundleId = await send()
+  options.onBroadcast?.()
 
   const readBundle = async (): Promise<BundleConfirmation | null> => {
     const statusResponse = await rpc
       .getBundleStatuses([bundleId])
       .send({ abortSignal: signal })
-    const bundleStatus = statusResponse.value[0]
+    // Guarded like the `getSignatureStatuses` payload below: a `{ value:
+    // null }` answer is an endpoint that responded but said nothing, not a
+    // failed read, so it must poll again rather than throw a `TypeError`
+    // into the read-failure budget.
+    const bundleStatus = statusResponse?.value?.[0]
     if (
       !bundleStatus ||
       !isConfirmedCommitment(bundleStatus.confirmation_status)
@@ -94,6 +110,7 @@ export async function confirmBundle(options: {
       bundleId,
       txSignatures,
       signatureResults,
+      bundleErr: bundleStatus.err,
     }
   }
 

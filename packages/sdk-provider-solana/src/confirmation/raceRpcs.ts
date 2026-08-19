@@ -2,7 +2,7 @@ import type { ConfirmationOutcome } from './types.js'
 
 export type RaceResult<T> =
   | { kind: 'confirmed'; value: T }
-  | { kind: 'not-confirmed' }
+  | { kind: 'not-confirmed'; errors: Error[] }
   | { kind: 'rpc-unavailable'; errors: Error[] }
 
 const toError = (reason: unknown): Error =>
@@ -132,8 +132,13 @@ export async function raceRpcs<Rpc, T>(
       errors.push(toError(entry.reason))
     }
 
+    // A completed observation outranks a thrown error, so one branch that
+    // polled to its deadline makes the verdict `not-confirmed` - but the
+    // errors collected above still travel with it. They are the only trail a
+    // branch the timeout killed leaves behind, and the wait tasks chain them
+    // as the `cause` of the expiry they report.
     if (sawNotConfirmed) {
-      return { kind: 'not-confirmed' }
+      return { kind: 'not-confirmed', errors }
     }
     return { kind: 'rpc-unavailable', errors }
   }

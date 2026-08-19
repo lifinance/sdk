@@ -229,6 +229,88 @@ describe('confirmSignature', () => {
     )
   })
 
+  it('treats a { value: null } status payload as an answer, not a failed read', async () => {
+    // An endpoint that responds `{ value: null }` said nothing, but it did
+    // answer. Indexing into it unguarded throws a `TypeError` that burns a
+    // read-failure slot - and in the final probe it voids the whole
+    // observation, misreporting an answering endpoint as one that never
+    // completed a read.
+    reached.mockReturnValue(true)
+    getSignatureStatuses.mockResolvedValue({ value: null })
+
+    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('reports the broadcast once the RPC accepts the first send', async () => {
+    getSignatureStatuses.mockResolvedValue(status('confirmed'))
+    const onBroadcast = vi.fn()
+    // Every send after the first fails, so only the awaited first send can
+    // report - this pins the first-send call site, not the resend loop's.
+    const resend = vi
+      .fn<Resend>()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValue(new Error('later sends throttled'))
+
+    await confirmSignature({
+      rpc,
+      signal: new AbortController().signal,
+      signature: SIGNATURE,
+      lifetimes: LIFETIMES,
+      resend,
+      onBroadcast,
+    })
+
+    expect(onBroadcast).toHaveBeenCalled()
+  })
+
+  it('reports the broadcast when only a later resend is accepted', async () => {
+    // The first send fails; a resend from the detached loop is what the RPC
+    // finally accepts. The broadcast report must come from that site too, or
+    // an integrator whose endpoint rejected one write never gets a link.
+    reached.mockReturnValue(false)
+    getSignatureStatuses
+      .mockResolvedValueOnce(noStatus())
+      .mockResolvedValueOnce(noStatus())
+      .mockResolvedValue(status('confirmed'))
+    const onBroadcast = vi.fn()
+    const resend = vi
+      .fn<Resend>()
+      .mockRejectedValueOnce(new Error('connection refused'))
+      .mockResolvedValue(undefined)
+
+    await confirmSignature({
+      rpc,
+      signal: new AbortController().signal,
+      signature: SIGNATURE,
+      lifetimes: LIFETIMES,
+      resend,
+      onBroadcast,
+    })
+
+    expect(resend.mock.calls.length).toBeGreaterThan(1)
+    expect(onBroadcast).toHaveBeenCalled()
+  })
+
+  it('does not report a broadcast when every send fails', async () => {
+    // The callback is the wait task's cue to publish an explorer link. An
+    // endpoint that rejected every write never carried the transaction, so
+    // it must not produce that cue.
+    reached.mockReturnValue(true)
+    getSignatureStatuses.mockResolvedValue(noStatus())
+    const onBroadcast = vi.fn()
+
+    await confirmSignature({
+      rpc,
+      signal: new AbortController().signal,
+      signature: SIGNATURE,
+      lifetimes: LIFETIMES,
+      resend: vi.fn(() => Promise.reject(new Error('connection refused'))),
+      onBroadcast,
+    })
+
+    expect(onBroadcast).not.toHaveBeenCalled()
+  })
+
   it('returns not-confirmed when sends succeeded but nothing landed', async () => {
     reached.mockReturnValue(true)
     getSignatureStatuses.mockResolvedValue(noStatus())

@@ -275,6 +275,77 @@ describe('confirmBundle', () => {
     await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
   })
 
+  it('treats a { value: null } bundle payload as an answer, not a failed read', async () => {
+    // An endpoint that responds `{ value: null }` said nothing, but it did
+    // answer. Indexing into it unguarded throws a `TypeError` that burns a
+    // read-failure slot - and in the final probe it voids the whole
+    // observation, misreporting an answering endpoint as one that never
+    // completed a read.
+    reached.mockReturnValue(true)
+    getBundleStatuses.mockResolvedValue({ value: null })
+
+    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('carries the bundle-level err verbatim into the confirmation', async () => {
+    // The wait task's defence-in-depth scan reads it - shape-aware, because
+    // a landed bundle carries the truthy `{ Ok: null }`. This module only
+    // transports it; interpreting the Result shape is the task's job.
+    const err = { Ok: null }
+    getBundleStatuses.mockResolvedValue({
+      value: [
+        {
+          confirmation_status: 'confirmed',
+          transactions: TX_SIGNATURES,
+          err,
+        },
+      ],
+    })
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+
+    const result = await run()
+
+    if (result.kind !== 'confirmed') {
+      throw new Error('unreachable')
+    }
+    expect(result.value.bundleErr).toBe(err)
+  })
+
+  it('reports the broadcast once the submission is accepted', async () => {
+    reached.mockReturnValue(true)
+    getBundleStatuses.mockResolvedValue(noBundle())
+    const onBroadcast = vi.fn()
+
+    await confirmBundle({
+      rpc,
+      signal: new AbortController().signal,
+      lifetimes: LIFETIMES,
+      send,
+      onBroadcast,
+    })
+
+    expect(onBroadcast).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not report a broadcast when the submission fails', async () => {
+    // The callback is the wait task's cue to publish an explorer link. A
+    // rejected submission never put the bundle in the network's hands, so it
+    // must not produce that cue.
+    send.mockRejectedValueOnce(new Error('jito rejected the bundle'))
+    const onBroadcast = vi.fn()
+
+    await expect(
+      confirmBundle({
+        rpc,
+        signal: new AbortController().signal,
+        lifetimes: LIFETIMES,
+        send,
+        onBroadcast,
+      })
+    ).rejects.toThrow('jito rejected the bundle')
+    expect(onBroadcast).not.toHaveBeenCalled()
+  })
+
   it('resets the probe-failure streak after a successful poll', async () => {
     // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a streak that
     // resets on every success stays below the throw threshold.
