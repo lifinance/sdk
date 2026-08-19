@@ -23,12 +23,6 @@ export const CONFIRMATION_TIMEOUT_MS = 90_000
  * sleep before the ceiling is the only thing that can eat into it.
  */
 export const BRANCH_TIMEOUT_MS: number = CONFIRMATION_TIMEOUT_MS + 5_000
-/**
- * Backstop floor: nothing may report expiry before this, whatever an RPC
- * claims. The probe cadence below already outlasts it, so this only matters if
- * that cadence is ever made faster.
- */
-export const MIN_CONFIRMATION_MS = 5_000
 /** Consecutive `false` results required before we believe a blockhash is dead. */
 export const EXPIRY_CONFIRMATIONS = 3
 /**
@@ -49,6 +43,11 @@ export const EXPIRY_CONFIRMATIONS = 3
  *
  * It also caps the probe cost: ~13 `isBlockhashValid` calls per distinct
  * blockhash per RPC across the whole ceiling instead of one per tick.
+ *
+ * No runtime floor backs this up: the cadence is the only thing keeping the
+ * earliest verdict outside a node-lag window. The unit spec pins that
+ * arithmetic, so speeding this cadence up fails the spec before it can fail
+ * in production.
  */
 export const EXPIRY_PROBE_INTERVAL_MS = 7_000
 /**
@@ -141,9 +140,6 @@ export function createConfirmationDeadline(options: {
       const elapsed = now() - startedAt
       if (elapsed >= CONFIRMATION_TIMEOUT_MS) {
         return true
-      }
-      if (elapsed < MIN_CONFIRMATION_MS) {
-        return false
       }
       return isExpired()
     },

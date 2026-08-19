@@ -9,7 +9,6 @@ import {
   EXPIRY_CONFIRMATIONS,
   EXPIRY_PROBE_INTERVAL_MS,
   MAX_PROBE_ERRORS,
-  MIN_CONFIRMATION_MS,
 } from './createConfirmationDeadline.js'
 import { DEADLINE_TICK_INTERVAL_MS } from './pollUntilDeadline.js'
 
@@ -32,6 +31,15 @@ let currentTime = 0
 const now = (): number => currentTime
 
 const valid = (value: boolean) => ({ value })
+
+/**
+ * The window a healthy-but-lagging node plausibly needs to catch up to the
+ * cluster tip. `isBlockhashValid` answers `false` for such a node exactly as
+ * it does for a dead blockhash, so no expiry verdict may be reachable inside
+ * this window. Nothing at runtime enforces it — the probe cadence is what
+ * keeps the earliest verdict outside it, and the two tests below pin that.
+ */
+const NODE_LAG_WINDOW_MS = 12_000
 
 /**
  * One tick that is guaranteed to probe: the poll loop calls `tick` far more
@@ -153,15 +161,14 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(true)
   })
 
-  it('cannot report expiry before the floor, because the probe cadence outlasts it', async () => {
-    // The floor is a backstop, and this is the arithmetic that makes it one:
-    // EXPIRY_CONFIRMATIONS probes spaced EXPIRY_PROBE_INTERVAL_MS apart cannot
-    // all land inside MIN_CONFIRMATION_MS. Speeding up the cadence without
-    // re-checking this relation is the defect this pins.
-    expect(
-      (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
-    ).toBeGreaterThan(MIN_CONFIRMATION_MS)
-
+  it('cannot report expiry inside the node-lag window at the real tick cadence', async () => {
+    // There is no runtime floor in `reached()`: the probe cadence is the only
+    // thing that makes an early verdict impossible. Driven at the real tick
+    // cadence against an RPC that answers `false` on every probe — a lagging
+    // node looks exactly like this — no verdict may exist inside the window.
+    // Speeding up EXPIRY_PROBE_INTERVAL_MS without re-checking that relation
+    // is the defect this pins: at the previous 3 s interval the verdict
+    // landed at ~6.4 s, and this test fails.
     isBlockhashValid.mockResolvedValue(valid(false))
     const deadline = createConfirmationDeadline({
       lifetimes: [blockhash('A')],
@@ -169,12 +176,21 @@ describe('createConfirmationDeadline', () => {
       now,
     })
 
-    while (currentTime < MIN_CONFIRMATION_MS) {
+    while (currentTime < NODE_LAG_WINDOW_MS) {
       await deadline.tick(signal())
       expect(deadline.reached()).toBe(false)
       currentTime += DEADLINE_TICK_INTERVAL_MS
     }
     expect(deadline.reached()).toBe(false)
+
+    // Not vacuous: the same cadence does deliver the expiry verdict once the
+    // third probe lands (~14.4 s in), well before the wall-clock ceiling.
+    while (!deadline.reached() && currentTime < CONFIRMATION_TIMEOUT_MS) {
+      await deadline.tick(signal())
+      currentTime += DEADLINE_TICK_INTERVAL_MS
+    }
+    expect(deadline.reached()).toBe(true)
+    expect(currentTime).toBeLessThan(CONFIRMATION_TIMEOUT_MS)
   })
 
   it('cannot reach an expiry verdict inside a plausible node-lag window', () => {
@@ -183,12 +199,12 @@ describe('createConfirmationDeadline', () => {
     // first probe on the first tick, then EXPIRY_CONFIRMATIONS - 1 more at
     // the probe interval - must sit comfortably above the window a
     // healthy-but-lagging node needs to catch up. At the previous 3 s
-    // interval the verdict could land at ~6.4 s; pinned here to stay above
-    // 12 s (currently ~14.4 s).
+    // interval the verdict could land at ~6.4 s; pinned here to stay at or
+    // above NODE_LAG_WINDOW_MS (currently ~14.4 s).
     expect(
       DEADLINE_TICK_INTERVAL_MS +
         (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
-    ).toBeGreaterThanOrEqual(12_000)
+    ).toBeGreaterThanOrEqual(NODE_LAG_WINDOW_MS)
   })
 
   it('resets the streak when a single true arrives', async () => {
