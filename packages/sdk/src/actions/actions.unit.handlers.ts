@@ -1,16 +1,19 @@
 import { findDefaultToken } from '@lifi/data-types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
+import { HttpResponse, http, type RequestHandler } from 'msw'
+import { type SetupServer, setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
+import type { SDKClient } from '../types/core.js'
 import { requestSettings } from '../utils/request.js'
 
-const client = createClient({
+// `client`, `handlers` and `setupTestServer` are annotated because they are
+// exported and `isolatedDeclarations` is inherited from the base config.
+const client: SDKClient = createClient({
   integrator: 'lifi-sdk',
 })
 
-export const handlers = [
+export const handlers: RequestHandler[] = [
   http.post(`${client.config.apiUrl}/advanced/routes`, async () => {
     return HttpResponse.json({})
   }),
@@ -54,7 +57,7 @@ export const handlers = [
  * Sets up MSW server with common handlers for HTTP-based tests
  * Call this function at the top level of your test file
  */
-export const setupTestServer = () => {
+export const setupTestServer = (): SetupServer => {
   const server = setupServer(...handlers)
 
   beforeAll(() => {
