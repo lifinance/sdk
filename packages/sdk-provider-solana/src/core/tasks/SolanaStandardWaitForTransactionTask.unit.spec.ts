@@ -221,6 +221,58 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     )
   })
 
+  it('writes txLink at broadcast, then txHash on confirmation, then DONE', async () => {
+    // The other bridge-path specs stub `sendAndConfirmTransaction` with a bare
+    // `mockResolvedValue`, so `onBroadcast` never fires and their call counts
+    // describe a sequence no live swap takes. This one drives the real order:
+    // the link lands the moment an RPC accepts the send, the hash only once
+    // the transaction confirmed.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockImplementation(
+      async (
+        _client: unknown,
+        _transaction: unknown,
+        options: { onBroadcast: () => void }
+      ) => {
+        options.onBroadcast()
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+    const findAction = vi.fn(() => ({ type: 'CROSS_CHAIN' }))
+    const context = baseContext({
+      isBridgeExecution: true,
+      statusManager: { findAction, updateAction },
+    })
+
+    const task = new SolanaStandardWaitForTransactionTask()
+
+    await expect(task.run(context)).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(updateAction).toHaveBeenCalledTimes(3)
+    // Broadcast: the link alone. A txHash here would be no earlier than the
+    // one `SolanaSignAndExecuteTask` already wrote at signing time.
+    expect(updateAction).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      'CROSS_CHAIN',
+      'PENDING',
+      { txLink: 'https://explorer/tx/sig' }
+    )
+    expect(updateAction).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      'CROSS_CHAIN',
+      'PENDING',
+      { txHash: 'sig', txLink: 'https://explorer/tx/sig' }
+    )
+    expect(updateAction).toHaveBeenNthCalledWith(
+      3,
+      expect.anything(),
+      'CROSS_CHAIN',
+      'DONE'
+    )
+  })
+
   it('marks the CROSS_CHAIN action DONE for a bridge execution', async () => {
     // A bridge step selects the CROSS_CHAIN action and must close it out:
     // PENDING with the tx details, then DONE. Leaving it PENDING stalls the

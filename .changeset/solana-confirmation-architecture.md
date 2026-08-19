@@ -46,11 +46,16 @@ Both previously surfaced as a bare
 to integrators as `UnknownError` with `LiFiErrorCode.InternalError`. An empty
 Jito RPC list — previously a bare
 `Error('No Jito-enabled RPC connection available for bundle submission')` —
-now also throws `RPCError` with `LiFiErrorCode.RpcUnavailable`, with a message
-naming the configuration gap rather than an outage: none of the configured
-Solana RPCs supports Jito bundle methods (the default LI.FI set does not), and
-a Jito-capable endpoint must be supplied via the `rpcUrls` client config
-option. The outage case — every configured Jito RPC failed — keeps its own
+now also throws `RPCError` with `LiFiErrorCode.RpcUnavailable`. Its message
+distinguishes the two ways the list can be empty. When every configured
+endpoint answered the capability probe by reporting the method as unknown, it
+names the configuration gap: none of the configured Solana RPCs supports Jito
+bundle methods (the default LI.FI set does not), and a Jito-capable endpoint
+must be supplied via the `rpcUrls` client config option. When endpoints failed
+the probe without saying the method was unknown — a throttle, a timeout, a
+gateway error — it names an outage and says to retry instead, because telling
+an integrator to configure an `rpcUrls` entry they already configured sends
+them after the wrong problem. The outage case — every configured Jito RPC failed — keeps its own
 message and chains the per-endpoint errors as the error's `cause`.
 
 The message on the standard path's `TransactionExpired` error is reworded:
@@ -88,6 +93,10 @@ have landed, rather than nothing at all. The explorer link (`txLink`) is
 written later, the moment the first RPC accepts the send: a link recorded at
 signing time would point at a transaction that a failed simulation — or the
 empty-Jito-RPC-list case, which never submits — leaves nonexistent on chain.
+An `updateRouteHook` that throws while handling that write no longer fails the
+step: the callback runs after the network accepted the send, so a throw there
+would report a transaction that may have landed as an RPC outage. It is
+contained, and the next accepted send re-attempts the write.
 
 For integrators:
 

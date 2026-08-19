@@ -9,6 +9,7 @@ import {
   EXPIRY_CONFIRMATIONS,
   EXPIRY_PROBE_INTERVAL_MS,
   MAX_PROBE_ERRORS,
+  NODE_LAG_WINDOW_MS,
 } from './createConfirmationDeadline.js'
 import { DEADLINE_TICK_INTERVAL_MS } from './pollUntilDeadline.js'
 
@@ -31,15 +32,6 @@ let currentTime = 0
 const now = (): number => currentTime
 
 const valid = (value: boolean) => ({ value })
-
-/**
- * The window a healthy-but-lagging node plausibly needs to catch up to the
- * cluster tip. `isBlockhashValid` answers `false` for such a node exactly as
- * it does for a dead blockhash, so no expiry verdict may be reachable inside
- * this window. Nothing at runtime enforces it — the probe cadence is what
- * keeps the earliest verdict outside it, and the two tests below pin that.
- */
-const NODE_LAG_WINDOW_MS = 12_000
 
 /**
  * One tick that is guaranteed to probe: the poll loop calls `tick` far more
@@ -184,7 +176,7 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(false)
 
     // Not vacuous: the same cadence does deliver the expiry verdict once the
-    // third probe lands (~14.4 s in), well before the wall-clock ceiling.
+    // third probe lands (~14.8 s in), well before the wall-clock ceiling.
     while (!deadline.reached() && currentTime < CONFIRMATION_TIMEOUT_MS) {
       await deadline.tick(signal())
       currentTime += DEADLINE_TICK_INTERVAL_MS
@@ -193,18 +185,30 @@ describe('createConfirmationDeadline', () => {
     expect(currentTime).toBeLessThan(CONFIRMATION_TIMEOUT_MS)
   })
 
-  it('cannot reach an expiry verdict inside a plausible node-lag window', () => {
+  it('derives EXPIRY_CONFIRMATIONS so no verdict can land inside the lag window', () => {
     // `isBlockhashValid` answers `false` both for a dead blockhash and for a
-    // node that has not yet seen it, so the earliest possible verdict - the
-    // first probe on the first tick, then EXPIRY_CONFIRMATIONS - 1 more at
-    // the probe interval - must sit comfortably above the window a
-    // healthy-but-lagging node needs to catch up. At the previous 3 s
-    // interval the verdict could land at ~6.4 s; pinned here to stay at or
-    // above NODE_LAG_WINDOW_MS (currently ~14.4 s).
+    // node that has not yet seen it, so the earliest possible verdict must sit
+    // above the window a healthy-but-lagging node needs to catch up. The
+    // relation is held by construction rather than by a chosen literal, so
+    // this asserts the derivation, not one hard-coded pair of values: it holds
+    // for any NODE_LAG_WINDOW_MS and EXPIRY_PROBE_INTERVAL_MS, including a
+    // window that divides the interval exactly.
     expect(
-      DEADLINE_TICK_INTERVAL_MS +
-        (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
-    ).toBeGreaterThanOrEqual(NODE_LAG_WINDOW_MS)
+      (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
+    ).toBeGreaterThan(NODE_LAG_WINDOW_MS)
+
+    // Quantization only ever pushes a probe later, so the figure the docs
+    // quote is the real one: probes at 0.4 s, 7.6 s and 14.8 s.
+    let probeAt = DEADLINE_TICK_INTERVAL_MS
+    for (let probe = 1; probe < EXPIRY_CONFIRMATIONS; probe += 1) {
+      probeAt =
+        DEADLINE_TICK_INTERVAL_MS *
+        Math.ceil(
+          (probeAt + EXPIRY_PROBE_INTERVAL_MS) / DEADLINE_TICK_INTERVAL_MS
+        )
+    }
+    expect(probeAt).toBe(14_800)
+    expect(probeAt).toBeGreaterThan(NODE_LAG_WINDOW_MS)
   })
 
   it('resets the streak when a single true arrives', async () => {

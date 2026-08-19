@@ -35,27 +35,44 @@ export async function sendAndConfirmBundle(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  const jitoRpcs = await getJitoRpcs(client)
+  const { rpcs: jitoRpcs, unreachable } = await getJitoRpcs(client)
 
-  // An empty list is a configuration gap, not an outage, and the two must
-  // not share an error: this step's `transactionRequest.data` is a Jito
-  // bundle, `getJitoRpcs` filters the configured Solana RPC URLs through a
-  // `getBundleStatuses` probe, and the default LI.FI RPC set contains no
-  // endpoint that answers it. Racing zero RPCs would surface as a bare
-  // `rpc-unavailable` with no errors - indistinguishable from every endpoint
-  // being down - so the gap is named here, where the emptiness is known.
+  // An empty list is named here, where the emptiness is known: racing zero
+  // RPCs would surface as a bare `rpc-unavailable` with no errors, which is
+  // indistinguishable from every endpoint being down.
+  //
+  // The two reasons it can be empty do not share a message. Every configured
+  // endpoint answering "method not found" is a configuration gap the
+  // integrator can close; endpoints that never answered are an outage, and
+  // telling someone to configure an `rpcUrls` entry they already configured
+  // sends them after the wrong problem. `unreachable` counts the second kind.
   if (jitoRpcs.length === 0) {
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
-      'This step must be submitted as a Jito bundle, but no configured Solana RPC supports Jito bundle methods (`sendBundle`/`getBundleStatuses`) - the default LI.FI RPCs do not. Configure a Jito-capable Solana RPC URL via the `rpcUrls` client config option to execute this route.'
+      unreachable > 0
+        ? `This step must be submitted as a Jito bundle, but the Jito capability probe (\`getBundleStatuses\`) failed against ${unreachable} configured Solana RPC ${unreachable === 1 ? 'endpoint' : 'endpoints'} without reporting the method as unknown. Those endpoints may be temporarily unavailable - retry before changing configuration.`
+        : 'This step must be submitted as a Jito bundle, but no configured Solana RPC supports Jito bundle methods (`sendBundle`/`getBundleStatuses`) - the default LI.FI RPCs do not. Configure a Jito-capable Solana RPC URL via the `rpcUrls` client config option to execute this route.'
     )
   }
 
   let broadcastReported = false
   const reportBroadcast = (): void => {
-    if (!broadcastReported) {
-      broadcastReported = true
+    if (broadcastReported) {
+      return
+    }
+    try {
       options?.onBroadcast?.()
+      // Latched only after the callback returned. A callback that threw wrote
+      // nothing, so the next successful send must be allowed to try again -
+      // latching first made one failed `txLink` write permanent.
+      broadcastReported = true
+    } catch (_) {
+      // This runs integrator code: the callback reaches `updateRouteHook` via
+      // `StatusManager.updateAction`. Its failure must never reject the branch
+      // that called it - the send has already been accepted by the network at
+      // this point, so a throw here would report a landed transaction as an
+      // RPC outage. Swallowed rather than surfaced because there is no verdict
+      // it could honestly change.
     }
   }
 

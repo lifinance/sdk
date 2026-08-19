@@ -12,6 +12,15 @@ import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
  */
 export const CONFIRMATION_TIMEOUT_MS = 90_000
 /**
+ * Head-room between a branch's own deadline and the hard abort.
+ *
+ * A branch that stops on its deadline still runs one final status probe, and
+ * that probe must fit here. `STATUS_RETRY_BACKOFF_CAP_MS` must stay below this
+ * value: a backoff sleep straddling the ceiling is the only thing that can eat
+ * into it.
+ */
+export const FINAL_PROBE_MARGIN_MS = 5_000
+/**
  * Hard bound on a single RPC branch, in-flight requests included. Handed to
  * `raceRpcs` by the actions, which abort every branch's request with it.
  *
@@ -22,9 +31,18 @@ export const CONFIRMATION_TIMEOUT_MS = 90_000
  * `STATUS_RETRY_BACKOFF_CAP_MS` must stay below this gap: the last backoff
  * sleep before the ceiling is the only thing that can eat into it.
  */
-export const BRANCH_TIMEOUT_MS: number = CONFIRMATION_TIMEOUT_MS + 5_000
-/** Consecutive `false` results required before we believe a blockhash is dead. */
-export const EXPIRY_CONFIRMATIONS = 3
+export const BRANCH_TIMEOUT_MS: number =
+  CONFIRMATION_TIMEOUT_MS + FINAL_PROBE_MARGIN_MS
+/**
+ * The window a healthy-but-lagging node plausibly needs to catch up to the
+ * cluster tip.
+ *
+ * This is a premise, not a tuning knob. `isBlockhashValid` answers `false` for
+ * a lagging node exactly as it does for a dead blockhash, so the SDK may not
+ * reach an expiry verdict inside this window - it would condemn a blockhash
+ * that is alive. `EXPIRY_CONFIRMATIONS` is derived from it below.
+ */
+export const NODE_LAG_WINDOW_MS = 12_000
 /**
  * Minimum wall-clock gap between two `isBlockhashValid` probes of the same
  * deadline.
@@ -36,20 +54,36 @@ export const EXPIRY_CONFIRMATIONS = 3
  * times in a row. At the deadline-advance cadence that would be ~1.2 s —
  * about three slots, which a lagging node clears routinely.
  * `EXPIRY_CONFIRMATIONS` probes at this interval instead span 14 s (~35
- * slots) before any verdict: the first probe fires on the first tick
- * (~0.4 s in), so the earliest possible expiry verdict sits at ~14.4 s, and a
- * node must lag the tip for that entire window to produce one. The previous
- * 3 s interval allowed a verdict at ~6.4 s, inside a plausible lag window.
+ * slots) before any verdict. Probes are quantized to the deadline-advance
+ * cadence (`DEADLINE_TICK_INTERVAL_MS`, 400 ms), so they land at 0.4 s, 7.6 s
+ * and 14.8 s: the earliest possible expiry verdict sits at ~14.8 s, and a node
+ * must lag the tip for that entire window to produce one. The previous 3 s
+ * interval allowed a verdict at ~6.4 s, inside a plausible lag window.
  *
  * It also caps the probe cost: ~13 `isBlockhashValid` calls per distinct
  * blockhash per RPC across the whole ceiling instead of one per tick.
  *
- * No runtime floor backs this up: the cadence is the only thing keeping the
- * earliest verdict outside a node-lag window. The unit spec pins that
- * arithmetic, so speeding this cadence up fails the spec before it can fail
- * in production.
+ * No runtime floor backs this up, and none is wanted: a floor set at
+ * `NODE_LAG_WINDOW_MS` could never fire while the cadence already forces the
+ * first verdict past it, so it would be unreachable code asserting an
+ * invariant it never gets to enforce. The relation is held by construction
+ * instead - `EXPIRY_CONFIRMATIONS` is derived from `NODE_LAG_WINDOW_MS` - and
+ * the unit spec pins the resulting arithmetic.
  */
 export const EXPIRY_PROBE_INTERVAL_MS = 7_000
+/**
+ * Consecutive `false` results required before we believe a blockhash is dead.
+ *
+ * Derived rather than chosen: the earliest possible verdict lands
+ * `(EXPIRY_CONFIRMATIONS - 1) × EXPIRY_PROBE_INTERVAL_MS` after the first
+ * probe, and that must exceed `NODE_LAG_WINDOW_MS`. Deriving it means changing
+ * either premise moves the count automatically, instead of leaving a literal
+ * that silently stops satisfying the relation it was chosen for. The `+ 2`
+ * (rather than `+ 1`) is what makes the inequality strict for a window that
+ * divides exactly.
+ */
+export const EXPIRY_CONFIRMATIONS: number =
+  Math.floor(NODE_LAG_WINDOW_MS / EXPIRY_PROBE_INTERVAL_MS) + 2
 /**
  * Consecutive failures of one blockhash's own probe after which that
  * blockhash stops being probed. The budget is per blockhash: a sibling whose

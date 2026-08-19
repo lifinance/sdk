@@ -5,7 +5,11 @@ import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 vi.mock('@lifi/sdk', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@lifi/sdk')>()),
-  sleep: () => Promise.resolve(),
+  // Resolved on a macrotask, not a microtask. `pollUntilDeadline` runs the
+  // deadline-advance loop detached from the poll loop; a microtask-only sleep
+  // lets the two starve each other instead of interleaving the way they do at
+  // runtime, so the suite would be exercising a shape production never takes.
+  sleep: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
 }))
 
 const reached = vi.fn<() => boolean>()

@@ -52,7 +52,7 @@ describe('sendAndConfirmBundle', () => {
     // on every bundle route. Racing zero RPCs would produce `rpc-unavailable`
     // with an empty error list - indistinguishable from an outage - so the
     // configuration gap must be named before anything is raced.
-    getJitoRpcs.mockResolvedValue([])
+    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
     const thrown = await sendAndConfirmBundle({} as never, TRANSACTIONS).catch(
       (e) => e
@@ -66,8 +66,27 @@ describe('sendAndConfirmBundle', () => {
     expect(confirmBundle).not.toHaveBeenCalled()
   })
 
+  it('blames an outage, not the configuration, when the probe never answered', async () => {
+    // `probeJitoRpc` reports `unreachable` for an endpoint that failed without
+    // saying the method was unknown - a 429, a timeout, a 5xx. Sending that
+    // integrator after their `rpcUrls` config points them at a setting that is
+    // already correct while the real problem is transient.
+    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 2 })
+
+    const thrown = await sendAndConfirmBundle({} as never, TRANSACTIONS).catch(
+      (e) => e
+    )
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.message).toContain('2 configured Solana RPC endpoints')
+    expect(thrown.message).toContain('retry before changing configuration')
+    expect(thrown.message).not.toContain('rpcUrls')
+    expect(confirmBundle).not.toHaveBeenCalled()
+  })
+
   it('returns rpc-unavailable when sendBundle throws on every RPC', async () => {
-    getJitoRpcs.mockResolvedValue([rpc])
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
     sendBundle.mockRejectedValue(new Error('jito rejected the bundle'))
     // `confirmBundle` owns the submission now, so the failure surfaces through
     // the callback it was handed.
@@ -88,7 +107,7 @@ describe('sendAndConfirmBundle', () => {
     // The deadline is built inside `confirmBundle`, on the same clock as
     // `BRANCH_TIMEOUT_MS`. Submitting here first would spend part of that
     // budget before the deadline exists.
-    getJitoRpcs.mockResolvedValue([rpc])
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockResolvedValue({ kind: 'not-confirmed' })
 
@@ -111,7 +130,7 @@ describe('sendAndConfirmBundle', () => {
     // `BRANCH_TIMEOUT_MS` can only end a hung `sendBundle` through this
     // signal. It must be the branch's own signal, by identity - the one
     // `raceRpcs` hands to the branch and later aborts.
-    getJitoRpcs.mockResolvedValue([rpc])
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockImplementation(
       async (options: { send: () => Promise<string> }) => {
@@ -141,7 +160,7 @@ describe('sendAndConfirmBundle', () => {
         },
       }),
     }
-    getJitoRpcs.mockResolvedValue([rpc, rpcB])
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc, rpcB], unreachable: 0 })
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockImplementation(
       async (options: {
@@ -161,8 +180,35 @@ describe('sendAndConfirmBundle', () => {
     expect(onBroadcast).toHaveBeenCalledTimes(1)
   })
 
+  it('confirms even when the broadcast callback throws', async () => {
+    // `confirmBundle` calls the callback unguarded, straight after `sendBundle`
+    // resolved. A throw escaping into that branch would reject it, and
+    // `raceRpcs` would bucket a bundle Jito had already accepted as an outage.
+    confirmBundle.mockImplementation(
+      async (options: { onBroadcast: () => void }) => {
+        options.onBroadcast()
+        return { kind: 'confirmed', value: { signatureResults: [] } }
+      }
+    )
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc, { ...rpc }], unreachable: 0 })
+    const onBroadcast = vi.fn(() => {
+      throw new Error('updateRouteHook blew up')
+    })
+
+    await expect(
+      sendAndConfirmBundle({} as never, TRANSACTIONS, { onBroadcast })
+    ).resolves.toEqual({
+      kind: 'confirmed',
+      value: { signatureResults: [] },
+    })
+    // Attempted on both branches: the once-guard latches only after the
+    // callback returns, so a callback that has never succeeded has never
+    // written the `txLink` and the next branch is still allowed to try.
+    expect(onBroadcast).toHaveBeenCalledTimes(2)
+  })
+
   it('passes the lifetime of every signed transaction, not just the first', async () => {
-    getJitoRpcs.mockResolvedValue([rpc])
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
     sendBundle.mockResolvedValue('bundle-1')
     getTransactionLifetime
       .mockResolvedValueOnce({ kind: 'blockhash', blockhash: 'A' })

@@ -119,6 +119,55 @@ describe('sendAndConfirmTransaction', () => {
     expect(onBroadcast).toHaveBeenCalledTimes(1)
   })
 
+  it('confirms even when the broadcast callback throws', async () => {
+    // The callback reaches integrator code through `updateRouteHook`. It runs
+    // after the network accepted the send, so a throw escaping into the branch
+    // would reject it and report a transaction that may already have landed as
+    // an RPC outage.
+    getSolanaRpcs.mockResolvedValue([createRpc()])
+    confirmSignature.mockImplementation(
+      async (options: { onBroadcast?: () => void }) => {
+        options.onBroadcast?.()
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+    const onBroadcast = vi.fn(() => {
+      throw new Error('updateRouteHook blew up')
+    })
+
+    await expect(
+      sendAndConfirmTransaction({} as never, {} as never, { onBroadcast })
+    ).resolves.toEqual({ kind: 'confirmed', value: { err: null } })
+    expect(onBroadcast).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries the broadcast callback after one throws', async () => {
+    // The once-guard latches on success only. A callback that threw wrote
+    // nothing, so latching first lost the `txLink` write permanently - the
+    // resend loop calls back on every accepted send and any of them will do.
+    getSolanaRpcs.mockResolvedValue([createRpc()])
+    confirmSignature.mockImplementation(
+      async (options: { onBroadcast?: () => void }) => {
+        options.onBroadcast?.()
+        options.onBroadcast?.()
+        options.onBroadcast?.()
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+    let calls = 0
+    const onBroadcast = vi.fn(() => {
+      calls += 1
+      if (calls === 1) {
+        throw new Error('transient hook failure')
+      }
+    })
+
+    await sendAndConfirmTransaction({} as never, {} as never, { onBroadcast })
+
+    // Once to fail, once to succeed, and then the guard latches for good.
+    expect(onBroadcast).toHaveBeenCalledTimes(2)
+  })
+
   it('returns the raced result', async () => {
     getSolanaRpcs.mockResolvedValue([createRpc()])
 

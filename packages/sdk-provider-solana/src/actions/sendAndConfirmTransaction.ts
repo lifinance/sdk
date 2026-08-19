@@ -40,9 +40,22 @@ export async function sendAndConfirmTransaction(
 
   let broadcastReported = false
   const reportBroadcast = (): void => {
-    if (!broadcastReported) {
-      broadcastReported = true
+    if (broadcastReported) {
+      return
+    }
+    try {
       options?.onBroadcast?.()
+      // Latched only after the callback returned. A callback that threw wrote
+      // nothing, so the next successful send must be allowed to try again -
+      // latching first made one failed `txLink` write permanent.
+      broadcastReported = true
+    } catch (_) {
+      // This runs integrator code: the callback reaches `updateRouteHook` via
+      // `StatusManager.updateAction`. Its failure must never reject the branch
+      // that called it - the send has already been accepted by the network at
+      // this point, so a throw here would report a landed transaction as an
+      // RPC outage. Swallowed rather than surfaced because there is no verdict
+      // it could honestly change.
     }
   }
 

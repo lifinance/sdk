@@ -11,7 +11,7 @@ vi.mock('./jito/createJitoRpc.js', () => ({
   createJitoRpc: (...args: unknown[]) => createJitoRpc(...args),
 }))
 
-const { isJitoRpc } = await import('./registry.js')
+const { isJitoRpc, probeJitoRpc } = await import('./registry.js')
 
 describe('isJitoRpc', () => {
   beforeEach(() => {
@@ -38,6 +38,47 @@ describe('isJitoRpc', () => {
 
     await expect(isJitoRpc('https://standard-solana.example')).resolves.toBe(
       false
+    )
+  })
+})
+
+describe('probeJitoRpc', () => {
+  beforeEach(() => {
+    getBundleStatuses.mockReset()
+  })
+
+  it('reports supported when the endpoint answers', async () => {
+    getBundleStatuses.mockResolvedValue({ value: [null] })
+
+    await expect(probeJitoRpc('https://jito.example')).resolves.toBe(
+      'supported'
+    )
+  })
+
+  it.each([
+    ['a message', new Error('Method not found')],
+    ['a lowercase message', new Error('method not found: getBundleStatuses')],
+    ['a JSON-RPC code', Object.assign(new Error('boom'), { code: -32601 })],
+  ])('reports unsupported from %s', async (_label, error) => {
+    getBundleStatuses.mockRejectedValue(error)
+
+    await expect(probeJitoRpc('https://standard.example')).resolves.toBe(
+      'unsupported'
+    )
+  })
+
+  it.each([
+    ['a throttle', new Error('429 Too Many Requests')],
+    ['a timeout', new Error('fetch failed')],
+    ['a gateway error', Object.assign(new Error('bad gateway'), { code: 502 })],
+  ])('reports unreachable from %s', async (_label, error) => {
+    // The bias is deliberate: an unrecognized failure must not be read as
+    // "this endpoint does not do Jito", because that accuses the integrator of
+    // a misconfiguration when the endpoint is merely having a bad minute.
+    getBundleStatuses.mockRejectedValue(error)
+
+    await expect(probeJitoRpc('https://jito.example')).resolves.toBe(
+      'unreachable'
     )
   })
 })

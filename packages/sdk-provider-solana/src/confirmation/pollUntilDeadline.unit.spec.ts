@@ -137,6 +137,30 @@ describe('pollUntilDeadline', () => {
     expect(sleptMs).toBeLessThan(CONFIRMATION_TIMEOUT_MS / 2)
   })
 
+  it('never backs off to less than the base poll interval', async () => {
+    // A base interval above STATUS_RETRY_BACKOFF_CAP_MS used to invert the
+    // clamp: the failed read slept the 2 s cap while a successful one slept
+    // the full 3 s, so failing an endpoint made the SDK poll it faster.
+    probe
+      .mockRejectedValueOnce(new Error('429'))
+      .mockRejectedValueOnce(new Error('429'))
+      .mockResolvedValueOnce('ok')
+
+    const pollIntervalMs = STATUS_RETRY_BACKOFF_CAP_MS + 1_000
+    await expect(run({ pollIntervalMs })).resolves.toEqual({
+      kind: 'confirmed',
+      value: 'ok',
+    })
+
+    const pollSleeps = sleepCalls.filter(
+      (ms) => ms !== DEADLINE_TICK_INTERVAL_MS
+    )
+    expect(pollSleeps.length).toBeGreaterThan(0)
+    for (const slept of pollSleeps) {
+      expect(slept).toBeGreaterThanOrEqual(pollIntervalMs)
+    }
+  })
+
   it('caps a single backoff sleep below the final-probe margin', () => {
     // One backoff sleep can straddle the 90 s ceiling; the final probe must
     // still fit inside the BRANCH_TIMEOUT_MS gap that protects it.

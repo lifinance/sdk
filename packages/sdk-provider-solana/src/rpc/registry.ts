@@ -26,12 +26,52 @@ const PROBE_BUNDLE_ID =
  * support sendBundle/getBundleStatuses without exposing getTipAccounts.
  */
 export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
+  return (await probeJitoRpc(rpcUrl)) === 'supported'
+}
+
+/**
+ * What one Jito capability probe established.
+ *
+ * `unsupported` and `unreachable` must stay apart. Both leave the endpoint out
+ * of the Jito list, but only the first is a configuration gap the integrator
+ * can act on; the second is an outage, and telling someone to configure an
+ * `rpcUrls` entry they already configured sends them after the wrong problem.
+ */
+export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
+
+/**
+ * Reads an endpoint's answer as either "I do not know this method" or "I did
+ * not answer".
+ *
+ * Matched on the JSON-RPC error code where a provider supplies one, and on the
+ * message otherwise - no transport in use here surfaces the code uniformly.
+ * The bias is deliberate: an unrecognized failure counts as `unreachable`, so
+ * a misread blames an outage rather than accusing the integrator of a
+ * misconfiguration. The default LI.FI endpoints answer this probe with a real
+ * "Method not found", which is the case that must stay classifiable.
+ */
+const readProbeFailure = (error: unknown): JitoProbeOutcome => {
+  const code = (error as { code?: unknown } | undefined)?.code
+  if (code === -32601) {
+    return 'unsupported'
+  }
+  const message = error instanceof Error ? error.message : String(error)
+  return /method not found|-32601|method .* not supported|unsupported method/i.test(
+    message
+  )
+    ? 'unsupported'
+    : 'unreachable'
+}
+
+export const probeJitoRpc = async (
+  rpcUrl: string
+): Promise<JitoProbeOutcome> => {
   try {
     const rpc = createJitoRpc(rpcUrl)
     await rpc.getBundleStatuses([PROBE_BUNDLE_ID]).send()
-    return true
-  } catch {
-    return false
+    return 'supported'
+  } catch (error) {
+    return readProbeFailure(error)
   }
 }
 
@@ -53,14 +93,23 @@ const ensureSolanaRpcs = async (client: SDKClient): Promise<string[]> => {
  * Detects and caches Jito-capable RPCs by checking if they support the getTipAccounts method.
  * @param client - The SDK client used to fetch RPC URLs.
  */
-const ensureJitoRpcs = async (client: SDKClient): Promise<string[]> => {
+const ensureJitoRpcs = async (
+  client: SDKClient
+): Promise<{ rpcUrls: string[]; unreachable: number }> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  let unreachable = 0
   for (const rpcUrl of rpcUrls) {
-    if (!jitoRpcs.has(rpcUrl) && (await isJitoRpc(rpcUrl))) {
+    if (jitoRpcs.has(rpcUrl)) {
+      continue
+    }
+    const outcome = await probeJitoRpc(rpcUrl)
+    if (outcome === 'supported') {
       jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
+    } else if (outcome === 'unreachable') {
+      unreachable += 1
     }
   }
-  return rpcUrls
+  return { rpcUrls, unreachable }
 }
 
 /**
@@ -77,14 +126,21 @@ export const getSolanaRpcs = async (
 }
 
 /**
- * Wrapper around getting the Jito RPCs
- * @returns - Jito RPCs
+ * Wrapper around getting the Jito RPCs.
+ *
+ * `unreachable` counts the configured endpoints whose capability probe failed
+ * without saying the method was unknown. An empty `rpcs` with a non-zero
+ * `unreachable` is an outage, not a configuration gap - the caller needs the
+ * difference to raise an error the integrator can act on.
  */
 export const getJitoRpcs = async (
   client: SDKClient
-): Promise<JitoRpcType[]> => {
-  const rpcUrls = await ensureJitoRpcs(client)
-  return rpcUrls
-    .map((rpcUrl) => jitoRpcs.get(rpcUrl))
-    .filter((rpc): rpc is JitoRpcType => Boolean(rpc))
+): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {
+  const { rpcUrls, unreachable } = await ensureJitoRpcs(client)
+  return {
+    rpcs: rpcUrls
+      .map((rpcUrl) => jitoRpcs.get(rpcUrl))
+      .filter((rpc): rpc is JitoRpcType => Boolean(rpc)),
+    unreachable,
+  }
 }

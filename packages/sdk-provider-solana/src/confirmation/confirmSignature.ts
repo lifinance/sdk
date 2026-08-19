@@ -16,7 +16,7 @@ const RESEND_INTERVAL_MS = 1000
  * RPCs tolerate 2.5 req/s of status reads; the Jito bundle poller runs slower
  * because its endpoints do not (see `confirmBundle`).
  */
-const SIGNATURE_POLL_INTERVAL_MS = 400
+export const SIGNATURE_POLL_INTERVAL_MS = 400
 
 /**
  * Confirms one transaction against one RPC.
@@ -31,7 +31,11 @@ export async function confirmSignature(options: {
   signature: Signature
   lifetimes: TransactionLifetime[]
   resend: (rpc: SolanaRpcType, signal: AbortSignal) => Promise<void>
-  /** Reports that this RPC accepted a send of the transaction. */
+  /**
+   * Reports that this RPC accepted a send of the transaction. Must not throw -
+   * `sendAndConfirmTransaction` contains any throw from the integrator
+   * callback it wraps.
+   */
   onBroadcast?: () => void
 }): Promise<ConfirmationOutcome<SignatureStatus>> {
   const { rpc, signal, signature, lifetimes, resend } = options

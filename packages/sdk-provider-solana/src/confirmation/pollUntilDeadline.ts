@@ -120,12 +120,23 @@ export async function pollUntilDeadline<T>(options: {
       }
       // Exponential backoff after a failure, so a throttling burst is met
       // with a falling request rate instead of ten reads in a few seconds.
+      //
+      // The outer `max` keeps the cap from inverting the backoff. A caller
+      // whose base interval already exceeds `STATUS_RETRY_BACKOFF_CAP_MS`
+      // would otherwise sleep *less* after a failed read than after a
+      // successful one - speeding up into a throttling endpoint, which is the
+      // opposite of what this exists to do. The bundle poller sits exactly on
+      // the cap today, so no current caller inverts; nothing but this line
+      // stops the next one.
       const delay =
         failures === 0
           ? pollIntervalMs
-          : Math.min(
-              pollIntervalMs * 2 ** failures,
-              STATUS_RETRY_BACKOFF_CAP_MS
+          : Math.max(
+              pollIntervalMs,
+              Math.min(
+                pollIntervalMs * 2 ** failures,
+                STATUS_RETRY_BACKOFF_CAP_MS
+              )
             )
       await sleep(delay)
     }

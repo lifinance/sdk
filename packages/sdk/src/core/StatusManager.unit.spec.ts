@@ -221,6 +221,32 @@ describe('StatusManager', () => {
       })
     })
 
+    describe('when a param is explicitly undefined', () => {
+      it('clears the existing value rather than keeping it', () => {
+        // `Object.assign` copies own enumerable keys whose value is
+        // `undefined`, and callers rely on that to clear a field: the Solana
+        // provider writes `txLink: undefined` alongside a fresh `txHash` so a
+        // restarted PENDING action cannot show the previous run's explorer
+        // link next to this run's signature. Swapping the merge for one that
+        // skips undefined would silently strand that stale link, and nothing
+        // in the provider's own suite would notice.
+        const target = structuredClone(step)
+        statusManager.updateAction(target, 'SWAP', 'PENDING', {
+          txHash: 'old-hash',
+          txLink: 'https://explorer/tx/old-hash',
+        })
+
+        const action = statusManager.updateAction(target, 'SWAP', 'PENDING', {
+          txHash: 'new-hash',
+          txLink: undefined,
+        })
+
+        expect(action.txHash).toEqual('new-hash')
+        expect(action.txLink).toBeUndefined()
+        expect('txLink' in action).toBe(true)
+      })
+    })
+
     describe('when an action is found', () => {
       const statuses = [
         { status: 'ACTION_REQUIRED' },

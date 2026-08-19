@@ -26,7 +26,7 @@ import {
  * `MAX_PROBE_ERRORS` and never turns a throttled probe into a verdict,
  * while this poller keeps to its half of the budget. Scaling the probe
  * interval by k would keep the sum under 1 req/s, but it would push the
- * earliest possible expiry verdict from ~14 s to ~14·k s — gutting the
+ * earliest possible expiry verdict from ~14.8 s to ~14.8·k s — gutting the
  * early exit exactly when several lifetimes are racing expiry.
  * Integrator-supplied Jito-capable providers (the only way this path runs —
  * the default LI.FI RPC set contains none) have their own, unverified limits;
@@ -34,7 +34,7 @@ import {
  * within a slot or two of acceptance, so the coarser cadence costs at most
  * ~2 s of happy-path latency.
  */
-const BUNDLE_POLL_INTERVAL_MS = 2_000
+export const BUNDLE_POLL_INTERVAL_MS = 2_000
 
 export type BundleConfirmation = {
   /** The submission's own id, carried for diagnostics. */
@@ -82,7 +82,12 @@ export async function confirmBundle(options: {
   signal: AbortSignal
   lifetimes: TransactionLifetime[]
   send: () => Promise<string>
-  /** Reports that this RPC accepted the bundle submission. */
+  /**
+   * Reports that this RPC accepted the bundle submission. Must not throw -
+   * `sendAndConfirmBundle` contains any throw from the integrator callback it
+   * wraps, because a throw here would reject a branch whose bundle Jito had
+   * already accepted.
+   */
   onBroadcast?: () => void
 }): Promise<ConfirmationOutcome<BundleConfirmation>> {
   const { rpc, signal, lifetimes, send } = options
