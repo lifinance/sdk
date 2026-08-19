@@ -2,11 +2,8 @@ import { sleep } from '@lifi/sdk'
 import type { Signature } from '@solana/kit'
 import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
-import {
-  createConfirmationDeadline,
-  MAX_PROBE_ERRORS,
-  POLL_INTERVAL_MS,
-} from './createConfirmationDeadline.js'
+import { createConfirmationDeadline } from './createConfirmationDeadline.js'
+import { pollUntilDeadline } from './pollUntilDeadline.js'
 import {
   type ConfirmationOutcome,
   isConfirmedCommitment,
@@ -14,6 +11,12 @@ import {
 } from './types.js'
 
 const RESEND_INTERVAL_MS = 1000
+/**
+ * How often this poller re-reads `getSignatureStatuses`. The default Solana
+ * RPCs tolerate 2.5 req/s of status reads; the Jito bundle poller runs slower
+ * because its endpoints do not (see `confirmBundle`).
+ */
+const SIGNATURE_POLL_INTERVAL_MS = 400
 
 /**
  * Confirms one transaction against one RPC.
@@ -65,7 +68,7 @@ export async function confirmSignature(options: {
         sendSucceeded = true
       } catch (_) {
         // Resending is best-effort. A total failure is caught by the
-        // sendSucceeded check below.
+        // neverBroadcast check in the verdict.
       }
     }
   })()
@@ -83,77 +86,17 @@ export async function confirmSignature(options: {
   }
 
   try {
-    let probeErrors = 0
-    // "Did this RPC ever answer a status read?" — a read that resolves `null`
-    // still answered. Only this separates "polled and saw nothing" from "never
-    // got a word out of this endpoint", and the two must never be reported the
-    // same way.
-    let probeSucceeded = false
-
-    while (!deadline.reached() && !signal.aborted) {
-      try {
-        const status = await readStatus()
-        probeErrors = 0
-        probeSucceeded = true
-        if (status) {
-          return { kind: 'confirmed', value: status }
-        }
-      } catch (error) {
-        probeErrors += 1
-        if (probeErrors >= MAX_PROBE_ERRORS) {
-          throw error
-        }
-      }
-      await sleep(POLL_INTERVAL_MS)
-      await deadline.tick(signal)
-    }
-
-    // The transaction may have confirmed between the last poll and the
-    // deadline being reached.
-    if (!signal.aborted) {
-      try {
-        const status = await readStatus()
-        probeSucceeded = true
-        if (status) {
-          return { kind: 'confirmed', value: status }
-        }
-      } catch (_) {
-        // The loop already ran. One failed final probe is not evidence that
-        // this RPC is unusable.
-      }
-    }
-
-    if (!sendSucceeded) {
-      throw new Error(
-        'Every transaction send attempt against this RPC failed; the transaction was never submitted here.'
-      )
-    }
-
-    // Reached when every status read hung until the branch was aborted: one
-    // in-flight read is not `MAX_PROBE_ERRORS` consecutive failures, so the
-    // loop above never threw. Returning `not-confirmed` here would report a
-    // hung endpoint as an expired transaction.
-    if (!probeSucceeded) {
-      throw new Error(
-        'No signature status read against this RPC ever completed; the transaction was never observed here.'
-      )
-    }
-
-    // The final probe only runs when the branch was not aborted, so exiting
-    // via `signal.aborted` means the final observation never happened — an
-    // in-flight read held the loop until the abort cut it off. An answer
-    // received early in the window must not stand in for one near the
-    // deadline: a branch that answered once and then went dark has no basis
-    // to call the transaction expired. (A branch aborted because another RPC
-    // already confirmed also throws here; `raceRpcs` drops a losing branch's
-    // error once its controller has aborted, so nothing is misreported.)
-    if (signal.aborted) {
-      throw new Error(
-        'This RPC stopped answering before a final signature status read could run; the transaction was not observed near the deadline.'
-      )
-    }
-
-    return { kind: 'not-confirmed' }
+    return await pollUntilDeadline({
+      deadline,
+      signal,
+      pollIntervalMs: SIGNATURE_POLL_INTERVAL_MS,
+      probe: readStatus,
+      read: 'signature status read',
+      subject: 'transaction',
+      // Read at verdict time, not captured: the resend loop may succeed long
+      // after the awaited first send failed.
+      neverBroadcast: () => !sendSucceeded,
+    })
   } finally {
     branch.abort()
     signal.removeEventListener('abort', abortBranch)

@@ -19,10 +19,10 @@ export const CONFIRMATION_TIMEOUT_MS = 90_000
  * deadline still runs one final status probe, and an abort fired at the same
  * instant would pre-empt it. The gap is a backstop, not a second policy —
  * nothing reaches it unless an endpoint has stopped answering entirely.
+ * `STATUS_RETRY_BACKOFF_CAP_MS` must stay below this gap: the last backoff
+ * sleep before the ceiling is the only thing that can eat into it.
  */
 export const BRANCH_TIMEOUT_MS: number = CONFIRMATION_TIMEOUT_MS + 5_000
-/** How often the poll loops re-read the RPC. */
-export const POLL_INTERVAL_MS = 400
 /**
  * Backstop floor: nothing may report expiry before this, whatever an RPC
  * claims. The probe cadence below already outlasts it, so this only matters if
@@ -36,19 +36,33 @@ export const EXPIRY_CONFIRMATIONS = 3
  * deadline.
  *
  * This is the real guard against a false expiry. `isBlockhashValid` returns
- * `false` both for a dead blockhash and for a node that has not yet seen it, so
- * the consecutive-`false` rule only means anything if the probes are far enough
- * apart that a node lagging the cluster cannot answer `false` three times in a
- * row. At the poll cadence that would be ~1.2 s — about three slots, which a
- * lagging node clears routinely. `EXPIRY_CONFIRMATIONS` probes at this interval
- * instead span 6 s (~15 slots) before any verdict, and 9 s of probing budget
- * against a 5 s floor.
+ * `false` both for a dead blockhash and for a node that has not yet seen it,
+ * so the consecutive-`false` rule only means anything if the probes are far
+ * enough apart that a node lagging the cluster cannot answer `false` three
+ * times in a row. At the deadline-advance cadence that would be ~1.2 s —
+ * about three slots, which a lagging node clears routinely.
+ * `EXPIRY_CONFIRMATIONS` probes at this interval instead span 14 s (~35
+ * slots) before any verdict: the first probe fires on the first tick
+ * (~0.4 s in), so the earliest possible expiry verdict sits at ~14.4 s, and a
+ * node must lag the tip for that entire window to produce one. The previous
+ * 3 s interval allowed a verdict at ~6.4 s, inside a plausible lag window.
  *
- * It also caps the probe cost: 30 `isBlockhashValid` calls per RPC across the
- * whole ceiling instead of one per poll iteration.
+ * It also caps the probe cost: ~13 `isBlockhashValid` calls per RPC across
+ * the whole ceiling instead of one per tick.
  */
-export const EXPIRY_PROBE_INTERVAL_MS = 3_000
-/** Consecutive probe failures after which we stop probing entirely. */
+export const EXPIRY_PROBE_INTERVAL_MS = 7_000
+/**
+ * Consecutive probe failures after which we stop probing entirely.
+ *
+ * This constant belongs to the blockhash prober alone — do not reuse it for
+ * the status pollers. It counts failures at the probe cadence
+ * (`EXPIRY_PROBE_INTERVAL_MS`, so five failures span ~28 s), and its
+ * consequence is soft: probing stops and the deadline degrades to the
+ * wall-clock ceiling, while status polling continues untouched. The status
+ * pollers count failures at a far faster cadence and their consequence is a
+ * throw; they have their own budget, `MAX_STATUS_READ_FAILURES` in
+ * `pollUntilDeadline.ts`.
+ */
 export const MAX_PROBE_ERRORS = 5
 
 /**
@@ -61,9 +75,10 @@ export interface ConfirmationDeadline {
   /** Checked at the top of every poll iteration. */
   reached(): boolean
   /**
-   * Advances the policy once per poll iteration. Never throws.
+   * Advances the policy. Never throws.
    *
-   * Called every iteration, but only probes when `EXPIRY_PROBE_INTERVAL_MS`
+   * Called on the deadline-advance cadence (`DEADLINE_TICK_INTERVAL_MS` in
+   * `pollUntilDeadline.ts`), but only probes when `EXPIRY_PROBE_INTERVAL_MS`
    * has passed since the last probe.
    */
   tick(signal: AbortSignal): Promise<void>

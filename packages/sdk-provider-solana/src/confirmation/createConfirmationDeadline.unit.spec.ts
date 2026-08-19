@@ -10,8 +10,8 @@ import {
   EXPIRY_PROBE_INTERVAL_MS,
   MAX_PROBE_ERRORS,
   MIN_CONFIRMATION_MS,
-  POLL_INTERVAL_MS,
 } from './createConfirmationDeadline.js'
+import { DEADLINE_TICK_INTERVAL_MS } from './pollUntilDeadline.js'
 
 const isBlockhashValid = vi.fn()
 
@@ -124,10 +124,10 @@ describe('createConfirmationDeadline', () => {
     })
 
     // Drive the real poll cadence for two probe intervals' worth of time.
-    const ticks = (EXPIRY_PROBE_INTERVAL_MS * 2) / POLL_INTERVAL_MS
+    const ticks = (EXPIRY_PROBE_INTERVAL_MS * 2) / DEADLINE_TICK_INTERVAL_MS
     for (let attempt = 0; attempt < ticks; attempt += 1) {
       await deadline.tick(signal())
-      currentTime += POLL_INTERVAL_MS
+      currentTime += DEADLINE_TICK_INTERVAL_MS
     }
 
     // Probes at t=0 and t=EXPIRY_PROBE_INTERVAL_MS only. Without the interval
@@ -172,9 +172,23 @@ describe('createConfirmationDeadline', () => {
     while (currentTime < MIN_CONFIRMATION_MS) {
       await deadline.tick(signal())
       expect(deadline.reached()).toBe(false)
-      currentTime += POLL_INTERVAL_MS
+      currentTime += DEADLINE_TICK_INTERVAL_MS
     }
     expect(deadline.reached()).toBe(false)
+  })
+
+  it('cannot reach an expiry verdict inside a plausible node-lag window', () => {
+    // `isBlockhashValid` answers `false` both for a dead blockhash and for a
+    // node that has not yet seen it, so the earliest possible verdict - the
+    // first probe on the first tick, then EXPIRY_CONFIRMATIONS - 1 more at
+    // the probe interval - must sit comfortably above the window a
+    // healthy-but-lagging node needs to catch up. At the previous 3 s
+    // interval the verdict could land at ~6.4 s; pinned here to stay above
+    // 12 s (currently ~14.4 s).
+    expect(
+      DEADLINE_TICK_INTERVAL_MS +
+        (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
+    ).toBeGreaterThanOrEqual(12_000)
   })
 
   it('resets the streak when a single true arrives', async () => {

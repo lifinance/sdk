@@ -1,17 +1,29 @@
-import { sleep } from '@lifi/sdk'
 import type { Signature } from '@solana/kit'
 import type { JitoRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
-import {
-  createConfirmationDeadline,
-  MAX_PROBE_ERRORS,
-  POLL_INTERVAL_MS,
-} from './createConfirmationDeadline.js'
+import { createConfirmationDeadline } from './createConfirmationDeadline.js'
+import { pollUntilDeadline } from './pollUntilDeadline.js'
 import {
   type ConfirmationOutcome,
   isConfirmedCommitment,
   type SignatureStatus,
 } from './types.js'
+
+/**
+ * How often this poller re-reads `getBundleStatuses`.
+ *
+ * Deliberately slower than the signature poller's 400 ms: Jito's own block
+ * engine documents a default rate limit of 1 request per second per IP per
+ * region, and 400 ms polling (2.5 req/s) exceeds it on its own. At 2 s this
+ * poller holds 0.5 req/s, and with the deadline's `isBlockhashValid` probes
+ * (≤0.15 req/s) on the same endpoint the branch stays under ~0.65 req/s.
+ * Integrator-supplied Jito-capable providers (the only way this path runs —
+ * the default LI.FI RPC set contains none) have their own, unverified limits;
+ * this cadence is chosen for the strictest documented one. A bundle lands
+ * within a slot or two of acceptance, so the coarser cadence costs at most
+ * ~2 s of happy-path latency.
+ */
+const BUNDLE_POLL_INTERVAL_MS = 2_000
 
 export type BundleConfirmation = {
   bundleId: string
@@ -85,67 +97,12 @@ export async function confirmBundle(options: {
     }
   }
 
-  let probeErrors = 0
-  // "Did this RPC ever answer a bundle status read?" — a read that resolves
-  // `null` still answered. Only this separates "polled and saw nothing" from
-  // "never got a word out of this endpoint", and the two must never be
-  // reported the same way.
-  let probeSucceeded = false
-
-  while (!deadline.reached() && !signal.aborted) {
-    try {
-      const confirmation = await readBundle()
-      probeErrors = 0
-      probeSucceeded = true
-      if (confirmation) {
-        return { kind: 'confirmed', value: confirmation }
-      }
-    } catch (error) {
-      probeErrors += 1
-      if (probeErrors >= MAX_PROBE_ERRORS) {
-        throw error
-      }
-    }
-    await sleep(POLL_INTERVAL_MS)
-    await deadline.tick(signal)
-  }
-
-  // The bundle may have landed between the last poll and the deadline.
-  if (!signal.aborted) {
-    try {
-      const confirmation = await readBundle()
-      probeSucceeded = true
-      if (confirmation) {
-        return { kind: 'confirmed', value: confirmation }
-      }
-    } catch (_) {
-      // One failed final probe is not evidence that this RPC is unusable.
-    }
-  }
-
-  // Reached when every bundle status read hung until the branch was aborted:
-  // one in-flight read is not `MAX_PROBE_ERRORS` consecutive failures, so the
-  // loop above never threw. Returning `not-confirmed` here would report a hung
-  // endpoint as an expired bundle.
-  if (!probeSucceeded) {
-    throw new Error(
-      'No bundle status read against this RPC ever completed; the bundle was never observed here.'
-    )
-  }
-
-  // The final probe only runs when the branch was not aborted, so exiting via
-  // `signal.aborted` means the final observation never happened — an in-flight
-  // read held the loop until the abort cut it off. An answer received early in
-  // the window must not stand in for one near the deadline: a branch that
-  // answered once and then went dark has no basis to call the bundle expired.
-  // (A branch aborted because another RPC already confirmed also throws here;
-  // `raceRpcs` drops a losing branch's error once its controller has aborted,
-  // so nothing is misreported.)
-  if (signal.aborted) {
-    throw new Error(
-      'This RPC stopped answering before a final bundle status read could run; the bundle was not observed near the deadline.'
-    )
-  }
-
-  return { kind: 'not-confirmed' }
+  return pollUntilDeadline({
+    deadline,
+    signal,
+    pollIntervalMs: BUNDLE_POLL_INTERVAL_MS,
+    probe: readBundle,
+    read: 'bundle status read',
+    subject: 'bundle',
+  })
 }

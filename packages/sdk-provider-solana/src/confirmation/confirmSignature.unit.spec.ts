@@ -25,7 +25,7 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
 }))
 
 const { confirmSignature } = await import('./confirmSignature.js')
-const { MAX_PROBE_ERRORS } = await import('./createConfirmationDeadline.js')
+const { MAX_STATUS_READ_FAILURES } = await import('./pollUntilDeadline.js')
 
 const getSignatureStatuses = vi.fn()
 /** Options every `getSignatureStatuses(...).send(...)` call received. */
@@ -175,9 +175,9 @@ describe('confirmSignature', () => {
   })
 
   it('resets the probe-failure streak after a successful poll', async () => {
-    // MAX_PROBE_ERRORS failures, none of them consecutive. Only a streak that
+    // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a streak that
     // resets on every success stays below the throw threshold.
-    for (let i = 0; i < MAX_PROBE_ERRORS; i += 1) {
+    for (let i = 0; i < MAX_STATUS_READ_FAILURES; i += 1) {
       getSignatureStatuses
         .mockRejectedValueOnce(new Error('502'))
         .mockResolvedValueOnce(noStatus())
@@ -187,22 +187,46 @@ describe('confirmSignature', () => {
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS * 2 + 1)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(
+      MAX_STATUS_READ_FAILURES * 2 + 1
+    )
   })
 
-  it('throws after MAX_PROBE_ERRORS consecutive probe failures', async () => {
+  it('throws after MAX_STATUS_READ_FAILURES consecutive probe failures', async () => {
     getSignatureStatuses.mockRejectedValue(new Error('method not found'))
 
     await expect(run()).rejects.toThrow('method not found')
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES)
   })
 
-  it('throws instead of returning not-confirmed when every send failed', async () => {
+  it('returns not-confirmed when every send failed but the observation completed', async () => {
+    // The endpoint rejected every write yet answered status reads to the
+    // deadline. A completed observation outranks the send-failure signal:
+    // throwing here would surface a genuinely unconfirmed transaction as
+    // rpc-unavailable instead of TransactionExpired - the inverse of the
+    // outcome-collapse this rework removes.
     reached.mockReturnValue(true)
     getSignatureStatuses.mockResolvedValue(noStatus())
     const resend = vi.fn(() => Promise.reject(new Error('connection refused')))
 
-    await expect(run(resend)).rejects.toThrow(/send attempt/i)
+    await expect(run(resend)).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('throws the send failure when nothing was observed either', async () => {
+    // Sends failed AND no status read ever completed: the send failure is
+    // the most useful fact, and not-confirmed would have no observation
+    // behind it.
+    const controller = new AbortController()
+    reached.mockReturnValue(false)
+    getSignatureStatuses.mockImplementation(() => {
+      controller.abort()
+      return Promise.reject(new Error('request aborted'))
+    })
+    const resend = vi.fn(() => Promise.reject(new Error('connection refused')))
+
+    await expect(run(resend, controller.signal)).rejects.toThrow(
+      /send attempt/i
+    )
   })
 
   it('returns not-confirmed when sends succeeded but nothing landed', async () => {
@@ -215,7 +239,7 @@ describe('confirmSignature', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_PROBE_ERRORS never fires; the
+    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never fires; the
     // loop then exits on the aborted signal and the final probe is skipped.
     // Reporting `not-confirmed` here would turn a hung RPC into
     // `TransactionExpired`, the exact misdiagnosis this rework removes.
@@ -230,7 +254,7 @@ describe('confirmSignature', () => {
     await expect(run(resend, controller.signal)).rejects.toThrow(
       /never observed here/i
     )
-    // Exactly one read, so the throw cannot be the MAX_PROBE_ERRORS rule; and
+    // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule; and
     // the send succeeded, so it cannot be the send rule either.
     expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
     expect(resend).toHaveBeenCalled()
@@ -256,7 +280,7 @@ describe('confirmSignature', () => {
       /not observed near the deadline/i
     )
     // Two reads: the first answered, so the never-observed rule cannot be the
-    // thrower, and the second is one failure, so MAX_PROBE_ERRORS cannot be
+    // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
     // either. The send succeeded, ruling out the send rule too.
     expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
   })

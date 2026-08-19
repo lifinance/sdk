@@ -3,9 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { JitoRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
+/** Every `sleep` duration requested, poll loop and deadline loop together. */
+const sleepCalls: number[] = []
+
 vi.mock('@lifi/sdk', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@lifi/sdk')>()),
-  sleep: () => Promise.resolve(),
+  sleep: (ms: number) => {
+    sleepCalls.push(ms)
+    return Promise.resolve()
+  },
 }))
 
 const reached = vi.fn<() => boolean>()
@@ -29,7 +35,9 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
 }))
 
 const { confirmBundle } = await import('./confirmBundle.js')
-const { MAX_PROBE_ERRORS } = await import('./createConfirmationDeadline.js')
+const { DEADLINE_TICK_INTERVAL_MS, MAX_STATUS_READ_FAILURES } = await import(
+  './pollUntilDeadline.js'
+)
 
 const getBundleStatuses = vi.fn()
 const getSignatureStatuses = vi.fn()
@@ -82,6 +90,7 @@ describe('confirmBundle', () => {
     deadlineCalls.length = 0
     bundleSendOptions.length = 0
     signatureSendOptions.length = 0
+    sleepCalls.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
   })
@@ -104,9 +113,33 @@ describe('confirmBundle', () => {
       },
     })
     expect(getBundleStatuses).toHaveBeenCalledTimes(3)
-    // Three polls means two completed iterations, so the deadline advanced
-    // twice. A `continue` that skipped `deadline.tick` would make this zero.
-    expect(tick).toHaveBeenCalledTimes(2)
+    // The deadline now advances on its own detached cadence (pinned in
+    // pollUntilDeadline.unit.spec.ts), so no per-iteration tick count is
+    // asserted here.
+  })
+
+  it('polls bundle statuses no faster than the documented Jito rate limit', async () => {
+    // Jito's own block engine documents a default limit of 1 request per
+    // second per IP per region. The signature poller's 400 ms cadence
+    // (2.5 req/s) would exceed it on its own, so the bundle poller must keep
+    // its own, slower interval. The detached deadline loop's
+    // DEADLINE_TICK_INTERVAL_MS sleeps are not status reads and are filtered
+    // out.
+    getBundleStatuses
+      .mockResolvedValueOnce(noBundle())
+      .mockResolvedValueOnce(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+
+    const result = await run()
+
+    expect(result.kind).toBe('confirmed')
+    const pollSleeps = sleepCalls.filter(
+      (ms) => ms !== DEADLINE_TICK_INTERVAL_MS
+    )
+    expect(pollSleeps.length).toBeGreaterThan(0)
+    for (const ms of pollSleeps) {
+      expect(ms).toBeGreaterThanOrEqual(1000)
+    }
   })
 
   it('hands the caller signal to the bundle and signature reads', async () => {
@@ -191,7 +224,7 @@ describe('confirmBundle', () => {
   it('confirms with all-null signature results when the signature read fails', async () => {
     // Same atomicity argument for a thrown read: a confirmed bundle status
     // followed by a failing `getSignatureStatuses` must not count toward
-    // MAX_PROBE_ERRORS and end as `rpc-unavailable` for a landed bundle.
+    // MAX_STATUS_READ_FAILURES and end as `rpc-unavailable` for a landed bundle.
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
     getSignatureStatuses.mockRejectedValue(new Error('502'))
 
@@ -243,9 +276,9 @@ describe('confirmBundle', () => {
   })
 
   it('resets the probe-failure streak after a successful poll', async () => {
-    // MAX_PROBE_ERRORS failures, none of them consecutive. Only a streak that
+    // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a streak that
     // resets on every success stays below the throw threshold.
-    for (let i = 0; i < MAX_PROBE_ERRORS; i += 1) {
+    for (let i = 0; i < MAX_STATUS_READ_FAILURES; i += 1) {
       getBundleStatuses
         .mockRejectedValueOnce(new Error('502'))
         .mockResolvedValueOnce(noBundle())
@@ -256,14 +289,16 @@ describe('confirmBundle', () => {
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS * 2 + 1)
+    expect(getBundleStatuses).toHaveBeenCalledTimes(
+      MAX_STATUS_READ_FAILURES * 2 + 1
+    )
   })
 
-  it('throws after MAX_PROBE_ERRORS consecutive probe failures', async () => {
+  it('throws after MAX_STATUS_READ_FAILURES consecutive probe failures', async () => {
     getBundleStatuses.mockRejectedValue(new Error('method not found'))
 
     await expect(run()).rejects.toThrow('method not found')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_PROBE_ERRORS)
+    expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES)
   })
 
   it('builds the deadline before it submits the bundle', async () => {
@@ -288,7 +323,7 @@ describe('confirmBundle', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_PROBE_ERRORS never fires; the
+    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never fires; the
     // loop then exits on the aborted signal and the final probe is skipped.
     // Reporting `not-confirmed` here would turn a hung RPC into
     // `TransactionExpired`, the exact misdiagnosis this rework removes.
@@ -300,7 +335,7 @@ describe('confirmBundle', () => {
     })
 
     await expect(run(controller.signal)).rejects.toThrow(/never observed here/i)
-    // Exactly one read, so the throw cannot be the MAX_PROBE_ERRORS rule.
+    // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule.
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
@@ -323,7 +358,7 @@ describe('confirmBundle', () => {
       /not observed near the deadline/i
     )
     // Two reads: the first answered, so the never-observed rule cannot be the
-    // thrower, and the second is one failure, so MAX_PROBE_ERRORS cannot be
+    // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
     // either.
     expect(getBundleStatuses).toHaveBeenCalledTimes(2)
   })
