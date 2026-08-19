@@ -58,7 +58,35 @@ describe('probeJitoRpc', () => {
   it.each([
     ['a message', new Error('Method not found')],
     ['a lowercase message', new Error('method not found: getBundleStatuses')],
-    ['a JSON-RPC code', Object.assign(new Error('boom'), { code: -32601 })],
+    [
+      'a bare JSON-RPC code',
+      Object.assign(new Error('boom'), { code: -32601 }),
+    ],
+    [
+      // The exact shape `@solana/kit` throws, captured from a live call to
+      // both default LI.FI endpoints. `error.code` is undefined on these - the
+      // code lives on `context.__code` - so a classifier reading only `.code`
+      // falls through to the message regex and survives on wording alone.
+      'a SolanaError context code',
+      Object.assign(
+        new Error(
+          'JSON-RPC error: The method does not exist / is not available (Method not found)'
+        ),
+        {
+          name: 'SolanaError',
+          context: { __code: -32601, __serverMessage: 'Method not found' },
+        }
+      ),
+    ],
+    [
+      // Same context code, message reworded as a provider might localize it.
+      // Only the structured signal can classify this one.
+      'a SolanaError whose message says nothing useful',
+      Object.assign(new Error('erreur JSON-RPC'), {
+        name: 'SolanaError',
+        context: { __code: -32601 },
+      }),
+    ],
   ])('reports unsupported from %s', async (_label, error) => {
     getBundleStatuses.mockRejectedValue(error)
 

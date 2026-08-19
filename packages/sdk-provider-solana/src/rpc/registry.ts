@@ -43,20 +43,31 @@ export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
  * Reads an endpoint's answer as either "I do not know this method" or "I did
  * not answer".
  *
- * Matched on the JSON-RPC error code where a provider supplies one, and on the
- * message otherwise - no transport in use here surfaces the code uniformly.
+ * The JSON-RPC code is the reliable signal, but `@solana/kit` does not put it
+ * on `error.code`: it throws a `SolanaError` carrying
+ * `context.__code === -32601` and a reworded message, verified live against
+ * both default LI.FI endpoints. A plain `error.code` is still read first for
+ * any transport that does surface it, and the message is a last resort - it is
+ * the half a provider can break by localizing or rewording its text.
+ *
  * The bias is deliberate: an unrecognized failure counts as `unreachable`, so
  * a misread blames an outage rather than accusing the integrator of a
- * misconfiguration. The default LI.FI endpoints answer this probe with a real
- * "Method not found", which is the case that must stay classifiable.
+ * misconfiguration.
  */
+const JSON_RPC_METHOD_NOT_FOUND = -32601
+
 const readProbeFailure = (error: unknown): JitoProbeOutcome => {
-  const code = (error as { code?: unknown } | undefined)?.code
-  if (code === -32601) {
+  const candidate = error as
+    | { code?: unknown; context?: { __code?: unknown } }
+    | undefined
+  if (
+    candidate?.code === JSON_RPC_METHOD_NOT_FOUND ||
+    candidate?.context?.__code === JSON_RPC_METHOD_NOT_FOUND
+  ) {
     return 'unsupported'
   }
   const message = error instanceof Error ? error.message : String(error)
-  return /method not found|-32601|method .* not supported|unsupported method/i.test(
+  return /method not found|method does not exist|-32601|method .* not supported|unsupported method/i.test(
     message
   )
     ? 'unsupported'
