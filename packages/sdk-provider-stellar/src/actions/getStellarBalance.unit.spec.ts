@@ -1,4 +1,4 @@
-import type { Token } from '@lifi/sdk'
+import { ChainId, type Token } from '@lifi/sdk'
 import { Keypair, nativeToScVal, StrKey } from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -16,13 +16,14 @@ const { getStellarBalance } = await import('./getStellarBalance.js')
 const WALLET = Keypair.random().publicKey()
 const PASSPHRASE = 'Test SDF Network ; September 2015'
 
-const token = (fill: number): Token =>
-  ({
-    address: StrKey.encodeContract(Buffer.alloc(32, fill)),
-    chainId: 1500,
-    decimals: 7,
-    symbol: 'TKN',
-  }) as Token
+const token = (fill: number): Token => ({
+  address: StrKey.encodeContract(Buffer.alloc(32, fill)),
+  chainId: ChainId.XLM,
+  decimals: 7,
+  symbol: 'TKN',
+  name: 'Token',
+  priceUSD: '1',
+})
 
 const balanceOf = (amount: bigint) => ({
   transactionData: {},
