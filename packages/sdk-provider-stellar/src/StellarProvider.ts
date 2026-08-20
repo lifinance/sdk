@@ -9,6 +9,7 @@ import {
   type TokenAmount,
 } from '@lifi/sdk'
 import { Networks, StrKey } from '@stellar/stellar-sdk'
+import { getStellarAccountReserve } from './actions/getStellarAccountReserve.js'
 import { getStellarBalance } from './actions/getStellarBalance.js'
 import { resolveStellarAddress } from './actions/resolveStellarAddress.js'
 import { StellarStepExecutor } from './core/StellarStepExecutor.js'
@@ -51,6 +52,10 @@ export function StellarProvider(
         tokens,
         _options.networkPassphrase ?? DEFAULT_NETWORK_PASSPHRASE
       ),
+    getNativeReserve: (
+      client: SDKClient,
+      walletAddress: string
+    ): Promise<bigint> => getStellarAccountReserve(client, walletAddress),
     async getStepExecutor(options: StepExecutorOptions): Promise<StepExecutor> {
       if (!_options.getWallet) {
         throw new ProviderError(

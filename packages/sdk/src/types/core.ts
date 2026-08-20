@@ -60,6 +60,13 @@ export interface SDKProvider {
     walletAddress: string,
     tokens: Token[]
   ): Promise<TokenAmount[]>
+  /**
+   * Native-token amount the wallet holds but is not allowed to spend, in the
+   * native token's smallest unit — e.g. the Stellar account reserve, which
+   * every classic account must stay above. Optional: chains with no such floor
+   * omit it and callers treat the reserve as `0n`.
+   */
+  getNativeReserve?(client: SDKClient, walletAddress: string): Promise<bigint>
 }
 
 export interface SDKClient {

@@ -39,6 +39,17 @@ const NATIVE_MATIC: Token = {
   priceUSD: '0',
 }
 
+// Stellar's native XLM, addressed by its Stellar-Asset-Contract C-address:
+// a non-EVM, non-lowercase native address with 7 decimals.
+const NATIVE_XLM: Token = {
+  chainId: SOURCE_CHAIN,
+  address: 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA',
+  symbol: 'XLM',
+  decimals: 7,
+  name: 'Stellar Lumens',
+  priceUSD: '0',
+}
+
 const WALLET = '0xWalletAddress'
 
 type ProviderResultMap = { [address: string]: bigint | undefined }
@@ -46,8 +57,16 @@ type AttemptScript = ProviderResultMap | 'reject'
 
 const buildClient = (
   attempts: AttemptScript[],
-  chainOverrides: { nonStandardNativeDecimals?: boolean } = {}
-): { client: SDKClient; getBalance: ReturnType<typeof vi.fn> } => {
+  chainOverrides: {
+    nonStandardNativeDecimals?: boolean
+    nativeTokenAddress?: string
+  } = {},
+  nativeReserve?: bigint | 'reject'
+): {
+  client: SDKClient
+  getBalance: ReturnType<typeof vi.fn>
+  getNativeReserve: ReturnType<typeof vi.fn>
+} => {
   let lastScript: AttemptScript = attempts[attempts.length - 1] ?? {}
   const getBalance = vi.fn(async (_client, _wallet, tokens: Token[]) => {
     const next = attempts.shift()
@@ -67,12 +86,22 @@ const buildClient = (
     })
   })
 
+  const getNativeReserve = vi.fn(async () => {
+    if (nativeReserve === 'reject') {
+      throw new Error('reserve read failed')
+    }
+    return nativeReserve ?? 0n
+  })
+
   const provider: SDKProvider = {
     type: 'EVM' as any,
     isAddress: (addr: string) => addr === WALLET,
     resolveAddress: vi.fn(),
     getStepExecutor: vi.fn(),
     getBalance,
+    // Only chains with an unspendable floor implement this; omitting it must
+    // leave every other chain's behavior untouched.
+    ...(nativeReserve === undefined ? {} : { getNativeReserve }),
   }
 
   const client = {
@@ -81,10 +110,13 @@ const buildClient = (
     getChainById: vi.fn(async (chainId: number) => ({
       id: chainId,
       nonStandardNativeDecimals: chainOverrides.nonStandardNativeDecimals,
+      nativeToken: {
+        address: chainOverrides.nativeTokenAddress ?? NATIVE_ETH.address,
+      },
     })),
   } as unknown as SDKClient
 
-  return { client, getBalance }
+  return { client, getBalance, getNativeReserve }
 }
 
 const buildStep = (overrides: Partial<LiFiStep['action']> = {}): LiFiStep => {
@@ -657,5 +689,114 @@ describe('checkBalance — RPC failures', () => {
       checkBalance(client, WALLET, buildStep())
     ).resolves.toBeUndefined()
     expect(getBalance).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('checkBalance — native reserve (provider.getNativeReserve)', () => {
+  // Stellar's account reserve: (2 + subentries) x 0.5 XLM, with one trustline.
+  const RESERVE = 15_000_000n
+  const BALANCE = 120_121_714n // 12.0121714 XLM
+
+  const buildStellarClient = (
+    balance: bigint,
+    reserve: bigint | 'reject' = RESERVE,
+    attempts = 6
+  ) =>
+    buildClient(
+      Array(attempts).fill({ [NATIVE_XLM.address.toLowerCase()]: balance }),
+      { nativeTokenAddress: NATIVE_XLM.address },
+      reserve
+    )
+
+  const buildStellarStep = (fromAmount: string, slippage = 0) =>
+    buildStep({
+      fromToken: NATIVE_XLM,
+      toToken: NATIVE_XLM,
+      fromAmount,
+      slippage,
+    })
+
+  it('rejects a native send that would break into the reserve', async () => {
+    // The reported failure: sending the whole balance minus 200 stroops leaves
+    // 200 stroops against a 1.5 XLM floor, which the native SAC rejects with
+    // Error(Contract, #10) at simulation time.
+    const { client } = buildStellarClient(BALANCE)
+    await expect(
+      checkBalance(client, WALLET, buildStellarStep('120121514'))
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+      cause: {
+        message: expect.stringContaining(
+          '1.5 XLM reserve your account has to keep'
+        ),
+      },
+    })
+  })
+
+  it('passes when the balance covers the amount on top of the reserve', async () => {
+    const { client } = buildStellarClient(BALANCE)
+    await expect(
+      checkBalance(client, WALLET, buildStellarStep('105121714'))
+    ).resolves.toBeUndefined()
+  })
+
+  it('preserves exactly the reserve when trimming by slippage', async () => {
+    const step = buildStellarStep('110000000', 0.05)
+    // minAcceptable = 110000000 * 0.95 + 15000000 = 119500000 <= 120121714,
+    // so the source amount is trimmed to balance - reserve.
+    const { client } = buildStellarClient(BALANCE)
+    await expect(checkBalance(client, WALLET, step)).resolves.toBeUndefined()
+    expect(step.action.fromAmount).toBe(String(BALANCE - RESERVE))
+  })
+
+  it('requires the reserve on top of gas when the source token is not native', async () => {
+    const step = buildStep()
+    step.estimate!.gasCosts = [
+      {
+        type: 'SUM',
+        price: '0',
+        estimate: '0',
+        limit: '0',
+        amount: '10000', // 0.001 XLM standard fee
+        amountUSD: '0',
+        token: NATIVE_XLM,
+      },
+    ] as any
+    // 1 XLM covers the fee many times over but not the 1.5 XLM reserve.
+    const { client } = buildClient(
+      Array(6).fill({
+        [USDC.address.toLowerCase()]: 1_000_000n,
+        [NATIVE_XLM.address.toLowerCase()]: 10_000_000n,
+      }),
+      { nativeTokenAddress: NATIVE_XLM.address },
+      RESERVE
+    )
+    await expect(checkBalance(client, WALLET, step)).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'The balance is too low.',
+    })
+  })
+
+  it('does not read the reserve when no native requirement exists', async () => {
+    const { client, getNativeReserve } = buildClient(
+      [{ [USDC.address.toLowerCase()]: 1_000_000n }],
+      { nativeTokenAddress: NATIVE_XLM.address },
+      RESERVE
+    )
+    await expect(
+      checkBalance(client, WALLET, buildStep())
+    ).resolves.toBeUndefined()
+    expect(getNativeReserve).not.toHaveBeenCalled()
+  })
+
+  it('throws "Could not read wallet balance" when the reserve read fails', async () => {
+    const { client } = buildStellarClient(BALANCE, 'reject')
+    await expect(
+      checkBalance(client, WALLET, buildStellarStep('1000000'))
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+    })
   })
 })

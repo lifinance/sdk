@@ -18,6 +18,7 @@ type Requirement = {
   sourcePart: bigint // step.action.fromAmount
   gasPart: bigint // step.estimate.gasCosts in this token
   feePart: bigint // non-included step.estimate.feeCosts in this token
+  reservePart: bigint // provider.getNativeReserve — unspendable, never trimmed
 }
 
 export type CheckBalanceOptions = {
@@ -34,10 +35,12 @@ export type CheckBalanceOptions = {
 /**
  * Verifies that the wallet holds enough of every token required to execute
  * the step on its source chain — the source-token amount, any gas costs, and
- * any non-included fee costs. Reads all balances in one batched provider
- * call, retries within a bounded budget to absorb transient RPC failures and
- * post-confirmation propagation lag, and applies slippage to the source-token
- * portion only as a last resort (overhead is never trimmed).
+ * any non-included fee costs. On chains whose native token carries an
+ * unspendable floor (`provider.getNativeReserve`, e.g. the Stellar account
+ * reserve) that floor is required on top. Reads all balances in one batched
+ * provider call, retries within a bounded budget to absorb transient RPC
+ * failures and post-confirmation propagation lag, and applies slippage to the
+ * source-token portion only as a last resort (overhead is never trimmed).
  *
  * Throws BalanceError("The balance is too low.") on a genuine shortfall, or
  * BalanceError("Could not read wallet balance.") if the balance can't be read
@@ -67,6 +70,7 @@ export const checkBalance = async (
       sourcePart: 0n,
       gasPart: 0n,
       feePart: 0n,
+      reservePart: 0n,
     }
     if (bucket === 'source') {
       req.sourcePart += amount
@@ -89,7 +93,7 @@ export const checkBalance = async (
   }
 
   const reservedOverhead = (r: Requirement): bigint =>
-    r.feePart + (walletPaysGas ? r.gasPart : 0n)
+    r.feePart + (walletPaysGas ? r.gasPart : 0n) + r.reservePart
   const need = (r: Requirement): bigint => r.sourcePart + reservedOverhead(r)
 
   // Drop pure-gas entries when `walletPaysGas` is false (e.g. native ETH
@@ -113,6 +117,17 @@ export const checkBalance = async (
 
   const reqs = Array.from(requirements.values())
   const tokens = reqs.map((r) => r.token)
+  // The reserve is a property of the account, not of the step, so it only
+  // matters when the step spends the native token — read it alongside the
+  // balances so it shares their retry budget and error handling. Requirements
+  // are already pruned, so no entry exists here purely because of a reserve.
+  const nativeRequirement = requirements.get(
+    fromChain.nativeToken.address.toLowerCase()
+  )
+  const readNativeReserve = (): Promise<bigint> =>
+    nativeRequirement && provider.getNativeReserve
+      ? provider.getNativeReserve(client, walletAddress)
+      : Promise.resolve(0n)
   const slippage = step.action.slippage ?? 0
   const slippageScaled = BigInt(
     Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
@@ -125,7 +140,14 @@ export const checkBalance = async (
 
         let balances: TokenAmount[]
         try {
-          balances = await provider.getBalance(client, walletAddress, tokens)
+          const [fetchedBalances, nativeReserve] = await Promise.all([
+            provider.getBalance(client, walletAddress, tokens),
+            readNativeReserve(),
+          ])
+          balances = fetchedBalances
+          if (nativeRequirement) {
+            nativeRequirement.reservePart = nativeReserve
+          }
         } catch (error) {
           if (isFinal) {
             throw new BalanceError(
@@ -158,7 +180,7 @@ export const checkBalance = async (
 
         // Final-attempt slippage rescue: only when the sole shortfall is
         // the source-token portion. Trim source to (balance − reserved
-        // overhead) so the overhead reserve is preserved.
+        // overhead) so gas, fees and any native reserve stay untouched.
         if (
           isFinal &&
           unknown.length === 0 &&
@@ -194,6 +216,13 @@ export const checkBalance = async (
             const needed = formatUnits(need(req), req.token.decimals)
             const current = formatUnits(have, req.token.decimals)
             const symbol = req.token.symbol
+            // A reserve shortfall is not a plain shortfall: the wallet may well
+            // hold the amount it is trying to send, just not on top of a floor
+            // the chain forbids it from spending.
+            if (req.reservePart > 0n) {
+              const reserve = formatUnits(req.reservePart, req.token.decimals)
+              return `Your ${symbol} balance is too low: ${needed} ${symbol} is required, including the ${reserve} ${symbol} reserve your account has to keep, but your wallet only holds ${current} ${symbol}.`
+            }
             // The "fees" branch covers pure-overhead tokens; with
             // walletPaysGas=false, gas is excluded from `need(req)` so it
             // only fires for genuine fee shortfalls.
