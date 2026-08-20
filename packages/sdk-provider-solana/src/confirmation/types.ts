@@ -5,19 +5,8 @@ type SignatureStatusesResponse = Awaited<
   ReturnType<ReturnType<SolanaRpcType['getSignatureStatuses']>['send']>
 >
 
-/**
- * One entry of a `getSignatureStatuses` response, derived from the RPC type
- * rather than hand-written.
- *
- * `sendAndConfirmTransaction` and `sendAndConfirmBundle` each used to carry
- * their own hand-rolled copy declaring `slot`, `confirmations` and `status`.
- * Nothing in the codebase ever read those three fields, and a hand-rolled type
- * that no test checks against the real response is exactly the drift this work
- * is removing. Deriving it also removes every `as SignatureStatus` cast.
- *
- * Verified: a `JitoRpcType` response assigns to this without a cast, because
- * `JitoRpcApi` includes `SolanaRpcApi`.
- */
+/** Derived from the RPC type rather than hand-written, which removes every
+ * `as SignatureStatus` cast. A `JitoRpcType` response assigns without one. */
 export type SignatureStatus = NonNullable<
   SignatureStatusesResponse['value'][number]
 >

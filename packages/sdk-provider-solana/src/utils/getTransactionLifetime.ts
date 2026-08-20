@@ -13,15 +13,11 @@ export type TransactionLifetime =
 const decoder = getCompiledTransactionMessageDecoder()
 
 /**
- * Reads the lifetime a signed transaction actually carries.
+ * Decoding yields `{ messageBytes, signatures }` alone, so the lifetime is
+ * recovered from the compiled message.
  *
- * `getTransactionCodec().decode()` produces `{ messageBytes, signatures }` and
- * nothing else, so the lifetime has to be recovered from the compiled message.
- *
- * This never throws. An unsupported message version, a nonce account resolved
- * through an address lookup table, or undecodable bytes all yield `unknown`,
- * which degrades confirmation to the wall-clock ceiling. Aborting a send
- * because a decode failed would be strictly worse than that.
+ * Never throws: anything undecodable yields `unknown`, degrading confirmation
+ * to the wall-clock ceiling rather than aborting the send.
  */
 export async function getTransactionLifetime(
   transaction: Transaction

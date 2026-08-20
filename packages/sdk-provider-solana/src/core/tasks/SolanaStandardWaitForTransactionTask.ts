@@ -77,17 +77,10 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       }
     }
 
-    // Derived with the same pure function `SolanaSignAndExecuteTask` used for
-    // the early `txHash` write, so the two writers cannot disagree.
     const txSignature = getSignatureFromTransaction(signedTransaction)
     const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
     const result = await sendAndConfirmTransaction(client, signedTransaction, {
-      // The explorer link is written the moment the first RPC accepts the
-      // send - not at signing time, when it would point at a transaction
-      // that may never be broadcast, and not as late as confirmation, which
-      // would hide the link exactly while a user wants to watch the
-      // transaction land.
       onBroadcast: () => {
         statusManager.updateAction(step, action.type, 'PENDING', {
           txLink,

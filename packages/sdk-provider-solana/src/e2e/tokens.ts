@@ -2,22 +2,14 @@ export type E2EToken = {
   symbol: string
   mint: string
   decimals: number
-  /**
-   * Only used to size a test leg. Deliberately approximate - the assertions
-   * read live prices from each quote, so a stale constant here shifts the leg
-   * size by a few cents and never changes a verdict.
-   */
+  /** Approximate; only sizes a test leg. */
   approxPriceUsd: number
 }
 
 /**
- * Mint addresses verified against the LI.FI token API on 2026-08-20.
- *
- * USD* has two mints in circulation. `star9ag...` is the one whose routes
- * include the Perena protocol step, and that step is what makes
- * `jitoBundle: true` return a bundle. `BenJy1n...` is what the token API
- * returns for the symbol and does not produce that route, so resolving USD*
- * by symbol picks the mint that cannot test the bundle path.
+ * USD* has two mints. `star9ag...` is the one with Perena routes, which is
+ * what makes `jitoBundle: true` return a bundle; the token API returns the
+ * other. Never resolve USD* by symbol.
  */
 /** Named so each token is reachable as `TOKENS.USDC` with a literal type. */
 export type E2ETokenName =
@@ -70,13 +62,8 @@ export const TOKENS: Record<E2ETokenName, E2EToken> = {
 /** The four tokens the standard-path matrix cycles through. */
 const STANDARD: E2EToken[] = [TOKENS.USDT, TOKENS.USDC, TOKENS.SOL, TOKENS.WBTC]
 
-/**
- * Converts a dollar amount to the token's base units.
- *
- * Built through a fixed-point string into a BigInt rather than a Number: a
- * WBTC amount at 8 decimals leaves the safe integer range once the price is
- * large, and `String(1e21)` yields `"1e+21"`, which the API rejects.
- */
+/** Via a fixed-point string into a BigInt: `String(1e21)` yields `"1e+21"`,
+ * which the API rejects. */
 export function amountForUsd(token: E2EToken, usd: number): string {
   if (!(usd > 0)) {
     throw new Error(`Leg size must be a positive dollar amount, got ${usd}`)

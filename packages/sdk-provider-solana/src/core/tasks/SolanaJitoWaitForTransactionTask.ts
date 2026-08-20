@@ -50,8 +50,6 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    // Derived from the signed transaction, matching the early `txHash` write.
-    // The RPC's own list is never read - its order is Jito's to choose.
     const txSignature = getSignatureFromTransaction(signedTransactions[0])
     const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
@@ -59,9 +57,6 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
     // the configuration gap, as opposed to an outage - throws inside
     // `sendAndConfirmBundle` with its own message, before anything is sent.
     const result = await sendAndConfirmBundle(client, signedTransactions, {
-      // The explorer link is written the moment the first Jito RPC accepts
-      // the submission - not at signing time, when the bundle may never be
-      // broadcast at all (a failed send, or the configuration gap above).
       onBroadcast: () => {
         statusManager.updateAction(step, action.type, 'PENDING', {
           txLink,
@@ -81,11 +76,9 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
         'Some Jito RPCs failed while the confirmation window was open',
     })
 
-    // A bundle is atomic, so reaching here means every transaction landed. A
-    // `null` in `signatureResults` is indexing lag, never failure - treating
-    // it as one reported completed swaps as `TransactionFailed`. A reported
-    // `err` is the only real failure signal; the bundle-level one comes first
-    // because it survives a failed `getSignatureStatuses` read.
+    // A `null` in `signatureResults` is indexing lag, never failure. The
+    // bundle-level `err` is checked first: it survives a failed
+    // `getSignatureStatuses` read.
     const bundleFailure = getBundleFailure(bundleResult.bundleErr)
     if (bundleFailure) {
       const cause = new SolanaTransactionDetailsError(bundleFailure.failure)

@@ -25,13 +25,7 @@ export async function sendAndConfirmBundle(
   client: SDKClient,
   signedTransactions: Transaction[],
   options?: {
-    /**
-     * Runs once, when the first Jito RPC accepts the bundle submission. From
-     * that moment the bundle is genuinely in the network's hands, so this is
-     * the earliest honest point to show a user an explorer link. The
-     * once-guard lives here so the caller sees a single event however many
-     * branches submit successfully.
-     */
+    /** Runs once, when the first Jito RPC accepts the submission. */
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {

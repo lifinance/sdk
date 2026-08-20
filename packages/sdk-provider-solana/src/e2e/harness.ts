@@ -10,18 +10,13 @@ import { KeypairWalletAdapter } from '../utils/KeypairWalletAdapter.js'
 import type { E2EEnv } from './env.js'
 
 /**
- * Builds a client wired to the supplied RPCs and a keypair wallet.
+ * For `ChainId.SOL` the supplied URLs replace the LI.FI defaults rather than
+ * merging - the configuration a bundle integrator must use.
  *
- * For `ChainId.SOL` the supplied URLs REPLACE the LI.FI defaults rather than
- * merging with them (`getClientStorage` passes `[ChainId.SOL]` as
- * `skipChains`). That is exactly the configuration a bundle integrator must
- * use, and it is what puts a Jito-capable endpoint into the pool.
- *
- * `jitoBundle` has to be set on the CLIENT, not only on the routes request:
- * `getStepTransaction` reads `config.routeOptions.jitoBundle` to decide
- * whether to append the query parameter, and the routes options never reach
- * it. A caller that sets it in one place only gets a route with a Perena leg
- * and a single transaction for it, which looks correct and tests nothing.
+ * `jitoBundle` must be set on the CLIENT: `getStepTransaction` reads it from
+ * `config.routeOptions`, and the routes options never reach it. Setting it in
+ * one place only yields a Perena route and a single transaction for it, which
+ * looks correct and tests nothing.
  */
 export async function createE2EClient(
   env: E2EEnv,
@@ -33,9 +28,7 @@ export async function createE2EClient(
   const client = createClient({
     integrator: 'lifi-sdk-e2e',
     rpcUrls: { [ChainId.SOL]: env.rpcUrls },
-    // Both omitted unless set, so the client keeps its production defaults.
-    // A full matrix run exhausts production's shared anonymous quota, which
-    // surfaces as a 429 midway and leaves the run half-done.
+    // Omitted unless set; production's shared quota runs out mid-matrix.
     ...(env.apiUrl ? { apiUrl: env.apiUrl } : {}),
     ...(env.apiKey ? { apiKey: env.apiKey } : {}),
     // `getStepTransaction` builds its own URL and reads `jitoBundle` from
@@ -65,15 +58,9 @@ export type ObservedWrites = {
 }
 
 /**
- * An `updateRouteHook` that records when `txHash` and `txLink` first appear.
- *
- * The order is the assertion that matters. PR #448 writes `txHash` at signing
- * time and defers `txLink` until an RPC accepts the send, because a link
- * recorded at signing would 404 for a transaction that is never broadcast.
- * Checking only the final state cannot tell the two designs apart.
- *
- * It records what happened rather than what should have, so a regression that
- * reverses the order is visible instead of being asserted away.
+ * Records when `txHash` and `txLink` first appear. The order is the assertion
+ * that matters - checking only the final state cannot tell the deferred design
+ * from one that writes both at signing.
  */
 export function observeRouteWrites(): {
   hook: UpdateRouteHook
