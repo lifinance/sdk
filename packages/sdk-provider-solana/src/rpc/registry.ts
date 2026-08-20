@@ -55,19 +55,61 @@ export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
  * misconfiguration.
  */
 const JSON_RPC_METHOD_NOT_FOUND = -32601
+/**
+ * Not a JSON-RPC standard code. Providers use it for "your plan does not
+ * include this method" - a permanent capability answer, so it belongs with
+ * `unsupported` rather than with the transient failures. Verified against
+ * Helius, which answers `getBundleStatuses` with it on non-business plans;
+ * classifying it as an outage told the integrator to retry, which can never
+ * clear a plan restriction.
+ */
+const PROVIDER_PLAN_RESTRICTED = -32403
+
+const CAPABILITY_CODES: number[] = [
+  JSON_RPC_METHOD_NOT_FOUND,
+  PROVIDER_PLAN_RESTRICTED,
+]
+
+/**
+ * HTTP statuses that answer the capability question rather than report an
+ * outage.
+ *
+ * A provider that gates bundle methods behind a paid plan rejects the request
+ * before it reaches JSON-RPC, so no `-32601` ever arrives - Helius answers
+ * `getBundleStatuses` with a bare HTTP 403 on non-business plans, and kit
+ * surfaces that as `context.statusCode` with the generic `__code` 8100002 it
+ * uses for every HTTP failure.
+ *
+ * 403 means the server understood the request and refused it: a wrong key, an
+ * unentitled plan, a blocked IP. Retrying cannot change any of those, so it
+ * belongs with `unsupported`. 401 is the same story for a missing credential.
+ * 429 and 5xx are deliberately absent - those really do clear on a retry.
+ */
+const CAPABILITY_HTTP_STATUSES: number[] = [401, 403]
 
 const readProbeFailure = (error: unknown): JitoProbeOutcome => {
   const candidate = error as
-    | { code?: unknown; context?: { __code?: unknown } }
+    | {
+        code?: unknown
+        context?: { __code?: unknown; statusCode?: unknown }
+      }
     | undefined
-  if (
-    candidate?.code === JSON_RPC_METHOD_NOT_FOUND ||
-    candidate?.context?.__code === JSON_RPC_METHOD_NOT_FOUND
-  ) {
+
+  // `context.__code` is kit's own error code, which is 8100002 for every HTTP
+  // failure and so cannot classify anything on its own; only a JSON-RPC code
+  // that reached the body is meaningful here.
+  const rpcCode = candidate?.code ?? candidate?.context?.__code
+  if (typeof rpcCode === 'number' && CAPABILITY_CODES.includes(rpcCode)) {
     return 'unsupported'
   }
+
+  const status = candidate?.context?.statusCode
+  if (typeof status === 'number' && CAPABILITY_HTTP_STATUSES.includes(status)) {
+    return 'unsupported'
+  }
+
   const message = error instanceof Error ? error.message : String(error)
-  return /method not found|method does not exist|-32601|method .* not supported|unsupported method/i.test(
+  return /method not found|method does not exist|-32601|method .* not supported|unsupported method|only available for business plans/i.test(
     message
   )
     ? 'unsupported'

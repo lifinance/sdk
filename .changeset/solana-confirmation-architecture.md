@@ -55,7 +55,11 @@ must be supplied via the `rpcUrls` client config option. When endpoints failed
 the probe without saying the method was unknown — a throttle, a timeout, a
 gateway error — it names an outage and says to retry instead, because telling
 an integrator to configure an `rpcUrls` entry they already configured sends
-them after the wrong problem. The outage case — every configured Jito RPC failed — keeps its own
+them after the wrong problem. A provider that gates bundle methods behind a
+paid plan rejects the probe before it reaches JSON-RPC, so no "method not
+found" ever arrives; an HTTP 401 or 403 is therefore read as a capability
+answer rather than an outage, because a refused credential or an unentitled
+plan cannot clear on a retry. The outage case — every configured Jito RPC failed — keeps its own
 message and chains the per-endpoint errors as the error's `cause`.
 
 The message on the standard path's `TransactionExpired` error is reworded:

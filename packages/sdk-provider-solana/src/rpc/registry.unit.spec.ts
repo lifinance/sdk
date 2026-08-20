@@ -87,6 +87,32 @@ describe('probeJitoRpc', () => {
         context: { __code: -32601 },
       }),
     ],
+    [
+      // Captured live from the Helius endpoint on 2026-08-20. A plan
+      // restriction is a permanent capability answer, not an outage:
+      // classifying it as unreachable tells the integrator to retry, which
+      // can never succeed, instead of to change configuration.
+      // The REAL shape, captured live from Helius on 2026-08-20. The plan
+      // gate rejects the request before it reaches JSON-RPC, so no -32601
+      // ever arrives: kit reports a bare HTTP 403 with its generic
+      // `__code: 8100002`, which every HTTP failure carries. Only
+      // `statusCode` distinguishes it. An earlier version of this test
+      // invented a `-32403` JSON-RPC code that nothing in the stack produces,
+      // and it passed while the live endpoint stayed misclassified.
+      'a plan-restriction HTTP 403',
+      Object.assign(new Error('HTTP error (403): Forbidden'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 403, headers: {} },
+      }),
+    ],
+    [
+      // Same reasoning for a missing or wrong credential.
+      'an unauthorized HTTP 401',
+      Object.assign(new Error('HTTP error (401): Unauthorized'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 401, headers: {} },
+      }),
+    ],
   ])('reports unsupported from %s', async (_label, error) => {
     getBundleStatuses.mockRejectedValue(error)
 
@@ -99,6 +125,23 @@ describe('probeJitoRpc', () => {
     ['a throttle', new Error('429 Too Many Requests')],
     ['a timeout', new Error('fetch failed')],
     ['a gateway error', Object.assign(new Error('bad gateway'), { code: 502 })],
+    [
+      // Same `__code: 8100002` as the 403 above, so only the status tells
+      // them apart. These genuinely do clear on a retry and must not be
+      // reported to the integrator as a configuration problem.
+      'a throttling HTTP 429',
+      Object.assign(new Error('HTTP error (429): Too Many Requests'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 429, headers: {} },
+      }),
+    ],
+    [
+      'a gateway HTTP 502',
+      Object.assign(new Error('HTTP error (502): Bad Gateway'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 502, headers: {} },
+      }),
+    ],
   ])('reports unreachable from %s', async (_label, error) => {
     // The bias is deliberate: an unrecognized failure must not be read as
     // "this endpoint does not do Jito", because that accuses the integrator of
