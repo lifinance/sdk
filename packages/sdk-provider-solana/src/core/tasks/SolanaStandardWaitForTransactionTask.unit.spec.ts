@@ -222,11 +222,11 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   })
 
   it('writes txLink at broadcast, then txHash on confirmation, then DONE', async () => {
-    // The other bridge-path specs stub `sendAndConfirmTransaction` with a bare
-    // `mockResolvedValue`, so `onBroadcast` never fires and their call counts
-    // describe a sequence no live swap takes. This one drives the real order:
-    // the link lands the moment an RPC accepts the send, the hash only once
-    // the transaction confirmed.
+    // The other bridge-path specs stub `sendAndConfirmTransaction` with a
+    // bare `mockResolvedValue`, so `onBroadcast` never fires and their call
+    // counts describe a sequence no live swap takes. This one drives the real
+    // order: the link lands the moment an RPC accepts the send, the hash only
+    // once the transaction confirmed.
     callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
     sendAndConfirmTransaction.mockImplementation(
       async (

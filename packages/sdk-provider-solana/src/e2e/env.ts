@@ -58,8 +58,7 @@ export function assertSpendWithinCeiling(
 ): void {
   if (plannedUsd > maxSpendUsd) {
     throw new Error(
-      `Planned spend $${plannedUsd} exceeds MAX_SPEND_USD $${maxSpendUsd}. ` +
-        'Lower the leg size or raise MAX_SPEND_USD deliberately.'
+      `Planned spend $${plannedUsd} exceeds MAX_SPEND_USD $${maxSpendUsd}.`
     )
   }
 }

@@ -158,9 +158,6 @@ describe('createConfirmationDeadline', () => {
     // thing that makes an early verdict impossible. Driven at the real tick
     // cadence against an RPC that answers `false` on every probe — a lagging
     // node looks exactly like this — no verdict may exist inside the window.
-    // Speeding up EXPIRY_PROBE_INTERVAL_MS without re-checking that relation
-    // is the defect this pins: at the previous 3 s interval the verdict
-    // landed at ~6.4 s, and this test fails.
     isBlockhashValid.mockResolvedValue(valid(false))
     const deadline = createConfirmationDeadline({
       lifetimes: [blockhash('A')],
@@ -187,12 +184,12 @@ describe('createConfirmationDeadline', () => {
 
   it('derives EXPIRY_CONFIRMATIONS so no verdict can land inside the lag window', () => {
     // `isBlockhashValid` answers `false` both for a dead blockhash and for a
-    // node that has not yet seen it, so the earliest possible verdict must sit
-    // above the window a healthy-but-lagging node needs to catch up. The
+    // node that has not yet seen it, so the earliest possible verdict must
+    // sit above the window a healthy-but-lagging node needs to catch up. The
     // relation is held by construction rather than by a chosen literal, so
-    // this asserts the derivation, not one hard-coded pair of values: it holds
-    // for any NODE_LAG_WINDOW_MS and EXPIRY_PROBE_INTERVAL_MS, including a
-    // window that divides the interval exactly.
+    // this asserts the derivation, not one hard-coded pair of values: it
+    // holds for any NODE_LAG_WINDOW_MS and EXPIRY_PROBE_INTERVAL_MS,
+    // including a window that divides the interval exactly.
     expect(
       (EXPIRY_CONFIRMATIONS - 1) * EXPIRY_PROBE_INTERVAL_MS
     ).toBeGreaterThan(NODE_LAG_WINDOW_MS)

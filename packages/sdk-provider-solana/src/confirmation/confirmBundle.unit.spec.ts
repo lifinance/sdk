@@ -124,11 +124,9 @@ describe('confirmBundle', () => {
 
   it('polls bundle statuses no faster than the documented Jito rate limit', async () => {
     // Jito's own block engine documents a default limit of 1 request per
-    // second per IP per region. The signature poller's 400 ms cadence
-    // (2.5 req/s) would exceed it on its own, so the bundle poller must keep
-    // its own, slower interval. The detached deadline loop's
-    // DEADLINE_TICK_INTERVAL_MS sleeps are not status reads and are filtered
-    // out.
+    // second per IP per region. The signature poller's 400 ms cadence (2.5
+    // req/s) would exceed it on its own, so the bundle poller must keep its
+    // own, slower interval.
     getBundleStatuses
       .mockResolvedValueOnce(noBundle())
       .mockResolvedValueOnce(bundle('confirmed'))
@@ -205,9 +203,7 @@ describe('confirmBundle', () => {
     // transaction in the bundle landed. A missing `getSignatureStatuses`
     // payload must degrade to `null` results - the enrichment is for the
     // `err` scan only - not veto a confirmation the bundle status already
-    // made and end in `TransactionExpired` for a landed bundle. The deadline
-    // is bounded so a regression that keeps polling exits into a clean
-    // assertion failure instead of spinning.
+    // made and end in `TransactionExpired` for a landed bundle.
     reached.mockReturnValueOnce(false).mockReturnValue(true)
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
     getSignatureStatuses.mockResolvedValue({ value: null })
@@ -248,8 +244,7 @@ describe('confirmBundle', () => {
     // status arriving without it made `txSignatures.map` a `TypeError` on the
     // failing-read path - thrown out of the probe on every poll, charged to
     // MAX_STATUS_READ_FAILURES, and ending as `rpc-unavailable` for a bundle
-    // that had already landed. That is the exact misreport this module exists
-    // to remove.
+    // that had already landed.
     getBundleStatuses.mockResolvedValue({
       value: [{ confirmation_status: 'confirmed' }],
     })
@@ -425,10 +420,9 @@ describe('confirmBundle', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never fires; the
-    // loop then exits on the aborted signal and the final probe is skipped.
-    // Reporting `not-confirmed` here would turn a hung RPC into
-    // `TransactionExpired`, the exact misdiagnosis this rework removes.
+    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never
+    // fires; the loop then exits on the aborted signal and the final probe is
+    // skipped.
     const controller = new AbortController()
     reached.mockReturnValue(false)
     getBundleStatuses.mockImplementation(() => {
@@ -436,7 +430,7 @@ describe('confirmBundle', () => {
       return Promise.reject(new Error('request aborted'))
     })
 
-    await expect(run(controller.signal)).rejects.toThrow(/never observed here/i)
+    await expect(run(controller.signal)).rejects.toThrow(/ever completed/i)
     // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule.
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
@@ -456,9 +450,7 @@ describe('confirmBundle', () => {
         return Promise.reject(new Error('request aborted'))
       })
 
-    await expect(run(controller.signal)).rejects.toThrow(
-      /not observed near the deadline/i
-    )
+    await expect(run(controller.signal)).rejects.toThrow(/stopped answering/i)
     // Two reads: the first answered, so the never-observed rule cannot be the
     // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
     // either.

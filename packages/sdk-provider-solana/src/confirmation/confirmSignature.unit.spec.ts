@@ -229,7 +229,7 @@ describe('confirmSignature', () => {
     const resend = vi.fn(() => Promise.reject(new Error('connection refused')))
 
     await expect(run(resend, controller.signal)).rejects.toThrow(
-      /send attempt/i
+      /send to this RPC failed/i
     )
   })
 
@@ -325,10 +325,9 @@ describe('confirmSignature', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never fires; the
-    // loop then exits on the aborted signal and the final probe is skipped.
-    // Reporting `not-confirmed` here would turn a hung RPC into
-    // `TransactionExpired`, the exact misdiagnosis this rework removes.
+    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never
+    // fires; the loop then exits on the aborted signal and the final probe is
+    // skipped.
     const controller = new AbortController()
     reached.mockReturnValue(false)
     getSignatureStatuses.mockImplementation(() => {
@@ -338,7 +337,7 @@ describe('confirmSignature', () => {
     const resend = vi.fn(() => Promise.resolve())
 
     await expect(run(resend, controller.signal)).rejects.toThrow(
-      /never observed here/i
+      /ever completed/i
     )
     // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule; and
     // the send succeeded, so it cannot be the send rule either.
@@ -363,7 +362,7 @@ describe('confirmSignature', () => {
     const resend = vi.fn(() => Promise.resolve())
 
     await expect(run(resend, controller.signal)).rejects.toThrow(
-      /not observed near the deadline/i
+      /stopped answering/i
     )
     // Two reads: the first answered, so the never-observed rule cannot be the
     // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
@@ -444,7 +443,7 @@ describe('confirmSignature', () => {
 
     // The branch never observed anything, so it refuses the verdict - but
     // the assertion under test is the callback, not the throw.
-    await expect(pending).rejects.toThrow(/never observed here/i)
+    await expect(pending).rejects.toThrow(/ever completed/i)
     expect(onBroadcast).not.toHaveBeenCalled()
   })
 })

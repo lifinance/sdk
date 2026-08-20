@@ -1,10 +1,7 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import type { RaceResult } from '../../confirmation/raceRpcs.js'
 
-/**
- * Wording for the two failure outcomes. The classification is fixed here; only
- * the nouns differ between the standard and the bundle path.
- */
+/** Only the nouns differ between the standard and bundle paths. */
 export type ConfirmationMessages = {
   /** Every branch failed: an outage, not a verdict about the transaction. */
   rpcUnavailable: string
@@ -16,17 +13,9 @@ export type ConfirmationMessages = {
   someRpcsFailed: string
 }
 
-/**
- * Wraps the per-endpoint errors so they travel as the reported error's `cause`.
- *
- * `cause` is set to the first collected error on purpose. `BaseError`
- * overwrites its own `stack` with `getRootCause(cause).stack`, and
- * `getRootCause` walks `.cause` alone - an `AggregateError` has none, so
- * without this the reported stack is wherever the `AggregateError` happened to
- * be built, which is this file. Pointing it at a real endpoint failure makes
- * the stack say where something actually went wrong. The full set stays on
- * `AggregateError.errors`.
- */
+/** `cause` is the first collected error on purpose: `BaseError` overwrites its
+ * stack with `getRootCause(cause).stack`, and an `AggregateError` has no
+ * `cause`, so without it the stack would point at this file. */
 const chainErrors = (
   errors: Error[],
   message: string
@@ -38,16 +27,10 @@ const chainErrors = (
 /**
  * Returns the confirmed value, or throws the error the integrator sees.
  *
- * Both wait tasks map the same three race outcomes onto the same two error
- * classes, differing only in wording, so the mapping lives here once. Keeping
- * it in one place is the point: before this rework the two paths classified
- * the same failures differently, and the bundle path delivered every one of
- * them as `UnknownError` with `InternalError`.
- *
- * `rpc-unavailable` and `not-confirmed` must stay distinct errors. Collapsing
- * them is what reported a live RPC-compatibility defect to users as an expired
- * transaction: no endpoint had answered at all, which says nothing about
- * whether the transaction landed.
+ * Both wait tasks map the same three outcomes onto the same two error classes,
+ * so the mapping lives here once. `rpc-unavailable` and `not-confirmed` must
+ * stay distinct: collapsing them reported a live RPC defect as an expired
+ * transaction.
  */
 export function unwrapConfirmation<T>(
   result: RaceResult<T>,

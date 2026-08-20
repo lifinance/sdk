@@ -37,21 +37,16 @@ export async function sendAndConfirmBundle(
 ): Promise<RaceResult<BundleConfirmation>> {
   const { rpcs: jitoRpcs, unreachable } = await getJitoRpcs(client)
 
-  // An empty list is named here, where the emptiness is known: racing zero
-  // RPCs would surface as a bare `rpc-unavailable` with no errors, which is
-  // indistinguishable from every endpoint being down.
-  //
-  // The two reasons it can be empty do not share a message. Every configured
-  // endpoint answering "method not found" is a configuration gap the
-  // integrator can close; endpoints that never answered are an outage, and
-  // telling someone to configure an `rpcUrls` entry they already configured
-  // sends them after the wrong problem. `unreachable` counts the second kind.
+  // Named here, where the emptiness is known: racing zero RPCs would surface
+  // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
+  // two causes get different messages - a configuration gap the integrator can
+  // close, or endpoints that never answered.
   if (jitoRpcs.length === 0) {
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
-        ? `This step must be submitted as a Jito bundle, but the Jito capability probe (\`getBundleStatuses\`) failed against ${unreachable} configured Solana RPC ${unreachable === 1 ? 'endpoint' : 'endpoints'} without reporting the method as unknown. Those endpoints may be temporarily unavailable - retry before changing configuration.`
-        : 'This step must be submitted as a Jito bundle, but no configured Solana RPC supports Jito bundle methods (`sendBundle`/`getBundleStatuses`) - the default LI.FI RPCs do not. Configure a Jito-capable Solana RPC URL via the `rpcUrls` client config option to execute this route.'
+        ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). Likely temporary - retry.`
+        : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
 

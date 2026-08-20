@@ -215,7 +215,7 @@ describe('pollUntilDeadline', () => {
     probe.mockRejectedValue(new Error('read failed'))
 
     await expect(run({ neverBroadcast: () => true })).rejects.toThrow(
-      /send attempt/i
+      /send to this RPC failed/i
     )
   })
 
@@ -223,8 +223,7 @@ describe('pollUntilDeadline', () => {
     // A hung endpoint: the read is still in flight when the branch timeout
     // aborts it. One in-flight read is one failure, so the budget never
     // fires; the loop exits on the aborted signal and the final probe is
-    // skipped. Reporting not-confirmed here would turn a hung RPC into an
-    // expiry.
+    // skipped.
     const controller = new AbortController()
     probe.mockImplementation(() => {
       controller.abort()
@@ -232,7 +231,7 @@ describe('pollUntilDeadline', () => {
     })
 
     await expect(run({ signal: controller.signal })).rejects.toThrow(
-      /never observed here/i
+      /ever completed/i
     )
     expect(probe).toHaveBeenCalledTimes(1)
   })
@@ -248,7 +247,7 @@ describe('pollUntilDeadline', () => {
     })
 
     await expect(run({ signal: controller.signal })).rejects.toThrow(
-      /not observed near the deadline/i
+      /stopped answering/i
     )
     expect(probe).toHaveBeenCalledTimes(2)
   })

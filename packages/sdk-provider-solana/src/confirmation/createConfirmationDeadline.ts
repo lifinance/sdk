@@ -2,132 +2,50 @@ import type { Blockhash } from '@solana/kit'
 import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
-/**
- * Give-up point for a branch's own polling, measured from the moment that
- * branch builds its deadline. Nothing in this module extends it.
- *
- * It is not by itself an absolute bound on a branch: `reached()` is only read
- * between iterations, so a branch suspended inside an RPC call that never
- * answers never gets to read it. `BRANCH_TIMEOUT_MS` is what closes that gap.
- */
+/** Give-up point for a branch's polling. Read between iterations only, so a
+ * hung RPC call needs `BRANCH_TIMEOUT_MS` to close the gap. */
 export const CONFIRMATION_TIMEOUT_MS = 90_000
-/**
- * Head-room between a branch's own deadline and the hard abort.
- *
- * A branch that stops on its deadline still runs one final status probe, and
- * that probe must fit here. `STATUS_RETRY_BACKOFF_CAP_MS` must stay below this
- * value: a backoff sleep straddling the ceiling is the only thing that can eat
- * into it.
- */
+/** Head-room for the final probe after the deadline.
+ * `STATUS_RETRY_BACKOFF_CAP_MS` must stay below it. */
 export const FINAL_PROBE_MARGIN_MS = 5_000
-/**
- * Hard bound on a single RPC branch, in-flight requests included. Handed to
- * `raceRpcs` by the actions, which abort every branch's request with it.
- *
- * Deliberately above `CONFIRMATION_TIMEOUT_MS`: a branch that stops on its own
- * deadline still runs one final status probe, and an abort fired at the same
- * instant would pre-empt it. The gap is a backstop, not a second policy —
- * nothing reaches it unless an endpoint has stopped answering entirely.
- * `STATUS_RETRY_BACKOFF_CAP_MS` must stay below this gap: the last backoff
- * sleep before the ceiling is the only thing that can eat into it.
- */
+/** Hard bound on a branch, in-flight requests included. Above the ceiling so
+ * an abort cannot pre-empt the final probe. */
 export const BRANCH_TIMEOUT_MS: number =
   CONFIRMATION_TIMEOUT_MS + FINAL_PROBE_MARGIN_MS
-/**
- * The window a healthy-but-lagging node plausibly needs to catch up to the
- * cluster tip.
- *
- * This is a premise, not a tuning knob. `isBlockhashValid` answers `false` for
- * a lagging node exactly as it does for a dead blockhash, so the SDK may not
- * reach an expiry verdict inside this window - it would condemn a blockhash
- * that is alive. `EXPIRY_CONFIRMATIONS` is derived from it below.
- */
+/** How long a healthy-but-lagging node may need to catch up. A premise, not a
+ * knob: `isBlockhashValid` answers `false` for lag and for death alike, so no
+ * verdict may land inside this window. */
 export const NODE_LAG_WINDOW_MS = 12_000
-/**
- * Minimum wall-clock gap between two `isBlockhashValid` probes of the same
- * deadline.
- *
- * This is the real guard against a false expiry. `isBlockhashValid` returns
- * `false` both for a dead blockhash and for a node that has not yet seen it,
- * so the consecutive-`false` rule only means anything if the probes are far
- * enough apart that a node lagging the cluster cannot answer `false` three
- * times in a row. At the deadline-advance cadence that would be ~1.2 s —
- * about three slots, which a lagging node clears routinely.
- * `EXPIRY_CONFIRMATIONS` probes at this interval instead span 14 s (~35
- * slots) before any verdict. Probes are quantized to the deadline-advance
- * cadence (`DEADLINE_TICK_INTERVAL_MS`, 400 ms), so they land at 0.4 s, 7.6 s
- * and 14.8 s: the earliest possible expiry verdict sits at ~14.8 s, and a node
- * must lag the tip for that entire window to produce one. The previous 3 s
- * interval allowed a verdict at ~6.4 s, inside a plausible lag window.
- *
- * It also caps the probe cost: ~13 `isBlockhashValid` calls per distinct
- * blockhash per RPC across the whole ceiling instead of one per tick.
- *
- * No runtime floor backs this up, and none is wanted: a floor set at
- * `NODE_LAG_WINDOW_MS` could never fire while the cadence already forces the
- * first verdict past it, so it would be unreachable code asserting an
- * invariant it never gets to enforce. The relation is held by construction
- * instead - `EXPIRY_CONFIRMATIONS` is derived from `NODE_LAG_WINDOW_MS` - and
- * the unit spec pins the resulting arithmetic.
- */
+/** Gap between `isBlockhashValid` probes. Spacing them is what makes the
+ * consecutive-`false` rule meaningful: quantized to the 400 ms tick, probes
+ * land at 0.4/7.6/14.8 s, so no verdict lands inside `NODE_LAG_WINDOW_MS`. */
 export const EXPIRY_PROBE_INTERVAL_MS = 7_000
-/**
- * Consecutive `false` results required before we believe a blockhash is dead.
- *
- * Derived rather than chosen: the earliest possible verdict lands
- * `(EXPIRY_CONFIRMATIONS - 1) × EXPIRY_PROBE_INTERVAL_MS` after the first
- * probe, and that must exceed `NODE_LAG_WINDOW_MS`. Deriving it means changing
- * either premise moves the count automatically, instead of leaving a literal
- * that silently stops satisfying the relation it was chosen for. The `+ 2`
- * (rather than `+ 1`) is what makes the inequality strict for a window that
- * divides exactly.
- */
+/** Consecutive `false` results before a blockhash is believed dead. Derived so
+ * a change to either premise moves it automatically; `+ 2` keeps the
+ * inequality strict when the window divides exactly. */
 export const EXPIRY_CONFIRMATIONS: number =
   Math.floor(NODE_LAG_WINDOW_MS / EXPIRY_PROBE_INTERVAL_MS) + 2
-/**
- * Consecutive failures of one blockhash's own probe after which that
- * blockhash stops being probed. The budget is per blockhash: a sibling whose
- * endpoint never answers must not end the early exit for a blockhash whose
- * own probes all succeed.
- *
- * This constant belongs to the blockhash prober alone — do not reuse it for
- * the status pollers. It counts failures at the probe cadence
- * (`EXPIRY_PROBE_INTERVAL_MS`, so five failures span ~28 s), and its
- * consequence is soft: that blockhash stops being probed and the deadline
- * degrades toward the wall-clock ceiling, while status polling continues
- * untouched. The status
- * pollers count failures at a far faster cadence and their consequence is a
- * throw; they have their own budget, `MAX_STATUS_READ_FAILURES` in
- * `pollUntilDeadline.ts`.
- */
+/** Probe failures per blockhash before that blockhash stops being probed.
+ * Prober-only; the status pollers have `MAX_STATUS_READ_FAILURES`. */
 export const MAX_PROBE_ERRORS = 5
 
-/**
- * Structural, so one implementation serves both the Solana and the Jito RPC —
- * `JitoRpcApi` includes `SolanaRpcApi`.
- */
+/** Structural, so one implementation serves both the Solana and Jito RPC. */
 export type BlockhashProbeRpc = Pick<SolanaRpcType, 'isBlockhashValid'>
 
 export interface ConfirmationDeadline {
   /** Checked at the top of every poll iteration. */
   reached(): boolean
-  /**
-   * Advances the policy. Never throws.
-   *
-   * Called on the deadline-advance cadence (`DEADLINE_TICK_INTERVAL_MS` in
-   * `pollUntilDeadline.ts`), but only probes when `EXPIRY_PROBE_INTERVAL_MS`
-   * has passed since the last probe.
-   */
+  /** Advances the policy; never throws. Probes at most once per
+   * `EXPIRY_PROBE_INTERVAL_MS`. */
   tick(signal: AbortSignal): Promise<void>
 }
 
 /**
  * Owns every "should I stop polling?" decision.
  *
- * The deadline deliberately never reads `getBlockHeight`: at least one RPC in
- * the default LI.FI set answers it with the slot number, which is ~22 million
- * higher than the block height and makes any comparison against
- * `lastValidBlockHeight` false on its first evaluation.
+ * Never reads `getBlockHeight`: at least one default LI.FI RPC answers it with
+ * the slot number, making any `lastValidBlockHeight` comparison false on its
+ * first evaluation.
  */
 export function createConfirmationDeadline(options: {
   lifetimes: TransactionLifetime[]
@@ -162,12 +80,8 @@ export function createConfirmationDeadline(options: {
   const probeable = new Set<Blockhash>(blockhashes)
   let lastProbeAt: number | undefined
 
-  /**
-   * Derived from the live streaks rather than latched. A blockhash that reads
-   * valid again zeroes its streak, and the verdict goes with it: a node that
-   * lagged long enough to answer `false` three times must not condemn a
-   * blockhash it then reports as alive.
-   */
+  /** Derived, not latched: a blockhash that reads valid again zeroes its
+   * streak and clears the verdict with it. */
   const isExpired = (): boolean => {
     for (const streak of expiredStreaks.values()) {
       if (streak >= EXPIRY_CONFIRMATIONS) {
@@ -199,14 +113,10 @@ export function createConfirmationDeadline(options: {
         return
       }
       lastProbeAt = probeAt
-      // `allSettled`, not `all`: a round probes one blockhash per lifetime,
-      // and `all` rejects on the first failure - discarding the answers the
-      // other probes already produced. Every piece of state this round writes
-      // is keyed by blockhash, so a failing probe can neither reset another
-      // blockhash's expiry streak nor spend another blockhash's error budget.
-      // While they were shared, a single permanently broken probe disabled the
-      // early exit for the whole set - exactly where several lifetimes race
-      // expiry and the early exit matters most.
+      // `allSettled`, not `all`: `all` rejects on the first failure and
+      // discards answers the other probes already produced. All state is keyed
+      // by blockhash, so one broken probe cannot disable the early exit for
+      // the rest.
       const active = [...probeable]
       const probes = await Promise.allSettled(
         active.map(async (blockhash) => {
@@ -221,14 +131,13 @@ export function createConfirmationDeadline(options: {
         const blockhash = active[index]
 
         if (probe.status === 'rejected') {
-          // A failed read says nothing about this blockhash, so it must not
-          // stand in for the `false` that would have continued a streak.
+          // A failed read is not a `false`; it says nothing about this
+          // blockhash.
           expiredStreaks.set(blockhash, 0)
           const errors = (errorStreaks.get(blockhash) ?? 0) + 1
           errorStreaks.set(blockhash, errors)
           if (errors >= MAX_PROBE_ERRORS) {
-            // This blockhash degrades to ceiling-only. A probe failure must
-            // never be read as expiry, and it must never spin forever either.
+            // Degrade to ceiling-only for this blockhash.
             probeable.delete(blockhash)
           }
           return

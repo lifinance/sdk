@@ -9,23 +9,12 @@ const toError = (reason: unknown): Error =>
   reason instanceof Error ? reason : new Error(String(reason))
 
 /**
- * Returns a signal that aborts when `signal` aborts or when `timeoutMs`
- * elapses, whichever happens first.
+ * Aborts when `signal` aborts or `timeoutMs` elapses, whichever is first.
  *
- * Deliberately not `AbortSignal.any([signal, AbortSignal.timeout(ms)])`. Both
- * of those are Baseline March 2024 (Node >= 20.3, Safari 17.4), no package in
- * this repo declares `engines` or a browserslist, and the newest API in any
- * shipped source is `structuredClone` (2022, `@lifi/sdk`'s `execution.ts`).
- * A published SDK must not raise its runtime floor for a convenience that one
- * controller and one timer already cover.
- *
- * The caller's own signal is never aborted here, so "the caller aborted" and
- * "the timeout fired" stay two distinguishable facts. `raceRpcs` depends on
- * that difference to tell a cancelled branch from a dead endpoint.
- *
- * `dispose` must run once the race settles: it clears the timer and detaches
- * the listener, so nothing is left behind on any path — including the
- * confirmation path, which settles long before the timeout would fire.
+ * Not `AbortSignal.any` + `AbortSignal.timeout`: both are Baseline March 2024,
+ * and a published SDK should not raise its runtime floor for a convenience one
+ * controller and one timer already cover. The caller's signal is never aborted
+ * here, so "caller aborted" and "timeout fired" stay distinguishable.
  */
 function abortAfter(
   signal: AbortSignal,
@@ -37,10 +26,8 @@ function abortAfter(
   const timer = setTimeout(() => {
     linked.abort(new Error(`This RPC did not answer within ${timeoutMs}ms.`))
   }, timeoutMs)
-  // Node keeps the event loop alive for a pending timer, which is what
-  // `AbortSignal.timeout` avoided by unref'ing its own. `dispose` is what
-  // really clears this one; the unref only covers a path that skips it. A
-  // browser returns a number, which has no `unref`.
+  // A pending timer keeps Node's event loop alive. `dispose` clears it; the
+  // unref only covers a path that skips `dispose`.
   const handle = timer as unknown as { unref?: () => void }
   handle.unref?.()
 
@@ -62,16 +49,10 @@ function abortAfter(
 /**
  * Runs `run` against every RPC in parallel and reports the first confirmation.
  *
- * `Promise.any` is deliberately not used: it turns "polled and saw nothing"
- * into a thrown sentinel, which destroys the difference between a genuinely
- * expired transaction and an RPC that never answered. That collapse is why a
- * live RPC-compatibility defect was reported to users as `TransactionExpired`.
- *
- * `timeoutMs` is the caller's, not this module's: `raceRpcs` is generic over
- * `Rpc` and holds no confirmation policy. Every branch receives a signal that
- * aborts either when another branch confirms or when `timeoutMs` elapses, so
- * an endpoint that accepts the connection and never answers cannot hold the
- * race open — no HTTP transport in use here applies a timeout of its own.
+ * Not `Promise.any`: it turns "polled and saw nothing" into a thrown sentinel,
+ * collapsing the difference between an expired transaction and an RPC that
+ * never answered - the defect that reported live swaps as `TransactionExpired`.
+ * `timeoutMs` is the caller's; this module holds no confirmation policy.
  */
 export async function raceRpcs<Rpc, T>(
   rpcs: Rpc[],
@@ -83,11 +64,9 @@ export async function raceRpcs<Rpc, T>(
   }
 
   const controller = new AbortController()
-  // Two distinct sources, kept distinct on purpose: `controller` means "another
-  // branch already confirmed, this one is redundant", while the timeout means
-  // "this endpoint never answered". `classify` must not read them as the same
-  // thing, so the timeout aborts the linked signal only and leaves `controller`
-  // untouched.
+  // Kept distinct: `controller` means "another branch confirmed", the timeout
+  // means "this endpoint never answered". The timeout aborts the linked signal
+  // only.
   const branch = abortAfter(controller.signal, options.timeoutMs)
 
   let resolveConfirmed: ((value: T) => void) | undefined
@@ -114,29 +93,24 @@ export async function raceRpcs<Rpc, T>(
 
     for (const entry of results) {
       if (entry.status === 'fulfilled') {
-        // Unreachable safeguard: `resolveConfirmed` runs before the branch
-        // promise settles, so `firstConfirmation` always wins the race
-        // today. This keeps `classify` correct if that structure changes.
+        // Unreachable today - `firstConfirmation` always wins - but keeps
+        // `classify` correct if that structure changes.
         if (entry.value.kind === 'confirmed') {
           return { kind: 'confirmed', value: entry.value.value }
         }
         sawNotConfirmed = true
         continue
       }
-      // Losing branches are cancelled on purpose; that is not a failure. A
-      // branch the timeout killed is a different matter — that endpoint really
-      // is unavailable, so its error is collected rather than dropped.
+      // Cancelled branches are not failures. A branch the timeout killed is,
+      // so its error is collected.
       if (controller.signal.aborted) {
         continue
       }
       errors.push(toError(entry.reason))
     }
 
-    // A completed observation outranks a thrown error, so one branch that
-    // polled to its deadline makes the verdict `not-confirmed` - but the
-    // errors collected above still travel with it. They are the only trail a
-    // branch the timeout killed leaves behind, and the wait tasks chain them
-    // as the `cause` of the expiry they report.
+    // A completed observation outranks a thrown error, but the collected
+    // errors still travel with it as the expiry's `cause`.
     if (sawNotConfirmed) {
       return { kind: 'not-confirmed', errors }
     }
@@ -153,11 +127,8 @@ export async function raceRpcs<Rpc, T>(
 
     return result
   } finally {
-    // Cancels every branch still in flight, on every path out of the race -
-    // a rejection included, which would otherwise leave the branches running
-    // to their own deadlines with nothing left to cancel them. It has to run
-    // before `dispose`, which detaches the listener that carries this abort
-    // to the branches.
+    // Cancels every in-flight branch on every path out, rejections included.
+    // Must run before `dispose`, which detaches the listener carrying it.
     controller.abort()
     branch.dispose()
   }

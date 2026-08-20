@@ -19,11 +19,11 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
 
   describe.sequential('Phase 1: Jito bundle', () => {
     it('returns a bundle-shaped transactionRequest for PENGU->USD* with jitoBundle', async () => {
-      // The premise the whole bundle path rests on: `jitoBundle: true` in
-      // the ROUTES options (not a quote query param) yields a route whose
-      // step carries a Perena leg, and stepTransaction then packs it into
-      // an array. If this stops holding the phase must fail loudly rather
-      // than silently exercise the standard path.
+      // The premise the whole bundle path rests on: `jitoBundle: true` in the
+      // ROUTES options (not a quote query param) yields a route whose step
+      // carries a Perena leg, and stepTransaction then packs it into an
+      // array. If this stops holding the phase must fail loudly rather than
+      // silently exercise the standard path.
       const { client, address } = await createE2EClient(env, {
         jitoBundle: true,
       })

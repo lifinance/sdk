@@ -29,40 +29,15 @@ export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
   return (await probeJitoRpc(rpcUrl)) === 'supported'
 }
 
-/**
- * What one Jito capability probe established.
- *
- * `unsupported` and `unreachable` must stay apart. Both leave the endpoint out
- * of the Jito list, but only the first is a configuration gap the integrator
- * can act on; the second is an outage, and telling someone to configure an
- * `rpcUrls` entry they already configured sends them after the wrong problem.
- */
+/** Both leave the endpoint out of the Jito list, but only `unsupported` is a
+ * configuration gap the integrator can act on. */
 export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
 
-/**
- * Reads an endpoint's answer as either "I do not know this method" or "I did
- * not answer".
- *
- * The JSON-RPC code is the reliable signal, but `@solana/kit` does not put it
- * on `error.code`: it throws a `SolanaError` carrying
- * `context.__code === -32601` and a reworded message, verified live against
- * both default LI.FI endpoints. A plain `error.code` is still read first for
- * any transport that does surface it, and the message is a last resort - it is
- * the half a provider can break by localizing or rewording its text.
- *
- * The bias is deliberate: an unrecognized failure counts as `unreachable`, so
- * a misread blames an outage rather than accusing the integrator of a
- * misconfiguration.
- */
+/** `@solana/kit` puts the JSON-RPC code on `context.__code`, not `error.code`.
+ * The message is a last resort - a provider can reword it. An unrecognized
+ * failure counts as `unreachable`, so a misread blames an outage. */
 const JSON_RPC_METHOD_NOT_FOUND = -32601
-/**
- * Not a JSON-RPC standard code. Providers use it for "your plan does not
- * include this method" - a permanent capability answer, so it belongs with
- * `unsupported` rather than with the transient failures. Verified against
- * Helius, which answers `getBundleStatuses` with it on non-business plans;
- * classifying it as an outage told the integrator to retry, which can never
- * clear a plan restriction.
- */
+/** Non-standard; providers use it for "your plan lacks this method". */
 const PROVIDER_PLAN_RESTRICTED = -32403
 
 const CAPABILITY_CODES: number[] = [
@@ -70,21 +45,9 @@ const CAPABILITY_CODES: number[] = [
   PROVIDER_PLAN_RESTRICTED,
 ]
 
-/**
- * HTTP statuses that answer the capability question rather than report an
- * outage.
- *
- * A provider that gates bundle methods behind a paid plan rejects the request
- * before it reaches JSON-RPC, so no `-32601` ever arrives - Helius answers
- * `getBundleStatuses` with a bare HTTP 403 on non-business plans, and kit
- * surfaces that as `context.statusCode` with the generic `__code` 8100002 it
- * uses for every HTTP failure.
- *
- * 403 means the server understood the request and refused it: a wrong key, an
- * unentitled plan, a blocked IP. Retrying cannot change any of those, so it
- * belongs with `unsupported`. 401 is the same story for a missing credential.
- * 429 and 5xx are deliberately absent - those really do clear on a retry.
- */
+/** A plan gate rejects before JSON-RPC, so no `-32601` arrives - Helius
+ * answers with a bare 403. The server understood and refused, and no retry
+ * clears that. 429 and 5xx are absent: those do clear. */
 const CAPABILITY_HTTP_STATUSES: number[] = [401, 403]
 
 const readProbeFailure = (error: unknown): JitoProbeOutcome => {
@@ -95,9 +58,8 @@ const readProbeFailure = (error: unknown): JitoProbeOutcome => {
       }
     | undefined
 
-  // `context.__code` is kit's own error code, which is 8100002 for every HTTP
-  // failure and so cannot classify anything on its own; only a JSON-RPC code
-  // that reached the body is meaningful here.
+  // kit's `__code` is 8100002 for every HTTP failure, so only a JSON-RPC code
+  // that reached the body is meaningful.
   const rpcCode = candidate?.code ?? candidate?.context?.__code
   if (typeof rpcCode === 'number' && CAPABILITY_CODES.includes(rpcCode)) {
     return 'unsupported'
@@ -178,14 +140,9 @@ export const getSolanaRpcs = async (
     .filter((rpc): rpc is SolanaRpcType => Boolean(rpc))
 }
 
-/**
- * Wrapper around getting the Jito RPCs.
- *
- * `unreachable` counts the configured endpoints whose capability probe failed
- * without saying the method was unknown. An empty `rpcs` with a non-zero
- * `unreachable` is an outage, not a configuration gap - the caller needs the
- * difference to raise an error the integrator can act on.
- */
+/** `unreachable` counts endpoints whose probe failed without naming the
+ * method unknown. Empty `rpcs` with a non-zero count is an outage, not a
+ * configuration gap. */
 export const getJitoRpcs = async (
   client: SDKClient
 ): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {

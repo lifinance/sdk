@@ -92,13 +92,6 @@ describe('probeJitoRpc', () => {
       // restriction is a permanent capability answer, not an outage:
       // classifying it as unreachable tells the integrator to retry, which
       // can never succeed, instead of to change configuration.
-      // The REAL shape, captured live from Helius on 2026-08-20. The plan
-      // gate rejects the request before it reaches JSON-RPC, so no -32601
-      // ever arrives: kit reports a bare HTTP 403 with its generic
-      // `__code: 8100002`, which every HTTP failure carries. Only
-      // `statusCode` distinguishes it. An earlier version of this test
-      // invented a `-32403` JSON-RPC code that nothing in the stack produces,
-      // and it passed while the live endpoint stayed misclassified.
       'a plan-restriction HTTP 403',
       Object.assign(new Error('HTTP error (403): Forbidden'), {
         name: 'SolanaError',

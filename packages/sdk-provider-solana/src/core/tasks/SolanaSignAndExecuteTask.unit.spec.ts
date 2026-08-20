@@ -109,10 +109,7 @@ describe('SolanaSignAndExecuteTask', () => {
   it('does not record an explorer link at signing time, and clears any stale one', async () => {
     // Nothing has been broadcast yet: simulation runs later in the wait task,
     // and a bundle route with no Jito-capable RPC never submits at all. A
-    // link written here would 404 on those paths. The explicit
-    // `txLink: undefined` also overwrites the stale link a restarted
-    // `PENDING` action carried from its previous run, so an old link can
-    // never sit next to this run's fresh `txHash`.
+    // link written here would 404 on those paths.
     getTransactionRequestData.mockResolvedValue('tx-a')
 
     await new SolanaSignAndExecuteTask().run(baseContext())

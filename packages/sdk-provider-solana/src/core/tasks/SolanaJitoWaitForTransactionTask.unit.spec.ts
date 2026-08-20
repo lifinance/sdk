@@ -117,10 +117,7 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     // records `getSignatureFromTransaction(signedTransactions[0])` the moment
     // the wallet signs; this task re-derives the same value from the same
     // object after the wait, so the two cannot show an integrator two hashes
-    // for one swap. The RPC's own `txSignatures` list is returned *reversed*
-    // here to prove nothing depends on the order Jito reports - a task that
-    // read `txSignatures[0]` would report the second transaction's signature
-    // and fail below.
+    // for one swap.
     const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
     const txSignatures = signedTransactions
       .map((signedTransaction) =>

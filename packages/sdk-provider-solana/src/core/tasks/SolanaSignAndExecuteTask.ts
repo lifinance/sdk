@@ -102,32 +102,13 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // signing a replacement.
     //
     // `txLink` is deliberately NOT written here. Nothing has been broadcast
-    // yet: simulation runs later in the wait task, and a bundle route with no
-    // Jito-capable RPC configured never submits at all. An explorer link
-    // recorded now would 404 on every one of those paths. The wait tasks
-    // write it the moment the first RPC accepts the send (`onBroadcast`), and
-    // again on confirmation. `txLink: undefined` also clears the stale link a
-    // restarted `PENDING` action carried over from its previous run, so the
-    // old link can never sit next to this run's fresh `txHash`.
+    // yet: simulation runs later, and a bundle route with no Jito-capable RPC
+    // never submits at all - a link recorded now would 404. The wait tasks
+    // write it on `onBroadcast`. `txLink: undefined` also clears the stale
+    // link a restarted `PENDING` action carried over.
     //
-    // A restart is a separate matter, and not a reason this write exists: a
-    // resumed route runs `prepareRestart`, which keeps only actions that hold
-    // a `txHash` and are not `FAILED`, and `BaseStepExecutor` marks the
-    // failing action `FAILED` on every non-retry error. After a failure the
-    // actions array is therefore emptied, `txHash` included; carrying the
-    // signature across a retry needs a change in `@lifi/sdk`. An action
-    // interrupted while still `PENDING` is the other case: this write is what
-    // makes `prepareRestart` keep it, and the kept action carries the stale
-    // hash and link until the pipeline re-runs this task and the new
-    // signature overwrites them.
-    //
-    // `signedTransactions[0]` is the transaction both wait tasks report: each
-    // derives its signature from this very object with this same pure
-    // function, so neither can disagree with this write. Nothing reads the
-    // RPC-reported signature list, whose ordering would be Jito's to choose.
-    // The agreement is pinned by `reports the signature of the first signed
-    // transaction, not the RPC-reported list` in
-    // `SolanaJitoWaitForTransactionTask.unit.spec.ts`.
+    // `signedTransactions[0]` is what both wait tasks report, each deriving
+    // the signature from this object with this same function.
     const txSignature = getSignatureFromTransaction(signedTransactions[0])
 
     statusManager.updateAction(step, action.type, 'PENDING', {

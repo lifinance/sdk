@@ -18,13 +18,8 @@ const RESEND_INTERVAL_MS = 1000
  */
 export const SIGNATURE_POLL_INTERVAL_MS = 400
 
-/**
- * Confirms one transaction against one RPC.
- *
- * Holds no policy of its own: the deadline decides when to stop, and the
- * resend loop can only observe an `AbortSignal`. Nothing the resend loop does
- * can lengthen or shorten polling.
- */
+/** Confirms one transaction against one RPC. Holds no policy: the deadline
+ * decides when to stop, and the resend loop only observes an `AbortSignal`. */
 export async function confirmSignature(options: {
   rpc: SolanaRpcType
   signal: AbortSignal
@@ -41,28 +36,22 @@ export async function confirmSignature(options: {
   const { rpc, signal, signature, lifetimes, resend } = options
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
 
-  // Ends the resend loop when this branch finishes. That loop can never change
-  // *when* polling stops: the poll loop's exit depends on the deadline and the
-  // caller's signal alone.
+  // Ends the resend loop when this branch finishes.
   const branch = new AbortController()
   const abortBranch = (): void => branch.abort()
   signal.addEventListener('abort', abortBranch, { once: true })
 
   let sendSucceeded = false
 
-  // The first send is awaited so that "did this RPC ever accept the
-  // transaction?" has a settled answer by the time the polling loop ends.
-  // Leaving it to the detached loop makes that answer depend on microtask
-  // ordering, which is exactly the kind of implicit coupling this rework
-  // removes.
+  // Awaited so "did this RPC ever accept the transaction?" has a settled
+  // answer by the time polling ends, rather than one that depends on
+  // microtask ordering.
   try {
     await resend(rpc, signal)
     sendSucceeded = true
-    // A send can fulfil after this branch was aborted — an abort cannot
-    // retract an already-fulfilled transport promise. By then the race has
-    // settled, and reporting a broadcast would regress an action status the
-    // wait task already finalized. `sendSucceeded` still latches: the answer
-    // to "did this RPC ever accept the transaction?" is genuinely yes.
+    // A send can fulfil after the abort; reporting a broadcast then would
+    // regress an action status the wait task already finalized.
+    // `sendSucceeded` still latches - the RPC did accept it.
     if (!signal.aborted) {
       options.onBroadcast?.()
     }
@@ -80,10 +69,7 @@ export async function confirmSignature(options: {
       try {
         await resend(rpc, branch.signal)
         sendSucceeded = true
-        // Same late-fulfilment guard as the first send above. This loop is
-        // detached, so a resend can fulfil in the macrotask gap after the
-        // poll loop returned and the branch aborted; only the guard keeps
-        // that fulfilment from reporting a broadcast after the verdict.
+        // Same late-fulfilment guard as the first send.
         if (!branch.signal.aborted) {
           options.onBroadcast?.()
         }
@@ -99,9 +85,8 @@ export async function confirmSignature(options: {
     const response = await rpc
       .getSignatureStatuses([signature])
       .send({ abortSignal: signal })
-    // A `{ value: null }` answer is an endpoint that responded but said
-    // nothing, not a failed read: it must poll again rather than throw a
-    // `TypeError` into the read-failure budget.
+    // A `{ value: null }` answer responded but said nothing - poll again
+    // rather than throw a `TypeError` into the read-failure budget.
     const status = response?.value?.[0]
     if (status && isConfirmedCommitment(status.confirmationStatus)) {
       return status
