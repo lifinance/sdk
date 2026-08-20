@@ -14,3 +14,5 @@ because `partiallySignTransaction` returns a new transaction rather than
 mutating its argument.
 
 The adapter is test-only, so no production integration is affected.
+
+Also removes the unused `isJitoRpc` helper, superseded by `probeJitoRpc`.

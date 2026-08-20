@@ -29,11 +29,8 @@ export type E2ESkip = { skip: string }
 export const DEFAULT_MAX_SPEND_USD = 10
 export const DEFAULT_USD_PER_LEG = 0.5
 
-/**
- * The repo-root `.env`, four levels up from this file
- * (src/e2e -> src -> sdk-provider-solana -> packages -> repo root).
- */
-const REPO_ROOT_ENV: string = resolve(import.meta.dirname, '../../../../.env')
+/** The repo-root `.env`: e2e -> sdk-provider-solana -> packages -> root. */
+const REPO_ROOT_ENV: string = resolve(import.meta.dirname, '../../../.env')
 
 export function parseRpcUrls(raw: string | undefined): string[] {
   if (!raw) {

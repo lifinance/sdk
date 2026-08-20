@@ -5,8 +5,8 @@ import {
   type SDKClient,
   type UpdateRouteHook,
 } from '@lifi/sdk'
-import { SolanaProvider } from '../SolanaProvider.js'
-import { KeypairWalletAdapter } from '../utils/KeypairWalletAdapter.js'
+import { SolanaProvider } from '../src/SolanaProvider.js'
+import { KeypairWalletAdapter } from '../src/utils/KeypairWalletAdapter.js'
 import type { E2EEnv } from './env.js'
 
 /**

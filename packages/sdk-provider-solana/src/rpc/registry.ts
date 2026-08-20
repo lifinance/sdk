@@ -20,15 +20,10 @@ const PROBE_BUNDLE_ID =
   '1111111111111111111111111111111111111111111111111111111111111111'
 
 /**
- * Checks if an RPC URL supports Jito methods by calling getBundleStatuses.
- * We probe with getBundleStatuses (rather than getTipAccounts) because it is the
- * method actually used during bundle confirmation, and providers such as Helius
- * support sendBundle/getBundleStatuses without exposing getTipAccounts.
+ * Probes with `getBundleStatuses` rather than `getTipAccounts`: it is the
+ * method bundle confirmation actually uses, and providers such as Helius
+ * support it without exposing `getTipAccounts`.
  */
-export const isJitoRpc = async (rpcUrl: string): Promise<boolean> => {
-  return (await probeJitoRpc(rpcUrl)) === 'supported'
-}
-
 /** Both leave the endpoint out of the Jito list, but only `unsupported` is a
  * configuration gap the integrator can act on. */
 export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'

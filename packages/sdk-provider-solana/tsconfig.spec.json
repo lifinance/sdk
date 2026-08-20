@@ -15,8 +15,12 @@
   // project may not set `noEmit` in its config, only on the command line.
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.spec.tsbuildinfo"
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.spec.tsbuildinfo",
+    // `e2e/` sits outside `rootDir: ./src`, and a composite project rejects
+    // inputs above its rootDir. Nothing here is emitted, so widening it to the
+    // package root is safe and is what keeps the harness type-checked.
+    "rootDir": "."
   },
-  "include": ["./src/**/*", "./src/**/*.json"],
+  "include": ["./src/**/*", "./src/**/*.json", "./e2e/**/*"],
   "exclude": ["tests"]
 }
