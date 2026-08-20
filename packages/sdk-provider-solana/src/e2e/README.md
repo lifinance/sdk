@@ -19,8 +19,11 @@ merging with them, so the list must be complete on its own.
 Optional:
 
 ```
-MAX_SPEND_USD=10      # ceiling asserted before any broadcast (default 10)
-E2E_EXECUTE=true      # required before anything is broadcast
+MAX_SPEND_USD=10        # ceiling asserted before any broadcast (default 10)
+E2E_USD_PER_LEG=0.5     # dollar size of one swap leg (default 0.5)
+E2E_EXECUTE=true        # required before anything is broadcast
+LIFI_API_URL=https://staging.li.quest/v1   # avoids production's shared quota
+API_KEY=<key>           # sent as x-lifi-api-key; required by staging
 ```
 
 Running from a git worktree? `.env` is resolved relative to that worktree's
@@ -72,6 +75,30 @@ Four independent guards:
 - **`rpc-unavailable`.** Requires every endpoint failing at once. To check it
   by hand: start a run, then disable networking mid-confirmation. The error
   should be `RPCError` with code 1027, never `TransactionExpired` (1018).
+
+## Expect matrix failures that are not SDK defects
+
+Measured across seven execution runs: four to five of the twelve matrix legs
+pass consistently, and most of the rest fail at simulation with
+`InstructionError Custom: 25` (`0x19`, slippage).
+
+The cause is a third-party quote, not this SDK. Quoting one pair across
+aggregators at the same moment:
+
+| aggregator | SOL->USDT | USDC->USDT |
+|---|---|---|
+| titan | **+33.3%** | **+13.9%** |
+| jupiter / fly / dflow | 0.0% | -0.1% |
+
+Titan quotes `1 USDC -> 1.1389 USDT` while both price feeds read ~$1.00, and
+the program logs name the pool that refuses it
+(`HADRoNbLov... failed: custom program error: 0x19`). Production quotes the
+same premium, so it is not a staging artifact. Routing the same swap through
+Jupiter succeeds at a 2.3% premium.
+
+These are rejected at simulation, **before broadcast**, so the confirmation
+code is never reached. A matrix leg failing this way says nothing about the
+confirmation architecture.
 
 ## Known premise
 

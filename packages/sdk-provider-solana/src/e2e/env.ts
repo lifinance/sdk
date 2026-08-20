@@ -15,12 +15,19 @@ export type E2EEnv = {
   /** True only when E2E_EXECUTE is exactly `true`. Anything else is a dry run. */
   execute: boolean
   maxSpendUsd: number
+  /**
+   * Dollar size of one swap leg. Small legs are cheap but are rejected by AMM
+   * slippage checks: at $0.25 a WBTC leg is 348 base units, and pool rounding
+   * alone can eat the whole tolerance.
+   */
+  usdPerLeg: number
 }
 
 /** Returned instead of an env when the suite cannot run at all. */
 export type E2ESkip = { skip: string }
 
 export const DEFAULT_MAX_SPEND_USD = 10
+export const DEFAULT_USD_PER_LEG = 0.5
 
 /**
  * The repo-root `.env`, four levels up from this file
@@ -99,6 +106,12 @@ export function loadE2EEnv(
     return { skip: `MAX_SPEND_USD is not a positive number: ${rawCeiling}` }
   }
 
+  const rawLeg = process.env.E2E_USD_PER_LEG
+  const usdPerLeg = rawLeg ? Number(rawLeg) : DEFAULT_USD_PER_LEG
+  if (!Number.isFinite(usdPerLeg) || usdPerLeg <= 0) {
+    return { skip: `E2E_USD_PER_LEG is not a positive number: ${rawLeg}` }
+  }
+
   return {
     apiKey: process.env.API_KEY,
     apiUrl: process.env.LIFI_API_URL,
@@ -109,6 +122,7 @@ export function loadE2EEnv(
     maxSpendUsd,
     privateKey,
     rpcUrls,
+    usdPerLeg,
   }
 }
 

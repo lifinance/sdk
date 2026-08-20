@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   assertSpendWithinCeiling,
+  DEFAULT_USD_PER_LEG,
   isSkip,
   loadE2EEnv,
   parseRpcUrls,
@@ -105,6 +106,67 @@ describe('loadE2EEnv execute flag', () => {
       } else {
         process.env.SOLANA_RPC_URLS = originals.urls
       }
+    }
+  })
+})
+
+describe('loadE2EEnv leg size', () => {
+  const withCreds = <T>(run: () => T): T => {
+    const originals = {
+      pk: process.env.SOLANA_PK,
+      urls: process.env.SOLANA_RPC_URLS,
+      leg: process.env.E2E_USD_PER_LEG,
+    }
+    process.env.SOLANA_PK = 'test-key'
+    process.env.SOLANA_RPC_URLS = 'https://a.example/'
+    try {
+      return run()
+    } finally {
+      for (const [key, value] of [
+        ['SOLANA_PK', originals.pk],
+        ['SOLANA_RPC_URLS', originals.urls],
+        ['E2E_USD_PER_LEG', originals.leg],
+      ] as const) {
+        if (value === undefined) {
+          delete process.env[key]
+        } else {
+          process.env[key] = value
+        }
+      }
+    }
+  }
+
+  it('defaults when E2E_USD_PER_LEG is unset', () => {
+    withCreds(() => {
+      delete process.env.E2E_USD_PER_LEG
+      const env = loadE2EEnv('/nonexistent/.env')
+      expect(isSkip(env)).toBe(false)
+      if (!isSkip(env)) {
+        expect(env.usdPerLeg).toBe(DEFAULT_USD_PER_LEG)
+      }
+    })
+  })
+
+  it('reads a supplied leg size', () => {
+    withCreds(() => {
+      process.env.E2E_USD_PER_LEG = '1.5'
+      const env = loadE2EEnv('/nonexistent/.env')
+      expect(isSkip(env)).toBe(false)
+      if (!isSkip(env)) {
+        expect(env.usdPerLeg).toBe(1.5)
+      }
+    })
+  })
+
+  it('skips rather than swapping a nonsense amount', () => {
+    // A leg size of 0, -1 or "abc" reaching `amountForUsd` would either throw
+    // mid-run or, worse, compute a garbage base-unit amount against a real
+    // wallet. It is cheaper to refuse to start.
+    for (const bad of ['0', '-1', 'abc']) {
+      withCreds(() => {
+        process.env.E2E_USD_PER_LEG = bad
+        expect(isSkip(loadE2EEnv('/nonexistent/.env'))).toBe(true)
+      })
     }
   })
 })

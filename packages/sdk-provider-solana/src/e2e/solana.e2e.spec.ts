@@ -33,7 +33,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
         toChainId: SOL_CHAIN_ID,
         fromTokenAddress: TOKENS.PENGU.mint,
         toTokenAddress: TOKENS.USDSTAR.mint,
-        fromAmount: amountForUsd(TOKENS.PENGU, 0.25),
+        fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
         fromAddress: address,
         toAddress: address,
         options: {
@@ -83,7 +83,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
           toChainId: SOL_CHAIN_ID,
           fromTokenAddress: TOKENS.PENGU.mint,
           toTokenAddress: TOKENS.USDSTAR.mint,
-          fromAmount: amountForUsd(TOKENS.PENGU, 0.25),
+          fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
           fromAddress: address,
           toAddress: address,
           options: {
@@ -123,7 +123,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
         toChainId: SOL_CHAIN_ID,
         fromTokenAddress: TOKENS.PENGU.mint,
         toTokenAddress: TOKENS.USDSTAR.mint,
-        fromAmount: amountForUsd(TOKENS.PENGU, 0.25),
+        fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
         fromAddress: address,
         toAddress: address,
         options: {
@@ -140,7 +140,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
   })
 
   describe.sequential('Phase 3: standard matrix', () => {
-    const legs = planStandardMatrix(0.25)
+    const legs = planStandardMatrix(env.usdPerLeg)
     const results: LegResult[] = []
 
     afterAll(() => {
