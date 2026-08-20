@@ -270,11 +270,10 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     expect(thrown.cause.err).toBe(failure)
   })
 
-  it('records the explorer link when a Jito RPC accepts the submission, not at signing time', async () => {
-    // Before broadcast the link would point at a transaction that may never
-    // exist on chain - a failed submission, or the empty-Jito-list case,
-    // never submits at all. The callback is how `sendAndConfirmBundle`
-    // reports the moment the first RPC accepted the bundle.
+  it('records the signature and link when a Jito RPC accepts the submission', async () => {
+    // Before broadcast neither is real: a signed-but-unsent signature returns
+    // `null` from `getTransaction`, and the empty-Jito-list case never submits
+    // at all.
     const signedTransactions = [signedTransactionAt(0), signedTransactionAt(1)]
     const expectedSignature = getSignatureFromTransaction(signedTransactions[0])
     sendAndConfirmBundle.mockImplementation(
@@ -301,6 +300,7 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     })
 
     expect(updateAction).toHaveBeenNthCalledWith(1, {}, 'SWAP', 'PENDING', {
+      txHash: expectedSignature,
       txLink: `https://explorer/tx/${expectedSignature}`,
     })
     expect(updateAction).toHaveBeenNthCalledWith(2, {}, 'SWAP', 'PENDING', {

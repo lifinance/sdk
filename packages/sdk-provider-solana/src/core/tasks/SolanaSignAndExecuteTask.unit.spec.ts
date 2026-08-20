@@ -29,8 +29,7 @@ vi.mock('../../utils/getWalletFeature.js', () => ({
 
 // Base58 of a 64 byte signature filled with the byte at index + 1. Hard coded
 // so the test pins the encoding as well as which transaction was picked.
-const SIGNATURE_OF_FIRST =
-  '2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2'
+;('2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2')
 const SIGNATURE_OF_SECOND =
   '3L3RY5sT8K4kyEnqhizwaqxLEbcYvpGrGPNEYRwtbCSUtL6YL86jdrvCbohnP5q8VxQ3qzGmt3W3iQJW97rD7m3'
 
@@ -69,6 +68,23 @@ const baseContext = () =>
   }) as never
 
 describe('SolanaSignAndExecuteTask', () => {
+  it('does not write a txHash before anything is broadcast', async () => {
+    // A signed-but-unsent signature resolves to `null` on every explorer -
+    // verified against mainnet. Simulation, the empty-Jito-RPC throw and every
+    // send failure all sit between this task and the first broadcast, so a
+    // hash written here can point at a transaction that never existed. The
+    // wait tasks write it on `onBroadcast`, beside `txLink`.
+    const context = baseContext()
+    const task = new SolanaSignAndExecuteTask()
+
+    await task.run(context)
+
+    const params = updateAction.mock.calls.map((call) => call[3])
+    for (const param of params) {
+      expect(param).not.toHaveProperty('txHash')
+    }
+  })
+
   beforeEach(() => {
     getTransactionRequestData.mockReset()
     updateAction.mockReset()
@@ -94,7 +110,7 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(result.context?.signedTransactions).toHaveLength(1)
   })
 
-  it('records the signature before the confirmation wait so a failed wait leaves a transaction to look up', async () => {
+  it('records signedAt, and marks the action PENDING', async () => {
     getTransactionRequestData.mockResolvedValue('tx-a')
 
     await new SolanaSignAndExecuteTask().run(baseContext())
@@ -102,7 +118,6 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(updateAction).toHaveBeenCalledTimes(1)
     const [, , status, params] = updateAction.mock.calls[0]
     expect(status).toBe('PENDING')
-    expect(params.txHash).toBe(SIGNATURE_OF_FIRST)
     expect(typeof params.signedAt).toBe('number')
   })
 
@@ -119,13 +134,14 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(params.txLink).toBeUndefined()
   })
 
-  it('records the first bundled transaction, the one the Jito wait task reports', async () => {
+  it('never records a signature for a bundle either', async () => {
+    // The Jito wait task derives it from `signedTransactions[0]` at broadcast.
     getTransactionRequestData.mockResolvedValue(['tx-a', 'tx-b'])
 
     await new SolanaSignAndExecuteTask().run(baseContext())
 
     const [, , , params] = updateAction.mock.calls[0]
-    expect(params.txHash).toBe(SIGNATURE_OF_FIRST)
+    expect(params.txHash).toBeUndefined()
     expect(params.txHash).not.toBe(SIGNATURE_OF_SECOND)
   })
 })

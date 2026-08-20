@@ -78,7 +78,7 @@ export async function sendAndConfirmTransaction(
       .send({ abortSignal: signal })
   }
 
-  return raceRpcs(
+  const result = await raceRpcs(
     solanaRpcs,
     (rpc, signal) =>
       confirmSignature({
@@ -91,4 +91,14 @@ export async function sendAndConfirmTransaction(
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }
   )
+
+  // Only this scope knows whether ANY branch accepted the send. A branch that
+  // polls to its deadline reports `not-confirmed` regardless - correct per
+  // branch, but across the whole race it would claim a transaction expired
+  // when nothing ever submitted it. That is an outage, not an expiry.
+  if (result.kind === 'not-confirmed' && !broadcastReported) {
+    return { kind: 'rpc-unavailable', errors: result.errors }
+  }
+
+  return result
 }

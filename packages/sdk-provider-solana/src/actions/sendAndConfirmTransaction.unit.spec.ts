@@ -168,6 +168,33 @@ describe('sendAndConfirmTransaction', () => {
     expect(onBroadcast).toHaveBeenCalledTimes(2)
   })
 
+  it('reports rpc-unavailable when no RPC ever accepted the send', async () => {
+    // Write-restricted key, or endpoints that 403 writes while answering
+    // reads: every branch polls to its deadline and returns `not-confirmed`,
+    // so the race verdict was TransactionExpired after 90 s - an expiry claim
+    // about a transaction that was never submitted anywhere.
+    getSolanaRpcs.mockResolvedValue([createRpc(), createRpc()])
+    confirmSignature.mockResolvedValue({ kind: 'not-confirmed' })
+
+    await expect(
+      sendAndConfirmTransaction({} as never, {} as never)
+    ).resolves.toEqual(expect.objectContaining({ kind: 'rpc-unavailable' }))
+  })
+
+  it('keeps not-confirmed when at least one RPC accepted the send', async () => {
+    getSolanaRpcs.mockResolvedValue([createRpc()])
+    confirmSignature.mockImplementation(
+      async (options: { onBroadcast?: () => void }) => {
+        options.onBroadcast?.()
+        return { kind: 'not-confirmed' }
+      }
+    )
+
+    await expect(
+      sendAndConfirmTransaction({} as never, {} as never)
+    ).resolves.toEqual(expect.objectContaining({ kind: 'not-confirmed' }))
+  })
+
   it('returns the raced result', async () => {
     getSolanaRpcs.mockResolvedValue([createRpc()])
 

@@ -50,7 +50,8 @@ export async function createE2EClient(
   return { client, address }
 }
 
-/** When each field was first observed, and in what order. */
+/** Which hook call first carried each field, and the resulting order.
+ * `['together']` means one call carried both. */
 export type ObservedWrites = {
   txHashAt: number | undefined
   txLinkAt: number | undefined
@@ -58,9 +59,12 @@ export type ObservedWrites = {
 }
 
 /**
- * Records when `txHash` and `txLink` first appear. The order is the assertion
- * that matters - checking only the final state cannot tell the deferred design
- * from one that writes both at signing.
+ * Records which `updateAction` call first carried each field.
+ *
+ * Counting hook invocations, not source order: both fields can appear in one
+ * snapshot, and a hook that tests `txHash` before `txLink` would then always
+ * report `['txHash','txLink']` - including for the design that writes both at
+ * signing, which is the regression this exists to catch.
  */
 export function observeRouteWrites(): {
   hook: UpdateRouteHook
@@ -71,20 +75,30 @@ export function observeRouteWrites(): {
     txLinkAt: undefined,
     order: [],
   }
+  let call = 0
 
   const hook: UpdateRouteHook = (route: RouteExtended) => {
+    call += 1
     for (const step of route.steps) {
       for (const action of step.execution?.actions ?? []) {
         if (action.txHash && observed.txHashAt === undefined) {
-          observed.txHashAt = Date.now()
-          observed.order.push('txHash')
+          observed.txHashAt = call
         }
         if (action.txLink && observed.txLinkAt === undefined) {
-          observed.txLinkAt = Date.now()
-          observed.order.push('txLink')
+          observed.txLinkAt = call
         }
       }
     }
+    // Rebuilt from the recorded call numbers, so a tie is reported as a tie
+    // rather than resolved by the order of the two branches above.
+    observed.order =
+      observed.txHashAt === undefined || observed.txLinkAt === undefined
+        ? observed.order
+        : observed.txHashAt === observed.txLinkAt
+          ? ['together']
+          : observed.txHashAt < observed.txLinkAt
+            ? ['txHash', 'txLink']
+            : ['txLink', 'txHash']
   }
 
   return { hook, observed }

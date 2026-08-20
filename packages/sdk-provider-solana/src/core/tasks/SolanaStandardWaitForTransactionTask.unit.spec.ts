@@ -165,7 +165,7 @@ describe('SolanaStandardWaitForTransactionTask', () => {
       expect.anything(),
       'SWAP',
       'PENDING',
-      { txLink: 'https://explorer/tx/sig' }
+      { txHash: 'sig', txLink: 'https://explorer/tx/sig' }
     )
     expect(updateAction).toHaveBeenNthCalledWith(
       2,
@@ -256,7 +256,7 @@ describe('SolanaStandardWaitForTransactionTask', () => {
       expect.anything(),
       'CROSS_CHAIN',
       'PENDING',
-      { txLink: 'https://explorer/tx/sig' }
+      { txHash: 'sig', txLink: 'https://explorer/tx/sig' }
     )
     expect(updateAction).toHaveBeenNthCalledWith(
       2,

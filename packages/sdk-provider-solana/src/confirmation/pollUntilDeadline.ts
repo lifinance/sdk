@@ -104,13 +104,16 @@ export async function pollUntilDeadline<T>(options: {
     }
 
     // A completed observation outranks everything below: polled to the
-    // deadline, ran the final probe, saw nothing.
+    // deadline, ran the final probe, saw nothing. It stays ahead of the
+    // send-failure signal on purpose - a throw here is bucketed as
+    // `rpc-unavailable` by `raceRpcs`, which would discard a real observation
+    // and misreport a genuinely expired transaction as an outage. The
+    // never-broadcast case is answered one level up, in the actions, which
+    // know whether ANY branch accepted the send.
     if (probeSucceeded && !signal.aborted) {
       return { kind: 'not-confirmed' }
     }
 
-    // "This endpoint never accepted my broadcast" is the most useful fact
-    // when nothing was observed either.
     if (options.neverBroadcast?.()) {
       throw new Error(`Every ${subject} send to this RPC failed.`)
     }

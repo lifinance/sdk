@@ -73,15 +73,28 @@ const readProbeFailure = (error: unknown): JitoProbeOutcome => {
     : 'unreachable'
 }
 
+/**
+ * Bounded because it runs upstream of `raceRpcs`, outside the confirmation
+ * budget the SDK documents: an endpoint that accepts the connection and never
+ * answers would otherwise stall bundle submission indefinitely.
+ */
+const PROBE_TIMEOUT_MS = 5_000
+
 export const probeJitoRpc = async (
   rpcUrl: string
 ): Promise<JitoProbeOutcome> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
   try {
     const rpc = createJitoRpc(rpcUrl)
-    await rpc.getBundleStatuses([PROBE_BUNDLE_ID]).send()
+    await rpc
+      .getBundleStatuses([PROBE_BUNDLE_ID])
+      .send({ abortSignal: controller.signal })
     return 'supported'
   } catch (error) {
     return readProbeFailure(error)
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -107,18 +120,20 @@ const ensureJitoRpcs = async (
   client: SDKClient
 ): Promise<{ rpcUrls: string[]; unreachable: number }> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  // Probed in parallel: serially, one slow endpoint delayed every URL behind
+  // it before submission could start.
+  const unprobed = rpcUrls.filter((rpcUrl) => !jitoRpcs.has(rpcUrl))
+  const outcomes = await Promise.all(unprobed.map(probeJitoRpc))
+
   let unreachable = 0
-  for (const rpcUrl of rpcUrls) {
-    if (jitoRpcs.has(rpcUrl)) {
-      continue
-    }
-    const outcome = await probeJitoRpc(rpcUrl)
+  outcomes.forEach((outcome, index) => {
     if (outcome === 'supported') {
+      const rpcUrl = unprobed[index]
       jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
     } else if (outcome === 'unreachable') {
       unreachable += 1
     }
-  }
+  })
   return { rpcUrls, unreachable }
 }
 

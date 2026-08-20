@@ -50,10 +50,13 @@ export async function confirmBundle(options: {
   const deadline = createConfirmationDeadline({ lifetimes, rpc })
 
   const bundleId = await send()
-  // No aborted-guard needed: a bundle branch cannot confirm without its own
-  // `send` succeeding first, so a late fulfilment cannot move an action
-  // status after the race settles.
-  options.onBroadcast?.()
+  // Guarded like `confirmSignature`'s send sites: the caller's once-guard
+  // latches only after the callback returns, so a throwing integrator hook
+  // leaves it open and a late `sendBundle` fulfilment would re-write a
+  // finalized action back to PENDING.
+  if (!signal.aborted) {
+    options.onBroadcast?.()
+  }
 
   const readBundle = async (): Promise<BundleConfirmation | null> => {
     const statusResponse = await rpc
@@ -72,7 +75,11 @@ export async function confirmBundle(options: {
     // Unvalidated wire data: without this guard a confirmed status carrying
     // no `transactions` makes every `.map` below a `TypeError`, and a landed
     // bundle would report as `rpc-unavailable`.
-    const txSignatures = bundleStatus.transactions ?? []
+    // `Array.isArray`, not `??`: the wire data is unvalidated, and a truthy
+    // non-array keeps the declared array type while throwing out of `.map`.
+    const txSignatures = Array.isArray(bundleStatus.transactions)
+      ? bundleStatus.transactions
+      : []
 
     // The bundle status is the atomic fact: a bundle lands whole or not at
     // all. `getSignatureStatuses` only enriches it with per-transaction `err`
@@ -87,7 +94,9 @@ export async function confirmBundle(options: {
         const sigResponse = await rpc
           .getSignatureStatuses(txSignatures)
           .send({ abortSignal: signal })
-        signatureResults = sigResponse?.value ?? txSignatures.map(() => null)
+        signatureResults = Array.isArray(sigResponse?.value)
+          ? sigResponse.value
+          : txSignatures.map(() => null)
       } catch (_) {
         signatureResults = txSignatures.map(() => null)
       }

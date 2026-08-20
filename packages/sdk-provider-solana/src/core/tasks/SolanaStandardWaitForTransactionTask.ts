@@ -82,7 +82,10 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
 
     const result = await sendAndConfirmTransaction(client, signedTransaction, {
       onBroadcast: () => {
+        // The earliest honest point for both: an RPC has accepted the
+        // transaction, so the signature now resolves on chain.
         statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: txSignature,
           txLink,
         })
       },

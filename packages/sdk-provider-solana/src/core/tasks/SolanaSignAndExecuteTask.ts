@@ -6,7 +6,7 @@ import {
   TransactionError,
   withTimeout,
 } from '@lifi/sdk'
-import { getSignatureFromTransaction, getTransactionCodec } from '@solana/kit'
+import { getTransactionCodec } from '@solana/kit'
 import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
@@ -91,29 +91,16 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       transactionCodec.decode(output.signedTransaction)
     )
 
-    // A Solana signature is fixed the moment the wallet signs, long before
-    // anything reaches an RPC. Record it here rather than after the wait, so a
-    // confirmation that fails - an unreachable RPC above all - still leaves the
-    // caller the signature of a transaction that may well have landed. The
-    // write reaches the live route object and any `updateRouteHook` the
-    // integrator passed, and nothing later removes it - marking the action
-    // `FAILED` only adds an `error`. So at the moment the wait gives up, a
-    // user or an integrator can look the transaction up on chain before
-    // signing a replacement.
+    // Neither `txHash` nor `txLink` is written here. A signature is fixed at
+    // signing, but the transaction does not exist yet: `getTransaction`
+    // returns `null` for it, and simulation, the empty-Jito-RPC throw and
+    // every send failure all sit between this task and the first broadcast.
+    // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
     //
-    // `txLink` is deliberately NOT written here. Nothing has been broadcast
-    // yet: simulation runs later, and a bundle route with no Jito-capable RPC
-    // never submits at all - a link recorded now would 404. The wait tasks
-    // write it on `onBroadcast`. `txLink: undefined` also clears the stale
-    // link a restarted `PENDING` action carried over.
-    //
-    // `signedTransactions[0]` is what both wait tasks report, each deriving
-    // the signature from this object with this same function.
-    const txSignature = getSignatureFromTransaction(signedTransactions[0])
-
+    // `txLink: undefined` still clears the stale link a restarted `PENDING`
+    // action carried over from a previous run.
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
-      txHash: txSignature,
       txLink: undefined,
     })
 

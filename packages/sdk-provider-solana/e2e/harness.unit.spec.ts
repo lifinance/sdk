@@ -37,7 +37,18 @@ describe('observeRouteWrites', () => {
     hook(routeWith({ txHash: 'sig' }))
     hook(routeWith({ txHash: 'sig' }))
     hook(routeWith({ txHash: 'sig' }))
-    expect(observed.order).toEqual(['txHash'])
+    expect(observed.txHashAt).toBe(1)
+    expect(observed.txLinkAt).toBeUndefined()
+  })
+
+  it('reports a single combined write as `together`, not as an order', () => {
+    // The regression this observer exists to catch: one write at signing
+    // carrying both fields. Source order inside the hook would report
+    // ['txHash','txLink'] here and pass the deferral assertion.
+    const { hook, observed } = observeRouteWrites()
+    hook(routeWith({ txHash: 'sig', txLink: 'https://explorer/tx/sig' }))
+    expect(observed.order).toEqual(['together'])
+    expect(observed.order[0]).not.toBe('txHash')
   })
 
   it('records txLink first when a route presents it first', () => {

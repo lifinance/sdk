@@ -236,6 +236,57 @@ describe('confirmBundle', () => {
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
+  it('does not report a broadcast that fulfils after the branch was aborted', async () => {
+    // The caller's once-guard latches only after the callback returns, so a
+    // throwing hook leaves it open; a late fulfilment would then re-write a
+    // finalized action back to PENDING.
+    const controller = new AbortController()
+    const onBroadcast = vi.fn()
+    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+    controller.abort()
+
+    await confirmBundle({
+      rpc,
+      signal: controller.signal,
+      lifetimes: LIFETIMES,
+      send,
+      onBroadcast,
+    }).catch(() => undefined)
+
+    expect(onBroadcast).not.toHaveBeenCalled()
+  })
+
+  it('confirms when `transactions` is a non-array payload', async () => {
+    // `??` tests null/undefined alone, so a truthy non-array kept the module's
+    // array type and threw a TypeError out of `.map` - reported as
+    // UnknownError for a bundle that landed. main guarded this.
+    getBundleStatuses.mockResolvedValue({
+      value: [{ confirmation_status: 'confirmed', transactions: 'sigA' }],
+    })
+
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: { bundleId: 'bundle-1', txSignatures: [], signatureResults: [] },
+    })
+  })
+
+  it('confirms when getSignatureStatuses returns a non-array value', async () => {
+    // Same hole one level down: `SolanaJitoWaitForTransactionTask` calls
+    // `.find()` on `signatureResults`.
+    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: 'not-an-array' })
+
+    await expect(run()).resolves.toEqual({
+      kind: 'confirmed',
+      value: {
+        bundleId: 'bundle-1',
+        txSignatures: TX_SIGNATURES,
+        signatureResults: [null, null],
+      },
+    })
+  })
+
   it('confirms a status that carries no transactions list at all', async () => {
     // `transactions` is unvalidated wire data. Before the guard, a confirmed
     // status arriving without it made `txSignatures.map` a `TypeError` on the

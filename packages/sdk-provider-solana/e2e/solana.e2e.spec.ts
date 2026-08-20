@@ -1,6 +1,6 @@
 import { executeRoute, getRoutes, getStepTransaction } from '@lifi/sdk'
 import { afterAll, describe, expect, it } from 'vitest'
-import { isSkip, loadE2EEnv } from './env.js'
+import { assertSpendWithinCeiling, isSkip, loadE2EEnv } from './env.js'
 import { createE2EClient, observeRouteWrites } from './harness.js'
 import { formatReport, type LegResult } from './report.js'
 import { amountForUsd, planStandardMatrix, TOKENS } from './tokens.js'
@@ -102,10 +102,10 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
         expect(action?.status).toBe('DONE')
         expect(action?.txHash).toBeDefined()
         expect(action?.txLink).toBeDefined()
-        // txHash is written at signing; txLink only once an RPC accepted the
-        // send. A link written first would point at a transaction that a
-        // failed submission leaves nonexistent on chain.
-        expect(observed.order[0]).toBe('txHash')
+        // Both land in one write, at broadcast: before that the signature
+        // resolves to `null` on chain, so neither field is real. `together`
+        // is what the observer reports for a single combined write.
+        expect(observed.order).toEqual(['together'])
       },
       180_000
     )
@@ -139,8 +139,44 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     }, 120_000)
   })
 
+  describe.sequential('Phase 2b: write contract on the standard path', () => {
+    it.skipIf(!env.execute)(
+      'writes txHash and txLink together, at broadcast',
+      async () => {
+        const { client, address } = await createE2EClient(env)
+        const { hook, observed } = observeRouteWrites()
+
+        const { routes } = await getRoutes(client, {
+          fromChainId: SOL_CHAIN_ID,
+          toChainId: SOL_CHAIN_ID,
+          fromTokenAddress: TOKENS.SOL.mint,
+          toTokenAddress: TOKENS.USDC.mint,
+          fromAmount: amountForUsd(TOKENS.SOL, env.usdPerLeg),
+          fromAddress: address,
+          toAddress: address,
+          options: { integrator: 'lifi-sdk-e2e' },
+        })
+
+        const executed = await executeRoute(client, routes[0], {
+          updateRouteHook: hook,
+        })
+
+        const action = executed.steps[0].execution?.actions.at(-1)
+        expect(action?.status).toBe('DONE')
+        expect(action?.txHash).toBeDefined()
+        // Neither field exists before an RPC accepts the send: a
+        // signed-but-unsent signature returns `null` from `getTransaction`.
+        expect(observed.order).toEqual(['together'])
+      },
+      180_000
+    )
+  })
+
   describe.sequential('Phase 3: standard matrix', () => {
     const legs = planStandardMatrix(env.usdPerLeg)
+    // Every leg plus the two single-leg phases above. Asserted at collection
+    // time, before any test body runs, so an over-sized run never broadcasts.
+    assertSpendWithinCeiling((legs.length + 2) * env.usdPerLeg, env.maxSpendUsd)
     const results: LegResult[] = []
 
     afterAll(() => {

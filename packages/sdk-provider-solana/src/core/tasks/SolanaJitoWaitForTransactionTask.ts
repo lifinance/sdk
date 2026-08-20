@@ -58,7 +58,10 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
     // `sendAndConfirmBundle` with its own message, before anything is sent.
     const result = await sendAndConfirmBundle(client, signedTransactions, {
       onBroadcast: () => {
+        // The earliest honest point for both: an RPC has accepted the
+        // transaction, so the signature now resolves on chain.
         statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: txSignature,
           txLink,
         })
       },

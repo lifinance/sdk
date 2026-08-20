@@ -34,7 +34,8 @@ E2E_EXECUTE=true pnpm --filter @lifi/sdk-provider-solana test:e2e  # real swaps
 2. The `test` script excludes `**/*.e2e.spec.ts`, so `pnpm test` cannot reach
    these files. A bare `vitest --run` matches every spec file, so this is not
    automatic.
-3. `MAX_SPEND_USD` is asserted before any broadcast.
+3. `MAX_SPEND_USD` is asserted against the whole planned run at collection
+   time, before any test body runs.
 4. Legs run sequentially.
 
 ## Covers

@@ -35,10 +35,12 @@ is atomic, so a `confirmed` status means every transaction in it landed; a
 `null` or absent `getSignatureStatuses` result is indexing lag, not failure.
 The bundle-level `err` is now read as well.
 
-`txHash` is recorded when the wallet signs rather than after confirmation, so a
-failed confirmation still reports the signature. `txLink` is written when the
-first RPC accepts the send — a link recorded at signing would point at a
-transaction that a failed simulation leaves nonexistent. A throwing
+`txHash` and `txLink` are both recorded when the first RPC accepts the send,
+rather than only after confirmation. A swap that broadcast and then failed to
+confirm now reports its signature, so it can be looked up on chain. Neither is
+written at signing time: a signed-but-unsent signature resolves to `null` on
+every explorer, and simulation, a send failure, or a bundle route with no
+Jito-capable RPC all sit between signing and the first broadcast. A throwing
 `updateRouteHook` no longer fails the step.
 
 For integrators: routes the backend builds as Jito bundles need a Jito-capable
