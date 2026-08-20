@@ -33,6 +33,11 @@ export async function createE2EClient(
   const client = createClient({
     integrator: 'lifi-sdk-e2e',
     rpcUrls: { [ChainId.SOL]: env.rpcUrls },
+    // Both omitted unless set, so the client keeps its production defaults.
+    // A full matrix run exhausts production's shared anonymous quota, which
+    // surfaces as a 429 midway and leaves the run half-done.
+    ...(env.apiUrl ? { apiUrl: env.apiUrl } : {}),
+    ...(env.apiKey ? { apiKey: env.apiKey } : {}),
     // `getStepTransaction` builds its own URL and reads `jitoBundle` from
     // here, NOT from the options passed to `getRoutes`. Setting it only on
     // the routes request yields a route that carries a Perena leg and then a

@@ -5,6 +5,13 @@ import { resolve } from 'node:path'
 export type E2EEnv = {
   privateKey: string
   rpcUrls: string[]
+  /**
+   * LI.FI API base URL. Defaults to production; point it at staging to avoid
+   * production's shared rate limit, which a full matrix run exhausts.
+   */
+  apiUrl: string | undefined
+  /** Sent as `x-lifi-api-key`. Required by staging, optional on production. */
+  apiKey: string | undefined
   /** True only when E2E_EXECUTE is exactly `true`. Anything else is a dry run. */
   execute: boolean
   maxSpendUsd: number
@@ -93,6 +100,8 @@ export function loadE2EEnv(
   }
 
   return {
+    apiKey: process.env.API_KEY,
+    apiUrl: process.env.LIFI_API_URL,
     // Compared against the exact string: `1`, `yes` and `TRUE` are all
     // plausible operator typos, and each one broadcasting would be a bad
     // surprise.
