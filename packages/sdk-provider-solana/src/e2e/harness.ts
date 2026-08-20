@@ -17,11 +17,15 @@ import type { E2EEnv } from './env.js'
  * `skipChains`). That is exactly the configuration a bundle integrator must
  * use, and it is what puts a Jito-capable endpoint into the pool.
  *
- * `jitoBundle` is deliberately not set here. Each phase sets it per request,
- * because one route object has to be able to drive both submission paths.
+ * `jitoBundle` has to be set on the CLIENT, not only on the routes request:
+ * `getStepTransaction` reads `config.routeOptions.jitoBundle` to decide
+ * whether to append the query parameter, and the routes options never reach
+ * it. A caller that sets it in one place only gets a route with a Perena leg
+ * and a single transaction for it, which looks correct and tests nothing.
  */
 export async function createE2EClient(
-  env: E2EEnv
+  env: E2EEnv,
+  { jitoBundle = false }: { jitoBundle?: boolean } = {}
 ): Promise<{ client: SDKClient; address: string }> {
   const wallet = new KeypairWalletAdapter(env.privateKey)
   await wallet.connect()
@@ -29,6 +33,13 @@ export async function createE2EClient(
   const client = createClient({
     integrator: 'lifi-sdk-e2e',
     rpcUrls: { [ChainId.SOL]: env.rpcUrls },
+    // `getStepTransaction` builds its own URL and reads `jitoBundle` from
+    // here, NOT from the options passed to `getRoutes`. Setting it only on
+    // the routes request yields a route that carries a Perena leg and then a
+    // single transaction for it - the request looks right and the payload
+    // silently is not a bundle. Callers that want the standard path build
+    // their own client with `jitoBundle` omitted.
+    routeOptions: jitoBundle ? { jitoBundle: true } : undefined,
   })
 
   client.setProviders([SolanaProvider({ getWallet: async () => wallet })])

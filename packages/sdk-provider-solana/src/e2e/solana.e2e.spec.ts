@@ -24,7 +24,9 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
       // step carries a Perena leg, and stepTransaction then packs it into
       // an array. If this stops holding the phase must fail loudly rather
       // than silently exercise the standard path.
-      const { client, address } = await createE2EClient(env)
+      const { client, address } = await createE2EClient(env, {
+        jitoBundle: true,
+      })
 
       const { routes } = await getRoutes(client, {
         fromChainId: SOL_CHAIN_ID,
@@ -71,7 +73,9 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     it.skipIf(!env.execute)(
       'executes the bundle and confirms it through the Jito path',
       async () => {
-        const { client, address } = await createE2EClient(env)
+        const { client, address } = await createE2EClient(env, {
+          jitoBundle: true,
+        })
         const { hook, observed } = observeRouteWrites()
 
         const { routes } = await getRoutes(client, {
