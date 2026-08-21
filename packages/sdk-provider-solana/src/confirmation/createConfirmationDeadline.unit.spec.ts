@@ -153,6 +153,27 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.reached()).toBe(true)
   })
 
+  it('does not call a blockhash dead because the response omitted a value', async () => {
+    // Unvalidated wire data: `{ context }` and no `value` is neither true nor
+    // false. Truthiness coerced it to false, which fails toward "the blockhash
+    // is dead" - the one direction that invents a TransactionExpired. It is a
+    // read that answered nothing, so it spends the error budget instead, just
+    // like a rejected probe.
+    isBlockhashValid.mockResolvedValue({ context: { slot: 1n } })
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < MAX_PROBE_ERRORS + 3; attempt += 1) {
+      await probeTick(deadline)
+      expect(deadline.reached()).toBe(false)
+    }
+
+    expect(isBlockhashValid).toHaveBeenCalledTimes(MAX_PROBE_ERRORS)
+  })
+
   it('cannot report expiry inside the node-lag window at the real tick cadence', async () => {
     // There is no runtime floor in `reached()`: the probe cadence is the only
     // thing that makes an early verdict impossible. Driven at the real tick

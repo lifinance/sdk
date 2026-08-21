@@ -127,27 +127,47 @@ export function createConfirmationDeadline(options: {
         })
       )
 
+      // A read that produced no usable answer says nothing about this
+      // blockhash: it must never spend the expiry streak, only the error
+      // budget. Shared by a rejected probe and by a fulfilled one whose
+      // response carried no boolean.
+      const recordFailedProbe = (blockhash: Blockhash): void => {
+        expiredStreaks.set(blockhash, 0)
+        const errors = (errorStreaks.get(blockhash) ?? 0) + 1
+        errorStreaks.set(blockhash, errors)
+        if (errors >= MAX_PROBE_ERRORS) {
+          // Degrade to ceiling-only for this blockhash.
+          probeable.delete(blockhash)
+        }
+      }
+
       probes.forEach((probe, index) => {
         const blockhash = active[index]
 
         if (probe.status === 'rejected') {
-          // A failed read is not a `false`; it says nothing about this
-          // blockhash.
-          expiredStreaks.set(blockhash, 0)
-          const errors = (errorStreaks.get(blockhash) ?? 0) + 1
-          errorStreaks.set(blockhash, errors)
-          if (errors >= MAX_PROBE_ERRORS) {
-            // Degrade to ceiling-only for this blockhash.
-            probeable.delete(blockhash)
-          }
+          recordFailedProbe(blockhash)
           return
         }
 
-        errorStreaks.set(blockhash, 0)
-        const streak = probe.value
-          ? 0
-          : (expiredStreaks.get(blockhash) ?? 0) + 1
-        expiredStreaks.set(blockhash, streak)
+        // `=== true` / `=== false`, never truthiness: a response carrying no
+        // `value` is not a `false`, and reading it as one is the only coercion
+        // here that can invent an expiry.
+        if (probe.value === true) {
+          errorStreaks.set(blockhash, 0)
+          expiredStreaks.set(blockhash, 0)
+          return
+        }
+
+        if (probe.value === false) {
+          errorStreaks.set(blockhash, 0)
+          expiredStreaks.set(
+            blockhash,
+            (expiredStreaks.get(blockhash) ?? 0) + 1
+          )
+          return
+        }
+
+        recordFailedProbe(blockhash)
       })
     },
   }
