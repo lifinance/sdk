@@ -188,6 +188,32 @@ describe('getJitoRpcs', () => {
     })
   })
 
+  it('still reports a cached unreachable endpoint beside a cached unsupported one', async () => {
+    // The mixed case is what chooses the error `sendAndConfirmBundle` raises:
+    // `unreachable > 0` means "retry, likely temporary", zero means "supply a
+    // Jito-capable URL". Counting only the freshly probed endpoints would lose
+    // the outage as soon as it was cached, and blame the integrator's config.
+    const { getJitoRpcs } = await import('./registry.js')
+    getBundleStatuses
+      .mockRejectedValueOnce(new Error('Method not found'))
+      .mockRejectedValueOnce(new Error('429 Too Many Requests'))
+    const client = clientWith([
+      'https://standard.example',
+      'https://jito.example',
+    ])
+
+    await expect(getJitoRpcs(client)).resolves.toMatchObject({
+      rpcs: [],
+      unreachable: 1,
+    })
+    await expect(getJitoRpcs(client)).resolves.toMatchObject({
+      rpcs: [],
+      unreachable: 1,
+    })
+    // Neither endpoint was probed a second time.
+    expect(getBundleStatuses).toHaveBeenCalledTimes(2)
+  })
+
   it('caches a supported endpoint and reuses its client', async () => {
     const { getJitoRpcs } = await import('./registry.js')
     getBundleStatuses.mockResolvedValue({ value: [null] })
