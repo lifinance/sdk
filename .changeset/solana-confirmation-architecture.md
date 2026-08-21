@@ -13,7 +13,10 @@ at all. Every swap then depended on the remaining endpoint alone.
 Polling now stops when the signed transaction's own blockhash dies, probed via
 `isBlockhashValid`, and in any case after a 90 second ceiling. `getBlockHeight`
 is never read. The wait is hard-bounded: branches abort 5 seconds after the
-ceiling, so allow ~95 seconds for the confirmation phase.
+ceiling, so allow ~95 seconds for the confirmation phase. A branch also gives up
+early once its endpoint has gone 30 seconds without answering a status read,
+which is long enough to ride out a throttling window rather than end the swap
+inside one.
 
 Minor rather than patch: no exported signature changes, but the error
 classification integrators branch on does. Transitions, old → new:
@@ -40,8 +43,10 @@ rather than only after confirmation. A swap that broadcast and then failed to
 confirm now reports its signature, so it can be looked up on chain. Neither is
 written at signing time: a signed-but-unsent signature resolves to `null` on
 every explorer, and simulation, a send failure, or a bundle route with no
-Jito-capable RPC all sit between signing and the first broadcast. A throwing
-`updateRouteHook` no longer fails the step.
+Jito-capable RPC all sit between signing and the first broadcast. Signing does
+clear both fields, so a route resumed from storage no longer reports the previous
+run's signature. A throwing `updateRouteHook` no longer fails the step, and no
+longer changes which error a failed confirmation reports.
 
 For integrators: routes the backend builds as Jito bundles need a Jito-capable
 Solana RPC. The default set has none, and for `ChainId.SOL` URLs supplied via
