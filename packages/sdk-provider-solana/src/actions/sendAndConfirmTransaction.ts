@@ -33,7 +33,14 @@ export async function sendAndConfirmTransaction(
   const solanaRpcs = await getSolanaRpcs(client)
 
   let broadcastReported = false
+  // Distinct from `broadcastReported`, which records whether the integrator
+  // callback has *succeeded*. This one answers "did any RPC accept the send?",
+  // and only that question may steer the verdict below. Set before the callback
+  // runs, so a hook that throws on every resend cannot make a real expiry look
+  // like an outage.
+  let sendAccepted = false
   const reportBroadcast = (): void => {
+    sendAccepted = true
     if (broadcastReported) {
       return
     }
@@ -96,7 +103,11 @@ export async function sendAndConfirmTransaction(
   // polls to its deadline reports `not-confirmed` regardless - correct per
   // branch, but across the whole race it would claim a transaction expired
   // when nothing ever submitted it. That is an outage, not an expiry.
-  if (result.kind === 'not-confirmed' && !broadcastReported) {
+  //
+  // Reads `sendAccepted`, never `broadcastReported`: the latter is false
+  // whenever the integrator's callback threw, which says nothing about whether
+  // the network took the transaction.
+  if (result.kind === 'not-confirmed' && !sendAccepted) {
     return { kind: 'rpc-unavailable', errors: result.errors }
   }
 

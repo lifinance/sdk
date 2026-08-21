@@ -45,6 +45,10 @@ export async function sendAndConfirmBundle(
   }
 
   let broadcastReported = false
+  // No `sendAccepted` twin here: a bundle submits once, and a failed `send()`
+  // throws out of `confirmBundle` before polling starts, so this action has no
+  // not-confirmed-but-never-sent case to disambiguate. See
+  // `sendAndConfirmTransaction` for the signature path's version.
   const reportBroadcast = (): void => {
     if (broadcastReported) {
       return

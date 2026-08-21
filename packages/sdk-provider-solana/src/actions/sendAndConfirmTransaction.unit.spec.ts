@@ -195,6 +195,30 @@ describe('sendAndConfirmTransaction', () => {
     ).resolves.toEqual(expect.objectContaining({ kind: 'not-confirmed' }))
   })
 
+  it('keeps not-confirmed when the broadcast callback throws every time', async () => {
+    // The once-guard stays open on purpose so a throwing hook can be retried.
+    // It must not double as the answer to "did any RPC accept the send?": an
+    // `updateRouteHook` that throws on every resend would leave it false and
+    // turn a real expiry into rpc-unavailable, which is the rewrite below.
+    getSolanaRpcs.mockResolvedValue([createRpc()])
+    confirmSignature.mockImplementation(
+      async (options: { onBroadcast?: () => void }) => {
+        options.onBroadcast?.()
+        options.onBroadcast?.()
+        return { kind: 'not-confirmed' }
+      }
+    )
+    const onBroadcast = vi.fn(() => {
+      throw new Error('updateRouteHook blew up')
+    })
+
+    await expect(
+      sendAndConfirmTransaction({} as never, {} as never, { onBroadcast })
+    ).resolves.toEqual(expect.objectContaining({ kind: 'not-confirmed' }))
+    // Both calls ran: the guard never latched, because neither returned.
+    expect(onBroadcast).toHaveBeenCalledTimes(2)
+  })
+
   it('returns the raced result', async () => {
     getSolanaRpcs.mockResolvedValue([createRpc()])
 
