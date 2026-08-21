@@ -21,7 +21,7 @@ vi.mock('@lifi/sdk', async (importOriginal) => ({
 
 const {
   DEADLINE_TICK_INTERVAL_MS,
-  MAX_STATUS_READ_FAILURES,
+  MAX_STATUS_READ_SILENCE_MS,
   STATUS_RETRY_BACKOFF_CAP_MS,
   pollUntilDeadline,
 } = await import('./pollUntilDeadline.js')
@@ -40,6 +40,7 @@ const run = (
     signal?: AbortSignal
     pollIntervalMs?: number
     neverBroadcast?: () => boolean
+    now?: () => number
   } = {}
 ) =>
   pollUntilDeadline<string>({
@@ -50,6 +51,7 @@ const run = (
     read: 'signature status read',
     subject: 'transaction',
     neverBroadcast: overrides.neverBroadcast,
+    now: overrides.now,
   })
 
 describe('pollUntilDeadline', () => {
@@ -123,37 +125,70 @@ describe('pollUntilDeadline', () => {
     expect(pollSleeps).toEqual([1000, 2000, 2000, 500])
   })
 
-  it('throws the read error only after MAX_STATUS_READ_FAILURES consecutive failures', async () => {
-    probe.mockRejectedValue(new Error('method not found'))
+  it('survives a 20 s throttling window instead of ending the branch inside it', async () => {
+    // A public endpoint throttles for tens of seconds. Counting failures ended
+    // the branch ~16 s in and reported rpc-unavailable for a transaction that
+    // was already broadcast and could still land.
+    const clock = { ms: 0 }
+    probe.mockImplementation(() => {
+      clock.ms += 2_000
+      return clock.ms <= 20_000
+        ? Promise.reject(new Error('429'))
+        : Promise.resolve('ok')
+    })
 
-    await expect(run()).rejects.toThrow('method not found')
-    expect(probe).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES)
+    await expect(run({ now: () => clock.ms })).resolves.toEqual({
+      kind: 'confirmed',
+      value: 'ok',
+    })
   })
 
-  it('resets the failure budget after a successful read', async () => {
-    // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a
-    // budget that resets on every success stays below the throw threshold.
-    for (let i = 0; i < MAX_STATUS_READ_FAILURES; i += 1) {
-      probe.mockRejectedValueOnce(new Error('502')).mockResolvedValueOnce(null)
+  it('throws a read failure once the endpoint has been silent for the whole window', async () => {
+    const clock = { ms: 0 }
+    probe.mockImplementation(() => {
+      clock.ms += 5_000
+      return Promise.reject(new Error('method not found'))
+    })
+
+    await expect(run({ now: () => clock.ms })).rejects.toThrow(
+      'method not found'
+    )
+    // Measured from the last answer, so the branch gives up on the read that
+    // closes the window - not on a fixed count of failures.
+    expect(probe).toHaveBeenCalledTimes(MAX_STATUS_READ_SILENCE_MS / 5_000)
+  })
+
+  it('resets the silence budget after a successful read', async () => {
+    // Twenty failures, none of them consecutive, spread over four times the
+    // whole silence window. Only a budget that restarts on every answer
+    // survives them.
+    const clock = { ms: 0 }
+    for (let i = 0; i < 20; i += 1) {
+      probe
+        .mockImplementationOnce(() => {
+          clock.ms += 4_000
+          return Promise.reject(new Error('502'))
+        })
+        .mockImplementationOnce(() => {
+          clock.ms += 1_000
+          return Promise.resolve(null)
+        })
     }
     probe.mockResolvedValueOnce('ok')
 
-    await expect(run()).resolves.toEqual({ kind: 'confirmed', value: 'ok' })
-    expect(probe).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES * 2 + 1)
+    await expect(run({ now: () => clock.ms })).resolves.toEqual({
+      kind: 'confirmed',
+      value: 'ok',
+    })
+    expect(probe).toHaveBeenCalledTimes(41)
   })
 
-  it('cannot exhaust the failure budget inside a 10 s throttling window', () => {
-    // Public endpoints throttle in ~10 s windows. The budget is spent only
-    // when the summed backoff outlasts such a window; the fastest case is
-    // the signature poller's 400 ms base interval.
-    let sleptMs = 0
-    for (let failures = 1; failures < MAX_STATUS_READ_FAILURES; failures += 1) {
-      sleptMs += Math.min(400 * 2 ** failures, STATUS_RETRY_BACKOFF_CAP_MS)
-    }
-    expect(sleptMs).toBeGreaterThan(10_000)
-    // And a truly broken endpoint must still fail its branch well inside the
-    // 90 s ceiling instead of holding it open.
-    expect(sleptMs).toBeLessThan(CONFIRMATION_TIMEOUT_MS / 2)
+  it('tolerates a longer silence than a public endpoint throttling window', () => {
+    // Public endpoints throttle in windows of tens of seconds; the budget must
+    // outlast one. A truly broken endpoint must still fail its branch well
+    // inside the 90 s ceiling rather than hold it open to the end.
+    expect(MAX_STATUS_READ_SILENCE_MS).toBeGreaterThan(20_000)
+    expect(MAX_STATUS_READ_SILENCE_MS).toBeLessThan(CONFIRMATION_TIMEOUT_MS / 2)
   })
 
   it('never backs off to less than the base poll interval', async () => {

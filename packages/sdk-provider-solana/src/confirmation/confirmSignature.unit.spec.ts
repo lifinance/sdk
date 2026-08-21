@@ -26,7 +26,6 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
 }))
 
 const { confirmSignature } = await import('./confirmSignature.js')
-const { MAX_STATUS_READ_FAILURES } = await import('./pollUntilDeadline.js')
 
 const getSignatureStatuses = vi.fn()
 /** Options every `getSignatureStatuses(...).send(...)` call received. */
@@ -176,9 +175,9 @@ describe('confirmSignature', () => {
   })
 
   it('resets the probe-failure streak after a successful poll', async () => {
-    // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a streak that
-    // resets on every success stays below the throw threshold.
-    for (let i = 0; i < MAX_STATUS_READ_FAILURES; i += 1) {
+    // Twenty failures, none of them consecutive. Only a budget that resets on
+    // every answer survives them.
+    for (let i = 0; i < 20; i += 1) {
       getSignatureStatuses
         .mockRejectedValueOnce(new Error('502'))
         .mockResolvedValueOnce(noStatus())
@@ -188,16 +187,7 @@ describe('confirmSignature', () => {
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(
-      MAX_STATUS_READ_FAILURES * 2 + 1
-    )
-  })
-
-  it('throws after MAX_STATUS_READ_FAILURES consecutive probe failures', async () => {
-    getSignatureStatuses.mockRejectedValue(new Error('method not found'))
-
-    await expect(run()).rejects.toThrow('method not found')
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(41)
   })
 
   it('returns not-confirmed when every send failed but the observation completed', async () => {
@@ -322,9 +312,9 @@ describe('confirmSignature', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never
-    // fires; the loop then exits on the aborted signal and the final probe is
-    // skipped.
+    // aborts it. An in-flight read never answers, so it never renews the
+    // silence budget and never throws either - the abort arrives first. The
+    // loop then exits on the aborted signal and the final probe is skipped.
     const controller = new AbortController()
     reached.mockReturnValue(false)
     getSignatureStatuses.mockImplementation(() => {
@@ -336,7 +326,7 @@ describe('confirmSignature', () => {
     await expect(run(resend, controller.signal)).rejects.toThrow(
       /ever completed/i
     )
-    // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule; and
+    // Exactly one read, so the throw cannot be the silence-budget rule; and
     // the send succeeded, so it cannot be the send rule either.
     expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
     expect(resend).toHaveBeenCalled()
@@ -362,8 +352,8 @@ describe('confirmSignature', () => {
       /stopped answering/i
     )
     // Two reads: the first answered, so the never-observed rule cannot be the
-    // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
-    // either. The send succeeded, ruling out the send rule too.
+    // thrower, and the second never renewed the silence budget, so that rule
+    // cannot be either. The send succeeded, ruling out the send rule too.
     expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
   })
 

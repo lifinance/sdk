@@ -26,7 +26,7 @@ export const EXPIRY_PROBE_INTERVAL_MS = 7_000
 export const EXPIRY_CONFIRMATIONS: number =
   Math.floor(NODE_LAG_WINDOW_MS / EXPIRY_PROBE_INTERVAL_MS) + 2
 /** Probe failures per blockhash before that blockhash stops being probed.
- * Prober-only; the status pollers have `MAX_STATUS_READ_FAILURES`. */
+ * Prober-only; the status pollers have `MAX_STATUS_READ_SILENCE_MS`. */
 export const MAX_PROBE_ERRORS = 5
 
 /** Structural, so one implementation serves both the Solana and Jito RPC. */

@@ -5,10 +5,12 @@ import type { ConfirmationOutcome } from './types.js'
 /** Cadence of the detached deadline-advance loop. Independent of the
  * status-poll interval, which each caller sets for its own rate limits. */
 export const DEADLINE_TICK_INTERVAL_MS = 400
-/** Consecutive status-read failures before a branch throws. With the backoff
- * below, ten failures span ~16.4 s - longer than a ~10 s throttling window,
- * and well inside the 90 s ceiling. */
-export const MAX_STATUS_READ_FAILURES = 10
+/** How long an endpoint may go without answering a status read before its
+ * branch gives up. Measured in wall-clock time, not in failures: a count is
+ * coupled to the backoff curve, and ten failures spanned only ~16.4 s, so a
+ * routine 20 s throttling window ended the branch 74 s inside the 90 s ceiling
+ * and reported an already-broadcast transaction as an outage. */
+export const MAX_STATUS_READ_SILENCE_MS = 30_000
 /** Ceiling on one backoff sleep. Must stay below `FINAL_PROBE_MARGIN_MS`: a
  * sleep straddling the ceiling delays the final probe by up to this much. */
 export const STATUS_RETRY_BACKOFF_CAP_MS = 2_000
@@ -35,8 +37,12 @@ export async function pollUntilDeadline<T>(options: {
   /** `true` when this RPC never accepted the broadcast. Read at verdict time,
    * and only when the observation did not complete. */
   neverBroadcast?: () => boolean
+  /** Injectable clock, so the silence budget is testable without timers.
+   * Mirrors `createConfirmationDeadline`. */
+  now?: () => number
 }): Promise<ConfirmationOutcome<T>> {
   const { deadline, signal, pollIntervalMs, probe, read, subject } = options
+  const now = options.now ?? Date.now
 
   let settled = false
 
@@ -57,6 +63,9 @@ export async function pollUntilDeadline<T>(options: {
     // Did this RPC ever answer? A `null` read still answered. Separates
     // "polled and saw nothing" from "never got a word out of this endpoint".
     let probeSucceeded = false
+    // When a read last answered; the branch start until one does. A `null` read
+    // counts as an answer - the endpoint is alive and says nothing.
+    let lastAnswerAt = now()
 
     // Records WHY the loop ended, because the two reasons earn different
     // verdicts. Reaching the deadline is a complete observation; being aborted
@@ -71,13 +80,16 @@ export async function pollUntilDeadline<T>(options: {
       try {
         const value = await probe()
         failures = 0
+        lastAnswerAt = now()
         probeSucceeded = true
         if (value !== null) {
           return { kind: 'confirmed', value }
         }
       } catch (error) {
+        // `failures` still drives the backoff below; only the give-up rule is
+        // time-based.
         failures += 1
-        if (failures >= MAX_STATUS_READ_FAILURES) {
+        if (now() - lastAnswerAt >= MAX_STATUS_READ_SILENCE_MS) {
           throw error
         }
       }
@@ -132,9 +144,9 @@ export async function pollUntilDeadline<T>(options: {
       throw new Error(`Every ${subject} send to this RPC failed.`)
     }
 
-    // Every read hung until the abort: one in-flight read never reaches
-    // `MAX_STATUS_READ_FAILURES`, so the loop never threw. `not-confirmed`
-    // here would report a hung endpoint as an expiry.
+    // Every read hung until the abort: an in-flight read never answers, so it
+    // never renews `lastAnswerAt` and never throws either - the abort arrives
+    // first. `not-confirmed` here would report a hung endpoint as an expiry.
     if (!probeSucceeded) {
       throw new Error(`No ${read} against this RPC ever completed.`)
     }

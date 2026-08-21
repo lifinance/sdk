@@ -36,9 +36,7 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
 }))
 
 const { confirmBundle } = await import('./confirmBundle.js')
-const { DEADLINE_TICK_INTERVAL_MS, MAX_STATUS_READ_FAILURES } = await import(
-  './pollUntilDeadline.js'
-)
+const { DEADLINE_TICK_INTERVAL_MS } = await import('./pollUntilDeadline.js')
 
 const getBundleStatuses = vi.fn()
 const getSignatureStatuses = vi.fn()
@@ -220,8 +218,9 @@ describe('confirmBundle', () => {
 
   it('confirms with all-null signature results when the signature read fails', async () => {
     // Same atomicity argument for a thrown read: a confirmed bundle status
-    // followed by a failing `getSignatureStatuses` must not count toward
-    // MAX_STATUS_READ_FAILURES and end as `rpc-unavailable` for a landed bundle.
+    // followed by a failing `getSignatureStatuses` must not spend the
+    // MAX_STATUS_READ_SILENCE_MS budget and end as `rpc-unavailable` for a
+    // landed bundle.
     getBundleStatuses.mockResolvedValue(bundle('confirmed'))
     getSignatureStatuses.mockRejectedValue(new Error('502'))
 
@@ -290,9 +289,9 @@ describe('confirmBundle', () => {
   it('confirms a status that carries no transactions list at all', async () => {
     // `transactions` is unvalidated wire data. Before the guard, a confirmed
     // status arriving without it made `txSignatures.map` a `TypeError` on the
-    // failing-read path - thrown out of the probe on every poll, charged to
-    // MAX_STATUS_READ_FAILURES, and ending as `rpc-unavailable` for a bundle
-    // that had already landed.
+    // failing-read path - thrown out of the probe on every poll, spending the
+    // MAX_STATUS_READ_SILENCE_MS budget, and ending as `rpc-unavailable` for a
+    // bundle that had already landed.
     getBundleStatuses.mockResolvedValue({
       value: [{ confirmation_status: 'confirmed' }],
     })
@@ -421,9 +420,9 @@ describe('confirmBundle', () => {
   })
 
   it('resets the probe-failure streak after a successful poll', async () => {
-    // MAX_STATUS_READ_FAILURES failures, none of them consecutive. Only a streak that
-    // resets on every success stays below the throw threshold.
-    for (let i = 0; i < MAX_STATUS_READ_FAILURES; i += 1) {
+    // Twenty failures, none of them consecutive. Only a budget that resets on
+    // every answer survives them.
+    for (let i = 0; i < 20; i += 1) {
       getBundleStatuses
         .mockRejectedValueOnce(new Error('502'))
         .mockResolvedValueOnce(noBundle())
@@ -434,16 +433,7 @@ describe('confirmBundle', () => {
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(
-      MAX_STATUS_READ_FAILURES * 2 + 1
-    )
-  })
-
-  it('throws after MAX_STATUS_READ_FAILURES consecutive probe failures', async () => {
-    getBundleStatuses.mockRejectedValue(new Error('method not found'))
-
-    await expect(run()).rejects.toThrow('method not found')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(MAX_STATUS_READ_FAILURES)
+    expect(getBundleStatuses).toHaveBeenCalledTimes(41)
   })
 
   it('builds the deadline before it submits the bundle', async () => {
@@ -468,9 +458,9 @@ describe('confirmBundle', () => {
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
     // A hung endpoint: the read is still in flight when the branch timeout
-    // aborts it. That is one failure, so MAX_STATUS_READ_FAILURES never
-    // fires; the loop then exits on the aborted signal and the final probe is
-    // skipped.
+    // aborts it. An in-flight read never answers, so it never renews the
+    // silence budget and never throws either - the abort arrives first. The
+    // loop then exits on the aborted signal and the final probe is skipped.
     const controller = new AbortController()
     reached.mockReturnValue(false)
     getBundleStatuses.mockImplementation(() => {
@@ -479,7 +469,7 @@ describe('confirmBundle', () => {
     })
 
     await expect(run(controller.signal)).rejects.toThrow(/ever completed/i)
-    // Exactly one read, so the throw cannot be the MAX_STATUS_READ_FAILURES rule.
+    // Exactly one read, so the throw cannot be the silence-budget rule.
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
@@ -500,8 +490,8 @@ describe('confirmBundle', () => {
 
     await expect(run(controller.signal)).rejects.toThrow(/stopped answering/i)
     // Two reads: the first answered, so the never-observed rule cannot be the
-    // thrower, and the second is one failure, so MAX_STATUS_READ_FAILURES cannot be
-    // either.
+    // thrower, and the second never renewed the silence budget, so that rule
+    // cannot be either.
     expect(getBundleStatuses).toHaveBeenCalledTimes(2)
   })
 })
