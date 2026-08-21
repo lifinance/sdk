@@ -58,7 +58,16 @@ export async function pollUntilDeadline<T>(options: {
     // "polled and saw nothing" from "never got a word out of this endpoint".
     let probeSucceeded = false
 
-    while (!deadline.reached() && !signal.aborted) {
+    // Records WHY the loop ended, because the two reasons earn different
+    // verdicts. Reaching the deadline is a complete observation; being aborted
+    // mid-read is not. The final probe below is a bonus on top of a complete
+    // observation, so losing it must not downgrade the verdict.
+    let deadlineReached = false
+    while (!signal.aborted) {
+      if (deadline.reached()) {
+        deadlineReached = true
+        break
+      }
       try {
         const value = await probe()
         failures = 0
@@ -103,14 +112,19 @@ export async function pollUntilDeadline<T>(options: {
       }
     }
 
-    // A completed observation outranks everything below: polled to the
-    // deadline, ran the final probe, saw nothing. It stays ahead of the
-    // send-failure signal on purpose - a throw here is bucketed as
-    // `rpc-unavailable` by `raceRpcs`, which would discard a real observation
-    // and misreport a genuinely expired transaction as an outage. The
-    // never-broadcast case is answered one level up, in the actions, which
-    // know whether ANY branch accepted the send.
-    if (probeSucceeded && !signal.aborted) {
+    // A completed observation outranks everything below: polled to its own
+    // deadline and saw nothing. It stays ahead of the send-failure signal on
+    // purpose - a throw here is bucketed as `rpc-unavailable` by `raceRpcs`,
+    // which would discard a real observation and misreport a genuinely expired
+    // transaction as an outage. The never-broadcast case is answered one level
+    // up, in the actions, which know whether ANY branch accepted the send.
+    //
+    // Keyed on `deadlineReached`, not on `!signal.aborted`: the final probe is
+    // a bonus on top of the observation, and the shared BRANCH_TIMEOUT_MS timer
+    // can abort that probe in every branch at once. Reading the abort here
+    // would discard every observation and report a fleet-wide expiry as an
+    // outage.
+    if (probeSucceeded && deadlineReached) {
       return { kind: 'not-confirmed' }
     }
 

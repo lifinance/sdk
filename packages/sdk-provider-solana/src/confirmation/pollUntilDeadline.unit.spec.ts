@@ -79,6 +79,25 @@ describe('pollUntilDeadline', () => {
     expect(probe).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps a completed observation when the branch timeout aborts the final probe', async () => {
+    // BRANCH_TIMEOUT_MS is one shared timer, so every branch reaches the final
+    // probe on the same clock. A probe killed there must not erase an
+    // observation this branch already completed - `raceRpcs` would turn the
+    // resulting throw into `rpc-unavailable` for a genuinely expired
+    // transaction, the defect this module exists to prevent.
+    const controller = new AbortController()
+    reached.mockReturnValueOnce(false).mockReturnValue(true)
+    probe.mockResolvedValueOnce(null).mockImplementationOnce(() => {
+      controller.abort()
+      return Promise.reject(new Error('request aborted'))
+    })
+
+    await expect(run({ signal: controller.signal })).resolves.toEqual({
+      kind: 'not-confirmed',
+    })
+    expect(probe).toHaveBeenCalledTimes(2)
+  })
+
   it('backs off after consecutive read failures instead of retrying at the poll interval', async () => {
     // A 429 burst must be met with a falling request rate: doubling from the
     // base interval, capped, and reset by the first read that answers.
