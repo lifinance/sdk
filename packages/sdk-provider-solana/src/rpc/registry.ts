@@ -19,14 +19,32 @@ const jitoRpcs = new LruMap<JitoRpcType>(12)
 const PROBE_BUNDLE_ID =
   '1111111111111111111111111111111111111111111111111111111111111111'
 
-/**
- * Probes with `getBundleStatuses` rather than `getTipAccounts`: it is the
- * method bundle confirmation actually uses, and providers such as Helius
- * support it without exposing `getTipAccounts`.
- */
 /** Both leave the endpoint out of the Jito list, but only `unsupported` is a
  * configuration gap the integrator can act on. */
 export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
+
+/** Retry window for an `unreachable` probe. `unsupported` never expires - a
+ * capability gap does not heal - but an outage does, so a permanent entry
+ * would keep a recovered endpoint out of the Jito list for the whole process. */
+export const JITO_PROBE_RETRY_MS = 30_000
+
+type JitoProbeRecord = { outcome: JitoProbeOutcome; at: number }
+
+/** Every answered probe, the negative ones included. Without them the unprobed
+ * set never shrinks, and every bundle submission re-probes every non-Jito
+ * endpoint at up to `PROBE_TIMEOUT_MS` each, on the latency path before
+ * submission can start. */
+const jitoProbes = new LruMap<JitoProbeRecord>(12)
+
+const isProbeFresh = (record: JitoProbeRecord | undefined): boolean => {
+  if (!record) {
+    return false
+  }
+  return (
+    record.outcome !== 'unreachable' ||
+    Date.now() - record.at < JITO_PROBE_RETRY_MS
+  )
+}
 
 /** `@solana/kit` puts the JSON-RPC code on `context.__code`, not `error.code`.
  * The message is a last resort - a provider can reword it. An unrecognized
@@ -80,6 +98,11 @@ const readProbeFailure = (error: unknown): JitoProbeOutcome => {
  */
 const PROBE_TIMEOUT_MS = 5_000
 
+/**
+ * Probes with `getBundleStatuses` rather than `getTipAccounts`: it is the
+ * method bundle confirmation actually uses, and providers such as Helius
+ * support it without exposing `getTipAccounts`.
+ */
 export const probeJitoRpc = async (
   rpcUrl: string
 ): Promise<JitoProbeOutcome> => {
@@ -113,7 +136,11 @@ const ensureSolanaRpcs = async (client: SDKClient): Promise<string[]> => {
 }
 
 /**
- * Detects and caches Jito-capable RPCs by checking if they support the getTipAccounts method.
+ * Initializes and caches Jito RPCs for every configured Solana RPC URL.
+ *
+ * Every probe outcome is cached, so a non-Jito endpoint is probed once rather
+ * than once per bundle submission. See `JITO_PROBE_RETRY_MS` for the one
+ * outcome that expires.
  * @param client - The SDK client used to fetch RPC URLs.
  */
 const ensureJitoRpcs = async (
@@ -122,18 +149,31 @@ const ensureJitoRpcs = async (
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
   // Probed in parallel: serially, one slow endpoint delayed every URL behind
   // it before submission could start.
-  const unprobed = rpcUrls.filter((rpcUrl) => !jitoRpcs.has(rpcUrl))
+  const unprobed = rpcUrls.filter(
+    (rpcUrl) => !isProbeFresh(jitoProbes.get(rpcUrl))
+  )
   const outcomes = await Promise.all(unprobed.map(probeJitoRpc))
 
-  let unreachable = 0
   outcomes.forEach((outcome, index) => {
+    const rpcUrl = unprobed[index]
+    jitoProbes.set(rpcUrl, { outcome, at: Date.now() })
     if (outcome === 'supported') {
-      const rpcUrl = unprobed[index]
       jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
-    } else if (outcome === 'unreachable') {
-      unreachable += 1
+    } else {
+      // An endpoint that used to answer and now does not must leave the list,
+      // or `getJitoRpcs` keeps handing out a client for it.
+      jitoRpcs.delete(rpcUrl)
     }
   })
+
+  // Counted over every URL, not only the freshly probed ones: a cached
+  // `unreachable` still has to reach `sendAndConfirmBundle`, which uses the
+  // count to choose between "retry, likely temporary" and "supply a
+  // Jito-capable URL".
+  const unreachable = rpcUrls.filter(
+    (rpcUrl) => jitoProbes.get(rpcUrl)?.outcome === 'unreachable'
+  ).length
+
   return { rpcUrls, unreachable }
 }
 

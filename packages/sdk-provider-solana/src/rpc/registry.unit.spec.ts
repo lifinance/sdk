@@ -125,3 +125,80 @@ describe('probeJitoRpc', () => {
     )
   })
 })
+
+describe('getJitoRpcs', () => {
+  const clientWith = (rpcUrls: string[]) =>
+    ({ getRpcUrlsByChainId: vi.fn().mockResolvedValue(rpcUrls) }) as never
+
+  beforeEach(() => {
+    // The registry caches in module-level maps, so every test needs its own
+    // module instance.
+    vi.resetModules()
+    getBundleStatuses.mockReset()
+    createJitoRpc.mockClear()
+  })
+
+  it('probes an unsupported endpoint once, not once per submission', async () => {
+    const { getJitoRpcs } = await import('./registry.js')
+    getBundleStatuses.mockRejectedValue(new Error('Method not found'))
+    const client = clientWith(['https://standard.example'])
+
+    await getJitoRpcs(client)
+    await getJitoRpcs(client)
+
+    // A capability gap does not heal. Re-probing it costs up to
+    // PROBE_TIMEOUT_MS per bundle submission, before submission can start.
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-probes an unreachable endpoint once the retry window closes', async () => {
+    vi.useFakeTimers()
+    try {
+      const { getJitoRpcs, JITO_PROBE_RETRY_MS } = await import('./registry.js')
+      getBundleStatuses.mockRejectedValue(new Error('429 Too Many Requests'))
+      const client = clientWith(['https://jito.example'])
+
+      await getJitoRpcs(client)
+      await getJitoRpcs(client)
+      expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+
+      vi.setSystemTime(Date.now() + JITO_PROBE_RETRY_MS)
+      await getJitoRpcs(client)
+      // An outage clears. A permanently cached `unreachable` would keep a
+      // recovered endpoint out of the Jito list for the whole process.
+      expect(getBundleStatuses).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps counting a cached unreachable endpoint as unreachable', async () => {
+    const { getJitoRpcs } = await import('./registry.js')
+    getBundleStatuses.mockRejectedValue(new Error('fetch failed'))
+    const client = clientWith(['https://jito.example'])
+
+    await getJitoRpcs(client)
+
+    // The second call probes nothing, but the count still drives the two
+    // different errors `sendAndConfirmBundle` raises: an outage to retry, or a
+    // configuration gap to fix.
+    await expect(getJitoRpcs(client)).resolves.toMatchObject({
+      rpcs: [],
+      unreachable: 1,
+    })
+  })
+
+  it('caches a supported endpoint and reuses its client', async () => {
+    const { getJitoRpcs } = await import('./registry.js')
+    getBundleStatuses.mockResolvedValue({ value: [null] })
+    const client = clientWith(['https://jito.example'])
+
+    const first = await getJitoRpcs(client)
+    const second = await getJitoRpcs(client)
+
+    expect(first.rpcs).toHaveLength(1)
+    // The very same client, not an equal one: a re-probe would build a second.
+    expect(second.rpcs[0]).toBe(first.rpcs[0])
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+  })
+})
