@@ -1,11 +1,10 @@
-import { executeRoute, getRoutes, getStepTransaction } from '@lifi/sdk'
+import { ChainId, executeRoute, getRoutes, getStepTransaction } from '@lifi/sdk'
 import { afterAll, describe, expect, it } from 'vitest'
 import { assertSpendWithinCeiling, isSkip, loadE2EEnv } from './env.js'
 import { createE2EClient, observeRouteWrites } from './harness.js'
 import { formatReport, type LegResult } from './report.js'
 import { amountForUsd, planStandardMatrix, TOKENS } from './tokens.js'
 
-const SOL_CHAIN_ID = 1151111081099710
 const env = loadE2EEnv()
 
 if (isSkip(env)) {
@@ -29,8 +28,8 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
       })
 
       const { routes } = await getRoutes(client, {
-        fromChainId: SOL_CHAIN_ID,
-        toChainId: SOL_CHAIN_ID,
+        fromChainId: ChainId.SOL,
+        toChainId: ChainId.SOL,
         fromTokenAddress: TOKENS.PENGU.mint,
         toTokenAddress: TOKENS.USDSTAR.mint,
         fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
@@ -79,8 +78,8 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
         const { hook, observed } = observeRouteWrites()
 
         const { routes } = await getRoutes(client, {
-          fromChainId: SOL_CHAIN_ID,
-          toChainId: SOL_CHAIN_ID,
+          fromChainId: ChainId.SOL,
+          toChainId: ChainId.SOL,
           fromTokenAddress: TOKENS.PENGU.mint,
           toTokenAddress: TOKENS.USDSTAR.mint,
           fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
@@ -119,8 +118,8 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
       const { client, address } = await createE2EClient(env)
 
       const { routes } = await getRoutes(client, {
-        fromChainId: SOL_CHAIN_ID,
-        toChainId: SOL_CHAIN_ID,
+        fromChainId: ChainId.SOL,
+        toChainId: ChainId.SOL,
         fromTokenAddress: TOKENS.PENGU.mint,
         toTokenAddress: TOKENS.USDSTAR.mint,
         fromAmount: amountForUsd(TOKENS.PENGU, env.usdPerLeg),
@@ -147,8 +146,8 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
         const { hook, observed } = observeRouteWrites()
 
         const { routes } = await getRoutes(client, {
-          fromChainId: SOL_CHAIN_ID,
-          toChainId: SOL_CHAIN_ID,
+          fromChainId: ChainId.SOL,
+          toChainId: ChainId.SOL,
           fromTokenAddress: TOKENS.SOL.mint,
           toTokenAddress: TOKENS.USDC.mint,
           fromAmount: amountForUsd(TOKENS.SOL, env.usdPerLeg),
@@ -176,7 +175,14 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     const legs = planStandardMatrix(env.usdPerLeg)
     // Every leg plus the two single-leg phases above. Asserted at collection
     // time, before any test body runs, so an over-sized run never broadcasts.
-    assertSpendWithinCeiling((legs.length + 2) * env.usdPerLeg, env.maxSpendUsd)
+    // Gated on `execute`: a dry run broadcasts nothing, so an over-sized plan
+    // must skip rather than error the whole file during collection.
+    if (env.execute) {
+      assertSpendWithinCeiling(
+        (legs.length + 2) * env.usdPerLeg,
+        env.maxSpendUsd
+      )
+    }
     const results: LegResult[] = []
 
     afterAll(() => {
@@ -200,8 +206,8 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
           let routes: Awaited<ReturnType<typeof getRoutes>>['routes']
           try {
             const response = await getRoutes(client, {
-              fromChainId: SOL_CHAIN_ID,
-              toChainId: SOL_CHAIN_ID,
+              fromChainId: ChainId.SOL,
+              toChainId: ChainId.SOL,
               fromTokenAddress: leg.from.mint,
               toTokenAddress: leg.to.mint,
               fromAmount: leg.fromAmount,

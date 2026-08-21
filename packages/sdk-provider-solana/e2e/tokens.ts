@@ -62,15 +62,23 @@ export const TOKENS: Record<E2ETokenName, E2EToken> = {
 /** The four tokens the standard-path matrix cycles through. */
 const STANDARD: E2EToken[] = [TOKENS.USDT, TOKENS.USDC, TOKENS.SOL, TOKENS.WBTC]
 
-/** Via a fixed-point string into a BigInt: `String(1e21)` yields `"1e+21"`,
- * which the API rejects. */
+/** Built as a BigInt, never through a float string: both `String(1e21)` and
+ * `(1e21).toFixed(0)` yield `"1e+21"`, which `BigInt` rejects and the API
+ * rejects too. */
 export function amountForUsd(token: E2EToken, usd: number): string {
   if (!(usd > 0)) {
     throw new Error(`Leg size must be a positive dollar amount, got ${usd}`)
   }
   const tokenUnits = usd / token.approxPriceUsd
-  const scaled = (tokenUnits * 10 ** token.decimals).toFixed(0)
-  return BigInt(scaled).toString()
+  const whole = Math.floor(tokenUnits)
+  const scale = 10n ** BigInt(token.decimals)
+  // `BigInt(number)` takes any integer-valued float, exponent range included,
+  // so the whole part never round-trips through a string. The fraction is
+  // bounded by `scale`, well inside Number's safe integer range.
+  const fractionalUnits = BigInt(
+    Math.round((tokenUnits - whole) * 10 ** token.decimals)
+  )
+  return (BigInt(whole) * scale + fractionalUnits).toString()
 }
 
 export type StandardLeg = {

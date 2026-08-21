@@ -70,17 +70,4 @@ describe.sequential('Solana token balance', async () => {
   // Graceful degradation for unheld / "invalid" mints (known-zero vs unknown)
   // is covered deterministically in getSolanaBalance.unit.spec.ts — that path
   // makes no per-token RPC call, so it needs no live endpoint.
-
-  // it( 'should execute route', async () => { const quote = await getQuote({
-  // fromChain: ChainId.SOL, fromAmount: '1000000', fromToken:
-  // 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', toChain: ChainId.ARB,
-  // toToken: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', fromAddress:
-  // '6AUWsSCRFSCbrHKH9s84wfzJXtD6mNzAHs11x6pGEcmJ', toAddress:
-  // '0x29DaCdF7cCaDf4eE67c923b4C22255A4B2494eD7', })
-
-  //     console.log(quote)
-
-  // await executeRoute(client, convertQuoteToRoute(quote), { updateRouteHook:
-  // (route) => { console.log(route.steps?.[0].execution) }, }) }, { timeout:
-  // 100000000 } )
 })

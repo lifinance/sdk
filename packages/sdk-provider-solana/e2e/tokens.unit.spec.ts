@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { amountForUsd, planStandardMatrix, TOKENS } from './tokens.js'
+import {
+  amountForUsd,
+  type E2EToken,
+  planStandardMatrix,
+  TOKENS,
+} from './tokens.js'
 
 describe('TOKENS', () => {
   it('uses the USD* mint that produces Perena routes', () => {
@@ -47,6 +52,20 @@ describe('amountForUsd', () => {
   it('rejects a non-positive dollar amount', () => {
     expect(() => amountForUsd(TOKENS.USDC, 0)).toThrow()
     expect(() => amountForUsd(TOKENS.USDC, -1)).toThrow()
+  })
+
+  it('survives an amount at the exponential-notation threshold', () => {
+    // `(1e21).toFixed(0)` returns '1e+21' just as `String(1e21)` does, and
+    // `BigInt('1e+21')` throws a SyntaxError. Only a value built as a BigInt
+    // avoids the float round-trip the comment above claims to avoid.
+    const cheap: E2EToken = {
+      symbol: 'CHEAP',
+      mint: 'CheapMint111111111111111111111111111111111',
+      decimals: 9,
+      approxPriceUsd: 1e-12,
+    }
+
+    expect(amountForUsd(cheap, 1)).toBe('1000000000000000000000')
   })
 })
 
