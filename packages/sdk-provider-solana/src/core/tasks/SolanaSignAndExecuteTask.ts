@@ -97,10 +97,14 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // every send failure all sit between this task and the first broadcast.
     // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
     //
-    // `txLink: undefined` still clears the stale link a restarted `PENDING`
-    // action carried over from a previous run.
+    // Both are still written as an explicit `undefined`, which clears what a
+    // restarted `PENDING` action carried over from a previous run.
+    // `prepareRestart` keeps that action *because* its `txHash` is truthy, so
+    // leaving the signature in place would report the previous run's hash if
+    // this run failed before its first broadcast.
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
+      txHash: undefined,
       txLink: undefined,
     })
 

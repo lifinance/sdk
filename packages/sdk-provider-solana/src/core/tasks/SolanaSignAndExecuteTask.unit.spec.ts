@@ -68,12 +68,17 @@ const baseContext = () =>
   }) as never
 
 describe('SolanaSignAndExecuteTask', () => {
-  it('does not write a txHash before anything is broadcast', async () => {
+  it('writes no txHash before anything is broadcast, and clears any stale one', async () => {
     // A signed-but-unsent signature resolves to `null` on every explorer -
     // verified against mainnet. Simulation, the empty-Jito-RPC throw and every
     // send failure all sit between this task and the first broadcast, so a
     // hash written here can point at a transaction that never existed. The
     // wait tasks write it on `onBroadcast`, beside `txLink`.
+    //
+    // Written as an explicit `undefined` rather than omitted: `prepareRestart`
+    // keeps a PENDING action precisely because its `txHash` is truthy, so a
+    // resumed run that failed before its first broadcast would otherwise report
+    // the previous run's signature.
     const context = baseContext()
     const task = new SolanaSignAndExecuteTask()
 
@@ -81,8 +86,10 @@ describe('SolanaSignAndExecuteTask', () => {
 
     const params = updateAction.mock.calls.map((call) => call[3])
     for (const param of params) {
-      expect(param).not.toHaveProperty('txHash')
+      expect(param.txHash).toBeUndefined()
     }
+    const signingWrite = params.at(-1)
+    expect('txHash' in signingWrite).toBe(true)
   })
 
   beforeEach(() => {
