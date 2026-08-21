@@ -34,7 +34,7 @@
     "build:version": "node ../../scripts/version.js",
     "clean": "rm -rf dist",
     "coverage": "vitest run --coverage",
-    "test": "vitest --run --dangerouslyIgnoreUnhandledErrors",
+    "test": "vitest --run",
     "test:cov": "pnpm test --coverage",
     "test:unit": "pnpm test .unit.spec.ts --passWithNoTests",
     "check:types": "tsc --noEmit && tsc -p tsconfig.spec.json --noEmit",
