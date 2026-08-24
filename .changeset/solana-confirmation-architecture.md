@@ -32,6 +32,11 @@ classification integrators branch on does. Transitions, old → new:
   `TransactionError` `TransactionFailed` (1003) → success.
 - Jito path, confirmed bundle whose status omits `transactions`:
   `UnknownError` (1000) → success.
+- Either path, a signed transaction carrying no fee payer signature: raw
+  `SolanaError` → `TransactionError` `TransactionUnprepared` (1002). Both wait
+  tasks read the signature before they submit, so this throw now stays inside
+  the `LiFiErrorCode` contract instead of reaching integrator error branching
+  as an unclassified error.
 
 A confirmed Jito bundle no longer fails on missing per-signature data. A bundle
 is atomic, so a `confirmed` status means every transaction in it landed; a
@@ -45,8 +50,20 @@ written at signing time: a signed-but-unsent signature resolves to `null` on
 every explorer, and simulation, a send failure, or a bundle route with no
 Jito-capable RPC all sit between signing and the first broadcast. Signing does
 clear both fields, so a route resumed from storage no longer reports the previous
-run's signature. A throwing `updateRouteHook` no longer fails the step, and no
-longer changes which error a failed confirmation reports.
+run's signature - including when decoding the signed transaction fails, since
+the clearing write now precedes the decode. A throwing `updateRouteHook` no
+longer fails the step, and no longer changes which error a failed confirmation
+reports.
+
+Jito capability is probed once per endpoint and cached, rather than re-probed
+before every bundle submission, and concurrent submissions now share one probe
+per URL instead of each firing their own. Each cached answer carries its own
+retry window. An endpoint that names the method unknown over JSON-RPC is
+believed permanently; a bare HTTP 401 or 403 is not, because it never reached
+the JSON-RPC layer and cannot distinguish a plan restriction from a provider
+mid-deploy or an allowlist entry still propagating. Those retry after 15
+minutes, so one transient refusal no longer removes a working endpoint for the
+lifetime of the process.
 
 For integrators: routes the backend builds as Jito bundles need a Jito-capable
 Solana RPC. The default set has none, and for `ChainId.SOL` URLs supplied via
