@@ -2,10 +2,24 @@ import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
+// Mutable so one spec can make the signature read throw the way
+// `@solana/kit` does for a null fee-payer slot. `vi.hoisted` because the
+// `vi.mock` factory is hoisted above ordinary top-level declarations.
+const kit = vi.hoisted(() => ({ signatureThrows: false }))
+
 vi.mock('@solana/kit', async () => ({
   ...(await vi.importActual<object>('@solana/kit')),
   getBase64EncodedWireTransaction: () => 'base64-encoded-tx',
-  getSignatureFromTransaction: () => 'sig',
+  getSignatureFromTransaction: () => {
+    if (kit.signatureThrows) {
+      const error = new Error(
+        "Could not determine this transaction's signature. Make sure that the transaction has been signed by its fee payer."
+      )
+      error.name = 'SolanaError'
+      throw error
+    }
+    return 'sig'
+  },
 }))
 
 const callSolanaRpcsWithRetry = vi.fn()
@@ -46,6 +60,24 @@ describe('SolanaStandardWaitForTransactionTask', () => {
     vi.clearAllMocks()
     callSolanaRpcsWithRetry.mockReset()
     sendAndConfirmTransaction.mockReset()
+    kit.signatureThrows = false
+  })
+
+  it('reports an unsignable transaction as a TransactionError', async () => {
+    // `getSignatureFromTransaction` throws a bare `SolanaError` when the fee
+    // payer's slot is null. This task derives the signature before it sends,
+    // so that throw escapes the `LiFiErrorCode` contract and integrator error
+    // branching falls through to the unknown bucket.
+    kit.signatureThrows = true
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext({ skipSimulation: true }))
+      .catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionUnprepared)
+    expect(thrown.cause?.name).toBe('SolanaError')
+    expect(sendAndConfirmTransaction).not.toHaveBeenCalled()
   })
 
   it('surfaces simulation err and logs through cause when preflight fails', async () => {

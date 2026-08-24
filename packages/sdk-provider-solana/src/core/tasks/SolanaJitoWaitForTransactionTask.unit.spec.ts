@@ -46,6 +46,26 @@ describe('SolanaJitoWaitForTransactionTask', () => {
     updateAction.mockReset()
   })
 
+  it('reports an unsignable transaction as a TransactionError', async () => {
+    // `getSignatureFromTransaction` throws a bare `SolanaError` when the fee
+    // payer's slot is null - reachable when a wallet returns a partially
+    // signed bundle transaction. The task derives the signature up front now,
+    // so that throw escapes the `LiFiErrorCode` contract and integrator error
+    // branching falls through to the unknown bucket.
+    const unsigned = {
+      signatures: { feePayer: null },
+    } as unknown as Transaction
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(baseContext([unsigned]))
+      .catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionUnprepared)
+    expect(thrown.cause?.name).toBe('SolanaError')
+    expect(sendAndConfirmBundle).not.toHaveBeenCalled()
+  })
+
   it('surfaces bundle err through cause when a bundled tx fails', async () => {
     const err = { InstructionError: [0, 'AccountInUse'] }
     sendAndConfirmBundle.mockResolvedValue({

@@ -4,10 +4,10 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import { getSignatureFromTransaction } from '@solana/kit'
 import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import { readSignature } from './readSignature.js'
 import { unwrapConfirmation } from './unwrapConfirmation.js'
 
 /** Jito encodes `err` as a Rust `Result`: a landed bundle carries
@@ -50,7 +50,7 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    const txSignature = getSignatureFromTransaction(signedTransactions[0])
+    const txSignature = readSignature(signedTransactions[0])
     const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
     // Use Jito bundle for transaction submission. An empty Jito RPC list -

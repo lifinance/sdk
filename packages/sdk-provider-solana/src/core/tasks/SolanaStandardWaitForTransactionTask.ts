@@ -4,14 +4,12 @@ import {
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
-import {
-  getBase64EncodedWireTransaction,
-  getSignatureFromTransaction,
-} from '@solana/kit'
+import { getBase64EncodedWireTransaction } from '@solana/kit'
 import { sendAndConfirmTransaction } from '../../actions/sendAndConfirmTransaction.js'
 import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import { readSignature } from './readSignature.js'
 import { unwrapConfirmation } from './unwrapConfirmation.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
@@ -77,7 +75,7 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       }
     }
 
-    const txSignature = getSignatureFromTransaction(signedTransaction)
+    const txSignature = readSignature(signedTransaction)
     const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
     const result = await sendAndConfirmTransaction(client, signedTransaction, {
