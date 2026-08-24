@@ -178,12 +178,16 @@ const ensureJitoRpcs = async (
   // at 300 ms, evicting a verified-healthy endpoint.
   //
   // `withDedupe` drops its entry in a `.finally`, so this guarantees at most
-  // one probe *in flight* per URL, not one probe per URL. A caller arriving
-  // between that drop and the write below still starts a fresh probe. That
-  // costs one extra request and cannot re-introduce the clobber: a second
-  // probe can only begin after the first has settled, so it always carries the
-  // newer answer and always writes second. Write order therefore matches
-  // result recency, which is why no timestamp comparison is needed here.
+  // one probe *in flight* per URL, not one probe per URL. The write below waits
+  // for the whole batch, so a fast URL's record is unwritten while a slow
+  // sibling is still running - up to `PROBE_TIMEOUT_MS` - and every caller
+  // arriving in that window re-probes the fast URL. Repeats are therefore
+  // bounded by arrivals, not by one.
+  //
+  // What this does rule out is the clobber: a second probe can only begin
+  // after the first has settled, so it always carries the newer answer and
+  // always writes second. Write order matches result recency, which is why no
+  // timestamp comparison is needed here.
   const results = await Promise.all(
     unprobed.map((rpcUrl) =>
       withDedupe(() => probeJitoRpc(rpcUrl), { id: `jito-probe:${rpcUrl}` })
@@ -227,8 +231,10 @@ export const getSolanaRpcs = async (
 }
 
 /** `unreachable` counts endpoints whose probe failed without naming the
- * method unknown. Empty `rpcs` with a non-zero count is an outage, not a
- * configuration gap. */
+ * method unknown. Empty `rpcs` with a non-zero count is usually an outage, but
+ * not always: a bare 401/403 lands here too, and that can be a plan gate the
+ * integrator has to fix. `sendAndConfirmBundle`'s message names both, because
+ * this count cannot tell them apart. */
 export const getJitoRpcs = async (
   client: SDKClient
 ): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {

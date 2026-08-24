@@ -52,8 +52,9 @@ Jito-capable RPC all sit between signing and the first broadcast. Signing does
 clear both fields, so a route resumed from storage no longer reports the previous
 run's signature - including when decoding the signed transaction fails, since
 the clearing write now precedes the decode. A throwing `updateRouteHook` no
-longer fails the step, and no longer changes which error a failed confirmation
-reports.
+longer fails the step from the broadcast callback, and no longer changes which
+error a failed confirmation reports. The action writes that follow a verdict
+are not guarded: a hook that throws there still fails the step, as before.
 
 Jito capability is probed once per endpoint and cached, rather than re-probed
 before every bundle submission, and concurrent submissions now share one probe

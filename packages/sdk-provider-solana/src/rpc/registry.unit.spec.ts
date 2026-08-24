@@ -104,7 +104,9 @@ describe('probeJitoRpc', () => {
       }),
     ],
     [
-      // Same reasoning, and a rotating credential heals even faster.
+      // Same reasoning. A credential usually heals faster than a plan gate,
+      // but both share one window today - splitting them would buy a shorter
+      // outage only for the 401 case.
       'an unauthorized HTTP 401',
       Object.assign(new Error('HTTP error (401): Unauthorized'), {
         name: 'SolanaError',
