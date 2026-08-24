@@ -481,7 +481,7 @@ export const getNativePermit = async (
     amount,
   }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
-  // Check if the account can use native permits (EOA or EIP-7702 delegated account)
+  // Check that the account can produce a signature the token will accept
   const canUsePermits = await canAccountUseNativePermits(client, viemClient)
   if (!canUsePermits) {
     return undefined
