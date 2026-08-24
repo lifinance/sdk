@@ -1,4 +1,4 @@
-import { sleep } from '@lifi/sdk'
+import { abortableSleep } from './abortableSleep.js'
 import type { ConfirmationDeadline } from './createConfirmationDeadline.js'
 import type { ConfirmationOutcome } from './types.js'
 
@@ -11,9 +11,14 @@ export const DEADLINE_TICK_INTERVAL_MS = 400
  * routine 20 s throttling window ended the branch 74 s inside the 90 s ceiling
  * and reported an already-broadcast transaction as an outage. */
 export const MAX_STATUS_READ_SILENCE_MS = 30_000
-/** Ceiling on one backoff sleep. Must stay below `FINAL_PROBE_MARGIN_MS`: a
- * sleep straddling the ceiling delays the final probe by up to this much. */
-export const STATUS_RETRY_BACKOFF_CAP_MS = 2_000
+/** Ceiling on one backoff sleep. Two bounds fix it:
+ * - Below `FINAL_PROBE_MARGIN_MS`, because a sleep straddling the ceiling
+ *   delays the final probe by up to this much.
+ * - Above `BUNDLE_POLL_INTERVAL_MS`, the largest base interval any caller
+ *   uses. At 2 s the two were equal, so `Math.max(pollIntervalMs, ...)` below
+ *   returned the base interval for every failure count and the bundle path
+ *   never backed off at all. */
+export const STATUS_RETRY_BACKOFF_CAP_MS = 4_000
 
 /**
  * Polls one probe against one RPC until the deadline, and owns the verdict
@@ -49,7 +54,7 @@ export async function pollUntilDeadline<T>(options: {
   // Advances the deadline independently of the status reads.
   const advancing = (async () => {
     while (!settled && !signal.aborted) {
-      await sleep(DEADLINE_TICK_INTERVAL_MS)
+      await abortableSleep(DEADLINE_TICK_INTERVAL_MS, signal)
       if (settled || signal.aborted) {
         break
       }
@@ -106,7 +111,7 @@ export async function pollUntilDeadline<T>(options: {
                 STATUS_RETRY_BACKOFF_CAP_MS
               )
             )
-      await sleep(delay)
+      await abortableSleep(delay, signal)
     }
 
     // The status may have flipped between the last poll and the deadline

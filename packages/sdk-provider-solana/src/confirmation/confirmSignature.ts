@@ -1,7 +1,7 @@
-import { sleep } from '@lifi/sdk'
 import type { Signature } from '@solana/kit'
 import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
+import { abortableSleep } from './abortableSleep.js'
 import { createConfirmationDeadline } from './createConfirmationDeadline.js'
 import { pollUntilDeadline } from './pollUntilDeadline.js'
 import {
@@ -62,7 +62,7 @@ export async function confirmSignature(options: {
 
   const resending = (async () => {
     while (!branch.signal.aborted) {
-      await sleep(RESEND_INTERVAL_MS)
+      await abortableSleep(RESEND_INTERVAL_MS, branch.signal)
       if (branch.signal.aborted) {
         break
       }

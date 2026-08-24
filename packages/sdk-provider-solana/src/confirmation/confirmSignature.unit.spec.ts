@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
-vi.mock('@lifi/sdk', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@lifi/sdk')>()),
+/** Every signal a sleep was handed, in call order. */
+const sleepSignals: AbortSignal[] = []
+
+vi.mock('./abortableSleep.js', () => ({
   // Macrotask, not microtask - see pollUntilDeadline.unit.spec.ts.
-  sleep: () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
+  abortableSleep: (_ms: number, signal: AbortSignal) => {
+    sleepSignals.push(signal)
+    return new Promise<void>((resolve) => setTimeout(resolve, 0))
+  },
 }))
 
 const reached = vi.fn<() => boolean>()
@@ -67,8 +72,37 @@ describe('confirmSignature', () => {
     vi.clearAllMocks()
     deadlineCalls.length = 0
     statusSendOptions.length = 0
+    sleepSignals.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
+  })
+
+  it('sleeps the resend loop on the branch signal, not the caller signal', async () => {
+    // The resend loop outlives the verdict: `confirmSignature` ends it from
+    // its own `finally` via `branch.abort()`. A sleep taken on the caller's
+    // signal would not be released there, so the loop would hold a 1 s timer
+    // per RPC after the race had already returned. Asserted two ways, because
+    // either alone passes for the wrong reason: the signal must not be the
+    // caller's, and it must be aborted once the branch has finished.
+    const controller = new AbortController()
+    reached.mockReturnValueOnce(false)
+    getSignatureStatuses
+      .mockResolvedValueOnce(noStatus())
+      .mockResolvedValue(status('confirmed'))
+
+    await run(
+      vi.fn(() => Promise.resolve()),
+      controller.signal
+    )
+
+    expect(sleepSignals.length).toBeGreaterThan(0)
+    const resendSignals = sleepSignals.filter(
+      (signal) => signal !== controller.signal
+    )
+    expect(resendSignals.length).toBeGreaterThan(0)
+    for (const signal of resendSignals) {
+      expect(signal.aborted).toBe(true)
+    }
   })
 
   it('confirms on a later poll, not only the first', async () => {

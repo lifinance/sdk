@@ -6,10 +6,9 @@ import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 /** Every `sleep` duration requested, poll loop and deadline loop together. */
 const sleepCalls: number[] = []
 
-vi.mock('@lifi/sdk', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@lifi/sdk')>()),
+vi.mock('./abortableSleep.js', () => ({
   // Macrotask, not microtask - see pollUntilDeadline.unit.spec.ts.
-  sleep: (ms: number) => {
+  abortableSleep: (ms: number) => {
     sleepCalls.push(ms)
     return new Promise<void>((resolve) => setTimeout(resolve, 0))
   },
@@ -35,8 +34,12 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
   },
 }))
 
-const { confirmBundle } = await import('./confirmBundle.js')
-const { DEADLINE_TICK_INTERVAL_MS } = await import('./pollUntilDeadline.js')
+const { BUNDLE_POLL_INTERVAL_MS, confirmBundle } = await import(
+  './confirmBundle.js'
+)
+const { DEADLINE_TICK_INTERVAL_MS, STATUS_RETRY_BACKOFF_CAP_MS } = await import(
+  './pollUntilDeadline.js'
+)
 
 const getBundleStatuses = vi.fn()
 const getSignatureStatuses = vi.fn()
@@ -137,6 +140,30 @@ describe('confirmBundle', () => {
     for (const ms of pollSleeps) {
       expect(ms).toBeGreaterThanOrEqual(1000)
     }
+  })
+
+  it('leaves head-room above the bundle interval for a real backoff', () => {
+    // `pollUntilDeadline` clamps every retry with
+    // `Math.max(pollIntervalMs, Math.min(pollIntervalMs * 2 ** failures, cap))`.
+    // With the cap equal to this interval, that `max` returned the base
+    // interval for every failure count, so the bundle path never backed off at
+    // all while the comment claimed a falling rate.
+    expect(STATUS_RETRY_BACKOFF_CAP_MS).toBeGreaterThan(BUNDLE_POLL_INTERVAL_MS)
+  })
+
+  it('slows down after a failed bundle status read', async () => {
+    getBundleStatuses
+      .mockRejectedValueOnce(new Error('429'))
+      .mockResolvedValueOnce(bundle('confirmed'))
+    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+
+    const result = await run()
+
+    expect(result.kind).toBe('confirmed')
+    const pollSleeps = sleepCalls.filter(
+      (ms) => ms !== DEADLINE_TICK_INTERVAL_MS
+    )
+    expect(pollSleeps[0]).toBeGreaterThan(BUNDLE_POLL_INTERVAL_MS)
   })
 
   it('hands the caller signal to the bundle and signature reads', async () => {

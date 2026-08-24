@@ -8,13 +8,16 @@ import {
 /** Every `sleep` duration requested, poll loop and deadline loop together. */
 const sleepCalls: number[] = []
 
-vi.mock('@lifi/sdk', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@lifi/sdk')>()),
+/** Every signal a sleep was handed, in the same order as `sleepCalls`. */
+const sleepSignals: AbortSignal[] = []
+
+vi.mock('./abortableSleep.js', () => ({
   // Resolved on a macrotask, not a microtask: the tests below leave probes
   // and ticks hanging, and a microtask-only sleep would let the detached
   // deadline-advance loop starve the event loop while the poll loop waits.
-  sleep: (ms: number) => {
+  abortableSleep: (ms: number, signal: AbortSignal) => {
     sleepCalls.push(ms)
+    sleepSignals.push(signal)
     return new Promise<void>((resolve) => setTimeout(resolve, 0))
   },
 }))
@@ -58,6 +61,7 @@ describe('pollUntilDeadline', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sleepCalls.length = 0
+    sleepSignals.length = 0
     reached.mockReturnValue(false)
     tick.mockResolvedValue(undefined)
   })
@@ -120,9 +124,9 @@ describe('pollUntilDeadline', () => {
     const pollSleeps = sleepCalls.filter(
       (ms) => ms !== DEADLINE_TICK_INTERVAL_MS
     )
-    // Failures 1..3: 1000, 2000, then capped at 2000; the successful `null`
-    // read resets the next sleep to the base interval.
-    expect(pollSleeps).toEqual([1000, 2000, 2000, 500])
+    // Failures 1..3: 1000, 2000, then capped at STATUS_RETRY_BACKOFF_CAP_MS;
+    // the successful `null` read resets the next sleep to the base interval.
+    expect(pollSleeps).toEqual([1000, 2000, 4000, 500])
   })
 
   it('survives a 20 s throttling window instead of ending the branch inside it', async () => {
@@ -212,6 +216,26 @@ describe('pollUntilDeadline', () => {
     expect(pollSleeps.length).toBeGreaterThan(0)
     for (const slept of pollSleeps) {
       expect(slept).toBeGreaterThanOrEqual(pollIntervalMs)
+    }
+  })
+
+  it('hands the caller signal to every sleep it takes', async () => {
+    // Both loops sleep: the poll loop between reads, the detached deadline
+    // loop between ticks. A sleep taken on the wrong signal - or on none -
+    // keeps its timer alive after the branch has ended, which is one live
+    // timer per RPC holding the Node event loop open past a finished race.
+    // Asserted by identity, so passing a fresh controller's signal fails.
+    const controller = new AbortController()
+    probe.mockRejectedValueOnce(new Error('429')).mockResolvedValueOnce('ok')
+
+    await expect(run({ signal: controller.signal })).resolves.toEqual({
+      kind: 'confirmed',
+      value: 'ok',
+    })
+
+    expect(sleepSignals.length).toBeGreaterThan(0)
+    for (const signal of sleepSignals) {
+      expect(signal).toBe(controller.signal)
     }
   })
 
