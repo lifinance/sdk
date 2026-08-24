@@ -126,7 +126,7 @@ describe('pollUntilDeadline', () => {
     )
     // Failures 1..3: 1000, 2000, then capped at STATUS_RETRY_BACKOFF_CAP_MS;
     // the successful `null` read resets the next sleep to the base interval.
-    expect(pollSleeps).toEqual([1000, 2000, 4000, 500])
+    expect(pollSleeps).toEqual([1000, 2000, 3000, 500])
   })
 
   it('survives a 20 s throttling window instead of ending the branch inside it', async () => {
@@ -239,12 +239,23 @@ describe('pollUntilDeadline', () => {
     }
   })
 
-  it('caps a single backoff sleep below the final-probe margin', () => {
-    // One backoff sleep can straddle the 90 s ceiling; the final probe must
-    // still fit inside the BRANCH_TIMEOUT_MS gap that protects it.
-    expect(STATUS_RETRY_BACKOFF_CAP_MS).toBeLessThan(
-      BRANCH_TIMEOUT_MS - CONFIRMATION_TIMEOUT_MS
-    )
+  it('leaves the final probe a usable window after a straddling backoff sleep', () => {
+    // `deadline.reached()` is checked at the top of the loop, so the last
+    // backoff sleep can start just under the ceiling and the final probe does
+    // not begin until CONFIRMATION_TIMEOUT_MS + the cap. Whatever is left
+    // before BRANCH_TIMEOUT_MS aborts it is the entire window that probe gets.
+    //
+    // Pinned as a duration, not as `cap < FINAL_PROBE_MARGIN_MS`, because that
+    // weaker form passed at a cap of 4 s while the window it protects had
+    // fallen to 1 s. The cap is only reached when an endpoint is failing,
+    // which is exactly when a read is slowest, and the bundle path reaches it
+    // on a single failure. Losing that probe reports a transaction that landed
+    // late as expired - the failure class this module exists to remove.
+    const finalProbeWindowMs =
+      BRANCH_TIMEOUT_MS -
+      (CONFIRMATION_TIMEOUT_MS + STATUS_RETRY_BACKOFF_CAP_MS)
+
+    expect(finalProbeWindowMs).toBeGreaterThanOrEqual(2_000)
   })
 
   it('keeps reading statuses while a deadline tick hangs', async () => {

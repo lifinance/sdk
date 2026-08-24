@@ -11,14 +11,23 @@ export const DEADLINE_TICK_INTERVAL_MS = 400
  * routine 20 s throttling window ended the branch 74 s inside the 90 s ceiling
  * and reported an already-broadcast transaction as an outage. */
 export const MAX_STATUS_READ_SILENCE_MS = 30_000
-/** Ceiling on one backoff sleep. Two bounds fix it:
- * - Below `FINAL_PROBE_MARGIN_MS`, because a sleep straddling the ceiling
- *   delays the final probe by up to this much.
+/** Ceiling on one backoff sleep. Squeezed between two bounds:
  * - Above `BUNDLE_POLL_INTERVAL_MS`, the largest base interval any caller
  *   uses. At 2 s the two were equal, so `Math.max(pollIntervalMs, ...)` below
  *   returned the base interval for every failure count and the bundle path
- *   never backed off at all. */
-export const STATUS_RETRY_BACKOFF_CAP_MS = 4_000
+ *   never backed off at all.
+ * - Far enough below `FINAL_PROBE_MARGIN_MS` to leave the final probe a
+ *   usable window. A sleep straddling the ceiling delays that probe by up to
+ *   the cap, so the window is the margin minus this value - 2 s here. `cap <
+ *   margin` alone is not the constraint: 4 s satisfied it and left the probe
+ *   1 s, on the failing endpoints where the cap is reached and reads are
+ *   slowest.
+ *
+ * The gap between the two bounds fits one doubling, so the bundle path's
+ * backoff is a single step rather than a curve. Widening it means raising
+ * `FINAL_PROBE_MARGIN_MS`, which lengthens the branch bound the SDK
+ * documents. */
+export const STATUS_RETRY_BACKOFF_CAP_MS = 3_000
 
 /**
  * Polls one probe against one RPC until the deadline, and owns the verdict
