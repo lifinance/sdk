@@ -11,6 +11,10 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
+// Mutable so one spec can make the decoder throw. `vi.hoisted` because the
+// `vi.mock` factory below is hoisted above ordinary top-level declarations.
+const decoder = vi.hoisted(() => ({ throws: false }))
+
 vi.mock('../../utils/base64ToUint8Array.js', () => ({
   base64ToUint8Array: () => new Uint8Array([1]),
 }))
@@ -40,9 +44,14 @@ vi.mock('@solana/kit', async (importActual) => {
     // Only the codec is faked. `getSignatureFromTransaction` stays real, so
     // these tests also prove it accepts a decoded signed transaction.
     getTransactionCodec: () => ({
-      decode: (bytes: Uint8Array) => ({
-        signatures: { feePayer: new Uint8Array(64).fill(bytes[0] + 1) },
-      }),
+      decode: (bytes: Uint8Array) => {
+        if (decoder.throws) {
+          throw new Error('undecodable signed transaction')
+        }
+        return {
+          signatures: { feePayer: new Uint8Array(64).fill(bytes[0] + 1) },
+        }
+      },
     }),
   }
 })
@@ -95,6 +104,7 @@ describe('SolanaSignAndExecuteTask', () => {
   beforeEach(() => {
     getTransactionRequestData.mockReset()
     updateAction.mockReset()
+    decoder.throws = false
   })
 
   it('flags a bundle when transaction data is an array', async () => {
@@ -139,6 +149,27 @@ describe('SolanaSignAndExecuteTask', () => {
     const [, , , params] = updateAction.mock.calls[0]
     expect('txLink' in params).toBe(true)
     expect(params.txLink).toBeUndefined()
+  })
+
+  it('clears a stale txHash even when the decode throws', async () => {
+    // `prepareRestart` keeps a PENDING action *because* its `txHash` is
+    // truthy, so the clearing write has to land before anything that can
+    // reject. A decode failure that skipped it left the previous run's
+    // signature and explorer link on the action.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+    decoder.throws = true
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toThrow('undecodable signed transaction')
+
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    const [, , status, params] = updateAction.mock.calls[0]
+    expect(status).toBe('PENDING')
+    expect('txHash' in params).toBe(true)
+    expect(params.txHash).toBeUndefined()
+    expect('txLink' in params).toBe(true)
+    expect(typeof params.signedAt).toBe('number')
   })
 
   it('never records a signature for a bundle either', async () => {
