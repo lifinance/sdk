@@ -21,9 +21,9 @@ describe('probeJitoRpc', () => {
   it('reports supported when the endpoint answers', async () => {
     getBundleStatuses.mockResolvedValue({ value: [null] })
 
-    await expect(probeJitoRpc('https://jito.example')).resolves.toBe(
-      'supported'
-    )
+    await expect(probeJitoRpc('https://jito.example')).resolves.toMatchObject({
+      outcome: 'supported',
+    })
 
     // A single well-formed id, never an empty array, which a Jito RPC could
     // reject as invalid. Valid as both hex and base-58 so no provider rejects
@@ -66,31 +66,14 @@ describe('probeJitoRpc', () => {
         context: { __code: -32601 },
       }),
     ],
-    [
-      // Captured live from the Helius endpoint on 2026-08-20. A plan
-      // restriction is a permanent capability answer, not an outage:
-      // classifying it as unreachable tells the integrator to retry, which
-      // can never succeed, instead of to change configuration.
-      'a plan-restriction HTTP 403',
-      Object.assign(new Error('HTTP error (403): Forbidden'), {
-        name: 'SolanaError',
-        context: { __code: 8_100_002, statusCode: 403, headers: {} },
-      }),
-    ],
-    [
-      // Same reasoning for a missing or wrong credential.
-      'an unauthorized HTTP 401',
-      Object.assign(new Error('HTTP error (401): Unauthorized'), {
-        name: 'SolanaError',
-        context: { __code: 8_100_002, statusCode: 401, headers: {} },
-      }),
-    ],
   ])('reports unsupported from %s', async (_label, error) => {
     getBundleStatuses.mockRejectedValue(error)
 
-    await expect(probeJitoRpc('https://standard.example')).resolves.toBe(
-      'unsupported'
-    )
+    await expect(
+      probeJitoRpc('https://standard.example')
+    ).resolves.toMatchObject({
+      outcome: 'unsupported',
+    })
   })
 
   it.each([
@@ -108,6 +91,27 @@ describe('probeJitoRpc', () => {
       }),
     ],
     [
+      // Captured live from the Helius endpoint on 2026-08-20. A bare HTTP
+      // status never reached the JSON-RPC layer, so it is a gateway verdict,
+      // not a capability answer: a plan gate looks exactly like a provider
+      // deploy or an allowlist entry still propagating. Classified as
+      // unreachable so it can heal - `unsupported` never expires, and one
+      // transient 403 used to remove the endpoint for the process lifetime.
+      'a plan-restriction HTTP 403',
+      Object.assign(new Error('HTTP error (403): Forbidden'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 403, headers: {} },
+      }),
+    ],
+    [
+      // Same reasoning, and a rotating credential heals even faster.
+      'an unauthorized HTTP 401',
+      Object.assign(new Error('HTTP error (401): Unauthorized'), {
+        name: 'SolanaError',
+        context: { __code: 8_100_002, statusCode: 401, headers: {} },
+      }),
+    ],
+    [
       'a gateway HTTP 502',
       Object.assign(new Error('HTTP error (502): Bad Gateway'), {
         name: 'SolanaError',
@@ -120,9 +124,9 @@ describe('probeJitoRpc', () => {
     // a misconfiguration when the endpoint is merely having a bad minute.
     getBundleStatuses.mockRejectedValue(error)
 
-    await expect(probeJitoRpc('https://jito.example')).resolves.toBe(
-      'unreachable'
-    )
+    await expect(probeJitoRpc('https://jito.example')).resolves.toMatchObject({
+      outcome: 'unreachable',
+    })
   })
 })
 
@@ -170,6 +174,94 @@ describe('getJitoRpcs', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('re-probes a gateway-refused endpoint, but only after a longer window', async () => {
+    vi.useFakeTimers()
+    try {
+      const { getJitoRpcs, JITO_PROBE_RETRY_MS, JITO_PROBE_GATEWAY_RETRY_MS } =
+        await import('./registry.js')
+      // A bare 401/403 proves nothing about capability, so it must expire.
+      // But a real plan gate answers the same way, and re-probing that on the
+      // 30 s outage cadence is waste on the pre-submission latency path.
+      expect(JITO_PROBE_GATEWAY_RETRY_MS).toBeGreaterThan(JITO_PROBE_RETRY_MS)
+
+      getBundleStatuses.mockRejectedValue(
+        Object.assign(new Error('HTTP error (403): Forbidden'), {
+          name: 'SolanaError',
+          context: { __code: 8_100_002, statusCode: 403, headers: {} },
+        })
+      )
+      const client = clientWith(['https://gated.example'])
+
+      await getJitoRpcs(client)
+      expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+
+      vi.setSystemTime(Date.now() + JITO_PROBE_RETRY_MS)
+      await getJitoRpcs(client)
+      expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+
+      vi.setSystemTime(Date.now() + JITO_PROBE_GATEWAY_RETRY_MS)
+      await getJitoRpcs(client)
+      expect(getBundleStatuses).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('never re-probes an endpoint that named the method unknown', async () => {
+    vi.useFakeTimers()
+    try {
+      const { getJitoRpcs, JITO_PROBE_GATEWAY_RETRY_MS } = await import(
+        './registry.js'
+      )
+      // `-32601` reached the JSON-RPC layer, so the server parsed the request
+      // and said it has no such method. That is a definitive answer and never
+      // heals; only the gateway verdicts above get a retry window.
+      getBundleStatuses.mockRejectedValue(
+        Object.assign(new Error('erreur JSON-RPC'), {
+          name: 'SolanaError',
+          context: { __code: -32601 },
+        })
+      )
+      const client = clientWith(['https://standard.example'])
+
+      await getJitoRpcs(client)
+      vi.setSystemTime(Date.now() + JITO_PROBE_GATEWAY_RETRY_MS * 10)
+      await getJitoRpcs(client)
+
+      expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('fires one probe per URL when two submissions race', async () => {
+    // Without an in-flight guard both callers compute the same `unprobed` list
+    // from the same stale cache and both probe every URL, at up to
+    // PROBE_TIMEOUT_MS each, on the latency path before submission can start.
+    // The slower probe then writes last: a 5 s timeout resolving `unreachable`
+    // overwrote a `supported` answer that landed at 300 ms and evicted a
+    // verified-healthy endpoint.
+    const { getJitoRpcs } = await import('./registry.js')
+    const resolvers: ((value: unknown) => void)[] = []
+    getBundleStatuses.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve)
+        })
+    )
+    const client = clientWith(['https://jito.example'])
+
+    const first = getJitoRpcs(client)
+    const second = getJitoRpcs(client)
+    await vi.waitFor(() => expect(resolvers.length).toBeGreaterThan(0))
+    for (const resolve of resolvers) {
+      resolve({ value: [null] })
+    }
+    await Promise.all([first, second])
+
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
   it('keeps counting a cached unreachable endpoint as unreachable', async () => {

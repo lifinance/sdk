@@ -1,4 +1,4 @@
-import { ChainId, LruMap, type SDKClient } from '@lifi/sdk'
+import { ChainId, LruMap, type SDKClient, withDedupe } from '@lifi/sdk'
 import { createSolanaRpc } from '@solana/kit'
 import { createJitoRpc } from './jito/createJitoRpc.js'
 import type { JitoRpcType, SolanaRpcType } from './types.js'
@@ -23,12 +23,30 @@ const PROBE_BUNDLE_ID =
  * configuration gap the integrator can act on. */
 export type JitoProbeOutcome = 'supported' | 'unsupported' | 'unreachable'
 
-/** Retry window for an `unreachable` probe. `unsupported` never expires - a
- * capability gap does not heal - but an outage does, so a permanent entry
- * would keep a recovered endpoint out of the Jito list for the whole process. */
+/** An outcome plus how long it may be trusted. The classifier decides both,
+ * because how long an answer is worth is a property of the evidence that
+ * produced it, not of the outcome alone. */
+export type JitoProbeResult = {
+  outcome: JitoProbeOutcome
+  /** `Infinity` for an answer that cannot change. */
+  retryMs: number
+}
+
+/** Retry window for a probe that failed without naming the method unknown.
+ * An outage heals, so a permanent entry would keep a recovered endpoint out of
+ * the Jito list for the whole process. */
 export const JITO_PROBE_RETRY_MS = 30_000
 
-type JitoProbeRecord = { outcome: JitoProbeOutcome; at: number }
+/** Retry window for a bare HTTP 401/403. Longer than an outage's, shorter than
+ * forever. The refusal never reached the JSON-RPC layer, so it proves nothing
+ * about capability: a plan gate, a provider deploy and an allowlist entry
+ * still propagating are indistinguishable here. Treating it as permanent meant
+ * one transient 403 removed a working endpoint for the process lifetime;
+ * treating it as a 30 s outage would re-probe a real plan gate on the
+ * pre-submission latency path twice a minute, forever. */
+export const JITO_PROBE_GATEWAY_RETRY_MS: number = 15 * 60_000
+
+type JitoProbeRecord = JitoProbeResult & { at: number }
 
 /** Every answered probe, the negative ones included. Without them the unprobed
  * set never shrinks, and every bundle submission re-probes every non-Jito
@@ -36,15 +54,10 @@ type JitoProbeRecord = { outcome: JitoProbeOutcome; at: number }
  * submission can start. */
 const jitoProbes = new LruMap<JitoProbeRecord>(12)
 
-const isProbeFresh = (record: JitoProbeRecord | undefined): boolean => {
-  if (!record) {
-    return false
-  }
-  return (
-    record.outcome !== 'unreachable' ||
-    Date.now() - record.at < JITO_PROBE_RETRY_MS
-  )
-}
+/** One rule for every outcome: a record is fresh until its own window closes.
+ * `Infinity` covers the answers that cannot change. */
+const isProbeFresh = (record: JitoProbeRecord | undefined): boolean =>
+  record !== undefined && Date.now() - record.at < record.retryMs
 
 /** `@solana/kit` puts the JSON-RPC code on `context.__code`, not `error.code`.
  * The message is a last resort - a provider can reword it. An unrecognized
@@ -59,11 +72,13 @@ const CAPABILITY_CODES: number[] = [
 ]
 
 /** A plan gate rejects before JSON-RPC, so no `-32601` arrives - Helius
- * answers with a bare 403. The server understood and refused, and no retry
- * clears that. 429 and 5xx are absent: those do clear. */
-const CAPABILITY_HTTP_STATUSES: number[] = [401, 403]
+ * answers with a bare 403. Unlike a JSON-RPC code this never reached the RPC
+ * layer, so it is a gateway verdict rather than a capability answer, and it
+ * earns a window instead of permanence. 429 and 5xx are absent: those take the
+ * shorter outage window. */
+const GATEWAY_REFUSAL_HTTP_STATUSES: number[] = [401, 403]
 
-const readProbeFailure = (error: unknown): JitoProbeOutcome => {
+const readProbeFailure = (error: unknown): JitoProbeResult => {
   const candidate = error as
     | {
         code?: unknown
@@ -75,20 +90,24 @@ const readProbeFailure = (error: unknown): JitoProbeOutcome => {
   // that reached the body is meaningful.
   const rpcCode = candidate?.code ?? candidate?.context?.__code
   if (typeof rpcCode === 'number' && CAPABILITY_CODES.includes(rpcCode)) {
-    return 'unsupported'
+    // The server parsed the request and said it has no such method. Definitive.
+    return { outcome: 'unsupported', retryMs: Number.POSITIVE_INFINITY }
   }
 
   const status = candidate?.context?.statusCode
-  if (typeof status === 'number' && CAPABILITY_HTTP_STATUSES.includes(status)) {
-    return 'unsupported'
+  if (
+    typeof status === 'number' &&
+    GATEWAY_REFUSAL_HTTP_STATUSES.includes(status)
+  ) {
+    return { outcome: 'unreachable', retryMs: JITO_PROBE_GATEWAY_RETRY_MS }
   }
 
   const message = error instanceof Error ? error.message : String(error)
   return /method not found|method does not exist|-32601|method .* not supported|unsupported method|only available for business plans/i.test(
     message
   )
-    ? 'unsupported'
-    : 'unreachable'
+    ? { outcome: 'unsupported', retryMs: Number.POSITIVE_INFINITY }
+    : { outcome: 'unreachable', retryMs: JITO_PROBE_RETRY_MS }
 }
 
 /**
@@ -105,7 +124,7 @@ const PROBE_TIMEOUT_MS = 5_000
  */
 export const probeJitoRpc = async (
   rpcUrl: string
-): Promise<JitoProbeOutcome> => {
+): Promise<JitoProbeResult> => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS)
   try {
@@ -113,7 +132,7 @@ export const probeJitoRpc = async (
     await rpc
       .getBundleStatuses([PROBE_BUNDLE_ID])
       .send({ abortSignal: controller.signal })
-    return 'supported'
+    return { outcome: 'supported', retryMs: Number.POSITIVE_INFINITY }
   } catch (error) {
     return readProbeFailure(error)
   } finally {
@@ -139,8 +158,9 @@ const ensureSolanaRpcs = async (client: SDKClient): Promise<string[]> => {
  * Initializes and caches Jito RPCs for every configured Solana RPC URL.
  *
  * Every probe outcome is cached, so a non-Jito endpoint is probed once rather
- * than once per bundle submission. See `JITO_PROBE_RETRY_MS` for the one
- * outcome that expires.
+ * than once per bundle submission. Each record carries its own retry window:
+ * see `JITO_PROBE_RETRY_MS` and `JITO_PROBE_GATEWAY_RETRY_MS` for the two that
+ * expire.
  * @param client - The SDK client used to fetch RPC URLs.
  */
 const ensureJitoRpcs = async (
@@ -152,11 +172,27 @@ const ensureJitoRpcs = async (
   const unprobed = rpcUrls.filter(
     (rpcUrl) => !isProbeFresh(jitoProbes.get(rpcUrl))
   )
-  const outcomes = await Promise.all(unprobed.map(probeJitoRpc))
+  // Deduplicated per URL: without it two concurrent submissions each probe
+  // every unprobed endpoint, and the slower probe writes last - a 5 s timeout
+  // resolving `unreachable` used to overwrite a `supported` answer that landed
+  // at 300 ms, evicting a verified-healthy endpoint.
+  //
+  // `withDedupe` drops its entry in a `.finally`, so this guarantees at most
+  // one probe *in flight* per URL, not one probe per URL. A caller arriving
+  // between that drop and the write below still starts a fresh probe. That
+  // costs one extra request and cannot re-introduce the clobber: a second
+  // probe can only begin after the first has settled, so it always carries the
+  // newer answer and always writes second. Write order therefore matches
+  // result recency, which is why no timestamp comparison is needed here.
+  const results = await Promise.all(
+    unprobed.map((rpcUrl) =>
+      withDedupe(() => probeJitoRpc(rpcUrl), { id: `jito-probe:${rpcUrl}` })
+    )
+  )
 
-  outcomes.forEach((outcome, index) => {
+  results.forEach(({ outcome, retryMs }, index) => {
     const rpcUrl = unprobed[index]
-    jitoProbes.set(rpcUrl, { outcome, at: Date.now() })
+    jitoProbes.set(rpcUrl, { outcome, retryMs, at: Date.now() })
     if (outcome === 'supported') {
       jitoRpcs.set(rpcUrl, createJitoRpc(rpcUrl))
     } else {

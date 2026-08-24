@@ -82,6 +82,12 @@ describe('sendAndConfirmBundle', () => {
     expect(thrown.message).toContain('2 configured Solana RPC(s)')
     expect(thrown.message).toContain('retry')
     expect(thrown.message).not.toContain('rpcUrls')
+    // A bare HTTP 401/403 now classifies as `unreachable`, because it never
+    // reached the JSON-RPC layer and so proves nothing about capability. A
+    // real plan gate answers the same way, so this message has to cover both
+    // causes - "retry" alone would loop an integrator forever on a gate that
+    // no retry can clear.
+    expect(thrown.message).toContain('plan')
     expect(confirmBundle).not.toHaveBeenCalled()
   })
 

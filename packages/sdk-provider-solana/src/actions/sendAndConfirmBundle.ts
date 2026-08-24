@@ -35,11 +35,17 @@ export async function sendAndConfirmBundle(
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
   // two causes get different messages - a configuration gap the integrator can
   // close, or endpoints that never answered.
+  //
+  // The `unreachable` message names a plan gate as well as an outage: a bare
+  // HTTP 401/403 never reaches the JSON-RPC layer, so `readProbeFailure`
+  // cannot tell a gated endpoint from a provider mid-deploy and classifies
+  // both as `unreachable`. "Retry" alone would loop an integrator forever on a
+  // gate no retry can clear.
   if (jitoRpcs.length === 0) {
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
-        ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). Likely temporary - retry.`
+        ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
         : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
