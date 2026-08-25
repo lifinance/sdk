@@ -46,15 +46,15 @@
   "dependencies": {
     "@lifi/sdk": "workspace:*",
     "@tronweb3/tronwallet-abstract-adapter": "^1.2.0",
-    "tronweb": "^6.4.0"
+    "tronweb": "^6.5.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "publishConfig": {
     "access": "public"
