@@ -45,18 +45,18 @@
   },
   "dependencies": {
     "@bigmi/core": "^0.9.0",
-    "@bitcoinerlab/secp256k1": "^1.2.0",
+    "@bitcoinerlab/secp256k1": "^2.0.0",
     "@lifi/sdk": "workspace:*",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^7.0.1"
   },
   "devDependencies": {
     "@lifi/data-types": "^7.0.1",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "publishConfig": {
     "access": "public"
