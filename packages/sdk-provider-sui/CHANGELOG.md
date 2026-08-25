@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.8
+
+### Patch Changes
+
+- [#454](https://github.com/lifinance/sdk/pull/454) [`d86f36f`](https://github.com/lifinance/sdk/commit/d86f36f6c85d738a97ad8207e5e519fbefee7040) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: `viem` to 2.55.19, `@mysten/sui` to 2.26.2, `tronweb` to 6.5.0.
+- Updated dependencies [[`1ab67e5`](https://github.com/lifinance/sdk/commit/1ab67e5b5d89446a9c08530c6d9c296179e1a359)]:
+  - @lifi/sdk@4.5.0
+
 ## 4.1.7
 
 ### Patch Changes
