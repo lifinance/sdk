@@ -43,6 +43,7 @@ export enum LiFiErrorCode {
   ThirdPartyError = 1024,
   InsufficientGas = 1025,
   ConfigError = 1026,
+  RpcUnavailable = 1027,
 }
 
 export enum ErrorMessage {

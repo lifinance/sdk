@@ -9,6 +9,8 @@ import { sendAndConfirmTransaction } from '../../actions/sendAndConfirmTransacti
 import { callSolanaRpcsWithRetry } from '../../rpc/utils.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import { readSignature } from './readSignature.js'
+import { unwrapConfirmation } from './unwrapConfirmation.js'
 
 export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
@@ -73,19 +75,32 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       }
     }
 
-    const result = await sendAndConfirmTransaction(client, signedTransaction)
+    const txSignature = readSignature(signedTransaction)
+    const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
-    if (!result.signatureResult) {
-      throw new TransactionError(
-        LiFiErrorCode.TransactionExpired,
-        'Transaction has expired: The block height has exceeded the maximum allowed limit.'
-      )
-    }
+    const result = await sendAndConfirmTransaction(client, signedTransaction, {
+      onBroadcast: () => {
+        // The earliest honest point for both: an RPC has accepted the
+        // transaction, so the signature now resolves on chain.
+        statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: txSignature,
+          txLink,
+        })
+      },
+    })
 
-    if (result.signatureResult.err) {
-      const cause = new SolanaTransactionDetailsError(
-        result.signatureResult.err
-      )
+    const status = unwrapConfirmation(result, {
+      rpcUnavailable:
+        'Unable to confirm transaction: no Solana RPC returned a usable response.',
+      notConfirmed:
+        'Transaction was not confirmed before the SDK stopped waiting.',
+      allRpcsFailed: 'All Solana RPCs failed',
+      someRpcsFailed:
+        'Some Solana RPCs failed while the confirmation window was open',
+    })
+
+    if (status.err) {
+      const cause = new SolanaTransactionDetailsError(status.err)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
         `Transaction failed: ${cause.message}`,
@@ -93,14 +108,10 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       )
     }
 
-    const confirmedTransaction = {
-      txSignature: result.txSignature,
-    }
-
     // Transaction has been confirmed and we can update the action
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: confirmedTransaction.txSignature,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
+      txHash: txSignature,
+      txLink,
     })
 
     if (isBridgeExecution) {

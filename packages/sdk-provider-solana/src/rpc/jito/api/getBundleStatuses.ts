@@ -4,7 +4,8 @@ import type { JitoRegion } from '../types.js'
 
 type BundleStatus = {
   bundle_id: string
-  transactions: Signature[]
+  /** Optional: unvalidated wire data, so the reader must handle its absence. */
+  transactions?: Signature[]
   slot: number
   confirmation_status: 'processed' | 'confirmed' | 'finalized' | null
   err: unknown
@@ -14,7 +15,8 @@ type GetBundleStatusesResponse = {
   context: {
     slot: number
   }
-  value: BundleStatus[]
+  /** Jito answers with `null` for a bundle id it does not know. */
+  value: (BundleStatus | null)[]
 }
 
 export type GetBundleStatusesApi = {

@@ -97,5 +97,8 @@ export const callSolanaRpcsWithRetry: RetryFn<SolanaRpcType> =
  * )
  * ```
  */
-export const callJitoRpcsWithRetry: RetryFn<JitoRpcType> =
-  createRetryFn(getJitoRpcs)
+export const callJitoRpcsWithRetry: RetryFn<JitoRpcType> = createRetryFn(
+  // The probe diagnosis `getJitoRpcs` reports alongside the list is for the
+  // bundle path's error message; a sequential retry only needs the list.
+  async (client) => (await getJitoRpcs(client)).rpcs
+)

@@ -11,23 +11,48 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
+// Mutable so one spec can make the decoder throw. `vi.hoisted` because the
+// `vi.mock` factory below is hoisted above ordinary top-level declarations.
+const decoder = vi.hoisted(() => ({ throws: false }))
+
 vi.mock('../../utils/base64ToUint8Array.js', () => ({
   base64ToUint8Array: () => new Uint8Array([1]),
 }))
 
 vi.mock('../../utils/getWalletFeature.js', () => ({
   getWalletFeature: () => ({
-    // Echo one signed output per input so the array shape is preserved.
+    // Echo one signed output per input so the array shape is preserved, and
+    // tag every output with its position so the decoder below can hand back a
+    // distinct transaction per position.
     signTransaction: (...inputs: unknown[]) =>
-      inputs.map(() => ({ signedTransaction: new Uint8Array([1]) })),
+      inputs.map((_, index) => ({
+        signedTransaction: new Uint8Array([index]),
+      })),
   }),
 }))
+
+// Base58 of a 64 byte signature filled with the byte at index + 1. Hard coded
+// so the test pins the encoding as well as which transaction was picked.
+;('2AXDGYSE4f2sz7tvMMzyHvUfcoJmxudvdhBcmiUSo6ijwfYmfZYsKRxboQMPh3R4kUhXRVdtSXFXMheka4Rc4P2')
+const SIGNATURE_OF_SECOND =
+  '3L3RY5sT8K4kyEnqhizwaqxLEbcYvpGrGPNEYRwtbCSUtL6YL86jdrvCbohnP5q8VxQ3qzGmt3W3iQJW97rD7m3'
 
 vi.mock('@solana/kit', async (importActual) => {
   const actual = await importActual<typeof import('@solana/kit')>()
   return {
     ...actual,
-    getTransactionCodec: () => ({ decode: () => ({}) }),
+    // Only the codec is faked. `getSignatureFromTransaction` stays real, so
+    // these tests also prove it accepts a decoded signed transaction.
+    getTransactionCodec: () => ({
+      decode: (bytes: Uint8Array) => {
+        if (decoder.throws) {
+          throw new Error('undecodable signed transaction')
+        }
+        return {
+          signatures: { feePayer: new Uint8Array(64).fill(bytes[0] + 1) },
+        }
+      },
+    }),
   }
 })
 
@@ -35,22 +60,51 @@ const { SolanaSignAndExecuteTask } = await import(
   './SolanaSignAndExecuteTask.js'
 )
 
+const updateAction = vi.fn()
+
 const baseContext = () =>
   ({
     step: {},
     wallet: {},
     walletAccount: {},
     executionOptions: undefined,
+    fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
     isBridgeExecution: false,
     statusManager: {
       findAction: () => ({ type: 'SWAP' }),
-      updateAction: () => {},
+      updateAction,
     },
   }) as never
 
 describe('SolanaSignAndExecuteTask', () => {
+  it('writes no txHash before anything is broadcast, and clears any stale one', async () => {
+    // A signed-but-unsent signature resolves to `null` on every explorer -
+    // verified against mainnet. Simulation, the empty-Jito-RPC throw and every
+    // send failure all sit between this task and the first broadcast, so a
+    // hash written here can point at a transaction that never existed. The
+    // wait tasks write it on `onBroadcast`, beside `txLink`.
+    //
+    // Written as an explicit `undefined` rather than omitted: `prepareRestart`
+    // keeps a PENDING action precisely because its `txHash` is truthy, so a
+    // resumed run that failed before its first broadcast would otherwise report
+    // the previous run's signature.
+    const context = baseContext()
+    const task = new SolanaSignAndExecuteTask()
+
+    await task.run(context)
+
+    const params = updateAction.mock.calls.map((call) => call[3])
+    for (const param of params) {
+      expect(param.txHash).toBeUndefined()
+    }
+    const signingWrite = params.at(-1)
+    expect('txHash' in signingWrite).toBe(true)
+  })
+
   beforeEach(() => {
     getTransactionRequestData.mockReset()
+    updateAction.mockReset()
+    decoder.throws = false
   })
 
   it('flags a bundle when transaction data is an array', async () => {
@@ -71,5 +125,61 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(result.status).toBe('COMPLETED')
     expect(result.context?.isBundleExecution).toBe(false)
     expect(result.context?.signedTransactions).toHaveLength(1)
+  })
+
+  it('records signedAt, and marks the action PENDING', async () => {
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    const [, , status, params] = updateAction.mock.calls[0]
+    expect(status).toBe('PENDING')
+    expect(typeof params.signedAt).toBe('number')
+  })
+
+  it('does not record an explorer link at signing time, and clears any stale one', async () => {
+    // Nothing has been broadcast yet: simulation runs later in the wait task,
+    // and a bundle route with no Jito-capable RPC never submits at all. A
+    // link written here would 404 on those paths.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    const [, , , params] = updateAction.mock.calls[0]
+    expect('txLink' in params).toBe(true)
+    expect(params.txLink).toBeUndefined()
+  })
+
+  it('clears a stale txHash even when the decode throws', async () => {
+    // `prepareRestart` keeps a PENDING action *because* its `txHash` is
+    // truthy, so the clearing write has to land before anything that can
+    // reject. A decode failure that skipped it left the previous run's
+    // signature and explorer link on the action.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+    decoder.throws = true
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toThrow('undecodable signed transaction')
+
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    const [, , status, params] = updateAction.mock.calls[0]
+    expect(status).toBe('PENDING')
+    expect('txHash' in params).toBe(true)
+    expect(params.txHash).toBeUndefined()
+    expect('txLink' in params).toBe(true)
+    expect(typeof params.signedAt).toBe('number')
+  })
+
+  it('never records a signature for a bundle either', async () => {
+    // The Jito wait task derives it from `signedTransactions[0]` at broadcast.
+    getTransactionRequestData.mockResolvedValue(['tx-a', 'tx-b'])
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    const [, , , params] = updateAction.mock.calls[0]
+    expect(params.txHash).toBeUndefined()
+    expect(params.txHash).not.toBe(SIGNATURE_OF_SECOND)
   })
 })

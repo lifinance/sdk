@@ -1,159 +1,99 @@
-import { type SDKClient, sleep } from '@lifi/sdk'
+import { LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
+import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
 import {
-  type Commitment,
-  getBase64EncodedWireTransaction,
-  type Signature,
-  type Transaction,
-  type TransactionError,
-} from '@solana/kit'
-
+  type BundleConfirmation,
+  confirmBundle,
+} from '../confirmation/confirmBundle.js'
+import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
+import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import { getJitoRpcs } from '../rpc/registry.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
-
-export type BundleResult = {
-  bundleId: string
-  txSignatures: Signature[]
-  signatureResults: (SignatureStatus | null)[]
-}
-
-const NULL_BUNDLE_RESULT = new Error('Bundle was not confirmed by this RPC')
+import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
- * Send and confirm a bundle of transactions using Jito.
- * Automatically selects a Jito-enabled RPC connection and polls for confirmation
- * across multiple Jito RPCs in parallel.
- * @param client - The SDK client.
- * @param signedTransactions - Array of signed transactions to bundle.
- * @returns BundleResult containing Bundle ID, transaction signatures, and confirmation results.
+ * Sends a Jito bundle to every Jito-capable RPC and returns as soon as one of
+ * them confirms it.
+ *
+ * The deadline receives the lifetime of *every* signed transaction, not just
+ * the first: a bundle is an array of independently built backend transactions
+ * and they may not share a blockhash.
+ *
+ * `sendBundle` is handed to `confirmBundle` rather than awaited here, so the
+ * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
+ * the submission returns.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
-  signedTransactions: Transaction[]
-): Promise<BundleResult> {
-  const jitoRpcs = await getJitoRpcs(client)
+  signedTransactions: Transaction[],
+  options?: {
+    /** Runs once, when the first Jito RPC accepts the submission. */
+    onBroadcast?: () => void
+  }
+): Promise<RaceResult<BundleConfirmation>> {
+  const { rpcs: jitoRpcs, unreachable } = await getJitoRpcs(client)
 
+  // Named here, where the emptiness is known: racing zero RPCs would surface
+  // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
+  // two causes get different messages - a configuration gap the integrator can
+  // close, or endpoints that never answered.
+  //
+  // The `unreachable` message names a plan gate as well as an outage: a bare
+  // HTTP 401/403 never reaches the JSON-RPC layer, so `readProbeFailure`
+  // cannot tell a gated endpoint from a provider mid-deploy and classifies
+  // both as `unreachable`. "Retry" alone would loop an integrator forever on a
+  // gate no retry can clear.
   if (jitoRpcs.length === 0) {
-    throw new Error(
-      'No Jito-enabled RPC connection available for bundle submission'
+    throw new RPCError(
+      LiFiErrorCode.RpcUnavailable,
+      unreachable > 0
+        ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
+        : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
 
-  // Serialize transactions to base64
-  const serializedTransactions = signedTransactions.map((tx) =>
-    getBase64EncodedWireTransaction(tx)
+  let broadcastReported = false
+  // No `sendAccepted` twin here: a bundle submits once, and a failed `send()`
+  // throws out of `confirmBundle` before polling starts, so this action has no
+  // not-confirmed-but-never-sent case to disambiguate. See
+  // `sendAndConfirmTransaction` for the signature path's version.
+  const reportBroadcast = (): void => {
+    if (broadcastReported) {
+      return
+    }
+    try {
+      options?.onBroadcast?.()
+      // Latched only after the callback returned. A callback that threw wrote
+      // nothing, so the next successful send must be allowed to try again -
+      // latching first made one failed `txLink` write permanent.
+      broadcastReported = true
+    } catch (_) {
+      // This runs integrator code: the callback reaches `updateRouteHook` via
+      // `StatusManager.updateAction`. Its failure must never reject the branch
+      // that called it - the send has already been accepted by the network at
+      // this point, so a throw here would report a landed transaction as an
+      // RPC outage. Swallowed rather than surfaced because there is no verdict
+      // it could honestly change.
+    }
+  }
+
+  const serializedTransactions = signedTransactions.map((transaction) =>
+    getBase64EncodedWireTransaction(transaction)
   )
 
-  const abortController = new AbortController()
+  const lifetimes = await Promise.all(
+    signedTransactions.map((transaction) => getTransactionLifetime(transaction))
+  )
 
-  const confirmPromises = jitoRpcs.map(async (jitoRpc) => {
-    try {
-      // Send bundle to Jito
-      let bundleId: string
-      try {
-        bundleId = await jitoRpc.sendBundle(serializedTransactions).send()
-      } catch (_) {
-        return null
-      }
-
-      const [{ value: blockhashResult }, initialBlockHeight] =
-        await Promise.all([
-          jitoRpc
-            .getLatestBlockhash({
-              commitment: 'confirmed',
-            })
-            .send(),
-          jitoRpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send(),
-        ])
-
-      let currentBlockHeight = initialBlockHeight
-
-      while (
-        currentBlockHeight < blockhashResult.lastValidBlockHeight &&
-        !abortController.signal.aborted
-      ) {
-        const statusResponse = await jitoRpc
-          .getBundleStatuses([bundleId])
-          .send()
-
-        const bundleStatus = statusResponse.value[0]
-
-        // Check if bundle is confirmed or finalized
-        if (
-          bundleStatus &&
-          (bundleStatus.confirmation_status === 'confirmed' ||
-            bundleStatus.confirmation_status === 'finalized')
-        ) {
-          // Bundle confirmed! Extract transaction signatures from bundle status
-          const txSignatures = bundleStatus.transactions
-
-          // Fetch individual signature results from Jito RPC
-          const sigResponse = await jitoRpc
-            .getSignatureStatuses(txSignatures)
-            .send()
-
-          if (!sigResponse?.value || !Array.isArray(sigResponse.value)) {
-            // Keep polling if can't find signature results
-            await sleep(400)
-            continue
-          }
-
-          // Immediately abort all other connections when we find a result
-          abortController.abort()
-          return {
-            bundleId,
-            txSignatures,
-            signatureResults: sigResponse.value,
-          }
-        }
-
-        await sleep(400)
-        if (!abortController.signal.aborted) {
-          currentBlockHeight = await jitoRpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send()
-        }
-      }
-
-      return null
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return null // Don't treat abortion as an error
-      }
-      throw error
-    }
-  })
-
-  // Wait for first successful confirmation
-  const result = await Promise.any(
-    confirmPromises.map(async (promise) => {
-      const bundleResult = await promise
-      if (!bundleResult) {
-        throw NULL_BUNDLE_RESULT
-      }
-      return bundleResult
-    })
-  ).catch(() => null)
-
-  if (!abortController.signal.aborted) {
-    abortController.abort()
-  }
-
-  if (!result) {
-    throw new Error('Failed to send and confirm bundle')
-  }
-
-  return result
+  return raceRpcs(
+    jitoRpcs,
+    (rpc, signal) =>
+      confirmBundle({
+        rpc,
+        signal,
+        lifetimes,
+        send: () =>
+          rpc.sendBundle(serializedTransactions).send({ abortSignal: signal }),
+        onBroadcast: reportBroadcast,
+      }),
+    { timeoutMs: BRANCH_TIMEOUT_MS }
+  )
 }

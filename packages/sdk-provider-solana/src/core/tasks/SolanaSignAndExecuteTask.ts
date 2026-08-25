@@ -84,8 +84,23 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    // Neither `txHash` nor `txLink` is written here. A signature is fixed at
+    // signing, but the transaction does not exist yet: `getTransaction`
+    // returns `null` for it, and simulation, the empty-Jito-RPC throw and
+    // every send failure all sit between this task and the first broadcast.
+    // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
+    //
+    // Both are still written as an explicit `undefined`, which clears what a
+    // restarted `PENDING` action carried over from a previous run.
+    // `prepareRestart` keeps that action *because* its `txHash` is truthy, so
+    // leaving the signature in place would report the previous run's hash if
+    // this run failed before its first broadcast. It therefore has to run
+    // BEFORE the decode below, which can throw on a malformed wallet
+    // output and would otherwise strand the previous run's signature.
     statusManager.updateAction(step, action.type, 'PENDING', {
       signedAt: Date.now(),
+      txHash: undefined,
+      txLink: undefined,
     })
 
     const transactionCodec = getTransactionCodec()

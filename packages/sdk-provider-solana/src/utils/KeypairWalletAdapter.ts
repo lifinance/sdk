@@ -1,5 +1,4 @@
 import {
-  assertIsTransactionWithBlockhashLifetime,
   assertIsTransactionWithinSizeLimit,
   createKeyPairSignerFromBytes,
   getBase58Codec,
@@ -108,20 +107,46 @@ export class KeypairWalletAdapter implements Wallet {
       const transaction = getTransactionCodec().decode(input.transaction)
 
       assertIsTransactionWithinSizeLimit(transaction)
-      assertIsTransactionWithBlockhashLifetime(transaction)
 
-      const signatureDictionaries = await this._signer.signTransactions([
-        transaction,
+      // `assertIsTransactionWithBlockhashLifetime` is deliberately NOT called
+      // here. It tests `'lifetimeConstraint' in transaction`, and no kit
+      // decoder reconstructs that property - decoding wire bytes yields
+      // `{ messageBytes, signatures }` alone, so the assert rejected every
+      // transaction a wallet is ever handed. Signing does not need it either:
+      // `partiallySignTransaction` signs `messageBytes` and never reads the
+      // lifetime. The blockhash still travels inside `messageBytes`, where
+      // `getTransactionLifetime` reads it for the confirmation deadline.
+      // Cast because `signTransactions` types its argument as carrying a
+      // lifetime, while the runtime path - `partiallySignTransaction` - reads
+      // only `messageBytes`. A decoded transaction never has the property, so
+      // without this the type demands something no decoder can produce.
+      const [signatureDictionary] = await this._signer.signTransactions([
+        transaction as Parameters<
+          typeof this._signer.signTransactions
+        >[0][number],
       ])
 
-      if (
-        signatureDictionaries.length === 0 ||
-        !signatureDictionaries[0][this._signer.address]
-      ) {
+      const signature = signatureDictionary?.[this._signer.address]
+      if (!signature) {
         throw new Error('Failed to sign transaction')
       }
 
-      const signedTransaction = getBase64EncodedWireTransaction(transaction)
+      // The signature has to be merged back in. `partiallySignTransaction`
+      // returns a new frozen object rather than mutating its argument, so
+      // encoding `transaction` here shipped the unsigned original and threw
+      // the signature away - the transaction then failed on chain for a
+      // missing signature, far from the code that dropped it.
+      //
+      // The cast mirrors the one above: the wire format is `messageBytes`
+      // plus `signatures`, and the encoder reads nothing else - the lifetime
+      // already travels inside `messageBytes`.
+      const signedTransaction = getBase64EncodedWireTransaction({
+        ...transaction,
+        signatures: {
+          ...transaction.signatures,
+          [this._signer.address]: signature,
+        },
+      } as Parameters<typeof getBase64EncodedWireTransaction>[0])
 
       results.push({
         signedTransaction: base64ToUint8Array(signedTransaction),

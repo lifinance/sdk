@@ -1,50 +1,69 @@
-import { type SDKClient, sleep } from '@lifi/sdk'
+import type { SDKClient } from '@lifi/sdk'
 import {
   type Commitment,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   type Transaction,
-  type TransactionError,
 } from '@solana/kit'
+import { confirmSignature } from '../confirmation/confirmSignature.js'
+import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
+import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
+import type { SignatureStatus } from '../confirmation/types.js'
 import { getSolanaRpcs } from '../rpc/registry.js'
-
-type SignatureStatus = {
-  slot: bigint
-  confirmations: bigint | null
-  err: TransactionError | null
-  confirmationStatus: Commitment | null
-  status: Readonly<{ Err: TransactionError }> | Readonly<{ Ok: null }>
-}
-
-type ConfirmedTransactionResult = {
-  signatureResult: SignatureStatus | null
-  txSignature: string
-}
-
-const NULL_CONFIRMATION_RESULT = new Error(
-  'Transaction was not confirmed by this RPC'
-)
+import type { SolanaRpcType } from '../rpc/types.js'
+import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
- * Sends a Solana transaction to multiple RPC endpoints and returns the confirmation
- * as soon as any of them confirm the transaction.
- * @param client - The SDK client.
- * @param signedTransaction - The signed transaction to send.
- * @returns - The confirmation result of the transaction.
+ * Sends a Solana transaction to every configured RPC and returns as soon as
+ * one of them confirms it.
+ *
+ * The polling horizon comes from the signed transaction's own blockhash and a
+ * wall-clock ceiling. It deliberately never comes from `getBlockHeight`: at
+ * least one endpoint in the default LI.FI set answers that call with the slot
+ * number.
  */
 export async function sendAndConfirmTransaction(
   client: SDKClient,
-  signedTransaction: Transaction
-): Promise<ConfirmedTransactionResult> {
+  signedTransaction: Transaction,
+  options?: {
+    /** Runs once, when the first RPC accepts a send. */
+    onBroadcast?: () => void
+  }
+): Promise<RaceResult<SignatureStatus>> {
   const solanaRpcs = await getSolanaRpcs(client)
 
+  let broadcastReported = false
+  // Distinct from `broadcastReported`, which records whether the integrator
+  // callback has *succeeded*. This one answers "did any RPC accept the send?",
+  // and only that question may steer the verdict below. Set before the callback
+  // runs, so a hook that throws on every resend cannot make a real expiry look
+  // like an outage.
+  let sendAccepted = false
+  const reportBroadcast = (): void => {
+    sendAccepted = true
+    if (broadcastReported) {
+      return
+    }
+    try {
+      options?.onBroadcast?.()
+      // Latched only after the callback returned. A callback that threw wrote
+      // nothing, so the next successful send must be allowed to try again -
+      // latching first made one failed `txLink` write permanent.
+      broadcastReported = true
+    } catch (_) {
+      // This runs integrator code: the callback reaches `updateRouteHook` via
+      // `StatusManager.updateAction`. Its failure must never reject the branch
+      // that called it - the send has already been accepted by the network at
+      // this point, so a throw here would report a landed transaction as an
+      // RPC outage. Swallowed rather than surfaced because there is no verdict
+      // it could honestly change.
+    }
+  }
+
   const signedTxSerialized = getBase64EncodedWireTransaction(signedTransaction)
-  // Create transaction hash (signature)
   const txSignature = getSignatureFromTransaction(signedTransaction)
 
-  if (!txSignature) {
-    throw new Error('Transaction signature is missing.')
-  }
+  const lifetime = await getTransactionLifetime(signedTransaction)
 
   const rawTransactionOptions = {
     // We can skip preflight check after the first transaction has been sent
@@ -57,111 +76,40 @@ export async function sendAndConfirmTransaction(
     encoding: 'base64' as const,
   }
 
-  const abortController = new AbortController()
-
-  const confirmPromises = solanaRpcs.map(async (rpc) => {
-    try {
-      // Send initial transaction for this RPC
-      try {
-        await rpc
-          .sendTransaction(signedTxSerialized, rawTransactionOptions)
-          .send()
-      } catch (_) {
-        // Continue with confirmation even if initial send fails
-      }
-
-      const [{ value: blockhashResult }, initialBlockHeight] =
-        await Promise.all([
-          rpc
-            .getLatestBlockhash({
-              commitment: 'confirmed',
-            })
-            .send(),
-          rpc
-            .getBlockHeight({
-              commitment: 'confirmed',
-            })
-            .send(),
-        ])
-
-      let signatureResult: SignatureStatus | null = null
-      let blockHeight = initialBlockHeight
-      const pollingPromise = (async () => {
-        while (
-          blockHeight < blockhashResult.lastValidBlockHeight &&
-          !abortController.signal.aborted
-        ) {
-          const statusResponse = await rpc
-            .getSignatureStatuses([txSignature])
-            .send()
-
-          const status = statusResponse.value[0]
-          if (
-            status &&
-            (status.confirmationStatus === 'confirmed' ||
-              status.confirmationStatus === 'finalized')
-          ) {
-            signatureResult = status
-            // Immediately abort all other RPCs when we find a result
-            abortController.abort()
-            return status
-          }
-
-          await sleep(400)
-        }
-        return null
-      })()
-
-      const sendingPromise = (async () => {
-        while (
-          blockHeight < blockhashResult.lastValidBlockHeight &&
-          !abortController.signal.aborted &&
-          !signatureResult
-        ) {
-          try {
-            await rpc
-              .sendTransaction(signedTxSerialized, rawTransactionOptions)
-              .send()
-          } catch (_) {
-            // Continue trying even if individual sends fail
-          }
-
-          await sleep(1000)
-          if (!abortController.signal.aborted) {
-            blockHeight = await rpc
-              .getBlockHeight({
-                commitment: 'confirmed',
-              })
-              .send()
-          }
-        }
-        return null
-      })()
-
-      // Wait for polling to find the result
-      const result = await Promise.race([pollingPromise, sendingPromise])
-      return result
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return null // Don't treat abortion as an error
-      }
-      throw error
-    }
-  })
-
-  const signatureResult = await Promise.any(
-    confirmPromises.map(async (promise) => {
-      const result = await promise
-      if (!result) {
-        throw NULL_CONFIRMATION_RESULT
-      }
-      return result
-    })
-  ).catch(() => null)
-
-  if (!abortController.signal.aborted) {
-    abortController.abort()
+  const resend = async (
+    rpc: SolanaRpcType,
+    signal: AbortSignal
+  ): Promise<void> => {
+    await rpc
+      .sendTransaction(signedTxSerialized, rawTransactionOptions)
+      .send({ abortSignal: signal })
   }
 
-  return { signatureResult, txSignature }
+  const result = await raceRpcs(
+    solanaRpcs,
+    (rpc, signal) =>
+      confirmSignature({
+        rpc,
+        signal,
+        signature: txSignature,
+        lifetimes: [lifetime],
+        resend,
+        onBroadcast: reportBroadcast,
+      }),
+    { timeoutMs: BRANCH_TIMEOUT_MS }
+  )
+
+  // Only this scope knows whether ANY branch accepted the send. A branch that
+  // polls to its deadline reports `not-confirmed` regardless - correct per
+  // branch, but across the whole race it would claim a transaction expired
+  // when nothing ever submitted it. That is an outage, not an expiry.
+  //
+  // Reads `sendAccepted`, never `broadcastReported`: the latter is false
+  // whenever the integrator's callback threw, which says nothing about whether
+  // the network took the transaction.
+  if (result.kind === 'not-confirmed' && !sendAccepted) {
+    return { kind: 'rpc-unavailable', errors: result.errors }
+  }
+
+  return result
 }

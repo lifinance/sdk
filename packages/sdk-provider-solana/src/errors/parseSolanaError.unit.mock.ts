@@ -12,7 +12,7 @@ const SOME_OTHER_TOKEN: Token = {
   priceUSD: '',
 }
 
-export const SOME_DATE = new Date('2021-04-10').getTime()
+export const SOME_DATE: number = new Date('2021-04-10').getTime()
 
 export const buildStepObject = ({
   includingExecution = true,

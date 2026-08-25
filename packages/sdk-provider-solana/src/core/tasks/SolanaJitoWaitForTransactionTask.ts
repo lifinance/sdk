@@ -7,6 +7,17 @@ import {
 import { sendAndConfirmBundle } from '../../actions/sendAndConfirmBundle.js'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import { readSignature } from './readSignature.js'
+import { unwrapConfirmation } from './unwrapConfirmation.js'
+
+/** Jito encodes `err` as a Rust `Result`: a landed bundle carries
+ * `{ Ok: null }`, so only an explicit `{ Err: … }` counts as a failure. */
+function getBundleFailure(err: unknown): { failure: unknown } | undefined {
+  if (typeof err !== 'object' || err === null || !('Err' in err)) {
+    return undefined
+  }
+  return { failure: (err as { Err: unknown }).Err }
+}
 
 export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
@@ -39,23 +50,50 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    // Use Jito bundle for transaction submission
-    const bundleResult = await sendAndConfirmBundle(client, signedTransactions)
+    const txSignature = readSignature(signedTransactions[0])
+    const txLink = `${fromChain.metamask.blockExplorerUrls[0]}tx/${txSignature}`
 
-    const allConfirmed = bundleResult.signatureResults.every(
-      (result) => result !== null
-    )
+    // Use Jito bundle for transaction submission. An empty Jito RPC list -
+    // the configuration gap, as opposed to an outage - throws inside
+    // `sendAndConfirmBundle` with its own message, before anything is sent.
+    const result = await sendAndConfirmBundle(client, signedTransactions, {
+      onBroadcast: () => {
+        // The earliest honest point for both: an RPC has accepted the
+        // transaction, so the signature now resolves on chain.
+        statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: txSignature,
+          txLink,
+        })
+      },
+    })
 
-    if (!allConfirmed) {
+    // The `rpc-unavailable` message is distinct from the empty-list throw
+    // above: RPCs were configured and every one of them failed. That is an
+    // outage, and the collected branch errors say what each endpoint did.
+    const bundleResult = unwrapConfirmation(result, {
+      rpcUnavailable:
+        'Unable to confirm bundle: every configured Jito RPC failed.',
+      notConfirmed: 'Bundle was not confirmed before the SDK stopped waiting.',
+      allRpcsFailed: 'All Jito RPCs failed',
+      someRpcsFailed:
+        'Some Jito RPCs failed while the confirmation window was open',
+    })
+
+    // A `null` in `signatureResults` is indexing lag, never failure. The
+    // bundle-level `err` is checked first: it survives a failed
+    // `getSignatureStatuses` read.
+    const bundleFailure = getBundleFailure(bundleResult.bundleErr)
+    if (bundleFailure) {
+      const cause = new SolanaTransactionDetailsError(bundleFailure.failure)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
-        'Bundle confirmation failed: Not all transactions were confirmed.'
+        `Transaction failed: ${cause.message}`,
+        cause
       )
     }
 
-    // Check for errors in any of the transactions
     const failedResult = bundleResult.signatureResults.find(
-      (result) => result?.err
+      (signatureResult) => signatureResult?.err
     )
     if (failedResult?.err) {
       const cause = new SolanaTransactionDetailsError(failedResult.err)
@@ -66,15 +104,10 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
       )
     }
 
-    const confirmedTransaction = {
-      txSignature: bundleResult.txSignatures[0],
-      bundleId: bundleResult.bundleId,
-    }
-
     // Transaction has been confirmed and we can update the action
     statusManager.updateAction(step, action.type, 'PENDING', {
-      txHash: confirmedTransaction.txSignature,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${confirmedTransaction.txSignature}`,
+      txHash: txSignature,
+      txLink,
     })
 
     if (isBridgeExecution) {
