@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-stellar
 
+## 4.2.1
+
+### Patch Changes
+
+- Updated dependencies [[`1ab67e5`](https://github.com/lifinance/sdk/commit/1ab67e5b5d89446a9c08530c6d9c296179e1a359)]:
+  - @lifi/sdk@4.5.0
+
 ## 4.2.0
 
 ### Minor Changes

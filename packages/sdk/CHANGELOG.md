@@ -1,5 +1,11 @@
 # @lifi/sdk
 
+## 4.5.0
+
+### Minor Changes
+
+- [#448](https://github.com/lifinance/sdk/pull/448) [`1ab67e5`](https://github.com/lifinance/sdk/commit/1ab67e5b5d89446a9c08530c6d9c296179e1a359) Thanks [@chybisov](https://github.com/chybisov)! - Add `LiFiErrorCode.RpcUnavailable` (1027) for RPC endpoints that never return a usable response. Previously such failures were indistinguishable from a genuinely expired transaction.
+
 ## 4.4.0
 
 ### Minor Changes
