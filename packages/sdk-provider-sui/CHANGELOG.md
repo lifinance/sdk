@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.9
+
+### Patch Changes
+
+- Updated dependencies [[`b5ace9d`](https://github.com/lifinance/sdk/commit/b5ace9d9a2a0267ae4231b42035b55a0e1def72e)]:
+  - @lifi/sdk@4.6.0
+
 ## 4.1.8
 
 ### Patch Changes

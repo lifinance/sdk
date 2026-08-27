@@ -1,5 +1,19 @@
 # @lifi/sdk
 
+## 4.6.0
+
+### Minor Changes
+
+- [#455](https://github.com/lifinance/sdk/pull/455) [`b5ace9d`](https://github.com/lifinance/sdk/commit/b5ace9d9a2a0267ae4231b42035b55a0e1def72e) Thanks [@chybisov](https://github.com/chybisov)! - Widen the `@lifi/types` dependency from the exact pin `18.2.0` to `^18.3.0`.
+  
+  The exact pin forced a second copy of `@lifi/types` into any tree that also used
+  `@lifi/perps-sdk`, which pins exactly too. Two exact pins on different versions can
+  never share a resolution. Carets on both sides let the package manager settle on one
+  version, and remove the need for the two packages to bump in lockstep.
+  
+  `@lifi/sdk` re-exports `@lifi/types` in full, so the change is a minor rather than a
+  patch.
+
 ## 4.5.0
 
 ### Minor Changes
