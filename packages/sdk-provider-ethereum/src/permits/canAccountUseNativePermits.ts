@@ -1,5 +1,5 @@
 import type { SDKClient } from '@lifi/sdk'
-import type { Address, Client } from 'viem'
+import type { Address } from 'viem'
 import { getAccountCode } from '../actions/getAccountCode.js'
 import { acceptsRawEcdsaSignature } from './acceptsRawEcdsaSignature.js'
 import { isDelegationDesignatorCode } from './isDelegationDesignatorCode.js'
@@ -23,18 +23,16 @@ import { isDelegationDesignatorCode } from './isDelegationDesignatorCode.js'
  * The probe describes the account while the verifier lives in the token, so a
  * strict delegate spending a plain-`ecrecover` token is refused a permit it
  * could have used — an approval rather than a revert, and the token's path is
- * not reliably introspectable. `false` on a missing chain id, a missing account,
- * or RPC failure.
+ * not reliably introspectable. `false` on RPC failure.
+ *
+ * Takes the chain and owner explicitly, mirroring {@link canAccountUsePermit2}:
+ * reading them off a wallet client silently reported "no native permit" for
+ * every caller that falls back to a public client.
  */
 export const canAccountUseNativePermits = async (
   client: SDKClient,
-  viemClient: Client
+  { chainId, address }: { chainId: number; address: Address }
 ): Promise<boolean> => {
-  const chainId = viemClient.chain?.id
-  const address = viemClient.account?.address as Address | undefined
-  if (chainId === undefined || address === undefined) {
-    return false
-  }
   const code = await getAccountCode({ client, chainId, address })
   // `undefined` means the lookup failed, not "no code" — `getAccountCode`
   // normalizes an empty result to `'0x'` precisely so these stay distinct.

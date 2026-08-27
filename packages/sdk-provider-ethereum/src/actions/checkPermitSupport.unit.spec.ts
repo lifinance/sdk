@@ -106,6 +106,23 @@ describe('checkPermitSupport — Permit2 signer gate', () => {
   })
 })
 
+describe('checkPermitSupport — the owner is passed explicitly', () => {
+  it('forwards ownerAddress to getNativePermit so a public-client fallback still works', async () => {
+    // With no wallet connected this falls back to a public client, which has no
+    // `account`. Deriving the owner from the client there reported "no native
+    // permit" for every caller (and threw before that).
+    await subject()
+
+    expect(getActionWithFallback).toHaveBeenCalledWith(
+      client,
+      expect.anything(),
+      expect.anything(),
+      'getNativePermit',
+      expect.objectContaining({ ownerAddress: OWNER, chainId: CHAIN_ID })
+    )
+  })
+})
+
 describe('checkPermitSupport — native permit is independent of the Permit2 gate', () => {
   it('reports native permit support even when the signer cannot use Permit2', async () => {
     // The two gates are independent: `checkPermitSupport` reports native permit

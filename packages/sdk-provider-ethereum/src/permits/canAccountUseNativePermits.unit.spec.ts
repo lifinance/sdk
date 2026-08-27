@@ -1,5 +1,5 @@
 import type { SDKClient } from '@lifi/sdk'
-import type { Address, Client } from 'viem'
+import type { Address } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../actions/getAccountCode.js', () => ({
@@ -15,27 +15,18 @@ import { canAccountUseNativePermits } from './canAccountUseNativePermits.js'
 
 const sdkClient = {} as SDKClient
 const ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
+const CHAIN_ID = 42161
 
 const ALCHEMY_7702 =
   '0xef010069007702764179f14f51cdce752f4f775d74e139' as `0x${string}`
 const METAMASK_7702 =
   '0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b' as `0x${string}`
 
-const buildViemClient = (overrides?: {
-  chainId?: number | undefined
-  account?: unknown
-}): Client =>
-  ({
-    chain:
-      overrides?.chainId === undefined ? undefined : { id: overrides.chainId },
-    account:
-      overrides && 'account' in overrides
-        ? overrides.account
-        : { address: ADDRESS },
-  }) as unknown as Client
-
 const subject = () =>
-  canAccountUseNativePermits(sdkClient, buildViemClient({ chainId: 42161 }))
+  canAccountUseNativePermits(sdkClient, {
+    chainId: CHAIN_ID,
+    address: ADDRESS,
+  })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -72,7 +63,7 @@ describe('canAccountUseNativePermits — accounts with code are probed', () => {
     expect(await subject()).toBe(true)
     expect(acceptsRawEcdsaSignature).toHaveBeenCalledWith(
       sdkClient,
-      42161,
+      CHAIN_ID,
       ADDRESS
     )
   })
@@ -100,23 +91,6 @@ describe('canAccountUseNativePermits — accounts with code are probed', () => {
 })
 
 describe('canAccountUseNativePermits — failure guards', () => {
-  it('returns false when chainId is undefined and skips the RPC entirely', async () => {
-    expect(await canAccountUseNativePermits(sdkClient, buildViemClient())).toBe(
-      false
-    )
-    expect(getAccountCode).not.toHaveBeenCalled()
-  })
-
-  it('returns false when the client has no account, rather than throwing', async () => {
-    expect(
-      await canAccountUseNativePermits(
-        sdkClient,
-        buildViemClient({ chainId: 42161, account: undefined })
-      )
-    ).toBe(false)
-    expect(getAccountCode).not.toHaveBeenCalled()
-  })
-
   it('returns false on RPC failure (code === undefined)', async () => {
     // Locks "no permits if unsure". `getAccountCode` normalizes empty code to
     // `'0x'`, so `undefined` means the lookup failed — never "plain EOA".

@@ -29,6 +29,12 @@ type GetNativePermitParams = {
   tokenAddress: Address
   spenderAddress: Address
   amount: bigint
+  /**
+   * The address that will sign the permit. Passed explicitly rather than read
+   * off `viemClient.account`, which is absent whenever a caller falls back to a
+   * public client (`checkPermitSupport` does) — that used to throw here.
+   */
+  ownerAddress: Address
 }
 
 function makeDomainSeparator({
@@ -139,7 +145,8 @@ const getEIP712DomainData = async (
   client: SDKClient,
   viemClient: Client,
   chainId: number,
-  tokenAddress: Address
+  tokenAddress: Address,
+  ownerAddress: Address
 ) => {
   try {
     const multicallAddress = await getMulticallAddress(client, chainId)
@@ -154,7 +161,7 @@ const getEIP712DomainData = async (
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'nonces',
-        args: [viemClient.account!.address],
+        args: [ownerAddress],
       },
     ] as const
 
@@ -296,7 +303,8 @@ const getContractData = async (
   client: SDKClient,
   viemClient: Client,
   chainId: number,
-  tokenAddress: Address
+  tokenAddress: Address,
+  ownerAddress: Address
 ) => {
   try {
     // First try EIP-5267 approach - returns domain object directly
@@ -304,7 +312,8 @@ const getContractData = async (
       client,
       viemClient,
       chainId,
-      tokenAddress
+      tokenAddress,
+      ownerAddress
     )
     if (eip5267Data) {
       return eip5267Data
@@ -333,7 +342,7 @@ const getContractData = async (
         address: tokenAddress,
         abi: eip2612Abi,
         functionName: 'nonces',
-        args: [viemClient.account!.address],
+        args: [ownerAddress],
       },
       {
         address: tokenAddress,
@@ -479,10 +488,14 @@ export const getNativePermit = async (
     tokenAddress,
     spenderAddress,
     amount,
+    ownerAddress,
   }: GetNativePermitParams
 ): Promise<NativePermitData | undefined> => {
   // Check that the account can produce a signature the token will accept
-  const canUsePermits = await canAccountUseNativePermits(client, viemClient)
+  const canUsePermits = await canAccountUseNativePermits(client, {
+    chainId,
+    address: ownerAddress,
+  })
   if (!canUsePermits) {
     return undefined
   }
@@ -491,7 +504,8 @@ export const getNativePermit = async (
     client,
     viemClient,
     chainId,
-    tokenAddress
+    tokenAddress,
+    ownerAddress
   )
   if (!contractData) {
     return undefined
@@ -506,7 +520,7 @@ export const getNativePermit = async (
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60).toString() // 30 minutes
 
   const message = {
-    owner: viemClient.account!.address,
+    owner: ownerAddress,
     spender: spenderAddress,
     value: amount.toString(),
     nonce: contractData.nonce!.toString(),
