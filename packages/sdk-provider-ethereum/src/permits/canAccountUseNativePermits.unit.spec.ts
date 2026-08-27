@@ -77,11 +77,25 @@ describe('canAccountUseNativePermits — accounts with code are probed', () => {
     )
   })
 
-  it('blocks a smart-contract wallet that rejects raw ECDSA', async () => {
+  it('blocks a contract wallet on shape alone, without probing', async () => {
+    // `beforeEach` leaves the probe returning `true`, so this fails if the shape
+    // gate is removed. Forcing the probe to `false` here would pass either way.
     vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
-    vi.mocked(acceptsRawEcdsaSignature).mockResolvedValue(false)
 
     expect(await subject()).toBe(false)
+    expect(acceptsRawEcdsaSignature).not.toHaveBeenCalled()
+  })
+
+  it('blocks a contract wallet that returns a failure value instead of reverting', async () => {
+    // The hole this shape gate closes. Such an account passes the probe — a
+    // `bytes4` pads to a full word — so probing it would offer a native permit,
+    // skip the approval, then throw in `encodeNativePermitData`'s
+    // `parseSignature` once the wallet returned a non-65-byte signature.
+    vi.mocked(getAccountCode).mockResolvedValue('0x6080' as `0x${string}`)
+    vi.mocked(acceptsRawEcdsaSignature).mockResolvedValue(true)
+
+    expect(await subject()).toBe(false)
+    expect(acceptsRawEcdsaSignature).not.toHaveBeenCalled()
   })
 })
 
