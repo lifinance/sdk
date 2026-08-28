@@ -13,11 +13,13 @@ const client = createClient({
   integrator: 'lifi-sdk',
 })
 
-// A well-known, long-lived mainnet account (the SDF public distribution
-// account). Only used as a read target — the assertions below hold for any
-// valid G-address, funded or not, so this test does not depend on a balance.
+// A live mainnet account, used only as a read target. The account needs a
+// trustline for every non-native asset the tests read, because a SAC balance
+// call on a missing trustline fails the simulation and degrades to an absent
+// amount rather than returning zero. This one holds XLM. Give it a USDC
+// trustline, or swap the address, before un-skipping the USDC case.
 const defaultWalletAddress =
-  'GCKFBEIYV2U22IO2AM6SVKMSAWTM3KOMSGYPWDLNCONJZLQGH2FQNBRW'
+  'GB3TRHIIJIP3L54672MTHWTS6M5I3STHOZ372PZAKC63H6VJ3C222HPP'
 
 const retryTimes = 2
 const timeout = 20000
