@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-solana
 
+## 4.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`954bc4b`](https://github.com/lifinance/sdk/commit/954bc4bda013b470102041810daf95cb4f9181a1)]:
+  - @lifi/sdk@4.6.1
+
 ## 4.1.1
 
 ### Patch Changes
