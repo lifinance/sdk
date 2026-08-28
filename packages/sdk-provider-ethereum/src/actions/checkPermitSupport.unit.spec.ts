@@ -50,7 +50,7 @@ beforeEach(() => {
 })
 
 describe('checkPermitSupport — Permit2 signer gate', () => {
-  it('reports no usable Permit2 allowance for a code-bearing owner, and skips the allowance read', async () => {
+  it('reports no usable Permit2 allowance for an owner with code, and skips the allowance read', async () => {
     // A 7702-delegated EOA can still hold a large allowance from its plain-EOA
     // days. Reporting it as sufficient would skip an approval that is needed.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
@@ -106,10 +106,28 @@ describe('checkPermitSupport — Permit2 signer gate', () => {
   })
 })
 
+describe('checkPermitSupport — the owner is passed explicitly', () => {
+  it('forwards ownerAddress to getNativePermit so a public-client fallback still works', async () => {
+    // With no wallet connected this falls back to a public client, which has no
+    // `account`. Deriving the owner from the client there reported "no native
+    // permit" for every caller (and threw before that).
+    await subject()
+
+    expect(getActionWithFallback).toHaveBeenCalledWith(
+      client,
+      expect.anything(),
+      expect.anything(),
+      'getNativePermit',
+      expect.objectContaining({ ownerAddress: OWNER, chainId: CHAIN_ID })
+    )
+  })
+})
+
 describe('checkPermitSupport — native permit is independent of the Permit2 gate', () => {
   it('reports native permit support even when the signer cannot use Permit2', async () => {
-    // EIP-2612 is verified token-side with `ecrecover`, so a 7702 signature is
-    // valid there. The Permit2 gate must not suppress it.
+    // The two gates are independent: `checkPermitSupport` reports native permit
+    // support from `getNativePermit`, which applies its own signer check. A
+    // Permit2 verdict must not leak across and suppress it.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
     vi.mocked(getActionWithFallback).mockResolvedValue({
       primaryType: 'Permit',

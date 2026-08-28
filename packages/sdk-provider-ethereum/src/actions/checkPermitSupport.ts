@@ -63,12 +63,18 @@ export const checkPermitSupport = async (
       tokenAddress,
       spenderAddress: chain.permit2Proxy as Address,
       amount,
+      ownerAddress,
     }
   )
 
   let permit2Allowance: bigint | undefined
-  // Only read the allowance if the owner can sign for it: Permit2 may reject a
-  // code-bearing account via EIP-1271, making any allowance unusable.
+  // Only read the allowance if the owner can sign for it: Permit2 may reject an
+  // account with code via EIP-1271, making any allowance unusable.
+  //
+  // An EIP-7702 owner is probed twice here, once per gate. The two run
+  // sequentially, so `withDedupe` would not collapse them, and caching the
+  // verdict would defeat the deliberate freshness of `getAccountCode`. Two
+  // `eth_call`s on an already multi-RPC action is the cheaper trade.
   if (
     chain.permit2 &&
     (await canAccountUsePermit2(client, {
