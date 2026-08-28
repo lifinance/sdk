@@ -54,7 +54,7 @@ export const submitStellarTransaction = async (
         throw new TransactionError(
           LiFiErrorCode.TransactionFailed,
           `Stellar transaction submission failed: ${
-            response.errorResult?.result().switch().name ?? response.status
+            response.errorResult?.result.type ?? response.status
           }`
         )
     }

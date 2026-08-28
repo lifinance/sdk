@@ -15,5 +15,7 @@ export const deriveTransactionHash = (
     signedTxXdr,
     networkPassphrase
   ) as Transaction
-  return transaction.hash().toString('hex')
+  return Array.from(transaction.hash(), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('')
 }

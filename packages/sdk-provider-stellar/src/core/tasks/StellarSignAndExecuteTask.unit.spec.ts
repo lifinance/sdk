@@ -93,7 +93,7 @@ describe('StellarSignAndExecuteTask', () => {
 
   it('derives the hash from the signed envelope rather than the submit response', async () => {
     const transaction = buildSignedTransaction()
-    const expectedHash = transaction.hash().toString('hex')
+    const expectedHash = Buffer.from(transaction.hash()).toString('hex')
     const signedTxXdr = transaction.toXDR()
     const { context, updateAction } = makeContext(signedTxXdr)
 
