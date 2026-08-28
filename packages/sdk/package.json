@@ -44,11 +44,11 @@
     "watch": "tsdown --watch"
   },
   "dependencies": {
-    "@lifi/types": "^18.3.0"
+    "@lifi/types": "^18.4.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.0.1",
-    "@types/node": "^26.2.0",
+    "@lifi/data-types": "^7.1.0",
+    "@types/node": "^26.4.0",
     "@vitest/coverage-v8": "^4.1.11",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
