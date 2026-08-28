@@ -33,7 +33,7 @@ export const submitStellarTransaction = async (
   signedTxXdr: string,
   networkPassphrase: string
 ): Promise<string> => {
-  const transaction = TransactionBuilder.fromXDR(
+  const transaction = TransactionBuilder.fromXdr(
     signedTxXdr,
     networkPassphrase
   ) as Transaction

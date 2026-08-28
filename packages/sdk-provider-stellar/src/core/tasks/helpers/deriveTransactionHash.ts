@@ -11,7 +11,7 @@ export const deriveTransactionHash = (
   signedTxXdr: string,
   networkPassphrase: string
 ): string => {
-  const transaction = TransactionBuilder.fromXDR(
+  const transaction = TransactionBuilder.fromXdr(
     signedTxXdr,
     networkPassphrase
   ) as Transaction
