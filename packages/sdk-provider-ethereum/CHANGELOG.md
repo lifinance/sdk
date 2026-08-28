@@ -1,5 +1,15 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.0.13
+
+### Patch Changes
+
+- [#459](https://github.com/lifinance/sdk/pull/459) [`954bc4b`](https://github.com/lifinance/sdk/commit/954bc4bda013b470102041810daf95cb4f9181a1) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: `@lifi/types` to 18.4.0, `viem` to 2.56.0, `@mysten/sui` to 2.27.0.
+
+- [#452](https://github.com/lifinance/sdk/pull/452) [`7cca666`](https://github.com/lifinance/sdk/commit/7cca666e20d14118d09a2f8141a77efcb42c465a) Thanks [@chmanie](https://github.com/chmanie)! - Fix native EIP-2612 permits failing for EIP-7702 delegated accounts. Tokens whose `permit` verifies through a `SignatureChecker` — Circle's USDC among them — branch on `owner.code.length` just as Permit2 does, so a delegated owner is verified via EIP-1271 and strict delegates reject the bare ECDSA signature with `EIP2612: invalid signature`. Delegated accounts are now probed with the same `isValidSignature` check already used for Permit2, rather than passed on the grounds that they can sign ECDSA. Other contract accounts remain excluded on shape, as before.
+- Updated dependencies [[`954bc4b`](https://github.com/lifinance/sdk/commit/954bc4bda013b470102041810daf95cb4f9181a1)]:
+  - @lifi/sdk@4.6.1
+
 ## 4.0.12
 
 ### Patch Changes
