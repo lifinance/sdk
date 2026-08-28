@@ -52,7 +52,7 @@ const signedApproveEnvelope = (): { xdr: string; hash: string } => {
     .build()
   transaction.sign(keypair)
   return {
-    xdr: transaction.toXDR(),
+    xdr: transaction.toXdr(),
     hash: Buffer.from(transaction.hash()).toString('hex'),
   }
 }

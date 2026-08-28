@@ -19,5 +19,6 @@ reason through `result().switch().name`. The generated XDR classes expose
 `result` as a readonly field and carry a `type` discriminant, so both now read
 `result.type`. The variant names are unchanged, so error messages are the same.
 
-`Transaction` still exposes `toXDR` alongside the new `toXdr`, so no call site
-needed renaming.
+`toXDR` is deprecated in v17 in favour of `toXdr`, and still present as an
+alias, so nothing broke. All five call sites moved to `toXdr` anyway rather
+than leave deprecated calls behind.

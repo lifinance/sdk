@@ -94,7 +94,7 @@ describe('StellarSignAndExecuteTask', () => {
   it('derives the hash from the signed envelope rather than the submit response', async () => {
     const transaction = buildSignedTransaction()
     const expectedHash = Buffer.from(transaction.hash()).toString('hex')
-    const signedTxXdr = transaction.toXDR()
+    const signedTxXdr = transaction.toXdr()
     const { context, updateAction } = makeContext(signedTxXdr)
 
     const result = await new StellarSignAndExecuteTask().run(context)
@@ -118,7 +118,7 @@ describe('StellarSignAndExecuteTask', () => {
       order.push('submit')
       return 'network-hash'
     })
-    const { context } = makeContext(buildSignedTransaction().toXDR(), () =>
+    const { context } = makeContext(buildSignedTransaction().toXdr(), () =>
       order.push('updateAction')
     )
 
@@ -129,7 +129,7 @@ describe('StellarSignAndExecuteTask', () => {
 
   it('signs the payload returned by getTransactionRequestData', async () => {
     const { context, signTransaction } = makeContext(
-      buildSignedTransaction().toXDR()
+      buildSignedTransaction().toXdr()
     )
 
     await new StellarSignAndExecuteTask().run(context)
