@@ -33,7 +33,7 @@ export const submitStellarTransaction = async (
   signedTxXdr: string,
   networkPassphrase: string
 ): Promise<string> => {
-  const transaction = TransactionBuilder.fromXDR(
+  const transaction = TransactionBuilder.fromXdr(
     signedTxXdr,
     networkPassphrase
   ) as Transaction
@@ -54,7 +54,7 @@ export const submitStellarTransaction = async (
         throw new TransactionError(
           LiFiErrorCode.TransactionFailed,
           `Stellar transaction submission failed: ${
-            response.errorResult?.result().switch().name ?? response.status
+            response.errorResult?.result.type ?? response.status
           }`
         )
     }

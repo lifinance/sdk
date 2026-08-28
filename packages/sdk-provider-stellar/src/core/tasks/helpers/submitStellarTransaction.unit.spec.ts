@@ -10,10 +10,10 @@ vi.mock('../../../client/getStellarRpc.js', () => ({
   ) => fn({ sendTransaction }),
 }))
 
-// `fromXDR` is the only runtime member this module uses; everything else it
+// `fromXdr` is the only runtime member this module uses; everything else it
 // imports from the SDK is a type and erases at build time.
 vi.mock('@stellar/stellar-sdk', () => ({
-  TransactionBuilder: { fromXDR: () => ({}) },
+  TransactionBuilder: { fromXdr: () => ({}) },
 }))
 
 const { submitStellarTransaction } = await import(
@@ -78,5 +78,18 @@ describe('submitStellarTransaction', () => {
       LiFiErrorCode.TransactionFailed
     )
     expect(sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the failure variant from the error result', async () => {
+    sendTransaction.mockResolvedValue({
+      status: 'ERROR',
+      errorResult: { result: { type: 'txInsufficientBalance' } },
+    })
+
+    const thrown = await submit().catch((error: unknown) => error)
+
+    expect((thrown as TransactionError).message).toContain(
+      'txInsufficientBalance'
+    )
   })
 })

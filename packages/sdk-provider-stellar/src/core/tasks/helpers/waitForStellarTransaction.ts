@@ -49,7 +49,7 @@ export const waitForStellarTransaction = async (
         throw new TransactionError(
           LiFiErrorCode.TransactionFailed,
           `Stellar transaction ${transactionHash} failed: ${
-            response.resultXdr?.result().switch().name ?? 'unknown reason'
+            response.resultXdr?.result.type ?? 'unknown reason'
           }`
         )
       }

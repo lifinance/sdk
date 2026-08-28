@@ -51,7 +51,10 @@ const signedApproveEnvelope = (): { xdr: string; hash: string } => {
     .setTimeout(300)
     .build()
   transaction.sign(keypair)
-  return { xdr: transaction.toXDR(), hash: transaction.hash().toString('hex') }
+  return {
+    xdr: transaction.toXdr(),
+    hash: Buffer.from(transaction.hash()).toString('hex'),
+  }
 }
 
 const makeContext = (overrides: Record<string, unknown> = {}) => {

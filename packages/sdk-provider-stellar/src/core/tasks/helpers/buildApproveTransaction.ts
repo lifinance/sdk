@@ -58,5 +58,5 @@ export const buildApproveTransaction = async (
       .build()
 
     const prepared = await server.prepareTransaction(transaction)
-    return prepared.toXDR()
+    return prepared.toXdr()
   })
