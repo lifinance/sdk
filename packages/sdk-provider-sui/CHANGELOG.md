@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-sui
 
+## 4.1.11
+
+### Patch Changes
+
+- [#460](https://github.com/lifinance/sdk/pull/460) [`44a83e8`](https://github.com/lifinance/sdk/commit/44a83e80cd4b4145b45c5b41b09a17cb6382cc3d) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: `@solana/kit` to 8.2.0, `@mysten/sui` to 2.27.1.
+
 ## 4.1.10
 
 ### Patch Changes
