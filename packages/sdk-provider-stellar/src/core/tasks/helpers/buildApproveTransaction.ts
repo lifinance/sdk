@@ -1,12 +1,12 @@
 import type { SDKClient } from '@lifi/sdk'
 import {
   Address,
-  BASE_FEE,
   Contract,
   nativeToScVal,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
 import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
+import { resolveSorobanInclusionFee } from './resolveInclusionFee.js'
 
 /**
  * How long the granted allowance stays live, in ledgers. Ledgers close roughly
@@ -24,6 +24,11 @@ const APPROVAL_TTL_LEDGERS = 17_280
  * entries and resource fee into the envelope in one step — the client-side
  * equivalent of what the backend's invocation builder does for route
  * transactions.
+ *
+ * The inclusion fee is bid off the live distribution rather than left at
+ * `BASE_FEE`: this transaction is submitted, and a minimum bid on a busy
+ * Soroban ledger expires unincluded instead of failing. See
+ * {@link resolveSorobanInclusionFee}.
  */
 export const buildApproveTransaction = async (
   client: SDKClient,
@@ -34,13 +39,14 @@ export const buildApproveTransaction = async (
   networkPassphrase: string
 ): Promise<string> =>
   callStellarRpcsWithRetry(client, async (server) => {
-    const [account, latestLedger] = await Promise.all([
+    const [account, latestLedger, inclusionFee] = await Promise.all([
       server.getAccount(from),
       server.getLatestLedger(),
+      resolveSorobanInclusionFee(server),
     ])
 
     const transaction = new TransactionBuilder(account, {
-      fee: BASE_FEE,
+      fee: inclusionFee,
       networkPassphrase,
     })
       .addOperation(
