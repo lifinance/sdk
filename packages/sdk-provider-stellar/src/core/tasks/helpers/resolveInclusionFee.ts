@@ -16,15 +16,26 @@ const MAX_FEE_STROOPS = 1_000_000
 /**
  * Percentile read for the inclusion bid.
  *
- * `p70` deliberately matches the percentile the backend bids when it builds the
- * route transaction, so the approval and the route it unblocks compete for
- * inclusion on equal terms. A cheaper approval is not a cheaper route — it is a
+ * `p70` matches the backend's `standard` fee tier — `getFeeTiers` in
+ * lifi-backend `apps/backend-api/src/stellar/gas/stellar.gas.ts` maps
+ * slow/standard/fast to p20/p70/p95, and the three constants above mirror that
+ * module. Bidding the same percentile keeps the approval and the route it
+ * unblocks on equal terms: a cheaper approval is not a cheaper route — it is a
  * route that never starts.
+ *
+ * Known limitation. `getFeeStats` reports the inclusion fees transactions were
+ * *charged*, not the fees they bid. Under surge pricing every transaction in an
+ * included set pays the lowest bid in that set, so the reported values cluster
+ * at recent clearing prices rather than spanning a range of bids — a 2026-09
+ * mainnet sample over ~7k transactions returned `p10` through `p99` all equal.
+ * A mid percentile of clearing prices is therefore a marginal bid. Raising it
+ * is worth doing, but only alongside the backend so the two stay aligned.
  */
 const INCLUSION_FEE_PERCENTILE = 'p70' as const
 
+/** Bounds a bid to an integer in range — the builder rejects non-integers. */
 const clampBid = (value: number): number =>
-  Math.min(MAX_FEE_STROOPS, Math.max(MIN_BASE_FEE, value))
+  Math.floor(Math.min(MAX_FEE_STROOPS, Math.max(MIN_BASE_FEE, value)))
 
 /**
  * Resolves the per-operation inclusion fee to bid for a Soroban transaction.
@@ -43,24 +54,31 @@ const clampBid = (value: number): number =>
  *
  * Fee stats are read best-effort: the surrounding RPC failover has already
  * proven this server answers, so a `getFeeStats` hiccup falls back to a bid
- * rather than failing the approval.
+ * rather than failing the approval. Both degraded paths warn, because a silent
+ * fallback re-creates the undiagnosable failure this helper exists to remove.
  */
 export const resolveSorobanInclusionFee = async (
   server: Server
 ): Promise<string> => {
   try {
     const feeStats = await server.getFeeStats()
-    const percentile = Number(
-      feeStats?.sorobanInclusionFee?.[INCLUSION_FEE_PERCENTILE]
-    )
-    return String(
-      clampBid(
-        Number.isFinite(percentile) && percentile > 0
-          ? percentile
-          : FALLBACK_FEE
+    const reported = feeStats?.sorobanInclusionFee?.[INCLUSION_FEE_PERCENTILE]
+    const percentile = Number(reported)
+    if (!Number.isFinite(percentile) || percentile <= 0) {
+      console.warn(
+        '[resolveSorobanInclusionFee] Unusable fee percentile, using fallback bid:',
+        FALLBACK_FEE,
+        reported
       )
+      return String(FALLBACK_FEE)
+    }
+    return String(clampBid(percentile))
+  } catch (error) {
+    console.warn(
+      '[resolveSorobanInclusionFee] Fee stats unreadable, using fallback bid:',
+      FALLBACK_FEE,
+      error
     )
-  } catch {
-    return String(clampBid(FALLBACK_FEE))
+    return String(FALLBACK_FEE)
   }
 }
