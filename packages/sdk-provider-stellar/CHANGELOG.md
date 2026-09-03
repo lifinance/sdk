@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-stellar
 
+## 4.2.4
+
+### Patch Changes
+
+- [#462](https://github.com/lifinance/sdk/pull/462) [`83a179b`](https://github.com/lifinance/sdk/commit/83a179b2d25d84a38e8ff9972f46508dd0a970c3) Thanks [@thesems](https://github.com/thesems)! - Bid the live Soroban inclusion fee for the approval transaction instead of the network minimum, so it doesn't expire unincluded on a congested ledger.
+
 ## 4.2.3
 
 ### Patch Changes
