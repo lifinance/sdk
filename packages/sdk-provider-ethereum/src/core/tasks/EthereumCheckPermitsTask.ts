@@ -1,30 +1,53 @@
+import type { ExtendedChain } from '@lifi/sdk'
 import {
   BaseStepExecutionTask,
+  type LiFiStepExtended,
   type SignedTypedData,
   type TaskResult,
+  type TypedData,
 } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { isGaslessStep } from '../../utils/isGaslessStep.js'
 import { assertValidSignature } from '../../utils/isValidSignature.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
+  /**
+   * Typed data this task signs inline (as opposed to the relayer sign task).
+   * EIP-2612 native permits (`primaryType === 'Permit'`) are always signed here.
+   * Any other intent typed data — e.g. a Permit2 `PermitSingle` for a non-LI.FI
+   * spender that `getStepTransaction` embeds into the step's own transaction —
+   * is signed here only for non-gasless steps; a gasless/relayer step has its
+   * typed data signed by `EthereumRelayedSignAndExecuteTask` instead.
+   */
+  private signableTypedData(
+    step: LiFiStepExtended,
+    fromChain: ExtendedChain
+  ): TypedData[] {
+    return (
+      step.typedData?.filter(
+        (typedData) =>
+          typedData.primaryType === 'Permit' || !isGaslessStep(step, fromChain)
+      ) ?? []
+    )
+  }
+
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, disableMessageSigning } = context
+    const { step, fromChain, disableMessageSigning } = context
 
-    const permitTypedData = step.typedData?.filter(
-      (typedData) => typedData.primaryType === 'Permit'
+    return (
+      !!this.signableTypedData(step, fromChain).length && !disableMessageSigning
     )
-
-    return !!permitTypedData?.length && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
+      fromChain,
       statusManager,
       allowUserInteraction,
       checkClient,
@@ -38,11 +61,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    // First, try to sign all permits in step.typedData
-    const permitTypedData =
-      step.typedData?.filter(
-        (typedData) => typedData.primaryType === 'Permit'
-      ) ?? []
+    const permitTypedData = this.signableTypedData(step, fromChain)
 
     const signedTypedData = [...currentSignedTypedData]
     for (const typedData of permitTypedData) {
