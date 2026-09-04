@@ -2,6 +2,7 @@ import type { TransactionMethodType } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { canAccountUsePermit2 } from '../../../permits/canAccountUsePermit2.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
+import { hasNonNativePermit } from '../../../utils/hasNonNativePermit.js'
 
 /**
  * Cheap, synchronous part of the gate: does the step/chain combination allow
@@ -22,7 +23,8 @@ const isPermit2SupportedForStep = (
     // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&
-    !step.estimate.skipPermit
+    !step.estimate.skipPermit &&
+    !hasNonNativePermit(step)
   )
 }
 

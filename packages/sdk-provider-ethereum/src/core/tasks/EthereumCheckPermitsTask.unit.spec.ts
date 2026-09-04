@@ -37,17 +37,40 @@ const buildPermitTypedData = (): TypedData =>
     },
   }) as TypedData
 
-const buildContext = (): EthereumStepExecutorContext => {
+const buildPermitSingleTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitSingle',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {
+      details: { token: '0xcccc000000000000000000000000000000000003' },
+      spender: '0xdddd000000000000000000000000000000000004',
+      sigDeadline: String(Math.floor(Date.now() / 1000) + 3600),
+    },
+  }) as unknown as TypedData
+
+const buildWitnessTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitWitnessTransferFrom',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: { spender: '0xeeee000000000000000000000000000000000005' },
+  }) as unknown as TypedData
+
+const buildContext = (
+  typedData: TypedData[] = [buildPermitTypedData()]
+): EthereumStepExecutorContext => {
   const step = {
     type: 'lifi',
     id: 'step-1',
     tool: 'lifi',
     action: { fromChainId: SOURCE_CHAIN, fromAddress: FROM_ADDRESS },
     estimate: { gasCosts: [], feeCosts: [] },
-    typedData: [buildPermitTypedData()],
+    typedData,
   } as unknown as LiFiStep
   return {
     step,
+    fromChain: { id: SOURCE_CHAIN } as unknown,
     statusManager: {
       initializeAction: vi.fn().mockReturnValue({ type: 'PERMIT' }),
       updateAction: vi.fn(),
@@ -90,5 +113,25 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(result.status).toBe('COMPLETED')
     expect(resultContext?.hasMatchingPermit).toBe(true)
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
+  })
+
+  it('signs a non-gasless PermitSingle inline (non-LI.FI spender)', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([buildPermitSingleTypedData()])
+
+    expect(await task.shouldRun(context)).toBe(true)
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
+      | undefined
+    expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('PermitSingle')
+    expect(resultContext?.hasMatchingPermit).toBe(false)
+  })
+
+  it('does not sign a gasless witness intent here (left to the relayer task)', async () => {
+    const context = buildContext([buildWitnessTypedData()])
+    expect(await task.shouldRun(context)).toBe(false)
   })
 })

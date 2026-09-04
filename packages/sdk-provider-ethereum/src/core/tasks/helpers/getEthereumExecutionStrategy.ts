@@ -1,6 +1,7 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
+import { isGaslessStep } from '../../../utils/isGaslessStep.js'
 import { isRelayerStep } from '../../../utils/isRelayerStep.js'
 
 /**
@@ -27,8 +28,7 @@ export async function getEthereumExecutionStrategy(
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
-  const isRelayer = isRelayerStep(step)
-  if (isRelayer) {
+  if (isRelayerStep(step) && isGaslessStep(step, fromChain)) {
     return 'relayed'
   }
 

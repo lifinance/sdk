@@ -1,30 +1,50 @@
+import type { ExtendedChain } from '@lifi/sdk'
 import {
   BaseStepExecutionTask,
+  type LiFiStepExtended,
   type SignedTypedData,
   type TaskResult,
+  type TypedData,
 } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
+import { isGaslessStep } from '../../utils/isGaslessStep.js'
 import { assertValidSignature } from '../../utils/isValidSignature.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
+  /**
+   * Native permits (`primaryType === 'Permit'`) are always signed here; any
+   * other intent typed data (e.g. a Permit2 `PermitSingle`) only for non-gasless
+   * steps — gasless steps sign it in `EthereumRelayedSignAndExecuteTask`.
+   */
+  private signableTypedData(
+    step: LiFiStepExtended,
+    fromChain: ExtendedChain
+  ): TypedData[] {
+    return (
+      step.typedData?.filter(
+        (typedData) =>
+          typedData.primaryType === 'Permit' || !isGaslessStep(step, fromChain)
+      ) ?? []
+    )
+  }
+
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    const { step, disableMessageSigning } = context
+    const { step, fromChain, disableMessageSigning } = context
 
-    const permitTypedData = step.typedData?.filter(
-      (typedData) => typedData.primaryType === 'Permit'
+    return (
+      !!this.signableTypedData(step, fromChain).length && !disableMessageSigning
     )
-
-    return !!permitTypedData?.length && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
+      fromChain,
       statusManager,
       allowUserInteraction,
       checkClient,
@@ -38,11 +58,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    // First, try to sign all permits in step.typedData
-    const permitTypedData =
-      step.typedData?.filter(
-        (typedData) => typedData.primaryType === 'Permit'
-      ) ?? []
+    const permitTypedData = this.signableTypedData(step, fromChain)
 
     const signedTypedData = [...currentSignedTypedData]
     for (const typedData of permitTypedData) {
@@ -80,9 +96,11 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       signedTypedData.push(signedPermit)
     }
 
-    // Check if there's a signed permit for the source transaction chain
+    // Only a native EIP-2612 permit stands in for the ERC-20 allowance; a
+    // Permit2 `PermitSingle` still needs the token → Permit2 approval.
     const matchingPermit = signedTypedData.find(
       (signedTypedData) =>
+        signedTypedData.primaryType === 'Permit' &&
         getDomainChainId(signedTypedData.domain) === step.action.fromChainId
     )
 
