@@ -99,9 +99,15 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       signedTypedData.push(signedPermit)
     }
 
-    // Check if there's a signed permit for the source transaction chain
+    // Whether a signed permit stands in for the ERC-20 allowance, letting the
+    // allowance tasks skip the approval. Only a native EIP-2612 permit does:
+    // it grants the token allowance to the spender directly. Other signed
+    // intents (e.g. a Permit2 `PermitSingle`, which grants Permit2 → spender,
+    // not token → Permit2) leave the ERC-20 approval still to be made, so they
+    // must not suppress it.
     const matchingPermit = signedTypedData.find(
       (signedTypedData) =>
+        signedTypedData.primaryType === 'Permit' &&
         getDomainChainId(signedTypedData.domain) === step.action.fromChainId
     )
 

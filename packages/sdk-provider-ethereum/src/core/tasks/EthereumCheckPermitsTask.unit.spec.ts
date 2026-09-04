@@ -127,10 +127,13 @@ describe('EthereumCheckPermitsTask.run', () => {
 
     const result = await task.run(context)
     const resultContext = result.context as
-      | { signedTypedData?: SignedTypedData[] }
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
       | undefined
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
     expect(resultContext?.signedTypedData?.[0].primaryType).toBe('PermitSingle')
+    // A Permit2 PermitSingle is not a native permit: it must NOT suppress the
+    // ERC-20 allowance check (the token → Permit2 approval is still needed).
+    expect(resultContext?.hasMatchingPermit).toBe(false)
   })
 
   it('does not sign a gasless witness intent here (left to the relayer task)', async () => {
