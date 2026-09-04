@@ -15,12 +15,9 @@ import { assertValidSignature } from '../../utils/isValidSignature.js'
 
 export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
   /**
-   * Typed data this task signs inline (as opposed to the relayer sign task).
-   * EIP-2612 native permits (`primaryType === 'Permit'`) are always signed here.
-   * Any other intent typed data — e.g. a Permit2 `PermitSingle` for a non-LI.FI
-   * spender that `getStepTransaction` embeds into the step's own transaction —
-   * is signed here only for non-gasless steps; a gasless/relayer step has its
-   * typed data signed by `EthereumRelayedSignAndExecuteTask` instead.
+   * Native permits (`primaryType === 'Permit'`) are always signed here; any
+   * other intent typed data (e.g. a Permit2 `PermitSingle`) only for non-gasless
+   * steps — gasless steps sign it in `EthereumRelayedSignAndExecuteTask`.
    */
   private signableTypedData(
     step: LiFiStepExtended,
@@ -99,12 +96,8 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       signedTypedData.push(signedPermit)
     }
 
-    // Whether a signed permit stands in for the ERC-20 allowance, letting the
-    // allowance tasks skip the approval. Only a native EIP-2612 permit does:
-    // it grants the token allowance to the spender directly. Other signed
-    // intents (e.g. a Permit2 `PermitSingle`, which grants Permit2 → spender,
-    // not token → Permit2) leave the ERC-20 approval still to be made, so they
-    // must not suppress it.
+    // Only a native EIP-2612 permit stands in for the ERC-20 allowance; a
+    // Permit2 `PermitSingle` still needs the token → Permit2 approval.
     const matchingPermit = signedTypedData.find(
       (signedTypedData) =>
         signedTypedData.primaryType === 'Permit' &&

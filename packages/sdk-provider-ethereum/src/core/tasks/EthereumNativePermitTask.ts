@@ -38,7 +38,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       !batchingSupported &&
       !disableMessageSigning &&
       !step.estimate.skipPermit &&
-      // The step brought its own (non-native) permit — don't add a native one.
       !hasNonNativePermit(step)
     return isNativePermitAvailable
   }

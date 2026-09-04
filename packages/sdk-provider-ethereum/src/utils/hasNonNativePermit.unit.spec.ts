@@ -13,7 +13,6 @@ describe('hasNonNativePermit', () => {
   })
 
   it('is false for a native EIP-2612 permit', () => {
-    // The SDK consumes 'Permit' itself (encodeNativePermitData) — not caller-owned.
     expect(hasNonNativePermit(stepWith(['Permit']))).toBe(false)
   })
 

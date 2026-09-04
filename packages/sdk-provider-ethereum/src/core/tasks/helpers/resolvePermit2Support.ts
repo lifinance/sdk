@@ -24,7 +24,6 @@ const isPermit2SupportedForStep = (
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&
     !step.estimate.skipPermit &&
-    // The step brought its own (non-native) permit — don't sign our own Permit2.
     !hasNonNativePermit(step)
   )
 }

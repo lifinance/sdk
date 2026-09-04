@@ -28,12 +28,6 @@ export async function getEthereumExecutionStrategy(
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
-  // Only route to the relayer when the step's typed data is actually a gasless
-  // intent (a Permit2 witness, or a permit whose spender is Permit2 itself).
-  // A step can carry typed data that is meant to be signed and then sent by the
-  // user in a normal transaction — e.g. a Permit2 `PermitSingle` for a non-LI.FI
-  // spender embedded into the step's own tx by `getStepTransaction`. Those must
-  // execute as `standard`, matching the gating already used in `getUpdatedStep`.
   if (isRelayerStep(step) && isGaslessStep(step, fromChain)) {
     return 'relayed'
   }

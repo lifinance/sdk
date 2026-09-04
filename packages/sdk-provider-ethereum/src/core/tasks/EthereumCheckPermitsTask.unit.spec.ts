@@ -37,9 +37,6 @@ const buildPermitTypedData = (): TypedData =>
     },
   }) as TypedData
 
-// A Permit2 PermitSingle for a non-LI.FI spender (e.g. Uniswap's router):
-// not a native permit, not gasless — must be signed inline so it can be
-// embedded into the step's own transaction by getStepTransaction.
 const buildPermitSingleTypedData = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
@@ -52,7 +49,6 @@ const buildPermitSingleTypedData = (): TypedData =>
     },
   }) as unknown as TypedData
 
-// A LI.FI relayer intent — signed by the relayer sign task, NOT here.
 const buildWitnessTypedData = (): TypedData =>
   ({
     primaryType: 'PermitWitnessTransferFrom',
@@ -131,8 +127,6 @@ describe('EthereumCheckPermitsTask.run', () => {
       | undefined
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
     expect(resultContext?.signedTypedData?.[0].primaryType).toBe('PermitSingle')
-    // A Permit2 PermitSingle is not a native permit: it must NOT suppress the
-    // ERC-20 allowance check (the token → Permit2 approval is still needed).
     expect(resultContext?.hasMatchingPermit).toBe(false)
   })
 
