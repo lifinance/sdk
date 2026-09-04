@@ -10,6 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { hasNonNativePermit } from '../../utils/hasNonNativePermit.js'
 import { isValidSignature } from '../../utils/isValidSignature.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
@@ -36,7 +37,9 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       !!fromChain.permit2Proxy &&
       !batchingSupported &&
       !disableMessageSigning &&
-      !step.estimate.skipPermit
+      !step.estimate.skipPermit &&
+      // The step brought its own (non-native) permit — don't add a native one.
+      !hasNonNativePermit(step)
     return isNativePermitAvailable
   }
 
