@@ -18,9 +18,7 @@ vi.mock('./callTronRpcsWithRetry.js', () => ({
 const client = {} as SDKClient
 const TX_HASH = 'abc123def456'
 
-// Verbatim `gettransactioninfobyid` response for the failed TRC-20 approval from
-// TECHSUP-166. Tron signals failure with the top-level `result: 'FAILED'` and
-// puts the reason in `receipt.result`; `receipt.result` is never 'FAILED' itself.
+// Verbatim `gettransactioninfobyid` response for the failed approval from TECHSUP-166.
 const OUT_OF_ENERGY_APPROVAL_TX_INFO = {
   id: 'e28be0cfff1142585be695b1a17aee0844208ad5cef8000a02cf9ad203d680d9',
   fee: 400800,
@@ -45,7 +43,6 @@ describe('waitForTronTxConfirmation', () => {
   })
 
   it('resolves when the receipt reports SUCCESS', async () => {
-    // A successful transaction carries no top-level `result` field.
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
       receipt: { result: 'SUCCESS' },
@@ -104,8 +101,6 @@ describe('waitForTronTxConfirmation', () => {
   })
 
   it('explains OUT_OF_ENERGY as a probable TRX shortfall without asserting it', async () => {
-    // OUT_OF_ENERGY can also come from a too-low feeLimit, so the message
-    // must not claim the balance was the cause.
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
       OUT_OF_ENERGY_APPROVAL_TX_INFO
     )
@@ -178,8 +173,6 @@ describe('waitForTronTxConfirmation', () => {
   })
 
   it('still rejects when a FAILED result carries a SUCCESS contract result', async () => {
-    // The top-level result is authoritative; a contradictory receipt is not a
-    // reason worth reporting, so the message falls back to the stem.
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
       result: 'FAILED',
@@ -195,8 +188,6 @@ describe('waitForTronTxConfirmation', () => {
   })
 
   it('rejects when the receipt reports a contract failure without a top-level result', async () => {
-    // Defense in depth: a node or proxy that drops the top-level `result`
-    // field must not turn a reverted transaction into a confirmation.
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
       receipt: { result: 'OUT_OF_TIME' },
