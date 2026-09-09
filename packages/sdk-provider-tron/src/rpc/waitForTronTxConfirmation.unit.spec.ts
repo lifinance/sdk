@@ -18,12 +18,31 @@ vi.mock('./callTronRpcsWithRetry.js', () => ({
 const client = {} as SDKClient
 const TX_HASH = 'abc123def456'
 
+// Verbatim `gettransactioninfobyid` response for the failed approval from TECHSUP-166.
+const OUT_OF_ENERGY_APPROVAL_TX_INFO = {
+  id: 'e28be0cfff1142585be695b1a17aee0844208ad5cef8000a02cf9ad203d680d9',
+  fee: 400800,
+  blockNumber: 86010320,
+  blockTimeStamp: 1788702714000,
+  contract_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+  receipt: {
+    energy_fee: 400800,
+    energy_usage_total: 4008,
+    net_usage: 345,
+    result: 'OUT_OF_ENERGY',
+    energy_penalty_total: 2513,
+  },
+  result: 'FAILED',
+  resMessage:
+    '4e6f7420656e6f75676820656e6572677920666f7220275353544f524527206f7065726174696f6e20657865637574696e673a20637572496e766f6b65456e657267794c696d69745b343030385d2c206375724f70456e657267794c696d69745b353030305d2c2070656e616c7479456e657267795b31373030305d2c2075736564456e657267795b333236345d',
+}
+
 describe('waitForTronTxConfirmation', () => {
   afterEach(() => {
     vi.resetAllMocks()
   })
 
-  it('resolves when the transaction is confirmed', async () => {
+  it('resolves when the receipt reports SUCCESS', async () => {
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
       receipt: { result: 'SUCCESS' },
@@ -34,10 +53,68 @@ describe('waitForTronTxConfirmation', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('throws TransactionError(TransactionFailed) when the receipt is FAILED', async () => {
+  it('resolves when the receipt reports DEFAULT (enum 0, normally omitted)', async () => {
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
-      receipt: { result: 'FAILED' },
+      receipt: { result: 'DEFAULT' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves when the receipt has no contract result (plain TRX transfer)', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      receipt: { net_usage: 268 },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves when the transaction info has no receipt at all', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({ id: TX_HASH })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).resolves.toBeUndefined()
+  })
+
+  it('rejects with InsufficientFunds for the OUT_OF_ENERGY approval from TECHSUP-166', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
+      OUT_OF_ENERGY_APPROVAL_TX_INFO
+    )
+
+    await expect(
+      waitForTronTxConfirmation(
+        client,
+        TX_HASH,
+        'Approval transaction failed on-chain'
+      )
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.InsufficientFunds,
+      message: expect.stringContaining('OUT_OF_ENERGY'),
+    })
+  })
+
+  it('explains OUT_OF_ENERGY as a probable TRX shortfall without asserting it', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
+      OUT_OF_ENERGY_APPROVAL_TX_INFO
+    )
+
+    await expect(waitForTronTxConfirmation(client, TX_HASH)).rejects.toThrow(
+      'Transaction failed on-chain: OUT_OF_ENERGY. The account may need more TRX to cover the energy fee.'
+    )
+  })
+
+  it('rejects with TransactionError(TransactionFailed) when the top-level result is FAILED', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
     })
 
     await expect(
@@ -51,10 +128,27 @@ describe('waitForTronTxConfirmation', () => {
     ).rejects.toBeInstanceOf(TransactionError)
   })
 
-  it('uses the custom onChainFailureMessage when the receipt is FAILED', async () => {
+  it('appends the receipt reason to the custom onChainFailureMessage', async () => {
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
-      receipt: { result: 'FAILED' },
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(
+        client,
+        TX_HASH,
+        'Approval transaction failed on-chain'
+      )
+    ).rejects.toThrow('Approval transaction failed on-chain: REVERT.')
+  })
+
+  it('tolerates a trailing period in the onChainFailureMessage stem', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
     })
 
     await expect(
@@ -63,7 +157,48 @@ describe('waitForTronTxConfirmation', () => {
         TX_HASH,
         'Approval transaction failed on-chain.'
       )
-    ).rejects.toThrow('Approval transaction failed on-chain.')
+    ).rejects.toThrow('Approval transaction failed on-chain: REVERT.')
+  })
+
+  it('uses the default message when a FAILED result carries no receipt reason', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: {},
+    })
+
+    await expect(waitForTronTxConfirmation(client, TX_HASH)).rejects.toThrow(
+      'Transaction failed on-chain.'
+    )
+  })
+
+  it('still rejects when a FAILED result carries a SUCCESS contract result', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'SUCCESS' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction failed on-chain.',
+    })
+  })
+
+  it('rejects when the receipt reports a contract failure without a top-level result', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      receipt: { result: 'OUT_OF_TIME' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: expect.stringContaining('OUT_OF_TIME'),
+    })
   })
 
   it('times out after TRON_POLL_MAX_POLLS polls when the transaction is never indexed', async () => {
@@ -87,11 +222,10 @@ describe('waitForTronTxConfirmation', () => {
     ).resolves.toBeUndefined()
   })
 
-  it('does not retry a TransactionError (on-chain failure is final)', async () => {
-    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
-      id: TX_HASH,
-      receipt: { result: 'FAILED' },
-    })
+  it('does not retry an on-chain failure (the result is final)', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
+      OUT_OF_ENERGY_APPROVAL_TX_INFO
+    )
 
     await expect(
       waitForTronTxConfirmation(client, TX_HASH)
