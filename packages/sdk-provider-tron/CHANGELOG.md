@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-tron
 
+## 4.0.10
+
+### Patch Changes
+
+- [#469](https://github.com/lifinance/sdk/pull/469) [`5fd3b74`](https://github.com/lifinance/sdk/commit/5fd3b74f41f64da17c5869e8778b3bc4bd6e470c) Thanks [@chybisov](https://github.com/chybisov)! - Fix failed Tron transactions being reported as confirmed, which also left swap routes polling the status API forever. `waitForTronTxConfirmation` compared `receipt.result` to `FAILED`, a value Tron never emits there; it now checks the top-level `result` and the contract result, so a reverted or out-of-energy approval or swap throws `TransactionFailed` (or `InsufficientFunds` for `OUT_OF_ENERGY`) with the reason in the message.
+
 ## 4.0.9
 
 ### Patch Changes
