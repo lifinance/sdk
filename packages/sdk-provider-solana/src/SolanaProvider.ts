@@ -19,6 +19,7 @@ export function SolanaProvider(
       return ChainType.SVM
     },
     isAddress,
+    isTokenAddress: isAddress,
     resolveAddress: resolveSolanaAddress,
     getBalance: getSolanaBalance,
     async getStepExecutor(

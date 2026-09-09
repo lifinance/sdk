@@ -16,6 +16,42 @@ describe('EthereumProvider', () => {
     expect(provider.setOptions).toBeDefined()
   })
 
+  describe('isTokenAddress', () => {
+    const provider = EthereumProvider()
+    const usdt = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+
+    it('accepts a checksummed address, as isAddress does', () => {
+      expect(provider.isTokenAddress?.(usdt)).toBe(true)
+      expect(provider.isAddress(usdt)).toBe(true)
+    })
+
+    it('accepts a pasted address whose letter case fails the checksum', () => {
+      const upperCased = `0x${usdt.slice(2).toUpperCase()}`
+      expect(provider.isAddress(upperCased)).toBe(false)
+      expect(provider.isTokenAddress?.(upperCased)).toBe(true)
+      expect(provider.isTokenAddress?.(usdt.toLowerCase())).toBe(true)
+    })
+
+    it('rejects an uppercase 0X prefix', () => {
+      expect(provider.isTokenAddress?.(`0X${usdt.slice(2)}`)).toBe(false)
+    })
+
+    it('rejects a truncated address', () => {
+      expect(provider.isTokenAddress?.(usdt.slice(0, -1))).toBe(false)
+    })
+
+    it('rejects addresses of other ecosystems and malformed values', () => {
+      expect(provider.isTokenAddress?.('0x2::coin::COIN')).toBe(false)
+      expect(
+        provider.isTokenAddress?.(
+          'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75'
+        )
+      ).toBe(false)
+      expect(provider.isTokenAddress?.('laptop')).toBe(false)
+      expect(provider.isTokenAddress?.('')).toBe(false)
+    })
+  })
+
   it('should throw error when client is not provided', async () => {
     const provider = EthereumProvider()
     const mockOptions = {

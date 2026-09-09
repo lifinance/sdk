@@ -10,13 +10,16 @@ import { resolveTronAddress } from './actions/resolveTronAddress.js'
 import { TronStepExecutor } from './core/TronStepExecutor.js'
 import type { TronProviderOptions, TronSDKProvider } from './types.js'
 
+const isTronAddress = (address: string): boolean => TronWeb.isAddress(address)
+
 export function TronProvider(options?: TronProviderOptions): TronSDKProvider {
   const _options: TronProviderOptions = options ?? {}
   return {
     get type() {
       return ChainType.TVM
     },
-    isAddress: (address: string) => TronWeb.isAddress(address),
+    isAddress: isTronAddress,
+    isTokenAddress: isTronAddress,
     resolveAddress: resolveTronAddress,
     getBalance: (client, walletAddress, tokens) =>
       getTronBalance(
