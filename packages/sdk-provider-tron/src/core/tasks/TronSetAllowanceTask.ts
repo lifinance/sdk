@@ -113,7 +113,7 @@ export class TronSetAllowanceTask extends BaseStepExecutionTask {
     await waitForTronTxConfirmation(
       client,
       txHash,
-      'Approval transaction failed on-chain.'
+      'Approval transaction failed on-chain'
     )
 
     statusManager.updateAction(step, action.type, 'DONE', {
