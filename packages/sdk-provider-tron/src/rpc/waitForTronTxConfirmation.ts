@@ -11,25 +11,35 @@ import {
 } from '../core/constants.js'
 import { callTronRpcsWithRetry } from './callTronRpcsWithRetry.js'
 
-// `receipt.result` is the protocol's `contractResult` enum. SUCCESS marks a
-// successful contract call; DEFAULT (enum 0) is omitted from the JSON in
-// practice and never marks a failure. Every other value (REVERT, OUT_OF_ENERGY,
-// OUT_OF_TIME, …) is an execution failure. The enum has no FAILED member.
+// `receipt.result` carries the `Transaction.Result.contractResult` enum from
+// java-tron's Tron.proto (not to be confused with the sibling `contractResult`
+// array on TransactionInfo, which holds the call's return data):
+// https://github.com/tronprotocol/java-tron/blob/develop/protocol/src/main/protos/core/Tron.proto
+// SUCCESS marks a successful contract call. DEFAULT is enum 0 — omitted from
+// the JSON in practice, and never a failure. Every other member (REVERT,
+// OUT_OF_ENERGY, OUT_OF_TIME, …) is an execution failure; the enum has no
+// FAILED member. Unknown values are treated as failures so the helper can
+// never report a reverted transaction as confirmed.
 const NON_FAILURE_CONTRACT_RESULTS = new Set(['SUCCESS', 'DEFAULT'])
 
 function createOnChainFailureError(
-  message: string,
+  messageStem: string,
   reason?: string
 ): TransactionError {
+  // Callers pass a sentence stem; tolerate a trailing period so the reason
+  // never renders as "… on-chain.: REVERT."
+  const stem = messageStem.replace(/\.$/, '')
   if (reason === 'OUT_OF_ENERGY') {
+    // OUT_OF_ENERGY also occurs when the feeLimit is too low for a funded
+    // account, so the message suggests the balance without asserting it.
     return new TransactionError(
       LiFiErrorCode.InsufficientFunds,
-      `${message}: OUT_OF_ENERGY. Insufficient TRX for energy. The account needs more TRX to cover transaction fees.`
+      `${stem}: ${reason}. The account may need more TRX to cover the energy fee.`
     )
   }
   return new TransactionError(
     LiFiErrorCode.TransactionFailed,
-    reason ? `${message}: ${reason}.` : `${message}.`
+    reason ? `${stem}: ${reason}.` : `${stem}.`
   )
 }
 
@@ -48,8 +58,8 @@ function createOnChainFailureError(
  * note that `waitForResult`'s own maxRetries counts errors only, so an explicit
  * poll budget is enforced here.
  *
- * `onChainFailureMessage` is a sentence stem without a trailing period; the
- * failure reason is appended as `: REASON.`
+ * `onChainFailureMessage` is a sentence stem; the failure reason is appended
+ * as `: REASON.` A trailing period on the stem is tolerated.
  */
 export async function waitForTronTxConfirmation(
   client: SDKClient,

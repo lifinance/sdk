@@ -56,11 +56,30 @@ describe('waitForTronTxConfirmation', () => {
     ).resolves.toBeUndefined()
   })
 
+  it('resolves when the receipt reports DEFAULT (enum 0, normally omitted)', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      receipt: { result: 'DEFAULT' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).resolves.toBeUndefined()
+  })
+
   it('resolves when the receipt has no contract result (plain TRX transfer)', async () => {
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
       receipt: { net_usage: 268 },
     })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).resolves.toBeUndefined()
+  })
+
+  it('resolves when the transaction info has no receipt at all', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({ id: TX_HASH })
 
     await expect(
       waitForTronTxConfirmation(client, TX_HASH)
@@ -84,13 +103,15 @@ describe('waitForTronTxConfirmation', () => {
     })
   })
 
-  it('names TRX in the OUT_OF_ENERGY error message', async () => {
+  it('explains OUT_OF_ENERGY as a probable TRX shortfall without asserting it', async () => {
+    // OUT_OF_ENERGY can also come from a too-low feeLimit, so the message
+    // must not claim the balance was the cause.
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
       OUT_OF_ENERGY_APPROVAL_TX_INFO
     )
 
     await expect(waitForTronTxConfirmation(client, TX_HASH)).rejects.toThrow(
-      /TRX/
+      'Transaction failed on-chain: OUT_OF_ENERGY. The account may need more TRX to cover the energy fee.'
     )
   })
 
@@ -128,6 +149,22 @@ describe('waitForTronTxConfirmation', () => {
     ).rejects.toThrow('Approval transaction failed on-chain: REVERT.')
   })
 
+  it('tolerates a trailing period in the onChainFailureMessage stem', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(
+        client,
+        TX_HASH,
+        'Approval transaction failed on-chain.'
+      )
+    ).rejects.toThrow('Approval transaction failed on-chain: REVERT.')
+  })
+
   it('uses the default message when a FAILED result carries no receipt reason', async () => {
     vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
       id: TX_HASH,
@@ -138,6 +175,23 @@ describe('waitForTronTxConfirmation', () => {
     await expect(waitForTronTxConfirmation(client, TX_HASH)).rejects.toThrow(
       'Transaction failed on-chain.'
     )
+  })
+
+  it('still rejects when a FAILED result carries a SUCCESS contract result', async () => {
+    // The top-level result is authoritative; a contradictory receipt is not a
+    // reason worth reporting, so the message falls back to the stem.
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'SUCCESS' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction failed on-chain.',
+    })
   })
 
   it('rejects when the receipt reports a contract failure without a top-level result', async () => {
