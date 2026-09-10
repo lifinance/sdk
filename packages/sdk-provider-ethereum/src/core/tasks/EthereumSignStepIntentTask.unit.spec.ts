@@ -111,6 +111,16 @@ describe('EthereumSignStepIntentTask.shouldRun', () => {
     expect(await task.shouldRun(buildContext([nativePermit()]))).toBe(false)
   })
 
+  it('does not run for a mixed-lane step, which the relayer lane discards', async () => {
+    // A step carrying both lanes goes to `getRelayerUpdatedStep`, which takes
+    // no `signedTypedData` and re-quotes. Anything signed here is thrown away,
+    // and a re-quote echoing the `PermitSingle` makes
+    // `EthereumRelayedSignAndExecuteTask` prompt for it a second time.
+    expect(
+      await task.shouldRun(buildContext([witness(), permitSingle()]))
+    ).toBe(false)
+  })
+
   it('does not run when message signing is disabled', async () => {
     const context = buildContext()
     context.disableMessageSigning = true
@@ -134,9 +144,13 @@ describe('EthereumSignStepIntentTask.run', () => {
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
   })
 
-  it('signs only the caller-intent entries, leaving the relayer lane alone', async () => {
+  it('signs only the caller-intent entries, leaving the other lanes alone', async () => {
+    // A native permit, not a witness: with the relayer guard in `shouldRun`,
+    // a witness-plus-`PermitSingle` step is one this task never runs on, so
+    // using it here would imply mixed-lane signing is intended. A native
+    // permit is signed by `EthereumCheckPermitsTask` and must be skipped here.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
-    const context = buildContext([witness(), permitSingle()])
+    const context = buildContext([nativePermit(), permitSingle()])
 
     const result = await task.run(context)
     const resultContext = result.context as
