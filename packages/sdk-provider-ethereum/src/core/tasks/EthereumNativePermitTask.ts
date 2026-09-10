@@ -30,10 +30,6 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return false
     }
 
-    // The caller supplied its own Permit2 message. Without this guard the SDK
-    // prompts for a second, competing permit for its own proxy and returns
-    // `hasMatchingPermit: true`, which makes `EthereumSetAllowanceTask.shouldRun`
-    // false — so the token -> Permit2 approval the caller intent needs never lands.
     if (isCallerIntentLane(step, fromChain)) {
       return false
     }

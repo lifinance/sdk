@@ -24,11 +24,6 @@ const isPermit2SupportedForStep = (
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&
     !step.estimate.skipPermit &&
-    // The caller brought its own Permit2 message for its own spender. LI.FI's
-    // proxy flow would sign a second, competing one, wrap the calldata in
-    // `encodePermit2Data` and retarget the transaction to `permit2Proxy`.
-    // In-flight, not `isCallerIntentLane`: by the time this gate resolves,
-    // `step.typedData` may already be the API's answer.
     !isCallerIntentLaneInFlight(context)
   )
 }

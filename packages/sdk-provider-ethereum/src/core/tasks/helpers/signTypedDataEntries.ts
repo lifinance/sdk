@@ -14,16 +14,7 @@ export type SignTypedDataEntriesResult =
   | { status: 'PAUSED' }
   | { status: 'COMPLETED'; signedTypedData: SignedTypedData[] }
 
-/**
- * Signs a list of typed-data entries in order, switching chains per entry.
- * Returns a copy of `context.signedTypedData` with the new signatures
- * appended; the caller decides what else to put on the context.
- *
- * `EthereumNativePermitTask` also asks the wallet for a signature and stays
- * out on purpose: it treats an invalid signature as "no permit" and falls
- * back to an approval, while this helper throws through
- * `assertValidSignature`.
- */
+/** Signs the entries in order, switching chains per entry, and appends the signatures. */
 export async function signTypedDataEntries(
   context: EthereumStepExecutorContext,
   entries: TypedData[],
@@ -50,7 +41,6 @@ export async function signTypedDataEntries(
     const typedDataChainId =
       getDomainChainId(typedData.domain) || step.action.fromChainId
 
-    // Switch to the entry's own chain if needed
     const client = await checkClient(step, typedDataChainId)
     if (!client) {
       return { status: 'PAUSED' }

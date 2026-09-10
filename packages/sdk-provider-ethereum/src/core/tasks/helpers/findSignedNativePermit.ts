@@ -4,15 +4,7 @@ import { getDomainChainId } from '../../../utils/getDomainChainId.js'
 import { isValidSignature } from '../../../utils/isValidSignature.js'
 import { isCallerIntentLaneInFlight } from './hasCallerIntentInFlight.js'
 
-/**
- * The signed native EIP-2612 permit this step should execute through, if any.
- *
- * Returns `undefined` when the step carries a caller-supplied Permit2 intent,
- * even if a native permit was also signed. `EthereumStandardSignAndExecuteTask`
- * reacts to a native permit by wrapping the calldata and retargeting the
- * transaction to `fromChain.permit2Proxy` — which would destroy calldata that
- * already embeds the caller's signature.
- */
+/** The signed native EIP-2612 permit this step should execute through, if any. */
 export function findSignedNativePermit(
   context: EthereumStepExecutorContext
 ): SignedTypedData | undefined {

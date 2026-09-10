@@ -75,7 +75,6 @@ describe('getApprovalAmount', () => {
   })
 
   it('returns the swap amount when message signing is disabled, because the intent is never signed', () => {
-    // `EthereumSignStepIntentTask.shouldRun` drops the intent for the same flag.
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2)],
@@ -85,10 +84,6 @@ describe('getApprovalAmount', () => {
   })
 
   it('ignores the relayer lane when deciding', () => {
-    // The `Order` names the approval target in `domain.verifyingContract`, so
-    // only the lane filter can keep it out of the decision. With a bare
-    // `domain: {}` this test passed on the missing field instead, and deleting
-    // the lane filter left the suite green.
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [

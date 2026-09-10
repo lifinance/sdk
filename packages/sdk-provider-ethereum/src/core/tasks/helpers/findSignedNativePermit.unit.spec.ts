@@ -39,7 +39,6 @@ const signedCallerIntent = (): SignedTypedData =>
     signature: SIGNATURE,
   }) as unknown as SignedTypedData
 
-/** A caller intent as it arrives on the step, before anything signs it. */
 const callerIntent = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
@@ -72,7 +71,6 @@ describe('findSignedNativePermit', () => {
   })
 
   it('returns undefined for a caller intent, even with a native permit signed', () => {
-    // The guard: the native-permit wrap would destroy caller-intent calldata.
     const context = buildContext(
       [signedNativePermit(), signedCallerIntent()],
       [callerIntent()]
@@ -82,9 +80,6 @@ describe('findSignedNativePermit', () => {
   })
 
   it('returns undefined when the API erased the declaration and only the signed record shows the intent', () => {
-    // Pins the integration point: `hasCallerIntentInFlight`, not a bare
-    // `hasCallerIntent`. After prepare, only `context.signedTypedData` still
-    // carries the intent — see `preserveCallerIntents`.
     const context = buildContext(
       [signedNativePermit(), signedCallerIntent()],
       []

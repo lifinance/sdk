@@ -50,9 +50,6 @@ describe('getEthereumExecutionStrategy', () => {
   })
 
   it('relays an Order step, which carries no transactionRequest', async () => {
-    // Regression guard for CowSwap, 1inch Fusion and Velora Delta. Routing an
-    // Order step to `standard` makes EthereumStandardSignAndExecuteTask throw
-    // TransactionUnprepared, because there is no transaction to send.
     const strategy = await getEthereumExecutionStrategy(
       buildContext([entry('Order')])
     )
@@ -60,7 +57,6 @@ describe('getEthereumExecutionStrategy', () => {
   })
 
   it('relays a mixed-lane step carrying both a witness and a caller intent', async () => {
-    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
     const strategy = await getEthereumExecutionStrategy(
       buildContext([
         entry('PermitWitnessTransferFrom'),

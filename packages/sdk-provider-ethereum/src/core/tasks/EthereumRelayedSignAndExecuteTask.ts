@@ -63,8 +63,6 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
 
       signedTypedData = [...currentSignedTypedData, ...signedResults]
     } else {
-      // `MESSAGE_REQUIRED` is now emitted per entry rather than once. It is
-      // idempotent, and it tells the widget a second prompt is coming.
       const result = await signTypedDataEntries(
         context,
         intentTypedData,

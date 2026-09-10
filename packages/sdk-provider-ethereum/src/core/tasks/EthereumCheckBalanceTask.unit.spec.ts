@@ -87,8 +87,7 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
 
   it('relayer step short-circuits to walletPaysGas: false without reading account code', async () => {
     // Pins the short-circuit so a future refactor can't silently re-introduce
-    // an `eth_getCode` round-trip on the relayer hot path. The fixture carries
-    // a real gasless primary type; a relayed step has one.
+    // an `eth_getCode` round-trip on the relayer hot path.
     const step = buildStep({
       typedData: [
         {
@@ -124,8 +123,6 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
   })
 
   it('native-permit-only step keeps the historical skip without reading account code', async () => {
-    // The pre-prepare shape CowSwap, 1inch Fusion and Velora Delta all ship.
-    // Enforcing here would block a gasless order the user could have placed.
     const step = buildStep({
       typedData: [
         {

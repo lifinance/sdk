@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { preserveCallerIntents } from './preserveCallerIntents.js'
 
 const SOURCE_CHAIN = 1
-// The Permit2 deployment the chain config names. A Permit2 message whose
-// `spender` is this address classifies as a relayer intent, so the caller
-// intent below must NOT use it as its spender. A native `Permit` is decided by
-// its primary type first and is unaffected.
+// A `spender` equal to `chain.permit2` makes an entry a relayer intent, so no
+// caller-intent fixture may use PERMIT2 as its spender.
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const VERIFYING_CONTRACT = '0x0000000000225e31d15943971f47ad3022f714fa'
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
@@ -51,8 +49,6 @@ const stepWith = (typedData?: TypedData[]): LiFiStep =>
 
 describe('preserveCallerIntents', () => {
   it('keeps a caller intent when the API answers with an empty typedData array', () => {
-    // The blocker: `[]` is not nullish, so it used to win the `??` and erase
-    // the only durable record that the step is caller-executed.
     const step = stepWith([callerIntent()])
 
     const result = preserveCallerIntents(step, [], chain)
@@ -69,10 +65,6 @@ describe('preserveCallerIntents', () => {
   })
 
   it('returns the API answer when it carries only a relayer intent, dropping the stale caller intent', () => {
-    // A relayer clear-out must stay possible. Appending the caller intent here
-    // would hand `EthereumRelayedSignAndExecuteTask` an entry it re-signs:
-    // `isNativePermitValid` filters out native permits only, so the user would
-    // be prompted for a signature the SDK already holds.
     const step = stepWith([callerIntent()])
     const answer = [witness()]
 
@@ -96,20 +88,12 @@ describe('preserveCallerIntents', () => {
   })
 
   it('clears a relayer step completely, caller intent included', () => {
-    // A mixed-lane step is the relayer's, so there is nothing to preserve and
-    // `getRelayerUpdatedStep` must stay free to drop every entry.
     const step = stepWith([witness(), callerIntent()])
 
     expect(preserveCallerIntents(step, [], chain)).toHaveLength(0)
   })
 
   it('appends only the caller intent, not the rest of the previous typed data', () => {
-    // The concatenation is lane-filtered, and this is the only fixture where
-    // filtered and unfiltered differ. Re-attaching a native permit the API
-    // deliberately dropped would put it back on the SHARED step object, where
-    // `EthereumCheckPermitsTask.shouldRun` reads it — so a resume or an
-    // `atomicityNotReady` retry would re-prompt the wallet for an EIP-2612
-    // signature the API had already consumed.
     const step = stepWith([nativePermit(), callerIntent()])
 
     const result = preserveCallerIntents(step, [], chain)

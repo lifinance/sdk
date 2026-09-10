@@ -25,8 +25,6 @@ const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
-// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
-// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
@@ -40,10 +38,6 @@ const witness = (): TypedData =>
     message: {},
   }) as unknown as TypedData
 
-/**
- * A `PermitSingle` that is a relayer intent ONLY because of the spender rule,
- * which `isGaslessStep` cannot apply without the chain. See getUpdatedStep.ts.
- */
 const permit2SpenderIntent = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
@@ -52,13 +46,6 @@ const permit2SpenderIntent = (): TypedData =>
     message: { spender: PERMIT2 },
   }) as unknown as TypedData
 
-/**
- * The shape CowSwap, 1inch Fusion and Velora Delta ship. `Order` is neither a
- * caller-intent type nor a witness intent, so the classifier's
- * default branch calls it a relayer intent — but `isGaslessStep` says false,
- * and that disagreement is deliberate. It has no `spender`, which is what
- * keeps it away from the Permit2 rule.
- */
 const order = (): TypedData =>
   ({
     primaryType: 'Order',
@@ -90,7 +77,6 @@ const buildStep = (typedData: TypedData[]): LiFiStepExtended =>
       toToken: { address: TOKEN_ADDRESS, chainId: SOURCE_CHAIN },
     },
     estimate: { approvalAddress: PERMIT2, gasCosts: [], feeCosts: [] },
-    // Read by `isContractCallStep`, which runs before the lane question.
     includedSteps: [],
     typedData,
   }) as unknown as LiFiStepExtended
@@ -116,8 +102,6 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes a step whose only relayer marker is the Permit2 spender through the relayer', async () => {
-    // Without the chain, `isGaslessStep` cannot apply the spender rule and the
-    // step goes to the wrong endpoint. See getUpdatedStep.ts.
     await getUpdatedStep(client, buildStep([permit2SpenderIntent()]), chain)
 
     expect(getRelayerQuote).toHaveBeenCalledTimes(1)
@@ -125,8 +109,6 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes a caller-intent step through /advanced/stepTransaction', async () => {
-    // The control. Without it the two cases above would also pass if every
-    // step went to the relayer.
     const signedTypedData = [
       { ...callerIntent(), signature: SIGNATURE },
     ] as unknown as SignedTypedData[]
@@ -141,19 +123,12 @@ describe('getUpdatedStep', () => {
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
     expect(getRelayerQuote).not.toHaveBeenCalled()
-    // The signed entries replace the declaration, which is what makes the API
-    // embed the signature in the router calldata.
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).toMatchObject({
       typedData: signedTypedData,
     })
   })
 
   it('strips the unsigned declaration from the request when nothing is signed yet', async () => {
-    // The other half of that request shape, and the half `toMatchObject`
-    // above cannot see: the explicit `typedData` key is written last, so it
-    // hides whether the unsigned declaration was removed. Sending the
-    // signature-less caller intent to `/advanced/stepTransaction` would ask
-    // the API to embed a signature that does not exist.
     await getUpdatedStep(client, buildStep([callerIntent()]), chain)
 
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).not.toHaveProperty(
@@ -162,15 +137,6 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes an Order step through /advanced/stepTransaction, never the relayer', async () => {
-    // The prohibition this file exists to enforce. `hasRelayerIntent` returns
-    // true for an `Order` through the classifier's default branch, so
-    // substituting it for `isGaslessStep` above looks like a harmless
-    // consistency fix and is the one change that breaks the order-based
-    // custom tools: a CowSwap step retried after the user rejects the order
-    // signature carries `typedData: [Order]` and must re-run
-    // `/advanced/stepTransaction`, not fetch a relayer quote. Two reviewers
-    // proposed exactly that substitution, and until this test existed the
-    // suite could not tell the difference.
     await getUpdatedStep(client, buildStep([order()]), chain)
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)

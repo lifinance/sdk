@@ -46,8 +46,6 @@ const buildContext = (options?: {
       updateAction: vi.fn(),
     },
     allowUserInteraction: options?.allowUserInteraction ?? true,
-    // The client stub must not carry its own signTypedData method so getAction
-    // falls through to the mocked viem action.
     checkClient: vi.fn().mockResolvedValue({
       account: { address: FROM_ADDRESS },
     }),
@@ -76,8 +74,6 @@ describe('signTypedDataEntries', () => {
     expect(result.signedTypedData).toHaveLength(3)
     expect(result.signedTypedData[0].signature).toBe(EXISTING_SIGNATURE)
     expect(result.signedTypedData[1].signature).toBe(SIGNATURE)
-    // The context array is the task's input and must survive untouched: a task
-    // that pauses mid-way must not leave half a signature set behind.
     expect(context.signedTypedData).toHaveLength(1)
     expect(result.signedTypedData).not.toBe(context.signedTypedData)
   })
@@ -141,8 +137,6 @@ describe('signTypedDataEntries', () => {
   })
 
   it('emits the status passed by the caller', async () => {
-    // `EthereumRelayedSignAndExecuteTask` needs MESSAGE_REQUIRED, the other two
-    // callers need the ACTION_REQUIRED default.
     const context = buildContext()
 
     await signTypedDataEntries(
@@ -167,12 +161,6 @@ describe('signTypedDataEntries', () => {
   })
 
   it('emits the status once per entry, not once for the batch', async () => {
-    // A deliberate behaviour change: `EthereumRelayedSignAndExecuteTask` used
-    // to emit `MESSAGE_REQUIRED` once before its loop. Per-entry emission is
-    // idempotent — `StatusManager.updateAction` maps the status to the same
-    // `execution.status` every time — and it is what tells the widget a
-    // SECOND wallet prompt is coming on a multi-entry step. Hoisting the call
-    // out of the loop would revert it silently.
     const context = buildContext()
 
     await signTypedDataEntries(

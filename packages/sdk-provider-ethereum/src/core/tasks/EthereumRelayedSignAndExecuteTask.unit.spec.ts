@@ -35,7 +35,6 @@ const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 const EXISTING_SIGNATURE = `0x${'22'.repeat(65)}` as Hex
 const TASK_ID = `0x${'ab'.repeat(32)}` as Hex
 
-/** A native permit `EthereumCheckPermitsTask` signs before this task runs. */
 const nativePermit = (): TypedData =>
   ({
     primaryType: 'Permit',
@@ -50,16 +49,12 @@ const nativePermit = (): TypedData =>
     },
   }) as unknown as TypedData
 
-/** The same permit with a signature, so `isNativePermitValid` accepts it. */
 const signedNativePermit = (): SignedTypedData =>
   ({
     ...nativePermit(),
     signature: EXISTING_SIGNATURE,
   }) as unknown as SignedTypedData
 
-/**
- * The gasless intent the relayer submits. The dedupe filter never removes it.
- */
 const witness = (): TypedData =>
   ({
     primaryType: 'PermitWitnessTransferFrom',
@@ -77,8 +72,6 @@ const buildContext = (options?: {
     step: {
       type: 'lifi',
       id: 'step-1',
-      // Not `hyperliquidSpotProtocol`, so `isHyperliquidAgentStep` is false
-      // and the task takes the shared signing loop.
       tool: 'relay',
       action: { fromChainId: SOURCE_CHAIN, fromAddress: FROM_ADDRESS },
       estimate: { gasCosts: [], feeCosts: [] },
@@ -91,8 +84,6 @@ const buildContext = (options?: {
       findAction: vi.fn().mockReturnValue({ type: 'SWAP' }),
       updateAction: vi.fn(),
     },
-    // The client stub must not carry its own signTypedData method so getAction
-    // falls through to the mocked viem action.
     checkClient: vi.fn().mockResolvedValue({
       account: { address: FROM_ADDRESS },
     }),
@@ -112,8 +103,6 @@ beforeEach(() => {
 
 describe('EthereumRelayedSignAndExecuteTask.run', () => {
   it('emits MESSAGE_REQUIRED before asking the wallet for a signature', async () => {
-    // The shipped gasless path. `MESSAGE_REQUIRED` is what the widget renders
-    // as "sign a message" — see `signTypedDataEntries.unit.spec.ts`.
     const context = buildContext()
 
     const result = await task.run(context)
@@ -130,8 +119,6 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
   })
 
   it('signs each unsigned entry and skips one already signed', async () => {
-    // A permit signed earlier in the same execution must not be re-prompted,
-    // and the witness intent beside it must still be signed.
     const context = buildContext({
       typedData: [nativePermit(), witness()],
       signedTypedData: [signedNativePermit()],
@@ -177,8 +164,6 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
     const context = buildContext({ allowUserInteraction: false })
 
     expect(await task.run(context)).toEqual({ status: 'PAUSED' })
-    // The status is emitted before the interaction check, so the widget can
-    // show what the paused step is waiting for.
     expect(context.statusManager.updateAction).toHaveBeenCalledWith(
       context.step,
       'SWAP',

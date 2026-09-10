@@ -16,27 +16,7 @@ import { PatcherMagicNumber } from '../../../permits/constants.js'
 import { isContractCallStep } from '../../../utils/isContractCallStep.js'
 import { isGaslessStep } from '../../../utils/isGaslessStep.js'
 
-/**
- * Re-quotes the step through the endpoint that matches how it will execute.
- *
- * `fromChain` is REQUIRED. `isGaslessStep` answers a lane question, and without
- * the chain its `message.spender === chain.permit2` clause is dead: a step whose
- * only relayer marker is that spender would be routed to `relayed` by
- * `getEthereumExecutionStrategy`, which does pass the chain, and then re-quoted
- * here through `/advanced/stepTransaction` — the wrong endpoint for the strategy
- * that will run.
- *
- * Do NOT substitute `hasRelayerIntent` for `isGaslessStep` here. They disagree
- * on purpose for every primary type that reaches the classifier's default
- * branch — `Order`, `PermitBatch`, `Agent`, the Hyperliquid types. This
- * function answers "which endpoint prepares the step", which is the LI.FI
- * gasless lane specifically, not "who submits the transaction". A CowSwap step
- * retried after the user rejects the order signature carries
- * `typedData: [Order]`; under `hasRelayerIntent` it would fetch a relayer quote
- * instead of re-running `/advanced/stepTransaction`, which breaks CowSwap,
- * 1inch Fusion and Velora Delta. Pinned by `re-quotes an Order step through
- * /advanced/stepTransaction, never the relayer` in `getUpdatedStep.unit.spec.ts`.
- */
+/** Re-quotes the step through the endpoint that matches how it will execute. */
 export const getUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended,
@@ -47,6 +27,9 @@ export const getUpdatedStep = async (
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
+  // Do NOT substitute `hasRelayerIntent` for `isGaslessStep`: an `Order` retry
+  // would fetch a relayer quote instead of `/advanced/stepTransaction`. Pinned
+  // by `re-quotes an Order step ...` in `getUpdatedStep.unit.spec.ts`.
   if (isGaslessStep(step, fromChain)) {
     return getRelayerUpdatedStep(client, step)
   }

@@ -24,8 +24,6 @@ const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
-// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
-// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 
@@ -70,7 +68,6 @@ const buildStep = (typedData: TypedData[]): LiFiStepExtended =>
     typedData,
   }) as unknown as LiFiStepExtended
 
-/** What `/advanced/stepTransaction` answers: signature embedded, typedData wiped. */
 const buildApiAnswer = (typedData: TypedData[]): LiFiStep =>
   ({
     type: 'lifi',
@@ -108,15 +105,11 @@ const buildContext = (step: LiFiStepExtended): EthereumStepExecutorContext =>
     isBridgeExecution: false,
     allowUserInteraction: true,
     signedTypedData: [],
-    // Not a local account, so the task takes the branch that reads
-    // maxPriorityFeePerGas off the request instead of calling the RPC.
     ethereumClient: {},
     checkClient: vi.fn(),
     statusManager: {
       findAction: vi.fn().mockReturnValue({ type: 'SWAP' }),
       updateAction: vi.fn(),
-      // The real `stepComparison` runs in these tests; this is the only part
-      // of StatusManager it reaches.
       updateStepInRoute: vi.fn((updated: LiFiStep) => updated),
     },
   }) as unknown as EthereumStepExecutorContext
@@ -130,11 +123,6 @@ beforeEach(() => {
 
 describe('EthereumPrepareTransactionTask.run', () => {
   it('keeps the caller intent on the shared step when the API answers with typedData: []', async () => {
-    // The only test that exercises the real evaluation order: `stepComparison`
-    // is awaited before `preserveCallerIntents` reads `step`, and
-    // `comparedStep` carries the API's `typedData: []` into the same
-    // `Object.assign`. Losing the declaration here is unrecoverable — see
-    // `preserveCallerIntents`.
     const step = buildStep([callerIntent()])
     vi.mocked(getUpdatedStep).mockResolvedValue(
       buildApiAnswer([]) as LiFiStepExtended
@@ -148,8 +136,6 @@ describe('EthereumPrepareTransactionTask.run', () => {
   })
 
   it('still lets the API clear the typed data of a relayer step', async () => {
-    // The other half of the guarantee: a relayed step re-quotes through
-    // `getRelayerUpdatedStep` and must be able to drop every entry it has.
     const step = buildStep([witness()])
     vi.mocked(getUpdatedStep).mockResolvedValue(
       buildApiAnswer([]) as LiFiStepExtended
@@ -169,15 +155,10 @@ describe('EthereumPrepareTransactionTask.run', () => {
 
     await task.run(buildContext(step))
 
-    // `toBe`, not `toEqual`: verbatim means identity, and `toEqual` against
-    // the very array handed to the mock compares it to itself.
     expect(step.typedData).toBe(answer)
   })
 
   it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a caller intent is preserved', async () => {
-    // The guard has to judge what the API answered. `preserveCallerIntents`
-    // puts the caller intent back, so `step.typedData` is non-empty by the
-    // time the guard runs — but the API returned nothing to send.
     const step = buildStep([callerIntent()])
     const { transactionRequest: _, ...answer } = buildApiAnswer([])
     vi.mocked(getUpdatedStep).mockResolvedValue(answer as LiFiStepExtended)

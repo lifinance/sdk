@@ -44,15 +44,12 @@ const buildContext = (
 
 describe('hasCallerIntentInFlight', () => {
   it('is true from the declaration alone', () => {
-    // The `disableMessageSigning` shape: declared, never signed. The signed
-    // record can never see this one, so the declaration has to be read.
     expect(hasCallerIntentInFlight(buildContext([callerIntent()], []))).toBe(
       true
     )
   })
 
   it('is true from the signed record alone', () => {
-    // The defence-in-depth arm: the signed record is read as well.
     expect(
       hasCallerIntentInFlight(buildContext([], [signedCallerIntent()]))
     ).toBe(true)

@@ -28,9 +28,6 @@ const entry = (primaryType: string, spender?: string): TypedData =>
 const stepWith = (...primaryTypes: string[]): LiFiStep =>
   ({ typedData: primaryTypes.map((t) => entry(t)) }) as unknown as LiFiStep
 
-// Every value @lifi/types declares, plus `PermitBatch`, which the API can send
-// before the types package knows it. A new primary type with no entry here
-// fails the exhaustiveness test below, which forces a deliberate lane decision.
 const EXPECTED_LANES: Record<string, TypedDataLane> = {
   Permit: 'native-permit',
   PermitSingle: 'caller-intent',
@@ -62,20 +59,12 @@ describe('getTypedDataLane', () => {
   })
 
   it("puts a relayer's native permit in the native-permit lane even though its spender is Permit2", () => {
-    // LI.FI's gasless relayer emits an EIP-2612 permit whose `message.spender`
-    // is the canonical Permit2 (gasless `src/signature/payload.ts`). It must
-    // still reach `EthereumCheckPermitsTask`, so the native-permit rule is
-    // decided before the gasless rule.
     expect(getTypedDataLane(entry('Permit', PERMIT2), chain)).toBe(
       'native-permit'
     )
   })
 
   it('puts a gasless witness intent in the relayer-intent lane', () => {
-    // The lane is pinned here; the RULE that produces it is not. A witness
-    // entry with no spender also reaches `relayer-intent` through the default
-    // branch, so deleting the witness clause of rule 1 is an equivalent mutant
-    // within this module. That clause is pinned by `isGaslessStep.unit.spec.ts`.
     expect(getTypedDataLane(entry('PermitWitnessTransferFrom'), chain)).toBe(
       'relayer-intent'
     )
@@ -88,8 +77,6 @@ describe('getTypedDataLane', () => {
   })
 
   it('keeps a chain.permit2 spender in the relayer lane even for a caller-intent type', () => {
-    // The relayer clause is tested ahead of the caller-intent rule on purpose:
-    // no caller-intent type may escape into the inline-signing path.
     expect(getTypedDataLane(entry('PermitSingle', PERMIT2), chain)).toBe(
       'relayer-intent'
     )
@@ -105,9 +92,6 @@ describe('getTypedDataLane', () => {
   })
 
   it('classifies PermitBatch, which @lifi/types does not declare yet', () => {
-    // Excluded from the caller-intent rule on purpose: `details` covers several
-    // tokens, while the allowance path is single-token. `PermitSingle` needs no
-    // case here — 18.6.0 declares it, so the exhaustiveness loop covers it.
     expect(getTypedDataLane(entry('PermitBatch'), chain)).toBe('relayer-intent')
   })
 })

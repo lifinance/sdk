@@ -6,28 +6,7 @@ import {
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
-/**
- * Signs the Permit2 messages a custom provider attached to its own step, for
- * its own spender, before the transaction is prepared. `getStandardUpdatedStep`
- * threads the signatures into `/advanced/stepTransaction`, which returns router
- * calldata with the signature embedded, so the user sends one ordinary
- * transaction.
- *
- * Runs after the allowance tasks: unlike a native EIP-2612 permit, a Permit2
- * `PermitSingle` does not stand in for the ERC-20 allowance, so the
- * token -> Permit2 approval has to land first. Running after the balance check
- * also avoids a wallet prompt that a failing balance check would waste.
- *
- * No dedupe against `context.signedTypedData`: `BaseStepExecutor` rebuilds the
- * context on every `executeStep`, so it restarts empty on a resume.
- *
- * Known limitation, unreachable today. The task reuses the `PERMIT` action so
- * the widget needs no change; where `EthereumCheckPermitsTask` already made
- * one, `initializeAction` reuses it IN PLACE, so `actions.at(-1)` — what
- * `BaseStepExecutor` attributes a thrown error to — is still the `SWAP` /
- * `CROSS_CHAIN` action the balance check created. It needs a step carrying
- * both a native `Permit` and a `PermitSingle`, which no backend emits.
- */
+/** Signs the Permit2 messages a caller attached to its own step, before prepare. */
 export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
@@ -49,9 +28,8 @@ export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
 
     const intentTypedData = getTypedDataInLane(step, 'caller-intent', fromChain)
 
-    // Keep the `ACTION_REQUIRED` default. The widget's `PERMIT` text map has
-    // no `MESSAGE_REQUIRED` entry, so passing one renders a row with an icon
-    // and blank text.
+    // `ACTION_REQUIRED`, not `MESSAGE_REQUIRED`: the widget maps no `PERMIT`
+    // text for it. Pinned by `emits exactly STARTED, ACTION_REQUIRED and DONE`.
     const result = await signTypedDataEntries(
       context,
       intentTypedData,

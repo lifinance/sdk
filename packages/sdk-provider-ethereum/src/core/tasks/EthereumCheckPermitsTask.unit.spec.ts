@@ -51,10 +51,6 @@ const buildPermitSingleTypedData = (): TypedData =>
     },
   }) as unknown as TypedData
 
-/**
- * The native permit LI.FI's gasless relayer emits. Its `message.spender` is the
- * canonical Permit2, not `fromChain.permit2Proxy`.
- */
 const buildRelayerPermitTypedData = (): TypedData => {
   const permit = buildPermitTypedData()
   return {
@@ -138,11 +134,6 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('runs for the gasless step shape, whose native permit names Permit2 as spender', async () => {
-    // The shipped gasless shape: `[Permit(spender = permit2),
-    // PermitWitnessTransferFrom]`, emitted only when the ERC-20 allowance is
-    // short. Classifying that `Permit` as a relayer intent leaves
-    // `hasMatchingPermit` unset, which makes the allowance tasks eligible and
-    // asks a gasless user to send and fund an approval they do not owe.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildRelayerPermitTypedData(),
@@ -161,8 +152,6 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(resultContext.signedTypedData).toHaveLength(1)
     expect(resultContext.signedTypedData?.[0].primaryType).toBe('Permit')
 
-    // `hasSufficientAllowance` is unset, which is the case gasless emits the
-    // permit for. Only `hasMatchingPermit` keeps the approval off the user.
     expect(
       await new EthereumSetAllowanceTask().shouldRun({
         ...context,
@@ -172,9 +161,6 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('keeps hasMatchingPermit for a mixed-lane step, which the relayer funds', async () => {
-    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
-    // Clearing the flag here would make `EthereumSetAllowanceTask` eligible and
-    // ask a gasless user to send and fund an approval.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildWitnessTypedData(),
@@ -188,10 +174,6 @@ describe('EthereumCheckPermitsTask.run', () => {
       | undefined
 
     expect(resultContext?.hasMatchingPermit).toBe(true)
-    // The flag alone does not discriminate: dropping the `native-permit` lane
-    // filter in `run` leaves it `true` while the task signs the WITNESS intent
-    // as well — the one entry the classifier's first rule exists to keep out
-    // of the inline-signing path.
     expect(signTypedData).toHaveBeenCalledTimes(1)
     expect(resultContext?.signedTypedData).toHaveLength(1)
     expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
@@ -216,8 +198,6 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
-    // A native permit's spender is `fromChain.permit2Proxy`, so the
-    // token -> Permit2 approval a third-party intent needs must still run.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildPermitTypedData(),

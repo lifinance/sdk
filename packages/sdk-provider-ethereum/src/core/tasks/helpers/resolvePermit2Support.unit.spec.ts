@@ -21,8 +21,6 @@ const buildContext = (
     ethereumClient: { account: { address: OWNER } },
     isFromNativeToken: false,
     disableMessageSigning: false,
-    // `EthereumStepExecutor.createContext` always sets this, and the caller-intent
-    // gate reads it. Omitting it made the fixture disagree with production.
     signedTypedData: [],
     fromChain: {
       id: CHAIN_ID,
@@ -49,8 +47,6 @@ const typedDataEntry = (primaryType: string, spender?: string) => ({
   message: spender ? { spender } : {},
 })
 
-// A relayed step ALWAYS carries typed data. The old fixture omitted it, which
-// is why a gate that keys off typed data could regress without failing a test.
 const buildGaslessContext = (
   overrides: Partial<EthereumStepExecutorContext> = {}
 ): EthereumStepExecutorContext =>
@@ -273,9 +269,6 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   })
 
   it('keeps the gate OFF when the API erased the declaration but the intent was signed', async () => {
-    // The sibling of the native-permit hole. After prepare, the declaration
-    // may be gone — see `preserveCallerIntents`. Reading only the declaration
-    // would reopen this gate and wrap the caller's calldata.
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },
@@ -295,9 +288,6 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   })
 
   it('keeps the gate ON for a step carrying both a witness intent and a caller intent', async () => {
-    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
-    // The relayer still pulls through Permit2 here, so moving the spender to
-    // approvalAddress would revert it.
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },
@@ -313,8 +303,6 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   })
 
   it('keeps the gate ON for a mixed-lane step under the standard strategy too', async () => {
-    // The exemption is keyed on the lane, not on the strategy: a mixed-lane
-    // step keeps LI.FI's Permit2 flow whichever way it is later executed.
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },

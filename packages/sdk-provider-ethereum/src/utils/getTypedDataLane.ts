@@ -6,52 +6,28 @@ import type {
 } from '@lifi/sdk'
 import { isGaslessTypedData } from './isGaslessStep.js'
 
-/**
- * Which execution lane one `step.typedData` entry belongs to.
- *
- * - `native-permit` — an EIP-2612 permit. Signed before the transaction is
- *   prepared, and it stands in for the ERC-20 allowance.
- * - `caller-intent` — a Permit2 message the caller supplied for its own
- *   spender. Signed before prepare and threaded into
- *   `/advanced/stepTransaction`. It does NOT stand in for the allowance.
- * - `relayer-intent` — anything signed after prepare and posted to a relayer.
- */
+/** Which execution lane one `step.typedData` entry belongs to. */
 export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
 
-/**
- * `chain` is required here and in every fold below. Do NOT relax it to
- * `chain?`, even though `isGaslessStep` takes an optional one and the compiler
- * will not stop you: without the chain the spender rule cannot run, so a
- * relayer intent classifies as `caller-intent` and the SDK signs it inline —
- * the one direction that loses money. `isGaslessStep` keeps its optional chain
- * because it is public API with widget callers; this classifier is internal
- * and every call site has `context.fromChain`.
- */
+// `chain` is required, and nothing else enforces it: `chain?` compiles and
+// every test still passes, but a relayer intent then classifies as
+// `caller-intent` and gets signed inline. Do NOT relax it.
 export function getTypedDataLane(
   typedData: TypedData,
   chain: ExtendedChain
 ): TypedDataLane {
-  // Native permits are decided BEFORE the gasless rule. LI.FI's relayer signs
-  // an EIP-2612 permit whose spender is `chain.permit2` (gasless
-  // `src/signature/payload.ts`), and that permit must still reach
-  // `EthereumCheckPermitsTask` — it stands in for the ERC-20 allowance, so
-  // misclassifying it makes a gasless step ask the user to fund an approval.
+  // A native `Permit` is classified BEFORE the gasless rule: LI.FI's relayer
+  // signs a permit whose spender is `chain.permit2`, and calling that a relayer
+  // intent makes a gasless step ask the user to fund an approval.
   if (typedData.primaryType === 'Permit') {
     return 'native-permit'
   }
-  // Every other entry a relayer owns is decided next: the SDK must never sign
-  // a gasless intent inline. Shared with `isGaslessStep`, so the two cannot
-  // drift.
   if (isGaslessTypedData(typedData, chain)) {
     return 'relayer-intent'
   }
-  // `PermitSingle` only. If `@lifi/types` ever declares `PermitBatch`, it must
-  // NOT join this rule: its `details` covers several tokens, while the
-  // allowance path is single-token (`step.action.fromToken.address`).
   if (typedData.primaryType === 'PermitSingle') {
     return 'caller-intent'
   }
-  // `Order`, `PermitBatch`, Hyperliquid messages and every future type.
   return 'relayer-intent'
 }
 
@@ -88,16 +64,7 @@ export function hasRelayerIntent(
   )
 }
 
-/**
- * Whether the step runs on the caller-intent lane: it carries a Permit2 message the SDK signs for
- * the caller's own spender, and nothing a relayer must sign and submit. The user sends and funds
- * that transaction, and the calldata the API returns for it is final.
- *
- * The lanes are NOT mutually exclusive, and the second term is the whole point. A step carrying
- * both a witness intent and a caller intent is still gasless: the relayer pulls the tokens through
- * Permit2, so every gate that must leave a caller-executed step alone has to keep its hands off
- * that step too. Ask the question in one place.
- */
+/** Whether the step carries a caller intent and nothing a relayer must sign. */
 export function isCallerIntentLane(
   step: LiFiStepExtended | LiFiStep,
   chain: ExtendedChain

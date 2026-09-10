@@ -49,8 +49,6 @@ const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
 const PERMIT2_PROXY = '0xdddd000000000000000000000000000000000004' as Address
-// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
-// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 const WRAPPED_CALLDATA = '0xfeedface' as Hex
@@ -68,7 +66,6 @@ const callerIntent = (): TypedData =>
 const signedCallerIntent = (): SignedTypedData =>
   ({ ...callerIntent(), signature: SIGNATURE }) as unknown as SignedTypedData
 
-/** A native permit `findSignedNativePermit` would genuinely accept. */
 const signedNativePermit = (): SignedTypedData =>
   ({
     primaryType: 'Permit',
@@ -99,9 +96,6 @@ const buildContext = (options?: {
         fromAmount: '1000000',
         fromToken: { address: TOKEN_ADDRESS, chainId: SOURCE_CHAIN },
       },
-      // Every clause of the Permit2 gate is armed, so a test that sees no
-      // Permit2 wrap sees it because of the lane, not because the gate was
-      // never open.
       estimate: {
         approvalAddress: PERMIT2,
         gasCosts: [],
@@ -128,8 +122,6 @@ const buildContext = (options?: {
       findAction: vi.fn().mockReturnValue({ type: 'SWAP' }),
       updateAction: vi.fn(),
     },
-    // The client stub must not carry its own sendTransaction method so
-    // getAction falls through to the mocked viem action.
     checkClient: vi.fn().mockResolvedValue({
       account: { address: FROM_ADDRESS },
     }),
@@ -163,8 +155,6 @@ beforeEach(() => {
 
 describe('EthereumStandardSignAndExecuteTask.run', () => {
   it('sends a caller-intent transaction to the API target with the calldata untouched', async () => {
-    // The headline guarantee. The calldata already embeds the caller's
-    // signature, so both SDK wraps must stay off and `permit2Proxy` is wrong.
     const context = buildContext({
       stepTypedData: [callerIntent()],
       signedTypedData: [signedNativePermit(), signedCallerIntent()],
@@ -184,13 +174,10 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
     expect(encodePermit2Data).not.toHaveBeenCalled()
     expect(signPermit2Message).not.toHaveBeenCalled()
     expect(estimateTransactionRequest).not.toHaveBeenCalled()
-    // The gate is refused on the lane alone, before it costs an eth_getCode.
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 
   it('holds that guarantee when only the signed record still shows the caller intent', async () => {
-    // `step.typedData: []` is the shape the API answers with. G1 keeps the
-    // declaration, and the signed record is the second, independent source.
     const context = buildContext({
       stepTypedData: [],
       signedTypedData: [signedNativePermit(), signedCallerIntent()],
@@ -210,8 +197,6 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
   })
 
   it('still wraps and retargets a native permit when no caller intent is in flight', async () => {
-    // The control. Without it the test above could pass because the
-    // native-permit machinery is simply not armed in this fixture.
     const context = buildContext({
       signedTypedData: [signedNativePermit()],
     })
@@ -230,7 +215,6 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
   })
 
   it('still signs and wraps a Permit2 message when no caller intent is in flight', async () => {
-    // The second control: the Permit2 arm of the same decision is armed too.
     const context = buildContext()
 
     await task.run(context)

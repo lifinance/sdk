@@ -56,10 +56,6 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       executionOptions
     )
 
-    // What the API's answer alone leaves on the step. The guard below is
-    // judged on this, not on the assigned value: `preserveCallerIntents` can
-    // put back a caller intent the API never returned, which would satisfy the
-    // guard with data that cannot be sent and PAUSE instead of failing.
     const answeredTypedData = updatedStep.typedData ?? step.typedData
 
     Object.assign(step, {
