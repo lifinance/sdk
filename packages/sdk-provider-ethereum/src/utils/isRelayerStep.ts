@@ -8,8 +8,8 @@ import type { RelayerStep } from '../types.js'
  * caller-supplied Permit2 intent is signed inline and sent by the user, while a
  * gasless intent goes to the relayer. Use `isGaslessStep` to ask who pays the
  * gas. Inside this package, execution routing uses the typed-data lane
- * classifier instead. One internal caller remains in `getUpdatedStep.ts`,
- * paired with `isGaslessStep`; it is removed in the next major.
+ * classifier instead. No internal callers remain; it is removed in the next
+ * major.
  */
 export function isRelayerStep(
   step: LiFiStepExtended | LiFiStep

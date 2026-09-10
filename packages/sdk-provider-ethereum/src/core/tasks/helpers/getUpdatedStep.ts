@@ -14,7 +14,6 @@ import {
 import { PatcherMagicNumber } from '../../../permits/constants.js'
 import { isContractCallStep } from '../../../utils/isContractCallStep.js'
 import { isGaslessStep } from '../../../utils/isGaslessStep.js'
-import { isRelayerStep } from '../../../utils/isRelayerStep.js'
 
 export const getUpdatedStep = async (
   client: SDKClient,
@@ -25,7 +24,7 @@ export const getUpdatedStep = async (
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
-  if (isRelayerStep(step) && isGaslessStep(step)) {
+  if (isGaslessStep(step)) {
     return getRelayerUpdatedStep(client, step)
   }
   return getStandardUpdatedStep(client, step, signedTypedData)
