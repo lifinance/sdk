@@ -18,6 +18,15 @@ import { isGaslessTypedData } from './isGaslessStep.js'
  */
 export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
 
+/**
+ * `chain` is required here and in every fold below. Do NOT relax it to
+ * `chain?`, even though `isGaslessStep` takes an optional one and the compiler
+ * will not stop you: without the chain the spender rule cannot run, so a
+ * relayer intent classifies as `caller-intent` and the SDK signs it inline —
+ * the one direction that loses money. `isGaslessStep` keeps its optional chain
+ * because it is public API with widget callers; this classifier is internal
+ * and every call site has `context.fromChain`.
+ */
 export function getTypedDataLane(
   typedData: TypedData,
   chain: ExtendedChain
