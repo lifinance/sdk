@@ -4,11 +4,16 @@ import {
   ProviderError,
   type StepExecutorOptions,
 } from '@lifi/sdk'
-import { isValidSuiAddress } from '@mysten/sui/utils'
+import { isValidStructTag, isValidSuiAddress } from '@mysten/sui/utils'
 import { getSuiBalance } from './actions/getSuiBalance.js'
 import { resolveSuiAddress } from './actions/resolveSuiAddress.js'
 import { SuiStepExecutor } from './core/SuiStepExecutor.js'
 import type { SuiProviderOptions, SuiSDKProvider } from './types.js'
+
+/** Tokens are Move coin types, which `isValidSuiAddress` rejects. */
+function isSuiTokenAddress(address: string): boolean {
+  return isValidStructTag(address)
+}
 
 export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
   const _options: SuiProviderOptions = options ?? {}
@@ -17,6 +22,7 @@ export function SuiProvider(options?: SuiProviderOptions): SuiSDKProvider {
       return ChainType.MVM
     },
     isAddress: isValidSuiAddress,
+    isTokenAddress: isSuiTokenAddress,
     resolveAddress: resolveSuiAddress,
     getBalance: getSuiBalance,
     async getStepExecutor(

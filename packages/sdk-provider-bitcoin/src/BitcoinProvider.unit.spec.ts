@@ -14,6 +14,11 @@ describe('BitcoinProvider', () => {
     expect(provider.setOptions).toBeDefined()
   })
 
+  // The token list names the native coin `bitcoin`, so UTXO has no format.
+  it('does not implement isTokenAddress', () => {
+    expect(BitcoinProvider().isTokenAddress).toBeUndefined()
+  })
+
   it('should throw error when client is not provided', async () => {
     const provider = BitcoinProvider()
     const mockOptions = {

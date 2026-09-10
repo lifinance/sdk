@@ -48,6 +48,12 @@ export type RPCUrls = Partial<Record<ChainId, string[]>>
 export interface SDKProvider {
   readonly type: ChainType
   isAddress(address: string): boolean
+  /**
+   * Validates a token identifier, which several ecosystems shape unlike a
+   * wallet address. A provider that omits the method has no token address
+   * format, so never fall back to `isAddress`.
+   */
+  isTokenAddress?(address: string): boolean
   resolveAddress(
     name: string,
     client: SDKClient,

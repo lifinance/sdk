@@ -5,6 +5,11 @@ import { resolveEthereumAddress } from './actions/resolveEthereumAddress.js'
 import { EthereumStepExecutor } from './core/EthereumStepExecutor.js'
 import type { EthereumProviderOptions, EthereumSDKProvider } from './types.js'
 
+/** The wallet format without the checksum: a pasted address keeps its case. */
+function isEthereumTokenAddress(address: string): boolean {
+  return isAddress(address, { strict: false })
+}
+
 export function EthereumProvider(
   options?: EthereumProviderOptions
 ): EthereumSDKProvider {
@@ -17,6 +22,7 @@ export function EthereumProvider(
       return _options
     },
     isAddress,
+    isTokenAddress: isEthereumTokenAddress,
     resolveAddress: resolveEthereumAddress,
     getBalance: getEthereumBalance,
     getWalletClient: _options.getWalletClient,

@@ -1,6 +1,7 @@
 import { ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { SuiProvider } from './SuiProvider.js'
+import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
 
 describe('SuiProvider', () => {
   const mockStepExecutorOptions = {
@@ -17,6 +18,48 @@ describe('SuiProvider', () => {
     expect(provider.getBalance).toBeDefined()
     expect(provider.getStepExecutor).toBeDefined()
     expect(provider.setOptions).toBeDefined()
+  })
+
+  describe('isTokenAddress', () => {
+    const provider = SuiProvider()
+
+    it('accepts both spellings of the native coin type, which isAddress rejects', () => {
+      for (const coinType of [SuiTokenShortAddress, SuiTokenLongAddress]) {
+        expect(provider.isTokenAddress?.(coinType)).toBe(true)
+        expect(provider.isAddress(coinType)).toBe(false)
+      }
+    })
+
+    it('accepts the live USDC coin type', () => {
+      expect(
+        provider.isTokenAddress?.(
+          '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
+        )
+      ).toBe(true)
+    })
+
+    it('rejects a wallet address, because a token needs a module and a type', () => {
+      const wallet = `0x${'ab'.repeat(32)}`
+      expect(provider.isAddress(wallet)).toBe(true)
+      expect(provider.isTokenAddress?.(wallet)).toBe(false)
+    })
+
+    it('rejects a coin type missing its type name', () => {
+      expect(provider.isTokenAddress?.('0x2::sui')).toBe(false)
+    })
+
+    it('rejects addresses of other ecosystems and malformed values', () => {
+      expect(
+        provider.isTokenAddress?.('0xB095274743941e953c746F9C228DA9c18Bb6ec29')
+      ).toBe(false)
+      expect(
+        provider.isTokenAddress?.(
+          'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75'
+        )
+      ).toBe(false)
+      expect(provider.isTokenAddress?.('laptop')).toBe(false)
+      expect(provider.isTokenAddress?.('')).toBe(false)
+    })
   })
 
   it('should throw ProviderError when getClient is not provided', async () => {

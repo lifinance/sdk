@@ -14,6 +14,24 @@ describe('SolanaProvider', () => {
     expect(provider.setOptions).toBeDefined()
   })
 
+  describe('isTokenAddress', () => {
+    const provider = SolanaProvider()
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+
+    it('accepts a mint, which uses the wallet format', () => {
+      expect(provider.isTokenAddress?.(usdcMint)).toBe(true)
+      expect(provider.isAddress(usdcMint)).toBe(true)
+    })
+
+    it('rejects other ecosystems and malformed values', () => {
+      expect(
+        provider.isTokenAddress?.('0xB095274743941e953c746F9C228DA9c18Bb6ec29')
+      ).toBe(false)
+      expect(provider.isTokenAddress?.('laptop')).toBe(false)
+      expect(provider.isTokenAddress?.('')).toBe(false)
+    })
+  })
+
   it('should throw error when wallet adapter is not provided', async () => {
     const provider = SolanaProvider()
     const mockOptions = {

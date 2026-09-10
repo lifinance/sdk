@@ -30,6 +30,11 @@ function isStellarAddress(address: string): boolean {
   return StrKey.isValidEd25519PublicKey(address)
 }
 
+/** Tokens are Soroban contracts, not the `G…` accounts that hold balances. */
+function isStellarTokenAddress(address: string): boolean {
+  return StrKey.isValidContract(address)
+}
+
 export function StellarProvider(
   options?: StellarProviderOptions
 ): StellarSDKProvider {
@@ -39,6 +44,7 @@ export function StellarProvider(
       return ChainType.STL
     },
     isAddress: isStellarAddress,
+    isTokenAddress: isStellarTokenAddress,
     resolveAddress: resolveStellarAddress,
     getBalance: (
       client: SDKClient,
