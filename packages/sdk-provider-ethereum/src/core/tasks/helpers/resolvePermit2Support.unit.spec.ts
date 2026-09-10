@@ -49,12 +49,8 @@ const typedDataEntry = (primaryType: string, spender?: string) => ({
   message: spender ? { spender } : {},
 })
 
-// A relayed step ALWAYS carries typed data — `isRelayerStep` requires it. The
-// old fixture omitted it, which is why a gate that keys off typed data could
-// regress without failing a test.
-//
-// Takes the same overrides bag as `buildContext`, so the relayed tests keep the
-// file's existing style: pass overrides in, never mutate the context afterwards.
+// A relayed step ALWAYS carries typed data. The old fixture omitted it, which
+// is why a gate that keys off typed data could regress without failing a test.
 const buildGaslessContext = (
   overrides: Partial<EthereumStepExecutorContext> = {}
 ): EthereumStepExecutorContext =>
