@@ -42,19 +42,19 @@ export function getTypedDataLane(
   typedData: TypedData,
   chain: ExtendedChain
 ): TypedDataLane {
-  // Tested first, always. The SDK must never sign a gasless intent inline,
-  // whatever else the entry looks like.
-  //
-  // Shared with `isGaslessStep`, so the two can never drift. Its spender clause
-  // looks unreachable — `getPermitTransferFromValues` sets `spender` to
-  // `chain.permit2Proxy`, not `chain.permit2` — but proving it dead needs the
-  // relayer service, and a wrong answer breaks gasless. It stays until that is
-  // settled.
-  if (isGaslessTypedData(typedData, chain)) {
-    return 'relayer-intent'
-  }
+  // Native permits are decided BEFORE the gasless rule. LI.FI's relayer signs
+  // an EIP-2612 permit whose spender is `chain.permit2` (gasless
+  // `src/signature/payload.ts`), and that permit must still reach
+  // `EthereumCheckPermitsTask` — it stands in for the ERC-20 allowance, so
+  // misclassifying it makes a gasless step ask the user to fund an approval.
   if (typedData.primaryType === 'Permit') {
     return 'native-permit'
+  }
+  // Every other entry a relayer owns is decided next: the SDK must never sign
+  // a gasless intent inline. Shared with `isGaslessStep`, so the two cannot
+  // drift.
+  if (isGaslessTypedData(typedData, chain)) {
+    return 'relayer-intent'
   }
   if (CALLER_INTENT_PRIMARY_TYPES.includes(typedData.primaryType)) {
     return 'caller-intent'

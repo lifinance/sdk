@@ -18,9 +18,11 @@ vi.mock('viem/actions', async (importOriginal) => {
 import { signTypedData } from 'viem/actions'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumCheckPermitsTask } from './EthereumCheckPermitsTask.js'
+import { EthereumSetAllowanceTask } from './EthereumSetAllowanceTask.js'
 
 const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
 const buildPermitTypedData = (): TypedData =>
@@ -49,6 +51,18 @@ const buildPermitSingleTypedData = (): TypedData =>
     },
   }) as unknown as TypedData
 
+/**
+ * The native permit LI.FI's gasless relayer emits. Its `message.spender` is the
+ * canonical Permit2, not `fromChain.permit2Proxy`.
+ */
+const buildRelayerPermitTypedData = (): TypedData => {
+  const permit = buildPermitTypedData()
+  return {
+    ...permit,
+    message: { ...permit.message, spender: PERMIT2 },
+  } as TypedData
+}
+
 const buildWitnessTypedData = (): TypedData =>
   ({
     primaryType: 'PermitWitnessTransferFrom',
@@ -72,7 +86,7 @@ const buildContext = (
     step,
     fromChain: {
       id: SOURCE_CHAIN,
-      permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+      permit2: PERMIT2,
     },
     statusManager: {
       initializeAction: vi.fn().mockReturnValue({ type: 'PERMIT' }),
@@ -121,6 +135,40 @@ describe('EthereumCheckPermitsTask.run', () => {
   it('does not run for a caller-supplied Permit2 intent, which the intent task signs', async () => {
     const context = buildContext([buildPermitSingleTypedData()])
     expect(await task.shouldRun(context)).toBe(false)
+  })
+
+  it('runs for the gasless step shape, whose native permit names Permit2 as spender', async () => {
+    // The shipped gasless shape: `[Permit(spender = permit2),
+    // PermitWitnessTransferFrom]`, emitted only when the ERC-20 allowance is
+    // short. Classifying that `Permit` as a relayer intent leaves
+    // `hasMatchingPermit` unset, which makes the allowance tasks eligible and
+    // asks a gasless user to send and fund an approval they do not owe.
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildRelayerPermitTypedData(),
+      buildWitnessTypedData(),
+    ])
+
+    expect(await task.shouldRun(context)).toBe(true)
+
+    const result = await task.run(context)
+    const resultContext = result.context as {
+      hasMatchingPermit?: boolean
+      signedTypedData?: SignedTypedData[]
+    }
+
+    expect(resultContext.hasMatchingPermit).toBe(true)
+    expect(resultContext.signedTypedData).toHaveLength(1)
+    expect(resultContext.signedTypedData?.[0].primaryType).toBe('Permit')
+
+    // `hasSufficientAllowance` is unset, which is the case gasless emits the
+    // permit for. Only `hasMatchingPermit` keeps the approval off the user.
+    expect(
+      await new EthereumSetAllowanceTask().shouldRun({
+        ...context,
+        ...resultContext,
+      } as EthereumStepExecutorContext)
+    ).toBe(false)
   })
 
   it('keeps hasMatchingPermit for a mixed-lane step, which the relayer funds', async () => {

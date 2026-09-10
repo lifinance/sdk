@@ -10,9 +10,10 @@ import type { RelayerStep } from '../types.js'
  * Whether one typed-data entry is one a relayer must sign and submit for a
  * gasless step.
  *
- * The single home of that test. `getTypedDataLane` asks it first, before any
- * other rule, so no entry a relayer owns can escape into the inline-signing
- * path.
+ * The single home of that test. `getTypedDataLane` asks it before deciding any
+ * caller-owned lane, so no entry a relayer owns can escape into the
+ * inline-signing path. The one rule ahead of it is the native EIP-2612 permit,
+ * which a relayer step needs signed inline anyway.
  *
  * The spender comparison is case-sensitive by inheritance — this is the shape
  * `isGaslessStep` has always had — while `getApprovalAmount` lowercases both

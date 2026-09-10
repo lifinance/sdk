@@ -61,6 +61,16 @@ describe('getTypedDataLane', () => {
     ).toBe('caller-intent')
   })
 
+  it("puts a relayer's native permit in the native-permit lane even though its spender is Permit2", () => {
+    // LI.FI's gasless relayer emits an EIP-2612 permit whose `message.spender`
+    // is the canonical Permit2 (gasless `src/signature/payload.ts`). It must
+    // still reach `EthereumCheckPermitsTask`, so the native-permit rule is
+    // decided before the gasless rule.
+    expect(getTypedDataLane(entry('Permit', PERMIT2), chain)).toBe(
+      'native-permit'
+    )
+  })
+
   it('puts a gasless witness intent in the relayer-intent lane', () => {
     // The lane is pinned here; the RULE that produces it is not. A witness
     // entry with no spender also reaches `relayer-intent` through the default
@@ -78,8 +88,8 @@ describe('getTypedDataLane', () => {
   })
 
   it('keeps a chain.permit2 spender in the relayer lane even for an allowlisted type', () => {
-    // The relayer clause is tested first on purpose: no allowlist member may
-    // escape into the inline-signing path.
+    // The relayer clause is tested ahead of the allowlist on purpose: no
+    // allowlist member may escape into the inline-signing path.
     expect(getTypedDataLane(entry('PermitSingle', PERMIT2), chain)).toBe(
       'relayer-intent'
     )
