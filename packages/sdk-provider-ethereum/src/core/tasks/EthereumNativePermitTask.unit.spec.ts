@@ -6,6 +6,10 @@ vi.mock('../../utils/getActionWithFallback.js', () => ({
   getActionWithFallback: vi.fn(),
 }))
 
+vi.mock('../../actions/isBatchingSupported.js', () => ({
+  isBatchingSupported: vi.fn().mockResolvedValue(false),
+}))
+
 vi.mock('viem/actions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('viem/actions')>()
   return {
@@ -160,5 +164,32 @@ describe('EthereumNativePermitTask.run', () => {
     expect(
       resultContext?.signedTypedData?.filter((item) => item.signature)
     ).toHaveLength(1)
+  })
+})
+
+describe('EthereumNativePermitTask.shouldRun', () => {
+  it('does not mint a native permit when the caller supplied its own Permit2 intent', async () => {
+    // Without this guard the SDK signs a second permit for its own proxy and
+    // overwrites the caller's intent. The early return also means no RPC:
+    // isBatchingSupported is not mocked in this file and must never be reached.
+    const { context } = buildContext()
+    context.step.typedData = [
+      {
+        primaryType: 'PermitSingle',
+        domain: { chainId: SOURCE_CHAIN },
+        types: {},
+        message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+      },
+    ] as unknown as LiFiStep['typedData']
+
+    expect(await task.shouldRun(context)).toBe(false)
+    expect(context.checkClient).not.toHaveBeenCalled()
+  })
+
+  it('still mints a native permit for a step with no caller intent', async () => {
+    const { context } = buildContext()
+    context.step.typedData = undefined
+
+    expect(await task.shouldRun(context)).toBe(true)
   })
 })

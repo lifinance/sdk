@@ -10,6 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
+import { hasCallerIntent } from '../../utils/getTypedDataLane.js'
 import { isValidSignature } from '../../utils/isValidSignature.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
@@ -26,6 +27,13 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     } = context
 
     if (hasMatchingPermit || hasSufficientAllowance) {
+      return false
+    }
+
+    // The caller supplied its own Permit2 message; do not hijack typedData[0]
+    // with a second permit for LI.FI's proxy. Checked before the execution
+    // strategy so this costs no RPC.
+    if (hasCallerIntent(step, fromChain)) {
       return false
     }
 
