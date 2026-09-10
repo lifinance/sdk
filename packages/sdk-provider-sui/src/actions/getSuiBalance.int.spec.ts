@@ -19,7 +19,7 @@ const defaultWalletAddress =
 const retryTimes = 2
 const timeout = 10000
 
-describe.sequential('Sui token balance', async () => {
+describe('Sui token balance', { concurrent: false }, async () => {
   const loadAndCompareTokenAmounts = async (
     walletAddress: string,
     tokens: StaticToken[]

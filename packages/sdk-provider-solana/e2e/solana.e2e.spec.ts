@@ -16,7 +16,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     return
   }
 
-  describe.sequential('Phase 1: Jito bundle', () => {
+  describe('Phase 1: Jito bundle', { concurrent: false }, () => {
     it('returns a bundle-shaped transactionRequest for PENGU->USD* with jitoBundle', async () => {
       // The premise the whole bundle path rests on: `jitoBundle: true` in the
       // ROUTES options (not a quote query param) yields a route whose step
@@ -110,7 +110,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     )
   })
 
-  describe.sequential('Phase 2: same pair, standard path', () => {
+  describe('Phase 2: same pair, standard path', { concurrent: false }, () => {
     it('returns a single transaction when jitoBundle is omitted', async () => {
       // One route object drives both paths. Proving the standard shape on
       // the SAME pair rules out "PENGU just never bundles" as the reason
@@ -138,7 +138,9 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     }, 120_000)
   })
 
-  describe.sequential('Phase 2b: write contract on the standard path', () => {
+  describe('Phase 2b: write contract on the standard path', {
+    concurrent: false,
+  }, () => {
     it.skipIf(!env.execute)(
       'writes txHash and txLink together, at broadcast',
       async () => {
@@ -171,7 +173,7 @@ describe.skipIf(isSkip(env))('Solana E2E', () => {
     )
   })
 
-  describe.sequential('Phase 3: standard matrix', () => {
+  describe('Phase 3: standard matrix', { concurrent: false }, () => {
     const legs = planStandardMatrix(env.usdPerLeg)
     // Every leg plus the two single-leg phases above. Asserted at collection
     // time, before any test body runs, so an over-sized run never broadcasts.
