@@ -170,8 +170,8 @@ describe('EthereumNativePermitTask.run', () => {
 describe('EthereumNativePermitTask.shouldRun', () => {
   it('does not mint a native permit when the caller supplied its own Permit2 intent', async () => {
     // Without this guard the SDK signs a second permit for its own proxy and
-    // overwrites the caller's intent. The early return also means no RPC:
-    // isBatchingSupported is not mocked in this file and must never be reached.
+    // overwrites the caller's intent. The `checkClient` assertion pins where
+    // the guard sits: it must return before `getEthereumExecutionStrategy`.
     const { context } = buildContext()
     context.step.typedData = [
       {
@@ -189,6 +189,30 @@ describe('EthereumNativePermitTask.shouldRun', () => {
   it('still mints a native permit for a step with no caller intent', async () => {
     const { context } = buildContext()
     context.step.typedData = undefined
+
+    expect(await task.shouldRun(context)).toBe(true)
+  })
+
+  it('still mints a native permit for a mixed-lane step', async () => {
+    // The lanes are not mutually exclusive. A step carrying both a witness
+    // intent and a caller intent is still gasless, and the native permit is
+    // how it gets its allowance without a user-funded approval — which a
+    // gasless user cannot pay for.
+    const { context } = buildContext()
+    context.step.typedData = [
+      {
+        primaryType: 'PermitWitnessTransferFrom',
+        domain: { chainId: SOURCE_CHAIN },
+        types: {},
+        message: {},
+      },
+      {
+        primaryType: 'PermitSingle',
+        domain: { chainId: SOURCE_CHAIN },
+        types: {},
+        message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+      },
+    ] as unknown as LiFiStep['typedData']
 
     expect(await task.shouldRun(context)).toBe(true)
   })

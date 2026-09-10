@@ -288,4 +288,22 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
 
     expect(await run(context, 'relayed')).toBe(true)
   })
+
+  it('keeps the gate ON for a mixed-lane step under the standard strategy too', async () => {
+    // The exemption is keyed on the lane, not on the strategy: a mixed-lane
+    // step keeps LI.FI's Permit2 flow whichever way it is later executed.
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [
+          typedDataEntry('PermitWitnessTransferFrom'),
+          typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+        ],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context)).toBe(true)
+    expect(canAccountUsePermit2).toHaveBeenCalled()
+  })
 })

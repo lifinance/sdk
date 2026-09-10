@@ -59,6 +59,18 @@ describe('getEthereumExecutionStrategy', () => {
     expect(strategy).toBe('relayed')
   })
 
+  it('relays a mixed-lane step carrying both a witness and a caller intent', async () => {
+    // The lanes are not mutually exclusive. Anything a relayer must submit
+    // wins the routing decision, whatever else rides along on the step.
+    const strategy = await getEthereumExecutionStrategy(
+      buildContext([
+        entry('PermitWitnessTransferFrom'),
+        entry('PermitSingle', UNIVERSAL_ROUTER),
+      ])
+    )
+    expect(strategy).toBe('relayed')
+  })
+
   it('executes a caller-supplied PermitSingle step as standard', async () => {
     const strategy = await getEthereumExecutionStrategy(
       buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])

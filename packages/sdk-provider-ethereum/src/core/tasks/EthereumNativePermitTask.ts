@@ -10,7 +10,10 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
-import { hasCallerIntent } from '../../utils/getTypedDataLane.js'
+import {
+  hasCallerIntent,
+  hasRelayerIntent,
+} from '../../utils/getTypedDataLane.js'
 import { isValidSignature } from '../../utils/isValidSignature.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
@@ -31,9 +34,19 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
     }
 
     // The caller supplied its own Permit2 message; do not hijack typedData[0]
-    // with a second permit for LI.FI's proxy. Checked before the execution
-    // strategy so this costs no RPC.
-    if (hasCallerIntent(step, fromChain)) {
+    // with a second permit for LI.FI's proxy. The check is free, and stating
+    // it as its own guard says that intent directly instead of burying it in
+    // the availability expression below.
+    //
+    // `&& !hasRelayerIntent`: the lanes are NOT mutually exclusive. A step
+    // carrying both a witness intent and a caller intent is still gasless, and
+    // the native permit is how such a step gets its allowance without a
+    // user-funded approval — which a gasless user cannot pay for. Keep minting
+    // it for that shape.
+    if (
+      hasCallerIntent(step, fromChain) &&
+      !hasRelayerIntent(step, fromChain)
+    ) {
       return false
     }
 
