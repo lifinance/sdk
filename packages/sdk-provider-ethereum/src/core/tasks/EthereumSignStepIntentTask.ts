@@ -49,6 +49,9 @@ export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
 
     const intentTypedData = getTypedDataInLane(step, 'caller-intent', fromChain)
 
+    // Keep the `ACTION_REQUIRED` default. The widget's `PERMIT` text map has
+    // no `MESSAGE_REQUIRED` entry, so passing one renders a row with an icon
+    // and blank text.
     const result = await signTypedDataEntries(
       context,
       intentTypedData,

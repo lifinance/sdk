@@ -140,6 +140,31 @@ describe('EthereumSignStepIntentTask.run', () => {
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
   })
 
+  it('emits exactly STARTED, ACTION_REQUIRED and DONE on the PERMIT action', async () => {
+    // The widget maps action text with
+    // `Record<ExecutionActionType, Partial<Record<ExecutionActionStatus, ...>>>`.
+    // Its `PERMIT` entry covers STARTED, ACTION_REQUIRED, PENDING and DONE, but
+    // NOT MESSAGE_REQUIRED — which would render a row with an icon and no text.
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext()
+
+    await task.run(context)
+
+    expect(
+      vi
+        .mocked(context.statusManager.initializeAction)
+        .mock.calls.map(([params]) => params.status)
+    ).toEqual(['STARTED'])
+    expect(
+      vi
+        .mocked(context.statusManager.updateAction)
+        .mock.calls.map(([, actionType, status]) => [actionType, status])
+    ).toEqual([
+      ['PERMIT', 'ACTION_REQUIRED'],
+      ['PERMIT', 'DONE'],
+    ])
+  })
+
   it('signs only the caller-intent entries, leaving the other lanes alone', async () => {
     // A native permit, not a witness: `EthereumCheckPermitsTask` signs it, so
     // this task must skip it.
