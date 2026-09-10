@@ -145,6 +145,32 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(getAccountCode).not.toHaveBeenCalled()
   })
 
+  it('native permit + caller intent keeps the gas check: the user still pays', async () => {
+    // No relayer intent on the step, so the caller-intent lane holds and the
+    // user funds this transaction, native permit beside it or not.
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'Permit',
+          domain: {},
+          types: {},
+          message: { spender: '0xdddd000000000000000000000000000000000004' },
+        },
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+    })
+    expect(getAccountCode).toHaveBeenCalled()
+  })
+
   it('mixed relayer + caller intent keeps the skip: the relayer still funds that lane', async () => {
     const step = buildStep({
       typedData: [

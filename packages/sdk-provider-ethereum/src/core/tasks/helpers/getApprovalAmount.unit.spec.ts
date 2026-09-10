@@ -91,9 +91,20 @@ describe('getApprovalAmount', () => {
   })
 
   it('ignores the relayer lane when deciding', () => {
+    // The `Order` names the approval target in `domain.verifyingContract`, so
+    // only the lane filter can keep it out of the decision. With a bare
+    // `domain: {}` this test passed on the missing field instead, and deleting
+    // the lane filter left the suite green.
     const context = buildContext({
       approvalAddress: PERMIT2,
-      typedData: [{ primaryType: 'Order', domain: {}, types: {}, message: {} }],
+      typedData: [
+        {
+          primaryType: 'Order',
+          domain: { chainId: 1, verifyingContract: PERMIT2 },
+          types: {},
+          message: {},
+        },
+      ],
     })
     expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
   })
