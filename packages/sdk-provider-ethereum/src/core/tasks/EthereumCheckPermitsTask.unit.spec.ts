@@ -139,13 +139,25 @@ describe('EthereumCheckPermitsTask.run', () => {
 
     const result = await task.run(context)
     const resultContext = result.context as
-      | { hasMatchingPermit?: boolean }
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
       | undefined
 
     expect(resultContext?.hasMatchingPermit).toBe(true)
+    // The flag alone does not discriminate: dropping the `native-permit` lane
+    // filter in `run` leaves it `true` while the task signs the WITNESS intent
+    // as well — the one entry the classifier's first rule exists to keep out
+    // of the inline-signing path.
+    expect(signTypedData).toHaveBeenCalledTimes(1)
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
   })
 
-  it('keeps hasMatchingPermit for a native + relayer step', async () => {
+  it('signs only the native permit on a native + relayer step, and keeps hasMatchingPermit', async () => {
+    // Honest note: the flag is `true` under both the shipped
+    // `!hasCallerIntent(...)` and the new `!isCallerIntentLane(...)` spelling
+    // — this fixture carries no caller intent, so neither expression can
+    // differ. The mixed-lane case above is the only evidence for that change.
+    // What this case does pin is the lane filter in `run`.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildPermitTypedData(),
@@ -154,10 +166,13 @@ describe('EthereumCheckPermitsTask.run', () => {
 
     const result = await task.run(context)
     const resultContext = result.context as
-      | { hasMatchingPermit?: boolean }
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
       | undefined
 
     expect(resultContext?.hasMatchingPermit).toBe(true)
+    expect(signTypedData).toHaveBeenCalledTimes(1)
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
   })
 
   it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {

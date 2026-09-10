@@ -173,7 +173,9 @@ describe('EthereumPrepareTransactionTask.run', () => {
 
     await task.run(buildContext(step))
 
-    expect(step.typedData).toEqual(answer)
+    // `toBe`, not `toEqual`: verbatim means identity, and `toEqual` against
+    // the very array handed to the mock compares it to itself.
+    expect(step.typedData).toBe(answer)
   })
 
   it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a caller intent is preserved', async () => {

@@ -93,8 +93,15 @@ describe('EthereumStepExecutor.createPipeline', () => {
 
     expect(names[0]).toBe('EthereumCheckBalanceTask')
     expect(names).not.toContain('EthereumSetAllowanceTask')
-    expect(names.indexOf('EthereumSignStepIntentTask')).toBeLessThan(
-      names.indexOf('EthereumPrepareTransactionTask')
-    )
+
+    const intent = names.indexOf('EthereumSignStepIntentTask')
+    const prepare = names.indexOf('EthereumPrepareTransactionTask')
+
+    // Assert presence before order. `indexOf` returns -1 for a task that is
+    // not there at all, and `-1 < n` is true — so a bare comparison sees the
+    // reorder but not the drop, which is half of what this case claims.
+    expect(intent).toBeGreaterThan(-1)
+    expect(prepare).toBeGreaterThan(-1)
+    expect(intent).toBeLessThan(prepare)
   })
 })

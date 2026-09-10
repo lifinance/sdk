@@ -62,6 +62,10 @@ describe('getTypedDataLane', () => {
   })
 
   it('puts a gasless witness intent in the relayer-intent lane', () => {
+    // The lane is pinned here; the RULE that produces it is not. A witness
+    // entry with no spender also reaches `relayer-intent` through the default
+    // branch, so deleting the witness clause of rule 1 is an equivalent mutant
+    // within this module. That clause is pinned by `isGaslessStep.unit.spec.ts`.
     expect(getTypedDataLane(entry('PermitWitnessTransferFrom'), chain)).toBe(
       'relayer-intent'
     )
