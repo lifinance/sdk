@@ -84,6 +84,21 @@ describe('findSignedNativePermit', () => {
     expect(findSignedNativePermit(context)).toBeUndefined()
   })
 
+  it('returns undefined when the API erased the declaration and only the signed record shows the intent', () => {
+    // Pins the integration point: `hasCallerIntentInFlight`, not a bare
+    // `hasCallerIntent`. `EthereumPrepareTransactionTask` overwrites
+    // `step.typedData` with `updatedStep.typedData ?? step.typedData`, and an
+    // explicit `typedData: []` from the API is not nullish — it wins the `??`
+    // and erases the caller's declaration. Only `context.signedTypedData`
+    // still carries the intent, and the native-permit wrap must stay off.
+    const context = buildContext(
+      [signedNativePermit(), signedCallerIntent()],
+      []
+    )
+
+    expect(findSignedNativePermit(context)).toBeUndefined()
+  })
+
   it('returns undefined when no native permit is signed', () => {
     expect(findSignedNativePermit(buildContext([]))).toBeUndefined()
   })

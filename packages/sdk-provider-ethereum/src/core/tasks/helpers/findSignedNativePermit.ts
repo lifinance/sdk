@@ -14,6 +14,16 @@ import { hasCallerIntentInFlight } from './hasCallerIntentInFlight.js'
  * intent the calldata returned by `/advanced/stepTransaction` already embeds the
  * signature and must be sent to its own target untouched, so the wrap would
  * destroy the transaction.
+ *
+ * The guard is a bare `hasCallerIntentInFlight`, without the
+ * `&& !hasRelayerIntent(step, fromChain)` term `resolvePermit2Support` carries.
+ * The two clauses are not symmetric, and the missing term is not an oversight:
+ * it would be dead weight here. A step whose typed data still shows a relayer
+ * intent resolves to the `relayed` strategy, so
+ * `EthereumStandardSignAndExecuteTask` — the only caller of this helper —
+ * never runs on it and this gate never sees that shape. If the API erased that
+ * typed data, `hasRelayerIntent` reads false anyway and the term would change
+ * no answer.
  */
 export function findSignedNativePermit(
   context: EthereumStepExecutorContext

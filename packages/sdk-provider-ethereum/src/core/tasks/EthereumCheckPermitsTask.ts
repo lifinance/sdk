@@ -62,9 +62,12 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       status: 'COMPLETED',
       context: {
         signedTypedData,
-        // A caller's Permit2 intent still needs the token -> Permit2 approval,
-        // so the allowance tasks must not be skipped even with a native permit
-        // in hand.
+        // A caller's Permit2 intent still needs its own ERC-20 approval to
+        // `step.estimate.approvalAddress`. For a caller-intent-only step the
+        // Permit2 gate is off, so that spender is whatever the caller named —
+        // not necessarily Permit2 — and a native permit signed for
+        // `permit2Proxy` does not provide it. The allowance tasks must not be
+        // skipped even with a native permit in hand.
         hasMatchingPermit:
           !!matchingPermit && !hasCallerIntent(step, fromChain),
       },

@@ -32,8 +32,10 @@ const isPermit2SupportedForStep = (
     // `hasCallerIntentInFlight`, not `hasCallerIntent`: by the time the
     // sign-and-execute task resolves this gate, `step.typedData` may have been
     // erased by the API. The shared helper reads the signed record too. This
-    // and `findSignedNativePermit` are the two branches of one decision and
-    // must answer from the same source.
+    // and `findSignedNativePermit` must read the caller intent from that same
+    // source. The clauses around it are NOT symmetric, though: the
+    // `&& !hasRelayerIntent` below is local to this gate, and
+    // `findSignedNativePermit` documents why it needs no counterpart.
     //
     // `&& !hasRelayerIntent`: the lanes are NOT mutually exclusive. A step
     // carrying both a witness intent and a caller intent still needs the
