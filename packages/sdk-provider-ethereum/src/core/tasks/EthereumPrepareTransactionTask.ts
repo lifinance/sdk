@@ -56,13 +56,22 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       executionOptions
     )
 
+    // What the API's answer alone leaves on the step, captured before the
+    // assignment below overwrites `step.typedData`. The guard is judged on
+    // this and not on the assigned value: `preserveCallerIntents` can put a
+    // caller intent back that the API did not send, which would satisfy the
+    // guard with data the API never returned. With
+    // `allowUserInteraction: false` the step would then PAUSE further down the
+    // pipeline instead of failing, and this error would be swallowed.
+    const answeredTypedData = updatedStep.typedData ?? step.typedData
+
     Object.assign(step, {
       ...comparedStep,
       execution: step.execution,
       typedData: preserveCallerIntents(step, updatedStep.typedData, fromChain),
     })
 
-    if (!step.transactionRequest && !step.typedData?.length) {
+    if (!step.transactionRequest && !answeredTypedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Transaction request is not found.'

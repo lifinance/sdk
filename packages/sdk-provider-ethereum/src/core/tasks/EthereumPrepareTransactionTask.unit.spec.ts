@@ -1,4 +1,9 @@
-import type { LiFiStep, LiFiStepExtended, TypedData } from '@lifi/sdk'
+import {
+  LiFiErrorCode,
+  type LiFiStep,
+  type LiFiStepExtended,
+  type TypedData,
+} from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -169,5 +174,23 @@ describe('EthereumPrepareTransactionTask.run', () => {
     await task.run(buildContext(step))
 
     expect(step.typedData).toEqual(answer)
+  })
+
+  it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a caller intent is preserved', async () => {
+    // The guard has to judge what the API answered. `preserveCallerIntents`
+    // puts the caller intent back, so `step.typedData` is non-empty by the
+    // time the guard runs — but the API returned nothing to send. With
+    // `allowUserInteraction: false` the step would PAUSE further down the
+    // pipeline instead of failing, and this error would never surface.
+    const step = buildStep([callerIntent()])
+    const { transactionRequest: _, ...answer } = buildApiAnswer([])
+    vi.mocked(getUpdatedStep).mockResolvedValue(answer as LiFiStepExtended)
+
+    await expect(task.run(buildContext(step))).rejects.toMatchObject({
+      name: 'TransactionError',
+      code: LiFiErrorCode.TransactionUnprepared,
+      message:
+        'Unable to prepare transaction. Transaction request is not found.',
+    })
   })
 })
