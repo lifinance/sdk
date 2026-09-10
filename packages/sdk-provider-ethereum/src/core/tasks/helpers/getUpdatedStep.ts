@@ -1,6 +1,7 @@
 import {
   convertQuoteToRoute,
   type ExecutionOptions,
+  type ExtendedChain,
   getContractCallsQuote,
   getRelayerQuote,
   getStepTransaction,
@@ -15,16 +16,27 @@ import { PatcherMagicNumber } from '../../../permits/constants.js'
 import { isContractCallStep } from '../../../utils/isContractCallStep.js'
 import { isGaslessStep } from '../../../utils/isGaslessStep.js'
 
+/**
+ * Re-quotes the step through the endpoint that matches how it will execute.
+ *
+ * `fromChain` is REQUIRED. `isGaslessStep` answers a lane question, and without
+ * the chain its `message.spender === chain.permit2` clause is dead: a step whose
+ * only relayer marker is that spender would be routed to `relayed` by
+ * `getEthereumExecutionStrategy`, which does pass the chain, and then re-quoted
+ * here through `/advanced/stepTransaction` — the wrong endpoint for the strategy
+ * that will run.
+ */
 export const getUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended,
+  fromChain: ExtendedChain,
   executionOptions?: ExecutionOptions,
   signedTypedData?: SignedTypedData[]
 ): Promise<LiFiStepExtended> => {
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
-  if (isGaslessStep(step)) {
+  if (isGaslessStep(step, fromChain)) {
     return getRelayerUpdatedStep(client, step)
   }
   return getStandardUpdatedStep(client, step, signedTypedData)

@@ -43,6 +43,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     const updatedStep = await getUpdatedStep(
       client,
       step,
+      fromChain,
       executionOptions,
       signedTypedData
     )
