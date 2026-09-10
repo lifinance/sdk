@@ -25,6 +25,16 @@ import { isGaslessStep } from '../../../utils/isGaslessStep.js'
  * `getEthereumExecutionStrategy`, which does pass the chain, and then re-quoted
  * here through `/advanced/stepTransaction` — the wrong endpoint for the strategy
  * that will run.
+ *
+ * Do NOT substitute `hasRelayerIntent` for `isGaslessStep` here. They disagree
+ * on purpose for every primary type that reaches the classifier's default
+ * branch — `Order`, `PermitBatch`, `Agent`, the Hyperliquid types. This
+ * function answers "which endpoint prepares the step", which is the LI.FI
+ * gasless lane specifically, not "who submits the transaction". A CowSwap step
+ * retried after the user rejects the order signature carries
+ * `typedData: [Order]`; under `hasRelayerIntent` it would fetch a relayer quote
+ * instead of re-running `/advanced/stepTransaction`, which breaks CowSwap,
+ * 1inch Fusion and Velora Delta. The last test in this file's spec pins it.
  */
 export const getUpdatedStep = async (
   client: SDKClient,

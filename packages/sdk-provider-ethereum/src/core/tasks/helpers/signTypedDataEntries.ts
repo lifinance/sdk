@@ -17,12 +17,17 @@ export type SignTypedDataEntriesResult =
 /**
  * Signs a list of typed-data entries in order, switching chains per entry.
  *
- * Shared by every task that asks the wallet for a typed-data signature:
+ * Shared by every task that requires a valid signature for each entry:
  * `EthereumCheckPermitsTask` (native permits), `EthereumSignStepIntentTask`
  * (caller-supplied Permit2 intents) and `EthereumRelayedSignAndExecuteTask`
  * (relayer intents), which passes `MESSAGE_REQUIRED` for `actionStatus`. The
  * returned array is a copy of `context.signedTypedData` with the new
  * signatures appended; the caller decides what else to put on the context.
+ *
+ * `EthereumNativePermitTask` also asks the wallet for a signature and stays
+ * out on purpose: it treats an invalid signature as "no permit" and falls back
+ * to an approval, so it needs `isValidSignature`, while this helper throws
+ * through `assertValidSignature`.
  */
 export async function signTypedDataEntries(
   context: EthereumStepExecutorContext,

@@ -26,10 +26,12 @@ import {
  * Only the caller-intent lane is preserved, and the lane is checked on both
  * sides of the call:
  *
- * - A step that already carries a relayer intent belongs to the relayer. It
- *   re-quotes through `getRelayerUpdatedStep`, which must stay free to drop
- *   every entry the step has, and its caller intent is never signed here
- *   anyway — `EthereumSignStepIntentTask` skips that shape.
+ * - A step that already carries a relayer intent belongs to the relayer. Its
+ *   re-quote must stay free to drop every entry the step has — through
+ *   `getRelayerUpdatedStep` for the gasless lane, or through
+ *   `getStandardUpdatedStep` for the primary types that reach the classifier's
+ *   default branch, such as an `Order` — and its caller intent is never signed
+ *   here anyway, because `EthereumSignStepIntentTask` skips that shape.
  * - An answer that declares a lane of its own speaks for itself. A caller
  *   intent in it means the declaration survived. A relayer intent in it means
  *   the step has moved to the relayer, where an appended caller intent would be

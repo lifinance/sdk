@@ -54,6 +54,21 @@ const permit2SpenderIntent = (): TypedData =>
     message: { spender: PERMIT2 },
   }) as unknown as TypedData
 
+/**
+ * The shape CowSwap, 1inch Fusion and Velora Delta ship. `Order` is not on the
+ * caller-intent allowlist and is not a witness intent, so the classifier's
+ * default branch calls it a relayer intent — but `isGaslessStep` says false,
+ * and that disagreement is deliberate. It has no `spender`, which is what
+ * keeps it away from the Permit2 rule.
+ */
+const order = (): TypedData =>
+  ({
+    primaryType: 'Order',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {},
+  }) as unknown as TypedData
+
 const callerIntent = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
@@ -149,5 +164,21 @@ describe('getUpdatedStep', () => {
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).not.toHaveProperty(
       'typedData'
     )
+  })
+
+  it('re-quotes an Order step through /advanced/stepTransaction, never the relayer', async () => {
+    // The prohibition this file exists to enforce. `hasRelayerIntent` returns
+    // true for an `Order` through the classifier's default branch, so
+    // substituting it for `isGaslessStep` above looks like a harmless
+    // consistency fix and is the one change that breaks the order-based
+    // custom tools: a CowSwap step retried after the user rejects the order
+    // signature carries `typedData: [Order]` and must re-run
+    // `/advanced/stepTransaction`, not fetch a relayer quote. Two reviewers
+    // proposed exactly that substitution, and until this test existed the
+    // suite could not tell the difference.
+    await getUpdatedStep(client, buildStep([order()]), chain)
+
+    expect(getStepTransaction).toHaveBeenCalledTimes(1)
+    expect(getRelayerQuote).not.toHaveBeenCalled()
   })
 })
