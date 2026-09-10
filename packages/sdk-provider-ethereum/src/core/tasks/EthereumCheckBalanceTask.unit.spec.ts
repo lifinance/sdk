@@ -46,6 +46,10 @@ const buildContext = (step: LiFiStep): EthereumStepExecutorContext =>
   ({
     client: {} as any,
     step,
+    fromChain: {
+      id: SOURCE_CHAIN,
+      permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    },
   }) as unknown as EthereumStepExecutorContext
 
 const task = new TestableEthereumCheckBalanceTask()
@@ -83,14 +87,40 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
 
   it('relayer step short-circuits to walletPaysGas: false without reading account code', async () => {
     // Pins the short-circuit so a future refactor can't silently re-introduce
-    // an `eth_getCode` round-trip on the relayer hot path.
+    // an `eth_getCode` round-trip on the relayer hot path. The fixture carries a
+    // real gasless primary type: a relayed step always has one.
     const step = buildStep({
-      typedData: [{ domain: {}, types: {}, value: {} }],
+      typedData: [
+        {
+          primaryType: 'PermitWitnessTransferFrom',
+          domain: {},
+          types: {},
+          message: {},
+        },
+      ],
     })
     expect(await task.exposed(buildContext(step))).toEqual({
       walletPaysGas: false,
     })
     expect(getAccountCode).not.toHaveBeenCalled()
+  })
+
+  it('caller-intent step keeps the gas check: the user pays for this transaction', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+    })
+    expect(getAccountCode).toHaveBeenCalled()
   })
 
   it('RPC failure (getAccountCode → undefined) for non-relayer step → walletPaysGas: true (conservative: keep strict gas check)', async () => {
