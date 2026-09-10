@@ -1,6 +1,6 @@
 {
   "name": "@lifi/sdk",
-  "version": "4.6.1",
+  "version": "4.7.0",
   "description": "LI.FI SDK for Any-to-Any Cross-Chain-Swap",
   "homepage": "https://github.com/lifinance/sdk",
   "bugs": {
@@ -47,14 +47,14 @@
     "@lifi/types": "^18.6.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.1.0",
-    "@types/node": "^26.4.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@lifi/data-types": "^7.1.1",
+    "@types/node": "^26.5.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "msw": "^2.15.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "publishConfig": {
     "access": "public"

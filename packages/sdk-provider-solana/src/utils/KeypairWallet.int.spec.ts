@@ -83,7 +83,7 @@ const runWalletScenario = ({ name, setup }: WalletScenario) => {
   })
 }
 
-describe.sequential('KeypairWallet Integration Tests', () => {
+describe('KeypairWallet Integration Tests', { concurrent: false }, () => {
   // example test secret gotten from https://solana.com/developers/cookbook/wallets/restore-keypair
   const testSecretKeyBase58 =
     '5MaiiCavjCmn9Hs1o3eznqDEhRwxo7pXiAYez7keQUviUkauRiTMD8DrESdrNjN8zd9mTmVhRvBJeg5vhyvgrAhG'
