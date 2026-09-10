@@ -55,8 +55,8 @@ importers:
   packages/sdk:
     dependencies:
       '@lifi/types':
-        specifier: ^18.4.0
-        version: 18.4.0
+        specifier: ^18.6.0
+        version: 18.6.0
     devDependencies:
       '@lifi/data-types':
         specifier: ^7.1.0
@@ -652,6 +652,9 @@ packages:
 
   '@lifi/types@18.4.0':
     resolution: {integrity: sha512-H0c2fwrS7fyPLVzEf8UydZ1rfNXCxW7TGfsqf0goGH2BiLIkcBAVIpiCzuIB+YBgKCwZ53wIvgBa+6AZe7Y5PQ==}
+
+  '@lifi/types@18.6.0':
+    resolution: {integrity: sha512-ou5zsrUl8DyVKI/AFAOy35UjG/4eADAh4qbi5JUflFoIREeCP+1JGvJQJl+kJ9xXZ/D3HgE9JJw1A1m15caZVA==}
 
   '@manypkg/find-root@3.1.0':
     resolution: {integrity: sha512-BcSqCyKhBVZ5YkSzOiheMCV41kqAFptW6xGqYSTjkVTl9XQpr+pqHhwgGCOHQtjDCv7Is6EFyA14Sm5GVbVABA==}
@@ -4002,6 +4005,8 @@ snapshots:
       '@lifi/types': 18.4.0
 
   '@lifi/types@18.4.0': {}
+
+  '@lifi/types@18.6.0': {}
 
   '@manypkg/find-root@3.1.0':
     dependencies:

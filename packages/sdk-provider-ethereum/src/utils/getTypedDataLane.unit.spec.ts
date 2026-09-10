@@ -28,9 +28,9 @@ const entry = (primaryType: string, spender?: string): TypedData =>
 const stepWith = (...primaryTypes: string[]): LiFiStep =>
   ({ typedData: primaryTypes.map((t) => entry(t)) }) as unknown as LiFiStep
 
-// Every value @lifi/types declares, plus the two the API can send before the
-// types package knows them. A new primary type with no entry here fails the
-// exhaustiveness test below, which forces a deliberate lane decision.
+// Every value @lifi/types declares, plus `PermitBatch`, which the API can send
+// before the types package knows it. A new primary type with no entry here
+// fails the exhaustiveness test below, which forces a deliberate lane decision.
 const EXPECTED_LANES: Record<string, TypedDataLane> = {
   Permit: 'native-permit',
   PermitSingle: 'caller-intent',
@@ -87,9 +87,9 @@ describe('getTypedDataLane', () => {
     )
   })
 
-  it('keeps a chain.permit2 spender in the relayer lane even for an allowlisted type', () => {
-    // The relayer clause is tested ahead of the allowlist on purpose: no
-    // allowlist member may escape into the inline-signing path.
+  it('keeps a chain.permit2 spender in the relayer lane even for a caller-intent type', () => {
+    // The relayer clause is tested ahead of the caller-intent rule on purpose:
+    // no caller-intent type may escape into the inline-signing path.
     expect(getTypedDataLane(entry('PermitSingle', PERMIT2), chain)).toBe(
       'relayer-intent'
     )
@@ -104,8 +104,10 @@ describe('getTypedDataLane', () => {
     }
   })
 
-  it('classifies PermitSingle and PermitBatch, which @lifi/types does not declare yet', () => {
-    expect(getTypedDataLane(entry('PermitSingle'), chain)).toBe('caller-intent')
+  it('classifies PermitBatch, which @lifi/types does not declare yet', () => {
+    // Excluded from the caller-intent rule on purpose: `details` covers several
+    // tokens, while the allowance path is single-token. `PermitSingle` needs no
+    // case here — 18.6.0 declares it, so the exhaustiveness loop covers it.
     expect(getTypedDataLane(entry('PermitBatch'), chain)).toBe('relayer-intent')
   })
 })

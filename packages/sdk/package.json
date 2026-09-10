@@ -44,7 +44,7 @@
     "watch": "tsdown --watch"
   },
   "dependencies": {
-    "@lifi/types": "^18.4.0"
+    "@lifi/types": "^18.6.0"
   },
   "devDependencies": {
     "@lifi/data-types": "^7.1.0",

@@ -23,21 +23,6 @@ import { isGaslessTypedData } from './isGaslessStep.js'
  */
 export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
 
-/**
- * Primary types the SDK signs inline for a caller's own spender.
- *
- * Deliberately `readonly string[]`, not a `TypedDataPrimaryType` union.
- * `@lifi/types` does not declare `PermitSingle`, so `primaryType === 'PermitSingle'`
- * fails to compile with TS2367. The API can also ship a primary type before the
- * types package knows it, and this classifier tolerates that through its default
- * branch. `getTypedDataLane.unit.spec.ts` pins the literal, which recovers the
- * typo protection a union would have given.
- *
- * `PermitBatch` is excluded on purpose: its `details` covers several tokens,
- * while the allowance path is single-token (`step.action.fromToken.address`).
- */
-const CALLER_INTENT_PRIMARY_TYPES: readonly string[] = ['PermitSingle']
-
 export function getTypedDataLane(
   typedData: TypedData,
   chain: ExtendedChain
@@ -56,7 +41,10 @@ export function getTypedDataLane(
   if (isGaslessTypedData(typedData, chain)) {
     return 'relayer-intent'
   }
-  if (CALLER_INTENT_PRIMARY_TYPES.includes(typedData.primaryType)) {
+  // `PermitSingle` only. `PermitBatch` is excluded on purpose: its `details`
+  // covers several tokens, while the allowance path is single-token
+  // (`step.action.fromToken.address`).
+  if (typedData.primaryType === 'PermitSingle') {
     return 'caller-intent'
   }
   // `Order`, `PermitBatch`, Hyperliquid messages and every future type.
