@@ -1,7 +1,7 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import {
-  getTypedDataLane,
+  getTypedDataInLane,
   isCallerIntentLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
@@ -41,11 +41,7 @@ export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    const intentTypedData =
-      step.typedData?.filter(
-        (typedData) =>
-          getTypedDataLane(typedData, fromChain) === 'caller-intent'
-      ) ?? []
+    const intentTypedData = getTypedDataInLane(step, 'caller-intent', fromChain)
 
     const result = await signTypedDataEntries(
       context,

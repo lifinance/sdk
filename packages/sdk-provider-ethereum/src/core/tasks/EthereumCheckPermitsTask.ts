@@ -2,6 +2,7 @@ import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import {
+  getTypedDataInLane,
   getTypedDataLane,
   isCallerIntentLane,
 } from '../../utils/getTypedDataLane.js'
@@ -13,11 +14,12 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
 
-    const permitTypedData = step.typedData?.filter(
-      (typedData) => getTypedDataLane(typedData, fromChain) === 'native-permit'
+    return (
+      !!step.typedData?.some(
+        (typedData) =>
+          getTypedDataLane(typedData, fromChain) === 'native-permit'
+      ) && !disableMessageSigning
     )
-
-    return !!permitTypedData?.length && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -33,11 +35,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
     // Only native EIP-2612 permits are signed here. Caller-supplied Permit2
     // intents belong to EthereumSignStepIntentTask, which runs after the
     // allowance work.
-    const permitTypedData =
-      step.typedData?.filter(
-        (typedData) =>
-          getTypedDataLane(typedData, fromChain) === 'native-permit'
-      ) ?? []
+    const permitTypedData = getTypedDataInLane(step, 'native-permit', fromChain)
 
     const result = await signTypedDataEntries(
       context,

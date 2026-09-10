@@ -5,6 +5,7 @@ import type {
   TypedData,
 } from '@lifi/sdk'
 import {
+  getTypedDataInLane,
   getTypedDataLane,
   isCallerIntentLane,
 } from '../../../utils/getTypedDataLane.js'
@@ -57,9 +58,8 @@ export function preserveCallerIntents(
     return updatedTypedData
   }
 
-  const callerIntents = (step.typedData ?? []).filter(
-    (typedData) => getTypedDataLane(typedData, chain) === 'caller-intent'
-  )
-
-  return [...updatedTypedData, ...callerIntents]
+  return [
+    ...updatedTypedData,
+    ...getTypedDataInLane(step, 'caller-intent', chain),
+  ]
 }

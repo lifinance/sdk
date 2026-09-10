@@ -1,6 +1,6 @@
 import { MaxUint256 } from '../../../permits/constants.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { getTypedDataLane } from '../../../utils/getTypedDataLane.js'
+import { getTypedDataInLane } from '../../../utils/getTypedDataLane.js'
 
 /**
  * How much of the source token to approve to the step's approval address.
@@ -34,10 +34,7 @@ export function getApprovalAmount(
   // and it falls back to the swap amount.
   const callerIntents = disableMessageSigning
     ? []
-    : (step.typedData?.filter(
-        (typedData) =>
-          getTypedDataLane(typedData, fromChain) === 'caller-intent'
-      ) ?? [])
+    : getTypedDataInLane(step, 'caller-intent', fromChain)
 
   const approvalAddress = step.estimate.approvalAddress?.toLowerCase()
   const targetsApprovalAddress =

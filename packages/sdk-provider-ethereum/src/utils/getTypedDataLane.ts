@@ -4,6 +4,7 @@ import type {
   LiFiStepExtended,
   TypedData,
 } from '@lifi/sdk'
+import { isGaslessTypedData } from './isGaslessStep.js'
 
 /**
  * Which execution lane one `step.typedData` entry belongs to.
@@ -39,14 +40,12 @@ export function getTypedDataLane(
   // Tested first, always. The SDK must never sign a gasless intent inline,
   // whatever else the entry looks like.
   //
-  // The spender clause mirrors `isGaslessStep` verbatim. It looks unreachable —
-  // `getPermitTransferFromValues` sets `spender` to `chain.permit2Proxy`, not
-  // `chain.permit2` — but proving it dead needs the relayer service, and a wrong
-  // answer breaks gasless. It stays until that is settled.
-  if (
-    typedData.primaryType === 'PermitWitnessTransferFrom' ||
-    (!!chain?.permit2 && typedData.message.spender === chain.permit2)
-  ) {
+  // Shared with `isGaslessStep`, so the two can never drift. Its spender clause
+  // looks unreachable — `getPermitTransferFromValues` sets `spender` to
+  // `chain.permit2Proxy`, not `chain.permit2` — but proving it dead needs the
+  // relayer service, and a wrong answer breaks gasless. It stays until that is
+  // settled.
+  if (isGaslessTypedData(typedData, chain)) {
     return 'relayer-intent'
   }
   if (typedData.primaryType === 'Permit') {
@@ -66,6 +65,19 @@ export function hasCallerIntent(
 ): boolean {
   return !!step.typedData?.some(
     (typedData) => getTypedDataLane(typedData, chain) === 'caller-intent'
+  )
+}
+
+/** The step's typed-data entries that belong to `lane`. */
+export function getTypedDataInLane(
+  step: LiFiStepExtended | LiFiStep,
+  lane: TypedDataLane,
+  chain: ExtendedChain
+): TypedData[] {
+  return (
+    step.typedData?.filter(
+      (typedData) => getTypedDataLane(typedData, chain) === lane
+    ) ?? []
   )
 }
 
