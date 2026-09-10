@@ -1,4 +1,9 @@
-import type { ExecutionActionType, SignedTypedData, TypedData } from '@lifi/sdk'
+import type {
+  ExecutionActionStatus,
+  ExecutionActionType,
+  SignedTypedData,
+  TypedData,
+} from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { EthereumStepExecutorContext } from '../../../types.js'
@@ -12,16 +17,18 @@ export type SignTypedDataEntriesResult =
 /**
  * Signs a list of typed-data entries in order, switching chains per entry.
  *
- * Shared by the two tasks that sign before the transaction is prepared:
- * `EthereumCheckPermitsTask` (native permits) and `EthereumSignStepIntentTask`
- * (caller-supplied Permit2 intents). The returned array is a copy of
- * `context.signedTypedData` with the new signatures appended; the caller decides
- * what else to put on the context.
+ * Shared by every task that asks the wallet for a typed-data signature:
+ * `EthereumCheckPermitsTask` (native permits), `EthereumSignStepIntentTask`
+ * (caller-supplied Permit2 intents) and `EthereumRelayedSignAndExecuteTask`
+ * (relayer intents), which passes `MESSAGE_REQUIRED` for `actionStatus`. The
+ * returned array is a copy of `context.signedTypedData` with the new
+ * signatures appended; the caller decides what else to put on the context.
  */
 export async function signTypedDataEntries(
   context: EthereumStepExecutorContext,
   entries: TypedData[],
-  actionType: ExecutionActionType
+  actionType: ExecutionActionType,
+  actionStatus: ExecutionActionStatus = 'ACTION_REQUIRED'
 ): Promise<SignTypedDataEntriesResult> {
   const {
     step,
@@ -34,7 +41,7 @@ export async function signTypedDataEntries(
   const signedTypedData = [...currentSignedTypedData]
 
   for (const typedData of entries) {
-    statusManager.updateAction(step, actionType, 'ACTION_REQUIRED')
+    statusManager.updateAction(step, actionType, actionStatus)
 
     if (!allowUserInteraction) {
       return { status: 'PAUSED' }
