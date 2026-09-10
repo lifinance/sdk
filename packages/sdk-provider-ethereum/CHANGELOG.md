@@ -1,5 +1,16 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.1.0
+
+### Minor Changes
+
+- [#471](https://github.com/lifinance/sdk/pull/471) [`a57b439`](https://github.com/lifinance/sdk/commit/a57b4391b52d9bc535577dcbfad1523ab4d2e32f) Thanks [@chybisov](https://github.com/chybisov)! - Add optional `SDKProvider.isTokenAddress`, so callers can validate a token identifier without knowing how each ecosystem shapes one: `C…` contract ids on Stellar, `0x…::module::TYPE` coin types on Sui, an address in any letter case on Ethereum, and the wallet format on Solana and Tron. `BitcoinProvider` omits the method, because the token list names its native coin `bitcoin` rather than giving it an address. A missing method means the ecosystem has no token address format, so a caller must not fall back to `isAddress`.
+
+### Patch Changes
+
+- Updated dependencies [[`d7d8abb`](https://github.com/lifinance/sdk/commit/d7d8abb776aa943aafda62d17926b8575f770478), [`a57b439`](https://github.com/lifinance/sdk/commit/a57b4391b52d9bc535577dcbfad1523ab4d2e32f)]:
+  - @lifi/sdk@4.7.0
+
 ## 4.0.14
 
 ### Patch Changes
