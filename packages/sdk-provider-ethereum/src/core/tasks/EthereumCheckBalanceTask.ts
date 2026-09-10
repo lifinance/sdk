@@ -22,14 +22,10 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
   ): Promise<CheckBalanceOptions> {
     const { client, step, fromChain } = context
 
-    // The user demonstrably funds the transaction only when the step carries a
-    // caller-supplied intent and nothing headed for the relayer. Every other
-    // typed-data shape keeps the historical skip: this task runs BEFORE
-    // prepare, so a step carrying only a native `Permit` may still come back
-    // from `/advanced/stepTransaction` as an `Order` the relayer pays for, and
-    // the two are indistinguishable here. Skip-bias is deliberate — a wrong
-    // skip is caught by the wallet rejecting the tx, a wrong enforce blocks a
-    // tx that would have succeeded.
+    // Every other typed-data shape keeps the historical skip: this task runs
+    // BEFORE prepare, so a step carrying only a native `Permit` may still come
+    // back from `/advanced/stepTransaction` as an `Order` the relayer pays
+    // for, and the two are indistinguishable here.
     const userFundsTransaction = isCallerIntentLane(step, fromChain)
     if (step.typedData?.length && !userFundsTransaction) {
       return { walletPaysGas: false }
