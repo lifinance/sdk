@@ -10,6 +10,7 @@ import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.j
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
+import { preserveCallerIntents } from './helpers/preserveCallerIntents.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -23,6 +24,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       signedTypedData,
       ethereumClient,
+      fromChain,
     } = context
 
     const action = statusManager.findAction(
@@ -56,7 +58,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     Object.assign(step, {
       ...comparedStep,
       execution: step.execution,
-      typedData: updatedStep.typedData ?? step.typedData,
+      typedData: preserveCallerIntents(step, updatedStep.typedData, fromChain),
     })
 
     if (!step.transactionRequest && !step.typedData?.length) {
