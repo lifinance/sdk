@@ -37,17 +37,35 @@ const buildPermitTypedData = (): TypedData =>
     },
   }) as TypedData
 
-const buildContext = (): EthereumStepExecutorContext => {
+const buildPermitSingleTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitSingle',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {
+      details: { token: '0xcccc000000000000000000000000000000000003' },
+      spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af',
+      sigDeadline: String(Math.floor(Date.now() / 1000) + 3600),
+    },
+  }) as unknown as TypedData
+
+const buildContext = (
+  typedData: TypedData[] = [buildPermitTypedData()]
+): EthereumStepExecutorContext => {
   const step = {
     type: 'lifi',
     id: 'step-1',
     tool: 'lifi',
     action: { fromChainId: SOURCE_CHAIN, fromAddress: FROM_ADDRESS },
     estimate: { gasCosts: [], feeCosts: [] },
-    typedData: [buildPermitTypedData()],
+    typedData,
   } as unknown as LiFiStep
   return {
     step,
+    fromChain: {
+      id: SOURCE_CHAIN,
+      permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    },
     statusManager: {
       initializeAction: vi.fn().mockReturnValue({ type: 'PERMIT' }),
       updateAction: vi.fn(),
@@ -90,5 +108,30 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(result.status).toBe('COMPLETED')
     expect(resultContext?.hasMatchingPermit).toBe(true)
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
+  })
+
+  it('does not run for a caller-supplied Permit2 intent, which the intent task signs', async () => {
+    const context = buildContext([buildPermitSingleTypedData()])
+    expect(await task.shouldRun(context)).toBe(false)
+  })
+
+  it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
+    // A native permit's spender is fromChain.permit2Proxy. It satisfies nothing
+    // a third-party Permit2 intent needs, so the token -> Permit2 approval must
+    // still run.
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildPermitTypedData(),
+      buildPermitSingleTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
+      | undefined
+
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
+    expect(resultContext?.hasMatchingPermit).toBe(false)
   })
 })
