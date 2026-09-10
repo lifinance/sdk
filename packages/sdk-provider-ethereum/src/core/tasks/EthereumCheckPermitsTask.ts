@@ -67,6 +67,16 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         // `permit2Proxy` does not provide it. A mixed-lane step keeps the
         // gate, keeps `fromChain.permit2` as the spender, and keeps the
         // historical skip.
+        //
+        // Accepted trade-off for the three-lane shape
+        // `[PermitWitnessTransferFrom, PermitSingle, Permit]`: it takes the
+        // skip, so if the relayer re-quote then answers `typedData: []` with a
+        // `transactionRequest` and the forced recalculation lands on
+        // `batched`, the batch ships with no approve and reverts. The skip
+        // stays: it matches `main`, it matches every sibling gate — a
+        // mixed-lane step belongs to the relayer — and the opposite behaviour
+        // asks a gasless user to fund an approval they do not owe.
+        // No shipped tool produces a three-lane step today.
         hasMatchingPermit:
           !!matchingPermit && !isCallerIntentLane(step, fromChain),
       },
