@@ -114,4 +114,52 @@ describe('getSolanaBalance', () => {
     expect(unheld.amount).toBeUndefined()
     expect(unheld.blockNumber).toBe(123n)
   })
+
+  it('does not dedupe balance reads across different wallets', async () => {
+    const secondWallet = '11111111111111111111111111111111'
+    let releaseFirst!: () => void
+    const firstWalletGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    let balanceCalls = 0
+    let tokenAccountCalls = 0
+
+    const rpc = {
+      getSlot: () => ({ send: () => Promise.resolve(123n) }),
+      getBalance: (owner: unknown) => ({
+        send: async () => {
+          balanceCalls++
+          if (String(owner) === WALLET) {
+            await firstWalletGate
+            return { value: 100n }
+          }
+          return { value: 200n }
+        },
+      }),
+      getTokenAccountsByOwner: (owner: unknown) => ({
+        send: async () => {
+          tokenAccountCalls++
+          if (String(owner) === WALLET) {
+            await firstWalletGate
+          }
+          return { value: [] }
+        },
+      }),
+    }
+
+    driveWith(rpc)
+
+    const nativeToken = token('11111111111111111111111111111111')
+    const first = getSolanaBalance({} as never, WALLET, [nativeToken])
+    const second = getSolanaBalance({} as never, secondWallet, [nativeToken])
+
+    releaseFirst()
+
+    const [[firstBalance], [secondBalance]] = await Promise.all([first, second])
+
+    expect(firstBalance.amount).toBe(100n)
+    expect(secondBalance.amount).toBe(200n)
+    expect(balanceCalls).toBe(2)
+    expect(tokenAccountCalls).toBe(4)
+  })
 })

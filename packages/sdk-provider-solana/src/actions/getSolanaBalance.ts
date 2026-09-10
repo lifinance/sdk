@@ -57,7 +57,7 @@ const getSolanaBalanceDefault = async (
           callSolanaRpcsWithRetry(client, (rpc) =>
             rpc.getBalance(accountAddress, { commitment: 'confirmed' }).send()
           ),
-        { id: `${getSolanaBalanceDefault.name}.getBalance` }
+        { id: `${getSolanaBalanceDefault.name}.getBalance.${walletAddress}` }
       ),
       withDedupe(
         () =>
@@ -76,7 +76,7 @@ const getSolanaBalanceDefault = async (
               .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${TokenProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${walletAddress}.${TokenProgramId}`,
         }
       ),
       withDedupe(
@@ -96,7 +96,7 @@ const getSolanaBalanceDefault = async (
               .send()
           ),
         {
-          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${Token2022ProgramId}`,
+          id: `${getSolanaBalanceDefault.name}.getTokenAccountsByOwner.${walletAddress}.${Token2022ProgramId}`,
         }
       ),
     ])

@@ -134,7 +134,9 @@ const getTronBalanceDefault = async (
         if (isZeroAddress(token.address)) {
           return withDedupe(
             async () => BigInt(await tronWeb.trx.getBalance(walletAddress)),
-            { id: `${getTronBalanceDefault.name}.getBalance.${host}` }
+            {
+              id: `${getTronBalanceDefault.name}.getBalance.${walletAddress}.${host}`,
+            }
           )
         }
         return withDedupe(
@@ -146,7 +148,7 @@ const getTronBalanceDefault = async (
             return BigInt(balance.toString())
           },
           {
-            id: `${getTronBalanceDefault.name}.balanceOf.${token.address}.${host}`,
+            id: `${getTronBalanceDefault.name}.balanceOf.${walletAddress}.${token.address}.${host}`,
           }
         )
       })
