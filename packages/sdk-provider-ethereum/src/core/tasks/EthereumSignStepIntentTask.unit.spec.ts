@@ -57,7 +57,11 @@ const nativePermit = (): TypedData =>
     types: {},
     message: {
       owner: FROM_ADDRESS,
-      spender: PERMIT2,
+      // Not `chain.permit2`: `getTypedDataLane` returns `relayer-intent` for
+      // any message whose spender is the Permit2 deployment, whatever its
+      // primary type. This fixture has to reach the `native-permit` branch for
+      // the test below to mean what its name says.
+      spender: '0xcccc000000000000000000000000000000000003',
       value: '1',
       deadline: '1',
     },

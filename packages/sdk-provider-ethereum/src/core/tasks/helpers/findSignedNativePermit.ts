@@ -1,7 +1,10 @@
 import type { SignedTypedData } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../../types.js'
 import { getDomainChainId } from '../../../utils/getDomainChainId.js'
-import { hasCallerIntent } from '../../../utils/getTypedDataLane.js'
+import {
+  getTypedDataLane,
+  hasCallerIntent,
+} from '../../../utils/getTypedDataLane.js'
 import { isValidSignature } from '../../../utils/isValidSignature.js'
 
 /**
@@ -20,7 +23,16 @@ export function findSignedNativePermit(
 ): SignedTypedData | undefined {
   const { step, fromChain, signedTypedData } = context
 
-  if (hasCallerIntent(step, fromChain)) {
+  // Two sources on purpose. `step.typedData` is the caller's declaration, but
+  // `EthereumPrepareTransactionTask` overwrites it with
+  // `updatedStep.typedData ?? step.typedData`, and an explicit `typedData: []`
+  // from the API is not nullish — it wins the `??` and erases the declaration.
+  // `signedTypedData` records what this execution actually signed, so it
+  // survives that. Either one is enough to suppress the wrap.
+  const signedCallerIntent = signedTypedData.some(
+    (typedData) => getTypedDataLane(typedData, fromChain) === 'caller-intent'
+  )
+  if (signedCallerIntent || hasCallerIntent(step, fromChain)) {
     return undefined
   }
 
