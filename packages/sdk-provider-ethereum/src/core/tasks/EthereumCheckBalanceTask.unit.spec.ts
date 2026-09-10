@@ -123,6 +123,50 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(getAccountCode).toHaveBeenCalled()
   })
 
+  it('native-permit-only step keeps the historical skip without reading account code', async () => {
+    // The pre-prepare shape CowSwap, 1inch Fusion and Velora Delta all ship.
+    // This task runs BEFORE prepare, so `/advanced/stepTransaction` may still
+    // answer with an `Order` the relayer pays for, and that is
+    // indistinguishable from a user-funded transaction here. Enforcing would
+    // block a gasless order the user could have placed.
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'Permit',
+          domain: {},
+          types: {},
+          message: {},
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: false,
+    })
+    expect(getAccountCode).not.toHaveBeenCalled()
+  })
+
+  it('mixed relayer + caller intent keeps the skip: the relayer still funds that lane', async () => {
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'PermitWitnessTransferFrom',
+          domain: {},
+          types: {},
+          message: {},
+        },
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: false,
+    })
+  })
+
   it('RPC failure (getAccountCode → undefined) for non-relayer step → walletPaysGas: true (conservative: keep strict gas check)', async () => {
     vi.mocked(getAccountCode).mockResolvedValue(undefined)
     const step = buildStep()

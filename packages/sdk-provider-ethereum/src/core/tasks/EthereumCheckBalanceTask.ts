@@ -3,15 +3,18 @@ import type { Address } from 'viem'
 import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { hasRelayerIntent } from '../../utils/getTypedDataLane.js'
+import {
+  hasCallerIntent,
+  hasRelayerIntent,
+} from '../../utils/getTypedDataLane.js'
 
 /**
  * Skips the outer-tx gas check for steps where the wallet doesn't fund it:
  * smart-contract wallets (Safe Apps, 4337, 7579, …) where the
- * executor / bundler / paymaster pays, and steps that still carry a relayer
- * intent. A caller-supplied Permit2 intent is NOT one of those: the user sends
- * and funds that transaction. Source amount and non-included native fees are
- * still verified.
+ * executor / bundler / paymaster pays, and every typed-data step except the
+ * one shape that demonstrably belongs to the user — a caller-supplied Permit2
+ * intent with no relayer intent beside it. The user sends and funds that
+ * transaction. Source amount and non-included native fees are still verified.
  *
  * Skip-bias is intentional: a wrong skip is caught by the wallet rejecting
  * the tx; a wrong enforce blocks a tx that would have succeeded.
@@ -22,9 +25,17 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
   ): Promise<CheckBalanceOptions> {
     const { client, step, fromChain } = context
 
-    // Relayer pays gas regardless of wallet shape — answer is fixed, no RPC
-    // needed. A caller-intent step is NOT this: the user sends and funds it.
-    if (hasRelayerIntent(step, fromChain)) {
+    // The user demonstrably funds the transaction only when the step carries a
+    // caller-supplied intent and nothing headed for the relayer. Every other
+    // typed-data shape keeps the historical skip: this task runs BEFORE
+    // prepare, so a step carrying only a native `Permit` may still come back
+    // from `/advanced/stepTransaction` as an `Order` the relayer pays for, and
+    // the two are indistinguishable here. Skip-bias is deliberate — a wrong
+    // skip is caught by the wallet rejecting the tx, a wrong enforce blocks a
+    // tx that would have succeeded.
+    const userFundsTransaction =
+      hasCallerIntent(step, fromChain) && !hasRelayerIntent(step, fromChain)
+    if (step.typedData?.length && !userFundsTransaction) {
       return { walletPaysGas: false }
     }
 
