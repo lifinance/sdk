@@ -2,7 +2,10 @@ import type { TransactionMethodType } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { canAccountUsePermit2 } from '../../../permits/canAccountUsePermit2.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { hasCallerIntent } from '../../../utils/getTypedDataLane.js'
+import {
+  hasCallerIntent,
+  hasRelayerIntent,
+} from '../../../utils/getTypedDataLane.js'
 
 /**
  * Cheap, synchronous part of the gate: does the step/chain combination allow
@@ -25,10 +28,14 @@ const isPermit2SupportedForStep = (
     !step.estimate.skipApproval &&
     !step.estimate.skipPermit &&
     // The caller brought its own Permit2 message for its own spender. LI.FI's
-    // proxy flow would sign a second, competing one. Note this is the
-    // caller-intent lane specifically: a gasless witness intent MUST keep the
-    // gate on, or the allowance moves off Permit2 and the relay reverts.
-    !hasCallerIntent(step, fromChain)
+    // proxy flow would sign a second, competing one.
+    //
+    // `&& !hasRelayerIntent`: the lanes are NOT mutually exclusive. A step
+    // carrying both a witness intent and a caller intent still needs the
+    // relayer to pull through Permit2, so the gate must stay ON. Turning it
+    // off would move the allowance spender off `fromChain.permit2` and revert
+    // the relay.
+    !(hasCallerIntent(step, fromChain) && !hasRelayerIntent(step, fromChain))
   )
 }
 

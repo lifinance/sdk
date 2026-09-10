@@ -271,4 +271,21 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   it('turns the gate off for the relayed strategy too', async () => {
     expect(await run(buildCallerIntentContext(), 'relayed')).toBe(false)
   })
+
+  it('keeps the gate ON for a step carrying both a witness intent and a caller intent', async () => {
+    // The lanes are not mutually exclusive. The relayer still pulls through
+    // Permit2 here, so moving the spender to approvalAddress would revert it.
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [
+          typedDataEntry('PermitWitnessTransferFrom'),
+          typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+        ],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context, 'relayed')).toBe(true)
+  })
 })
