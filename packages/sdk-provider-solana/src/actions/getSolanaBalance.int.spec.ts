@@ -18,7 +18,7 @@ const defaultWalletAddress = '9T655zHa6bYrTHWdy59NFqkjwoaSwfMat2yzixE1nb56'
 const retryTimes = 2
 const timeout = 10000
 
-describe.sequential('Solana token balance', async () => {
+describe('Solana token balance', { concurrent: false }, async () => {
   const loadAndCompareTokenAmounts = async (
     walletAddress: string,
     tokens: StaticToken[]

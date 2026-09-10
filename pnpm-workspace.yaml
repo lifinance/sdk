@@ -32,6 +32,7 @@ minimumReleaseAgeExclude:
   - tsdown@0.22.7
   - yuku-codegen@0.6.1
   - yuku-parser@0.6.1
+  - '@rolldown/binding-openharmony-arm64@1.2.8'
 overrides:
   axios: ^1.16.0
   ws@<=8.21.1: 8.21.1
