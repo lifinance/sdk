@@ -52,10 +52,10 @@ describe('hasCallerIntentInFlight', () => {
   })
 
   it('is true from the signed record alone', () => {
-    // The hole this helper exists for. `EthereumPrepareTransactionTask`
-    // overwrites `step.typedData` with `updatedStep.typedData ?? step.typedData`,
-    // and an explicit `typedData: []` from the API is not nullish, so it wins
-    // and erases the declaration.
+    // The defence-in-depth arm. `preserveCallerIntents` keeps the
+    // declaration alive through `EthereumPrepareTransactionTask`, but the
+    // signed record is read too: this gate decides whether the SDK may rewrite
+    // the caller's calldata, and a wrong answer destroys the transaction.
     expect(
       hasCallerIntentInFlight(buildContext([], [signedCallerIntent()]))
     ).toBe(true)

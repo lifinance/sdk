@@ -2,8 +2,7 @@ import type { TransactionMethodType } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { canAccountUsePermit2 } from '../../../permits/canAccountUsePermit2.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { hasRelayerIntent } from '../../../utils/getTypedDataLane.js'
-import { hasCallerIntentInFlight } from './hasCallerIntentInFlight.js'
+import { isCallerIntentLaneInFlight } from './hasCallerIntentInFlight.js'
 
 /**
  * Cheap, synchronous part of the gate: does the step/chain combination allow
@@ -29,20 +28,12 @@ const isPermit2SupportedForStep = (
     // proxy flow would sign a second, competing one, wrap the calldata in
     // `encodePermit2Data` and retarget the transaction to `permit2Proxy`.
     //
-    // `hasCallerIntentInFlight`, not `hasCallerIntent`: by the time the
+    // The in-flight variant, not `isCallerIntentLane`: by the time the
     // sign-and-execute task resolves this gate, `step.typedData` may have been
-    // erased by the API. The shared helper reads the signed record too. This
-    // and `findSignedNativePermit` must read the caller intent from that same
-    // source. The clauses around it are NOT symmetric, though: the
-    // `&& !hasRelayerIntent` below is local to this gate, and
-    // `findSignedNativePermit` documents why it needs no counterpart.
-    //
-    // `&& !hasRelayerIntent`: the lanes are NOT mutually exclusive. A step
-    // carrying both a witness intent and a caller intent still needs the
-    // relayer to pull through Permit2, so the gate must stay ON. Turning it
-    // off would move the allowance spender off `fromChain.permit2` and revert
-    // the relay.
-    !(hasCallerIntentInFlight(context) && !hasRelayerIntent(step, fromChain))
+    // replaced by the API's answer. It reads the signed record too, and
+    // `findSignedNativePermit` must read the caller intent from that same
+    // source.
+    !isCallerIntentLaneInFlight(context)
   )
 }
 

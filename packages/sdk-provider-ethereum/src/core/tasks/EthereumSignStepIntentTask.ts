@@ -2,8 +2,7 @@ import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import {
   getTypedDataLane,
-  hasCallerIntent,
-  hasRelayerIntent,
+  isCallerIntentLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
@@ -29,18 +28,7 @@ export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
 
-    // `&& !hasRelayerIntent`: the lanes are NOT mutually exclusive, and a step
-    // carrying both belongs to the relayer. `getUpdatedStep` sends such a step
-    // to `getRelayerUpdatedStep`, which takes no `signedTypedData` and
-    // re-quotes, so a signature collected here is discarded — and if the
-    // re-quote echoes the `PermitSingle`, `EthereumRelayedSignAndExecuteTask`
-    // asks for it again. Signing here would cost the user a second prompt for
-    // nothing.
-    return (
-      hasCallerIntent(step, fromChain) &&
-      !hasRelayerIntent(step, fromChain) &&
-      !disableMessageSigning
-    )
+    return isCallerIntentLane(step, fromChain) && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {

@@ -78,3 +78,20 @@ export function hasRelayerIntent(
     (typedData) => getTypedDataLane(typedData, chain) === 'relayer-intent'
   )
 }
+
+/**
+ * Whether the step runs on the caller-intent lane: it carries a Permit2 message the SDK signs for
+ * the caller's own spender, and nothing a relayer must sign and submit. The user sends and funds
+ * that transaction, and the calldata the API returns for it is final.
+ *
+ * The lanes are NOT mutually exclusive, and the second term is the whole point. A step carrying
+ * both a witness intent and a caller intent is still gasless: the relayer pulls the tokens through
+ * Permit2, so every gate that must leave a caller-executed step alone has to keep its hands off
+ * that step too. Ask the question in one place.
+ */
+export function isCallerIntentLane(
+  step: LiFiStepExtended | LiFiStep,
+  chain: ExtendedChain
+): boolean {
+  return hasCallerIntent(step, chain) && !hasRelayerIntent(step, chain)
+}

@@ -3,10 +3,7 @@ import type { Address } from 'viem'
 import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import {
-  hasCallerIntent,
-  hasRelayerIntent,
-} from '../../utils/getTypedDataLane.js'
+import { isCallerIntentLane } from '../../utils/getTypedDataLane.js'
 
 /**
  * Skips the outer-tx gas check for steps where the wallet doesn't fund it:
@@ -33,8 +30,7 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
     // the two are indistinguishable here. Skip-bias is deliberate — a wrong
     // skip is caught by the wallet rejecting the tx, a wrong enforce blocks a
     // tx that would have succeeded.
-    const userFundsTransaction =
-      hasCallerIntent(step, fromChain) && !hasRelayerIntent(step, fromChain)
+    const userFundsTransaction = isCallerIntentLane(step, fromChain)
     if (step.typedData?.length && !userFundsTransaction) {
       return { walletPaysGas: false }
     }

@@ -6,8 +6,7 @@ import type {
 } from '@lifi/sdk'
 import {
   getTypedDataLane,
-  hasCallerIntent,
-  hasRelayerIntent,
+  isCallerIntentLane,
 } from '../../../utils/getTypedDataLane.js'
 
 /**
@@ -46,7 +45,7 @@ export function preserveCallerIntents(
     return step.typedData
   }
 
-  if (!hasCallerIntent(step, chain) || hasRelayerIntent(step, chain)) {
+  if (!isCallerIntentLane(step, chain)) {
     return updatedTypedData
   }
 

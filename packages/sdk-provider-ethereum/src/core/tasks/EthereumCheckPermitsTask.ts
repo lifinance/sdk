@@ -3,7 +3,7 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import {
   getTypedDataLane,
-  hasCallerIntent,
+  isCallerIntentLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
@@ -63,13 +63,14 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       context: {
         signedTypedData,
         // A caller's Permit2 intent still needs its own ERC-20 approval to
-        // `step.estimate.approvalAddress`. For a caller-intent-only step the
+        // `step.estimate.approvalAddress`. On the caller-intent lane the
         // Permit2 gate is off, so that spender is whatever the caller named —
         // not necessarily Permit2 — and a native permit signed for
-        // `permit2Proxy` does not provide it. The allowance tasks must not be
-        // skipped even with a native permit in hand.
+        // `permit2Proxy` does not provide it. A mixed-lane step keeps the
+        // gate, keeps `fromChain.permit2` as the spender, and keeps the
+        // historical skip.
         hasMatchingPermit:
-          !!matchingPermit && !hasCallerIntent(step, fromChain),
+          !!matchingPermit && !isCallerIntentLane(step, fromChain),
       },
     }
   }

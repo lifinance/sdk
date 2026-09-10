@@ -49,6 +49,14 @@ const buildPermitSingleTypedData = (): TypedData =>
     },
   }) as unknown as TypedData
 
+const buildWitnessTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitWitnessTransferFrom',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {},
+  }) as unknown as TypedData
+
 const buildContext = (
   typedData: TypedData[] = [buildPermitTypedData()]
 ): EthereumStepExecutorContext => {
@@ -113,6 +121,43 @@ describe('EthereumCheckPermitsTask.run', () => {
   it('does not run for a caller-supplied Permit2 intent, which the intent task signs', async () => {
     const context = buildContext([buildPermitSingleTypedData()])
     expect(await task.shouldRun(context)).toBe(false)
+  })
+
+  it('keeps hasMatchingPermit for a mixed-lane step, which the relayer funds', async () => {
+    // The lanes are NOT mutually exclusive. A witness intent beside the caller
+    // intent means the relayer pulls the tokens through Permit2, so the gate
+    // stays on, the spender stays `fromChain.permit2` and the native permit
+    // does cover it. Clearing the flag here would make
+    // `EthereumSetAllowanceTask` eligible and ask a gasless user to send and
+    // fund an approval.
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildWitnessTypedData(),
+      buildPermitSingleTypedData(),
+      buildPermitTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean }
+      | undefined
+
+    expect(resultContext?.hasMatchingPermit).toBe(true)
+  })
+
+  it('keeps hasMatchingPermit for a native + relayer step', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildPermitTypedData(),
+      buildWitnessTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean }
+      | undefined
+
+    expect(resultContext?.hasMatchingPermit).toBe(true)
   })
 
   it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
