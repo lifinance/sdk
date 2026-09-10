@@ -43,6 +43,8 @@ export async function waitForTransactionStatus(
             return undefined
           case 'NOT_FOUND':
             return undefined
+          case 'FAILED':
+            return statusResponse
           default:
             return Promise.reject()
         }
@@ -65,6 +67,12 @@ export async function waitForTransactionStatus(
   }
 
   const resolvedStatus = await status
+
+  if (resolvedStatus.status === 'FAILED') {
+    throw new ServerError(
+      resolvedStatus.substatusMessage || 'Transaction failed.'
+    )
+  }
 
   if (!('receiving' in resolvedStatus)) {
     throw new ServerError(
