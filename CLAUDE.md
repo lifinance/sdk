@@ -43,7 +43,7 @@ and the Linear anchor policy live in the **`release` skill**
   pins by hand and add a `fix:`/`feat:` changeset describing the bump.
 
 ## pnpm config
-- pnpm 11 only reads `pnpm-workspace.yaml`; `pnpm.overrides` in `package.json` and non-auth `.npmrc` settings are silently ignored
+- pnpm 12 only reads `pnpm-workspace.yaml`; `pnpm.overrides` in `package.json` and non-auth `.npmrc` settings are silently ignored
 - After moving/changing overrides, run `pnpm install --lockfile-only` and grep the lockfile to confirm — "Already up to date" can be misleading
 - Verify a setting is applied: `pnpm config get <kebab-name>` returns `undefined` if pnpm isn't reading it
 - Publish provenance comes from `NPM_CONFIG_PROVENANCE: true` env in `.github/workflows/publish.yaml` (not a valid pnpm-workspace.yaml field)

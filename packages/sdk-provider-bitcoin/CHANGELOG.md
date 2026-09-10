@@ -1,5 +1,16 @@
 # @lifi/sdk-provider-bitcoin
 
+## 4.0.10
+
+### Patch Changes
+
+- [#473](https://github.com/lifinance/sdk/pull/473) [`d7d8abb`](https://github.com/lifinance/sdk/commit/d7d8abb776aa943aafda62d17926b8575f770478) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies. `@lifi/sdk` moves `@lifi/types` to `^18.5.0`;
+  `@lifi/sdk-provider-bitcoin` moves `@bigmi/core` to `^0.9.1` and `bitcoinjs-lib` to
+  `^7.0.2`; `@lifi/sdk-provider-sui` moves `@mysten/sui` to `^2.29.0`; and
+  `@lifi/sdk-provider-tron` moves `@tronweb3/tronwallet-abstract-adapter` to `^1.3.0`.
+- Updated dependencies [[`d7d8abb`](https://github.com/lifinance/sdk/commit/d7d8abb776aa943aafda62d17926b8575f770478), [`a57b439`](https://github.com/lifinance/sdk/commit/a57b4391b52d9bc535577dcbfad1523ab4d2e32f)]:
+  - @lifi/sdk@4.7.0
+
 ## 4.0.9
 
 ### Patch Changes

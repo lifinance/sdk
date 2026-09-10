@@ -13,13 +13,13 @@
 
 [**LI.FI SDK**](https://docs.li.fi/sdk/overview) features include:
 
-- **Modular architecture** - Install only the provider packages you need for your supported blockchain ecosystems (EVM, Solana, Bitcoin, Sui, Tron)
+- **Modular architecture** - Install only the provider packages you need for your supported blockchain ecosystems (EVM, Solana, Bitcoin, Sui, Tron, Stellar)
 - All ecosystems, chains, bridges, exchanges, and solvers that [LI.FI](https://docs.li.fi/introduction/chains) supports
 - Complete functionality covering full-cycle from obtaining routes/quotes to executing transactions
 - Easy tracking of the route and quote execution through the robust event and hooks handling
 - Highly customizable settings to tailor the SDK to your specific needs including configuration of RPCs and options to allow or deny certain chains, tokens, bridges, exchanges, solvers
 - Supports widely adopted industry standards, including [EIP-5792](https://eips.ethereum.org/EIPS/eip-5792), [ERC-2612](https://eips.ethereum.org/EIPS/eip-2612), [EIP-712](https://eips.ethereum.org/EIPS/eip-712), and [Permit2](https://github.com/Uniswap/permit2)
-- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/) for EVM, [Solana Kit](https://github.com/solana-labs/solana-web3.js) for Solana, [Bigmi](https://github.com/lifinance/bigmi) for Bitcoin, [Mysten Sui SDK](https://github.com/MystenLabs/sui/tree/main/sdk) for Sui, [TronWeb](https://tronweb.network/) for Tron)
+- SDK ecosystem providers are based on industry-standard libraries ([Viem](https://viem.sh/) for EVM, [Solana Kit](https://github.com/anza-xyz/kit) for Solana, [Bigmi](https://github.com/lifinance/bigmi) for Bitcoin, [Mysten Sui SDK](https://github.com/MystenLabs/sui/tree/main/sdk) for Sui, [TronWeb](https://tronweb.network/) for Tron, [Stellar SDK](https://github.com/stellar/js-stellar-sdk) for Stellar)
 - Support for arbitrary contract calls on the destination chain
 - Designed for optimal performance with tree-shaking and dead-code elimination, ensuring minimal bundle sizes and faster page load times in front-end environments
 - Compatibility tested with Node.js and popular front-end tools like Vite
@@ -42,32 +42,46 @@ npm install --save @lifi/sdk
 
 ### Provider Packages
 
-Install provider packages based on the blockchain ecosystems you want to support:
+Install provider packages based on the blockchain ecosystems you want to support.
+
+Each provider bundles its ecosystem library, but you configure a provider by handing it a
+wallet or client object that **you** construct — so install the ecosystem library alongside
+the provider whenever you import from it in your own code:
 
 **EVM Chains (Ethereum, Polygon, Arbitrum, Optimism, etc.)**
 ```bash
-pnpm add @lifi/sdk-provider-ethereum
+pnpm add @lifi/sdk-provider-ethereum viem
 ```
 
 **Solana**
 ```bash
-pnpm add @lifi/sdk-provider-solana
+pnpm add @lifi/sdk-provider-solana @wallet-standard/base
 ```
 
 **Bitcoin**
 ```bash
-pnpm add @lifi/sdk-provider-bitcoin
+pnpm add @lifi/sdk-provider-bitcoin @bigmi/core
 ```
 
 **Sui**
 ```bash
-pnpm add @lifi/sdk-provider-sui
+pnpm add @lifi/sdk-provider-sui @mysten/sui
 ```
 
 **Tron**
 ```bash
-pnpm add @lifi/sdk-provider-tron
+pnpm add @lifi/sdk-provider-tron @tronweb3/tronwallet-abstract-adapter
 ```
+
+**Stellar**
+```bash
+pnpm add @lifi/sdk-provider-stellar
+```
+
+`StellarProvider` takes a small `StellarWallet` interface the package defines itself, so it
+needs no ecosystem library. To discover and connect browser wallets such as Freighter,
+xBull, or Lobstr, we recommend
+[Stellar Wallets Kit](https://github.com/Creit-Tech/Stellar-Wallets-Kit).
 
 ## Architecture
 
@@ -119,6 +133,7 @@ import { SolanaProvider } from '@lifi/sdk-provider-solana'
 import { BitcoinProvider } from '@lifi/sdk-provider-bitcoin'
 import { SuiProvider } from '@lifi/sdk-provider-sui'
 import { TronProvider } from '@lifi/sdk-provider-tron'
+import { StellarProvider } from '@lifi/sdk-provider-stellar'
 
 const client = createClient({
   integrator: 'Your dApp/company name',
@@ -128,6 +143,7 @@ const client = createClient({
     BitcoinProvider({ /* options */ }),
     SuiProvider({ /* options */ }),
     TronProvider({ /* options */ }),
+    StellarProvider({ /* options */ }),
   ],
 })
 ```
