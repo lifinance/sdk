@@ -114,9 +114,4 @@ describe('hasCallerIntent / hasRelayerIntent', () => {
     expect(hasCallerIntent(step, chain)).toBe(false)
     expect(hasRelayerIntent(step, chain)).toBe(true)
   })
-
-  it('work without a chain, so callers that lack one still classify', () => {
-    expect(hasCallerIntent(stepWith('PermitSingle'))).toBe(true)
-    expect(hasRelayerIntent(stepWith('PermitWitnessTransferFrom'))).toBe(true)
-  })
 })

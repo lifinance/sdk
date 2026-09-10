@@ -15,6 +15,11 @@ import { isGaslessTypedData } from './isGaslessStep.js'
  *   spender. Signed before the transaction is prepared and threaded into
  *   `/advanced/stepTransaction`. It does NOT stand in for the allowance.
  * - `relayer-intent` — anything signed after prepare and posted to a relayer.
+ *
+ * `chain` is REQUIRED throughout this module. Omitting it silently disables
+ * the spender rule, so a relayer intent would classify as `caller-intent` —
+ * toward inline signing, the direction that loses money. Every production call
+ * site has a chain: `EthereumStepExecutorContext.fromChain` is non-optional.
  */
 export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
 
@@ -35,7 +40,7 @@ const CALLER_INTENT_PRIMARY_TYPES: readonly string[] = ['PermitSingle']
 
 export function getTypedDataLane(
   typedData: TypedData,
-  chain?: ExtendedChain
+  chain: ExtendedChain
 ): TypedDataLane {
   // Tested first, always. The SDK must never sign a gasless intent inline,
   // whatever else the entry looks like.
@@ -61,7 +66,7 @@ export function getTypedDataLane(
 /** Whether the step carries a Permit2 message the SDK signs for a caller's own spender. */
 export function hasCallerIntent(
   step: LiFiStepExtended | LiFiStep,
-  chain?: ExtendedChain
+  chain: ExtendedChain
 ): boolean {
   return !!step.typedData?.some(
     (typedData) => getTypedDataLane(typedData, chain) === 'caller-intent'
@@ -84,7 +89,7 @@ export function getTypedDataInLane(
 /** Whether the step still carries typed data a relayer must sign and submit. */
 export function hasRelayerIntent(
   step: LiFiStepExtended | LiFiStep,
-  chain?: ExtendedChain
+  chain: ExtendedChain
 ): boolean {
   return !!step.typedData?.some(
     (typedData) => getTypedDataLane(typedData, chain) === 'relayer-intent'
