@@ -36,9 +36,9 @@ export function getTypedDataLane(
   if (isGaslessTypedData(typedData, chain)) {
     return 'relayer-intent'
   }
-  // `PermitSingle` only. `PermitBatch` is excluded on purpose: its `details`
-  // covers several tokens, while the allowance path is single-token
-  // (`step.action.fromToken.address`).
+  // `PermitSingle` only. If `@lifi/types` ever declares `PermitBatch`, it must
+  // NOT join this rule: its `details` covers several tokens, while the
+  // allowance path is single-token (`step.action.fromToken.address`).
   if (typedData.primaryType === 'PermitSingle') {
     return 'caller-intent'
   }
