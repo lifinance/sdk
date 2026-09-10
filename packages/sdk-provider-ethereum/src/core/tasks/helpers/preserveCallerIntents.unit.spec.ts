@@ -107,6 +107,22 @@ describe('preserveCallerIntents', () => {
     expect(preserveCallerIntents(step, [], chain)).toHaveLength(0)
   })
 
+  it('appends only the caller intent, not the rest of the previous typed data', () => {
+    // The concatenation is lane-filtered, and this is the only fixture where
+    // filtered and unfiltered differ. Re-attaching a native permit the API
+    // deliberately dropped would put it back on the SHARED step object, where
+    // `EthereumCheckPermitsTask.shouldRun` reads it — so a resume or an
+    // `atomicityNotReady` retry would re-prompt the wallet for an EIP-2612
+    // signature the API had already consumed.
+    const step = stepWith([nativePermit(), callerIntent()])
+
+    const result = preserveCallerIntents(step, [], chain)
+
+    expect(result?.map((typedData) => typedData.primaryType)).toEqual([
+      'PermitSingle',
+    ])
+  })
+
   it('keeps the caller intent beside a native permit the API added', () => {
     // The answer declares no lane of its own, so the declaration is restored
     // and the two gates that must not hijack the calldata keep seeing it.

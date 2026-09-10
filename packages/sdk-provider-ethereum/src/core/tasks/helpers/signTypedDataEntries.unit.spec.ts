@@ -165,4 +165,35 @@ describe('signTypedDataEntries', () => {
       'ACTION_REQUIRED'
     )
   })
+
+  it('emits the status once per entry, not once for the batch', async () => {
+    // A deliberate behaviour change: `EthereumRelayedSignAndExecuteTask` used
+    // to emit `MESSAGE_REQUIRED` once before its loop. Per-entry emission is
+    // idempotent — `StatusManager.updateAction` maps the status to the same
+    // `execution.status` every time — and it is what tells the widget a
+    // SECOND wallet prompt is coming on a multi-entry step. Hoisting the call
+    // out of the loop would revert it silently.
+    const context = buildContext()
+
+    await signTypedDataEntries(
+      context,
+      [entry(SOURCE_CHAIN), entry(OTHER_CHAIN)],
+      'SWAP',
+      'MESSAGE_REQUIRED'
+    )
+
+    expect(context.statusManager.updateAction).toHaveBeenCalledTimes(2)
+    expect(context.statusManager.updateAction).toHaveBeenNthCalledWith(
+      1,
+      context.step,
+      'SWAP',
+      'MESSAGE_REQUIRED'
+    )
+    expect(context.statusManager.updateAction).toHaveBeenNthCalledWith(
+      2,
+      context.step,
+      'SWAP',
+      'MESSAGE_REQUIRED'
+    )
+  })
 })
