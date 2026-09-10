@@ -19,6 +19,13 @@ import type { RelayerStep } from '../types.js'
  * sides of its own address comparison. Address normalisation is out of scope
  * per §10 of the design; the point of the extraction is that the comparison
  * now has ONE place to change when that is settled.
+ *
+ * `message?.spender` is deliberately optional. `message` is required in
+ * `@lifi/types`, so only contract-violating input can be missing it — but the
+ * predecessor of this function read `message` only on entries that reached the
+ * second `some`, and this one reads it on every entry that is not a witness
+ * intent. This predicate decides whether the SDK signs something inline, so it
+ * answers `false` for a malformed entry rather than throwing.
  */
 export function isGaslessTypedData(
   typedData: TypedData,
@@ -26,7 +33,7 @@ export function isGaslessTypedData(
 ): boolean {
   return (
     typedData.primaryType === 'PermitWitnessTransferFrom' ||
-    (!!chain?.permit2 && typedData.message.spender === chain.permit2)
+    (!!chain?.permit2 && typedData.message?.spender === chain.permit2)
   )
 }
 
