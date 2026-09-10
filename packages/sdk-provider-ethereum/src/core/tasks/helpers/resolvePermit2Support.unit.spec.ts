@@ -35,6 +35,36 @@ const buildContext = (
     ...overrides,
   }) as unknown as EthereumStepExecutorContext
 
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
+const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
+
+const typedDataEntry = (primaryType: string, spender?: string) => ({
+  primaryType,
+  domain: { chainId: CHAIN_ID, verifyingContract: PERMIT2 },
+  types: {},
+  message: spender ? { spender } : {},
+})
+
+// A relayed step ALWAYS carries typed data — `isRelayerStep` requires it. The
+// old fixture omitted it, which is why a gate that keys off typed data could
+// regress without failing a test.
+//
+// Takes the same overrides bag as `buildContext`, so the relayed tests keep the
+// file's existing style: pass overrides in, never mutate the context afterwards.
+const buildGaslessContext = (
+  overrides: Partial<EthereumStepExecutorContext> = {}
+): EthereumStepExecutorContext =>
+  buildContext({
+    step: {
+      action: { fromAddress: OWNER },
+      estimate: {
+        approvalAddress: '0x2222222222222222222222222222222222222222',
+      },
+      typedData: [typedDataEntry('PermitWitnessTransferFrom')],
+    },
+    ...overrides,
+  } as unknown as Partial<EthereumStepExecutorContext>)
+
 const run = (
   context: EthereumStepExecutorContext,
   strategy: TransactionMethodType = 'standard'
@@ -195,11 +225,11 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
     // through Permit2: the transfer fails and the approval was wasted.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
 
-    expect(await run(buildContext(), 'relayed')).toBe(true)
+    expect(await run(buildGaslessContext(), 'relayed')).toBe(true)
   })
 
   it('issues no signer RPC for a relayed step', async () => {
-    await run(buildContext(), 'relayed')
+    await run(buildGaslessContext(), 'relayed')
 
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
@@ -207,7 +237,7 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
   it('leaves the memoized verdict unset for a relayed step', async () => {
     // The guard returns before the memo write, so a later standard step in the
     // same execution still resolves the signer for itself.
-    const context = buildContext()
+    const context = buildGaslessContext()
 
     await run(context, 'relayed')
 
@@ -218,7 +248,27 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
     // Regression guard: the strategy guard must not become a blanket `true`. A
     // native from-token can never use Permit2, whoever signs.
     expect(
-      await run(buildContext({ isFromNativeToken: true }), 'relayed')
+      await run(buildGaslessContext({ isFromNativeToken: true }), 'relayed')
     ).toBe(false)
+  })
+})
+
+describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
+  const buildCallerIntentContext = (): EthereumStepExecutorContext =>
+    buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [typedDataEntry('PermitSingle', UNIVERSAL_ROUTER)],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+  it('turns the gate off, so the SDK does not wrap the step in its own Permit2 flow', async () => {
+    expect(await run(buildCallerIntentContext())).toBe(false)
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+
+  it('turns the gate off for the relayed strategy too', async () => {
+    expect(await run(buildCallerIntentContext(), 'relayed')).toBe(false)
   })
 })

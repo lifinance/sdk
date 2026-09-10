@@ -2,6 +2,7 @@ import type { TransactionMethodType } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { canAccountUsePermit2 } from '../../../permits/canAccountUsePermit2.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
+import { hasCallerIntent } from '../../../utils/getTypedDataLane.js'
 
 /**
  * Cheap, synchronous part of the gate: does the step/chain combination allow
@@ -22,7 +23,12 @@ const isPermit2SupportedForStep = (
     // Approval address is not required for Permit2 per se, but we use it to skip allowance checks for direct transfers
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&
-    !step.estimate.skipPermit
+    !step.estimate.skipPermit &&
+    // The caller brought its own Permit2 message for its own spender. LI.FI's
+    // proxy flow would sign a second, competing one. Note this is the
+    // caller-intent lane specifically: a gasless witness intent MUST keep the
+    // gate on, or the allowance moves off Permit2 and the relay reverts.
+    !hasCallerIntent(step, fromChain)
   )
 }
 
