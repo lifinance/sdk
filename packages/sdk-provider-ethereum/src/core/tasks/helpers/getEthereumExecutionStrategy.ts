@@ -1,7 +1,7 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { isRelayerStep } from '../../../utils/isRelayerStep.js'
+import { hasRelayerIntent } from '../../../utils/getTypedDataLane.js'
 
 /**
  * Determines the execution strategy: 'relayed', 'batched', or 'standard'.
@@ -27,8 +27,7 @@ export async function getEthereumExecutionStrategy(
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
-  const isRelayer = isRelayerStep(step)
-  if (isRelayer) {
+  if (hasRelayerIntent(step, fromChain)) {
     return 'relayed'
   }
 
