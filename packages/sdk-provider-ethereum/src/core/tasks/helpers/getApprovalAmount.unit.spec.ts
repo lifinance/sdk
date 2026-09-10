@@ -19,6 +19,7 @@ const permitSingle = (verifyingContract: string) => ({
 const buildContext = (options?: {
   approvalAddress?: string
   typedData?: unknown[]
+  disableMessageSigning?: boolean
 }): EthereumStepExecutorContext =>
   ({
     step: {
@@ -29,6 +30,7 @@ const buildContext = (options?: {
       ...(options?.typedData ? { typedData: options.typedData } : {}),
     } as unknown as LiFiStep,
     fromChain: { id: 1, permit2: PERMIT2 } as unknown as ExtendedChain,
+    disableMessageSigning: options?.disableMessageSigning ?? false,
   }) as unknown as EthereumStepExecutorContext
 
 describe('getApprovalAmount', () => {
@@ -72,6 +74,18 @@ describe('getApprovalAmount', () => {
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2), permitSingle(OTHER_PERMIT2)],
+    })
+    expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
+  })
+
+  it('returns the swap amount when message signing is disabled, because the intent is never signed', () => {
+    // `EthereumSignStepIntentTask.shouldRun` drops the intent for the same
+    // flag, so the user is never shown the message. Granting MaxUint256 for a
+    // contract nobody agreed to voids the self-validating argument.
+    const context = buildContext({
+      approvalAddress: PERMIT2,
+      typedData: [permitSingle(PERMIT2)],
+      disableMessageSigning: true,
     })
     expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
   })
