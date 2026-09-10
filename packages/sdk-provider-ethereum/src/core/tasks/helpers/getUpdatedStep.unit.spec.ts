@@ -131,10 +131,23 @@ describe('getUpdatedStep', () => {
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
     expect(getRelayerQuote).not.toHaveBeenCalled()
-    // The unsigned declaration is stripped and the signed entries take its
-    // place, which is what embeds the signature in the router calldata.
+    // The signed entries replace the declaration, which is what makes the API
+    // embed the signature in the router calldata.
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).toMatchObject({
       typedData: signedTypedData,
     })
+  })
+
+  it('strips the unsigned declaration from the request when nothing is signed yet', async () => {
+    // The other half of that request shape, and the half `toMatchObject`
+    // above cannot see: the explicit `typedData` key is written last, so it
+    // hides whether the unsigned declaration was removed. Sending the
+    // signature-less caller intent to `/advanced/stepTransaction` would ask
+    // the API to embed a signature that does not exist.
+    await getUpdatedStep(client, buildStep([callerIntent()]), chain)
+
+    expect(vi.mocked(getStepTransaction).mock.calls[0][1]).not.toHaveProperty(
+      'typedData'
+    )
   })
 })
