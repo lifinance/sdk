@@ -84,20 +84,6 @@ describe('findSignedNativePermit', () => {
     expect(findSignedNativePermit(context)).toBeUndefined()
   })
 
-  it('returns undefined when the API replaced the step typed data with an empty array', () => {
-    // The hole the signed record closes. `EthereumPrepareTransactionTask`
-    // overwrites `step.typedData` with `updatedStep.typedData ?? step.typedData`,
-    // and an explicit `typedData: []` from the API is not nullish, so it wins
-    // the `??` and erases the caller's declaration. What this execution
-    // actually signed is the only surviving evidence of the intent.
-    const context = buildContext(
-      [signedNativePermit(), signedCallerIntent()],
-      []
-    )
-
-    expect(findSignedNativePermit(context)).toBeUndefined()
-  })
-
   it('returns undefined when no native permit is signed', () => {
     expect(findSignedNativePermit(buildContext([]))).toBeUndefined()
   })

@@ -21,6 +21,9 @@ const buildContext = (
     ethereumClient: { account: { address: OWNER } },
     isFromNativeToken: false,
     disableMessageSigning: false,
+    // `EthereumStepExecutor.createContext` always sets this, and the caller-intent
+    // gate reads it. Omitting it made the fixture disagree with production.
+    signedTypedData: [],
     fromChain: {
       id: CHAIN_ID,
       permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
@@ -37,6 +40,7 @@ const buildContext = (
 
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
+const SIGNATURE = `0x${'11'.repeat(65)}`
 
 const typedDataEntry = (primaryType: string, spender?: string) => ({
   primaryType,
@@ -270,6 +274,32 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
 
   it('turns the gate off for the relayed strategy too', async () => {
     expect(await run(buildCallerIntentContext(), 'relayed')).toBe(false)
+  })
+
+  it('keeps the gate OFF when the API erased the declaration but the intent was signed', async () => {
+    // The sibling of the native-permit hole. `EthereumPrepareTransactionTask`
+    // overwrites `step.typedData` with `updatedStep.typedData ?? step.typedData`,
+    // and an explicit `typedData: []` from the API is not nullish, so it wins
+    // and erases the declaration. Reading only the declaration would reopen this
+    // gate and wrap the caller's calldata in `encodePermit2Data`, then retarget
+    // the transaction to `permit2Proxy` — the same destruction the native-permit
+    // branch was fixed for.
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [],
+      },
+      signedTypedData: [
+        {
+          ...typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+          signature: SIGNATURE,
+        },
+      ],
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context)).toBe(false)
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 
   it('keeps the gate ON for a step carrying both a witness intent and a caller intent', async () => {
