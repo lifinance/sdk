@@ -57,14 +57,10 @@ const buildExecutor = (): EthereumStepExecutor =>
 
 describe('EthereumStepExecutor.createPipeline', () => {
   it('runs EthereumSignStepIntentTask after the allowance work and before prepare', () => {
-    // The whole feature rests on this order, and nothing else pins it.
-    //
-    // A caller's Permit2 `PermitSingle` does NOT stand in for the ERC-20
-    // allowance the way a native EIP-2612 permit does, so the token -> Permit2
-    // approval has to land first. And the signature has to exist before
-    // `EthereumPrepareTransactionTask` calls `/advanced/stepTransaction`,
-    // which is what embeds it in the router calldata. Moving the task after
-    // prepare breaks the feature outright.
+    // The whole feature rests on this order, and nothing else pins it. The
+    // signature must exist before `EthereumPrepareTransactionTask` calls
+    // `/advanced/stepTransaction`, which is what embeds it in the calldata.
+    // See `EthereumSignStepIntentTask` for why it runs after the allowance work.
     const names = taskNames(buildExecutor().createPipeline(buildContext()))
 
     const intent = names.indexOf('EthereumSignStepIntentTask')
@@ -78,8 +74,6 @@ describe('EthereumStepExecutor.createPipeline', () => {
     expect(prepare).toBeGreaterThan(-1)
 
     expect(intent).toBeGreaterThan(setAllowance)
-    // Running after the balance check also avoids a wallet prompt that a
-    // failing balance check would have wasted.
     expect(intent).toBeGreaterThan(checkBalance)
     expect(intent).toBeLessThan(prepare)
   })

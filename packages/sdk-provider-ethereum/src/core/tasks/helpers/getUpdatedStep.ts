@@ -34,7 +34,8 @@ import { isGaslessStep } from '../../../utils/isGaslessStep.js'
  * retried after the user rejects the order signature carries
  * `typedData: [Order]`; under `hasRelayerIntent` it would fetch a relayer quote
  * instead of re-running `/advanced/stepTransaction`, which breaks CowSwap,
- * 1inch Fusion and Velora Delta. The last test in this file's spec pins it.
+ * 1inch Fusion and Velora Delta. Pinned by `re-quotes an Order step through
+ * /advanced/stepTransaction, never the relayer` in `getUpdatedStep.unit.spec.ts`.
  */
 export const getUpdatedStep = async (
   client: SDKClient,

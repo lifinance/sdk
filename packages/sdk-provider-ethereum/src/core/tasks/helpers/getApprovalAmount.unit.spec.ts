@@ -43,8 +43,6 @@ describe('getApprovalAmount', () => {
   })
 
   it('approves MAX when the approval target is the Permit2 the intent names', () => {
-    // The unlimited approval can only land on the contract written inside the
-    // message the user signs, so repeat swaps become signature-only.
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2)],
@@ -69,8 +67,6 @@ describe('getApprovalAmount', () => {
   })
 
   it('requires EVERY caller intent to name the approval target', () => {
-    // One agreeing intent must not buy an unlimited approval for a step that
-    // also carries an intent naming a different Permit2 deployment.
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2), permitSingle(OTHER_PERMIT2)],
@@ -79,9 +75,7 @@ describe('getApprovalAmount', () => {
   })
 
   it('returns the swap amount when message signing is disabled, because the intent is never signed', () => {
-    // `EthereumSignStepIntentTask.shouldRun` drops the intent for the same
-    // flag, so the user is never shown the message. Granting MaxUint256 for a
-    // contract nobody agreed to voids the self-validating argument.
+    // `EthereumSignStepIntentTask.shouldRun` drops the intent for the same flag.
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2)],

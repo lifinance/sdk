@@ -27,12 +27,8 @@ const isPermit2SupportedForStep = (
     // The caller brought its own Permit2 message for its own spender. LI.FI's
     // proxy flow would sign a second, competing one, wrap the calldata in
     // `encodePermit2Data` and retarget the transaction to `permit2Proxy`.
-    //
-    // The in-flight variant, not `isCallerIntentLane`: by the time the
-    // sign-and-execute task resolves this gate, `step.typedData` may have been
-    // replaced by the API's answer. It reads the signed record too, and
-    // `findSignedNativePermit` must read the caller intent from that same
-    // source.
+    // In-flight, not `isCallerIntentLane`: by the time this gate resolves,
+    // `step.typedData` may already be the API's answer.
     !isCallerIntentLaneInFlight(context)
   )
 }

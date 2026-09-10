@@ -29,9 +29,8 @@ const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2_PROXY = '0xdddd000000000000000000000000000000000004' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
-// NOT `PERMIT2`: a message whose spender is the Permit2 deployment is a
-// relayer intent whatever its primary type, and these fixtures must land in
-// the caller-intent lane for the tests below to mean what their names say.
+// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
+// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
@@ -198,9 +197,10 @@ describe('EthereumNativePermitTask.run', () => {
 
 describe('EthereumNativePermitTask.shouldRun', () => {
   it('does not mint a native permit when the caller supplied its own Permit2 intent', async () => {
-    // Without this guard the SDK signs a second permit for its own proxy and
-    // overwrites the caller's intent. The `checkClient` assertion pins where
-    // the guard sits: it must return before `getEthereumExecutionStrategy`.
+    // Without this guard the SDK prompts for a second permit for its own proxy
+    // and sets `hasMatchingPermit`, which suppresses the Permit2 approval the
+    // caller intent needs. The `checkClient` assertion pins where the guard
+    // sits: it must return before `getEthereumExecutionStrategy`.
     const { context } = buildContext({ typedData: [buildCallerIntent()] })
 
     expect(await task.shouldRun(context)).toBe(false)
@@ -214,10 +214,9 @@ describe('EthereumNativePermitTask.shouldRun', () => {
   })
 
   it('still mints a native permit for a mixed-lane step', async () => {
-    // The lanes are not mutually exclusive. A step carrying both a witness
-    // intent and a caller intent is still gasless, and the native permit is
-    // how it gets its allowance without a user-funded approval — which a
-    // gasless user cannot pay for.
+    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
+    // The native permit is how a gasless step gets its allowance without a
+    // user-funded approval.
     const { context } = buildContext({
       typedData: [buildWitnessTypedData(), buildCallerIntent()],
     })

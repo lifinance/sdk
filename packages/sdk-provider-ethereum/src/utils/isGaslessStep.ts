@@ -8,25 +8,16 @@ import type { RelayerStep } from '../types.js'
 
 /**
  * Whether one typed-data entry is one a relayer must sign and submit for a
- * gasless step.
+ * gasless step. The single home of that test — `getTypedDataLane` asks it
+ * before deciding any caller-owned lane, so no entry a relayer owns can escape
+ * into the inline-signing path. Only the native EIP-2612 permit is decided
+ * ahead of it, and a relayer step needs that signed inline anyway.
  *
- * The single home of that test. `getTypedDataLane` asks it before deciding any
- * caller-owned lane, so no entry a relayer owns can escape into the
- * inline-signing path. The one rule ahead of it is the native EIP-2612 permit,
- * which a relayer step needs signed inline anyway.
- *
- * The spender comparison is case-sensitive by inheritance — this is the shape
- * `isGaslessStep` has always had — while `getApprovalAmount` lowercases both
- * sides of its own address comparison. Address normalisation is out of scope
- * per §10 of the design; the point of the extraction is that the comparison
- * now has ONE place to change when that is settled.
- *
- * `message?.spender` is deliberately optional. `message` is required in
- * `@lifi/types`, so only contract-violating input can be missing it — but the
- * predecessor of this function read `message` only on entries that reached the
- * second `some`, and this one reads it on every entry that is not a witness
- * intent. This predicate decides whether the SDK signs something inline, so it
- * answers `false` for a malformed entry rather than throwing.
+ * The spender comparison is case-sensitive by inheritance; normalising it is
+ * out of scope, and the point of the extraction is that it now has ONE home.
+ * `message?.spender` is optional on purpose: this predicate decides whether
+ * the SDK signs something inline, so a malformed entry answers `false`
+ * instead of throwing.
  */
 export function isGaslessTypedData(
   typedData: TypedData,

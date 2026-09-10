@@ -60,8 +60,7 @@ describe('getEthereumExecutionStrategy', () => {
   })
 
   it('relays a mixed-lane step carrying both a witness and a caller intent', async () => {
-    // The lanes are not mutually exclusive. Anything a relayer must submit
-    // wins the routing decision, whatever else rides along on the step.
+    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
     const strategy = await getEthereumExecutionStrategy(
       buildContext([
         entry('PermitWitnessTransferFrom'),

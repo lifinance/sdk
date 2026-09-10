@@ -62,21 +62,11 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
         signedTypedData,
         // A caller's Permit2 intent still needs its own ERC-20 approval to
         // `step.estimate.approvalAddress`. On the caller-intent lane the
-        // Permit2 gate is off, so that spender is whatever the caller named —
-        // not necessarily Permit2 — and a native permit signed for
-        // `permit2Proxy` does not provide it. A mixed-lane step keeps the
-        // gate, keeps `fromChain.permit2` as the spender, and keeps the
-        // historical skip.
-        //
-        // Accepted trade-off for the three-lane shape
-        // `[PermitWitnessTransferFrom, PermitSingle, Permit]`: it takes the
-        // skip, so if the relayer re-quote then answers `typedData: []` with a
-        // `transactionRequest` and the forced recalculation lands on
-        // `batched`, the batch ships with no approve and reverts. The skip
-        // stays: it matches `main`, it matches every sibling gate — a
-        // mixed-lane step belongs to the relayer — and the opposite behaviour
-        // asks a gasless user to fund an approval they do not owe.
-        // No shipped tool produces a three-lane step today.
+        // Permit2 gate is off, so that spender is whatever the caller named,
+        // and a native permit signed for `permit2Proxy` does not provide it.
+        // A mixed-lane step keeps the gate and the historical skip: it belongs
+        // to the relayer, and the opposite behaviour asks a gasless user to
+        // fund an approval they do not owe.
         hasMatchingPermit:
           !!matchingPermit && !isCallerIntentLane(step, fromChain),
       },

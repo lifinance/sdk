@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { preserveCallerIntents } from './preserveCallerIntents.js'
 
 const SOURCE_CHAIN = 1
-// The Permit2 deployment the chain config names. A message whose `spender` is
-// this address is a relayer intent, whatever its primary type — so the caller
-// intent below must NOT use it as its spender.
+// The Permit2 deployment the chain config names. A Permit2 message whose
+// `spender` is this address classifies as a relayer intent, so the caller
+// intent below must NOT use it as its spender. A native `Permit` is decided by
+// its primary type first and is unaffected.
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const VERIFYING_CONTRACT = '0x0000000000225e31d15943971f47ad3022f714fa'
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
@@ -36,8 +37,6 @@ const nativePermit = (): TypedData =>
     primaryType: 'Permit',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: VERIFYING_CONTRACT },
     types: {},
-    // Not `chain.permit2`: that spender would classify the entry as a relayer
-    // intent and this fixture would stop being a native permit.
     message: { spender: '0xcccc000000000000000000000000000000000003' },
   }) as unknown as TypedData
 
@@ -52,10 +51,8 @@ const stepWith = (typedData?: TypedData[]): LiFiStep =>
 
 describe('preserveCallerIntents', () => {
   it('keeps a caller intent when the API answers with an empty typedData array', () => {
-    // The blocker. `[]` is not nullish, so it used to win the `??` and erase
-    // the only durable record that the step is caller-executed. A resume or an
-    // `atomicityNotReady` retry would then let the Permit2 proxy flow wrap the
-    // caller's router calldata and retarget the transaction.
+    // The blocker: `[]` is not nullish, so it used to win the `??` and erase
+    // the only durable record that the step is caller-executed.
     const step = stepWith([callerIntent()])
 
     const result = preserveCallerIntents(step, [], chain)
@@ -99,8 +96,7 @@ describe('preserveCallerIntents', () => {
   })
 
   it('clears a relayer step completely, caller intent included', () => {
-    // A mixed-lane step is the relayer's: `EthereumSignStepIntentTask` never
-    // signs its caller intent, so there is nothing to preserve, and
+    // A mixed-lane step is the relayer's, so there is nothing to preserve and
     // `getRelayerUpdatedStep` must stay free to drop every entry.
     const step = stepWith([witness(), callerIntent()])
 
@@ -124,8 +120,6 @@ describe('preserveCallerIntents', () => {
   })
 
   it('keeps the caller intent beside a native permit the API added', () => {
-    // The answer declares no lane of its own, so the declaration is restored
-    // and the two gates that must not hijack the calldata keep seeing it.
     const step = stepWith([callerIntent()])
 
     const result = preserveCallerIntents(step, [nativePermit()], chain)

@@ -273,13 +273,9 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   })
 
   it('keeps the gate OFF when the API erased the declaration but the intent was signed', async () => {
-    // The sibling of the native-permit hole. `EthereumPrepareTransactionTask`
-    // overwrites `step.typedData` with `updatedStep.typedData ?? step.typedData`,
-    // and an explicit `typedData: []` from the API is not nullish, so it wins
-    // and erases the declaration. Reading only the declaration would reopen this
-    // gate and wrap the caller's calldata in `encodePermit2Data`, then retarget
-    // the transaction to `permit2Proxy` — the same destruction the native-permit
-    // branch was fixed for.
+    // The sibling of the native-permit hole. After prepare, the declaration
+    // may be gone — see `preserveCallerIntents`. Reading only the declaration
+    // would reopen this gate and wrap the caller's calldata.
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },
@@ -299,8 +295,9 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
   })
 
   it('keeps the gate ON for a step carrying both a witness intent and a caller intent', async () => {
-    // The lanes are not mutually exclusive. The relayer still pulls through
-    // Permit2 here, so moving the spender to approvalAddress would revert it.
+    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
+    // The relayer still pulls through Permit2 here, so moving the spender to
+    // approvalAddress would revert it.
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },

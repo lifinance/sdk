@@ -35,10 +35,7 @@ const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 const EXISTING_SIGNATURE = `0x${'22'.repeat(65)}` as Hex
 const TASK_ID = `0x${'ab'.repeat(32)}` as Hex
 
-/**
- * A native EIP-2612 permit. `EthereumCheckPermitsTask` signs this before the
- * relayer task runs, and the dedupe filter below has to recognise it.
- */
+/** A native permit `EthereumCheckPermitsTask` signs before this task runs. */
 const nativePermit = (): TypedData =>
   ({
     primaryType: 'Permit',
@@ -61,9 +58,7 @@ const signedNativePermit = (): SignedTypedData =>
   }) as unknown as SignedTypedData
 
 /**
- * The gasless intent the relayer submits. `isNativePermitValid` returns false
- * for every primary type other than `Permit`, so this entry is never deduped
- * away however many signatures the context already holds.
+ * The gasless intent the relayer submits. The dedupe filter never removes it.
  */
 const witness = (): TypedData =>
   ({
@@ -117,10 +112,8 @@ beforeEach(() => {
 
 describe('EthereumRelayedSignAndExecuteTask.run', () => {
   it('emits MESSAGE_REQUIRED before asking the wallet for a signature', async () => {
-    // This is the shipped gasless path (CowSwap, 1inch Fusion, Velora Delta).
-    // `MESSAGE_REQUIRED` is the status the widget renders as "sign a message"
-    // rather than "confirm a transaction"; dropping the argument silently
-    // falls back to the helper's `ACTION_REQUIRED` default.
+    // The shipped gasless path. `MESSAGE_REQUIRED` is what the widget renders
+    // as "sign a message" — see `signTypedDataEntries.unit.spec.ts`.
     const context = buildContext()
 
     const result = await task.run(context)
@@ -137,10 +130,8 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
   })
 
   it('signs each unsigned entry and skips one already signed', async () => {
-    // A native permit signed by `EthereumCheckPermitsTask` earlier in the same
-    // execution must not be re-prompted, and the witness intent beside it must
-    // still be signed: `isNativePermitValid` matches only `primaryType:
-    // 'Permit'`, so no other lane can be deduped away by accident.
+    // A permit signed earlier in the same execution must not be re-prompted,
+    // and the witness intent beside it must still be signed.
     const context = buildContext({
       typedData: [nativePermit(), witness()],
       signedTypedData: [signedNativePermit()],

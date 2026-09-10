@@ -57,10 +57,6 @@ const nativePermit = (): TypedData =>
     types: {},
     message: {
       owner: FROM_ADDRESS,
-      // Not `chain.permit2`: `getTypedDataLane` returns `relayer-intent` for
-      // any message whose spender is the Permit2 deployment, whatever its
-      // primary type. This fixture has to reach the `native-permit` branch for
-      // the test below to mean what its name says.
       spender: '0xcccc000000000000000000000000000000000003',
       value: '1',
       deadline: '1',
@@ -145,10 +141,8 @@ describe('EthereumSignStepIntentTask.run', () => {
   })
 
   it('signs only the caller-intent entries, leaving the other lanes alone', async () => {
-    // A native permit, not a witness: with the relayer guard in `shouldRun`,
-    // a witness-plus-`PermitSingle` step is one this task never runs on, so
-    // using it here would imply mixed-lane signing is intended. A native
-    // permit is signed by `EthereumCheckPermitsTask` and must be skipped here.
+    // A native permit, not a witness: `EthereumCheckPermitsTask` signs it, so
+    // this task must skip it.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([nativePermit(), permitSingle()])
 

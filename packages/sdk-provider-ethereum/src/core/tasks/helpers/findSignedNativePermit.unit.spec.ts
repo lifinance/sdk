@@ -72,10 +72,7 @@ describe('findSignedNativePermit', () => {
   })
 
   it('returns undefined for a caller intent, even with a native permit signed', () => {
-    // The guard. `EthereumStandardSignAndExecuteTask` answers a native permit
-    // by wrapping the calldata and retargeting the transaction to
-    // `fromChain.permit2Proxy`. A caller-intent step already carries the
-    // signature inside its own router calldata, so the wrap would destroy it.
+    // The guard: the native-permit wrap would destroy caller-intent calldata.
     const context = buildContext(
       [signedNativePermit(), signedCallerIntent()],
       [callerIntent()]
@@ -86,11 +83,8 @@ describe('findSignedNativePermit', () => {
 
   it('returns undefined when the API erased the declaration and only the signed record shows the intent', () => {
     // Pins the integration point: `hasCallerIntentInFlight`, not a bare
-    // `hasCallerIntent`. `EthereumPrepareTransactionTask` overwrites
-    // `step.typedData` with `updatedStep.typedData ?? step.typedData`, and an
-    // explicit `typedData: []` from the API is not nullish — it wins the `??`
-    // and erases the caller's declaration. Only `context.signedTypedData`
-    // still carries the intent, and the native-permit wrap must stay off.
+    // `hasCallerIntent`. After prepare, only `context.signedTypedData` still
+    // carries the intent — see `preserveCallerIntents`.
     const context = buildContext(
       [signedNativePermit(), signedCallerIntent()],
       []

@@ -172,12 +172,9 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('keeps hasMatchingPermit for a mixed-lane step, which the relayer funds', async () => {
-    // The lanes are NOT mutually exclusive. A witness intent beside the caller
-    // intent means the relayer pulls the tokens through Permit2, so the gate
-    // stays on, the spender stays `fromChain.permit2` and the native permit
-    // does cover it. Clearing the flag here would make
-    // `EthereumSetAllowanceTask` eligible and ask a gasless user to send and
-    // fund an approval.
+    // Lanes are not mutually exclusive — see `isCallerIntentLane` in getTypedDataLane.ts.
+    // Clearing the flag here would make `EthereumSetAllowanceTask` eligible and
+    // ask a gasless user to send and fund an approval.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildWitnessTypedData(),
@@ -201,11 +198,6 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('signs only the native permit on a native + relayer step, and keeps hasMatchingPermit', async () => {
-    // Honest note: the flag is `true` under both the shipped
-    // `!hasCallerIntent(...)` and the new `!isCallerIntentLane(...)` spelling
-    // — this fixture carries no caller intent, so neither expression can
-    // differ. The mixed-lane case above is the only evidence for that change.
-    // What this case does pin is the lane filter in `run`.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildPermitTypedData(),
@@ -224,9 +216,8 @@ describe('EthereumCheckPermitsTask.run', () => {
   })
 
   it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
-    // A native permit's spender is fromChain.permit2Proxy. It satisfies nothing
-    // a third-party Permit2 intent needs, so the token -> Permit2 approval must
-    // still run.
+    // A native permit's spender is `fromChain.permit2Proxy`, so the
+    // token -> Permit2 approval a third-party intent needs must still run.
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildPermitTypedData(),

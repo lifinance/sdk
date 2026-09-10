@@ -30,10 +30,10 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return false
     }
 
-    // The caller supplied its own Permit2 message; do not hijack typedData[0]
-    // with a second permit for LI.FI's proxy. The check is free, and stating
-    // it as its own guard says that intent directly instead of burying it in
-    // the availability expression below.
+    // The caller supplied its own Permit2 message. Without this guard the SDK
+    // prompts for a second, competing permit for its own proxy and returns
+    // `hasMatchingPermit: true`, which makes `EthereumSetAllowanceTask.shouldRun`
+    // false — so the token -> Permit2 approval the caller intent needs never lands.
     if (isCallerIntentLane(step, fromChain)) {
       return false
     }

@@ -12,14 +12,9 @@ import { isGaslessTypedData } from './isGaslessStep.js'
  * - `native-permit` — an EIP-2612 permit. Signed before the transaction is
  *   prepared, and it stands in for the ERC-20 allowance.
  * - `caller-intent` — a Permit2 message the caller supplied for its own
- *   spender. Signed before the transaction is prepared and threaded into
+ *   spender. Signed before prepare and threaded into
  *   `/advanced/stepTransaction`. It does NOT stand in for the allowance.
  * - `relayer-intent` — anything signed after prepare and posted to a relayer.
- *
- * `chain` is REQUIRED throughout this module. Omitting it silently disables
- * the spender rule, so a relayer intent would classify as `caller-intent` —
- * toward inline signing, the direction that loses money. Every production call
- * site has a chain: `EthereumStepExecutorContext.fromChain` is non-optional.
  */
 export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
 

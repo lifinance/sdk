@@ -17,12 +17,9 @@ import {
  * destroys a transaction. Neither subsumes the other — with
  * `disableMessageSigning`, the intent is declared but never signed.
  *
- * Both gates that must not hijack a caller's transaction reach this through
- * {@link isCallerIntentLaneInFlight} — the native-permit wrap and the Permit2
- * wrap are the two branches of one decision, and protecting only one is how
- * the second branch stayed open. Call that wrapper, not this: on its own this
- * fold says nothing about the relayer lane, and a mixed-lane step must keep
- * both wraps available.
+ * Call {@link isCallerIntentLaneInFlight}, not this: on its own this fold says
+ * nothing about the relayer lane, and a mixed-lane step must keep both the
+ * native-permit wrap and the Permit2 wrap available.
  */
 export function hasCallerIntentInFlight(
   context: EthereumStepExecutorContext
@@ -38,9 +35,9 @@ export function hasCallerIntentInFlight(
 }
 
 /**
- * {@link isCallerIntentLane} for gates that run after `EthereumPrepareTransactionTask`, which may
- * have replaced `step.typedData` with the API's answer. Reads the signed record as well, so the
- * verdict survives even if the declaration is gone.
+ * `isCallerIntentLane` from `utils/getTypedDataLane.js`, for gates that run after
+ * `EthereumPrepareTransactionTask` may have replaced `step.typedData` with the
+ * API's answer. Reads the signed record too, so the verdict survives.
  */
 export function isCallerIntentLaneInFlight(
   context: EthereumStepExecutorContext

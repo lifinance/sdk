@@ -52,10 +52,7 @@ describe('hasCallerIntentInFlight', () => {
   })
 
   it('is true from the signed record alone', () => {
-    // The defence-in-depth arm. `preserveCallerIntents` keeps the
-    // declaration alive through `EthereumPrepareTransactionTask`, but the
-    // signed record is read too: this gate decides whether the SDK may rewrite
-    // the caller's calldata, and a wrong answer destroys the transaction.
+    // The defence-in-depth arm: the signed record is read as well.
     expect(
       hasCallerIntentInFlight(buildContext([], [signedCallerIntent()]))
     ).toBe(true)
@@ -70,7 +67,6 @@ describe('hasCallerIntentInFlight', () => {
   })
 
   it('is false when neither source carries a caller intent', () => {
-    // A relayer-lane entry in each source must not read as a caller intent.
     expect(hasCallerIntentInFlight(buildContext([witness()], []))).toBe(false)
     expect(hasCallerIntentInFlight(buildContext([], []))).toBe(false)
   })

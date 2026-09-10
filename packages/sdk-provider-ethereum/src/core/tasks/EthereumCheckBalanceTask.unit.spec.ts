@@ -87,8 +87,8 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
 
   it('relayer step short-circuits to walletPaysGas: false without reading account code', async () => {
     // Pins the short-circuit so a future refactor can't silently re-introduce
-    // an `eth_getCode` round-trip on the relayer hot path. The fixture carries a
-    // real gasless primary type: a relayed step always has one.
+    // an `eth_getCode` round-trip on the relayer hot path. The fixture carries
+    // a real gasless primary type; a relayed step has one.
     const step = buildStep({
       typedData: [
         {
@@ -125,10 +125,7 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
 
   it('native-permit-only step keeps the historical skip without reading account code', async () => {
     // The pre-prepare shape CowSwap, 1inch Fusion and Velora Delta all ship.
-    // This task runs BEFORE prepare, so `/advanced/stepTransaction` may still
-    // answer with an `Order` the relayer pays for, and that is
-    // indistinguishable from a user-funded transaction here. Enforcing would
-    // block a gasless order the user could have placed.
+    // Enforcing here would block a gasless order the user could have placed.
     const step = buildStep({
       typedData: [
         {
@@ -146,8 +143,6 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
   })
 
   it('native permit + caller intent keeps the gas check: the user still pays', async () => {
-    // No relayer intent on the step, so the caller-intent lane holds and the
-    // user funds this transaction, native permit beside it or not.
     vi.mocked(getAccountCode).mockResolvedValue('0x')
     const step = buildStep({
       typedData: [

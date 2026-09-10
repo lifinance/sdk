@@ -49,9 +49,8 @@ const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
 const PERMIT2_PROXY = '0xdddd000000000000000000000000000000000004' as Address
-// The caller's own spender. NOT `PERMIT2`: a message whose spender is the
-// Permit2 deployment classifies as a relayer intent whatever its primary type,
-// and every test below would then be exercising the wrong lane.
+// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
+// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 const WRAPPED_CALLDATA = '0xfeedface' as Hex
@@ -164,10 +163,8 @@ beforeEach(() => {
 
 describe('EthereumStandardSignAndExecuteTask.run', () => {
   it('sends a caller-intent transaction to the API target with the calldata untouched', async () => {
-    // The headline guarantee. `/advanced/stepTransaction` already embedded the
-    // caller's signature in this calldata, so both SDK wraps must stay off:
-    // `encodeNativePermitData` and `encodePermit2Data` would corrupt it and
-    // `permit2Proxy` is the wrong contract to send it to.
+    // The headline guarantee. The calldata already embeds the caller's
+    // signature, so both SDK wraps must stay off and `permit2Proxy` is wrong.
     const context = buildContext({
       stepTypedData: [callerIntent()],
       signedTypedData: [signedNativePermit(), signedCallerIntent()],

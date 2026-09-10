@@ -19,20 +19,14 @@ import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
  * also avoids a wallet prompt that a failing balance check would waste.
  *
  * No dedupe against `context.signedTypedData`: `BaseStepExecutor` rebuilds the
- * context on every `executeStep`, so it restarts empty on a resume, and no
- * earlier task adds a caller-intent entry.
+ * context on every `executeStep`, so it restarts empty on a resume.
  *
- * Known limitation — action attribution in the native-permit + caller-intent
- * cell. The task reuses the `PERMIT` action so the widget needs no change.
- * `initializeAction` reuses an action of the same type, so in the cell where
- * `EthereumCheckPermitsTask` already completed a `PERMIT` action, that action
- * is reset and re-sorted behind the `SWAP` action the balance check created.
- * `BaseStepExecutor` attributes a thrown error to the last action, so a
- * rejected intent signature is reported against `SWAP`. It is recoverable — a
- * resume resets FAILED to PENDING — and the alternatives are a new public
- * action type, which needs widget coordination, or moving this task ahead of
- * the balance check, which would prompt for a signature the user may not be
- * able to use.
+ * Known limitation, unreachable today. The task reuses the `PERMIT` action so
+ * the widget needs no change; where `EthereumCheckPermitsTask` already made
+ * one, `initializeAction` reuses it IN PLACE, so `actions.at(-1)` — what
+ * `BaseStepExecutor` attributes a thrown error to — is still the `SWAP` /
+ * `CROSS_CHAIN` action the balance check created. It needs a step carrying
+ * both a native `Permit` and a `PermitSingle`, which no backend emits.
  */
 export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
   override async shouldRun(

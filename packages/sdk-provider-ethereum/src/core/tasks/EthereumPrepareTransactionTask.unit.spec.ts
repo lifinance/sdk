@@ -24,8 +24,8 @@ const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
-// NOT `PERMIT2`: a message whose spender is the Permit2 deployment is a
-// relayer intent whatever its primary type.
+// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
+// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 
@@ -130,15 +130,11 @@ beforeEach(() => {
 
 describe('EthereumPrepareTransactionTask.run', () => {
   it('keeps the caller intent on the shared step when the API answers with typedData: []', async () => {
-    // The wiring test for the G1 blocker, and the only test that exercises the
-    // real evaluation order: `stepComparison` is awaited before
-    // `preserveCallerIntents` reads `step`, and `comparedStep` itself carries
-    // the API's `typedData: []` into the same `Object.assign`.
-    //
-    // Losing the declaration here is unrecoverable. `context.signedTypedData`
-    // is rebuilt empty on every `executeStep`, so an `atomicityNotReady` retry
-    // or a `resumeRoute` would find no caller intent, skip re-signing it, and
-    // let the Permit2 proxy flow wrap the caller's router calldata.
+    // The only test that exercises the real evaluation order: `stepComparison`
+    // is awaited before `preserveCallerIntents` reads `step`, and
+    // `comparedStep` carries the API's `typedData: []` into the same
+    // `Object.assign`. Losing the declaration here is unrecoverable — see
+    // `preserveCallerIntents`.
     const step = buildStep([callerIntent()])
     vi.mocked(getUpdatedStep).mockResolvedValue(
       buildApiAnswer([]) as LiFiStepExtended
@@ -181,9 +177,7 @@ describe('EthereumPrepareTransactionTask.run', () => {
   it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a caller intent is preserved', async () => {
     // The guard has to judge what the API answered. `preserveCallerIntents`
     // puts the caller intent back, so `step.typedData` is non-empty by the
-    // time the guard runs — but the API returned nothing to send. With
-    // `allowUserInteraction: false` the step would PAUSE further down the
-    // pipeline instead of failing, and this error would never surface.
+    // time the guard runs — but the API returned nothing to send.
     const step = buildStep([callerIntent()])
     const { transactionRequest: _, ...answer } = buildApiAnswer([])
     vi.mocked(getUpdatedStep).mockResolvedValue(answer as LiFiStepExtended)

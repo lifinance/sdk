@@ -9,11 +9,9 @@ import { isCallerIntentLaneInFlight } from './hasCallerIntentInFlight.js'
  *
  * Returns `undefined` when the step carries a caller-supplied Permit2 intent,
  * even if a native permit was also signed. `EthereumStandardSignAndExecuteTask`
- * reacts to a native permit by wrapping the calldata in `encodeNativePermitData`
- * and retargeting the transaction to `fromChain.permit2Proxy`. For a caller
- * intent the calldata returned by `/advanced/stepTransaction` already embeds the
- * signature and must be sent to its own target untouched, so the wrap would
- * destroy the transaction.
+ * reacts to a native permit by wrapping the calldata and retargeting the
+ * transaction to `fromChain.permit2Proxy` — which would destroy calldata that
+ * already embeds the caller's signature.
  */
 export function findSignedNativePermit(
   context: EthereumStepExecutorContext

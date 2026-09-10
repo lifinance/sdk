@@ -25,8 +25,8 @@ const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
-// A caller's own spender. NOT `PERMIT2`, which would make the entry a relayer
-// intent whatever its primary type.
+// Spender must NOT be PERMIT2 — for a Permit2 message that flips the lane to
+// relayer-intent. See preserveCallerIntents.unit.spec.ts.
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
@@ -41,10 +41,8 @@ const witness = (): TypedData =>
   }) as unknown as TypedData
 
 /**
- * A `PermitSingle` whose spender is the Permit2 deployment. Its primary type is
- * on the caller-intent allowlist, so the ONLY thing that makes it a relayer
- * intent is the spender rule — the rule `isGaslessStep` cannot apply without a
- * chain.
+ * A `PermitSingle` that is a relayer intent ONLY because of the spender rule,
+ * which `isGaslessStep` cannot apply without the chain. See getUpdatedStep.ts.
  */
 const permit2SpenderIntent = (): TypedData =>
   ({
@@ -55,8 +53,8 @@ const permit2SpenderIntent = (): TypedData =>
   }) as unknown as TypedData
 
 /**
- * The shape CowSwap, 1inch Fusion and Velora Delta ship. `Order` is not on the
- * caller-intent allowlist and is not a witness intent, so the classifier's
+ * The shape CowSwap, 1inch Fusion and Velora Delta ship. `Order` is neither a
+ * caller-intent type nor a witness intent, so the classifier's
  * default branch calls it a relayer intent — but `isGaslessStep` says false,
  * and that disagreement is deliberate. It has no `spender`, which is what
  * keeps it away from the Permit2 rule.
@@ -118,11 +116,8 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes a step whose only relayer marker is the Permit2 spender through the relayer', async () => {
-    // The chain is what makes this answerable. `getEthereumExecutionStrategy`
-    // routes this shape to `relayed` because it passes the chain to the
-    // classifier; asking the question here without one sends the step to
-    // `/advanced/stepTransaction` instead — the wrong endpoint for the
-    // strategy that will run.
+    // Without the chain, `isGaslessStep` cannot apply the spender rule and the
+    // step goes to the wrong endpoint. See getUpdatedStep.ts.
     await getUpdatedStep(client, buildStep([permit2SpenderIntent()]), chain)
 
     expect(getRelayerQuote).toHaveBeenCalledTimes(1)
