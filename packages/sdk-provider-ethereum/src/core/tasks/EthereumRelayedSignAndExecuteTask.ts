@@ -10,6 +10,7 @@ import type { Hash } from 'viem'
 import { isHyperliquidAgentStep } from '../../hyperliquid/isHyperliquidAgentStep.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { isTypedDataAlreadySigned } from './helpers/isTypedDataAlreadySigned.js'
 import { signHyperliquidTypedData } from './helpers/signHyperliquidTypedData.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
@@ -48,13 +49,19 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    // An entry we already hold a signature for is relayed as it is.
+    const unsignedTypedData = intentTypedData.filter(
+      (typedData) =>
+        !isTypedDataAlreadySigned(currentSignedTypedData, typedData)
+    )
+
     let signedTypedData: SignedTypedData[]
     if (isHyperliquidAgentStep(step)) {
       statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
 
       const signedResults = await signHyperliquidTypedData(
         context,
-        intentTypedData
+        unsignedTypedData
       )
 
       if (!signedResults) {
@@ -65,7 +72,7 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
     } else {
       const result = await signTypedDataEntries(
         context,
-        intentTypedData,
+        unsignedTypedData,
         action.type,
         'MESSAGE_REQUIRED'
       )

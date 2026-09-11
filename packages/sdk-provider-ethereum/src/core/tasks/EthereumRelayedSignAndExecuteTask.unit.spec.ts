@@ -63,6 +63,32 @@ const witness = (): TypedData =>
     message: {},
   }) as unknown as TypedData
 
+const THIRD_PARTY_ROUTER =
+  '0xeeee000000000000000000000000000000000005' as Address
+
+const callerIntent = (): TypedData =>
+  ({
+    primaryType: 'PermitSingle',
+    domain: { name: 'Permit2', chainId: SOURCE_CHAIN },
+    types: {},
+    message: {
+      details: {
+        token: PERMIT2_PROXY,
+        amount: '1000000',
+        expiration: '1900000000',
+        nonce: '0',
+      },
+      spender: THIRD_PARTY_ROUTER,
+      sigDeadline: '1900000000',
+    },
+  }) as unknown as TypedData
+
+const signedCallerIntent = (): SignedTypedData =>
+  ({
+    ...callerIntent(),
+    signature: EXISTING_SIGNATURE,
+  }) as unknown as SignedTypedData
+
 const buildContext = (options?: {
   typedData?: TypedData[]
   signedTypedData?: SignedTypedData[]
@@ -143,6 +169,60 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
       })
     )
     expect(result.status).toBe('COMPLETED')
+  })
+
+  it('relays a caller intent it already holds without asking again', async () => {
+    const context = buildContext({
+      typedData: [callerIntent()],
+      signedTypedData: [signedCallerIntent()],
+    })
+
+    const result = await task.run(context)
+
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(context.statusManager.updateAction).not.toHaveBeenCalledWith(
+      context.step,
+      'SWAP',
+      'MESSAGE_REQUIRED'
+    )
+    expect(relayTransaction).toHaveBeenCalledWith(
+      context.client,
+      expect.objectContaining({
+        typedData: [
+          expect.objectContaining({
+            primaryType: 'PermitSingle',
+            signature: EXISTING_SIGNATURE,
+          }),
+        ],
+      })
+    )
+    expect(result.status).toBe('COMPLETED')
+  })
+
+  it('signs every entry when none of them is signed yet', async () => {
+    const context = buildContext({
+      typedData: [callerIntent(), witness()],
+      signedTypedData: [],
+    })
+
+    await task.run(context)
+
+    expect(signTypedData).toHaveBeenCalledTimes(2)
+    expect(relayTransaction).toHaveBeenCalledWith(
+      context.client,
+      expect.objectContaining({
+        typedData: [
+          expect.objectContaining({
+            primaryType: 'PermitSingle',
+            signature: SIGNATURE,
+          }),
+          expect.objectContaining({
+            primaryType: 'PermitWitnessTransferFrom',
+            signature: SIGNATURE,
+          }),
+        ],
+      })
+    )
   })
 
   it('throws TransactionUnprepared when every entry is already signed', async () => {
