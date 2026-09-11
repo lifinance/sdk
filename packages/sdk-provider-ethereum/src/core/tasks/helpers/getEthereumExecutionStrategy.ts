@@ -1,7 +1,7 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { hasRelayerIntent } from '../../../utils/getTypedDataLane.js'
+import { isCallerIntentLane } from '../../../utils/getTypedDataLane.js'
 
 /**
  * Determines the execution strategy: 'relayed', 'batched', or 'standard'.
@@ -27,7 +27,14 @@ export async function getEthereumExecutionStrategy(
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
-  if (hasRelayerIntent(step, fromChain)) {
+  // Typed data belongs to the relayer unless it is exclusively a caller intent:
+  // that is the one shape the user signs and then sends themselves. The
+  // `executionType` term is an OR, not a replacement — it closes the routes-time
+  // window where the backend declares a message flow before `typedData` arrives.
+  if (
+    step.executionType === 'message' ||
+    (!!step.typedData?.length && !isCallerIntentLane(step, fromChain))
+  ) {
     return 'relayed'
   }
 

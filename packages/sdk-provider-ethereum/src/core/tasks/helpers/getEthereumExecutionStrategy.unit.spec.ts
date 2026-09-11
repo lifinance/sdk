@@ -1,4 +1,4 @@
-import type { ExtendedChain, LiFiStep } from '@lifi/sdk'
+import type { ExecutionType, ExtendedChain, LiFiStep } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../actions/isBatchingSupported.js', () => ({
@@ -20,7 +20,8 @@ const entry = (primaryType: string, spender?: string) => ({
 })
 
 const buildContext = (
-  typedData?: ReturnType<typeof entry>[]
+  typedData?: ReturnType<typeof entry>[],
+  executionType?: ExecutionType
 ): EthereumStepExecutorContext =>
   ({
     step: {
@@ -29,6 +30,7 @@ const buildContext = (
       action: { fromChainId: 1 },
       estimate: {},
       ...(typedData ? { typedData } : {}),
+      ...(executionType ? { executionType } : {}),
     } as unknown as LiFiStep,
     fromChain: { id: 1, permit2: PERMIT2 } as unknown as ExtendedChain,
     client: {},
@@ -73,11 +75,54 @@ describe('getEthereumExecutionStrategy', () => {
     expect(strategy).toBe('standard')
   })
 
-  it('executes a native-permit-only step as standard', async () => {
+  // JUMEMB-88: a native permit must keep the baseline's `relayed` verdict. If it
+  // resolves `batched`, the allowance tasks queue the approve, prepare flips the
+  // strategy to `relayed`, and the queued approve is silently discarded.
+  it('relays a native-permit-only step, as the baseline did', async () => {
+    vi.mocked(isBatchingSupported).mockResolvedValue(true)
     const strategy = await getEthereumExecutionStrategy(
       buildContext([entry('Permit')])
     )
-    expect(strategy).toBe('standard')
+    expect(strategy).toBe('relayed')
+    expect(isBatchingSupported).not.toHaveBeenCalled()
+  })
+
+  it('relays a native-permit-only step whose permit is never signed', async () => {
+    // `disableMessageSigning` leaves `hasMatchingPermit` false, which is how the
+    // step reached the allowance tasks with a batch-capable wallet in JUMEMB-88.
+    vi.mocked(isBatchingSupported).mockResolvedValue(true)
+    const context = buildContext([entry('Permit')])
+    context.disableMessageSigning = true
+    expect(await getEthereumExecutionStrategy(context)).toBe('relayed')
+  })
+
+  it('relays a step the backend declared a message before its typed data arrives', async () => {
+    // Hyperliquid carries `executionType: 'message'` from routes time, but
+    // `typedData` only arrives at /advanced/stepTransaction (JUMEMB-102).
+    vi.mocked(isBatchingSupported).mockResolvedValue(true)
+    const strategy = await getEthereumExecutionStrategy(
+      buildContext(undefined, 'message')
+    )
+    expect(strategy).toBe('relayed')
+    expect(isBatchingSupported).not.toHaveBeenCalled()
+  })
+
+  it('leaves a transaction-type step with no typed data on the batching probe', async () => {
+    vi.mocked(isBatchingSupported).mockResolvedValue(true)
+    const strategy = await getEthereumExecutionStrategy(
+      buildContext(undefined, 'transaction')
+    )
+    expect(strategy).toBe('batched')
+    expect(isBatchingSupported).toHaveBeenCalledTimes(1)
+  })
+
+  it('relays a gasless step through the typed data, not its executionType', async () => {
+    // The gasless lane reports `executionType: 'transaction'` by design while
+    // being signature-only, so it depends entirely on the typed-data inference.
+    const strategy = await getEthereumExecutionStrategy(
+      buildContext([entry('PermitWitnessTransferFrom')], 'transaction')
+    )
+    expect(strategy).toBe('relayed')
   })
 
   it('batches a caller-intent step when the wallet supports EIP-5792', async () => {
