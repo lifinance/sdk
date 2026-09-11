@@ -1,5 +1,5 @@
 /**
- * Shared harness for the EVM characterization suite.
+ * Shared harness for the EVM execution-flow specs.
  *
  * These specs pin *observed* behaviour of `main`, so the harness drives the
  * real consumer entry point — `executeRoute` → `EthereumProvider.getStepExecutor`
@@ -330,7 +330,7 @@ export const buildStep = (
 ): LiFiStepExtended => {
   const fromAmount = options.fromAmount ?? FROM_AMOUNT
   const step = {
-    id: 'characterization-step',
+    id: 'flow-step',
     type: options.type ?? 'lifi',
     tool: options.tool ?? '1inch',
     toolDetails: { key: 'tool', name: 'Tool', logoURI: '' },
@@ -792,7 +792,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     account: { address: FROM_ADDRESS, type: 'json-rpc' },
     chain: { id: chain.id },
     transport: { type: 'custom' },
-    uid: 'characterization-wallet',
+    uid: 'flow-wallet',
     readContract,
     multicall,
     getCode,
@@ -875,7 +875,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
   } as unknown as SDKProvider
 
   const client = createClient({
-    integrator: 'characterization',
+    integrator: 'flow-specs',
     preloadChains: false,
     disableVersionCheck: true,
     providers: [provider],
@@ -887,7 +887,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
   )
 
   scenarioCounter += 1
-  const routeId = `characterization-route-${scenarioCounter}`
+  const routeId = `flow-route-${scenarioCounter}`
   const route = {
     id: routeId,
     fromChainId: options.step.action.fromChainId,

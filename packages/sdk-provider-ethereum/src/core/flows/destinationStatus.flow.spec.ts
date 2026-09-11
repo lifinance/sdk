@@ -47,7 +47,7 @@ const DONE_STATUS = {
   status: 'DONE',
   substatus: 'COMPLETED',
   substatusMessage: 'The transfer is complete.',
-  transactionId: 'characterization-status',
+  transactionId: 'flow-status',
   lifiExplorerLink: 'https://explorer.example/tx',
   bridgeExplorerLink: 'https://bridge.example/tx',
   sending: {
