@@ -35,7 +35,7 @@ import {
   type Scenario,
   THIRD_PARTY_ROUTER,
   WALLET_SIGNATURE,
-} from './harness.js'
+} from './harness.mock.js'
 
 /**
  * A Permit2 `PermitSingle` whose spender is a third-party router — not
@@ -103,10 +103,13 @@ describe('C2 — a step that is only ever a signature', () => {
 
     await scenario.run()
 
-    // `MESSAGE_REQUIRED` is raised only by the relayed sign-and-execute task,
-    // so seeing it is the observable proof the strategy resolved to 'relayed'.
-    // The standard and batched tasks both demand a transaction request, which
-    // this step never has.
+    // What proves the strategy resolved to 'relayed' is the pair of effects
+    // below, not `MESSAGE_REQUIRED` on its own: that status is also raised by
+    // `EthereumStandardSignAndExecuteTask.ts:82` for the Permit2 signature (see
+    // C7's pinned sequence). Here the step is relayed because
+    // `getEthereumExecutionStrategy` returns early for any step carrying typed
+    // data, and the observable consequence is `relayTransaction` with no
+    // `sendTransaction` and no `sendCalls` — pinned in test 1.
     expect(
       scenario
         .events('action')
@@ -120,11 +123,18 @@ describe('C2 — a step that is only ever a signature', () => {
       'SWAP:PENDING',
     ])
 
+    // Six calls, one action: `updateAction` mutates the entry in place.
+    expect(scenario.finalActions()).toEqual(['SWAP:PENDING'])
+
     const signatures = scenario.events('signTypedData')
     expect(signatures.map((event) => event.primaryType)).toEqual([
       'PermitSingle',
     ])
     expect(signatures[0].message.spender).toBe(THIRD_PARTY_ROUTER)
+    // Fixture-drift guard, not coverage: the point of this scenario is a
+    // spender that is neither Permit2 nor the proxy, so if either constant ever
+    // collided with `THIRD_PARTY_ROUTER` the scenario would stop testing what
+    // it is named after.
     expect(signatures[0].message.spender).not.toBe(CANONICAL_PERMIT2)
     expect(signatures[0].message.spender).not.toBe(LIFI_PERMIT2_PROXY)
 

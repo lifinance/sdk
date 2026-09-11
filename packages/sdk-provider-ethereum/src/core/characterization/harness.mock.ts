@@ -55,11 +55,31 @@
  * batch, relay and contract read — lands on one append-only {@link Scenario.timeline}
  * with a monotonic `seq`. Ordering is a slice; absence is an empty filter.
  *
+ * ## One scenario at a time
+ *
+ * {@link createScenario} installs its implementations on the *module-level*
+ * `@lifi/sdk` mocks — `getStepTransaction`, `getRelayerQuote`,
+ * `relayTransaction`, `getPublicClient` and both receipt fetchers. The last
+ * `createScenario` wins, and `vi.clearAllMocks()` clears calls but not
+ * implementations. So a spec that needs two runs must construct, run, then
+ * construct the next — never construct both up front, or the second scenario
+ * silently drives the first one's re-quote, relay and contract reads. The
+ * `StatusManager` wrapper and the wallet client are per-provider and are not
+ * affected, which is what makes the mistake invisible.
+ *
  * ## Permit2 vs. Permit2Proxy
  *
  * {@link CANONICAL_PERMIT2} is Uniswap's Permit2 (`chain.permit2`).
  * {@link LIFI_PERMIT2_PROXY} is LI.FI's own proxy (`chain.permit2Proxy`).
  * They are deliberately unrelated addresses and no spec may inline either.
+ *
+ * ## Why `.mock.ts`
+ *
+ * The `.mock.ts` suffix is load-bearing, not decorative. `tsdown.config.ts`,
+ * `package.json#files` and `tsconfig.json#exclude` each exclude a `.mock.ts`
+ * glob, and none of them excludes a bare `harness.ts`. Under any other name
+ * this module would be compiled into `dist` and published to every consumer of
+ * `@lifi/sdk-provider-ethereum`. Do not rename it back.
  */
 import {
   ChainType,
@@ -188,14 +208,33 @@ export type TimelineEventDetail =
   | { kind: 'getCapabilities' }
   | { kind: 'estimateGas'; to?: string }
 
-export type TimelineEvent = TimelineEventDetail & { seq: number }
+/**
+ * What every timeline entry carries on top of its own detail.
+ *
+ * `actions` is the array a *consumer* reads — `step.execution.actions`, as
+ * `TYPE:STATUS`, at the moment this event landed. It is not the same thing as
+ * the order of `StatusManager` calls the `action` events record:
+ * `StatusManager.updateAction` re-sorts the array DONE-first on every call and
+ * `initializeAction` reuses an existing action of the same type instead of
+ * appending a second one, so the call order and the array order can differ.
+ * The widget reads `actions.at(-1)` for its headline text and its icon, which
+ * makes the array order user-visible even when execution is byte-identical.
+ *
+ * For an `action` event the snapshot is taken *after* the real `StatusManager`
+ * method returned, so it shows that call's effect. For every other kind it is
+ * the state at that instant, i.e. the effect of the most recent mutation.
+ */
+export type TimelineEventCommon = { seq: number; actions: string[] }
+
+export type TimelineEvent = TimelineEventDetail & TimelineEventCommon
 
 export type TimelineKind = TimelineEventDetail['kind']
 
 export type TimelineEventOf<K extends TimelineKind> = Extract<
   TimelineEventDetail,
   { kind: K }
-> & { seq: number }
+> &
+  TimelineEventCommon
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -264,6 +303,12 @@ export const buildChain = (
 
 export interface StepFixtureOptions {
   typedData?: TypedData[]
+  /**
+   * Destination chain id. Different from {@link CHAIN_ID} makes the step a
+   * bridge, so `isBridgeExecution` is true and every `findAction` in the
+   * pipeline looks for `CROSS_CHAIN` instead of `SWAP`.
+   */
+  toChainId?: number
   transactionRequest?: Record<string, unknown>
   tool?: string
   type?: string
@@ -291,9 +336,12 @@ export const buildStep = (
     toolDetails: { key: 'tool', name: 'Tool', logoURI: '' },
     action: {
       fromChainId: CHAIN_ID,
-      toChainId: CHAIN_ID,
+      toChainId: options.toChainId ?? CHAIN_ID,
       fromToken: FROM_TOKEN,
-      toToken: TO_TOKEN,
+      toToken:
+        options.toChainId === undefined
+          ? TO_TOKEN
+          : { ...TO_TOKEN, chainId: options.toChainId },
       fromAmount,
       slippage: 0.03,
       fromAddress: FROM_ADDRESS,
@@ -484,6 +532,29 @@ export interface ScenarioOptions {
   onStepTransaction?: (step: LiFiStep) => LiFiStep
   /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
   onRelayerQuote?: (step: LiFiStep) => LiFiStep
+  /**
+   * Destination chain, for a cross-chain step. Supplying it registers a second
+   * chain with the client; `isBridgeExecution` is then true because
+   * `BaseStepExecutor.createBaseContext` compares `fromChain.id` to
+   * `toChain.id`.
+   */
+  toChain?: ExtendedChain
+  /**
+   * Wallet behaviour for `wallet_sendCalls`. Throw
+   * `AtomicReadyWalletRejectedUpgradeError` to model a wallet declining the
+   * EIP-7702 upgrade, which is what drives the `atomicityNotReady` retry.
+   */
+  onSendCalls?: (request: {
+    calls: { to?: Address; data?: Hex }[]
+  }) => Promise<{ id: Hex }>
+  /**
+   * `executeInBackground` as a consumer passes it to `executeRoute`. It is the
+   * only public route to `allowUserInteraction: false`:
+   * `updateRouteExecution` turns it into `setInteraction({ allowInteraction })`
+   * on every executor, and each task then returns `{ status: 'PAUSED' }` at its
+   * own interaction gate.
+   */
+  executeInBackground?: boolean
 }
 
 export interface Scenario {
@@ -509,6 +580,13 @@ export interface Scenario {
   ): TimelineEventOf<K>[]
   /** Every timeline `kind`, in order — handy for pinning a whole sequence. */
   kinds(): TimelineKind[]
+  /**
+   * `step.execution.actions` as the consumer reads it when the run is over, as
+   * `TYPE:STATUS`. This is the array the widget renders; `at(-1)` is the entry
+   * it takes its headline text and its icon from. Its order is not the call
+   * order the `action` timeline events record — see {@link TimelineEventCommon}.
+   */
+  finalActions(): string[]
 }
 
 const asMock = (fn: unknown, name: string): Mock => {
@@ -522,17 +600,41 @@ const asMock = (fn: unknown, name: string): Mock => {
 }
 
 /**
+ * Holds the live step the pipeline is mutating, so any observer — including the
+ * wallet client, which never sees a step — can read `execution.actions` as a
+ * consumer would. `executeRoute` deep-clones the route, so the step a spec
+ * built is *not* the object under execution; this is set from the arguments the
+ * `StatusManager` is actually called with.
+ */
+interface ActionsProbe {
+  step?: { execution?: { actions: { type: string; status: string }[] } }
+  snapshot(): string[]
+}
+
+const createActionsProbe = (): ActionsProbe => ({
+  step: undefined,
+  snapshot(): string[] {
+    return (this.step?.execution?.actions ?? []).map(
+      (action) => `${action.type}:${action.status}`
+    )
+  },
+})
+
+/**
  * Instruments the executor's `StatusManager` at the two methods that actually
  * mutate an action. `initializeAction` delegates to one of them, so wrapping
  * these two records exactly one entry per real mutation and never double-counts.
  *
  * Each entry is recorded from the *arguments*, before the real method runs, so
  * the mutation lands on the timeline ahead of the `updateRouteHook` fire it
- * causes — the order a consumer actually observes.
+ * causes — the order a consumer actually observes. The entry's `actions`
+ * snapshot is then patched in once the real method has returned, so one event
+ * carries both the call that was made and the array it produced.
  */
 const instrumentStatusManager = (
   executor: object,
-  record: (detail: TimelineEventDetail) => void
+  record: (detail: TimelineEventDetail) => TimelineEvent,
+  probe: ActionsProbe
 ): void => {
   const statusManager = (
     executor as {
@@ -546,30 +648,47 @@ const instrumentStatusManager = (
   const { createAction, updateAction, updateExecution } = statusManager
 
   statusManager.createAction = (...args: never[]) => {
-    const props = args[0] as unknown as { type: string; status: string }
-    record({ kind: 'action', actionType: props.type, status: props.status })
-    return createAction.apply(statusManager, args)
+    const props = args[0] as unknown as {
+      step: ActionsProbe['step']
+      type: string
+      status: string
+    }
+    probe.step = props.step
+    const event = record({
+      kind: 'action',
+      actionType: props.type,
+      status: props.status,
+    })
+    const result = createAction.apply(statusManager, args)
+    event.actions = probe.snapshot()
+    return result
   }
   statusManager.updateAction = (...args: never[]) => {
-    const [, type, status, params] = args as unknown as [
-      unknown,
+    const [step, type, status, params] = args as unknown as [
+      ActionsProbe['step'],
       string,
       string,
       { txHash?: string; taskId?: string } | undefined,
     ]
-    record({
+    probe.step = step
+    const event = record({
       kind: 'action',
       actionType: type,
       status,
       txHash: params?.txHash,
       taskId: params?.taskId,
     })
-    return updateAction.apply(statusManager, args)
+    const result = updateAction.apply(statusManager, args)
+    event.actions = probe.snapshot()
+    return result
   }
   statusManager.updateExecution = (...args: never[]) => {
+    probe.step = args[0] as unknown as ActionsProbe['step']
     const execution = args[1] as unknown as { status?: string } | undefined
-    record({ kind: 'execution', status: execution?.status })
-    return updateExecution.apply(statusManager, args)
+    const event = record({ kind: 'execution', status: execution?.status })
+    const result = updateExecution.apply(statusManager, args)
+    event.actions = probe.snapshot()
+    return result
   }
 }
 
@@ -578,8 +697,15 @@ let scenarioCounter = 0
 export const createScenario = (options: ScenarioOptions): Scenario => {
   const chain = options.chain ?? buildChain()
   const timeline: TimelineEvent[] = []
-  const record = (detail: TimelineEventDetail): void => {
-    timeline.push({ ...detail, seq: timeline.length } as TimelineEvent)
+  const probe = createActionsProbe()
+  const record = (detail: TimelineEventDetail): TimelineEvent => {
+    const event = {
+      ...detail,
+      seq: timeline.length,
+      actions: probe.snapshot(),
+    } as TimelineEvent
+    timeline.push(event)
+    return event
   }
 
   const allowance = options.allowance ?? 0n
@@ -715,6 +841,9 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
         kind: 'sendCalls',
         calls: request.calls.map((c) => ({ to: c.to, data: c.data })),
       })
+      if (options.onSendCalls) {
+        return options.onSendCalls(request)
+      }
       return { id: nextHash() }
     },
     waitForCallsStatus: async (): Promise<unknown> => ({
@@ -740,7 +869,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       tokens.map((token) => ({ ...token, amount: HUGE_BALANCE })),
     async getStepExecutor(executorOptions: StepExecutorOptions) {
       const executor = await baseProvider.getStepExecutor(executorOptions)
-      instrumentStatusManager(executor, record)
+      instrumentStatusManager(executor, record, probe)
       return executor
     },
   } as unknown as SDKProvider
@@ -751,14 +880,18 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     disableVersionCheck: true,
     providers: [provider],
   })
-  client.setChains([chain])
+  client.setChains(
+    options.toChain && options.toChain.id !== chain.id
+      ? [chain, options.toChain]
+      : [chain]
+  )
 
   scenarioCounter += 1
   const routeId = `characterization-route-${scenarioCounter}`
   const route = {
     id: routeId,
-    fromChainId: CHAIN_ID,
-    toChainId: CHAIN_ID,
+    fromChainId: options.step.action.fromChainId,
+    toChainId: options.step.action.toChainId,
     fromAmount: options.step.action.fromAmount,
     fromAmountUSD: '1.5',
     fromToken: FROM_TOKEN,
@@ -779,6 +912,9 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       latestRoute = updatedRoute
       record({ kind: 'routeUpdate' })
     },
+    ...(options.executeInBackground !== undefined && {
+      executeInBackground: options.executeInBackground,
+    }),
   }
 
   asMock(getStepTransaction, 'getStepTransaction').mockImplementation(
@@ -855,5 +991,9 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       )
     },
     kinds: () => timeline.map((event) => event.kind),
+    finalActions: () =>
+      (requireRoute().steps[0].execution?.actions ?? []).map(
+        (action) => `${action.type}:${action.status}`
+      ),
   }
 }

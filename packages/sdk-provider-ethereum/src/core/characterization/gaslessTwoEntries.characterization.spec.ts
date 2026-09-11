@@ -31,7 +31,7 @@ import {
   LIFI_PERMIT2_PROXY,
   type Scenario,
   WALLET_SIGNATURE,
-} from './harness.js'
+} from './harness.mock.js'
 
 /**
  * The gasless two-entry shape the LI.FI relayer emits when the user's Permit2
@@ -87,7 +87,6 @@ describe('C1 — gasless step with a permit and a witness', () => {
     // contracts; conflating them is the classic error in this area.
     expect(witness.message.spender).toBe(LIFI_PERMIT2_PROXY)
     expect(witness.domain.verifyingContract).toBe(CANONICAL_PERMIT2)
-    expect(witness.message.spender).not.toBe(witness.domain.verifyingContract)
   })
 
   it('runs no allowance task and sends no approval transaction', async () => {
@@ -106,7 +105,7 @@ describe('C1 — gasless step with a permit and a witness', () => {
     expect(actionTypes).not.toContain('RESET_ALLOWANCE')
     expect(actionTypes).not.toContain('NATIVE_PERMIT')
 
-    // The whole action sequence a consumer sees, pinned exactly.
+    // Every `StatusManager` call, in the order it was made.
     expect(
       scenario
         .events('action')
@@ -122,6 +121,12 @@ describe('C1 — gasless step with a permit and a witness', () => {
       'SWAP:PENDING',
       'SWAP:PENDING',
     ])
+
+    // And the array those calls produced — `step.execution.actions`, which is
+    // what a consumer actually renders. It is a different thing from the call
+    // order above: `updateAction` re-sorts DONE-first and `initializeAction`
+    // reuses an action of the same type, so two actions here, not nine.
+    expect(scenario.finalActions()).toEqual(['PERMIT:DONE', 'SWAP:PENDING'])
 
     // Asserted as an absence, explicitly: no allowance is even read, and
     // nothing is sent on chain — not to Permit2, not to the proxy, not to the
@@ -148,16 +153,28 @@ describe('C1 — gasless step with a permit and a witness', () => {
     // default does. A relayer that answered with a fresh nonce would fail the
     // match and the permit would be signed a second time — so a failure here
     // means the re-quote changed, not that the filter broke.
-    // `MESSAGE_REQUIRED` is only ever raised by the relayed task, so it marks
-    // the start of that task's own signing.
-    const relayedTaskStartsAt = scenario
+    //
+    // The boundary is the creation of the SWAP action by `CheckBalanceTask`:
+    // every task that can sign before it (only `EthereumCheckPermitsTask` here)
+    // has already run, and everything after it belongs to the prepare +
+    // sign-and-execute leg. `MESSAGE_REQUIRED` would be the wrong boundary —
+    // `EthereumStandardSignAndExecuteTask.ts:82` raises it too, so it does not
+    // identify the relayed task. Test 1 pins the full signature list, so the
+    // pair of assertions is exact from both ends.
+    const swapActionStartsAt = scenario
       .events('action')
-      .find((event) => event.status === 'MESSAGE_REQUIRED')!.seq
+      .find((event) => event.actionType === 'SWAP')!.seq
     expect(
       scenario
-        .events('signTypedData', relayedTaskStartsAt)
+        .events('signTypedData', swapActionStartsAt)
         .map((event) => event.primaryType)
     ).toEqual(['PermitWitnessTransferFrom'])
+
+    // What the widget shows while each signature is pending: it reads
+    // `actions.at(-1)` for its headline and its icon.
+    expect(
+      scenario.events('signTypedData').map((event) => event.actions.at(-1))
+    ).toEqual(['PERMIT:ACTION_REQUIRED', 'SWAP:MESSAGE_REQUIRED'])
     expect(
       relayed[0].typedData.map((entry) => [entry.primaryType, entry.signature])
     ).toEqual([

@@ -34,7 +34,7 @@ import {
   FROM_TOKEN_ADDRESS,
   LIFI_PERMIT2_PROXY,
   type Scenario,
-} from './harness.js'
+} from './harness.mock.js'
 
 /** The same gasless shape as C1, executed with the flag turned on. */
 const buildFlaggedScenario = (disableMessageSigning: boolean): Scenario =>
@@ -47,6 +47,25 @@ const buildFlaggedScenario = (disableMessageSigning: boolean): Scenario =>
     }),
     allowance: 0n,
     disableMessageSigning,
+  })
+
+/**
+ * The *other* arm of the same OR. `EthereumStepExecutor.ts:118-119` computes
+ * `disableMessageSigning = !!this.disableMessageSigning || step.type !== 'lifi'`,
+ * so a custom step forces the flag on even when the caller never set it.
+ */
+const buildCustomStepScenario = (): Scenario =>
+  createScenario({
+    step: buildStep({
+      type: 'custom',
+      typedData: [
+        buildPermitTypedData(CANONICAL_PERMIT2),
+        buildPermitWitnessTypedData(),
+      ],
+    }),
+    allowance: 0n,
+    // Deliberately absent: the provider-level flag. Everything below is caused
+    // by `step.type` alone.
   })
 
 beforeEach(() => {
@@ -74,6 +93,19 @@ describe('C4 — disableMessageSigning on a relayed step', () => {
       scenario.events('signTypedData').map((event) => event.primaryType)
     ).toEqual(['Permit', 'PermitWitnessTransferFrom'])
     expect(scenario.events('relayTransaction')).toHaveLength(1)
+
+    // The array a consumer renders, and what its headline reads at each
+    // prompt. `PERMIT` never appears: the flag skips `EthereumCheckPermitsTask`
+    // entirely, so both signatures are requested under the allowance and swap
+    // actions instead.
+    expect(scenario.finalActions()).toEqual([
+      'CHECK_ALLOWANCE:DONE',
+      'SET_ALLOWANCE:DONE',
+      'SWAP:PENDING',
+    ])
+    expect(
+      scenario.events('signTypedData').map((event) => event.actions.at(-1))
+    ).toEqual(['SWAP:MESSAGE_REQUIRED', 'SWAP:MESSAGE_REQUIRED'])
   })
 
   it('pays for an approval it would not otherwise need', async () => {
@@ -93,6 +125,9 @@ describe('C4 — disableMessageSigning on a relayed step', () => {
     const { spender, amount } = decodeApproval(
       approvals[0].data as `0x${string}`
     )
+    // The diamond, not Permit2 and not the proxy — the whole point of the
+    // flag's second consequence, so the two guards below are kept as
+    // fixture-drift guards on addresses that must stay distinct.
     expect(spender).toBe(APPROVAL_ADDRESS)
     expect(spender).not.toBe(CANONICAL_PERMIT2)
     expect(spender).not.toBe(LIFI_PERMIT2_PROXY)
@@ -114,5 +149,57 @@ describe('C4 — disableMessageSigning on a relayed step', () => {
     expect(
       scenario.events('action').map((event) => event.actionType)
     ).not.toContain('SET_ALLOWANCE')
+  })
+})
+
+describe('C14 — a custom step forces the same flag without the caller setting it', () => {
+  it('produces the same approval as C4, from step.type alone', async () => {
+    // One scenario at a time. `createScenario` installs its implementations on
+    // the module-level `@lifi/sdk` mocks, so constructing the second before the
+    // first has run would let the second drive the first's re-quote, relay and
+    // public-client reads.
+    const custom = buildCustomStepScenario()
+    await custom.run()
+
+    const flagged = buildFlaggedScenario(true)
+    await flagged.run()
+
+    // `step.type !== 'lifi'` is the second, independent arm of the OR at
+    // `EthereumStepExecutor.ts:118-119`. A caller who never touched
+    // `disableMessageSigning` still gets the approval C4 documents, because
+    // `EthereumCheckPermitsTask.shouldRun` refuses the step.
+    expect(
+      custom
+        .events('action')
+        .map((event) => `${event.actionType}:${event.status}`)
+    ).toEqual(
+      flagged
+        .events('action')
+        .map((event) => `${event.actionType}:${event.status}`)
+    )
+    expect(custom.finalActions()).toEqual(flagged.finalActions())
+
+    const approvals = custom.events('sendTransaction')
+    expect(approvals).toHaveLength(1)
+    expect(approvals[0].to).toBe(FROM_TOKEN_ADDRESS)
+    const { spender, amount } = decodeApproval(
+      approvals[0].data as `0x${string}`
+    )
+    expect(spender).toBe(APPROVAL_ADDRESS)
+    expect(amount).toBe(BigInt(FROM_AMOUNT))
+  })
+
+  it('still signs both messages and relays them', async () => {
+    const scenario = buildCustomStepScenario()
+
+    await scenario.run()
+
+    // Same deliberate pin as C4 test 1: the relayed task ignores the flag
+    // however the flag was set, so a custom step signs too.
+    expect(
+      scenario.events('signTypedData').map((event) => event.primaryType)
+    ).toEqual(['Permit', 'PermitWitnessTransferFrom'])
+    expect(scenario.events('relayTransaction')).toHaveLength(1)
+    expect(scenario.executedStep().type).toBe('custom')
   })
 })

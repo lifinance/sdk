@@ -23,7 +23,6 @@ vi.mock('../../actions/waitForTransactionReceipt.js')
 vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
 
 import type { Hex } from 'viem'
-import { MaxUint256 } from '../../permits/constants.js'
 import {
   APPROVAL_ADDRESS,
   buildStep,
@@ -35,7 +34,7 @@ import {
   FROM_TOKEN_ADDRESS,
   LIFI_PERMIT2_PROXY,
   type Scenario,
-} from './harness.js'
+} from './harness.mock.js'
 
 /**
  * No typed data, an allowance of zero and a wallet that advertises EIP-5792
@@ -87,11 +86,13 @@ describe('C8 — batched approval through EIP-5792', () => {
     // Permit2 is deliberately unavailable for an atomic batch
     // (`resolvePermit2Support` rejects the `batched` strategy), so the spender
     // is the `approvalAddress` from the quote and the amount is exact.
+    // Fixture-drift guards on the two Permit2 addresses: the claim of this
+    // scenario is that neither is used, so they must stay distinct from the
+    // diamond for the positive assertion above to mean anything.
     expect(spender).toBe(APPROVAL_ADDRESS)
     expect(spender).not.toBe(CANONICAL_PERMIT2)
     expect(spender).not.toBe(LIFI_PERMIT2_PROXY)
     expect(amount).toBe(BigInt(FROM_AMOUNT))
-    expect(amount).not.toBe(MaxUint256)
 
     // The native-permit task is skipped outright, so the consumer never even
     // sees a NATIVE_PERMIT action here (contrast C7, where it appears and
@@ -143,6 +144,21 @@ describe('C8 — batched approval through EIP-5792', () => {
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
+      'SWAP:PENDING',
+    ])
+
+    // What the consumer's list looks like while the batch prompt is open: the
+    // approval already reads DONE and it is the *swap* the headline names, so
+    // the misreport above is visible in the rendered list, not just the call
+    // stream.
+    expect(scenario.events('sendCalls')[0].actions).toEqual([
+      'CHECK_ALLOWANCE:DONE',
+      'SET_ALLOWANCE:DONE',
+      'SWAP:ACTION_REQUIRED',
+    ])
+    expect(scenario.finalActions()).toEqual([
+      'CHECK_ALLOWANCE:DONE',
+      'SET_ALLOWANCE:DONE',
       'SWAP:PENDING',
     ])
 

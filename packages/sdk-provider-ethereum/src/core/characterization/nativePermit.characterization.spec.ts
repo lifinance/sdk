@@ -27,7 +27,6 @@ import {
   APPROVAL_ADDRESS,
   buildStep,
   buildTransactionRequest,
-  CANONICAL_PERMIT2,
   createScenario,
   decodePermit2ProxyCall,
   FROM_AMOUNT,
@@ -35,7 +34,7 @@ import {
   LIFI_PERMIT2_PROXY,
   type Scenario,
   WALLET_SIGNATURE,
-} from './harness.js'
+} from './harness.mock.js'
 
 /**
  * No typed data, an allowance of zero, an EIP-2612 token, a chain with a
@@ -66,7 +65,6 @@ describe('C6 — a native permit replaces the approval', () => {
     // passes `fromChain.permit2Proxy` as the spender — and is verified by the
     // token. Canonical Permit2 plays no part in this flow at all.
     expect(signatures[0].message.spender).toBe(LIFI_PERMIT2_PROXY)
-    expect(signatures[0].message.spender).not.toBe(CANONICAL_PERMIT2)
     expect(signatures[0].message.owner).toBe(
       scenario.executedStep().action.fromAddress
     )
@@ -81,13 +79,36 @@ describe('C6 — a native permit replaces the approval', () => {
 
     // The permit sets `hasMatchingPermit`, which is what both allowance-writing
     // tasks gate on, so the allowance is read once and then never acted on.
-    const actionTypes = scenario
-      .events('action')
-      .map((event) => event.actionType)
-    expect(actionTypes).toContain('CHECK_ALLOWANCE')
-    expect(actionTypes).toContain('NATIVE_PERMIT')
-    expect(actionTypes).not.toContain('SET_ALLOWANCE')
-    expect(actionTypes).not.toContain('RESET_ALLOWANCE')
+    // Pinned as a full sequence rather than `toContain`: this is the only
+    // scenario that reaches the native-permit *success* path
+    // (`EthereumNativePermitTask.ts:96-132`), so an extra or missing status
+    // update in that branch is invisible everywhere else.
+    expect(
+      scenario
+        .events('action')
+        .map((event) => `${event.actionType}:${event.status}`)
+    ).toEqual([
+      'CHECK_ALLOWANCE:STARTED',
+      'CHECK_ALLOWANCE:DONE',
+      'NATIVE_PERMIT:STARTED',
+      'NATIVE_PERMIT:ACTION_REQUIRED',
+      'NATIVE_PERMIT:DONE',
+      'SWAP:STARTED',
+      'SWAP:ACTION_REQUIRED',
+      'SWAP:PENDING',
+      'SWAP:PENDING',
+    ])
+
+    // The array a consumer renders, and the entry its headline reads while the
+    // permit prompt is open.
+    expect(scenario.finalActions()).toEqual([
+      'CHECK_ALLOWANCE:DONE',
+      'NATIVE_PERMIT:DONE',
+      'SWAP:PENDING',
+    ])
+    expect(scenario.events('signTypedData')[0].actions.at(-1)).toBe(
+      'NATIVE_PERMIT:ACTION_REQUIRED'
+    )
 
     // Exactly one transaction leaves the wallet, and it is not an approval.
     const sent = scenario.events('sendTransaction')
@@ -101,10 +122,11 @@ describe('C6 — a native permit replaces the approval', () => {
     await scenario.run()
 
     const [transaction] = scenario.events('sendTransaction')
+    // The proxy, not the diamond the quote named as `approvalAddress` — the
+    // retarget is the claim, so that guard stays; it is the one address the
+    // step itself supplies and so the one a regression would land on.
     expect(transaction.to).toBe(LIFI_PERMIT2_PROXY)
-    // Not the diamond the quote named, and not canonical Permit2.
     expect(transaction.to).not.toBe(APPROVAL_ADDRESS)
-    expect(transaction.to).not.toBe(CANONICAL_PERMIT2)
 
     const call = decodePermit2ProxyCall(transaction.data as Hex)
     expect(call.functionName).toBe('callDiamondWithEIP2612Signature')

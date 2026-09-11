@@ -31,7 +31,7 @@ import {
   type Scenario,
   THIRD_PARTY_ROUTER,
   WALLET_SIGNATURE,
-} from './harness.js'
+} from './harness.mock.js'
 
 const HYPERLIQUID_DOMAIN = {
   chainId: 137,
@@ -151,12 +151,17 @@ describe('C5 — multi-entry signing order and what the consumer is told', () =>
     expect(scenario.events('action')).toHaveLength(6)
     expect(scenario.events('routeUpdate')).toHaveLength(8)
 
-    // Caveat on the absolute numbers: the last `SWAP:PENDING` comes from the
-    // real relayed wait task calling `updateActionWithReceipt`, and it fires
-    // only because the mocked `waitForRelayedTransactionReceipt` returns a hash
-    // that differs from the action's `taskId`. A receipt echoing the taskId
-    // would make this 5 and 7. The pipeline-only part of the count is the first
-    // four action updates; the equality pinned below is unaffected either way.
+    // Six calls, one action. The relayed lane never creates a second one, so a
+    // consumer's list has a single entry throughout.
+    expect(scenario.finalActions()).toEqual(['SWAP:PENDING'])
+
+    // On where the last `SWAP:PENDING` comes from: the real relayed wait task
+    // calls `updateActionWithReceipt`, which compares the receipt hash against
+    // `action.txHash` (updateActionWithReceipt.ts:24). The relayed path only
+    // ever writes `taskId`, never `txHash`, so that comparison is against
+    // `undefined` and the extra `PENDING` fires for *any* receipt carrying a
+    // hash. Verified: making the mocked `waitForRelayedTransactionReceipt`
+    // echo `RELAY_TASK_ID` exactly leaves these counts at 6 and 8.
   })
 
   it('signs a three-entry spot-protocol intent in array order', async () => {
@@ -211,5 +216,12 @@ describe('C5 — multi-entry signing order and what the consumer is told', () =>
     // these counts will not move between signatures.
     expect(scenario.events('action')).toHaveLength(6)
     expect(scenario.events('routeUpdate')).toHaveLength(8)
+    expect(scenario.finalActions()).toEqual(['SWAP:PENDING'])
+
+    // And the widget's headline is the same string for both of the two
+    // prompts the user sees, which is the user-visible half of the claim.
+    expect(
+      scenario.events('signTypedData').map((event) => event.actions.at(-1))
+    ).toEqual(['SWAP:MESSAGE_REQUIRED', 'SWAP:MESSAGE_REQUIRED'])
   })
 })

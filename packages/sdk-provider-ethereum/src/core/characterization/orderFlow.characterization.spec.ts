@@ -36,7 +36,7 @@ import {
   type Scenario,
   type ScenarioOptions,
   WALLET_SIGNATURE,
-} from './harness.js'
+} from './harness.mock.js'
 
 const ORDER_TYPED_DATA = buildTypedData({
   primaryType: 'Order',
@@ -92,7 +92,6 @@ describe('C3 — order flow picks the /quote endpoint, never the relayer quote',
     // neither address appears anywhere in this flow.
     const [permitSignature] = scenario.events('signTypedData')
     expect(permitSignature.message.spender).toBe(PROTOCOL_CONTRACT)
-    expect(permitSignature.message.spender).not.toBe(CANONICAL_PERMIT2)
 
     const [relayed] = scenario.events('relayTransaction')
     expect(
