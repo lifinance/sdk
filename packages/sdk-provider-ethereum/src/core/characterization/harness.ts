@@ -1,0 +1,851 @@
+/**
+ * Shared harness for the EVM characterization suite.
+ *
+ * These specs pin *observed* behaviour of `main`, so the harness drives the
+ * real consumer entry point — `executeRoute` → `EthereumProvider.getStepExecutor`
+ * → `EthereumStepExecutor.executeStep` → the real `TaskPipeline` — and records
+ * what came out. Nothing in the pipeline is re-implemented here.
+ *
+ * ## Where the seams are
+ *
+ * Almost every wallet/RPC call in this package goes through viem's
+ * `getAction(client, fn, name)`, which prefers a method of that name *on the
+ * client*. So the wallet client and the public client are plain objects
+ * carrying `signTypedData`, `sendTransaction`, `sendCalls`, `readContract`,
+ * `getCode`, … — the same override seam a real wallet client uses. No
+ * `vi.mock('viem/actions')` is needed, and the interception point is the one
+ * production code actually reads.
+ *
+ * The rest cannot be reached that way and must be mocked per spec at the module
+ * boundary (the house style of `EthereumCheckPermitsTask.unit.spec.ts` and
+ * `resolvePermit2Support.unit.spec.ts`). Every spec needs this preamble:
+ *
+ * ```ts
+ * vi.mock('@lifi/sdk', async (importOriginal) => {
+ *   const actual = await importOriginal<typeof import('@lifi/sdk')>()
+ *   return {
+ *     ...actual,
+ *     getStepTransaction: vi.fn(),
+ *     getRelayerQuote: vi.fn(),
+ *     relayTransaction: vi.fn(),
+ *     WaitForTransactionStatusTask: class WaitForTransactionStatusTask {
+ *       shouldRun = async (): Promise<boolean> => true
+ *       run = async (): Promise<{ status: 'COMPLETED' }> => ({
+ *         status: 'COMPLETED',
+ *       })
+ *     },
+ *   }
+ * })
+ * vi.mock('../../client/publicClient.js')
+ * vi.mock('../../actions/waitForTransactionReceipt.js')
+ * vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
+ * ```
+ *
+ * `WaitForTransactionStatusTask` is the only *pipeline* behaviour stubbed out:
+ * it polls `getStatus` over HTTP every 5s and never terminates under test. It
+ * is the terminal destination-status watcher and runs after everything these
+ * specs assert on. `EthereumWaitForTransactionTask` and its three variants stay
+ * real; only the receipt fetchers underneath them are mocked.
+ *
+ * ## The timeline
+ *
+ * Per-channel spies cannot express "X happened before Y" across channels, which
+ * is most of what these specs assert. So every observable effect — each
+ * `StatusManager` mutation, each route-hook fire, each signature, transaction,
+ * batch, relay and contract read — lands on one append-only {@link Scenario.timeline}
+ * with a monotonic `seq`. Ordering is a slice; absence is an empty filter.
+ *
+ * ## Permit2 vs. Permit2Proxy
+ *
+ * {@link CANONICAL_PERMIT2} is Uniswap's Permit2 (`chain.permit2`).
+ * {@link LIFI_PERMIT2_PROXY} is LI.FI's own proxy (`chain.permit2Proxy`).
+ * They are deliberately unrelated addresses and no spec may inline either.
+ */
+import {
+  ChainType,
+  createClient,
+  type ExecutionOptions,
+  type ExtendedChain,
+  executeRoute,
+  type GasCost,
+  getRelayerQuote,
+  getStepTransaction,
+  type LiFiStep,
+  type LiFiStepExtended,
+  type Route,
+  type RouteExtended,
+  relayTransaction,
+  resumeRoute,
+  type SDKClient,
+  type SDKProvider,
+  type SignedTypedData,
+  type StepExecutorOptions,
+  type Token,
+  type TokenAmount,
+  type TypedData,
+  type TypedDataDomain,
+  type TypedDataPrimaryType,
+} from '@lifi/sdk'
+import type { Address, Client, Hash, Hex } from 'viem'
+import { decodeFunctionData } from 'viem'
+import type { Mock } from 'vitest'
+import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTransactionReceipt.js'
+import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
+import { getPublicClient } from '../../client/publicClient.js'
+import { EthereumProvider } from '../../EthereumProvider.js'
+import { approveAbi, permit2ProxyAbi } from '../../utils/abi.js'
+
+// ---------------------------------------------------------------------------
+// Fixture constants
+// ---------------------------------------------------------------------------
+
+export const CHAIN_ID: number = 137
+
+/** Uniswap's canonical Permit2 — `chain.permit2`. */
+export const CANONICAL_PERMIT2: Address =
+  '0x000000000022D473030F116dDEE9F6B43aC78BA3'
+
+/** LI.FI's own Permit2Proxy — `chain.permit2Proxy`. Not Permit2. */
+export const LIFI_PERMIT2_PROXY: Address =
+  '0xA3C7a31a2A97b847D967e0B755921D084C46a742'
+
+/** `step.estimate.approvalAddress` — the LI.FI diamond. */
+export const APPROVAL_ADDRESS: Address =
+  '0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE'
+
+/** A third-party router: neither Permit2 nor the proxy nor the diamond. */
+export const THIRD_PARTY_ROUTER: Address =
+  '0x6131B5fae19EA4f9D964eAc0408E4408b66337b5'
+
+/** A protocol contract used as an EIP-2612 spender in the order flow. */
+export const PROTOCOL_CONTRACT: Address =
+  '0x4E4d8Cb3DB5D5Eb0AB0e4d0f6e9f8c62B5c2A4d1'
+
+export const FROM_ADDRESS: Address =
+  '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0'
+
+export const FROM_TOKEN_ADDRESS: Address =
+  '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+
+export const TO_TOKEN_ADDRESS: Address =
+  '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+
+export const FROM_AMOUNT: string = '1500000'
+
+/**
+ * Signature the wallet returns by default. The last byte MUST stay a valid
+ * recovery id: `encodeNativePermitData` runs it through viem's `parseSignature`,
+ * which throws on anything but `00`/`01`/`1b`/`1c`.
+ */
+export const WALLET_SIGNATURE: Hex = `0x${'11'.repeat(64)}1b`
+
+/** Agent-wallet signatures are produced by a real local account, not this. */
+export const RELAY_TASK_ID: Hex = `0x${'7a'.repeat(32)}`
+
+export const PERMIT2_PROXY_NONCE: bigint = 42n
+
+export const TOKEN_EIP712_NAME: string = '(PoS) USD Coin'
+
+const ERC1271_ACCEPTED: Hex = `0x${'00'.repeat(31)}01`
+
+const HUGE_BALANCE = 10n ** 30n
+
+// ---------------------------------------------------------------------------
+// Timeline
+// ---------------------------------------------------------------------------
+
+export type TimelineEventDetail =
+  /** A `StatusManager.createAction` / `updateAction` mutation. */
+  | {
+      kind: 'action'
+      actionType: string
+      status: string
+      txHash?: string
+      taskId?: string
+    }
+  /** A `StatusManager.updateExecution` mutation. */
+  | { kind: 'execution'; status?: string }
+  /** One `updateRouteHook` fire, i.e. one notification a consumer sees. */
+  | { kind: 'routeUpdate' }
+  | {
+      kind: 'signTypedData'
+      primaryType: string
+      domain: TypedDataDomain
+      message: Record<string, unknown>
+    }
+  | { kind: 'sendTransaction'; to?: string; data?: string; value?: bigint }
+  | { kind: 'sendCalls'; calls: { to?: string; data?: string }[] }
+  | { kind: 'relayTransaction'; typedData: SignedTypedData[] }
+  | { kind: 'getStepTransaction' }
+  | { kind: 'getRelayerQuote' }
+  | {
+      kind: 'readContract'
+      address: string
+      functionName: string
+      args: readonly unknown[]
+    }
+  | { kind: 'getCode'; address: string }
+  | { kind: 'getCapabilities' }
+  | { kind: 'estimateGas'; to?: string }
+
+export type TimelineEvent = TimelineEventDetail & { seq: number }
+
+export type TimelineKind = TimelineEventDetail['kind']
+
+export type TimelineEventOf<K extends TimelineKind> = Extract<
+  TimelineEventDetail,
+  { kind: K }
+> & { seq: number }
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+const buildToken = (
+  address: Address,
+  symbol: string,
+  decimals: number
+): Token =>
+  ({
+    address,
+    chainId: CHAIN_ID,
+    symbol,
+    decimals,
+    name: symbol,
+    priceUSD: '1',
+    coinKey: symbol,
+    logoURI: '',
+  }) as unknown as Token
+
+export const FROM_TOKEN: Token = buildToken(FROM_TOKEN_ADDRESS, 'USDC', 6)
+export const TO_TOKEN: Token = buildToken(TO_TOKEN_ADDRESS, 'USDT', 6)
+export const NATIVE_TOKEN: Token = buildToken(
+  '0x0000000000000000000000000000000000000000',
+  'POL',
+  18
+)
+
+export interface ChainFixtureOptions {
+  permit2?: Address
+  permit2Proxy?: Address
+  id?: number
+}
+
+/**
+ * Source chain. `permit2` and `permit2Proxy` are distinct by construction; a
+ * chain without one of them is expressed by passing `undefined`.
+ */
+export const buildChain = (
+  options: ChainFixtureOptions = {}
+): ExtendedChain => {
+  const { permit2 = CANONICAL_PERMIT2, permit2Proxy = LIFI_PERMIT2_PROXY } =
+    options
+  return {
+    id: options.id ?? CHAIN_ID,
+    key: 'pol',
+    chainType: ChainType.EVM,
+    name: 'Polygon',
+    coin: 'POL',
+    mainnet: true,
+    logoURI: '',
+    diamondAddress: APPROVAL_ADDRESS,
+    permit2,
+    permit2Proxy,
+    nativeToken: NATIVE_TOKEN,
+    metamask: {
+      chainId: '0x89',
+      chainName: 'Polygon',
+      nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+      rpcUrls: ['https://polygon.example/rpc'],
+      blockExplorerUrls: ['https://polygonscan.example/'],
+    },
+  } as unknown as ExtendedChain
+}
+
+export interface StepFixtureOptions {
+  typedData?: TypedData[]
+  transactionRequest?: Record<string, unknown>
+  tool?: string
+  type?: string
+  approvalAddress?: string
+  approvalReset?: boolean
+  skipApproval?: boolean
+  skipPermit?: boolean
+  gasCosts?: GasCost[]
+  fromAmount?: string
+}
+
+/**
+ * A step with **no** `execution` object: `StatusManager.initializeExecution`
+ * only notifies the route when it has to create one, so shipping a pre-built
+ * execution would silently shift every pinned notification count.
+ */
+export const buildStep = (
+  options: StepFixtureOptions = {}
+): LiFiStepExtended => {
+  const fromAmount = options.fromAmount ?? FROM_AMOUNT
+  const step = {
+    id: 'characterization-step',
+    type: options.type ?? 'lifi',
+    tool: options.tool ?? '1inch',
+    toolDetails: { key: 'tool', name: 'Tool', logoURI: '' },
+    action: {
+      fromChainId: CHAIN_ID,
+      toChainId: CHAIN_ID,
+      fromToken: FROM_TOKEN,
+      toToken: TO_TOKEN,
+      fromAmount,
+      slippage: 0.03,
+      fromAddress: FROM_ADDRESS,
+      toAddress: FROM_ADDRESS,
+    },
+    estimate: {
+      fromAmount,
+      fromAmountUSD: '1.5',
+      toAmount: '1490000',
+      toAmountUSD: '1.49',
+      toAmountMin: '1445300',
+      approvalAddress:
+        options.approvalAddress === undefined
+          ? APPROVAL_ADDRESS
+          : options.approvalAddress,
+      approvalReset: options.approvalReset,
+      skipApproval: options.skipApproval,
+      skipPermit: options.skipPermit,
+      executionDuration: 30,
+      feeCosts: [],
+      gasCosts: options.gasCosts ?? [],
+      tool: options.tool ?? '1inch',
+    },
+    // Must exist and must contain no `custom` step, or `isContractCallStep`
+    // reroutes the re-quote to `getContractCallsQuote`.
+    includedSteps: [],
+    execution: undefined,
+  } as unknown as LiFiStepExtended
+
+  if (options.typedData) {
+    step.typedData = options.typedData
+  }
+  if (options.transactionRequest) {
+    step.transactionRequest =
+      options.transactionRequest as LiFiStepExtended['transactionRequest']
+  }
+  return step
+}
+
+/** A plain `transactionRequest` pointing at the diamond. */
+export const buildTransactionRequest = (
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> => ({
+  chainId: CHAIN_ID,
+  to: APPROVAL_ADDRESS,
+  from: FROM_ADDRESS,
+  data: `0x${'de'.repeat(32)}`,
+  value: '0x0',
+  gasLimit: '500000',
+  ...overrides,
+})
+
+export interface TypedDataFixtureOptions {
+  primaryType: string
+  domain?: TypedDataDomain
+  message?: Record<string, unknown>
+}
+
+export const buildTypedData = (options: TypedDataFixtureOptions): TypedData =>
+  ({
+    primaryType: options.primaryType as TypedDataPrimaryType,
+    domain: options.domain ?? { chainId: CHAIN_ID },
+    types: {},
+    message: options.message ?? {},
+  }) as TypedData
+
+/** Seconds-since-epoch deadline far enough out to pass `isNativePermitValid`. */
+export const futureDeadline = (): string =>
+  String(Math.floor(Date.now() / 1000) + 30 * 60)
+
+/**
+ * EIP-2612 `Permit`. `spender` is the caller's choice on purpose — the whole
+ * point of several scenarios is *which* contract the permit authorises.
+ */
+export const buildPermitTypedData = (spender: Address): TypedData =>
+  buildTypedData({
+    primaryType: 'Permit',
+    domain: {
+      name: TOKEN_EIP712_NAME,
+      version: '1',
+      chainId: CHAIN_ID,
+      verifyingContract: FROM_TOKEN_ADDRESS,
+    },
+    message: {
+      owner: FROM_ADDRESS,
+      spender,
+      value: FROM_AMOUNT,
+      nonce: '0',
+      deadline: futureDeadline(),
+    },
+  })
+
+/**
+ * Permit2 `PermitWitnessTransferFrom`: the witness is *spent by the proxy* but
+ * *verified by canonical Permit2*, so `message.spender` and
+ * `domain.verifyingContract` are deliberately different contracts.
+ */
+export const buildPermitWitnessTypedData = (): TypedData =>
+  buildTypedData({
+    primaryType: 'PermitWitnessTransferFrom',
+    domain: {
+      name: 'Permit2',
+      chainId: CHAIN_ID,
+      verifyingContract: CANONICAL_PERMIT2,
+    },
+    message: {
+      permitted: { token: FROM_TOKEN_ADDRESS, amount: FROM_AMOUNT },
+      spender: LIFI_PERMIT2_PROXY,
+      nonce: '1',
+      deadline: futureDeadline(),
+    },
+  })
+
+// ---------------------------------------------------------------------------
+// Calldata decoding — assertions read the decoded form, never a hex blob
+// ---------------------------------------------------------------------------
+
+export interface DecodedApproval {
+  spender: Address
+  amount: bigint
+}
+
+export const decodeApproval = (data: Hex): DecodedApproval => {
+  const { functionName, args } = decodeFunctionData({ abi: approveAbi, data })
+  if (functionName !== 'approve') {
+    throw new Error(`Expected an approve call, got ${functionName}.`)
+  }
+  const [spender, amount] = args as [Address, bigint]
+  return { spender, amount }
+}
+
+export interface DecodedProxyCall {
+  functionName: string
+  args: readonly unknown[]
+}
+
+export const decodePermit2ProxyCall = (data: Hex): DecodedProxyCall => {
+  const { functionName, args } = decodeFunctionData({
+    abi: permit2ProxyAbi,
+    data,
+  })
+  return { functionName, args: (args ?? []) as readonly unknown[] }
+}
+
+// ---------------------------------------------------------------------------
+// Scenario
+// ---------------------------------------------------------------------------
+
+export interface SignTypedDataRequest {
+  primaryType: string
+  domain: TypedDataDomain
+  message: Record<string, unknown>
+}
+
+export interface ReadContractRequest {
+  address: Address
+  functionName: string
+  args?: readonly unknown[]
+}
+
+export interface ScenarioOptions {
+  /** The step to execute. */
+  step: LiFiStepExtended
+  /** Source chain; defaults to {@link buildChain}. */
+  chain?: ExtendedChain
+  /** ERC-20 allowance the source token reports for whichever spender is asked. */
+  allowance?: bigint
+  /** `eth_getCode` for the signer: `'0x'` is an EOA. */
+  accountCode?: Hex
+  /** `wallet_getCapabilities` answer for the source chain (EIP-5792). */
+  capabilities?: Record<string, unknown>
+  /** Whether the source token answers the EIP-2612 / EIP-5267 reads. */
+  nativePermitSupported?: boolean
+  /** ERC-1271 probe result; `'revert'` makes `isValidSignature` throw. */
+  erc1271Response?: Hex | 'revert'
+  /** Forwarded to `EthereumProvider`, i.e. the execution context flag. */
+  disableMessageSigning?: boolean
+  /** Wallet signing behaviour. Throw to model a user rejection. */
+  onSignTypedData?: (
+    request: SignTypedDataRequest,
+    callIndex: number
+  ) => Promise<Hex>
+  /** What `getStepTransaction` answers with. Defaults to the step unchanged. */
+  onStepTransaction?: (step: LiFiStep) => LiFiStep
+  /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
+  onRelayerQuote?: (step: LiFiStep) => LiFiStep
+}
+
+export interface Scenario {
+  /** Every observable effect, in the order it happened. */
+  readonly timeline: TimelineEvent[]
+  /** Executes the route. Rejects exactly as the SDK would. */
+  run(): Promise<RouteExtended>
+  /** Executes the route, expecting a rejection, and returns the error. */
+  runExpectingFailure(): Promise<Error>
+  /** The retry a consumer performs after a failure: `resumeRoute`. */
+  retry(): Promise<RouteExtended>
+  /** The route as the consumer last saw it through `updateRouteHook`. */
+  route(): RouteExtended
+  /** The step inside {@link Scenario.route}, after the pipeline mutated it. */
+  executedStep(): LiFiStepExtended
+  /**
+   * Timeline entries of one kind, still carrying their global `seq`. Pass
+   * `fromSeq` to look at one leg of a multi-run scenario (e.g. after a retry).
+   */
+  events<K extends TimelineKind>(
+    kind: K,
+    fromSeq?: number
+  ): TimelineEventOf<K>[]
+  /** Every timeline `kind`, in order — handy for pinning a whole sequence. */
+  kinds(): TimelineKind[]
+}
+
+const asMock = (fn: unknown, name: string): Mock => {
+  const mock = fn as Mock
+  if (typeof mock?.mockImplementation !== 'function') {
+    throw new Error(
+      `${name} is not mocked. Copy the module-boundary vi.mock() preamble documented in harness.ts into this spec.`
+    )
+  }
+  return mock
+}
+
+/**
+ * Instruments the executor's `StatusManager` at the two methods that actually
+ * mutate an action. `initializeAction` delegates to one of them, so wrapping
+ * these two records exactly one entry per real mutation and never double-counts.
+ */
+const instrumentStatusManager = (
+  executor: object,
+  record: (detail: TimelineEventDetail) => void
+): void => {
+  const statusManager = (
+    executor as {
+      statusManager: {
+        createAction: (...args: never[]) => { type: string; status: string }
+        updateAction: (...args: never[]) => { type: string; status: string }
+        updateExecution: (...args: never[]) => unknown
+      }
+    }
+  ).statusManager
+  const { createAction, updateAction, updateExecution } = statusManager
+
+  statusManager.createAction = (...args: never[]) => {
+    const action = createAction.apply(statusManager, args)
+    record({
+      kind: 'action',
+      actionType: action.type,
+      status: action.status,
+    })
+    return action
+  }
+  statusManager.updateAction = (...args: never[]) => {
+    const action = updateAction.apply(statusManager, args)
+    record({
+      kind: 'action',
+      actionType: action.type,
+      status: action.status,
+      txHash: (action as { txHash?: string }).txHash,
+      taskId: (action as { taskId?: string }).taskId,
+    })
+    return action
+  }
+  statusManager.updateExecution = (...args: never[]) => {
+    const result = updateExecution.apply(statusManager, args)
+    record({
+      kind: 'execution',
+      status: (args[1] as { status?: string } | undefined)?.status,
+    })
+    return result
+  }
+}
+
+let scenarioCounter = 0
+
+export const createScenario = (options: ScenarioOptions): Scenario => {
+  const chain = options.chain ?? buildChain()
+  const timeline: TimelineEvent[] = []
+  const record = (detail: TimelineEventDetail): void => {
+    timeline.push({ ...detail, seq: timeline.length } as TimelineEvent)
+  }
+
+  const allowance = options.allowance ?? 0n
+  const accountCode = options.accountCode ?? '0x'
+  const capabilities = options.capabilities ?? {}
+  const erc1271Response = options.erc1271Response ?? ERC1271_ACCEPTED
+
+  let signCallIndex = 0
+  let txCounter = 0
+  const nextHash = (): Hash => {
+    txCounter += 1
+    return `0x${txCounter.toString(16).padStart(64, '0')}` as Hash
+  }
+
+  // One read handler shared by the wallet client and the public client:
+  // `getActionWithFallback` retries a failed wallet read on the public client,
+  // so a read that is supposed to fail has to fail on both.
+  const readContract = async (
+    request: ReadContractRequest
+  ): Promise<unknown> => {
+    record({
+      kind: 'readContract',
+      address: request.address,
+      functionName: request.functionName,
+      args: request.args ?? [],
+    })
+    switch (request.functionName) {
+      case 'allowance':
+        return allowance
+      case 'nextNonce':
+        return PERMIT2_PROXY_NONCE
+      case 'eip712Domain':
+        if (!options.nativePermitSupported) {
+          throw new Error('Token does not implement eip712Domain().')
+        }
+        return [
+          '0x0f',
+          TOKEN_EIP712_NAME,
+          '1',
+          BigInt(chain.id),
+          request.address,
+          `0x${'00'.repeat(32)}`,
+          [],
+        ]
+      case 'nonces':
+        if (!options.nativePermitSupported) {
+          throw new Error('Token does not implement nonces().')
+        }
+        return 0n
+      default:
+        throw new Error(
+          `Token does not implement ${request.functionName}() in this scenario.`
+        )
+    }
+  }
+
+  const multicall = async (): Promise<unknown> => {
+    throw new Error(
+      'multicall is not configured: the chain fixture has no multicallAddress.'
+    )
+  }
+
+  const getCode = async ({ address }: { address: Address }): Promise<Hex> => {
+    record({ kind: 'getCode', address })
+    return accountCode
+  }
+
+  const call = async (): Promise<{ data: Hex }> => {
+    if (erc1271Response === 'revert') {
+      throw new Error('Account reverted the ERC-1271 probe.')
+    }
+    return { data: erc1271Response }
+  }
+
+  const publicClient = {
+    chain: { id: chain.id },
+    readContract,
+    multicall,
+    getCode,
+    call,
+  } as unknown as Client
+
+  const walletClient = {
+    account: { address: FROM_ADDRESS, type: 'json-rpc' },
+    chain: { id: chain.id },
+    transport: { type: 'custom' },
+    uid: 'characterization-wallet',
+    readContract,
+    multicall,
+    getCode,
+    call,
+    getChainId: async (): Promise<number> => chain.id,
+    getAddresses: async (): Promise<Address[]> => [FROM_ADDRESS],
+    getCapabilities: async (): Promise<Record<string, unknown>> => {
+      record({ kind: 'getCapabilities' })
+      return capabilities
+    },
+    estimateGas: async ({ to }: { to?: Address }): Promise<bigint> => {
+      record({ kind: 'estimateGas', to })
+      return 500_000n
+    },
+    signTypedData: async (request: SignTypedDataRequest): Promise<Hex> => {
+      record({
+        kind: 'signTypedData',
+        primaryType: request.primaryType,
+        domain: request.domain,
+        message: request.message,
+      })
+      const index = signCallIndex
+      signCallIndex += 1
+      if (options.onSignTypedData) {
+        return options.onSignTypedData(request, index)
+      }
+      return WALLET_SIGNATURE
+    },
+    sendTransaction: async (request: {
+      to?: Address
+      data?: Hex
+      value?: bigint
+    }): Promise<Hash> => {
+      record({
+        kind: 'sendTransaction',
+        to: request.to,
+        data: request.data,
+        value: request.value,
+      })
+      return nextHash()
+    },
+    sendCalls: async (request: {
+      calls: { to?: Address; data?: Hex }[]
+    }): Promise<{ id: Hex }> => {
+      record({
+        kind: 'sendCalls',
+        calls: request.calls.map((c) => ({ to: c.to, data: c.data })),
+      })
+      return { id: nextHash() }
+    },
+    waitForCallsStatus: async (): Promise<unknown> => ({
+      status: 'success',
+      statusCode: 200,
+      receipts: [{ transactionHash: nextHash(), status: 'success' }],
+    }),
+  } as unknown as Client
+
+  const baseProvider = EthereumProvider({
+    getWalletClient: async () => walletClient,
+    switchChain: async () => walletClient,
+    disableMessageSigning: options.disableMessageSigning,
+  })
+
+  const provider: SDKProvider = {
+    ...baseProvider,
+    getBalance: async (
+      _client: SDKClient,
+      _address: string,
+      tokens: Token[]
+    ): Promise<TokenAmount[]> =>
+      tokens.map((token) => ({ ...token, amount: HUGE_BALANCE })),
+    async getStepExecutor(executorOptions: StepExecutorOptions) {
+      const executor = await baseProvider.getStepExecutor(executorOptions)
+      instrumentStatusManager(executor, record)
+      return executor
+    },
+  } as unknown as SDKProvider
+
+  const client = createClient({
+    integrator: 'characterization',
+    preloadChains: false,
+    disableVersionCheck: true,
+    providers: [provider],
+  })
+  client.setChains([chain])
+
+  scenarioCounter += 1
+  const routeId = `characterization-route-${scenarioCounter}`
+  const route = {
+    id: routeId,
+    fromChainId: CHAIN_ID,
+    toChainId: CHAIN_ID,
+    fromAmount: options.step.action.fromAmount,
+    fromAmountUSD: '1.5',
+    fromToken: FROM_TOKEN,
+    toToken: TO_TOKEN,
+    toAmount: options.step.estimate.toAmount,
+    toAmountMin: options.step.estimate.toAmountMin,
+    toAmountUSD: '1.49',
+    fromAddress: FROM_ADDRESS,
+    toAddress: FROM_ADDRESS,
+    gasCostUSD: '0.01',
+    steps: [options.step],
+    insurance: { feeAmountUsd: '0', state: 'NOT_INSURABLE' },
+  } as unknown as Route
+
+  let latestRoute: RouteExtended | undefined
+  const executionOptions: ExecutionOptions = {
+    updateRouteHook: (updatedRoute: RouteExtended) => {
+      latestRoute = updatedRoute
+      record({ kind: 'routeUpdate' })
+    },
+  }
+
+  asMock(getStepTransaction, 'getStepTransaction').mockImplementation(
+    async (_client: SDKClient, requestedStep: LiFiStep) => {
+      record({ kind: 'getStepTransaction' })
+      return options.onStepTransaction
+        ? options.onStepTransaction(requestedStep)
+        : requestedStep
+    }
+  )
+  asMock(getRelayerQuote, 'getRelayerQuote').mockImplementation(async () => {
+    record({ kind: 'getRelayerQuote' })
+    const answer = options.onRelayerQuote
+      ? options.onRelayerQuote(options.step)
+      : options.step
+    // The relayer endpoint answers with a whole step; strip the live execution
+    // object the way a fresh API response would not carry one.
+    const { execution: _execution, ...rest } = answer as LiFiStepExtended
+    return rest
+  })
+  asMock(relayTransaction, 'relayTransaction').mockImplementation(
+    async (
+      _client: SDKClient,
+      relayedStep: { typedData: SignedTypedData[] }
+    ) => {
+      record({ kind: 'relayTransaction', typedData: relayedStep.typedData })
+      return { taskId: RELAY_TASK_ID, txLink: 'https://relayer.example/task' }
+    }
+  )
+  asMock(getPublicClient, 'getPublicClient').mockResolvedValue(publicClient)
+  asMock(
+    waitForTransactionReceipt,
+    'waitForTransactionReceipt'
+  ).mockImplementation(async () => ({
+    transactionHash: nextHash(),
+    status: 'success',
+  }))
+  asMock(
+    waitForRelayedTransactionReceipt,
+    'waitForRelayedTransactionReceipt'
+  ).mockImplementation(async () => ({
+    status: 'success',
+    transactionHash: nextHash(),
+    transactionLink: 'https://polygonscan.example/tx',
+  }))
+
+  const requireRoute = (): RouteExtended => {
+    if (!latestRoute) {
+      throw new Error('The route hook never fired; nothing was executed.')
+    }
+    return latestRoute
+  }
+
+  return {
+    timeline,
+    run: () => executeRoute(client, route, executionOptions),
+    async runExpectingFailure(): Promise<Error> {
+      try {
+        await executeRoute(client, route, executionOptions)
+      } catch (error) {
+        return error as Error
+      }
+      throw new Error('Expected the route execution to fail, but it succeeded.')
+    },
+    retry: () => resumeRoute(client, requireRoute(), executionOptions),
+    route: requireRoute,
+    executedStep: () => requireRoute().steps[0],
+    events<K extends TimelineKind>(kind: K, fromSeq = 0): TimelineEventOf<K>[] {
+      return timeline.filter(
+        (event): event is TimelineEventOf<K> =>
+          event.kind === kind && event.seq >= fromSeq
+      )
+    },
+    kinds: () => timeline.map((event) => event.kind),
+  }
+}
