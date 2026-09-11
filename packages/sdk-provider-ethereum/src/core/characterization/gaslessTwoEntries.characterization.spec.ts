@@ -142,6 +142,12 @@ describe('C1 — gasless step with a permit and a witness', () => {
     // The relayed task re-signs nothing: `isNativePermitValid` matches the
     // already-signed permit against the first entry and filters it out, so the
     // wallet is asked for the witness alone — but both signatures are relayed.
+    //
+    // This holds because the relayer re-quote answers with the same `Permit`
+    // (same spender, owner, value and deadline), which is what the harness
+    // default does. A relayer that answered with a fresh nonce would fail the
+    // match and the permit would be signed a second time — so a failure here
+    // means the re-quote changed, not that the filter broke.
     // `MESSAGE_REQUIRED` is only ever raised by the relayed task, so it marks
     // the start of that task's own signing.
     const relayedTaskStartsAt = scenario

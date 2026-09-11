@@ -150,6 +150,13 @@ describe('C5 — multi-entry signing order and what the consumer is told', () =>
     ])
     expect(scenario.events('action')).toHaveLength(6)
     expect(scenario.events('routeUpdate')).toHaveLength(8)
+
+    // Caveat on the absolute numbers: the last `SWAP:PENDING` comes from the
+    // real relayed wait task calling `updateActionWithReceipt`, and it fires
+    // only because the mocked `waitForRelayedTransactionReceipt` returns a hash
+    // that differs from the action's `taskId`. A receipt echoing the taskId
+    // would make this 5 and 7. The pipeline-only part of the count is the first
+    // four action updates; the equality pinned below is unaffected either way.
   })
 
   it('signs a three-entry spot-protocol intent in array order', async () => {
