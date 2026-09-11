@@ -476,7 +476,11 @@ export interface ScenarioOptions {
     request: SignTypedDataRequest,
     callIndex: number
   ) => Promise<Hex>
-  /** What `getStepTransaction` answers with. Defaults to the step unchanged. */
+  /**
+   * What `getStepTransaction` answers with. The default mirrors the real
+   * endpoint: it answers with a transaction and *drops* the typed data it was
+   * posted, so a scenario that wants typed data back has to say so.
+   */
   onStepTransaction?: (step: LiFiStep) => LiFiStep
   /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
   onRelayerQuote?: (step: LiFiStep) => LiFiStep
@@ -521,6 +525,10 @@ const asMock = (fn: unknown, name: string): Mock => {
  * Instruments the executor's `StatusManager` at the two methods that actually
  * mutate an action. `initializeAction` delegates to one of them, so wrapping
  * these two records exactly one entry per real mutation and never double-counts.
+ *
+ * Each entry is recorded from the *arguments*, before the real method runs, so
+ * the mutation lands on the timeline ahead of the `updateRouteHook` fire it
+ * causes — the order a consumer actually observes.
  */
 const instrumentStatusManager = (
   executor: object,
@@ -529,8 +537,8 @@ const instrumentStatusManager = (
   const statusManager = (
     executor as {
       statusManager: {
-        createAction: (...args: never[]) => { type: string; status: string }
-        updateAction: (...args: never[]) => { type: string; status: string }
+        createAction: (...args: never[]) => unknown
+        updateAction: (...args: never[]) => unknown
         updateExecution: (...args: never[]) => unknown
       }
     }
@@ -538,32 +546,30 @@ const instrumentStatusManager = (
   const { createAction, updateAction, updateExecution } = statusManager
 
   statusManager.createAction = (...args: never[]) => {
-    const action = createAction.apply(statusManager, args)
-    record({
-      kind: 'action',
-      actionType: action.type,
-      status: action.status,
-    })
-    return action
+    const props = args[0] as unknown as { type: string; status: string }
+    record({ kind: 'action', actionType: props.type, status: props.status })
+    return createAction.apply(statusManager, args)
   }
   statusManager.updateAction = (...args: never[]) => {
-    const action = updateAction.apply(statusManager, args)
+    const [, type, status, params] = args as unknown as [
+      unknown,
+      string,
+      string,
+      { txHash?: string; taskId?: string } | undefined,
+    ]
     record({
       kind: 'action',
-      actionType: action.type,
-      status: action.status,
-      txHash: (action as { txHash?: string }).txHash,
-      taskId: (action as { taskId?: string }).taskId,
+      actionType: type,
+      status,
+      txHash: params?.txHash,
+      taskId: params?.taskId,
     })
-    return action
+    return updateAction.apply(statusManager, args)
   }
   statusManager.updateExecution = (...args: never[]) => {
-    const result = updateExecution.apply(statusManager, args)
-    record({
-      kind: 'execution',
-      status: (args[1] as { status?: string } | undefined)?.status,
-    })
-    return result
+    const execution = args[1] as unknown as { status?: string } | undefined
+    record({ kind: 'execution', status: execution?.status })
+    return updateExecution.apply(statusManager, args)
   }
 }
 
@@ -778,9 +784,11 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
   asMock(getStepTransaction, 'getStepTransaction').mockImplementation(
     async (_client: SDKClient, requestedStep: LiFiStep) => {
       record({ kind: 'getStepTransaction' })
-      return options.onStepTransaction
-        ? options.onStepTransaction(requestedStep)
-        : requestedStep
+      if (options.onStepTransaction) {
+        return options.onStepTransaction(requestedStep)
+      }
+      const { typedData: _typedData, ...rest } = requestedStep
+      return rest
     }
   )
   asMock(getRelayerQuote, 'getRelayerQuote').mockImplementation(async () => {
