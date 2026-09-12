@@ -5,8 +5,9 @@ import { type Chain, mainnet } from 'viem/chains'
 import { UNS_PROXY_READER_ADDRESSES } from '../actions/constants.js'
 import type { EthereumSDKProvider } from '../types.js'
 
-// cached providers
-const publicClients: Record<number, Client> = {}
+// Cache public clients per SDK instance because each instance may configure its
+// own RPC URLs and fallback transport options.
+const publicClients = new WeakMap<SDKClient, Map<number, Client>>()
 
 /**
  * Get an instance of a provider for a specific chain
@@ -18,8 +19,15 @@ export const getPublicClient = async (
   client: SDKClient,
   chainId: number
 ): Promise<Client> => {
-  if (publicClients[chainId]) {
-    return publicClients[chainId]
+  let clientPublicClients = publicClients.get(client)
+  if (!clientPublicClients) {
+    clientPublicClients = new Map()
+    publicClients.set(client, clientPublicClients)
+  }
+
+  const cachedPublicClient = clientPublicClients.get(chainId)
+  if (cachedPublicClient) {
+    return cachedPublicClient
   }
 
   const urls = await client.getRpcUrlsByChainId(chainId)
@@ -63,7 +71,7 @@ export const getPublicClient = async (
   const provider = client.getProvider(ChainType.EVM) as
     | EthereumSDKProvider
     | undefined
-  publicClients[chainId] = createClient({
+  const publicClient = createClient({
     chain: chain,
     transport: fallback(
       fallbackTransports,
@@ -74,5 +82,7 @@ export const getPublicClient = async (
     },
   })
 
-  return publicClients[chainId]
+  clientPublicClients.set(chainId, publicClient)
+
+  return publicClient
 }
