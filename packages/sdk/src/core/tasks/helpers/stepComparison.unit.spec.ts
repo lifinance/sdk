@@ -61,6 +61,27 @@ describe('stepComparison', () => {
     ).rejects.toThrow(TransactionError)
   })
 
+  it('should reject any output decrease when slippage is zero', async () => {
+    const zeroSlippageStep = {
+      ...oldStep,
+      action: {
+        ...oldStep.action,
+        slippage: 0,
+      },
+    } as LiFiStep
+    const worseStep = {
+      ...zeroSlippageStep,
+      estimate: {
+        ...zeroSlippageStep.estimate,
+        toAmountMin: '1939',
+      },
+    } as LiFiStep
+
+    await expect(
+      stepComparison(mockStatusManager, zeroSlippageStep, worseStep, false)
+    ).rejects.toThrow(TransactionError)
+  })
+
   it('should call acceptExchangeRateUpdateHook when user interaction allowed', async () => {
     const acceptHook = vi.fn().mockResolvedValue(true)
 

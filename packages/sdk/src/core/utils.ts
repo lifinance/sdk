@@ -16,7 +16,7 @@ export function checkStepSlippageThreshold(
   oldStep: LiFiStep,
   newStep: LiFiStep
 ): boolean {
-  const setSlippage = oldStep.action.slippage || standardThreshold
+  const setSlippage = oldStep.action.slippage ?? standardThreshold
   const oldEstimatedToAmount = BigInt(oldStep.estimate.toAmountMin)
   const newEstimatedToAmount = BigInt(newStep.estimate.toAmountMin)
   const amountDifference = oldEstimatedToAmount - newEstimatedToAmount
