@@ -1,4 +1,9 @@
-import { LiFiErrorCode, type LiFiStep, type TypedData } from '@lifi/sdk'
+import {
+  LiFiErrorCode,
+  type LiFiStep,
+  type TransactionMethodType,
+  type TypedData,
+} from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -54,10 +59,9 @@ const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 const TX_HASH = `0x${'ab'.repeat(32)}` as Hex
 
 /**
- * A caller intent is the shape that matters here: after the strategy narrowing
- * it is the only typed data that does NOT already resolve to `relayed`, so it
- * is the only shape that can reach the structural rule. jumper-backend's
- * `uniswap-trading` permit step never receives a `transactionRequest`.
+ * A caller intent is the shape that matters here: it is the only typed data
+ * that does NOT resolve to `relayed` on sight, so the lane it lands in depends
+ * on the verdict `EthereumPrepareTransactionTask` stored.
  */
 const callerIntent = (): TypedData =>
   ({
@@ -70,6 +74,7 @@ const callerIntent = (): TypedData =>
 const buildContext = (options: {
   typedData?: TypedData[]
   withTransactionRequest: boolean
+  executionStrategy?: TransactionMethodType
 }): EthereumStepExecutorContext =>
   ({
     step: {
@@ -96,6 +101,9 @@ const buildContext = (options: {
       permit2Proxy: PERMIT2_PROXY,
       metamask: { blockExplorerUrls: ['https://etherscan.io/'] },
     },
+    ...(options.executionStrategy
+      ? { executionStrategy: options.executionStrategy }
+      : {}),
     isFromNativeToken: false,
     disableMessageSigning: false,
     isBridgeExecution: false,
@@ -135,10 +143,16 @@ beforeEach(() => {
 })
 
 describe('EthereumSignAndExecuteTask.run', () => {
-  it('relays a signature-only step that resolved standard and received no transaction', async () => {
+  // This task dispatches, it does not classify. `getEthereumExecutionStrategy`
+  // owns the lane, and `EthereumPrepareTransactionTask` stores its verdict —
+  // which is what also reaches `EthereumWaitForTransactionTask`. Deciding the
+  // lane here instead would send the signature down the relayed path and then
+  // wait for it on the standard one.
+  it('follows the stored relayed verdict for a step with nothing to send', async () => {
     const context = buildContext({
       typedData: [callerIntent()],
       withTransactionRequest: false,
+      executionStrategy: 'relayed',
     })
 
     const result = await task.run(context)
@@ -148,13 +162,12 @@ describe('EthereumSignAndExecuteTask.run', () => {
     expect(sendTransaction).not.toHaveBeenCalled()
   })
 
-  it('relays a signature-only step the wallet could otherwise batch', async () => {
-    // `batched` is skipped without a transaction request, so the step would
-    // fall through to `standard` and throw.
+  it('does not batch that step, even where the wallet supports batching', async () => {
     vi.mocked(isBatchingSupported).mockResolvedValue(true)
     const context = buildContext({
       typedData: [callerIntent()],
       withTransactionRequest: false,
+      executionStrategy: 'relayed',
     })
 
     await task.run(context)

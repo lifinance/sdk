@@ -44,14 +44,6 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
     if (executionStrategy === 'relayed') {
       return new EthereumRelayedSignAndExecuteTask().run(context)
     }
-    // Typed data with nothing to send belongs to the relayer. `batched` needs a
-    // transaction request and `standard` throws without one, so this is the only
-    // path that can execute a signature-only step. It is decided here, not in
-    // `getEthereumExecutionStrategy`: before prepare, a caller-intent step that
-    // will receive a transaction and one that never will are indistinguishable.
-    if (!transactionRequest && step.typedData?.length) {
-      return new EthereumRelayedSignAndExecuteTask().run(context)
-    }
     return new EthereumStandardSignAndExecuteTask().run(context)
   }
 }

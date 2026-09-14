@@ -21,7 +21,8 @@ const entry = (primaryType: string, spender?: string) => ({
 
 const buildContext = (
   typedData?: ReturnType<typeof entry>[],
-  executionType?: ExecutionType
+  executionType?: ExecutionType,
+  withTransactionRequest?: boolean
 ): EthereumStepExecutorContext =>
   ({
     step: {
@@ -31,6 +32,9 @@ const buildContext = (
       estimate: {},
       ...(typedData ? { typedData } : {}),
       ...(executionType ? { executionType } : {}),
+      ...(withTransactionRequest
+        ? { transactionRequest: { to: UNIVERSAL_ROUTER, data: '0xdeadbeef' } }
+        : {}),
     } as unknown as LiFiStep,
     fromChain: { id: 1, permit2: PERMIT2 } as unknown as ExtendedChain,
     client: {},
@@ -145,9 +149,49 @@ describe('getEthereumExecutionStrategy', () => {
     expect(isBatchingSupported).not.toHaveBeenCalled()
   })
 
-  it('recomputes when forceRecalculate is set', async () => {
+  it('recomputes when afterPrepare is set', async () => {
     const context = buildContext([entry('Order')])
     context.executionStrategy = 'standard'
     expect(await getEthereumExecutionStrategy(context, true)).toBe('relayed')
+  })
+
+  // The two shapes below are the same step before and after prepare. Only the
+  // second one knows whether a transaction ever arrives, which is why the rule
+  // is bound to `afterPrepare` and not applied on sight.
+  describe('a caller intent that never receives a transaction', () => {
+    it('relays it once prepare has answered without one', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])
+
+      expect(await getEthereumExecutionStrategy(context, true)).toBe('relayed')
+    })
+
+    it('keeps batching before prepare, when the answer is still unknown', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])
+
+      // Calling it relayed here would cost `EthereumSetAllowanceTask` its
+      // EIP-5792 batch for every caller intent that does receive a transaction.
+      expect(await getEthereumExecutionStrategy(context)).toBe('batched')
+    })
+
+    it('leaves a caller intent that did receive one on the batching probe', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext(
+        [entry('PermitSingle', UNIVERSAL_ROUTER)],
+        undefined,
+        true
+      )
+
+      expect(await getEthereumExecutionStrategy(context, true)).toBe('batched')
+    })
+
+    it('does not relay a step that has neither typed data nor a transaction', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(false)
+
+      expect(await getEthereumExecutionStrategy(buildContext(), true)).toBe(
+        'standard'
+      )
+    })
   })
 })
