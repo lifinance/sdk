@@ -593,7 +593,7 @@ const asMock = (fn: unknown, name: string): Mock => {
   const mock = fn as Mock
   if (typeof mock?.mockImplementation !== 'function') {
     throw new Error(
-      `${name} is not mocked. Copy the module-boundary vi.mock() preamble documented in harness.ts into this spec.`
+      `${name} is not mocked. Copy the module-boundary vi.mock() preamble documented in harness.mock.ts into this spec.`
     )
   }
   return mock
@@ -947,13 +947,20 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     }
   )
   asMock(getPublicClient, 'getPublicClient').mockResolvedValue(publicClient)
+  // Echoes the hash it was asked about, the way the real action does: viem's
+  // `waitForTransactionReceipt` returns the receipt *of that hash*, and the
+  // repricing case that changes it is rejected upstream. Answering with a fresh
+  // hash would make `updateActionWithReceipt` treat every transaction as
+  // replaced and emit a second PENDING update no consumer ever sees.
   asMock(
     waitForTransactionReceipt,
     'waitForTransactionReceipt'
-  ).mockImplementation(async () => ({
-    transactionHash: nextHash(),
-    status: 'success',
-  }))
+  ).mockImplementation(
+    async (_client: SDKClient, { txHash }: { txHash: Hash }) => ({
+      transactionHash: txHash,
+      status: 'success',
+    })
+  )
   asMock(
     waitForRelayedTransactionReceipt,
     'waitForRelayedTransactionReceipt'

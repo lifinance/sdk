@@ -18,11 +18,13 @@ Permit2 signer, the calldata encoder and the standard execute task. They also sh
 
 **These pin what the code does, not what it should do.**
 
-Two of them deliberately assert behaviour that looks wrong, each with a comment
+Three of them deliberately assert behaviour that looks wrong, each with a comment
 saying so at the assertion:
 
 - `EthereumRelayedSignAndExecuteTask` ignores `disableMessageSigning`.
 - `SET_ALLOWANCE` reaches `DONE` before the batch carrying it is sent.
+- `prepareRestart` leaves `step.typedData` holding the order the first attempt
+  re-quoted into it, so the retry never re-obtains the permit it still needs.
 
 If a change makes one of these fail, the fix is a decision, not an edit to the
 expectation. Either the change is intended — update the spec and say why in the

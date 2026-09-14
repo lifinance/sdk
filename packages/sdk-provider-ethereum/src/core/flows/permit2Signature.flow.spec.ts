@@ -167,10 +167,9 @@ describe('C7 — the SDK produces the Permit2 signature itself', () => {
       'SWAP:MESSAGE_REQUIRED',
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
-      'SWAP:PENDING',
     ])
 
-    // Fourteen calls, four actions. The array a consumer renders never shows
+    // Thirteen calls, four actions. The array a consumer renders never shows
     // the walk backwards as a new entry — `SWAP` is mutated in place — and the
     // headline the widget reads at the signature prompt is the swap's, not the
     // finished allowance's, even though three DONE entries sit in front of it.

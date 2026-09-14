@@ -27,6 +27,7 @@ import {
   buildStep,
   buildTypedData,
   CANONICAL_PERMIT2,
+  CHAIN_ID,
   createScenario,
   FROM_AMOUNT,
   FROM_TOKEN_ADDRESS,
@@ -49,7 +50,7 @@ const PERMIT_SINGLE = buildTypedData({
   primaryType: 'PermitSingle',
   domain: {
     name: 'Permit2',
-    chainId: 137,
+    chainId: CHAIN_ID,
     verifyingContract: CANONICAL_PERMIT2,
   },
   message: {

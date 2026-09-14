@@ -141,7 +141,6 @@ describe('C9 — approvalReset zeroes the allowance before raising it', () => {
       'SWAP:MESSAGE_REQUIRED',
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
-      'SWAP:PENDING',
     ])
 
     // And the list a consumer renders: five entries, in creation order, with

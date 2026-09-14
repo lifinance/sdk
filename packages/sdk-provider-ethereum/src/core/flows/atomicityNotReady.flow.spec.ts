@@ -100,7 +100,7 @@ describe('C12 — the wallet declines the 7702 upgrade and the step replays unba
     // `SET_ALLOWANCE:DONE` the first attempt had already reported (see C8's
     // deliberate pin on that early DONE). The first attempt's SWAP action is
     // never marked FAILED: `ExecuteStepRetryError` short-circuits the FAILED
-    // branch in `BaseStepExecutor.executeStep:89`.
+    // branch in `BaseStepExecutor.ts:108`.
     expect(
       scenario
         .events('action')
@@ -127,7 +127,6 @@ describe('C12 — the wallet declines the 7702 upgrade and the step replays unba
       'SWAP:ACTION_REQUIRED',
       'SWAP:MESSAGE_REQUIRED',
       'SWAP:ACTION_REQUIRED',
-      'SWAP:PENDING',
       'SWAP:PENDING',
     ])
 

@@ -26,6 +26,7 @@ import type { LiFiStep, TypedData } from '@lifi/sdk'
 import {
   buildStep,
   buildTypedData,
+  CHAIN_ID,
   createScenario,
   FROM_ADDRESS,
   type Scenario,
@@ -34,14 +35,14 @@ import {
 } from './harness.mock.js'
 
 const HYPERLIQUID_DOMAIN = {
-  chainId: 137,
+  chainId: CHAIN_ID,
   name: 'HyperliquidSignTransaction',
   version: '1',
 }
 
 const NONCE_MAPPING = buildTypedData({
   primaryType: 'NonceMapping',
-  domain: { chainId: 137 },
+  domain: { chainId: CHAIN_ID },
   message: { nonce: '1', owner: FROM_ADDRESS },
 })
 

@@ -30,7 +30,9 @@ import {
   buildStep,
   buildTypedData,
   CANONICAL_PERMIT2,
+  CHAIN_ID,
   createScenario,
+  FROM_ADDRESS,
   LIFI_PERMIT2_PROXY,
   PROTOCOL_CONTRACT,
   type Scenario,
@@ -40,8 +42,8 @@ import {
 
 const ORDER_TYPED_DATA = buildTypedData({
   primaryType: 'Order',
-  domain: { name: 'LiFiOrder', chainId: 137 },
-  message: { maker: '0x552008c0f6870c2f77e5cC1d2eb9bdff03e30Ea0', salt: '1' },
+  domain: { name: 'LiFiOrder', chainId: CHAIN_ID },
+  message: { maker: FROM_ADDRESS, salt: '1' },
 })
 
 const SUFFICIENT_ALLOWANCE = 10n ** 24n

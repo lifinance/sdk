@@ -90,7 +90,6 @@ describe('C11 — a cross-chain step uses CROSS_CHAIN, not SWAP', () => {
       'CROSS_CHAIN:MESSAGE_REQUIRED',
       'CROSS_CHAIN:ACTION_REQUIRED',
       'CROSS_CHAIN:PENDING',
-      'CROSS_CHAIN:PENDING',
       'CROSS_CHAIN:DONE',
     ])
 

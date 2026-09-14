@@ -113,7 +113,9 @@ describe('C8 — batched approval through EIP-5792', () => {
         (event) =>
           event.actionType === 'SET_ALLOWANCE' && event.status === 'DONE'
       )
-    const [batch] = scenario.events('sendCalls')
+    const batches = scenario.events('sendCalls')
+    expect(batches).toHaveLength(1)
+    const [batch] = batches
 
     // PINNED DELIBERATELY, AND IT LOOKS LIKE A BUG.
     //

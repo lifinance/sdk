@@ -28,6 +28,7 @@ vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
 import {
   buildStep,
   buildTransactionRequest,
+  CHAIN_ID,
   createScenario,
   FROM_ADDRESS,
   type Scenario,
@@ -60,7 +61,7 @@ const DONE_STATUS = {
   },
   receiving: {
     amount: '1490000',
-    chainId: 137,
+    chainId: CHAIN_ID,
     token: TO_TOKEN,
     txHash: DESTINATION_TX_HASH,
     txLink: 'https://polygonscan.example/tx/destination',
@@ -115,7 +116,6 @@ describe('C10 — the destination-status task re-initializes the SWAP action', (
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
       'SWAP:PENDING',
-      'SWAP:PENDING',
       'SWAP:DONE',
     ])
 
@@ -155,17 +155,31 @@ describe('C10 — the destination-status task re-initializes the SWAP action', (
     await scenario.run()
 
     // `waitForTransactionStatus` is handed `action.txHash`, which at that point
-    // is the hash the source-chain wait task wrote.
+    // is the hash the source-chain wait task wrote. Asserted positively: a
+    // regression that passed `undefined`, the relayer task id or the approve
+    // hash would also satisfy "not the destination hash".
+    const sourceTxHash = scenario
+      .events('action')
+      .filter(
+        (event) =>
+          event.actionType === 'SWAP' &&
+          event.status === 'PENDING' &&
+          event.txHash
+      )
+      .at(-1)?.txHash
+    expect(sourceTxHash).toBeDefined()
+
     const calls = (
       globalThis.fetch as unknown as { mock: { calls: unknown[][] } }
     ).mock.calls
     expect(calls).toHaveLength(1)
     const url = new URL(String(calls[0][0]))
     expect(url.pathname).toBe('/v1/status')
-    expect(url.searchParams.get('fromChain')).toBe('137')
-    expect(url.searchParams.get('toChain')).toBe('137')
+    expect(url.searchParams.get('fromChain')).toBe(String(CHAIN_ID))
+    expect(url.searchParams.get('toChain')).toBe(String(CHAIN_ID))
     expect(url.searchParams.get('fromAddress')).toBe(FROM_ADDRESS)
     expect(url.searchParams.get('bridge')).toBe('1inch')
+    expect(url.searchParams.get('txHash')).toBe(sourceTxHash)
     expect(url.searchParams.get('txHash')).not.toBe(DESTINATION_TX_HASH)
   })
 })

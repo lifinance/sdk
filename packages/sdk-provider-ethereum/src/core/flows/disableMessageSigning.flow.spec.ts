@@ -50,7 +50,7 @@ const buildFlaggedScenario = (disableMessageSigning: boolean): Scenario =>
   })
 
 /**
- * The *other* arm of the same OR. `EthereumStepExecutor.ts:118-119` computes
+ * The *other* arm of the same OR. `EthereumStepExecutor.ts:117-118` computes
  * `disableMessageSigning = !!this.disableMessageSigning || step.type !== 'lifi'`,
  * so a custom step forces the flag on even when the caller never set it.
  */
@@ -165,7 +165,7 @@ describe('C14 — a custom step forces the same flag without the caller setting 
     await flagged.run()
 
     // `step.type !== 'lifi'` is the second, independent arm of the OR at
-    // `EthereumStepExecutor.ts:118-119`. A caller who never touched
+    // `EthereumStepExecutor.ts:117-118`. A caller who never touched
     // `disableMessageSigning` still gets the approval C4 documents, because
     // `EthereumCheckPermitsTask.shouldRun` refuses the step.
     expect(

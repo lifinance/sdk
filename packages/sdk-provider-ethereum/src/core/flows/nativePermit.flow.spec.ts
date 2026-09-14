@@ -96,7 +96,6 @@ describe('C6 — a native permit replaces the approval', () => {
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
-      'SWAP:PENDING',
     ])
 
     // The array a consumer renders, and the entry its headline reads while the
@@ -110,9 +109,12 @@ describe('C6 — a native permit replaces the approval', () => {
       'NATIVE_PERMIT:ACTION_REQUIRED'
     )
 
-    // Exactly one transaction leaves the wallet, and it is not an approval.
+    // Exactly one transaction leaves the wallet, and it is the swap, not an
+    // approval. Asserted positively: an approval to some *other* contract would
+    // also satisfy "not the token".
     const sent = scenario.events('sendTransaction')
     expect(sent).toHaveLength(1)
+    expect(sent[0].to).toBe(LIFI_PERMIT2_PROXY)
     expect(sent[0].to).not.toBe(FROM_TOKEN_ADDRESS)
   })
 
