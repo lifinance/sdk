@@ -11,9 +11,12 @@ export function isGaslessTypedData(
   typedData: TypedData,
   chain?: ExtendedChain
 ): boolean {
+  const spender = typedData.message?.spender
   return (
     typedData.primaryType === 'PermitWitnessTransferFrom' ||
-    (!!chain?.permit2 && typedData.message?.spender === chain.permit2)
+    (!!chain?.permit2 &&
+      typeof spender === 'string' &&
+      spender.toLowerCase() === chain.permit2.toLowerCase())
   )
 }
 
