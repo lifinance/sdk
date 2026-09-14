@@ -11,8 +11,10 @@ import {
 } from '../../../utils/getTypedDataLane.js'
 
 /**
- * `??` cannot see the API's `typedData: []`, and `signedTypedData` resets per
- * `executeStep` — so a retry would let the Permit2 proxy hijack the calldata.
+ * `??` keeps the caller's intent only when the answer omits `typedData`. An
+ * answer that carries entries of its own — native permits, or `[]` from a
+ * third-party backend — would drop it, and `signedTypedData` resets per
+ * `executeStep`, so a retry would let the Permit2 proxy hijack the calldata.
  */
 export function preserveCallerIntents(
   step: LiFiStepExtended | LiFiStep,
