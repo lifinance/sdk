@@ -160,7 +160,7 @@ describe('signTypedDataEntries', () => {
     )
   })
 
-  it('emits the status once per entry, not once for the batch', async () => {
+  it('emits the status once for the round, not once per entry', async () => {
     const context = buildContext()
 
     await signTypedDataEntries(
@@ -170,18 +170,22 @@ describe('signTypedDataEntries', () => {
       'MESSAGE_REQUIRED'
     )
 
-    expect(context.statusManager.updateAction).toHaveBeenCalledTimes(2)
-    expect(context.statusManager.updateAction).toHaveBeenNthCalledWith(
-      1,
+    // Relay-from-Hyperliquid carries two messages. Announcing each one would
+    // tell the consumer `MESSAGE_REQUIRED` twice, where main said it once.
+    expect(context.statusManager.updateAction).toHaveBeenCalledTimes(1)
+    expect(context.statusManager.updateAction).toHaveBeenCalledWith(
       context.step,
       'SWAP',
       'MESSAGE_REQUIRED'
     )
-    expect(context.statusManager.updateAction).toHaveBeenNthCalledWith(
-      2,
-      context.step,
-      'SWAP',
-      'MESSAGE_REQUIRED'
-    )
+  })
+
+  it('emits nothing when there is nothing to sign', async () => {
+    const context = buildContext()
+
+    const result = await signTypedDataEntries(context, [], 'SWAP')
+
+    expect(result).toEqual({ status: 'COMPLETED', signedTypedData: [] })
+    expect(context.statusManager.updateAction).not.toHaveBeenCalled()
   })
 })

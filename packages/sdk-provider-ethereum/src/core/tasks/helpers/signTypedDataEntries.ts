@@ -31,9 +31,13 @@ export async function signTypedDataEntries(
 
   const signedTypedData = [...currentSignedTypedData]
 
-  for (const typedData of entries) {
+  // Announced once for the round, not once per entry. Relay-from-Hyperliquid
+  // carries two messages, and main told the consumer `MESSAGE_REQUIRED` once.
+  if (entries.length) {
     statusManager.updateAction(step, actionType, actionStatus)
+  }
 
+  for (const typedData of entries) {
     if (!allowUserInteraction) {
       return { status: 'PAUSED' }
     }
