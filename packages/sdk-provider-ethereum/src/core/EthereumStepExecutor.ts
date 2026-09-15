@@ -28,6 +28,7 @@ import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransacti
 import { EthereumResetAllowanceTask } from './tasks/EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
+import { EthereumSignStepIntentTask } from './tasks/EthereumSignStepIntentTask.js'
 import { EthereumWaitForTransactionStatusTask } from './tasks/EthereumWaitForTransactionStatusTask.js'
 import { EthereumWaitForTransactionTask } from './tasks/EthereumWaitForTransactionTask.js'
 import { shouldCheckForAllowance } from './tasks/helpers/shouldCheckForAllowance.js'
@@ -143,6 +144,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       new EthereumResetAllowanceTask(),
       new EthereumSetAllowanceTask(),
       new EthereumCheckBalanceTask(),
+      new EthereumSignStepIntentTask(),
       new EthereumPrepareTransactionTask(),
       new EthereumSignAndExecuteTask(),
       new EthereumWaitForTransactionTask(),

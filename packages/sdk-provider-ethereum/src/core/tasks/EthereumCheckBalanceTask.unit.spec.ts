@@ -46,6 +46,10 @@ const buildContext = (step: LiFiStep): EthereumStepExecutorContext =>
   ({
     client: {} as any,
     step,
+    fromChain: {
+      id: SOURCE_CHAIN,
+      permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    },
   }) as unknown as EthereumStepExecutorContext
 
 const task = new TestableEthereumCheckBalanceTask()
@@ -85,12 +89,100 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     // Pins the short-circuit so a future refactor can't silently re-introduce
     // an `eth_getCode` round-trip on the relayer hot path.
     const step = buildStep({
-      typedData: [{ domain: {}, types: {}, value: {} }],
+      typedData: [
+        {
+          primaryType: 'PermitWitnessTransferFrom',
+          domain: {},
+          types: {},
+          message: {},
+        },
+      ],
     })
     expect(await task.exposed(buildContext(step))).toEqual({
       walletPaysGas: false,
     })
     expect(getAccountCode).not.toHaveBeenCalled()
+  })
+
+  it('caller-intent step keeps the gas check: the user pays for this transaction', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+    })
+    expect(getAccountCode).toHaveBeenCalled()
+  })
+
+  it('native-permit-only step keeps the historical skip without reading account code', async () => {
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'Permit',
+          domain: {},
+          types: {},
+          message: {},
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: false,
+    })
+    expect(getAccountCode).not.toHaveBeenCalled()
+  })
+
+  it('native permit + caller intent keeps the gas check: the user still pays', async () => {
+    vi.mocked(getAccountCode).mockResolvedValue('0x')
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'Permit',
+          domain: {},
+          types: {},
+          message: { spender: '0xdddd000000000000000000000000000000000004' },
+        },
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: true,
+    })
+    expect(getAccountCode).toHaveBeenCalled()
+  })
+
+  it('mixed relayer + caller intent keeps the skip: the relayer still funds that lane', async () => {
+    const step = buildStep({
+      typedData: [
+        {
+          primaryType: 'PermitWitnessTransferFrom',
+          domain: {},
+          types: {},
+          message: {},
+        },
+        {
+          primaryType: 'PermitSingle',
+          domain: {},
+          types: {},
+          message: { spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' },
+        },
+      ],
+    })
+    expect(await task.exposed(buildContext(step))).toEqual({
+      walletPaysGas: false,
+    })
   })
 
   it('RPC failure (getAccountCode → undefined) for non-relayer step → walletPaysGas: true (conservative: keep strict gas check)', async () => {

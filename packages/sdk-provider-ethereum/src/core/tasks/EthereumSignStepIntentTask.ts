@@ -1,25 +1,19 @@
 import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import {
   getTypedDataInLane,
-  getTypedDataLane,
   isCallerIntentLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
-export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
+/** Signs the Permit2 messages a caller attached to its own step, before prepare. */
+export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
 
-    return (
-      !!step.typedData?.some(
-        (typedData) =>
-          getTypedDataLane(typedData, fromChain) === 'native-permit'
-      ) && !disableMessageSigning
-    )
+    return isCallerIntentLane(step, fromChain) && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -32,33 +26,24 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    const permitTypedData = getTypedDataInLane(step, 'native-permit', fromChain)
+    const intentTypedData = getTypedDataInLane(step, 'caller-intent', fromChain)
 
+    // `ACTION_REQUIRED`, not `MESSAGE_REQUIRED`: the widget maps no `PERMIT`
+    // text for it. Pinned by `emits exactly STARTED, ACTION_REQUIRED and DONE`.
     const result = await signTypedDataEntries(
       context,
-      permitTypedData,
+      intentTypedData,
       action.type
     )
     if (result.status === 'PAUSED') {
       return { status: 'PAUSED' }
     }
-    const { signedTypedData } = result
-
-    const matchingPermit = signedTypedData.find(
-      (entry) =>
-        entry.primaryType === 'Permit' &&
-        getDomainChainId(entry.domain) === step.action.fromChainId
-    )
 
     statusManager.updateAction(step, action.type, 'DONE')
 
     return {
       status: 'COMPLETED',
-      context: {
-        signedTypedData,
-        hasMatchingPermit:
-          !!matchingPermit && !isCallerIntentLane(step, fromChain),
-      },
+      context: { signedTypedData: result.signedTypedData },
     }
   }
 }

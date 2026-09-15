@@ -3,8 +3,8 @@ import type { Address } from 'viem'
 import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
-import { MaxUint256 } from '../../permits/constants.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
+import { getApprovalAmount } from './helpers/getApprovalAmount.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
@@ -53,8 +53,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
     )
 
     // Set new allowance
-    const fromAmount = BigInt(step.action.fromAmount)
-    const approveAmount = permit2Supported ? MaxUint256 : fromAmount
+    const approveAmount = getApprovalAmount(context, permit2Supported)
 
     // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
     const spenderAddress = permit2Supported

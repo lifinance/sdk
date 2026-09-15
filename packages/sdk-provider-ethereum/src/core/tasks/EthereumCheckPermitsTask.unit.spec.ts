@@ -18,9 +18,11 @@ vi.mock('viem/actions', async (importOriginal) => {
 import { signTypedData } from 'viem/actions'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumCheckPermitsTask } from './EthereumCheckPermitsTask.js'
+import { EthereumSetAllowanceTask } from './EthereumSetAllowanceTask.js'
 
 const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
 const buildPermitTypedData = (): TypedData =>
@@ -37,17 +39,51 @@ const buildPermitTypedData = (): TypedData =>
     },
   }) as TypedData
 
-const buildContext = (): EthereumStepExecutorContext => {
+const buildPermitSingleTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitSingle',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {
+      details: { token: '0xcccc000000000000000000000000000000000003' },
+      spender: '0x66a9893cc07d91d95644aedd05d03f95e1dba8af',
+      sigDeadline: String(Math.floor(Date.now() / 1000) + 3600),
+    },
+  }) as unknown as TypedData
+
+const buildRelayerPermitTypedData = (): TypedData => {
+  const permit = buildPermitTypedData()
+  return {
+    ...permit,
+    message: { ...permit.message, spender: PERMIT2 },
+  } as TypedData
+}
+
+const buildWitnessTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitWitnessTransferFrom',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {},
+  }) as unknown as TypedData
+
+const buildContext = (
+  typedData: TypedData[] = [buildPermitTypedData()]
+): EthereumStepExecutorContext => {
   const step = {
     type: 'lifi',
     id: 'step-1',
     tool: 'lifi',
     action: { fromChainId: SOURCE_CHAIN, fromAddress: FROM_ADDRESS },
     estimate: { gasCosts: [], feeCosts: [] },
-    typedData: [buildPermitTypedData()],
+    typedData,
   } as unknown as LiFiStep
   return {
     step,
+    fromChain: {
+      id: SOURCE_CHAIN,
+      permit2: PERMIT2,
+    },
     statusManager: {
       initializeAction: vi.fn().mockReturnValue({ type: 'PERMIT' }),
       updateAction: vi.fn(),
@@ -90,5 +126,91 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(result.status).toBe('COMPLETED')
     expect(resultContext?.hasMatchingPermit).toBe(true)
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
+  })
+
+  it('does not run for a caller-supplied Permit2 intent, which the intent task signs', async () => {
+    const context = buildContext([buildPermitSingleTypedData()])
+    expect(await task.shouldRun(context)).toBe(false)
+  })
+
+  it('runs for the gasless step shape, whose native permit names Permit2 as spender', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildRelayerPermitTypedData(),
+      buildWitnessTypedData(),
+    ])
+
+    expect(await task.shouldRun(context)).toBe(true)
+
+    const result = await task.run(context)
+    const resultContext = result.context as {
+      hasMatchingPermit?: boolean
+      signedTypedData?: SignedTypedData[]
+    }
+
+    expect(resultContext.hasMatchingPermit).toBe(true)
+    expect(resultContext.signedTypedData).toHaveLength(1)
+    expect(resultContext.signedTypedData?.[0].primaryType).toBe('Permit')
+
+    expect(
+      await new EthereumSetAllowanceTask().shouldRun({
+        ...context,
+        ...resultContext,
+      } as EthereumStepExecutorContext)
+    ).toBe(false)
+  })
+
+  it('keeps hasMatchingPermit for a mixed-lane step, which the relayer funds', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildWitnessTypedData(),
+      buildPermitSingleTypedData(),
+      buildPermitTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
+      | undefined
+
+    expect(resultContext?.hasMatchingPermit).toBe(true)
+    expect(signTypedData).toHaveBeenCalledTimes(1)
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
+  })
+
+  it('signs only the native permit on a native + relayer step, and keeps hasMatchingPermit', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildPermitTypedData(),
+      buildWitnessTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
+      | undefined
+
+    expect(resultContext?.hasMatchingPermit).toBe(true)
+    expect(signTypedData).toHaveBeenCalledTimes(1)
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
+  })
+
+  it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
+    vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
+    const context = buildContext([
+      buildPermitTypedData(),
+      buildPermitSingleTypedData(),
+    ])
+
+    const result = await task.run(context)
+    const resultContext = result.context as
+      | { hasMatchingPermit?: boolean; signedTypedData?: SignedTypedData[] }
+      | undefined
+
+    expect(resultContext?.signedTypedData).toHaveLength(1)
+    expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
+    expect(resultContext?.hasMatchingPermit).toBe(false)
   })
 })

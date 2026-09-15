@@ -29,7 +29,8 @@ export async function waitForTransactionStatus(
         switch (statusResponse.status) {
           case 'DONE':
             return statusResponse
-          case 'PENDING':
+          case 'PENDING': {
+            const pendingStatus = statusResponse as FullStatusData
             statusManager?.updateAction(step, actionType, 'PENDING', {
               substatus: statusResponse.substatus,
               substatusMessage:
@@ -38,9 +39,14 @@ export async function waitForTransactionStatus(
                   statusResponse.status,
                   statusResponse.substatus
                 ),
-              txLink: (statusResponse as FullStatusData).bridgeExplorerLink,
+              // Most bridges implement no `getExplorerLink`, so fall back to
+              // the LI.FI explorer rather than leave the user with no link.
+              txLink:
+                pendingStatus.bridgeExplorerLink ??
+                pendingStatus.lifiExplorerLink,
             })
             return undefined
+          }
           case 'NOT_FOUND':
             return undefined
           default:

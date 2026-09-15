@@ -6,6 +6,10 @@ vi.mock('../../utils/getActionWithFallback.js', () => ({
   getActionWithFallback: vi.fn(),
 }))
 
+vi.mock('../../actions/isBatchingSupported.js', () => ({
+  isBatchingSupported: vi.fn(),
+}))
+
 vi.mock('viem/actions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('viem/actions')>()
   return {
@@ -15,6 +19,7 @@ vi.mock('viem/actions', async (importOriginal) => {
 })
 
 import { signTypedData } from 'viem/actions'
+import { isBatchingSupported } from '../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
 import { EthereumNativePermitTask } from './EthereumNativePermitTask.js'
@@ -23,6 +28,8 @@ const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2_PROXY = '0xdddd000000000000000000000000000000000004' as Address
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
+const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
 const buildNativePermitData = (): TypedData =>
@@ -44,7 +51,23 @@ const buildNativePermitData = (): TypedData =>
     },
   }) as TypedData
 
-const buildStep = (): LiFiStep =>
+const buildCallerIntent = (): TypedData =>
+  ({
+    primaryType: 'PermitSingle',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: { spender: UNIVERSAL_ROUTER },
+  }) as unknown as TypedData
+
+const buildWitnessTypedData = (): TypedData =>
+  ({
+    primaryType: 'PermitWitnessTransferFrom',
+    domain: { chainId: SOURCE_CHAIN },
+    types: {},
+    message: {},
+  }) as unknown as TypedData
+
+const buildStep = (typedData?: TypedData[]): LiFiStep =>
   ({
     type: 'lifi',
     id: 'step-1',
@@ -56,19 +79,25 @@ const buildStep = (): LiFiStep =>
       fromToken: { address: TOKEN_ADDRESS, chainId: SOURCE_CHAIN },
     },
     estimate: { gasCosts: [], feeCosts: [] },
+    ...(typedData ? { typedData } : {}),
   }) as unknown as LiFiStep
 
 const buildContext = (overrides?: {
   signedTypedData?: SignedTypedData[]
+  typedData?: TypedData[]
 }): {
   context: EthereumStepExecutorContext
   updateAction: ReturnType<typeof vi.fn>
 } => {
   const updateAction = vi.fn()
   const context = {
-    step: buildStep(),
+    step: buildStep(overrides?.typedData),
     client: {},
-    fromChain: { id: SOURCE_CHAIN, permit2Proxy: PERMIT2_PROXY },
+    fromChain: {
+      id: SOURCE_CHAIN,
+      permit2: PERMIT2,
+      permit2Proxy: PERMIT2_PROXY,
+    },
     statusManager: {
       initializeAction: vi.fn().mockReturnValue({ type: 'NATIVE_PERMIT' }),
       updateAction,
@@ -95,6 +124,7 @@ const task = new EthereumNativePermitTask()
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(isBatchingSupported).mockResolvedValue(false)
   vi.mocked(getActionWithFallback).mockResolvedValue(buildNativePermitData())
 })
 
@@ -160,5 +190,52 @@ describe('EthereumNativePermitTask.run', () => {
     expect(
       resultContext?.signedTypedData?.filter((item) => item.signature)
     ).toHaveLength(1)
+  })
+})
+
+describe('EthereumNativePermitTask.shouldRun', () => {
+  it('does not mint a native permit when the caller supplied its own Permit2 intent', async () => {
+    const { context } = buildContext({ typedData: [buildCallerIntent()] })
+
+    expect(await task.shouldRun(context)).toBe(false)
+    expect(context.checkClient).not.toHaveBeenCalled()
+  })
+
+  it('still mints a native permit for a step with no caller intent', async () => {
+    const { context } = buildContext()
+
+    expect(await task.shouldRun(context)).toBe(true)
+  })
+
+  it('still mints a native permit for a mixed-lane step', async () => {
+    const { context } = buildContext({
+      typedData: [buildWitnessTypedData(), buildCallerIntent()],
+    })
+
+    expect(await task.shouldRun(context)).toBe(true)
+  })
+
+  it('does not mint a native permit when the caller intent names Permit2 itself as verifyingContract', async () => {
+    const intent = buildCallerIntent() as unknown as {
+      domain: Record<string, unknown>
+    }
+    intent.domain = { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 }
+    const { context } = buildContext({
+      typedData: [intent as unknown as TypedData],
+    })
+
+    expect(await task.shouldRun(context)).toBe(false)
+  })
+
+  it('mints a native permit when the intent spender IS the Permit2 deployment, which makes it the relayer lane', async () => {
+    const intent = buildCallerIntent() as unknown as {
+      message: Record<string, unknown>
+    }
+    intent.message = { spender: PERMIT2 }
+    const { context } = buildContext({
+      typedData: [intent as unknown as TypedData],
+    })
+
+    expect(await task.shouldRun(context)).toBe(true)
   })
 })
