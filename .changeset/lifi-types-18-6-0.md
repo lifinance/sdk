@@ -2,7 +2,7 @@
 '@lifi/sdk': minor
 ---
 
-Bump the `@lifi/types` pin to `^18.6.0`.
+Bump the `@lifi/types` pin to `^18.10.0`.
 
 `18.6.0` adds `PermitSingle` to `TypedDataPrimaryTypes`, so the Ethereum
 provider's typed-data lane classifier can compare `primaryType` against the
