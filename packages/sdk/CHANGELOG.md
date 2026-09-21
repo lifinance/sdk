@@ -1,5 +1,11 @@
 # @lifi/sdk
 
+## 4.8.1
+
+### Patch Changes
+
+- [#486](https://github.com/lifinance/sdk/pull/486) [`621d410`](https://github.com/lifinance/sdk/commit/621d410db320188677df50f5ec5bf4a1c65bf818) Thanks [@chybisov](https://github.com/chybisov)! - Export `name` and `version` from the package entrypoint. The generated `src/version.ts` already carried the package name and the version that the SDK sends in its request headers and attaches to `SDKError`, but only internal modules could read them. Consumers can now import the same values instead of duplicating a hardcoded version string or reading `package.json` at runtime.
+
 ## 4.8.0
 
 ### Minor Changes
