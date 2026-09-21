@@ -1,5 +1,30 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.0
+
+### Minor Changes
+
+- [#475](https://github.com/lifinance/sdk/pull/475) [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914) Thanks [@chybisov](https://github.com/chybisov)! - Sign a caller-supplied Permit2 `PermitSingle` inline and send the swap as one ordinary user transaction. A custom swap provider can now attach a Permit2 message for its own spender — Uniswap's Universal Router, for example — to its quote step; the SDK signs it before `/advanced/stepTransaction`, which returns router calldata with the signature embedded. No relayer, no LI.FI Permit2 proxy, and no hand-rolled approve/relay/status steps.
+  
+  Execution routing no longer keys off the mere presence of `step.typedData`. One classifier assigns each entry to a lane — `native-permit` for EIP-2612, `permit2-allowance` for a Permit2 `PermitSingle` the user signs and then spends itself, and `relayer-message` for anything the LI.FI relayer submits — and each decision point reads the lane. Concretely:
+  
+  - A step whose only typed data is a Permit2 allowance executes as `standard` or `batched` instead of being force-routed to the relayer. That is the sole shape carved out: every other typed-data step — native permits, Order-based tools and gasless steps included — keeps the relayer route it already had.
+  - `EthereumCheckBalanceTask` keeps the gas check for a Permit2 allowance step, because the user funds that transaction.
+  - The token approval to Permit2 is unlimited when `estimate.approvalAddress` is the same contract every Permit2 allowance on the step names in `domain.verifyingContract`, so repeat swaps need a signature only. It stays at the swap amount otherwise, including when message signing is disabled and the allowance is therefore never signed.
+  - `isRelayerStep` is removed. Use `isGaslessStep` to ask whether the relayer pays the gas. `isRelayerStep` only told you the step carried typed data, which no longer says how the step executes: a caller-supplied Permit2 allowance is signed inline and sent by the user. It had no callers left inside the SDK.
+  - A step the API marks `executionType: 'message'` routes to the relayer even before its typed data arrives. The backend declares that at routes time while `typedData` only arrives at `/advanced/stepTransaction`, and in that window the SDK used to queue an approval into a batch the relayer then discarded. It is an additional signal, never a replacement: the gasless lane reports `executionType: 'transaction'` while being signature-only, so it still relies on the typed-data inference.
+  - A step that carries typed data and receives no `transactionRequest` executes through the relayer. `batched` needs a transaction request and `standard` throws without one, so that is the only path a signature-only step can take. The strategy applies that test only after the step is prepared, because before prepare a Permit2 allowance that will receive a transaction and one that never will look identical — testing there would cost every batchable step its EIP-5792 batch.
+  - The relayer never asks for a signature it already holds. An entry already in `signedTypedData` — a Permit2 allowance signed before prepare, for example — is relayed with that signature instead of being signed a second time, so a signature-only step raises one wallet prompt and not two.
+
+### Patch Changes
+
+- [#484](https://github.com/lifinance/sdk/pull/484) [`13c19c4`](https://github.com/lifinance/sdk/commit/13c19c4441341683b9dbaa8943e950b8f7571304) Thanks [@chybisov](https://github.com/chybisov)! - Refresh runtime dependencies: `@lifi/types` to `^18.10.0`, `viem` to `^2.56.8`,
+  `@mysten/sui` to `^2.31.3`, `@solana/kit` to `^8.3.0`,
+  `@solana/wallet-standard-features` to `^1.5.0`, `@stellar/stellar-sdk` to `^17.1.0`,
+  `@bigmi/core` to `^0.9.2` and `tronweb` to `^6.5.1`.
+- Updated dependencies [[`13c19c4`](https://github.com/lifinance/sdk/commit/13c19c4441341683b9dbaa8943e950b8f7571304), [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914), [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914)]:
+  - @lifi/sdk@4.8.0
+
 ## 4.1.0
 
 ### Minor Changes
