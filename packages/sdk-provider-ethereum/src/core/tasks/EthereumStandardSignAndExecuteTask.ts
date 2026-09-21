@@ -13,9 +13,8 @@ import { encodePermit2Data } from '../../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
-import { getDomainChainId } from '../../utils/getDomainChainId.js'
-import { isValidSignature } from '../../utils/isValidSignature.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
+import { findSignedNativePermit } from './helpers/findSignedNativePermit.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
 
@@ -28,7 +27,6 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       statusManager,
       checkClient,
       transactionRequest,
-      signedTypedData,
       allowUserInteraction,
       isBridgeExecution,
     } = context
@@ -57,12 +55,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       return { status: 'PAUSED' }
     }
 
-    const signedNativePermitTypedData = signedTypedData.find(
-      (p) =>
-        p.primaryType === 'Permit' &&
-        getDomainChainId(p.domain) === fromChain.id &&
-        isValidSignature(p.signature)
-    )
+    const signedNativePermitTypedData = findSignedNativePermit(context)
     // Resolved *after* the native-permit lookup, and short-circuited when one
     // is found: a matching permit always wins, so resolving the gate first
     // would spend an `eth_getCode` on a verdict this task never reads. The

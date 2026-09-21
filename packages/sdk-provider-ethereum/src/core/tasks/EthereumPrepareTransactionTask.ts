@@ -10,6 +10,7 @@ import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.j
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
+import { preservePermit2Allowances } from './helpers/preservePermit2Allowances.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -23,6 +24,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       isBridgeExecution,
       signedTypedData,
       ethereumClient,
+      fromChain,
     } = context
 
     const action = statusManager.findAction(
@@ -41,6 +43,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     const updatedStep = await getUpdatedStep(
       client,
       step,
+      fromChain,
       executionOptions,
       signedTypedData
     )
@@ -53,13 +56,19 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       executionOptions
     )
 
+    const answeredTypedData = updatedStep.typedData ?? step.typedData
+
     Object.assign(step, {
       ...comparedStep,
       execution: step.execution,
-      typedData: updatedStep.typedData ?? step.typedData,
+      typedData: preservePermit2Allowances(
+        step,
+        updatedStep.typedData,
+        fromChain
+      ),
     })
 
-    if (!step.transactionRequest && !step.typedData?.length) {
+    if (!step.transactionRequest && !answeredTypedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Transaction request is not found.'

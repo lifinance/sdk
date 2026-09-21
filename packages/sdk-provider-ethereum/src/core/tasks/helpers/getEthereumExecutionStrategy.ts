@@ -1,16 +1,22 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { isRelayerStep } from '../../../utils/isRelayerStep.js'
+import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
 
 /**
  * Determines the execution strategy: 'relayed', 'batched', or 'standard'.
  * Falls back to 'standard' when EIP-5792 batching is unavailable,
  * the wallet rejected the 7702 upgrade, or the tool doesn't support it.
+ *
+ * `afterPrepare` marks the single call from `EthereumPrepareTransactionTask`.
+ * The step has just been re-quoted, so the cached verdict is stale and, for the
+ * first time, the absence of a `transactionRequest` is final rather than merely
+ * not-yet-known. Both effects come from that one fact, which is why they share
+ * a parameter.
  */
 export async function getEthereumExecutionStrategy(
   context: EthereumStepExecutorContext,
-  forceRecalculate: boolean = false
+  afterPrepare: boolean = false
 ): Promise<TransactionMethodType> {
   const {
     step,
@@ -22,13 +28,33 @@ export async function getEthereumExecutionStrategy(
     executionStrategy: executionStrategyContext,
   } = context
 
-  if (!forceRecalculate && executionStrategyContext) {
+  if (!afterPrepare && executionStrategyContext) {
     return executionStrategyContext
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
-  const isRelayer = isRelayerStep(step)
-  if (isRelayer) {
+  // Declared by the backend. It is the only signal that reaches the allowance
+  // tasks, which run before a `transactionRequest` can exist.
+  if (step.executionType === 'message') {
+    return 'relayed'
+  }
+
+  // Typed data the user does not sign for its own send: gasless, `Order`,
+  // Hyperliquid. A Permit2 allowance is the one shape excluded, because its signer
+  // and its sender are the same person.
+  if (step.typedData?.length && !isPermit2AllowanceLane(step, fromChain)) {
+    return 'relayed'
+  }
+
+  // After prepare, missing means never: the step carries typed data and the user
+  // has nothing to send, so the relayer is the only lane that can execute it.
+  // This is a derivation, not a guess — no other strategy can run such a step.
+  //
+  // Before prepare the same expression is unsound. A Permit2 allowance that will
+  // receive its transaction from `/stepTransaction` is indistinguishable from
+  // one that never will, and calling it relayed there costs the step its
+  // EIP-5792 batching.
+  if (afterPrepare && step.typedData?.length && !step.transactionRequest) {
     return 'relayed'
   }
 

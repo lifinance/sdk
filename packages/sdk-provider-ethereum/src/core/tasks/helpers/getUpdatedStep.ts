@@ -1,6 +1,7 @@
 import {
   convertQuoteToRoute,
   type ExecutionOptions,
+  type ExtendedChain,
   getContractCallsQuote,
   getRelayerQuote,
   getStepTransaction,
@@ -14,18 +15,22 @@ import {
 import { PatcherMagicNumber } from '../../../permits/constants.js'
 import { isContractCallStep } from '../../../utils/isContractCallStep.js'
 import { isGaslessStep } from '../../../utils/isGaslessStep.js'
-import { isRelayerStep } from '../../../utils/isRelayerStep.js'
 
+/** Re-quotes the step through the endpoint that matches how it will execute. */
 export const getUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended,
+  fromChain: ExtendedChain,
   executionOptions?: ExecutionOptions,
   signedTypedData?: SignedTypedData[]
 ): Promise<LiFiStepExtended> => {
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
-  if (isRelayerStep(step) && isGaslessStep(step)) {
+  // Do NOT substitute `hasRelayerMessage` for `isGaslessStep`: an `Order` retry
+  // would fetch a relayer quote instead of `/advanced/stepTransaction`. Pinned
+  // by `re-quotes an Order step ...` in `getUpdatedStep.unit.spec.ts`.
+  if (isGaslessStep(step, fromChain)) {
     return getRelayerUpdatedStep(client, step)
   }
   return getStandardUpdatedStep(client, step, signedTypedData)
