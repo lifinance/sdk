@@ -23,6 +23,8 @@ vi.mock('../../actions/waitForTransactionReceipt.js')
 vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
 
 import type { LiFiStep } from '@lifi/sdk'
+import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTransactionReceipt.js'
+import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import {
   buildStep,
   buildTypedData,
@@ -104,28 +106,28 @@ describe('C2 — a step that is only ever a signature', () => {
 
     await scenario.run()
 
-    // What proves the strategy resolved to 'relayed' is the pair of effects
-    // below, not `MESSAGE_REQUIRED` on its own: that status is also raised by
-    // `EthereumStandardSignAndExecuteTask.ts:82` for the Permit2 signature (see
-    // C7's pinned sequence). Here the step is relayed because
-    // `getEthereumExecutionStrategy` returns early for any step carrying typed
-    // data, and the observable consequence is `relayTransaction` with no
-    // `sendTransaction` and no `sendCalls` — pinned in test 1.
+    // `EthereumPermit2AllowanceTask` signs the Permit2 allowance under its own
+    // `PERMIT` action, before prepare. By the time the relayed task runs there
+    // is nothing left to sign, so no `MESSAGE_REQUIRED` is raised — where main
+    // signed the same message under `SWAP` and announced it there.
     expect(
       scenario
         .events('action')
         .map((event) => `${event.actionType}:${event.status}`)
     ).toEqual([
       'SWAP:STARTED',
+      'PERMIT:STARTED',
+      'PERMIT:ACTION_REQUIRED',
+      'PERMIT:DONE',
       'SWAP:ACTION_REQUIRED',
-      'SWAP:MESSAGE_REQUIRED',
       'SWAP:PENDING',
       'SWAP:PENDING',
       'SWAP:PENDING',
     ])
 
-    // Six calls, one action: `updateAction` mutates the entry in place.
-    expect(scenario.finalActions()).toEqual(['SWAP:PENDING'])
+    // Two actions now, not one. This list is what a consumer renders after a
+    // reload, so the `PERMIT` entry is durable, not just an event.
+    expect(scenario.finalActions()).toEqual(['PERMIT:DONE', 'SWAP:PENDING'])
 
     const signatures = scenario.events('signTypedData')
     expect(signatures.map((event) => event.primaryType)).toEqual([
@@ -146,18 +148,31 @@ describe('C2 — a step that is only ever a signature', () => {
     ).toEqual([['PermitSingle', WALLET_SIGNATURE]])
   })
 
-  it('skips every allowance and permit task before it starts', async () => {
+  it('skips every allowance task before it starts', async () => {
     const scenario = buildSignatureOnlyScenario()
 
     await scenario.run()
 
     // An empty `approvalAddress` makes `shouldCheckForAllowance` false, so
     // `createPipeline` starts the pipeline at `EthereumCheckBalanceTask` and
-    // the five tasks before it never even get a `shouldRun` call.
-    expect(
-      scenario.events('action').map((event) => event.actionType)
-    ).not.toContain('PERMIT')
+    // the five tasks before it never even get a `shouldRun` call. The `PERMIT`
+    // action that does appear comes from `EthereumPermit2AllowanceTask`, which
+    // runs after the balance check — not from the allowance path.
     expect(scenario.events('readContract')).toEqual([])
+    expect(scenario.events('sendTransaction')).toEqual([])
+  })
+
+  // The regression this pins: the sign lane and the wait lane must agree.
+  // Routing the signature to the relayer while leaving the stored strategy on
+  // `standard` sends the waiter to `waitForTransactionReceipt` with an
+  // undefined hash, because a relayed step has a `taskId` and no `txHash`.
+  it('waits on the relayer, not on a transaction receipt', async () => {
+    const scenario = buildSignatureOnlyScenario()
+
+    await scenario.run()
+
+    expect(waitForRelayedTransactionReceipt).toHaveBeenCalledTimes(1)
+    expect(waitForTransactionReceipt).not.toHaveBeenCalled()
   })
 
   it('uses /stepTransaction, which answers with typed data and no transaction', async () => {

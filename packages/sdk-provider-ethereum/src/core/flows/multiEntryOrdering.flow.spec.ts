@@ -91,7 +91,7 @@ const AGENT_ORDER = {
 } as unknown as TypedData
 
 /**
- * A pure multi-message relayer intent: no approval address, so the pipeline
+ * A pure multi-message relayer lane: no approval address, so the pipeline
  * starts at the balance check and nothing but the signing sequence is on the
  * timeline.
  */

@@ -38,7 +38,7 @@ other.
 ## Adding one
 
 Check every fixture lands in the lane its name claims. A `PermitSingle` whose
-`message.spender` is `chain.permit2` is a relayer intent, not a caller intent, and
+`message.spender` is `chain.permit2` is a relayer message, not a Permit2 allowance, and
 the canonical Permit2 and LI.FI's Permit2Proxy are different addresses with
 different roles. Getting that wrong has produced three specs in this package that
 passed for the wrong reason.
