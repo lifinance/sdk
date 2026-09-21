@@ -2,33 +2,27 @@ import {
   BaseStepExecutionTask,
   LiFiErrorCode,
   relayTransaction,
+  type SignedTypedData,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
-import { signTypedData } from 'viem/actions'
-import { getAction } from 'viem/utils'
 import { isHyperliquidAgentStep } from '../../hyperliquid/isHyperliquidAgentStep.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { getDomainChainId } from '../../utils/getDomainChainId.js'
-import { assertValidSignature } from '../../utils/isValidSignature.js'
+import { isTypedDataAlreadySigned } from './helpers/isTypedDataAlreadySigned.js'
 import { signHyperliquidTypedData } from './helpers/signHyperliquidTypedData.js'
+import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
 export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
     const {
       step,
-      fromChain,
       client,
       statusManager,
-      allowUserInteraction,
-      checkClient,
       isBridgeExecution,
       signedTypedData: currentSignedTypedData,
     } = context
-
-    const signedTypedData = [...currentSignedTypedData]
 
     const action = statusManager.findAction(
       step,
@@ -42,66 +36,50 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
-    const intentTypedData = step.typedData?.filter(
+    const allowanceTypedData = step.typedData?.filter(
       (typedData) =>
-        !signedTypedData.some((signedPermit) =>
+        !currentSignedTypedData.some((signedPermit) =>
           isNativePermitValid(signedPermit, typedData)
         )
     )
-    if (!intentTypedData?.length) {
+    if (!allowanceTypedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Typed data for transfer is not found.'
       )
     }
 
-    statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
+    // An entry we already hold a signature for is relayed as it is.
+    const unsignedTypedData = allowanceTypedData.filter(
+      (typedData) =>
+        !isTypedDataAlreadySigned(currentSignedTypedData, typedData)
+    )
 
+    let signedTypedData: SignedTypedData[]
     if (isHyperliquidAgentStep(step)) {
+      statusManager.updateAction(step, action.type, 'MESSAGE_REQUIRED')
+
       const signedResults = await signHyperliquidTypedData(
         context,
-        intentTypedData
+        unsignedTypedData
       )
 
       if (!signedResults) {
         return { status: 'PAUSED' }
       }
 
-      signedTypedData.push(...signedResults)
+      signedTypedData = [...currentSignedTypedData, ...signedResults]
     } else {
-      for (const typedData of intentTypedData) {
-        if (!allowUserInteraction) {
-          return { status: 'PAUSED' }
-        }
-
-        const typedDataChainId =
-          getDomainChainId(typedData.domain) || fromChain.id
-
-        // Switch to the typed data's chain if needed
-        const updatedClient = await checkClient(step, typedDataChainId)
-        if (!updatedClient) {
-          return { status: 'PAUSED' }
-        }
-
-        const signature = await getAction(
-          updatedClient,
-          signTypedData,
-          'signTypedData'
-        )({
-          account: updatedClient.account!,
-          primaryType: typedData.primaryType,
-          domain: typedData.domain,
-          types: typedData.types,
-          message: typedData.message,
-        })
-
-        assertValidSignature(signature)
-
-        signedTypedData.push({
-          ...typedData,
-          signature: signature,
-        })
+      const result = await signTypedDataEntries(
+        context,
+        unsignedTypedData,
+        action.type,
+        'MESSAGE_REQUIRED'
+      )
+      if (result.status === 'PAUSED') {
+        return { status: 'PAUSED' }
       }
+      signedTypedData = result.signedTypedData
     }
 
     statusManager.updateAction(step, action.type, 'PENDING')

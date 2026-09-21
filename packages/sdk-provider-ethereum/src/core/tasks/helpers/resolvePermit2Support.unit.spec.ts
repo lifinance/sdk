@@ -21,6 +21,7 @@ const buildContext = (
     ethereumClient: { account: { address: OWNER } },
     isFromNativeToken: false,
     disableMessageSigning: false,
+    signedTypedData: [],
     fromChain: {
       id: CHAIN_ID,
       permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
@@ -34,6 +35,31 @@ const buildContext = (
     },
     ...overrides,
   }) as unknown as EthereumStepExecutorContext
+
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
+const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
+const SIGNATURE = `0x${'11'.repeat(65)}`
+
+const typedDataEntry = (primaryType: string, spender?: string) => ({
+  primaryType,
+  domain: { chainId: CHAIN_ID, verifyingContract: PERMIT2 },
+  types: {},
+  message: spender ? { spender } : {},
+})
+
+const buildGaslessContext = (
+  overrides: Partial<EthereumStepExecutorContext> = {}
+): EthereumStepExecutorContext =>
+  buildContext({
+    step: {
+      action: { fromAddress: OWNER },
+      estimate: {
+        approvalAddress: '0x2222222222222222222222222222222222222222',
+      },
+      typedData: [typedDataEntry('PermitWitnessTransferFrom')],
+    },
+    ...overrides,
+  } as unknown as Partial<EthereumStepExecutorContext>)
 
 const run = (
   context: EthereumStepExecutorContext,
@@ -195,11 +221,11 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
     // through Permit2: the transfer fails and the approval was wasted.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
 
-    expect(await run(buildContext(), 'relayed')).toBe(true)
+    expect(await run(buildGaslessContext(), 'relayed')).toBe(true)
   })
 
   it('issues no signer RPC for a relayed step', async () => {
-    await run(buildContext(), 'relayed')
+    await run(buildGaslessContext(), 'relayed')
 
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
@@ -207,7 +233,7 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
   it('leaves the memoized verdict unset for a relayed step', async () => {
     // The guard returns before the memo write, so a later standard step in the
     // same execution still resolves the signer for itself.
-    const context = buildContext()
+    const context = buildGaslessContext()
 
     await run(context, 'relayed')
 
@@ -218,7 +244,77 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
     // Regression guard: the strategy guard must not become a blanket `true`. A
     // native from-token can never use Permit2, whoever signs.
     expect(
-      await run(buildContext({ isFromNativeToken: true }), 'relayed')
+      await run(buildGaslessContext({ isFromNativeToken: true }), 'relayed')
     ).toBe(false)
+  })
+})
+
+describe('resolvePermit2Support — caller-supplied Permit2 allowances', () => {
+  const buildPermit2AllowanceContext = (): EthereumStepExecutorContext =>
+    buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [typedDataEntry('PermitSingle', UNIVERSAL_ROUTER)],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+  it('turns the gate off, so the SDK does not wrap the step in its own Permit2 flow', async () => {
+    expect(await run(buildPermit2AllowanceContext())).toBe(false)
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+
+  it('turns the gate off for the relayed strategy too', async () => {
+    expect(await run(buildPermit2AllowanceContext(), 'relayed')).toBe(false)
+  })
+
+  it('keeps the gate OFF when the API erased the declaration but the allowance was signed', async () => {
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [],
+      },
+      signedTypedData: [
+        {
+          ...typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+          signature: SIGNATURE,
+        },
+      ],
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context)).toBe(false)
+    expect(canAccountUsePermit2).not.toHaveBeenCalled()
+  })
+
+  it('keeps the gate ON for a step carrying both a witness intent and a Permit2 allowance', async () => {
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [
+          typedDataEntry('PermitWitnessTransferFrom'),
+          typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+        ],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context, 'relayed')).toBe(true)
+  })
+
+  it('keeps the gate ON for a mixed-lane step under the standard strategy too', async () => {
+    const context = buildContext({
+      step: {
+        action: { fromAddress: OWNER },
+        estimate: { approvalAddress: PERMIT2 },
+        typedData: [
+          typedDataEntry('PermitWitnessTransferFrom'),
+          typedDataEntry('PermitSingle', UNIVERSAL_ROUTER),
+        ],
+      },
+    } as unknown as Partial<EthereumStepExecutorContext>)
+
+    expect(await run(context)).toBe(true)
+    expect(canAccountUsePermit2).toHaveBeenCalled()
   })
 })
