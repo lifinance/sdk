@@ -1,5 +1,27 @@
 # @lifi/sdk
 
+## 4.8.0
+
+### Minor Changes
+
+- [#475](https://github.com/lifinance/sdk/pull/475) [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914) Thanks [@chybisov](https://github.com/chybisov)! - Bump the `@lifi/types` pin to `^18.10.0`.
+  
+  `18.6.0` adds `PermitSingle` to `TypedDataPrimaryTypes`, so the Ethereum
+  provider's typed-data lane classifier can compare `primaryType` against the
+  declared union instead of a module-private string allowlist.
+  
+  `@lifi/sdk` re-exports `@lifi/types` wholesale, so the addition widens its own
+  public type surface — additive only, nothing is removed or narrowed.
+
+### Patch Changes
+
+- [#484](https://github.com/lifinance/sdk/pull/484) [`13c19c4`](https://github.com/lifinance/sdk/commit/13c19c4441341683b9dbaa8943e950b8f7571304) Thanks [@chybisov](https://github.com/chybisov)! - Refresh runtime dependencies: `@lifi/types` to `^18.10.0`, `viem` to `^2.56.8`,
+  `@mysten/sui` to `^2.31.3`, `@solana/kit` to `^8.3.0`,
+  `@solana/wallet-standard-features` to `^1.5.0`, `@stellar/stellar-sdk` to `^17.1.0`,
+  `@bigmi/core` to `^0.9.2` and `tronweb` to `^6.5.1`.
+
+- [#475](https://github.com/lifinance/sdk/pull/475) [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914) Thanks [@chybisov](https://github.com/chybisov)! - Give a pending bridge a link to follow. While waiting for the destination, the status poll only forwarded `bridgeExplorerLink`, which most bridges do not provide, so the receiving action had nothing to open for the whole wait. It now falls back to `lifiExplorerLink`, which every recorded transfer carries and which shows both legs.
+
 ## 4.7.0
 
 ### Minor Changes

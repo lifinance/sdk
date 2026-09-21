@@ -1,5 +1,16 @@
 # @lifi/sdk-provider-bitcoin
 
+## 4.0.11
+
+### Patch Changes
+
+- [#484](https://github.com/lifinance/sdk/pull/484) [`13c19c4`](https://github.com/lifinance/sdk/commit/13c19c4441341683b9dbaa8943e950b8f7571304) Thanks [@chybisov](https://github.com/chybisov)! - Refresh runtime dependencies: `@lifi/types` to `^18.10.0`, `viem` to `^2.56.8`,
+  `@mysten/sui` to `^2.31.3`, `@solana/kit` to `^8.3.0`,
+  `@solana/wallet-standard-features` to `^1.5.0`, `@stellar/stellar-sdk` to `^17.1.0`,
+  `@bigmi/core` to `^0.9.2` and `tronweb` to `^6.5.1`.
+- Updated dependencies [[`13c19c4`](https://github.com/lifinance/sdk/commit/13c19c4441341683b9dbaa8943e950b8f7571304), [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914), [`252a06d`](https://github.com/lifinance/sdk/commit/252a06de1db75fad3d8501e05cc128b0a4c9d914)]:
+  - @lifi/sdk@4.8.0
+
 ## 4.0.10
 
 ### Patch Changes
