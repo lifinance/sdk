@@ -119,7 +119,7 @@ describe('C8 — batched approval through EIP-5792', () => {
 
     // PINNED DELIBERATELY, AND IT LOOKS LIKE A BUG.
     //
-    // `EthereumSetAllowanceTask.run` (src/core/tasks/EthereumSetAllowanceTask.ts:89)
+    // `EthereumSetAllowanceTask.run`, in its batched branch,
     // marks SET_ALLOWANCE as DONE in the batched branch the moment it has
     // *encoded* the approve call. The approve has not been submitted, signed or
     // even shown to the user at that point: it is only pushed onto
@@ -129,7 +129,8 @@ describe('C8 — batched approval through EIP-5792', () => {
     // then rejects the batch the approval is reported DONE for a transaction
     // that never existed.
     //
-    // The brief expected the opposite. This test asserts what `main` does.
+    // This test asserts the behaviour as it ships, not the behaviour it
+    // should have. Change the task and change this expectation with it.
     expect(allowanceDone).toBeDefined()
     expect(allowanceDone!.seq).toBeLessThan(batch.seq)
 

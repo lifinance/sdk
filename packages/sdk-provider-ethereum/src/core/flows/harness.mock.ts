@@ -1,7 +1,7 @@
 /**
  * Shared harness for the EVM execution-flow specs.
  *
- * These specs pin *observed* behaviour of `main`, so the harness drives the
+ * These specs pin *observed* behaviour of the shipped pipeline, so the harness drives the
  * real consumer entry point — `executeRoute` → `EthereumProvider.getStepExecutor`
  * → `EthereumStepExecutor.executeStep` → the real `TaskPipeline` — and records
  * what came out. Nothing in the pipeline is re-implemented here.

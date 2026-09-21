@@ -79,9 +79,9 @@ describe('C3 — order flow picks the /quote endpoint, never the relayer quote',
     await scenario.run()
 
     // The endpoint choice is the assertion that matters most here: an order
-    // flow is a relayer step (`isRelayerStep` is true for any typed data), but
-    // `getUpdatedStep` only reaches `getRelayerQuote` for a *gasless* step, and
-    // an EIP-2612 permit is not one.
+    // carries typed data and is relayed, but `getUpdatedStep` only reaches
+    // `getRelayerQuote` for a *gasless* step, and an EIP-2612 permit is not
+    // one.
     expect(scenario.events('getStepTransaction')).toHaveLength(1)
     expect(scenario.events('getRelayerQuote')).toEqual([])
 

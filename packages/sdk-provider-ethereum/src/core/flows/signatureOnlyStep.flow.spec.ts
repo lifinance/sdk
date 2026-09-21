@@ -108,8 +108,8 @@ describe('C2 — a step that is only ever a signature', () => {
 
     // `EthereumPermit2AllowanceTask` signs the Permit2 allowance under its own
     // `PERMIT` action, before prepare. By the time the relayed task runs there
-    // is nothing left to sign, so no `MESSAGE_REQUIRED` is raised — where main
-    // signed the same message under `SWAP` and announced it there.
+    // is nothing left to sign, so no `MESSAGE_REQUIRED` is raised. Removing
+    // that task collapses the three `PERMIT` events and fails this list.
     expect(
       scenario
         .events('action')
@@ -180,10 +180,11 @@ describe('C2 — a step that is only ever a signature', () => {
 
     await scenario.run()
 
-    // `isGaslessStep` is false — no `PermitWitnessTransferFrom`, and
-    // `getUpdatedStep` calls it without a chain, so its `chain.permit2`
-    // spender branch cannot fire — so the standard endpoint is used even
-    // though this step is a relayer step.
+    // `isGaslessStep` is false on both of its tests: the primary type is not
+    // `PermitWitnessTransferFrom`, and the spender is `THIRD_PARTY_ROUTER`
+    // rather than `chain.permit2`. `getUpdatedStep` does pass `fromChain`, so
+    // the spender test is live — it simply does not match. The standard
+    // endpoint is therefore used even though this step ends up relayed.
     expect(scenario.events('getStepTransaction')).toHaveLength(1)
     expect(scenario.events('getRelayerQuote')).toEqual([])
     expect(scenario.executedStep().transactionRequest).toBeUndefined()

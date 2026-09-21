@@ -104,6 +104,41 @@ describe('C14 — a Permit2 allowance on a step that does receive a transaction'
     expect(scenario.events('relayTransaction')).toEqual([])
   })
 
+  // The batched lane raises the same `PERMIT` action as the relayed one in C2.
+  // Nothing else pins that: C2 covers a step with no transaction, and the
+  // approval events here come from the allowance tasks, not from this one.
+  it('raises the PERMIT action alongside the approval', async () => {
+    const scenario = buildScenario()
+
+    await scenario.run()
+
+    expect(
+      scenario
+        .events('action')
+        .map((event) => `${event.actionType}:${event.status}`)
+    ).toEqual([
+      'CHECK_ALLOWANCE:STARTED',
+      'CHECK_ALLOWANCE:DONE',
+      'SET_ALLOWANCE:STARTED',
+      'SET_ALLOWANCE:ACTION_REQUIRED',
+      'SET_ALLOWANCE:DONE',
+      'SWAP:STARTED',
+      'PERMIT:STARTED',
+      'PERMIT:ACTION_REQUIRED',
+      'PERMIT:DONE',
+      'SWAP:ACTION_REQUIRED',
+      'SWAP:PENDING',
+      'SWAP:PENDING',
+    ])
+
+    expect(scenario.finalActions()).toEqual([
+      'CHECK_ALLOWANCE:DONE',
+      'SET_ALLOWANCE:DONE',
+      'PERMIT:DONE',
+      'SWAP:PENDING',
+    ])
+  })
+
   /**
    * The capability the phase-bound rule in `getEthereumExecutionStrategy`
    * exists to protect. The allowance tasks run BEFORE prepare, where this step
@@ -149,5 +184,8 @@ describe('C14 — a Permit2 allowance on a step that does receive a transaction'
     // does not: this step sent its own transaction.
     expect(waitForRelayedTransactionReceipt).not.toHaveBeenCalled()
     expect(waitForTransactionReceipt).not.toHaveBeenCalled()
+    // Both assertions above are negative, so anchor them to a run that
+    // actually reached the end.
+    expect(scenario.finalActions().at(-1)).toBe('SWAP:PENDING')
   })
 })
