@@ -13,7 +13,7 @@ import { assertValidSignature } from '../../../utils/isValidSignature.js'
 
 export const signHyperliquidTypedData = async (
   context: EthereumStepExecutorContext,
-  intentTypedData: TypedData[]
+  allowanceTypedData: TypedData[]
 ): Promise<SignedTypedData[] | undefined> => {
   const {
     step,
@@ -33,7 +33,7 @@ export const signHyperliquidTypedData = async (
   const ownerAddress = ethereumClient.account!.address
   const storage = getStorage(client)
 
-  const approveMessage = intentTypedData.find(isApproveAgentMessage)
+  const approveMessage = allowanceTypedData.find(isApproveAgentMessage)
   const existingAgentAddress = approveMessage?.message.agentAddress as
     | string
     | undefined
@@ -44,7 +44,7 @@ export const signHyperliquidTypedData = async (
     expiresAt,
   } = await getOrCreateAgentWallet(storage, ownerAddress, existingAgentAddress)
 
-  for (const typedData of intentTypedData) {
+  for (const typedData of allowanceTypedData) {
     if (isApproveAgentMessage(typedData)) {
       if (!needsApproval) {
         continue

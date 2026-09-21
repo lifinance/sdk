@@ -17,7 +17,7 @@ vi.mock('viem/actions', async (importOriginal) => {
 
 import { signTypedData } from 'viem/actions'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { EthereumSignStepIntentTask } from './EthereumSignStepIntentTask.js'
+import { EthereumPermit2AllowanceTask } from './EthereumPermit2AllowanceTask.js'
 
 const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
@@ -88,14 +88,14 @@ const buildContext = (
     signedTypedData: [],
   }) as unknown as EthereumStepExecutorContext
 
-const task = new EthereumSignStepIntentTask()
+const task = new EthereumPermit2AllowanceTask()
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('EthereumSignStepIntentTask.shouldRun', () => {
-  it('runs for a caller-supplied Permit2 intent', async () => {
+describe('EthereumPermit2AllowanceTask.shouldRun', () => {
+  it('runs for a caller-supplied Permit2 allowance', async () => {
     expect(await task.shouldRun(buildContext())).toBe(true)
   })
 
@@ -120,8 +120,8 @@ describe('EthereumSignStepIntentTask.shouldRun', () => {
   })
 })
 
-describe('EthereumSignStepIntentTask.run', () => {
-  it('signs the intent and puts it on the context for getStepTransaction', async () => {
+describe('EthereumPermit2AllowanceTask.run', () => {
+  it('signs the allowance and puts it on the context for getStepTransaction', async () => {
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext()
 
@@ -157,7 +157,7 @@ describe('EthereumSignStepIntentTask.run', () => {
     ])
   })
 
-  it('signs only the caller-intent entries, leaving the other lanes alone', async () => {
+  it('signs only the permit2-allowance entries, leaving the other lanes alone', async () => {
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([nativePermit(), permitSingle()])
 

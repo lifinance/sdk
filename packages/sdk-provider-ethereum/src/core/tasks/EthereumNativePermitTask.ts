@@ -10,7 +10,7 @@ import { getNativePermit } from '../../permits/getNativePermit.js'
 import { isNativePermitValid } from '../../permits/isNativePermitValid.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getActionWithFallback } from '../../utils/getActionWithFallback.js'
-import { isCallerIntentLane } from '../../utils/getTypedDataLane.js'
+import { isPermit2AllowanceLane } from '../../utils/getTypedDataLane.js'
 import { isValidSignature } from '../../utils/isValidSignature.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 
@@ -30,7 +30,7 @@ export class EthereumNativePermitTask extends BaseStepExecutionTask {
       return false
     }
 
-    if (isCallerIntentLane(step, fromChain)) {
+    if (isPermit2AllowanceLane(step, fromChain)) {
       return false
     }
 

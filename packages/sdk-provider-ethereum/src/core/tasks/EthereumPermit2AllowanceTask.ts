@@ -2,18 +2,18 @@ import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import {
   getTypedDataInLane,
-  isCallerIntentLane,
+  isPermit2AllowanceLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
-/** Signs the Permit2 messages a caller attached to its own step, before prepare. */
-export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
+/** Signs the Permit2 allowances a caller attached to its own step, before prepare. */
+export class EthereumPermit2AllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
     const { step, fromChain, disableMessageSigning } = context
 
-    return isCallerIntentLane(step, fromChain) && !disableMessageSigning
+    return isPermit2AllowanceLane(step, fromChain) && !disableMessageSigning
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -26,13 +26,17 @@ export class EthereumSignStepIntentTask extends BaseStepExecutionTask {
       status: 'STARTED',
     })
 
-    const intentTypedData = getTypedDataInLane(step, 'caller-intent', fromChain)
+    const allowanceTypedData = getTypedDataInLane(
+      step,
+      'permit2-allowance',
+      fromChain
+    )
 
     // `ACTION_REQUIRED`, not `MESSAGE_REQUIRED`: the widget maps no `PERMIT`
     // text for it. Pinned by `emits exactly STARTED, ACTION_REQUIRED and DONE`.
     const result = await signTypedDataEntries(
       context,
-      intentTypedData,
+      allowanceTypedData,
       action.type
     )
     if (result.status === 'PAUSED') {

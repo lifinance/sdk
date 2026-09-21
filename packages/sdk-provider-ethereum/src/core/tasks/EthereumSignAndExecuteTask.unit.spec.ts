@@ -59,11 +59,11 @@ const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 const TX_HASH = `0x${'ab'.repeat(32)}` as Hex
 
 /**
- * A caller intent is the shape that matters here: it is the only typed data
+ * A Permit2 allowance is the shape that matters here: it is the only typed data
  * that does NOT resolve to `relayed` on sight, so the lane it lands in depends
  * on the verdict `EthereumPrepareTransactionTask` stored.
  */
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -150,7 +150,7 @@ describe('EthereumSignAndExecuteTask.run', () => {
   // wait for it on the standard one.
   it('follows the stored relayed verdict for a step with nothing to send', async () => {
     const context = buildContext({
-      typedData: [callerIntent()],
+      typedData: [permit2Allowance()],
       withTransactionRequest: false,
       executionStrategy: 'relayed',
     })
@@ -165,7 +165,7 @@ describe('EthereumSignAndExecuteTask.run', () => {
   it('does not batch that step, even where the wallet supports batching', async () => {
     vi.mocked(isBatchingSupported).mockResolvedValue(true)
     const context = buildContext({
-      typedData: [callerIntent()],
+      typedData: [permit2Allowance()],
       withTransactionRequest: false,
       executionStrategy: 'relayed',
     })
@@ -176,9 +176,9 @@ describe('EthereumSignAndExecuteTask.run', () => {
     expect(batchedRun).not.toHaveBeenCalled()
   })
 
-  it('leaves a caller-intent step that did receive a transaction on the standard task', async () => {
+  it('leaves a Permit2 allowance step that did receive a transaction on the standard task', async () => {
     const context = buildContext({
-      typedData: [callerIntent()],
+      typedData: [permit2Allowance()],
       withTransactionRequest: true,
     })
 

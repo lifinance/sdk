@@ -27,7 +27,7 @@ const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const ROUTER_CALLDATA = '0xdeadbeef' as Hex
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -122,8 +122,8 @@ beforeEach(() => {
 })
 
 describe('EthereumPrepareTransactionTask.run', () => {
-  it('keeps the caller intent on the shared step when the API answers with typedData: []', async () => {
-    const step = buildStep([callerIntent()])
+  it('keeps the Permit2 allowance on the shared step when the API answers with typedData: []', async () => {
+    const step = buildStep([permit2Allowance()])
     vi.mocked(getUpdatedStep).mockResolvedValue(
       buildApiAnswer([]) as LiFiStepExtended
     )
@@ -146,9 +146,9 @@ describe('EthereumPrepareTransactionTask.run', () => {
     expect(step.typedData).toHaveLength(0)
   })
 
-  it('takes the API answer verbatim when it echoes the caller intent', async () => {
-    const step = buildStep([callerIntent()])
-    const answer = [callerIntent()]
+  it('takes the API answer verbatim when it echoes the Permit2 allowance', async () => {
+    const step = buildStep([permit2Allowance()])
+    const answer = [permit2Allowance()]
     vi.mocked(getUpdatedStep).mockResolvedValue(
       buildApiAnswer(answer) as LiFiStepExtended
     )
@@ -158,8 +158,8 @@ describe('EthereumPrepareTransactionTask.run', () => {
     expect(step.typedData).toBe(answer)
   })
 
-  it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a caller intent is preserved', async () => {
-    const step = buildStep([callerIntent()])
+  it('throws TransactionUnprepared when the API answers with neither a transaction request nor typed data, even though a Permit2 allowance is preserved', async () => {
+    const step = buildStep([permit2Allowance()])
     const { transactionRequest: _, ...answer } = buildApiAnswer([])
     vi.mocked(getUpdatedStep).mockResolvedValue(answer as LiFiStepExtended)
 

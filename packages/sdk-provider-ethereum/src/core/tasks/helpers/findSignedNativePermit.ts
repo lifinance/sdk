@@ -2,7 +2,7 @@ import type { SignedTypedData } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../../types.js'
 import { getDomainChainId } from '../../../utils/getDomainChainId.js'
 import { isValidSignature } from '../../../utils/isValidSignature.js'
-import { isCallerIntentLaneInFlight } from './hasCallerIntentInFlight.js'
+import { isPermit2AllowanceLaneInFlight } from './hasPermit2AllowanceInFlight.js'
 
 /** The signed native EIP-2612 permit this step should execute through, if any. */
 export function findSignedNativePermit(
@@ -10,7 +10,7 @@ export function findSignedNativePermit(
 ): SignedTypedData | undefined {
   const { fromChain, signedTypedData } = context
 
-  if (isCallerIntentLaneInFlight(context)) {
+  if (isPermit2AllowanceLaneInFlight(context)) {
     return undefined
   }
 

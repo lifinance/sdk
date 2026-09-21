@@ -66,7 +66,7 @@ const witness = (): TypedData =>
 const THIRD_PARTY_ROUTER =
   '0xeeee000000000000000000000000000000000005' as Address
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { name: 'Permit2', chainId: SOURCE_CHAIN },
@@ -83,9 +83,9 @@ const callerIntent = (): TypedData =>
     },
   }) as unknown as TypedData
 
-const signedCallerIntent = (): SignedTypedData =>
+const signedPermit2Allowance = (): SignedTypedData =>
   ({
-    ...callerIntent(),
+    ...permit2Allowance(),
     signature: EXISTING_SIGNATURE,
   }) as unknown as SignedTypedData
 
@@ -171,10 +171,10 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
     expect(result.status).toBe('COMPLETED')
   })
 
-  it('relays a caller intent it already holds without asking again', async () => {
+  it('relays a Permit2 allowance it already holds without asking again', async () => {
     const context = buildContext({
-      typedData: [callerIntent()],
-      signedTypedData: [signedCallerIntent()],
+      typedData: [permit2Allowance()],
+      signedTypedData: [signedPermit2Allowance()],
     })
 
     const result = await task.run(context)
@@ -201,7 +201,7 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
 
   it('signs every entry when none of them is signed yet', async () => {
     const context = buildContext({
-      typedData: [callerIntent(), witness()],
+      typedData: [permit2Allowance(), witness()],
       signedTypedData: [],
     })
 

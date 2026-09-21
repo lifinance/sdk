@@ -249,8 +249,8 @@ describe('resolvePermit2Support — the probe gates the standard flow only', () 
   })
 })
 
-describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
-  const buildCallerIntentContext = (): EthereumStepExecutorContext =>
+describe('resolvePermit2Support — caller-supplied Permit2 allowances', () => {
+  const buildPermit2AllowanceContext = (): EthereumStepExecutorContext =>
     buildContext({
       step: {
         action: { fromAddress: OWNER },
@@ -260,15 +260,15 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
     } as unknown as Partial<EthereumStepExecutorContext>)
 
   it('turns the gate off, so the SDK does not wrap the step in its own Permit2 flow', async () => {
-    expect(await run(buildCallerIntentContext())).toBe(false)
+    expect(await run(buildPermit2AllowanceContext())).toBe(false)
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 
   it('turns the gate off for the relayed strategy too', async () => {
-    expect(await run(buildCallerIntentContext(), 'relayed')).toBe(false)
+    expect(await run(buildPermit2AllowanceContext(), 'relayed')).toBe(false)
   })
 
-  it('keeps the gate OFF when the API erased the declaration but the intent was signed', async () => {
+  it('keeps the gate OFF when the API erased the declaration but the allowance was signed', async () => {
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },
@@ -287,7 +287,7 @@ describe('resolvePermit2Support — caller-supplied Permit2 intents', () => {
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 
-  it('keeps the gate ON for a step carrying both a witness intent and a caller intent', async () => {
+  it('keeps the gate ON for a step carrying both a witness intent and a Permit2 allowance', async () => {
     const context = buildContext({
       step: {
         action: { fromAddress: OWNER },

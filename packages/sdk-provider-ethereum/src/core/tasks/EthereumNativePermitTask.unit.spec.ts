@@ -51,7 +51,7 @@ const buildNativePermitData = (): TypedData =>
     },
   }) as TypedData
 
-const buildCallerIntent = (): TypedData =>
+const buildPermit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN },
@@ -194,14 +194,14 @@ describe('EthereumNativePermitTask.run', () => {
 })
 
 describe('EthereumNativePermitTask.shouldRun', () => {
-  it('does not mint a native permit when the caller supplied its own Permit2 intent', async () => {
-    const { context } = buildContext({ typedData: [buildCallerIntent()] })
+  it('does not mint a native permit when the caller supplied its own Permit2 allowance', async () => {
+    const { context } = buildContext({ typedData: [buildPermit2Allowance()] })
 
     expect(await task.shouldRun(context)).toBe(false)
     expect(context.checkClient).not.toHaveBeenCalled()
   })
 
-  it('still mints a native permit for a step with no caller intent', async () => {
+  it('still mints a native permit for a step with no Permit2 allowance', async () => {
     const { context } = buildContext()
 
     expect(await task.shouldRun(context)).toBe(true)
@@ -209,31 +209,34 @@ describe('EthereumNativePermitTask.shouldRun', () => {
 
   it('still mints a native permit for a mixed-lane step', async () => {
     const { context } = buildContext({
-      typedData: [buildWitnessTypedData(), buildCallerIntent()],
+      typedData: [buildWitnessTypedData(), buildPermit2Allowance()],
     })
 
     expect(await task.shouldRun(context)).toBe(true)
   })
 
-  it('does not mint a native permit when the caller intent names Permit2 itself as verifyingContract', async () => {
-    const intent = buildCallerIntent() as unknown as {
+  it('does not mint a native permit when the Permit2 allowance names Permit2 itself as verifyingContract', async () => {
+    const permit2Allowance = buildPermit2Allowance() as unknown as {
       domain: Record<string, unknown>
     }
-    intent.domain = { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 }
+    permit2Allowance.domain = {
+      chainId: SOURCE_CHAIN,
+      verifyingContract: PERMIT2,
+    }
     const { context } = buildContext({
-      typedData: [intent as unknown as TypedData],
+      typedData: [permit2Allowance as unknown as TypedData],
     })
 
     expect(await task.shouldRun(context)).toBe(false)
   })
 
-  it('mints a native permit when the intent spender IS the Permit2 deployment, which makes it the relayer lane', async () => {
-    const intent = buildCallerIntent() as unknown as {
+  it('mints a native permit when the allowance spender IS the Permit2 deployment, which makes it the relayer lane', async () => {
+    const permit2Allowance = buildPermit2Allowance() as unknown as {
       message: Record<string, unknown>
     }
-    intent.message = { spender: PERMIT2 }
+    permit2Allowance.message = { spender: PERMIT2 }
     const { context } = buildContext({
-      typedData: [intent as unknown as TypedData],
+      typedData: [permit2Allowance as unknown as TypedData],
     })
 
     expect(await task.shouldRun(context)).toBe(true)

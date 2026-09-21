@@ -128,7 +128,7 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(resultContext?.signedTypedData?.[0].signature).toBe(SIGNATURE)
   })
 
-  it('does not run for a caller-supplied Permit2 intent, which the intent task signs', async () => {
+  it('does not run for a caller-supplied Permit2 allowance, which the allowance task signs', async () => {
     const context = buildContext([buildPermitSingleTypedData()])
     expect(await task.shouldRun(context)).toBe(false)
   })
@@ -197,7 +197,7 @@ describe('EthereumCheckPermitsTask.run', () => {
     expect(resultContext?.signedTypedData?.[0].primaryType).toBe('Permit')
   })
 
-  it('clears hasMatchingPermit when a caller intent also needs the allowance', async () => {
+  it('clears hasMatchingPermit when a Permit2 allowance also needs the allowance', async () => {
     vi.mocked(signTypedData).mockResolvedValue(SIGNATURE)
     const context = buildContext([
       buildPermitTypedData(),

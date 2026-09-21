@@ -42,7 +42,7 @@ describe('getApprovalAmount', () => {
     expect(getApprovalAmount(buildContext(), false)).toBe(BigInt(FROM_AMOUNT))
   })
 
-  it('approves MAX when the approval target is the Permit2 the intent names', () => {
+  it('approves MAX when the approval target is the Permit2 the allowance names', () => {
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2)],
@@ -66,7 +66,7 @@ describe('getApprovalAmount', () => {
     expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
   })
 
-  it('requires EVERY caller intent to name the approval target', () => {
+  it('requires EVERY Permit2 allowance to name the approval target', () => {
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2), permitSingle(OTHER_PERMIT2)],
@@ -74,7 +74,7 @@ describe('getApprovalAmount', () => {
     expect(getApprovalAmount(context, false)).toBe(BigInt(FROM_AMOUNT))
   })
 
-  it('returns the swap amount when message signing is disabled, because the intent is never signed', () => {
+  it('returns the swap amount when message signing is disabled, because the allowance is never signed', () => {
     const context = buildContext({
       approvalAddress: PERMIT2,
       typedData: [permitSingle(PERMIT2)],

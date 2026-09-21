@@ -27,7 +27,7 @@ export const getUpdatedStep = async (
   if (isContractCallStep(step)) {
     return getContractCallUpdatedStep(client, step, executionOptions)
   }
-  // Do NOT substitute `hasRelayerIntent` for `isGaslessStep`: an `Order` retry
+  // Do NOT substitute `hasRelayerMessage` for `isGaslessStep`: an `Order` retry
   // would fetch a relayer quote instead of `/advanced/stepTransaction`. Pinned
   // by `re-quotes an Order step ...` in `getUpdatedStep.unit.spec.ts`.
   if (isGaslessStep(step, fromChain)) {

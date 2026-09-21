@@ -48,7 +48,7 @@ const nativePermit = (): TypedData =>
     message: { spender: PERMIT2_PROXY },
   }) as unknown as TypedData
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -138,8 +138,8 @@ describe('EthereumSetAllowanceTask.run', () => {
     expect(waitForTransactionReceipt).toHaveBeenCalledTimes(1)
   })
 
-  it('still queues the approve for a caller-intent step the wallet can batch', async () => {
-    const context = buildContext({ typedData: [callerIntent()] })
+  it('still queues the approve for a Permit2 allowance step the wallet can batch', async () => {
+    const context = buildContext({ typedData: [permit2Allowance()] })
 
     const result = await task.run(context)
 

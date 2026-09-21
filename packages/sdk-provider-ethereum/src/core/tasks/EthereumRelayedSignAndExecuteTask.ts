@@ -36,13 +36,13 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
-    const intentTypedData = step.typedData?.filter(
+    const allowanceTypedData = step.typedData?.filter(
       (typedData) =>
         !currentSignedTypedData.some((signedPermit) =>
           isNativePermitValid(signedPermit, typedData)
         )
     )
-    if (!intentTypedData?.length) {
+    if (!allowanceTypedData?.length) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Typed data for transfer is not found.'
@@ -50,7 +50,7 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
     }
 
     // An entry we already hold a signature for is relayed as it is.
-    const unsignedTypedData = intentTypedData.filter(
+    const unsignedTypedData = allowanceTypedData.filter(
       (typedData) =>
         !isTypedDataAlreadySigned(currentSignedTypedData, typedData)
     )

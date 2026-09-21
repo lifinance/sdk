@@ -54,7 +54,7 @@ const order = (): TypedData =>
     message: {},
   }) as unknown as TypedData
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -108,14 +108,14 @@ describe('getUpdatedStep', () => {
     expect(getStepTransaction).not.toHaveBeenCalled()
   })
 
-  it('re-quotes a caller-intent step through /advanced/stepTransaction', async () => {
+  it('re-quotes a Permit2 allowance step through /advanced/stepTransaction', async () => {
     const signedTypedData = [
-      { ...callerIntent(), signature: SIGNATURE },
+      { ...permit2Allowance(), signature: SIGNATURE },
     ] as unknown as SignedTypedData[]
 
     await getUpdatedStep(
       client,
-      buildStep([callerIntent()]),
+      buildStep([permit2Allowance()]),
       chain,
       undefined,
       signedTypedData
@@ -129,7 +129,7 @@ describe('getUpdatedStep', () => {
   })
 
   it('strips the unsigned declaration from the request when nothing is signed yet', async () => {
-    await getUpdatedStep(client, buildStep([callerIntent()]), chain)
+    await getUpdatedStep(client, buildStep([permit2Allowance()]), chain)
 
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).not.toHaveProperty(
       'typedData'

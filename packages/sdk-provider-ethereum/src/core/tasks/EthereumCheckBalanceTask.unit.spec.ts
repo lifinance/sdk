@@ -104,7 +104,7 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(getAccountCode).not.toHaveBeenCalled()
   })
 
-  it('caller-intent step keeps the gas check: the user pays for this transaction', async () => {
+  it('Permit2 allowance step keeps the gas check: the user pays for this transaction', async () => {
     vi.mocked(getAccountCode).mockResolvedValue('0x')
     const step = buildStep({
       typedData: [
@@ -139,7 +139,7 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(getAccountCode).not.toHaveBeenCalled()
   })
 
-  it('native permit + caller intent keeps the gas check: the user still pays', async () => {
+  it('native permit + Permit2 allowance keeps the gas check: the user still pays', async () => {
     vi.mocked(getAccountCode).mockResolvedValue('0x')
     const step = buildStep({
       typedData: [
@@ -163,7 +163,7 @@ describe('EthereumCheckBalanceTask.getCheckBalanceOptions', () => {
     expect(getAccountCode).toHaveBeenCalled()
   })
 
-  it('mixed relayer + caller intent keeps the skip: the relayer still funds that lane', async () => {
+  it('mixed relayer + Permit2 allowance keeps the skip: the relayer still funds that lane', async () => {
     const step = buildStep({
       typedData: [
         {

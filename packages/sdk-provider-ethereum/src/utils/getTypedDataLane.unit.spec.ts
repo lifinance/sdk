@@ -7,8 +7,8 @@ import {
 import { describe, expect, it } from 'vitest'
 import {
   getTypedDataLane,
-  hasCallerIntent,
-  hasRelayerIntent,
+  hasPermit2Allowance,
+  hasRelayerMessage,
   type TypedDataLane,
 } from './getTypedDataLane.js'
 
@@ -30,21 +30,21 @@ const stepWith = (...primaryTypes: string[]): LiFiStep =>
 
 const EXPECTED_LANES: Record<string, TypedDataLane> = {
   Permit: 'native-permit',
-  PermitSingle: 'caller-intent',
-  PermitBatch: 'relayer-intent',
-  PermitTransferFrom: 'relayer-intent',
-  PermitBatchTransferFrom: 'relayer-intent',
-  PermitWitnessTransferFrom: 'relayer-intent',
-  PermitBatchWitnessTransferFrom: 'relayer-intent',
-  Order: 'relayer-intent',
-  Agent: 'relayer-intent',
-  NonceMapping: 'relayer-intent',
-  'HyperliquidTransaction:UsdSend': 'relayer-intent',
-  'HyperliquidTransaction:SpotSend': 'relayer-intent',
-  'HyperliquidTransaction:SendAsset': 'relayer-intent',
-  'HyperliquidTransaction:Withdraw': 'relayer-intent',
-  'HyperliquidTransaction:ApproveAgent': 'relayer-intent',
-  'HyperliquidTransaction:ApproveBuilderFee': 'relayer-intent',
+  PermitSingle: 'permit2-allowance',
+  PermitBatch: 'relayer-message',
+  PermitTransferFrom: 'relayer-message',
+  PermitBatchTransferFrom: 'relayer-message',
+  PermitWitnessTransferFrom: 'relayer-message',
+  PermitBatchWitnessTransferFrom: 'relayer-message',
+  Order: 'relayer-message',
+  Agent: 'relayer-message',
+  NonceMapping: 'relayer-message',
+  'HyperliquidTransaction:UsdSend': 'relayer-message',
+  'HyperliquidTransaction:SpotSend': 'relayer-message',
+  'HyperliquidTransaction:SendAsset': 'relayer-message',
+  'HyperliquidTransaction:Withdraw': 'relayer-message',
+  'HyperliquidTransaction:ApproveAgent': 'relayer-message',
+  'HyperliquidTransaction:ApproveBuilderFee': 'relayer-message',
 }
 
 describe('getTypedDataLane', () => {
@@ -52,10 +52,10 @@ describe('getTypedDataLane', () => {
     expect(getTypedDataLane(entry('Permit'), chain)).toBe('native-permit')
   })
 
-  it('puts a PermitSingle for a third-party spender in the caller-intent lane', () => {
+  it('puts a PermitSingle for a third-party spender in the permit2-allowance lane', () => {
     expect(
       getTypedDataLane(entry('PermitSingle', UNIVERSAL_ROUTER), chain)
-    ).toBe('caller-intent')
+    ).toBe('permit2-allowance')
   })
 
   it("puts a relayer's native permit in the native-permit lane even though its spender is Permit2", () => {
@@ -64,21 +64,21 @@ describe('getTypedDataLane', () => {
     )
   })
 
-  it('puts a gasless witness intent in the relayer-intent lane', () => {
+  it('puts a gasless witness intent in the relayer-message lane', () => {
     expect(getTypedDataLane(entry('PermitWitnessTransferFrom'), chain)).toBe(
-      'relayer-intent'
+      'relayer-message'
     )
   })
 
-  it('puts an unknown primary type in the relayer-intent lane, preserving today behaviour', () => {
+  it('puts an unknown primary type in the relayer-message lane, preserving today behaviour', () => {
     expect(getTypedDataLane(entry('SomeFutureIntent'), chain)).toBe(
-      'relayer-intent'
+      'relayer-message'
     )
   })
 
-  it('keeps a chain.permit2 spender in the relayer lane even for a caller-intent type', () => {
+  it('keeps a chain.permit2 spender in the relayer lane even for a PermitSingle type', () => {
     expect(getTypedDataLane(entry('PermitSingle', PERMIT2), chain)).toBe(
-      'relayer-intent'
+      'relayer-message'
     )
   })
 
@@ -92,26 +92,28 @@ describe('getTypedDataLane', () => {
   })
 
   it('classifies PermitBatch, which @lifi/types does not declare yet', () => {
-    expect(getTypedDataLane(entry('PermitBatch'), chain)).toBe('relayer-intent')
+    expect(getTypedDataLane(entry('PermitBatch'), chain)).toBe(
+      'relayer-message'
+    )
   })
 })
 
-describe('hasCallerIntent / hasRelayerIntent', () => {
+describe('hasPermit2Allowance / hasRelayerMessage', () => {
   it('are both false for a step with no typed data', () => {
     const step = {} as unknown as LiFiStep
-    expect(hasCallerIntent(step, chain)).toBe(false)
-    expect(hasRelayerIntent(step, chain)).toBe(false)
+    expect(hasPermit2Allowance(step, chain)).toBe(false)
+    expect(hasRelayerMessage(step, chain)).toBe(false)
   })
 
-  it('report a caller intent alongside a native permit', () => {
+  it('report a Permit2 allowance alongside a native permit', () => {
     const step = stepWith('Permit', 'PermitSingle')
-    expect(hasCallerIntent(step, chain)).toBe(true)
-    expect(hasRelayerIntent(step, chain)).toBe(false)
+    expect(hasPermit2Allowance(step, chain)).toBe(true)
+    expect(hasRelayerMessage(step, chain)).toBe(false)
   })
 
-  it('report a relayer intent for an Order step', () => {
+  it('report a relayer message for an Order step', () => {
     const step = stepWith('Order')
-    expect(hasCallerIntent(step, chain)).toBe(false)
-    expect(hasRelayerIntent(step, chain)).toBe(true)
+    expect(hasPermit2Allowance(step, chain)).toBe(false)
+    expect(hasRelayerMessage(step, chain)).toBe(true)
   })
 })

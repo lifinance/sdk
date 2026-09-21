@@ -62,7 +62,7 @@ describe('getEthereumExecutionStrategy', () => {
     expect(strategy).toBe('relayed')
   })
 
-  it('relays a mixed-lane step carrying both a witness and a caller intent', async () => {
+  it('relays a mixed-lane step carrying both a witness and a Permit2 allowance', async () => {
     const strategy = await getEthereumExecutionStrategy(
       buildContext([
         entry('PermitWitnessTransferFrom'),
@@ -129,7 +129,7 @@ describe('getEthereumExecutionStrategy', () => {
     expect(strategy).toBe('relayed')
   })
 
-  it('batches a caller-intent step when the wallet supports EIP-5792', async () => {
+  it('batches a Permit2 allowance step when the wallet supports EIP-5792', async () => {
     vi.mocked(isBatchingSupported).mockResolvedValue(true)
     const strategy = await getEthereumExecutionStrategy(
       buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])
@@ -158,7 +158,7 @@ describe('getEthereumExecutionStrategy', () => {
   // The two shapes below are the same step before and after prepare. Only the
   // second one knows whether a transaction ever arrives, which is why the rule
   // is bound to `afterPrepare` and not applied on sight.
-  describe('a caller intent that never receives a transaction', () => {
+  describe('a Permit2 allowance that never receives a transaction', () => {
     it('relays it once prepare has answered without one', async () => {
       vi.mocked(isBatchingSupported).mockResolvedValue(true)
       const context = buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])
@@ -171,11 +171,11 @@ describe('getEthereumExecutionStrategy', () => {
       const context = buildContext([entry('PermitSingle', UNIVERSAL_ROUTER)])
 
       // Calling it relayed here would cost `EthereumSetAllowanceTask` its
-      // EIP-5792 batch for every caller intent that does receive a transaction.
+      // EIP-5792 batch for every Permit2 allowance that does receive a transaction.
       expect(await getEthereumExecutionStrategy(context)).toBe('batched')
     })
 
-    it('leaves a caller intent that did receive one on the batching probe', async () => {
+    it('leaves a Permit2 allowance that did receive one on the batching probe', async () => {
       vi.mocked(isBatchingSupported).mockResolvedValue(true)
       const context = buildContext(
         [entry('PermitSingle', UNIVERSAL_ROUTER)],

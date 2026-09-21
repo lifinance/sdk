@@ -13,15 +13,15 @@ export function getApprovalAmount(
     return MaxUint256
   }
 
-  const callerIntents = disableMessageSigning
+  const permit2Allowances = disableMessageSigning
     ? []
-    : getTypedDataInLane(step, 'caller-intent', fromChain)
+    : getTypedDataInLane(step, 'permit2-allowance', fromChain)
 
   const approvalAddress = step.estimate.approvalAddress?.toLowerCase()
   const targetsApprovalAddress =
-    callerIntents.length > 0 &&
+    permit2Allowances.length > 0 &&
     !!approvalAddress &&
-    callerIntents.every(
+    permit2Allowances.every(
       (typedData) =>
         typedData.domain.verifyingContract?.toLowerCase() === approvalAddress
     )

@@ -7,37 +7,40 @@ import type {
 import { isGaslessTypedData } from './isGaslessStep.js'
 
 /** Which execution lane one `step.typedData` entry belongs to. */
-export type TypedDataLane = 'native-permit' | 'caller-intent' | 'relayer-intent'
+export type TypedDataLane =
+  | 'native-permit'
+  | 'permit2-allowance'
+  | 'relayer-message'
 
 // `chain` is required, and nothing else enforces it: `chain?` compiles and
-// every test still passes, but a relayer intent then classifies as
-// `caller-intent` and gets signed inline. Do NOT relax it.
+// every test still passes, but a relayer message then classifies as
+// `permit2-allowance` and gets signed inline. Do NOT relax it.
 export function getTypedDataLane(
   typedData: TypedData,
   chain: ExtendedChain
 ): TypedDataLane {
   // A native `Permit` is classified BEFORE the gasless rule: LI.FI's relayer
   // signs a permit whose spender is `chain.permit2`, and calling that a relayer
-  // intent makes a gasless step ask the user to fund an approval.
+  // message makes a gasless step ask the user to fund an approval.
   if (typedData.primaryType === 'Permit') {
     return 'native-permit'
   }
   if (isGaslessTypedData(typedData, chain)) {
-    return 'relayer-intent'
+    return 'relayer-message'
   }
   if (typedData.primaryType === 'PermitSingle') {
-    return 'caller-intent'
+    return 'permit2-allowance'
   }
-  return 'relayer-intent'
+  return 'relayer-message'
 }
 
-/** Whether the step carries a Permit2 message the SDK signs for a caller's own spender. */
-export function hasCallerIntent(
+/** Whether the step carries a Permit2 allowance the SDK signs for a caller's own spender. */
+export function hasPermit2Allowance(
   step: LiFiStepExtended | LiFiStep,
   chain: ExtendedChain
 ): boolean {
   return !!step.typedData?.some(
-    (typedData) => getTypedDataLane(typedData, chain) === 'caller-intent'
+    (typedData) => getTypedDataLane(typedData, chain) === 'permit2-allowance'
   )
 }
 
@@ -55,19 +58,19 @@ export function getTypedDataInLane(
 }
 
 /** Whether the step still carries typed data a relayer must sign and submit. */
-export function hasRelayerIntent(
+export function hasRelayerMessage(
   step: LiFiStepExtended | LiFiStep,
   chain: ExtendedChain
 ): boolean {
   return !!step.typedData?.some(
-    (typedData) => getTypedDataLane(typedData, chain) === 'relayer-intent'
+    (typedData) => getTypedDataLane(typedData, chain) === 'relayer-message'
   )
 }
 
-/** Whether the step carries a caller intent and nothing a relayer must sign. */
-export function isCallerIntentLane(
+/** Whether the step carries a Permit2 allowance and nothing a relayer must sign. */
+export function isPermit2AllowanceLane(
   step: LiFiStepExtended | LiFiStep,
   chain: ExtendedChain
 ): boolean {
-  return hasCallerIntent(step, chain) && !hasRelayerIntent(step, chain)
+  return hasPermit2Allowance(step, chain) && !hasRelayerMessage(step, chain)
 }

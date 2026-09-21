@@ -1,7 +1,7 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { isCallerIntentLane } from '../../../utils/getTypedDataLane.js'
+import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
 
 /**
  * Determines the execution strategy: 'relayed', 'batched', or 'standard'.
@@ -40,9 +40,9 @@ export async function getEthereumExecutionStrategy(
   }
 
   // Typed data the user does not sign for its own send: gasless, `Order`,
-  // Hyperliquid. A caller intent is the one shape excluded, because its signer
+  // Hyperliquid. A Permit2 allowance is the one shape excluded, because its signer
   // and its sender are the same person.
-  if (step.typedData?.length && !isCallerIntentLane(step, fromChain)) {
+  if (step.typedData?.length && !isPermit2AllowanceLane(step, fromChain)) {
     return 'relayed'
   }
 
@@ -50,7 +50,7 @@ export async function getEthereumExecutionStrategy(
   // has nothing to send, so the relayer is the only lane that can execute it.
   // This is a derivation, not a guess — no other strategy can run such a step.
   //
-  // Before prepare the same expression is unsound. A caller intent that will
+  // Before prepare the same expression is unsound. A Permit2 allowance that will
   // receive its transaction from `/stepTransaction` is indistinguishable from
   // one that never will, and calling it relayed there costs the step its
   // EIP-5792 batching.

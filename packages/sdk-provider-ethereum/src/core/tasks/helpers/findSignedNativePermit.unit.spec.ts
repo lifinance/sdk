@@ -30,7 +30,7 @@ const signedNativePermit = (options?: {
     signature: options?.signature ?? SIGNATURE,
   }) as unknown as SignedTypedData
 
-const signedCallerIntent = (): SignedTypedData =>
+const signedPermit2Allowance = (): SignedTypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -39,7 +39,7 @@ const signedCallerIntent = (): SignedTypedData =>
     signature: SIGNATURE,
   }) as unknown as SignedTypedData
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -70,18 +70,18 @@ describe('findSignedNativePermit', () => {
     expect(findSignedNativePermit(buildContext([permit]))).toBe(permit)
   })
 
-  it('returns undefined for a caller intent, even with a native permit signed', () => {
+  it('returns undefined for a Permit2 allowance, even with a native permit signed', () => {
     const context = buildContext(
-      [signedNativePermit(), signedCallerIntent()],
-      [callerIntent()]
+      [signedNativePermit(), signedPermit2Allowance()],
+      [permit2Allowance()]
     )
 
     expect(findSignedNativePermit(context)).toBeUndefined()
   })
 
-  it('returns undefined when the API erased the declaration and only the signed record shows the intent', () => {
+  it('returns undefined when the API erased the declaration and only the signed record shows the allowance', () => {
     const context = buildContext(
-      [signedNativePermit(), signedCallerIntent()],
+      [signedNativePermit(), signedPermit2Allowance()],
       []
     )
 

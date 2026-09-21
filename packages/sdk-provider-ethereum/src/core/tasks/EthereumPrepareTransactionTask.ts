@@ -10,7 +10,7 @@ import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.j
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
-import { preserveCallerIntents } from './helpers/preserveCallerIntents.js'
+import { preservePermit2Allowances } from './helpers/preservePermit2Allowances.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -61,7 +61,11 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     Object.assign(step, {
       ...comparedStep,
       execution: step.execution,
-      typedData: preserveCallerIntents(step, updatedStep.typedData, fromChain),
+      typedData: preservePermit2Allowances(
+        step,
+        updatedStep.typedData,
+        fromChain
+      ),
     })
 
     if (!step.transactionRequest && !answeredTypedData?.length) {

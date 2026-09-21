@@ -3,7 +3,7 @@ import type { Address } from 'viem'
 import { getAccountCode } from '../../actions/getAccountCode.js'
 import { isSmartContractWalletCode } from '../../actions/isSmartContractWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { isCallerIntentLane } from '../../utils/getTypedDataLane.js'
+import { isPermit2AllowanceLane } from '../../utils/getTypedDataLane.js'
 
 /**
  * Skips the outer-tx gas check for steps where the wallet doesn't fund it:
@@ -20,7 +20,7 @@ export class EthereumCheckBalanceTask extends CheckBalanceTask {
   ): Promise<CheckBalanceOptions> {
     const { client, step, fromChain } = context
 
-    const userFundsTransaction = isCallerIntentLane(step, fromChain)
+    const userFundsTransaction = isPermit2AllowanceLane(step, fromChain)
     if (step.typedData?.length && !userFundsTransaction) {
       return { walletPaysGas: false }
     }

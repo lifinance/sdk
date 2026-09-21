@@ -2,7 +2,7 @@ import type { TransactionMethodType } from '@lifi/sdk'
 import type { Address } from 'viem'
 import { canAccountUsePermit2 } from '../../../permits/canAccountUsePermit2.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { isCallerIntentLaneInFlight } from './hasCallerIntentInFlight.js'
+import { isPermit2AllowanceLaneInFlight } from './hasPermit2AllowanceInFlight.js'
 
 /**
  * Cheap, synchronous part of the gate: does the step/chain combination allow
@@ -24,7 +24,7 @@ const isPermit2SupportedForStep = (
     !!step.estimate.approvalAddress &&
     !step.estimate.skipApproval &&
     !step.estimate.skipPermit &&
-    !isCallerIntentLaneInFlight(context)
+    !isPermit2AllowanceLaneInFlight(context)
   )
 }
 

@@ -4,7 +4,7 @@ import { getDomainChainId } from '../../utils/getDomainChainId.js'
 import {
   getTypedDataInLane,
   getTypedDataLane,
-  isCallerIntentLane,
+  isPermit2AllowanceLane,
 } from '../../utils/getTypedDataLane.js'
 import { signTypedDataEntries } from './helpers/signTypedDataEntries.js'
 
@@ -57,7 +57,7 @@ export class EthereumCheckPermitsTask extends BaseStepExecutionTask {
       context: {
         signedTypedData,
         hasMatchingPermit:
-          !!matchingPermit && !isCallerIntentLane(step, fromChain),
+          !!matchingPermit && !isPermit2AllowanceLane(step, fromChain),
       },
     }
   }

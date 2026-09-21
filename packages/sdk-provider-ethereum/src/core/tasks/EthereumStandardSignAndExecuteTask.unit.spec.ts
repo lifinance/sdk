@@ -55,7 +55,7 @@ const WRAPPED_CALLDATA = '0xfeedface' as Hex
 const TX_HASH = `0x${'ab'.repeat(32)}` as Hex
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 
-const callerIntent = (): TypedData =>
+const permit2Allowance = (): TypedData =>
   ({
     primaryType: 'PermitSingle',
     domain: { chainId: SOURCE_CHAIN, verifyingContract: PERMIT2 },
@@ -63,8 +63,11 @@ const callerIntent = (): TypedData =>
     message: { spender: UNIVERSAL_ROUTER },
   }) as unknown as TypedData
 
-const signedCallerIntent = (): SignedTypedData =>
-  ({ ...callerIntent(), signature: SIGNATURE }) as unknown as SignedTypedData
+const signedPermit2Allowance = (): SignedTypedData =>
+  ({
+    ...permit2Allowance(),
+    signature: SIGNATURE,
+  }) as unknown as SignedTypedData
 
 const signedNativePermit = (): SignedTypedData =>
   ({
@@ -154,10 +157,10 @@ beforeEach(() => {
 })
 
 describe('EthereumStandardSignAndExecuteTask.run', () => {
-  it('sends a caller-intent transaction to the API target with the calldata untouched', async () => {
+  it('sends a Permit2 allowance transaction to the API target with the calldata untouched', async () => {
     const context = buildContext({
-      stepTypedData: [callerIntent()],
-      signedTypedData: [signedNativePermit(), signedCallerIntent()],
+      stepTypedData: [permit2Allowance()],
+      signedTypedData: [signedNativePermit(), signedPermit2Allowance()],
     })
 
     const result = await task.run(context)
@@ -177,10 +180,10 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
     expect(canAccountUsePermit2).not.toHaveBeenCalled()
   })
 
-  it('holds that guarantee when only the signed record still shows the caller intent', async () => {
+  it('holds that guarantee when only the signed record still shows the Permit2 allowance', async () => {
     const context = buildContext({
       stepTypedData: [],
-      signedTypedData: [signedNativePermit(), signedCallerIntent()],
+      signedTypedData: [signedNativePermit(), signedPermit2Allowance()],
     })
 
     await task.run(context)
@@ -196,7 +199,7 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
     expect(encodePermit2Data).not.toHaveBeenCalled()
   })
 
-  it('still wraps and retargets a native permit when no caller intent is in flight', async () => {
+  it('still wraps and retargets a native permit when no Permit2 allowance is in flight', async () => {
     const context = buildContext({
       signedTypedData: [signedNativePermit()],
     })
@@ -214,7 +217,7 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
     )
   })
 
-  it('still signs and wraps a Permit2 message when no caller intent is in flight', async () => {
+  it('still signs and wraps a Permit2 message when no Permit2 allowance is in flight', async () => {
     const context = buildContext()
 
     await task.run(context)

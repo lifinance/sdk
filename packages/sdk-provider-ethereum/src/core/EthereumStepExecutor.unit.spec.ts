@@ -50,25 +50,25 @@ const buildExecutor = (): EthereumStepExecutor =>
   })
 
 describe('EthereumStepExecutor.createPipeline', () => {
-  it('runs EthereumSignStepIntentTask after the allowance work and before prepare', () => {
+  it('runs EthereumPermit2AllowanceTask after the allowance work and before prepare', () => {
     const names = taskNames(buildExecutor().createPipeline(buildContext()))
 
-    const intent = names.indexOf('EthereumSignStepIntentTask')
+    const permit2Allowance = names.indexOf('EthereumPermit2AllowanceTask')
     const setAllowance = names.indexOf('EthereumSetAllowanceTask')
     const checkBalance = names.indexOf('EthereumCheckBalanceTask')
     const prepare = names.indexOf('EthereumPrepareTransactionTask')
 
-    expect(intent).toBeGreaterThan(-1)
+    expect(permit2Allowance).toBeGreaterThan(-1)
     expect(setAllowance).toBeGreaterThan(-1)
     expect(checkBalance).toBeGreaterThan(-1)
     expect(prepare).toBeGreaterThan(-1)
 
-    expect(intent).toBeGreaterThan(setAllowance)
-    expect(intent).toBeGreaterThan(checkBalance)
-    expect(intent).toBeLessThan(prepare)
+    expect(permit2Allowance).toBeGreaterThan(setAllowance)
+    expect(permit2Allowance).toBeGreaterThan(checkBalance)
+    expect(permit2Allowance).toBeLessThan(prepare)
   })
 
-  it('keeps the intent task before prepare when the pipeline is sliced past the allowance tasks', () => {
+  it('keeps the Permit2 allowance task before prepare when the pipeline is sliced past the allowance tasks', () => {
     const names = taskNames(
       buildExecutor().createPipeline(buildContext({ isFromNativeToken: true }))
     )
@@ -76,11 +76,11 @@ describe('EthereumStepExecutor.createPipeline', () => {
     expect(names[0]).toBe('EthereumCheckBalanceTask')
     expect(names).not.toContain('EthereumSetAllowanceTask')
 
-    const intent = names.indexOf('EthereumSignStepIntentTask')
+    const permit2Allowance = names.indexOf('EthereumPermit2AllowanceTask')
     const prepare = names.indexOf('EthereumPrepareTransactionTask')
 
-    expect(intent).toBeGreaterThan(-1)
+    expect(permit2Allowance).toBeGreaterThan(-1)
     expect(prepare).toBeGreaterThan(-1)
-    expect(intent).toBeLessThan(prepare)
+    expect(permit2Allowance).toBeLessThan(prepare)
   })
 })
