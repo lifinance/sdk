@@ -87,7 +87,18 @@ export function createClient(options: SDKConfig): SDKClient {
   ) => TClient & TExtensions {
     return (extendFn) => {
       const extensions = extendFn(base)
-      const extended = { ...base, ...extensions } as TClient & typeof extensions
+      // Copy descriptors rather than spreading. `config` and `providers` are
+      // accessors over closure variables, and `setProviders` reassigns
+      // `_providers` — so a spread would freeze the extension on the values
+      // those getters happened to return at extend time, leaving it with a
+      // provider list that never updates.
+      const extended = Object.defineProperties(
+        {},
+        {
+          ...Object.getOwnPropertyDescriptors(base),
+          ...Object.getOwnPropertyDescriptors(extensions),
+        }
+      ) as TClient & typeof extensions
 
       // Preserve the extend function for further extensions
       return Object.assign(extended, {
