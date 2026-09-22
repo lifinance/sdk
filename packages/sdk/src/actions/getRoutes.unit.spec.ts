@@ -111,6 +111,47 @@ describe('getRoutes', () => {
     })
   })
 
+  // A host and a widget can share one SDK client (see
+  // `WidgetConfig.sdkClient`). The client then carries the HOST's integrator,
+  // referrer and fee, so every caller that needs its own must send them with
+  // the request. These lock that precedence: params win over client config.
+  describe('attribution precedence', () => {
+    it('prefers the integrator on the request over the client config', async () => {
+      const request = getRoutesRequest({})
+      request.options = {
+        ...request.options,
+        integrator: 'caller-own-integrator',
+      } as RoutesRequest['options']
+
+      await getRoutes(client, request)
+
+      expect(request.options?.integrator).toBe('caller-own-integrator')
+      expect(request.options?.integrator).not.toBe(client.config.integrator)
+    })
+
+    it('falls back to the client integrator only when the request omits one', async () => {
+      const request = getRoutesRequest({})
+
+      await getRoutes(client, request)
+
+      expect(request.options?.integrator).toBe(client.config.integrator)
+    })
+
+    it('keeps the referrer and fee the request carries', async () => {
+      const request = getRoutesRequest({})
+      request.options = {
+        ...request.options,
+        referrer: '0xcaller-referrer',
+        fee: 0.0025,
+      } as RoutesRequest['options']
+
+      await getRoutes(client, request)
+
+      expect(request.options?.referrer).toBe('0xcaller-referrer')
+      expect(request.options?.fee).toBe(0.0025)
+    })
+  })
+
   describe('with optional limit-order fields', () => {
     const orderRequest: RoutesRequest = {
       ...getRoutesRequest({}),
