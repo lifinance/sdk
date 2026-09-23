@@ -1,5 +1,6 @@
+import { sha256 } from '@noble/hashes/sha2'
+import { createBase58check } from '@scure/base'
 import { type BechLib, bech32, bech32m } from 'bech32'
-import bs58check from 'bs58check'
 
 /** The mainnet Zcash address kinds, named by the receiver they encode. */
 export type ZcashAddressKind = 'p2pkh' | 'p2sh' | 'tex' | 'sapling' | 'unified'
@@ -18,10 +19,21 @@ const bech32LengthLimit = 1024
 // A transparent address decodes to a 2-byte version prefix and a 20-byte hash.
 const transparentPayloadLength = 22
 
+const base58check = createBase58check(sha256)
+
+/** The payload of a Base58Check string, or `undefined` for a bad checksum or alphabet. */
+const decodeBase58check = (value: string): Uint8Array | undefined => {
+  try {
+    return base58check.decode(value)
+  } catch {
+    return undefined
+  }
+}
+
 const parseTransparentAddress = (
   address: string
 ): ZcashAddressKind | undefined => {
-  const payload = bs58check.decodeUnsafe(address)
+  const payload = decodeBase58check(address)
   if (payload?.length !== transparentPayloadLength || payload[0] !== 0x1c) {
     return undefined
   }
