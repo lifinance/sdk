@@ -1,7 +1,7 @@
-import { sha256 } from '@noble/hashes/sha2'
 import { createBase58check } from '@scure/base'
+import { crypto } from 'bitcoinjs-lib'
 
-const base58check = createBase58check(sha256)
+const base58check = createBase58check(crypto.sha256)
 
 /**
  * Whether `address` is a mainnet transparent Zcash address (`t1` P2PKH or `t3`
