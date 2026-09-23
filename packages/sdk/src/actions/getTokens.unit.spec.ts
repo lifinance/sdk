@@ -78,7 +78,9 @@ describe('getTokens', () => {
     )
     leaving.abort()
 
-    await expect(left).rejects.toBeInstanceOf(SDKError)
+    const error = await left.catch((error: unknown) => error)
+    expect(error).toBeInstanceOf(SDKError)
+    expect((error as SDKError).cause).toBe(leaving.signal.reason)
     await expect(stayed).resolves.toMatchObject({
       tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
     })

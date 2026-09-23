@@ -47,10 +47,18 @@ type WithDedupeOptions = {
  */
 export function withDedupe<T>(
   fn: (signal?: AbortSignal) => Promise<T>,
+  options: WithDedupeOptions
+): Promise<T>
+export function withDedupe<T>(
+  fn: () => Promise<T>,
+  options: WithDedupeOptions
+): Promise<T>
+export function withDedupe<T>(
+  fn: (signal?: AbortSignal) => Promise<T>,
   { enabled = true, id, signal }: WithDedupeOptions
 ): Promise<T> {
   if (!enabled || !id) {
-    return signal ? fn(signal) : fn()
+    return fn(signal)
   }
   if (signal?.aborted) {
     return Promise.reject(abortReason(signal))
@@ -58,11 +66,7 @@ export function withDedupe<T>(
   let inFlight = promiseCache.get(id)
   if (!inFlight) {
     const controller = signal ? new AbortController() : undefined
-    const promise = (controller ? fn(controller.signal) : fn()).finally(() => {
-      if (promiseCache.get(id)?.promise === promise) {
-        promiseCache.delete(id)
-      }
-    })
+    const promise = fn(controller?.signal).finally(() => evict(id, promise))
     inFlight = { promise, controller, waiting: 0 }
     promiseCache.set(id, inFlight)
   }
@@ -85,21 +89,35 @@ function join<T>(
       reject(reason)
       if (inFlight.waiting === 0) {
         // A caller arriving now must start a new request, not join this one.
-        if (promiseCache.get(id) === inFlight) {
-          promiseCache.delete(id)
-        }
+        evict(id, inFlight.promise)
         inFlight.controller?.abort(reason)
       }
     }
+    // Stop listening before settling, so a later abort cannot reach the request.
+    const detach = () => signal.removeEventListener('abort', leave)
     signal.addEventListener('abort', leave, { once: true })
     // `fn` runs before this listener exists and may have aborted the signal.
     if (signal.aborted) {
       leave()
     }
-    inFlight.promise
-      .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', leave))
+    inFlight.promise.then(
+      (value) => {
+        detach()
+        resolve(value)
+      },
+      (error) => {
+        detach()
+        reject(error)
+      }
+    )
   })
+}
+
+/** Drops the entry for `id` only while it still holds this request. */
+function evict(id: string, promise: Promise<unknown>): void {
+  if (promiseCache.get(id)?.promise === promise) {
+    promiseCache.delete(id)
+  }
 }
 
 /** Older runtimes and polyfills can abort a signal without a `reason`. */

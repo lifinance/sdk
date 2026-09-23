@@ -8,7 +8,7 @@ describe('withDedupe', () => {
 
     expect(result).toBe('result')
     expect(fn).toHaveBeenCalledOnce()
-    expect(fn).toHaveBeenCalledWith()
+    expect(fn).toHaveBeenCalledWith(undefined)
   })
 
   it('should cache and dedupe identical requests', async () => {
@@ -23,8 +23,8 @@ describe('withDedupe', () => {
     expect(result1).toBe('result')
     expect(result2).toBe('result')
     expect(fn).toHaveBeenCalledOnce()
-    // Callers without a signal get `fn` called exactly as before.
-    expect(fn).toHaveBeenCalledWith()
+    // Without a signal, `fn` gets no signal, as before.
+    expect(fn).toHaveBeenCalledWith(undefined)
   })
 })
 
@@ -130,6 +130,39 @@ describe('withDedupe with abort signals', () => {
     await expect(joined).resolves.toBe('fresh')
     expect(first).toHaveBeenCalledOnce()
     expect(second.fn).toHaveBeenCalledOnce()
+  })
+
+  it('never aborts a request started by a caller without a signal', async () => {
+    const request = deferredRequest()
+    const leaving = new AbortController()
+
+    const stayed = withDedupe(request.fn, { id: 'no-signal-first' })
+    const left = withDedupe(request.fn, {
+      id: 'no-signal-first',
+      signal: leaving.signal,
+    })
+    leaving.abort()
+    request.resolve('result')
+
+    await expect(left).rejects.toBe(leaving.signal.reason)
+    await expect(stayed).resolves.toBe('result')
+    expect(request.signal()).toBeUndefined()
+  })
+
+  it('does not abort a settled request when its caller aborts afterwards', async () => {
+    const request = deferredRequest()
+    const controller = new AbortController()
+
+    const result = withDedupe(request.fn, {
+      id: 'after-settle',
+      signal: controller.signal,
+    })
+    request.resolve('result')
+    const value = await result
+    controller.abort()
+
+    expect(value).toBe('result')
+    expect(request.signal()?.aborted).toBe(false)
   })
 
   it('lets the first caller leave when fn aborts its signal', async () => {
