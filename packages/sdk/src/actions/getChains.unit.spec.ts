@@ -64,6 +64,7 @@ describe('getChains', () => {
       })
     )
     const leaving = new AbortController()
+    mockedFetch.mockClear()
 
     const left = getChains(base, undefined, { signal: leaving.signal })
     const stayed = getChains(base, undefined, {
@@ -73,5 +74,6 @@ describe('getChains', () => {
 
     await expect(left).rejects.toBeInstanceOf(SDKError)
     await expect(stayed).resolves.toEqual([{ id: 1 }])
+    expect(mockedFetch).toHaveBeenCalledTimes(1)
   })
 })

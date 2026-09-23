@@ -54,8 +54,10 @@ describe('getTokens', () => {
       integrator: 'lifi-sdk',
       apiUrl: 'https://abort.example/v1',
     })
+    let requests = 0
     server.use(
       http.get('https://abort.example/v1/tokens', async () => {
+        requests++
         await delay(50)
         return HttpResponse.json({
           tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
@@ -80,5 +82,21 @@ describe('getTokens', () => {
     await expect(stayed).resolves.toMatchObject({
       tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
     })
+    expect(requests).toBe(1)
+  })
+
+  // Older runtimes and polyfills can abort a signal without a `reason`.
+  it('rejects with an SDKError when an abort has no reason', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    Object.defineProperty(controller.signal, 'reason', { value: undefined })
+
+    await expect(
+      getTokens(
+        client,
+        { chains: [ChainId.ETH] },
+        { signal: controller.signal }
+      )
+    ).rejects.toBeInstanceOf(SDKError)
   })
 })

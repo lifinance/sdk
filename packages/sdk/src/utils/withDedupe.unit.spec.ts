@@ -22,6 +22,8 @@ describe('withDedupe', () => {
     expect(result1).toBe('result')
     expect(result2).toBe('result')
     expect(fn).toHaveBeenCalledOnce()
+    // Callers without a signal get `fn` called exactly as before.
+    expect(fn).toHaveBeenCalledWith()
   })
 })
 
@@ -103,21 +105,29 @@ describe('withDedupe with abort signals', () => {
   })
 
   it('starts a new request for a caller arriving after every caller aborted', async () => {
-    const first = deferredRequest()
+    // The first request ignores its abort and settles late.
+    let settleFirst!: (value: string) => void
+    const first = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          settleFirst = resolve
+        })
+    )
     const leaving = new AbortController()
-    const left = withDedupe(first.fn, { id: 'rejoin', signal: leaving.signal })
+    const left = withDedupe(first, { id: 'rejoin', signal: leaving.signal })
     leaving.abort()
     await expect(left).rejects.toBe(leaving.signal.reason)
 
     const second = deferredRequest()
     const arrived = withDedupe(second.fn, { id: 'rejoin' })
-    // The aborted request settling late must not drop the new one.
+    settleFirst('stale')
+    await new Promise((resolve) => setTimeout(resolve, 0))
     const joined = withDedupe(second.fn, { id: 'rejoin' })
     second.resolve('fresh')
 
     await expect(arrived).resolves.toBe('fresh')
     await expect(joined).resolves.toBe('fresh')
-    expect(first.fn).toHaveBeenCalledOnce()
+    expect(first).toHaveBeenCalledOnce()
     expect(second.fn).toHaveBeenCalledOnce()
   })
 
