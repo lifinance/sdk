@@ -104,6 +104,11 @@ describe('SuiProvider', () => {
     const provider = SuiProvider()
     const wallet = `0x${'ab'.repeat(32)}`
     expect(provider.isAddress(wallet, ChainId.SUI)).toBe(true)
+    for (const address of [wallet, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.SUI)).toBe(
+        provider.isAddress(address)
+      )
+    }
     expect(provider.isAddress('laptop', ChainId.SUI)).toBe(false)
   })
 })

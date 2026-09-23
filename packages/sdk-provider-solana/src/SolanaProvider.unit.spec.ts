@@ -71,6 +71,11 @@ describe('SolanaProvider', () => {
     const provider = SolanaProvider()
     const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
     expect(provider.isAddress(usdcMint, ChainId.SOL)).toBe(true)
+    for (const address of [usdcMint, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.SOL)).toBe(
+        provider.isAddress(address)
+      )
+    }
     expect(provider.isAddress('laptop', ChainId.SOL)).toBe(false)
   })
 })
