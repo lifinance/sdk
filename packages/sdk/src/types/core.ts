@@ -72,7 +72,7 @@ export interface RPCUrlsByRole {
  */
 export type RPCUrlsConfig = Partial<Record<ChainId, string[] | RPCUrlsByRole>>
 
-/** Read RPC URLs per chain, as the client resolves them. */
+/** RPC URL lists per chain. `client.config.rpcUrls` holds the read lists. */
 export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface SDKProvider {

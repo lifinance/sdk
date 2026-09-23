@@ -432,6 +432,41 @@ describe('sendAndConfirmTransaction with write RPCs', () => {
     expect(accepting.sendTransaction).toHaveBeenCalledTimes(3)
   })
 
+  it('sends nothing new while every write RPC is still busy', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const hanging = () => ({
+      sendTransaction: vi.fn(() => ({ send: () => new Promise(() => {}) })),
+    })
+    const writeA = hanging()
+    const writeB = hanging()
+    getSolanaRpcs.mockResolvedValue([createReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([writeA, writeB])
+    const waits: string[] = []
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+      }) => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          // The branch never waits longer than one interval, so it can poll.
+          await options.resend(options.rpc, options.signal).then(
+            () => waits.push('accepted'),
+            () => waits.push('gave up')
+          )
+          vi.setSystemTime(Date.now() + 1_000)
+        }
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+
+    await sendAndConfirmTransaction(clientWith(WRITE_URLS), {} as never)
+
+    expect(writeA.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(writeB.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(waits).toEqual(['gave up', 'gave up'])
+  }, 5_000)
+
   it('sends through the read RPCs with a client that has no write RPC lookup', async () => {
     // A client from another SDK version, or a hand-written one, may lack the
     // optional method. That means "no write RPCs", not a crash after signing.

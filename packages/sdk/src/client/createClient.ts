@@ -27,12 +27,14 @@ export function createClient(options: SDKConfig): SDKClient {
   // everything that reads `config.rpcUrls` sees `string[]` as before.
   const readRpcUrls: RPCUrls = {}
   const writeRpcUrls: RPCUrls = {}
+  let hasRoles = false
   for (const key in rpcUrls) {
     const chainId = Number(key) as ChainId
     const entry = rpcUrls[chainId]
     if (Array.isArray(entry)) {
       readRpcUrls[chainId] = entry
     } else if (entry) {
+      hasRoles = true
       if (entry.read) {
         readRpcUrls[chainId] = entry.read
       }
@@ -45,7 +47,8 @@ export function createClient(options: SDKConfig): SDKClient {
   const _config: SDKBaseConfig = {
     ...configOptions,
     apiUrl: configOptions?.apiUrl ?? 'https://li.quest/v1',
-    rpcUrls: readRpcUrls,
+    // Plain lists only: the caller's own object, exactly as before.
+    rpcUrls: hasRoles ? readRpcUrls : ((rpcUrls ?? {}) as RPCUrls),
     debug: configOptions?.debug ?? false,
     preloadChains: configOptions?.preloadChains ?? true,
     integrator: configOptions?.integrator ?? 'lifi-sdk',

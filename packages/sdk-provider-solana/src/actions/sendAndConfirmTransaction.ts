@@ -123,10 +123,8 @@ export async function sendAndConfirmTransaction(
     if (lastWrite && now - lastWrite.at < RESEND_INTERVAL_MS) {
       return lastWrite.sent
     }
+    // With every write RPC busy this rejects at once, and the branch polls.
     const ready = rpcs.filter((rpc) => !openSends.has(rpc))
-    if (lastWrite && !ready.length) {
-      return lastWrite.sent
-    }
     // Accepted as soon as one write RPC accepts it.
     const sent = Promise.any(ready.map(sendToWriteRpc)).then(() => undefined)
     // Recorded here, not only by the branches: a branch stops waiting after

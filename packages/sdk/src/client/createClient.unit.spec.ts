@@ -292,6 +292,16 @@ describe('createClient', () => {
       )
     })
 
+    it('passes a config with only plain lists through as the same object', () => {
+      // As on main: the storage re-reads `config.rpcUrls` on every chain
+      // refresh, so keys a caller adds to its own object later still arrive.
+      const rpcUrls = { [ChainId.ETH]: ['https://eth.example'] }
+
+      const client = createClient({ integrator: 'test-app', rpcUrls })
+
+      expect(client.config.rpcUrls).toBe(rpcUrls)
+    })
+
     it('returns the write list of a chain', async () => {
       const client = createClient(rolesConfig)
 
