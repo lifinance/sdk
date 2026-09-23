@@ -50,7 +50,7 @@ export function withDedupe<T>(
   { enabled = true, id, signal }: WithDedupeOptions
 ): Promise<T> {
   if (!enabled || !id) {
-    return fn(signal)
+    return signal ? fn(signal) : fn()
   }
   if (signal?.aborted) {
     return Promise.reject(abortReason(signal))
@@ -58,16 +58,13 @@ export function withDedupe<T>(
   let inFlight = promiseCache.get(id)
   if (!inFlight) {
     const controller = signal ? new AbortController() : undefined
-    const created: InFlight = { controller, waiting: 0, promise: undefined! }
-    created.promise = (controller ? fn(controller.signal) : fn()).finally(
-      () => {
-        if (promiseCache.get(id) === created) {
-          promiseCache.delete(id)
-        }
+    const promise = (controller ? fn(controller.signal) : fn()).finally(() => {
+      if (promiseCache.get(id)?.promise === promise) {
+        promiseCache.delete(id)
       }
-    )
-    promiseCache.set(id, created)
-    inFlight = created
+    })
+    inFlight = { promise, controller, waiting: 0 }
+    promiseCache.set(id, inFlight)
   }
   return join<T>(id, inFlight, signal)
 }
@@ -95,6 +92,10 @@ function join<T>(
       }
     }
     signal.addEventListener('abort', leave, { once: true })
+    // `fn` runs before this listener exists and may have aborted the signal.
+    if (signal.aborted) {
+      leave()
+    }
     inFlight.promise
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', leave))

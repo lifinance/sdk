@@ -64,7 +64,6 @@ describe('getChains', () => {
       })
     )
     const leaving = new AbortController()
-    mockedFetch.mockClear()
 
     const left = getChains(base, undefined, { signal: leaving.signal })
     const stayed = getChains(base, undefined, {

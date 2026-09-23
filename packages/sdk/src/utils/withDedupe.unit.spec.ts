@@ -8,6 +8,7 @@ describe('withDedupe', () => {
 
     expect(result).toBe('result')
     expect(fn).toHaveBeenCalledOnce()
+    expect(fn).toHaveBeenCalledWith()
   })
 
   it('should cache and dedupe identical requests', async () => {
@@ -129,6 +130,35 @@ describe('withDedupe with abort signals', () => {
     await expect(joined).resolves.toBe('fresh')
     expect(first).toHaveBeenCalledOnce()
     expect(second.fn).toHaveBeenCalledOnce()
+  })
+
+  it('lets the first caller leave when fn aborts its signal', async () => {
+    const request = deferredRequest()
+    const leaving = new AbortController()
+    const fn = (signal?: AbortSignal) => {
+      leaving.abort()
+      return request.fn(signal)
+    }
+
+    const left = withDedupe(fn, { id: 'sync-abort', signal: leaving.signal })
+
+    await expect(left).rejects.toBe(leaving.signal.reason)
+    expect(request.signal()?.aborted).toBe(true)
+  })
+
+  it('rejects with an AbortError when a signal aborts without a reason', async () => {
+    const request = deferredRequest()
+    const leaving = new AbortController()
+    // Older runtimes and polyfills abort without setting `reason`.
+    Object.defineProperty(leaving.signal, 'reason', { value: undefined })
+
+    const left = withDedupe(request.fn, {
+      id: 'no-reason',
+      signal: leaving.signal,
+    })
+    leaving.abort()
+
+    await expect(left).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('rejects a caller whose signal is already aborted without a request', async () => {
