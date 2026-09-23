@@ -1,4 +1,4 @@
-import { ChainType, ProviderError } from '@lifi/sdk'
+import { ChainId, ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { SolanaProvider } from './SolanaProvider.js'
 
@@ -65,5 +65,12 @@ describe('SolanaProvider', () => {
 
     expect(executor).toBeDefined()
     expect(mockGetWalletAdapter).toHaveBeenCalledOnce()
+  })
+
+  it('answers isAddress as without a chain ID', () => {
+    const provider = SolanaProvider()
+    const usdcMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+    expect(provider.isAddress(usdcMint, ChainId.SOL)).toBe(true)
+    expect(provider.isAddress('laptop', ChainId.SOL)).toBe(false)
   })
 })
