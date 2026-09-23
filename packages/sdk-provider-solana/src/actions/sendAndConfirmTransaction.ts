@@ -5,17 +5,23 @@ import {
   getSignatureFromTransaction,
   type Transaction,
 } from '@solana/kit'
-import { confirmSignature } from '../confirmation/confirmSignature.js'
+import {
+  confirmSignature,
+  RESEND_INTERVAL_MS,
+} from '../confirmation/confirmSignature.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import type { SignatureStatus } from '../confirmation/types.js'
-import { getSolanaRpcs } from '../rpc/registry.js'
+import { getSolanaRpcs, getSolanaWriteRpcs } from '../rpc/registry.js'
 import type { SolanaRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
  * Sends a Solana transaction to every configured RPC and returns as soon as
  * one of them confirms it.
+ *
+ * With `writeRpcUrls`, the transaction is sent only through those RPCs, and
+ * the configured RPCs only confirm it.
  *
  * The polling horizon comes from the signed transaction's own blockhash and a
  * wall-clock ceiling. It deliberately never comes from `getBlockHeight`: at
@@ -28,6 +34,12 @@ export async function sendAndConfirmTransaction(
   options?: {
     /** Runs once, when the first RPC accepts a send. */
     onBroadcast?: () => void
+    /**
+     * RPCs that send the transaction in place of the configured ones. They
+     * receive no reads: status polling and the confirmation deadline stay on
+     * the configured RPCs.
+     */
+    writeRpcUrls?: string[]
   }
 ): Promise<RaceResult<SignatureStatus>> {
   const solanaRpcs = await getSolanaRpcs(client)
@@ -76,7 +88,7 @@ export async function sendAndConfirmTransaction(
     encoding: 'base64' as const,
   }
 
-  const resend = async (
+  const send = async (
     rpc: SolanaRpcType,
     signal: AbortSignal
   ): Promise<void> => {
@@ -84,6 +96,33 @@ export async function sendAndConfirmTransaction(
       .sendTransaction(signedTxSerialized, rawTransactionOptions)
       .send({ abortSignal: signal })
   }
+
+  const writeRpcs = options?.writeRpcUrls?.length
+    ? getSolanaWriteRpcs(options.writeRpcUrls)
+    : undefined
+
+  // Every confirmation branch resends about once a second. Branches share one
+  // send to the write RPCs per interval, so each write RPC sees the same rate
+  // it would as a configured RPC, however many configured RPCs are polling.
+  let lastWrite: { at: number; sent: Promise<void> } | undefined
+  const sendToWriteRpcs = (
+    rpcs: SolanaRpcType[],
+    signal: AbortSignal
+  ): Promise<void> => {
+    const now = Date.now()
+    if (lastWrite && now - lastWrite.at < RESEND_INTERVAL_MS) {
+      return lastWrite.sent
+    }
+    // Accepted as soon as one write RPC accepts it.
+    const sent = Promise.any(rpcs.map((rpc) => send(rpc, signal)))
+    lastWrite = { at: now, sent }
+    return sent
+  }
+
+  const resend = writeRpcs
+    ? (_rpc: SolanaRpcType, signal: AbortSignal): Promise<void> =>
+        sendToWriteRpcs(writeRpcs, signal)
+    : send
 
   const result = await raceRpcs(
     solanaRpcs,

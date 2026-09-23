@@ -1,5 +1,6 @@
 import { ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
+import type { SolanaStepExecutor } from './core/SolanaStepExecutor.js'
 import { SolanaProvider } from './SolanaProvider.js'
 
 describe('SolanaProvider', () => {
@@ -65,5 +66,41 @@ describe('SolanaProvider', () => {
 
     expect(executor).toBeDefined()
     expect(mockGetWalletAdapter).toHaveBeenCalledOnce()
+  })
+
+  describe('writeRpcUrls', () => {
+    const FROM = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+    const wallet = { accounts: [{ address: FROM }] }
+    const executorOptions = {
+      routeId: 'test-route',
+      executionOptions: {},
+    } as any
+    const baseContext = { step: { action: { fromAddress: FROM } } } as any
+
+    it('hands the write RPCs to the step context', async () => {
+      const provider = SolanaProvider({
+        getWallet: async () => wallet as any,
+        writeRpcUrls: ['https://write.example'],
+      })
+
+      const executor = (await provider.getStepExecutor(
+        executorOptions
+      )) as SolanaStepExecutor
+      const context = await executor.createContext(baseContext)
+
+      expect(context.writeRpcUrls).toEqual(['https://write.example'])
+    })
+
+    it('takes write RPCs set later through setOptions', async () => {
+      const provider = SolanaProvider({ getWallet: async () => wallet as any })
+      provider.setOptions({ writeRpcUrls: ['https://write.example'] })
+
+      const executor = (await provider.getStepExecutor(
+        executorOptions
+      )) as SolanaStepExecutor
+      const context = await executor.createContext(baseContext)
+
+      expect(context.writeRpcUrls).toEqual(['https://write.example'])
+    })
   })
 })

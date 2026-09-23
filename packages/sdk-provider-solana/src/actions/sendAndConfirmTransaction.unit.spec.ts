@@ -7,8 +7,10 @@ vi.mock('@solana/kit', async () => ({
 }))
 
 const getSolanaRpcs = vi.fn()
+const getSolanaWriteRpcs = vi.fn()
 vi.mock('../rpc/registry.js', () => ({
   getSolanaRpcs: (...args: unknown[]) => getSolanaRpcs(...args),
+  getSolanaWriteRpcs: (...args: unknown[]) => getSolanaWriteRpcs(...args),
 }))
 
 const getTransactionLifetime = vi.fn()
@@ -18,7 +20,8 @@ vi.mock('../utils/getTransactionLifetime.js', () => ({
 }))
 
 const confirmSignature = vi.fn()
-vi.mock('../confirmation/confirmSignature.js', () => ({
+vi.mock('../confirmation/confirmSignature.js', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   confirmSignature: (...args: unknown[]) => confirmSignature(...args),
 }))
 
@@ -225,5 +228,148 @@ describe('sendAndConfirmTransaction', () => {
     await expect(
       sendAndConfirmTransaction({} as never, {} as never)
     ).resolves.toEqual({ kind: 'confirmed', value: { err: null } })
+  })
+})
+
+describe('sendAndConfirmTransaction with writeRpcUrls', () => {
+  const WRITE_URLS = ['https://write-a.example', 'https://write-b.example']
+
+  /** A read RPC: the confirmation branch runs on it, but it must never send. */
+  const createReadRpc = () => ({
+    sendTransaction: vi.fn(() => {
+      throw new Error('a read RPC must not send when writeRpcUrls is set')
+    }),
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+    getTransactionLifetime.mockResolvedValue({ kind: 'unknown' })
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+        onBroadcast?: () => void
+      }) => {
+        await options.resend(options.rpc, options.signal)
+        options.onBroadcast?.()
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+  })
+
+  it('sends through every write RPC and never through a read RPC', async () => {
+    const read = createReadRpc()
+    const writeA = createRpc()
+    const writeB = createRpc()
+    getSolanaRpcs.mockResolvedValue([read])
+    getSolanaWriteRpcs.mockReturnValue([writeA, writeB])
+
+    const result = await sendAndConfirmTransaction({} as never, {} as never, {
+      writeRpcUrls: WRITE_URLS,
+    })
+
+    expect(result).toEqual({ kind: 'confirmed', value: { err: null } })
+    expect(getSolanaWriteRpcs).toHaveBeenCalledWith(WRITE_URLS)
+    expect(writeA.sendTransaction).toHaveBeenCalledWith(
+      'base64-encoded-tx',
+      expect.objectContaining({ skipPreflight: true, maxRetries: 0n })
+    )
+    expect(writeB.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(read.sendTransaction).not.toHaveBeenCalled()
+  })
+
+  it('sends once when several confirmation branches resend at the same time', async () => {
+    // Every read RPC runs its own confirmation branch, and each branch resends
+    // about once a second. Without a shared sender, three read RPCs would hit
+    // each write RPC three times a second.
+    const write = createRpc()
+    getSolanaRpcs.mockResolvedValue([
+      createReadRpc(),
+      createReadRpc(),
+      createReadRpc(),
+    ])
+    getSolanaWriteRpcs.mockReturnValue([write])
+
+    await sendAndConfirmTransaction({} as never, {} as never, {
+      writeRpcUrls: WRITE_URLS,
+    })
+
+    expect(write.sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends again once the resend interval has passed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const write = createRpc()
+    getSolanaRpcs.mockResolvedValue([createReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([write])
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+      }) => {
+        await options.resend(options.rpc, options.signal)
+        vi.setSystemTime(Date.now() + 500)
+        await options.resend(options.rpc, options.signal)
+        vi.setSystemTime(Date.now() + 500)
+        await options.resend(options.rpc, options.signal)
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+
+    await sendAndConfirmTransaction({} as never, {} as never, {
+      writeRpcUrls: WRITE_URLS,
+    })
+
+    // t=0 sends, t=500 shares it, t=1000 sends again.
+    expect(write.sendTransaction).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports rpc-unavailable when every write RPC refuses the send', async () => {
+    // The read RPCs would accept the send, so this only passes when the send
+    // really goes to the write RPCs.
+    const refusing = {
+      sendTransaction: vi.fn(() => ({
+        send: vi.fn(() => Promise.reject(new Error('403'))),
+      })),
+    }
+    getSolanaRpcs.mockResolvedValue([createRpc()])
+    getSolanaWriteRpcs.mockReturnValue([refusing])
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+        onBroadcast?: () => void
+      }) => {
+        try {
+          await options.resend(options.rpc, options.signal)
+          options.onBroadcast?.()
+        } catch (_) {
+          // A refused send is best-effort inside confirmSignature.
+        }
+        return { kind: 'not-confirmed' }
+      }
+    )
+
+    await expect(
+      sendAndConfirmTransaction({} as never, {} as never, {
+        writeRpcUrls: WRITE_URLS,
+      })
+    ).resolves.toEqual(expect.objectContaining({ kind: 'rpc-unavailable' }))
+  })
+
+  it('sends through the read RPCs when writeRpcUrls is empty', async () => {
+    const read = createRpc()
+    getSolanaRpcs.mockResolvedValue([read])
+
+    await sendAndConfirmTransaction({} as never, {} as never, {
+      writeRpcUrls: [],
+    })
+
+    expect(getSolanaWriteRpcs).not.toHaveBeenCalled()
+    expect(read.sendTransaction).toHaveBeenCalledTimes(1)
   })
 })

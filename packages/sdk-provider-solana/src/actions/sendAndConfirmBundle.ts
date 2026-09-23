@@ -6,7 +6,7 @@ import {
 } from '../confirmation/confirmBundle.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
-import { getJitoRpcs } from '../rpc/registry.js'
+import { getJitoRpcs, getJitoWriteRpcs } from '../rpc/registry.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
@@ -20,6 +20,9 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * `sendBundle` is handed to `confirmBundle` rather than awaited here, so the
  * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
  * the submission returns.
+ *
+ * With `writeRpcUrls`, the bundle is submitted once through the write RPCs
+ * that pass the Jito probe, and the configured Jito RPCs only poll for it.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
@@ -27,9 +30,19 @@ export async function sendAndConfirmBundle(
   options?: {
     /** Runs once, when the first Jito RPC accepts the submission. */
     onBroadcast?: () => void
+    /**
+     * RPCs that submit the bundle in place of the configured ones. Only those
+     * that pass the Jito probe are used; when none does, the configured Jito
+     * RPCs submit as they would without this option.
+     */
+    writeRpcUrls?: string[]
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  const { rpcs: jitoRpcs, unreachable } = await getJitoRpcs(client)
+  // Both probe on the latency path before submission, so run them together.
+  const [{ rpcs: jitoRpcs, unreachable }, writeRpcs] = await Promise.all([
+    getJitoRpcs(client),
+    options?.writeRpcUrls?.length ? getJitoWriteRpcs(options.writeRpcUrls) : [],
+  ])
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
@@ -83,6 +96,23 @@ export async function sendAndConfirmBundle(
     signedTransactions.map((transaction) => getTransactionLifetime(transaction))
   )
 
+  // One submission for every polling branch: the bundle id is derived from
+  // the transactions, so each branch polls the same bundle. Started by the
+  // first branch that asks, so its deadline already runs.
+  let writeSubmission: Promise<string> | undefined
+  const submitToWriteRpcs = (signal: AbortSignal): Promise<string> => {
+    writeSubmission ??= Promise.any(
+      writeRpcs.map((rpc) =>
+        rpc.sendBundle(serializedTransactions).send({ abortSignal: signal })
+      )
+    ).catch((error: unknown) => {
+      // Surface a refusal the way a single configured RPC would, not as a
+      // nested AggregateError inside the race's own error list.
+      throw error instanceof AggregateError ? error.errors[0] : error
+    })
+    return writeSubmission
+  }
+
   return raceRpcs(
     jitoRpcs,
     (rpc, signal) =>
@@ -91,7 +121,11 @@ export async function sendAndConfirmBundle(
         signal,
         lifetimes,
         send: () =>
-          rpc.sendBundle(serializedTransactions).send({ abortSignal: signal }),
+          writeRpcs.length
+            ? submitToWriteRpcs(signal)
+            : rpc
+                .sendBundle(serializedTransactions)
+                .send({ abortSignal: signal }),
         onBroadcast: reportBroadcast,
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }

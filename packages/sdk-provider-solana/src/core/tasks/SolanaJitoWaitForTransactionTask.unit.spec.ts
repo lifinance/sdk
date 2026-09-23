@@ -388,4 +388,25 @@ describe('SolanaJitoWaitForTransactionTask', () => {
       status: 'COMPLETED',
     })
   })
+
+  it('submits through the write RPCs from the context', async () => {
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [{ err: null }, { err: null }],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+      },
+    })
+    const writeRpcUrls = ['https://write.example']
+
+    const task = new SolanaJitoWaitForTransactionTask()
+    await task.run({ ...(baseContext() as object), writeRpcUrls } as never)
+
+    expect(sendAndConfirmBundle).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ writeRpcUrls })
+    )
+  })
 })

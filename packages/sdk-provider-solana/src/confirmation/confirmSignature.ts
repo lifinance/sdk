@@ -10,7 +10,8 @@ import {
   type SignatureStatus,
 } from './types.js'
 
-const RESEND_INTERVAL_MS = 1000
+/** How often each confirmation branch resends the transaction. */
+export const RESEND_INTERVAL_MS = 1000
 /**
  * How often this poller re-reads `getSignatureStatuses`. The default Solana
  * RPCs tolerate 2.5 req/s of status reads; the Jito bundle poller runs slower

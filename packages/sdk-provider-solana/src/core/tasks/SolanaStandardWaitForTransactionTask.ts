@@ -87,6 +87,7 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
           txLink,
         })
       },
+      writeRpcUrls: context.writeRpcUrls,
     })
 
     const status = unwrapConfirmation(result, {

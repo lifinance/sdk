@@ -10,6 +10,14 @@ import type { Wallet, WalletAccount } from '@wallet-standard/base'
 export interface SolanaProviderOptions {
   getWallet?: () => Promise<Wallet>
   skipSimulation?: boolean
+  /**
+   * RPCs that send transactions and Jito bundles, in place of the client's
+   * Solana `rpcUrls`. Transactions go to every write RPC; bundles go to the
+   * write RPCs that pass the Jito probe. Reads, simulation and confirmation
+   * stay on the client's `rpcUrls`, so a write RPC never has to answer reads.
+   * Unset or empty, the client's `rpcUrls` send as well.
+   */
+  writeRpcUrls?: string[]
 }
 
 export interface SolanaTaskContext {
@@ -27,6 +35,7 @@ export interface SolanaStepExecutorContext
   wallet: Wallet
   walletAccount: WalletAccount
   skipSimulation: boolean
+  writeRpcUrls?: string[]
 }
 
 export interface SolanaSDKProvider extends SDKProvider {
@@ -42,4 +51,5 @@ export function isSolanaProvider(
 export interface SolanaStepExecutorOptions extends StepExecutorOptions {
   wallet: Wallet
   skipSimulation?: boolean
+  writeRpcUrls?: string[]
 }

@@ -23,11 +23,13 @@ import { SolanaWaitForTransactionTask } from './tasks/SolanaWaitForTransactionTa
 export class SolanaStepExecutor extends BaseStepExecutor {
   private wallet: Wallet
   private skipSimulation: boolean
+  private writeRpcUrls?: string[]
 
   constructor(options: SolanaStepExecutorOptions) {
     super(options)
     this.wallet = options.wallet
     this.skipSimulation = options.skipSimulation ?? false
+    this.writeRpcUrls = options.writeRpcUrls
   }
 
   getWalletAccount = (step: LiFiStepExtended): WalletAccount => {
@@ -63,6 +65,7 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       wallet: this.wallet,
       walletAccount,
       skipSimulation: this.skipSimulation,
+      writeRpcUrls: this.writeRpcUrls,
     }
   }
 

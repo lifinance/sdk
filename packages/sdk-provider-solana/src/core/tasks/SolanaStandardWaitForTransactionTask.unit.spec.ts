@@ -371,4 +371,22 @@ describe('SolanaStandardWaitForTransactionTask', () => {
       expect.objectContaining({ replaceRecentBlockhash: true })
     )
   })
+
+  it('sends through the write RPCs from the context', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'confirmed',
+      value: { err: null },
+    })
+    const writeRpcUrls = ['https://write.example']
+
+    const task = new SolanaStandardWaitForTransactionTask()
+    await task.run(baseContext({ writeRpcUrls }))
+
+    expect(sendAndConfirmTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ writeRpcUrls })
+    )
+  })
 })
