@@ -48,13 +48,10 @@ export type RPCUrls = Partial<Record<ChainId, string[]>>
 export interface SDKProvider {
   readonly type: ChainType
   /**
-   * Validates a wallet address. Without `chainId`, the provider answers as
-   * before, which may not cover every chain of its ecosystem: the UTXO
-   * provider accepts Bitcoin formats only. `chainId`, when given, is a
-   * chain of this provider's ecosystem: a provider whose chains share one
-   * address format may ignore it; a provider whose chains differ accepts only
-   * that chain's format and refuses a chain it does not know. Never forward
-   * `chainId` to a library function whose second parameter means something else.
+   * Validates a wallet address. With `chainId`, a provider whose chains use
+   * different address formats accepts only that chain's format and refuses a
+   * chain it does not know. Never forward `chainId` to a library function whose
+   * second parameter means something else.
    */
   isAddress(address: string, chainId?: ChainId): boolean
   /**
