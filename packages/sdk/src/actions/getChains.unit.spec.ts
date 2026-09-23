@@ -77,4 +77,29 @@ describe('getChains', () => {
     await expect(stayed).resolves.toEqual([{ id: 1 }])
     expect(mockedFetch).toHaveBeenCalledTimes(1)
   })
+
+  it('aborts the request once every caller has left', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://abort-all.example/v1',
+    })
+    let requestAborted = false
+    server.use(
+      http.get('https://abort-all.example/v1/chains', async ({ request }) => {
+        request.signal.addEventListener('abort', () => {
+          requestAborted = true
+        })
+        await delay(50)
+        return HttpResponse.json({ chains: [] })
+      })
+    )
+    const leaving = new AbortController()
+
+    const left = getChains(base, undefined, { signal: leaving.signal })
+    await delay(10)
+    leaving.abort()
+
+    await expect(left).rejects.toBeInstanceOf(SDKError)
+    await vi.waitFor(() => expect(requestAborted).toBe(true))
+  })
 })

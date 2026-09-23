@@ -1,6 +1,6 @@
 import { ChainId } from '@lifi/types'
 import { delay, HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
 import { SDKError } from '../errors/SDKError.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
@@ -85,6 +85,35 @@ describe('getTokens', () => {
       tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
     })
     expect(requests).toBe(1)
+  })
+
+  it('aborts the request once every caller has left', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://abort-all.example/v1',
+    })
+    let requestAborted = false
+    server.use(
+      http.get('https://abort-all.example/v1/tokens', async ({ request }) => {
+        request.signal.addEventListener('abort', () => {
+          requestAborted = true
+        })
+        await delay(50)
+        return HttpResponse.json({ tokens: {} })
+      })
+    )
+    const leaving = new AbortController()
+
+    const left = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: leaving.signal }
+    )
+    await delay(10)
+    leaving.abort()
+
+    await expect(left).rejects.toBeInstanceOf(SDKError)
+    await vi.waitFor(() => expect(requestAborted).toBe(true))
   })
 
   // Older runtimes and polyfills can abort a signal without a `reason`.

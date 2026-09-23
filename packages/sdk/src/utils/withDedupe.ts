@@ -51,7 +51,7 @@ export function withDedupe<T>(
 ): Promise<T>
 export function withDedupe<T>(
   fn: () => Promise<T>,
-  options: Omit<WithDedupeOptions, 'signal'>
+  options: WithDedupeOptions & { signal?: undefined }
 ): Promise<T>
 export function withDedupe<T>(
   fn: (signal?: AbortSignal) => Promise<T>,
