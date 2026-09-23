@@ -28,7 +28,7 @@ export interface SDKBaseConfig {
   userId?: string
   routeOptions?: RouteOptions
   executionOptions?: ExecutionOptions
-  rpcUrls: RPCUrlsConfig
+  rpcUrls: RPCUrls
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean
@@ -38,8 +38,15 @@ export interface SDKBaseConfig {
   storage?: SDKStorage
 }
 
-export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
+export interface SDKConfig
+  extends Partial<Omit<SDKBaseConfig, 'integrator' | 'rpcUrls'>> {
   integrator: string
+  /**
+   * Per chain, one list for reads and sends, or lists by role. The client
+   * keeps the read lists in `config.rpcUrls` and serves the write lists
+   * through `getWriteRpcUrlsByChainId`.
+   */
+  rpcUrls?: RPCUrlsConfig
   providers?: SDKProvider[]
 }
 
@@ -60,8 +67,8 @@ export interface RPCUrlsByRole {
 }
 
 /**
- * The `rpcUrls` config: per chain, either one list for reads and sends, or
- * lists by role.
+ * The `rpcUrls` option of `createClient`: per chain, either one list for reads
+ * and sends, or lists by role.
  */
 export type RPCUrlsConfig = Partial<Record<ChainId, string[] | RPCUrlsByRole>>
 
@@ -104,8 +111,11 @@ export interface SDKClient {
   /**
    * The chain's dedicated write RPC URLs (`rpcUrls[chainId].write`). Empty
    * when the chain has none, in which case the read URLs also send.
+   *
+   * Optional so clients from other SDK versions, and hand-written ones, still
+   * satisfy `SDKClient`. Providers treat a missing method as no write list.
    */
-  getWriteRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
+  getWriteRpcUrlsByChainId?(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {

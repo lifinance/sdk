@@ -38,9 +38,9 @@ export async function sendAndConfirmBundle(
   // RPCs submit as they would without write RPCs.
   const [{ rpcs: jitoRpcs, unreachable }, writeRpcs] = await Promise.all([
     getJitoRpcs(client),
-    client
-      .getWriteRpcUrlsByChainId(ChainId.SOL)
-      .then((urls) => (urls.length ? getJitoWriteRpcs(urls) : [])),
+    Promise.resolve(client.getWriteRpcUrlsByChainId?.(ChainId.SOL)).then(
+      (urls) => (urls?.length ? getJitoWriteRpcs(urls) : [])
+    ),
   ])
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
@@ -58,7 +58,9 @@ export async function sendAndConfirmBundle(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
         ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
-        : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
+        : writeRpcs.length > 0
+          ? 'Jito bundle required. A write RPC can submit it, but no read RPC supports `getBundleStatuses` to confirm it. Add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.'
+          : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
 

@@ -36,9 +36,9 @@ export async function sendAndConfirmTransaction(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<SignatureStatus>> {
-  const [solanaRpcs, writeRpcUrls] = await Promise.all([
+  const [solanaRpcs, writeRpcUrls = []] = await Promise.all([
     getSolanaRpcs(client),
-    client.getWriteRpcUrlsByChainId(ChainId.SOL),
+    client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
   ])
 
   let broadcastReported = false
@@ -107,15 +107,28 @@ export async function sendAndConfirmTransaction(
   // send to the write RPCs per interval, so each write RPC sees the same rate
   // it would as a configured RPC, however many configured RPCs are polling.
   let lastWrite: { at: number; sent: Promise<void> } | undefined
+  // A write RPC that has not answered its last send gets no new one, so a
+  // hung endpoint holds one open request, not one per interval.
+  const openSends = new Set<SolanaRpcType>()
+  const sendToWriteRpc = async (rpc: SolanaRpcType): Promise<void> => {
+    openSends.add(rpc)
+    try {
+      await send(rpc, writes.signal)
+    } finally {
+      openSends.delete(rpc)
+    }
+  }
   const sendToWriteRpcs = (rpcs: SolanaRpcType[]): Promise<void> => {
     const now = Date.now()
     if (lastWrite && now - lastWrite.at < RESEND_INTERVAL_MS) {
       return lastWrite.sent
     }
+    const ready = rpcs.filter((rpc) => !openSends.has(rpc))
+    if (lastWrite && !ready.length) {
+      return lastWrite.sent
+    }
     // Accepted as soon as one write RPC accepts it.
-    const sent = Promise.any(rpcs.map((rpc) => send(rpc, writes.signal))).then(
-      () => undefined
-    )
+    const sent = Promise.any(ready.map(sendToWriteRpc)).then(() => undefined)
     // Recorded here, not only by the branches: a branch stops waiting after
     // one interval (below), and an acceptance after that must still count.
     // Skipped once the race is over, so a late acceptance cannot regress an

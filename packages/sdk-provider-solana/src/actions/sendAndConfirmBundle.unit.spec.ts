@@ -369,6 +369,36 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(read.sendBundle).toHaveBeenCalledTimes(1)
   })
 
+  it('names the read list when only a write RPC supports Jito', async () => {
+    // The write RPC can submit, but polling needs a Jito-capable read RPC.
+    // "No configured RPC supports sendBundle" would be false here.
+    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
+    getJitoWriteRpcs.mockResolvedValue([
+      createWriteJitoRpc(() => Promise.resolve('bundle-1')),
+    ])
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].read')
+    expect(thrown.message).not.toContain('no configured Solana RPC supports')
+    expect(confirmBundle).not.toHaveBeenCalled()
+  })
+
+  it('submits through the read Jito RPCs with a client that has no write RPC lookup', async () => {
+    const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
+
+    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+
+    expect(getJitoWriteRpcs).not.toHaveBeenCalled()
+    expect(read.sendBundle).toHaveBeenCalledTimes(1)
+  })
+
   it('does not probe write RPCs when the chain has none', async () => {
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })

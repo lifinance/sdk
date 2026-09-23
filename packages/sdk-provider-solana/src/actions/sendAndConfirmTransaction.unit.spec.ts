@@ -401,6 +401,49 @@ describe('sendAndConfirmTransaction with write RPCs', () => {
     expect(writeSignal?.aborted).toBe(true)
   })
 
+  it('never opens a second send to a write RPC that has not answered', async () => {
+    // On main a branch awaits each send before the next, so an RPC that
+    // never answers holds at most one open send per branch. Without a guard
+    // the shared sender would open a new one every interval.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const hanging = {
+      sendTransaction: vi.fn(() => ({ send: () => new Promise(() => {}) })),
+    }
+    const accepting = createRpc()
+    getSolanaRpcs.mockResolvedValue([createReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([hanging, accepting])
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+      }) => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await options.resend(options.rpc, options.signal)
+          vi.setSystemTime(Date.now() + 1_000)
+        }
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+
+    await sendAndConfirmTransaction(clientWith(WRITE_URLS), {} as never)
+
+    expect(hanging.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(accepting.sendTransaction).toHaveBeenCalledTimes(3)
+  })
+
+  it('sends through the read RPCs with a client that has no write RPC lookup', async () => {
+    // A client from another SDK version, or a hand-written one, may lack the
+    // optional method. That means "no write RPCs", not a crash after signing.
+    const read = createRpc()
+    getSolanaRpcs.mockResolvedValue([read])
+
+    await sendAndConfirmTransaction({} as never, {} as never)
+
+    expect(getSolanaWriteRpcs).not.toHaveBeenCalled()
+    expect(read.sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
   it('sends through the read RPCs when the chain has no write RPCs', async () => {
     const read = createRpc()
     getSolanaRpcs.mockResolvedValue([read])

@@ -2,6 +2,7 @@ import { ChainId, ChainType } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SDKConfig } from '../types/core.js'
 import { createClient } from './createClient.js'
+import { getClientStorage } from './getClientStorage.js'
 
 // Mock providers locally
 const createMockProvider = (type: ChainType) => ({
@@ -263,21 +264,43 @@ describe('createClient', () => {
     })
   })
 
-  describe('write RPC URLs', () => {
-    it('returns the write list of a chain configured by role', async () => {
-      const client = createClient({
-        integrator: 'test-app',
-        rpcUrls: {
-          [ChainId.SOL]: {
-            read: ['https://sol-read.example'],
-            write: ['https://sol-write.example'],
-          },
+  describe('rpcUrls by role', () => {
+    const rolesConfig: SDKConfig = {
+      integrator: 'test-app',
+      rpcUrls: {
+        [ChainId.SOL]: {
+          read: ['https://sol-read.example'],
+          write: ['https://sol-write.example'],
         },
+        [ChainId.ETH]: ['https://eth.example'],
+        [ChainId.POL]: { write: ['https://pol-write.example'] },
+      },
+    }
+
+    it('keeps plain read lists in client.config.rpcUrls', () => {
+      const client = createClient(rolesConfig)
+
+      // Code that reads `config.rpcUrls` - the client storage included - keeps
+      // seeing `string[]` per chain. A chain with only a write list is left to
+      // the chain's own RPCs for reads.
+      expect(client.config.rpcUrls).toEqual({
+        [ChainId.SOL]: ['https://sol-read.example'],
+        [ChainId.ETH]: ['https://eth.example'],
       })
+      expect(vi.mocked(getClientStorage)).toHaveBeenCalledWith(
+        expect.objectContaining({ rpcUrls: client.config.rpcUrls })
+      )
+    })
+
+    it('returns the write list of a chain', async () => {
+      const client = createClient(rolesConfig)
 
       await expect(
-        client.getWriteRpcUrlsByChainId(ChainId.SOL)
+        client.getWriteRpcUrlsByChainId?.(ChainId.SOL)
       ).resolves.toEqual(['https://sol-write.example'])
+      await expect(
+        client.getWriteRpcUrlsByChainId?.(ChainId.POL)
+      ).resolves.toEqual(['https://pol-write.example'])
     })
 
     it('returns no write list for a plain list, a read-only entry or an unset chain', async () => {
@@ -291,15 +314,11 @@ describe('createClient', () => {
         },
       })
 
-      await expect(
-        client.getWriteRpcUrlsByChainId(ChainId.ETH)
-      ).resolves.toEqual([])
-      await expect(
-        client.getWriteRpcUrlsByChainId(ChainId.SOL)
-      ).resolves.toEqual([])
-      await expect(
-        client.getWriteRpcUrlsByChainId(ChainId.POL)
-      ).resolves.toEqual([])
+      for (const chainId of [ChainId.ETH, ChainId.SOL, ChainId.POL]) {
+        await expect(
+          client.getWriteRpcUrlsByChainId?.(chainId)
+        ).resolves.toEqual([])
+      }
     })
   })
 

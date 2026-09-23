@@ -1,5 +1,6 @@
 import type { ChainId, ChainType, ExtendedChain } from '@lifi/types'
 import type {
+  RPCUrls,
   SDKBaseConfig,
   SDKClient,
   SDKConfig,
@@ -20,12 +21,31 @@ export function createClient(options: SDKConfig): SDKClient {
     checkPackageUpdates(name, version)
   }
 
-  const { providers, ...configOptions } = options
+  const { providers, rpcUrls, ...configOptions } = options
+
+  // Role entries split once, here: the config keeps plain read lists, so
+  // everything that reads `config.rpcUrls` sees `string[]` as before.
+  const readRpcUrls: RPCUrls = {}
+  const writeRpcUrls: RPCUrls = {}
+  for (const key in rpcUrls) {
+    const chainId = Number(key) as ChainId
+    const entry = rpcUrls[chainId]
+    if (Array.isArray(entry)) {
+      readRpcUrls[chainId] = entry
+    } else if (entry) {
+      if (entry.read) {
+        readRpcUrls[chainId] = entry.read
+      }
+      if (entry.write?.length) {
+        writeRpcUrls[chainId] = entry.write
+      }
+    }
+  }
 
   const _config: SDKBaseConfig = {
     ...configOptions,
     apiUrl: configOptions?.apiUrl ?? 'https://li.quest/v1',
-    rpcUrls: configOptions?.rpcUrls ?? {},
+    rpcUrls: readRpcUrls,
     debug: configOptions?.debug ?? false,
     preloadChains: configOptions?.preloadChains ?? true,
     integrator: configOptions?.integrator ?? 'lifi-sdk',
@@ -79,11 +99,7 @@ export function createClient(options: SDKConfig): SDKClient {
       return chainRpcUrls
     },
     async getWriteRpcUrlsByChainId(chainId: ChainId) {
-      const entry = _config.rpcUrls[chainId]
-      if (!entry || Array.isArray(entry)) {
-        return []
-      }
-      return entry.write ?? []
+      return writeRpcUrls[chainId] ?? []
     },
   }
 

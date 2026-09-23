@@ -245,7 +245,7 @@ export const getSolanaRpcs = async (
 }
 
 /**
- * Clients for the write RPCs (`SolanaProviderOptions.writeRpcUrls`). They only
+ * Clients for the write RPCs (`rpcUrls[ChainId.SOL].write`). They only
  * send transactions; the one read they get is the Jito probe in
  * `getJitoWriteRpcs`.
  * @param rpcUrls - The write RPC URLs.
@@ -274,7 +274,7 @@ export const getJitoRpcs = async (
 }
 
 /**
- * The write RPCs (`SolanaProviderOptions.writeRpcUrls`) that can take a Jito
+ * The write RPCs (`rpcUrls[ChainId.SOL].write`) that can take a Jito
  * bundle. They get the same capability probe as the configured RPCs; a write
  * URL that fails it only sends plain transactions.
  * @param rpcUrls - The write RPC URLs.
