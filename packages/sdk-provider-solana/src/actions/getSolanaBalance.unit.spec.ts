@@ -22,6 +22,8 @@ const HELD_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 // lookup keys (never passed to address()), so the value is unconstrained —
 // this mirrors the "invalid data" case the old live integration test covered.
 const UNHELD_MINT = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+// Native SOL — getSolanaBalance answers it from getBalance, not token accounts.
+const SOL_NATIVE = '11111111111111111111111111111111'
 
 const token = (address: string): Token => ({
   chainId: ChainId.SOL,
@@ -113,5 +115,44 @@ describe('getSolanaBalance', () => {
     // confident zero — it stays undefined (graceful degradation, no throw).
     expect(unheld.amount).toBeUndefined()
     expect(unheld.blockNumber).toBe(123n)
+  })
+
+  // The RPC calls are deduplicated while in flight. Two wallets read at the
+  // same time — a portfolio with two addresses, or two users on one server —
+  // must each get their own balances, not whichever request started first.
+  it('keeps concurrent reads for different wallets apart', async () => {
+    const OTHER_WALLET = 'So11111111111111111111111111111111111111112'
+    const holdings: Record<string, { lamports: bigint; mintAmount: string }> = {
+      [WALLET]: { lamports: 1_000n, mintAmount: '500' },
+      [OTHER_WALLET]: { lamports: 2_000n, mintAmount: '700' },
+    }
+    driveWith({
+      getSlot: () => ({ send: () => Promise.resolve(123n) }),
+      getBalance: (owner: unknown) => ({
+        send: () =>
+          Promise.resolve({ value: holdings[String(owner)].lamports }),
+      }),
+      getTokenAccountsByOwner: (
+        owner: unknown,
+        filter: { programId: unknown }
+      ) => ({
+        send: () =>
+          Promise.resolve({
+            value:
+              String(filter.programId) === TokenProgramId
+                ? [tokenAccount(HELD_MINT, holdings[String(owner)].mintAmount)]
+                : [],
+          }),
+      }),
+    })
+    const tokens = [token(SOL_NATIVE), token(HELD_MINT)]
+
+    const [first, second] = await Promise.all([
+      getSolanaBalance({} as never, WALLET, tokens),
+      getSolanaBalance({} as never, OTHER_WALLET, tokens),
+    ])
+
+    expect(first.map((balance) => balance.amount)).toEqual([1_000n, 500n])
+    expect(second.map((balance) => balance.amount)).toEqual([2_000n, 700n])
   })
 })

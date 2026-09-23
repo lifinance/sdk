@@ -49,7 +49,7 @@ export const _getChains = async (
           signal: options?.signal,
         }
       ),
-    { id: `${getChains.name}.${urlSearchParams}` }
+    { id: `${getChains.name}.${config.apiUrl}.${urlSearchParams}` }
   )
   return response.chains
 }
