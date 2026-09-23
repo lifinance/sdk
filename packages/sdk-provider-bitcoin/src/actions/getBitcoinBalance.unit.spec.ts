@@ -48,4 +48,18 @@ describe('getBitcoinBalance', () => {
     expect(balance.symbol).toBe('ZEC')
     expect(mocks.getBitcoinPublicClient).not.toHaveBeenCalled()
   })
+
+  it('gives the Bitcoin balance to BTC tokens only in a mixed list', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    for (const tokens of [
+      [nativeToken(ChainId.BTC, 'BTC'), nativeToken(ChainId.ZEC, 'ZEC')],
+      [nativeToken(ChainId.ZEC, 'ZEC'), nativeToken(ChainId.BTC, 'BTC')],
+    ]) {
+      const balances = await getBitcoinBalance(client, walletAddress, tokens)
+      const bySymbol = Object.fromEntries(
+        balances.map((balance) => [balance.symbol, balance.amount])
+      )
+      expect(bySymbol).toEqual({ BTC: 1234n, ZEC: undefined })
+    }
+  })
 })
