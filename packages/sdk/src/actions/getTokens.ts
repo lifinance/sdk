@@ -4,6 +4,7 @@ import type {
   TokensRequest,
   TokensResponse,
 } from '@lifi/types'
+import { SDKError } from '../errors/SDKError.js'
 import type { SDKClient } from '../types/core.js'
 import { request } from '../utils/request.js'
 import { withDedupe } from '../utils/withDedupe.js'
@@ -43,15 +44,22 @@ export async function getTokens(
   ).toString()
   const _isExtended = params?.extended === true
   const response = await withDedupe(
-    () =>
+    (signal) =>
       request<
         typeof _isExtended extends true
           ? TokensExtendedResponse
           : TokensResponse
       >(client.config, `${client.config.apiUrl}/tokens?${urlSearchParams}`, {
-        signal: options?.signal,
+        signal,
       }),
-    { id: `${getTokens.name}.${client.config.apiUrl}.${urlSearchParams}` }
-  )
+    {
+      id: `${getTokens.name}.${client.config.apiUrl}.${urlSearchParams}`,
+      signal: options?.signal,
+    }
+  ).catch((error) => {
+    // A caller that aborts leaves before the request settles; keep its error
+    // shaped like one from `request`.
+    throw error instanceof SDKError ? error : new SDKError(error)
+  })
   return response
 }

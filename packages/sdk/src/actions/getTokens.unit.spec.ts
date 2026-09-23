@@ -1,7 +1,8 @@
 import { ChainId } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
+import { delay, HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { createClient } from '../client/createClient.js'
+import { SDKError } from '../errors/SDKError.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getTokens } from './getTokens.js'
 
@@ -44,5 +45,40 @@ describe('getTokens', () => {
 
     expect(fromA.tokens[ChainId.ETH]?.[0]?.symbol).toBe('A')
     expect(fromB.tokens[ChainId.ETH]?.[0]?.symbol).toBe('B')
+  })
+
+  // A signal belongs to the caller that passed it. Callers that share an
+  // in-flight request must not fail because another one aborted.
+  it('lets a caller finish when another caller of the same request aborts', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://abort.example/v1',
+    })
+    server.use(
+      http.get('https://abort.example/v1/tokens', async () => {
+        await delay(50)
+        return HttpResponse.json({
+          tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
+        })
+      })
+    )
+    const leaving = new AbortController()
+
+    const left = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: leaving.signal }
+    )
+    const stayed = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: new AbortController().signal }
+    )
+    leaving.abort()
+
+    await expect(left).rejects.toBeInstanceOf(SDKError)
+    await expect(stayed).resolves.toMatchObject({
+      tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
+    })
   })
 })

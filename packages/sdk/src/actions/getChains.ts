@@ -4,6 +4,7 @@ import type {
   ExtendedChain,
   RequestOptions,
 } from '@lifi/types'
+import { SDKError } from '../errors/SDKError.js'
 import type { SDKBaseConfig, SDKClient } from '../types/core.js'
 import { request } from '../utils/request.js'
 import { withDedupe } from '../utils/withDedupe.js'
@@ -41,15 +42,22 @@ export const _getChains = async (
     params as Record<string, string>
   ).toString()
   const response = await withDedupe(
-    () =>
+    (signal) =>
       request<ChainsResponse>(
         config,
         `${config.apiUrl}/chains?${urlSearchParams}`,
         {
-          signal: options?.signal,
+          signal,
         }
       ),
-    { id: `${getChains.name}.${config.apiUrl}.${urlSearchParams}` }
-  )
+    {
+      id: `${getChains.name}.${config.apiUrl}.${urlSearchParams}`,
+      signal: options?.signal,
+    }
+  ).catch((error) => {
+    // A caller that aborts leaves before the request settles; keep its error
+    // shaped like one from `request`.
+    throw error instanceof SDKError ? error : new SDKError(error)
+  })
   return response.chains
 }
