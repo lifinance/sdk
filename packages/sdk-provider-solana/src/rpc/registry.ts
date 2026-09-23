@@ -246,8 +246,8 @@ export const getSolanaRpcs = async (
 
 /**
  * Clients for the write RPCs (`SolanaProviderOptions.writeRpcUrls`). They only
- * ever send, so nothing here reads from them: write endpoints often refuse
- * read methods.
+ * send transactions; the one read they get is the Jito probe in
+ * `getJitoWriteRpcs`.
  * @param rpcUrls - The write RPC URLs.
  * @returns - Solana RPCs to send transactions through.
  */

@@ -361,6 +361,44 @@ describe('sendAndConfirmTransaction with writeRpcUrls', () => {
     ).resolves.toEqual(expect.objectContaining({ kind: 'rpc-unavailable' }))
   })
 
+  it('keeps a shared send open when the branch that started it ends', async () => {
+    // Other branches wait on the same send, so it must not ride on the
+    // signal of whichever branch happened to start it.
+    let writeSignal: AbortSignal | undefined
+    const write = {
+      sendTransaction: vi.fn(() => ({
+        send: vi.fn((options: { abortSignal: AbortSignal }) => {
+          writeSignal = options.abortSignal
+          return Promise.resolve('ok')
+        }),
+      })),
+    }
+    getSolanaRpcs.mockResolvedValue([createReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([write])
+    let abortedWhenBranchEnded: boolean | undefined
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+      }) => {
+        const branch = new AbortController()
+        const sending = options.resend(options.rpc, branch.signal)
+        branch.abort()
+        abortedWhenBranchEnded = writeSignal?.aborted
+        await sending
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+
+    await sendAndConfirmTransaction({} as never, {} as never, {
+      writeRpcUrls: WRITE_URLS,
+    })
+
+    expect(abortedWhenBranchEnded).toBe(false)
+    // It ends with the whole call instead.
+    expect(writeSignal?.aborted).toBe(true)
+  })
+
   it('sends through the read RPCs when writeRpcUrls is empty', async () => {
     const read = createRpc()
     getSolanaRpcs.mockResolvedValue([read])

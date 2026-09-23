@@ -13,8 +13,10 @@ export interface SolanaProviderOptions {
   /**
    * RPCs that send transactions and Jito bundles, in place of the client's
    * Solana `rpcUrls`. Transactions go to every write RPC; bundles go to the
-   * write RPCs that pass the Jito probe. Reads, simulation and confirmation
-   * stay on the client's `rpcUrls`, so a write RPC never has to answer reads.
+   * write RPCs that pass the Jito capability probe, and fall back to the
+   * Jito-capable `rpcUrls` when none does. Reads, simulation and confirmation
+   * stay on the client's `rpcUrls`: apart from that probe (one
+   * `getBundleStatuses` call per URL, cached), a write RPC receives no reads.
    * Unset or empty, the client's `rpcUrls` send as well.
    */
   writeRpcUrls?: string[]
