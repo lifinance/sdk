@@ -20,6 +20,11 @@ export const getBitcoinBalance = async (
       console.warn('Requested tokens have to be on the same chain.')
     }
   }
+  // The client reads Bitcoin only. Another UTXO chain, such as ZEC, shares this
+  // provider but not its balances, so its amount stays unknown, not zero.
+  if (chainId !== ChainId.BTC) {
+    return tokens.map((token) => ({ ...token }))
+  }
   const bigmiClient = await getBitcoinPublicClient(client, ChainId.BTC)
   const [balance, blockCount] = await Promise.allSettled([
     bigmiClient.getBalance({ address: walletAddress }),
