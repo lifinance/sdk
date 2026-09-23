@@ -47,9 +47,10 @@
     "@bigmi/core": "^0.9.2",
     "@bitcoinerlab/secp256k1": "^2.0.0",
     "@lifi/sdk": "workspace:*",
+    "@noble/hashes": "^1.8.0",
+    "@scure/base": "^1.2.6",
     "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^7.0.2",
-    "bs58check": "^4.0.0"
+    "bitcoinjs-lib": "^7.0.2"
   },
   "devDependencies": {
     "@lifi/data-types": "^7.1.3",
