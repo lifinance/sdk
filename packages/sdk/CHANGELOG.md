@@ -1,5 +1,23 @@
 # @lifi/sdk
 
+## 4.8.2
+
+### Patch Changes
+
+- [#489](https://github.com/lifinance/sdk/pull/489) [`1a7c966`](https://github.com/lifinance/sdk/commit/1a7c96646e7a5696443b5a88485bdfb33b51682d) Thanks [@chybisov](https://github.com/chybisov)! - Keep concurrent `getTokens` and `getChains` requests from clients on different API bases apart. The dedupe ids now include `apiUrl`, so a client no longer receives another base's response when both ask the same query at the same time.
+
+- [#488](https://github.com/lifinance/sdk/pull/488) [`b17e93e`](https://github.com/lifinance/sdk/commit/b17e93ebc3303e34913d41dba4b71a99897138b6) Thanks [@chybisov](https://github.com/chybisov)! - Fix `client.extend()` dropping the `config` and `providers` accessors.
+  
+  `extend` built the extended object with a shallow spread, which evaluates
+  getters and writes their current values as plain data properties. Because
+  `setProviders` reassigns the backing array, an extended client was frozen on
+  whatever the provider list happened to be at extend time — so a host that
+  extended before registering its wallet providers got a client that could
+  never execute, and `getProvider` always returned `undefined`.
+  
+  Copy property descriptors instead, so the base and every extension share one
+  live view of the client's config and providers.
+
 ## 4.8.1
 
 ### Patch Changes
