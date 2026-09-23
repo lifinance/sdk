@@ -25,6 +25,11 @@ describe('TronProvider', () => {
     const provider = TronProvider()
     const usdtContract = 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
     expect(provider.isAddress(usdtContract, ChainId.TRN)).toBe(true)
+    for (const address of [usdtContract, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.TRN)).toBe(
+        provider.isAddress(address)
+      )
+    }
     expect(provider.isAddress('laptop', ChainId.TRN)).toBe(false)
   })
 })

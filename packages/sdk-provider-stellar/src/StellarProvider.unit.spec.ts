@@ -92,6 +92,11 @@ describe('StellarProvider', () => {
     const provider = StellarProvider()
     const g = Keypair.random().publicKey()
     expect(provider.isAddress(g, ChainId.XLM)).toBe(true)
+    for (const address of [g, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.XLM)).toBe(
+        provider.isAddress(address)
+      )
+    }
     expect(provider.isAddress('laptop', ChainId.XLM)).toBe(false)
   })
 })
