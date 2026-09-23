@@ -258,6 +258,9 @@ importers:
       bitcoinjs-lib:
         specifier: ^7.0.2
         version: 7.0.2(typescript@7.0.2)
+      bs58check:
+        specifier: ^4.0.0
+        version: 4.0.0
     devDependencies:
       '@lifi/data-types':
         specifier: ^7.1.3
