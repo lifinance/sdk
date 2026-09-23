@@ -65,7 +65,6 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
           txLink,
         })
       },
-      writeRpcUrls: context.writeRpcUrls,
     })
 
     // The `rpc-unavailable` message is distinct from the empty-list throw

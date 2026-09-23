@@ -28,7 +28,7 @@ export interface SDKBaseConfig {
   userId?: string
   routeOptions?: RouteOptions
   executionOptions?: ExecutionOptions
-  rpcUrls: RPCUrls
+  rpcUrls: RPCUrlsConfig
   disableVersionCheck?: boolean
   widgetVersion?: string
   debug: boolean
@@ -43,6 +43,29 @@ export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
   providers?: SDKProvider[]
 }
 
+/**
+ * RPC URLs for one chain, split by what they are used for.
+ */
+export interface RPCUrlsByRole {
+  /**
+   * Reads: balances, simulation and confirmation. Unset, the chain's own RPC
+   * URLs serve reads, as for a chain with no `rpcUrls` entry.
+   */
+  read?: string[]
+  /**
+   * Sends, for providers that broadcast transactions themselves (Solana).
+   * Unset or empty, the read URLs send as well.
+   */
+  write?: string[]
+}
+
+/**
+ * The `rpcUrls` config: per chain, either one list for reads and sends, or
+ * lists by role.
+ */
+export type RPCUrlsConfig = Partial<Record<ChainId, string[] | RPCUrlsByRole>>
+
+/** Read RPC URLs per chain, as the client resolves them. */
 export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface SDKProvider {
@@ -78,6 +101,11 @@ export interface SDKClient {
   getChainById(chainId: ChainId): Promise<ExtendedChain>
   getRpcUrls(): Promise<RPCUrls>
   getRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
+  /**
+   * The chain's dedicated write RPC URLs (`rpcUrls[chainId].write`). Empty
+   * when the chain has none, in which case the read URLs also send.
+   */
+  getWriteRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {

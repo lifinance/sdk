@@ -1,4 +1,4 @@
-import { LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
+import { ChainId, LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
 import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
 import {
   type BundleConfirmation,
@@ -21,8 +21,9 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
  * the submission returns.
  *
- * With `writeRpcUrls`, the bundle is submitted once through the write RPCs
- * that pass the Jito probe, and the configured Jito RPCs only poll for it.
+ * When the client has Solana write RPCs (`rpcUrls[ChainId.SOL].write`), the
+ * bundle is submitted once through those that pass the Jito probe, and the
+ * read Jito RPCs only poll for it.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
@@ -30,18 +31,16 @@ export async function sendAndConfirmBundle(
   options?: {
     /** Runs once, when the first Jito RPC accepts the submission. */
     onBroadcast?: () => void
-    /**
-     * RPCs that submit the bundle in place of the configured ones. Only those
-     * that pass the Jito probe are used; when none does, the configured Jito
-     * RPCs submit as they would without this option.
-     */
-    writeRpcUrls?: string[]
   }
 ): Promise<RaceResult<BundleConfirmation>> {
   // Both probe on the latency path before submission, so run them together.
+  // Only write RPCs that pass the probe submit; when none does, the read Jito
+  // RPCs submit as they would without write RPCs.
   const [{ rpcs: jitoRpcs, unreachable }, writeRpcs] = await Promise.all([
     getJitoRpcs(client),
-    options?.writeRpcUrls?.length ? getJitoWriteRpcs(options.writeRpcUrls) : [],
+    client
+      .getWriteRpcUrlsByChainId(ChainId.SOL)
+      .then((urls) => (urls.length ? getJitoWriteRpcs(urls) : [])),
   ])
 
   // Named here, where the emptiness is known: racing zero RPCs would surface

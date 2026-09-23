@@ -38,7 +38,6 @@ export function SolanaProvider(
         wallet,
         routeId: options.routeId,
         skipSimulation: _options.skipSimulation,
-        writeRpcUrls: _options.writeRpcUrls,
         executionOptions: {
           ...options.executionOptions,
         },

@@ -1,4 +1,4 @@
-import { LiFiErrorCode, RPCError } from '@lifi/sdk'
+import { ChainId, LiFiErrorCode, RPCError } from '@lifi/sdk'
 import type { Transaction } from '@solana/kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -26,6 +26,14 @@ vi.mock('../confirmation/confirmBundle.js', () => ({
 }))
 
 const { sendAndConfirmBundle } = await import('./sendAndConfirmBundle.js')
+
+/** A client whose Solana `rpcUrls` entry has the given write list. */
+const clientWith = (writeRpcUrls: string[] = []) =>
+  ({
+    getWriteRpcUrlsByChainId: vi.fn(async (chainId: number) =>
+      chainId === ChainId.SOL ? writeRpcUrls : []
+    ),
+  }) as never
 
 const sendBundle = vi.fn()
 /** Options every `sendBundle(...).send(...)` call received. */
@@ -56,7 +64,7 @@ describe('sendAndConfirmBundle', () => {
     // configuration gap must be named before anything is raced.
     getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
-    const thrown = await sendAndConfirmBundle({} as never, TRANSACTIONS).catch(
+    const thrown = await sendAndConfirmBundle(clientWith(), TRANSACTIONS).catch(
       (e) => e
     )
 
@@ -75,7 +83,7 @@ describe('sendAndConfirmBundle', () => {
     // already correct while the real problem is transient.
     getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 2 })
 
-    const thrown = await sendAndConfirmBundle({} as never, TRANSACTIONS).catch(
+    const thrown = await sendAndConfirmBundle(clientWith(), TRANSACTIONS).catch(
       (e) => e
     )
 
@@ -102,7 +110,7 @@ describe('sendAndConfirmBundle', () => {
       (options: { send: () => Promise<string> }) => options.send()
     )
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS)
+    const result = await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
 
     expect(result.kind).toBe('rpc-unavailable')
     if (result.kind !== 'rpc-unavailable') {
@@ -119,7 +127,7 @@ describe('sendAndConfirmBundle', () => {
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockResolvedValue({ kind: 'not-confirmed' })
 
-    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+    await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
 
     expect(confirmBundle).toHaveBeenCalledTimes(1)
     expect(sendBundle).not.toHaveBeenCalled()
@@ -147,7 +155,7 @@ describe('sendAndConfirmBundle', () => {
       }
     )
 
-    await sendAndConfirmBundle({} as never, TRANSACTIONS)
+    await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
 
     const { signal } = confirmBundle.mock.calls[0][0] as {
       signal: AbortSignal
@@ -182,7 +190,7 @@ describe('sendAndConfirmBundle', () => {
     )
     const onBroadcast = vi.fn()
 
-    await sendAndConfirmBundle({} as never, TRANSACTIONS, { onBroadcast })
+    await sendAndConfirmBundle(clientWith(), TRANSACTIONS, { onBroadcast })
 
     expect(confirmBundle).toHaveBeenCalledTimes(2)
     expect(onBroadcast).toHaveBeenCalledTimes(1)
@@ -204,7 +212,7 @@ describe('sendAndConfirmBundle', () => {
     })
 
     await expect(
-      sendAndConfirmBundle({} as never, TRANSACTIONS, { onBroadcast })
+      sendAndConfirmBundle(clientWith(), TRANSACTIONS, { onBroadcast })
     ).resolves.toEqual({
       kind: 'confirmed',
       value: { signatureResults: [] },
@@ -228,7 +236,7 @@ describe('sendAndConfirmBundle', () => {
     }
     confirmBundle.mockResolvedValue({ kind: 'confirmed', value: confirmation })
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS)
+    const result = await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
 
     expect(result).toEqual({ kind: 'confirmed', value: confirmation })
     expect(getTransactionLifetime).toHaveBeenCalledTimes(2)
@@ -243,7 +251,7 @@ describe('sendAndConfirmBundle', () => {
   })
 })
 
-describe('sendAndConfirmBundle with writeRpcUrls', () => {
+describe('sendAndConfirmBundle with write RPCs', () => {
   const WRITE_URLS = ['https://write-a.example', 'https://write-b.example']
 
   /** A configured Jito RPC: it polls for the bundle, but must never submit it. */
@@ -286,9 +294,10 @@ describe('sendAndConfirmBundle with writeRpcUrls', () => {
     getJitoRpcs.mockResolvedValue({ rpcs: [readA, readB], unreachable: 0 })
     getJitoWriteRpcs.mockResolvedValue([write])
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS, {
-      writeRpcUrls: WRITE_URLS,
-    })
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    )
 
     expect(getJitoWriteRpcs).toHaveBeenCalledWith(WRITE_URLS)
     expect(result).toMatchObject({
@@ -318,9 +327,10 @@ describe('sendAndConfirmBundle with writeRpcUrls', () => {
     })
     getJitoWriteRpcs.mockResolvedValue([refusing, accepting])
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS, {
-      writeRpcUrls: WRITE_URLS,
-    })
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    )
 
     expect(result.kind).toBe('confirmed')
     expect(refusing.sendBundle).toHaveBeenCalledTimes(1)
@@ -336,9 +346,10 @@ describe('sendAndConfirmBundle with writeRpcUrls', () => {
       createWriteJitoRpc(() => Promise.reject(new Error('403'))),
     ])
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS, {
-      writeRpcUrls: WRITE_URLS,
-    })
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    )
 
     expect(result.kind).toBe('rpc-unavailable')
     expect(acceptingRead.sendBundle).not.toHaveBeenCalled()
@@ -349,19 +360,20 @@ describe('sendAndConfirmBundle with writeRpcUrls', () => {
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
     getJitoWriteRpcs.mockResolvedValue([])
 
-    const result = await sendAndConfirmBundle({} as never, TRANSACTIONS, {
-      writeRpcUrls: WRITE_URLS,
-    })
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    )
 
     expect(result.kind).toBe('confirmed')
     expect(read.sendBundle).toHaveBeenCalledTimes(1)
   })
 
-  it('does not probe write RPCs when writeRpcUrls is empty', async () => {
+  it('does not probe write RPCs when the chain has none', async () => {
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
 
-    await sendAndConfirmBundle({} as never, TRANSACTIONS, { writeRpcUrls: [] })
+    await sendAndConfirmBundle(clientWith([]), TRANSACTIONS)
 
     expect(getJitoWriteRpcs).not.toHaveBeenCalled()
     expect(read.sendBundle).toHaveBeenCalledTimes(1)

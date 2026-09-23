@@ -263,6 +263,46 @@ describe('createClient', () => {
     })
   })
 
+  describe('write RPC URLs', () => {
+    it('returns the write list of a chain configured by role', async () => {
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.SOL]: {
+            read: ['https://sol-read.example'],
+            write: ['https://sol-write.example'],
+          },
+        },
+      })
+
+      await expect(
+        client.getWriteRpcUrlsByChainId(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-write.example'])
+    })
+
+    it('returns no write list for a plain list, a read-only entry or an unset chain', async () => {
+      // No write list means "send the way the provider always has": through
+      // the read URLs. An empty answer lets each provider keep that path.
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.ETH]: ['https://eth.example'],
+          [ChainId.SOL]: { read: ['https://sol-read.example'] },
+        },
+      })
+
+      await expect(
+        client.getWriteRpcUrlsByChainId(ChainId.ETH)
+      ).resolves.toEqual([])
+      await expect(
+        client.getWriteRpcUrlsByChainId(ChainId.SOL)
+      ).resolves.toEqual([])
+      await expect(
+        client.getWriteRpcUrlsByChainId(ChainId.POL)
+      ).resolves.toEqual([])
+    })
+  })
+
   describe('extend functionality', () => {
     it('should extend client with additional functionality', () => {
       const client = createClient({ integrator: 'test-app' })

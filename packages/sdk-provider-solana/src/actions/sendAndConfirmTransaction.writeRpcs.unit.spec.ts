@@ -1,3 +1,4 @@
+import { ChainId } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 
 // Runs the real confirmation loop (`confirmSignature`, `raceRpcs`,
@@ -26,6 +27,14 @@ vi.mock('../utils/getTransactionLifetime.js', () => ({
 const { sendAndConfirmTransaction } = await import(
   './sendAndConfirmTransaction.js'
 )
+
+/** A client whose Solana `rpcUrls` entry has the given write list. */
+const clientWith = (writeRpcUrls: string[] = []) =>
+  ({
+    getWriteRpcUrlsByChainId: vi.fn(async (chainId: number) =>
+      chainId === ChainId.SOL ? writeRpcUrls : []
+    ),
+  }) as never
 
 /** A read RPC that reports the transaction confirmed on the first read. */
 const confirmingReadRpc = () => ({
@@ -61,9 +70,10 @@ describe('sendAndConfirmTransaction with a slow write RPC', () => {
     getSolanaRpcs.mockResolvedValue([confirmingReadRpc()])
     getSolanaWriteRpcs.mockReturnValue([write])
 
-    const result = await sendAndConfirmTransaction({} as never, {} as never, {
-      writeRpcUrls: ['https://write.example'],
-    })
+    const result = await sendAndConfirmTransaction(
+      clientWith(['https://write.example']),
+      {} as never
+    )
 
     expect(result).toMatchObject({ kind: 'confirmed' })
     // The send was still open when the race ended, and ended with it.

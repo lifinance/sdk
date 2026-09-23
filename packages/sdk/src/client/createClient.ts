@@ -78,6 +78,13 @@ export function createClient(options: SDKConfig): SDKClient {
       }
       return chainRpcUrls
     },
+    async getWriteRpcUrlsByChainId(chainId: ChainId) {
+      const entry = _config.rpcUrls[chainId]
+      if (!entry || Array.isArray(entry)) {
+        return []
+      }
+      return entry.write ?? []
+    },
   }
 
   function extend<TClient extends SDKClient>(

@@ -97,6 +97,8 @@ export type {
   RouteExecutionDictionary,
   RouteExtended,
   RPCUrls,
+  RPCUrlsByRole,
+  RPCUrlsConfig,
   SDKBaseConfig,
   SDKClient,
   SDKConfig,

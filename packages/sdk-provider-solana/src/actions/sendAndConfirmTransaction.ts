@@ -1,4 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
+import { ChainId, type SDKClient } from '@lifi/sdk'
 import {
   type Commitment,
   getBase64EncodedWireTransaction,
@@ -20,8 +20,8 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * Sends a Solana transaction to every configured RPC and returns as soon as
  * one of them confirms it.
  *
- * With `writeRpcUrls`, the transaction is sent only through those RPCs, and
- * the configured RPCs only confirm it.
+ * When the client has Solana write RPCs (`rpcUrls[ChainId.SOL].write`), the
+ * transaction is sent only through those, and the read RPCs only confirm it.
  *
  * The polling horizon comes from the signed transaction's own blockhash and a
  * wall-clock ceiling. It deliberately never comes from `getBlockHeight`: at
@@ -34,15 +34,12 @@ export async function sendAndConfirmTransaction(
   options?: {
     /** Runs once, when the first RPC accepts a send. */
     onBroadcast?: () => void
-    /**
-     * RPCs that send the transaction in place of the configured ones. They
-     * receive no reads: status polling and the confirmation deadline stay on
-     * the configured RPCs.
-     */
-    writeRpcUrls?: string[]
   }
 ): Promise<RaceResult<SignatureStatus>> {
-  const solanaRpcs = await getSolanaRpcs(client)
+  const [solanaRpcs, writeRpcUrls] = await Promise.all([
+    getSolanaRpcs(client),
+    client.getWriteRpcUrlsByChainId(ChainId.SOL),
+  ])
 
   let broadcastReported = false
   // Distinct from `broadcastReported`, which records whether the integrator
@@ -97,8 +94,8 @@ export async function sendAndConfirmTransaction(
       .send({ abortSignal: signal })
   }
 
-  const writeRpcs = options?.writeRpcUrls?.length
-    ? getSolanaWriteRpcs(options.writeRpcUrls)
+  const writeRpcs = writeRpcUrls.length
+    ? getSolanaWriteRpcs(writeRpcUrls)
     : undefined
 
   // Sends to the write RPCs belong to the whole call, not to one branch:

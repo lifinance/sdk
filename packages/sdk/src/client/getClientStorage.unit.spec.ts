@@ -316,6 +316,36 @@ describe('getClientStorage', () => {
     })
   })
 
+  describe('rpcUrls split by role', () => {
+    it('merges only the read URLs with the chain RPCs', () => {
+      vi.mocked(getRpcUrlsFromChains).mockReturnValue(mockRpcUrls)
+      const storage = getClientStorage({
+        ...mockConfig,
+        rpcUrls: {
+          [ChainId.SOL]: {
+            read: ['https://sol-read.example'],
+            write: ['https://sol-write.example'],
+          },
+          [ChainId.ETH]: ['https://eth.example'],
+          [ChainId.POL]: { write: ['https://pol-write.example'] },
+        },
+      })
+
+      storage.setChains(mockChains)
+
+      // Write URLs never become read URLs, and a chain with only a write list
+      // is left to the chain RPCs for reads.
+      expect(getRpcUrlsFromChains).toHaveBeenCalledWith(
+        {
+          [ChainId.SOL]: ['https://sol-read.example'],
+          [ChainId.ETH]: ['https://eth.example'],
+        },
+        mockChains,
+        [ChainId.SOL]
+      )
+    })
+  })
+
   describe('preloadChains mode', () => {
     it('should not auto-fetch chains when preloadChains is false', async () => {
       const configWithoutPreload: SDKBaseConfig = {
