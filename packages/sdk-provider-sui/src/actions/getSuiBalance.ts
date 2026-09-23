@@ -50,7 +50,7 @@ const getSuiBalanceDefault = async (
           } while (cursor)
           return balances
         }),
-      { id: `${getSuiBalanceDefault.name}.listBalances` }
+      { id: `${getSuiBalanceDefault.name}.listBalances.${walletAddress}` }
     ),
     withDedupe(
       () =>
