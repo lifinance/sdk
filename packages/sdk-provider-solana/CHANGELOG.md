@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-solana
 
+## 4.2.3
+
+### Patch Changes
+
+- [#489](https://github.com/lifinance/sdk/pull/489) [`1a7c966`](https://github.com/lifinance/sdk/commit/1a7c96646e7a5696443b5a88485bdfb33b51682d) Thanks [@chybisov](https://github.com/chybisov)! - Keep concurrent balance reads for different wallets apart. The Solana, Sui and Tron balance actions deduplicate their RPC calls while in flight, but the dedupe ids did not include the wallet address, so two wallets read at the same time could both get the balances of whichever request started first. The ids now include the wallet address.
+- Updated dependencies [[`1a7c966`](https://github.com/lifinance/sdk/commit/1a7c96646e7a5696443b5a88485bdfb33b51682d), [`b17e93e`](https://github.com/lifinance/sdk/commit/b17e93ebc3303e34913d41dba4b71a99897138b6)]:
+  - @lifi/sdk@4.8.2
+
 ## 4.2.2
 
 ### Patch Changes

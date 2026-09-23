@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.2
+
+### Patch Changes
+
+- Updated dependencies [[`1a7c966`](https://github.com/lifinance/sdk/commit/1a7c96646e7a5696443b5a88485bdfb33b51682d), [`b17e93e`](https://github.com/lifinance/sdk/commit/b17e93ebc3303e34913d41dba4b71a99897138b6)]:
+  - @lifi/sdk@4.8.2
+
 ## 4.2.1
 
 ### Patch Changes
