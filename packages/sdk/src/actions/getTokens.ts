@@ -51,7 +51,7 @@ export async function getTokens(
       >(client.config, `${client.config.apiUrl}/tokens?${urlSearchParams}`, {
         signal: options?.signal,
       }),
-    { id: `${getTokens.name}.${urlSearchParams}` }
+    { id: `${getTokens.name}.${client.config.apiUrl}.${urlSearchParams}` }
   )
   return response
 }
