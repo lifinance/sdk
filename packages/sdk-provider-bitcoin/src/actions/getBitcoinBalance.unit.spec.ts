@@ -50,7 +50,7 @@ describe('getBitcoinBalance', () => {
   })
 
   it('gives the Bitcoin balance to BTC tokens only in a mixed list', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     for (const tokens of [
       [nativeToken(ChainId.BTC, 'BTC'), nativeToken(ChainId.ZEC, 'ZEC')],
       [nativeToken(ChainId.ZEC, 'ZEC'), nativeToken(ChainId.BTC, 'BTC')],
@@ -61,5 +61,6 @@ describe('getBitcoinBalance', () => {
       )
       expect(bySymbol).toEqual({ BTC: 1234n, ZEC: undefined })
     }
+    warn.mockRestore()
   })
 })
