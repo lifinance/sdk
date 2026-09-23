@@ -296,6 +296,37 @@ describe('createClient', () => {
       expect(extendedClient.config.integrator).toBe('test-app')
     })
 
+    // `providers` is an accessor over a closure variable that `setProviders`
+    // REASSIGNS. Copying it by value freezes the extended client on whatever
+    // the list was at extend time, so a host that extends before its wallet
+    // providers are ready ends up with a client that can never execute.
+    it('should see providers registered after the extension was created', () => {
+      const client = createClient({ integrator: 'test-app' })
+
+      const extendedClient = (client as any).extend(() => ({
+        widgetVersion: '1.0.0',
+      }))
+
+      extendedClient.setProviders([EVM(), Solana()])
+
+      expect(extendedClient.providers).toHaveLength(2)
+      expect(extendedClient.getProvider('EVM' as ChainType)).toBeDefined()
+      expect(extendedClient.getProvider('SVM' as ChainType)).toBeDefined()
+    })
+
+    it('should share one provider list between the base and the extension', () => {
+      const client = createClient({ integrator: 'test-app' })
+
+      const extendedClient = (client as any).extend(() => ({
+        widgetVersion: '1.0.0',
+      }))
+
+      client.setProviders([UTXO()])
+
+      expect(extendedClient.providers).toEqual(client.providers)
+      expect(extendedClient.getProvider('UTXO' as ChainType)).toBeDefined()
+    })
+
     it('should preserve extend function after extension', () => {
       const client = createClient({ integrator: 'test-app' })
 
