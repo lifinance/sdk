@@ -50,7 +50,9 @@ type WithDedupeOptions = {
  *
  * When the first caller passes a signal, `fn` receives the signal to hand on
  * to its request. A caller that aborts leaves the shared request at once; the
- * request itself is aborted only when every caller has aborted.
+ * request itself is aborted only when every caller has aborted. The next
+ * caller then starts a new request, so `fn` should pass the signal on: a run
+ * that ignores it keeps going alongside the new one.
  */
 export function withDedupe<T>(
   fn: (signal?: AbortSignal) => Promise<T>,

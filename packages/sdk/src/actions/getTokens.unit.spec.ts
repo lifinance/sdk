@@ -93,11 +93,16 @@ describe('getTokens', () => {
       apiUrl: 'https://abort-all.example/v1',
     })
     let requestAborted = false
+    let reached!: () => void
+    const handlerReached = new Promise<void>((resolve) => {
+      reached = resolve
+    })
     server.use(
       http.get('https://abort-all.example/v1/tokens', async ({ request }) => {
         request.signal.addEventListener('abort', () => {
           requestAborted = true
         })
+        reached()
         await delay(50)
         return HttpResponse.json({ tokens: {} })
       })
@@ -109,7 +114,8 @@ describe('getTokens', () => {
       { chains: [ChainId.ETH] },
       { signal: leaving.signal }
     )
-    await delay(10)
+    // Abort only once the server has the request, so the test cannot race it.
+    await handlerReached
     leaving.abort()
 
     await expect(left).rejects.toBeInstanceOf(SDKError)
