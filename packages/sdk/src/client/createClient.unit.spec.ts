@@ -332,6 +332,48 @@ describe('createClient', () => {
     })
   })
 
+  describe('bundle RPC URLs', () => {
+    it('returns the bundle list of a chain', async () => {
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.SOL]: {
+            read: ['https://sol-read.example'],
+            write: ['https://sol-write.example'],
+            bundle: ['https://sol-bundle.example'],
+          },
+        },
+      })
+
+      await expect(
+        client.getBundleRpcUrlsByChainId?.(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-bundle.example'])
+      // Bundle URLs are neither read nor write URLs.
+      expect(client.config.rpcUrls).toEqual({
+        [ChainId.SOL]: ['https://sol-read.example'],
+      })
+      await expect(
+        client.getWriteRpcUrlsByChainId?.(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-write.example'])
+    })
+
+    it('returns no bundle list unless a chain sets one', async () => {
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.ETH]: ['https://eth.example'],
+          [ChainId.SOL]: { write: ['https://sol-write.example'], bundle: [] },
+        },
+      })
+
+      for (const chainId of [ChainId.ETH, ChainId.SOL, ChainId.POL]) {
+        await expect(
+          client.getBundleRpcUrlsByChainId?.(chainId)
+        ).resolves.toEqual([])
+      }
+    })
+  })
+
   describe('extend functionality', () => {
     it('should extend client with additional functionality', () => {
       const client = createClient({ integrator: 'test-app' })

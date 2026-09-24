@@ -7,6 +7,7 @@ import {
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import { getJitoRpcs, getJitoWriteRpcs } from '../rpc/registry.js'
+import type { JitoRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
@@ -21,9 +22,9 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
  * the submission returns.
  *
- * When the client has Solana write RPCs (`rpcUrls[ChainId.SOL].write`), the
- * bundle is submitted once through those that pass the Jito probe, and the
- * read Jito RPCs only poll for it.
+ * When the client has Solana bundle or write RPCs (`rpcUrls[ChainId.SOL]`),
+ * the bundle is submitted once through those that pass the Jito probe - the
+ * bundle list first, else the write list - and the read Jito RPCs only poll.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
@@ -33,15 +34,22 @@ export async function sendAndConfirmBundle(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  // Both probe on the latency path before submission, so run them together.
-  // Only write RPCs that pass the probe submit; when none does, the read Jito
-  // RPCs submit as they would without write RPCs.
-  const [{ rpcs: jitoRpcs, unreachable }, writeRpcs] = await Promise.all([
-    getJitoRpcs(client),
-    Promise.resolve(client.getWriteRpcUrlsByChainId?.(ChainId.SOL)).then(
-      (urls) => (urls?.length ? getJitoWriteRpcs(urls) : [])
-    ),
-  ])
+  // Every probe sits on the latency path before submission, so all run
+  // together. Only URLs that pass it submit; with none, the read Jito RPCs
+  // submit as they would without bundle or write RPCs.
+  const jitoCapable = (
+    urls: Promise<string[]> | undefined
+  ): Promise<JitoRpcType[]> =>
+    Promise.resolve(urls).then((list) =>
+      list?.length ? getJitoWriteRpcs(list) : []
+    )
+  const [{ rpcs: jitoRpcs, unreachable }, bundleRpcs, writeRpcs] =
+    await Promise.all([
+      getJitoRpcs(client),
+      jitoCapable(client.getBundleRpcUrlsByChainId?.(ChainId.SOL)),
+      jitoCapable(client.getWriteRpcUrlsByChainId?.(ChainId.SOL)),
+    ])
+  const submitRpcs = bundleRpcs.length ? bundleRpcs : writeRpcs
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
@@ -58,8 +66,8 @@ export async function sendAndConfirmBundle(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
         ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
-        : writeRpcs.length > 0
-          ? 'Jito bundle required. A write RPC can submit it, but no read RPC supports `getBundleStatuses` to confirm it. Add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.'
+        : submitRpcs.length > 0
+          ? 'Jito bundle required. A bundle or write RPC can submit it, but no read RPC supports `getBundleStatuses` to confirm it. Add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.'
           : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
@@ -100,10 +108,10 @@ export async function sendAndConfirmBundle(
   // One submission for every polling branch: the bundle id is derived from
   // the transactions, so each branch polls the same bundle. Started by the
   // first branch that asks, so its deadline already runs.
-  let writeSubmission: Promise<string> | undefined
-  const submitToWriteRpcs = (signal: AbortSignal): Promise<string> => {
-    writeSubmission ??= Promise.any(
-      writeRpcs.map((rpc) =>
+  let submission: Promise<string> | undefined
+  const submitOnce = (signal: AbortSignal): Promise<string> => {
+    submission ??= Promise.any(
+      submitRpcs.map((rpc) =>
         rpc.sendBundle(serializedTransactions).send({ abortSignal: signal })
       )
     ).catch((error: unknown) => {
@@ -111,7 +119,7 @@ export async function sendAndConfirmBundle(
       // nested AggregateError inside the race's own error list.
       throw error instanceof AggregateError ? error.errors[0] : error
     })
-    return writeSubmission
+    return submission
   }
 
   return raceRpcs(
@@ -122,8 +130,8 @@ export async function sendAndConfirmBundle(
         signal,
         lifetimes,
         send: () =>
-          writeRpcs.length
-            ? submitToWriteRpcs(signal)
+          submitRpcs.length
+            ? submitOnce(signal)
             : rpc
                 .sendBundle(serializedTransactions)
                 .send({ abortSignal: signal }),

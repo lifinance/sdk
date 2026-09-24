@@ -64,6 +64,12 @@ export interface RPCUrlsByRole {
    * Unset or empty, the read URLs send as well.
    */
   write?: string[]
+  /**
+   * Bundle submissions, for providers that submit bundles themselves (Jito
+   * `sendBundle` on Solana). Unset or empty, the write URLs that support
+   * bundles submit them, then the read URLs that do.
+   */
+  bundle?: string[]
 }
 
 /**
@@ -116,6 +122,12 @@ export interface SDKClient {
    * satisfy `SDKClient`. Providers treat a missing method as no write list.
    */
   getWriteRpcUrlsByChainId?(chainId: ChainId): Promise<string[]>
+  /**
+   * The chain's dedicated bundle RPC URLs (`rpcUrls[chainId].bundle`). Empty
+   * when the chain has none. Optional for the same reason as
+   * `getWriteRpcUrlsByChainId`.
+   */
+  getBundleRpcUrlsByChainId?(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {

@@ -27,11 +27,17 @@ vi.mock('../confirmation/confirmBundle.js', () => ({
 
 const { sendAndConfirmBundle } = await import('./sendAndConfirmBundle.js')
 
-/** A client whose Solana `rpcUrls` entry has the given write list. */
-const clientWith = (writeRpcUrls: string[] = []) =>
+/** A client whose Solana `rpcUrls` entry has the given write and bundle lists. */
+const clientWith = (
+  writeRpcUrls: string[] = [],
+  bundleRpcUrls: string[] = []
+) =>
   ({
     getWriteRpcUrlsByChainId: vi.fn(async (chainId: number) =>
       chainId === ChainId.SOL ? writeRpcUrls : []
+    ),
+    getBundleRpcUrlsByChainId: vi.fn(async (chainId: number) =>
+      chainId === ChainId.SOL ? bundleRpcUrls : []
     ),
   }) as never
 
@@ -397,6 +403,49 @@ describe('sendAndConfirmBundle with write RPCs', () => {
 
     expect(getJitoWriteRpcs).not.toHaveBeenCalled()
     expect(read.sendBundle).toHaveBeenCalledTimes(1)
+  })
+
+  it('submits through the bundle RPCs, not the write RPCs, when both are set', async () => {
+    const BUNDLE_URLS = ['https://bundle.example']
+    const bundleRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    const writeRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    // Both pass the Jito probe; only the bundle list may submit.
+    getJitoWriteRpcs.mockImplementation(async (urls: string[]) =>
+      urls === BUNDLE_URLS ? [bundleRpc] : [writeRpc]
+    )
+
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS, BUNDLE_URLS),
+      TRANSACTIONS
+    )
+
+    expect(result.kind).toBe('confirmed')
+    expect(bundleRpc.sendBundle).toHaveBeenCalledTimes(1)
+    expect(writeRpc.sendBundle).not.toHaveBeenCalled()
+  })
+
+  it('submits through the Jito-capable write RPCs when no bundle RPC passes the probe', async () => {
+    const BUNDLE_URLS = ['https://bundle.example']
+    const writeRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    getJitoWriteRpcs.mockImplementation(async (urls: string[]) =>
+      urls === BUNDLE_URLS ? [] : [writeRpc]
+    )
+
+    const result = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS, BUNDLE_URLS),
+      TRANSACTIONS
+    )
+
+    expect(result.kind).toBe('confirmed')
+    expect(writeRpc.sendBundle).toHaveBeenCalledTimes(1)
   })
 
   it('does not probe write RPCs when the chain has none', async () => {

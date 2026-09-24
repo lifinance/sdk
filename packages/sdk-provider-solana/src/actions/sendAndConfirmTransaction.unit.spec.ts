@@ -30,11 +30,17 @@ const { sendAndConfirmTransaction } = await import(
   './sendAndConfirmTransaction.js'
 )
 
-/** A client whose Solana `rpcUrls` entry has the given write list. */
-const clientWith = (writeRpcUrls: string[] = []) =>
+/** A client whose Solana `rpcUrls` entry has the given write and bundle lists. */
+const clientWith = (
+  writeRpcUrls: string[] = [],
+  bundleRpcUrls: string[] = []
+) =>
   ({
     getWriteRpcUrlsByChainId: vi.fn(async (chainId: number) =>
       chainId === ChainId.SOL ? writeRpcUrls : []
+    ),
+    getBundleRpcUrlsByChainId: vi.fn(async (chainId: number) =>
+      chainId === ChainId.SOL ? bundleRpcUrls : []
     ),
   }) as never
 
@@ -466,6 +472,21 @@ describe('sendAndConfirmTransaction with write RPCs', () => {
     expect(writeB.sendTransaction).toHaveBeenCalledTimes(1)
     expect(waits).toEqual(['gave up', 'gave up'])
   }, 5_000)
+
+  it('never sends a transaction through a bundle RPC', async () => {
+    // Bundle URLs take bundles only. Without a write list, transactions keep
+    // going through the read RPCs, as before.
+    const read = createRpc()
+    getSolanaRpcs.mockResolvedValue([read])
+
+    await sendAndConfirmTransaction(
+      clientWith([], ['https://bundle.example']),
+      {} as never
+    )
+
+    expect(getSolanaWriteRpcs).not.toHaveBeenCalled()
+    expect(read.sendTransaction).toHaveBeenCalledTimes(1)
+  })
 
   it('sends through the read RPCs with a client that has no write RPC lookup', async () => {
     // A client from another SDK version, or a hand-written one, may lack the

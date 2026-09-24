@@ -27,6 +27,7 @@ export function createClient(options: SDKConfig): SDKClient {
   // everything that reads `config.rpcUrls` sees `string[]` as before.
   const readRpcUrls: RPCUrls = {}
   const writeRpcUrls: RPCUrls = {}
+  const bundleRpcUrls: RPCUrls = {}
   let hasRoles = false
   for (const key in rpcUrls) {
     const chainId = Number(key) as ChainId
@@ -40,6 +41,9 @@ export function createClient(options: SDKConfig): SDKClient {
       }
       if (entry.write?.length) {
         writeRpcUrls[chainId] = entry.write
+      }
+      if (entry.bundle?.length) {
+        bundleRpcUrls[chainId] = entry.bundle
       }
     }
   }
@@ -103,6 +107,9 @@ export function createClient(options: SDKConfig): SDKClient {
     },
     async getWriteRpcUrlsByChainId(chainId: ChainId) {
       return writeRpcUrls[chainId] ?? []
+    },
+    async getBundleRpcUrlsByChainId(chainId: ChainId) {
+      return bundleRpcUrls[chainId] ?? []
     },
   }
 
