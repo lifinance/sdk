@@ -357,8 +357,8 @@ describe('write RPCs', () => {
     expect(second[0]).toBe(first[0])
   })
 
-  it('returns only the write URLs that pass the Jito probe', async () => {
-    const { getJitoWriteRpcs } = await import('./registry.js')
+  it('returns only the URLs that pass the Jito probe', async () => {
+    const { getJitoCapableRpcs } = await import('./registry.js')
     createJitoRpc.mockImplementation((...args: unknown[]) => {
       const rpcUrl = String(args[0])
       return {
@@ -372,7 +372,7 @@ describe('write RPCs', () => {
       } as never
     })
 
-    const rpcs = await getJitoWriteRpcs([
+    const rpcs = await getJitoCapableRpcs([
       'https://plain-write.example',
       'https://jito-write.example',
     ])
@@ -383,11 +383,11 @@ describe('write RPCs', () => {
   })
 
   it('shares the probe cache with the configured RPCs', async () => {
-    const { getJitoRpcs, getJitoWriteRpcs } = await import('./registry.js')
+    const { getJitoRpcs, getJitoCapableRpcs } = await import('./registry.js')
     getBundleStatuses.mockResolvedValue({ value: [null] })
 
     await getJitoRpcs(clientWith(['https://jito.example']))
-    const rpcs = await getJitoWriteRpcs(['https://jito.example'])
+    const rpcs = await getJitoCapableRpcs(['https://jito.example'])
 
     // One probe per URL across both lists: the write list must not add a
     // second probe to the pre-submission latency path.

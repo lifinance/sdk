@@ -6,7 +6,7 @@ import {
 } from '../confirmation/confirmBundle.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
-import { getJitoRpcs, getJitoWriteRpcs } from '../rpc/registry.js'
+import { getJitoCapableRpcs, getJitoRpcs } from '../rpc/registry.js'
 import type { JitoRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
@@ -34,22 +34,24 @@ export async function sendAndConfirmBundle(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  // Every probe sits on the latency path before submission, so all run
-  // together. Only URLs that pass it submit; with none, the read Jito RPCs
-  // submit as they would without bundle or write RPCs.
+  // Only URLs that pass the Jito probe submit: the bundle RPCs, else the write
+  // RPCs, else - with neither - the read Jito RPCs, as without either list.
+  // The write list is probed only when it is needed.
   const jitoCapable = (
     urls: Promise<string[]> | undefined
   ): Promise<JitoRpcType[]> =>
     Promise.resolve(urls).then((list) =>
-      list?.length ? getJitoWriteRpcs(list) : []
+      list?.length ? getJitoCapableRpcs(list) : []
     )
-  const [{ rpcs: jitoRpcs, unreachable }, bundleRpcs, writeRpcs] =
-    await Promise.all([
-      getJitoRpcs(client),
-      jitoCapable(client.getBundleRpcUrlsByChainId?.(ChainId.SOL)),
-      jitoCapable(client.getWriteRpcUrlsByChainId?.(ChainId.SOL)),
-    ])
-  const submitRpcs = bundleRpcs.length ? bundleRpcs : writeRpcs
+  const [{ rpcs: jitoRpcs, unreachable }, submitRpcs] = await Promise.all([
+    getJitoRpcs(client),
+    jitoCapable(client.getBundleRpcUrlsByChainId?.(ChainId.SOL)).then(
+      (bundleRpcs) =>
+        bundleRpcs.length
+          ? bundleRpcs
+          : jitoCapable(client.getWriteRpcUrlsByChainId?.(ChainId.SOL))
+    ),
+  ])
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The

@@ -43,8 +43,8 @@ export interface SDKConfig
   integrator: string
   /**
    * Per chain, one list for reads and sends, or lists by role. The client
-   * keeps the read lists in `config.rpcUrls` and serves the write lists
-   * through `getWriteRpcUrlsByChainId`.
+   * keeps the read lists in `config.rpcUrls` and serves the write and bundle
+   * lists through `getWriteRpcUrlsByChainId` and `getBundleRpcUrlsByChainId`.
    */
   rpcUrls?: RPCUrlsConfig
   providers?: SDKProvider[]
@@ -66,8 +66,8 @@ export interface RPCUrlsByRole {
   write?: string[]
   /**
    * Bundle submissions, for providers that submit bundles themselves (Jito
-   * `sendBundle` on Solana). Unset or empty, the write URLs that support
-   * bundles submit them, then the read URLs that do.
+   * `sendBundle` on Solana). Unset, empty, or with no URL that supports
+   * bundles, the write URLs that do submit them, then the read URLs that do.
    */
   bundle?: string[]
 }

@@ -3,8 +3,10 @@ import { createSolanaRpc } from '@solana/kit'
 import { createJitoRpc } from './jito/createJitoRpc.js'
 import type { JitoRpcType, SolanaRpcType } from './types.js'
 
-const solanaRpcs = new LruMap<SolanaRpcType>(12)
-const jitoRpcs = new LruMap<JitoRpcType>(12)
+// Read, write and bundle URLs share these caches, so they hold more than one
+// list's worth: an entry evicted mid-use is probed or built again.
+const solanaRpcs = new LruMap<SolanaRpcType>(64)
+const jitoRpcs = new LruMap<JitoRpcType>(64)
 
 /**
  * A well-formed but non-existent Jito bundle id used solely to probe RPC
@@ -52,7 +54,7 @@ type JitoProbeRecord = JitoProbeResult & { at: number }
  * set never shrinks, and every bundle submission re-probes every non-Jito
  * endpoint at up to `PROBE_TIMEOUT_MS` each, on the latency path before
  * submission can start. */
-const jitoProbes = new LruMap<JitoProbeRecord>(12)
+const jitoProbes = new LruMap<JitoProbeRecord>(64)
 
 /** One rule for every outcome: a record is fresh until its own window closes.
  * `Infinity` covers the answers that cannot change. */
@@ -247,7 +249,7 @@ export const getSolanaRpcs = async (
 /**
  * Clients for the write RPCs (`rpcUrls[ChainId.SOL].write`). They only
  * send transactions; the one read they get is the Jito probe in
- * `getJitoWriteRpcs`.
+ * `getJitoCapableRpcs`.
  * @param rpcUrls - The write RPC URLs.
  * @returns - Solana RPCs to send transactions through.
  */
@@ -274,13 +276,12 @@ export const getJitoRpcs = async (
 }
 
 /**
- * The write RPCs (`rpcUrls[ChainId.SOL].write`) that can take a Jito
- * bundle. They get the same capability probe as the configured RPCs; a write
- * URL that fails it only sends plain transactions.
- * @param rpcUrls - The write RPC URLs.
+ * The given URLs that pass the Jito probe - the bundle or write RPCs of
+ * `rpcUrls[ChainId.SOL]`. They share the probe cache with the read RPCs.
+ * @param rpcUrls - The URLs to probe.
  * @returns - Jito RPCs to submit bundles through. Empty when none passed.
  */
-export const getJitoWriteRpcs = async (
+export const getJitoCapableRpcs = async (
   rpcUrls: string[]
 ): Promise<JitoRpcType[]> => {
   await ensureJitoRpcsFor(rpcUrls)
