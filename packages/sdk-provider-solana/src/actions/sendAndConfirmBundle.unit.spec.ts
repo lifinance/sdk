@@ -367,18 +367,23 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(result.errors[0].message).toBe('403')
   })
 
-  it('submits through the configured Jito RPCs when no write RPC passes the probe', async () => {
+  it('fails instead of using the read RPCs when no write RPC passes the probe', async () => {
+    // With a write list set, bundles never go to the read RPCs - even when
+    // those could take the bundle.
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
     getJitoCapableRpcs.mockResolvedValue([])
 
-    const result = await sendAndConfirmBundle(
+    const thrown = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
       TRANSACTIONS
-    )
+    ).catch((e) => e)
 
-    expect(result.kind).toBe('confirmed')
-    expect(read.sendBundle).toHaveBeenCalledTimes(1)
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL]')
+    expect(read.sendBundle).not.toHaveBeenCalled()
+    expect(confirmBundle).not.toHaveBeenCalled()
   })
 
   it('names the read list when only a write RPC supports Jito', async () => {
@@ -474,18 +479,37 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(getJitoCapableRpcs).toHaveBeenCalledWith(BUNDLE_URLS)
   })
 
-  it('submits through the read Jito RPCs when no bundle RPC passes the probe and there is no write list', async () => {
+  it('fails instead of using the read RPCs when no bundle RPC passes the probe and there is no write list', async () => {
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
     getJitoCapableRpcs.mockResolvedValue([])
 
-    const result = await sendAndConfirmBundle(
+    const thrown = await sendAndConfirmBundle(
       clientWith([], ['https://bundle.example']),
       TRANSACTIONS
-    )
+    ).catch((e) => e)
 
-    expect(result.kind).toBe('confirmed')
-    expect(read.sendBundle).toHaveBeenCalledTimes(1)
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(read.sendBundle).not.toHaveBeenCalled()
+  })
+
+  it('fails when neither the bundle nor the write list passes the probe', async () => {
+    const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
+    getJitoCapableRpcs.mockResolvedValue([])
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS, ['https://bundle.example']),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    // Both lists were tried, bundle first.
+    expect(getJitoCapableRpcs.mock.calls).toEqual([
+      [['https://bundle.example']],
+      [WRITE_URLS],
+    ])
+    expect(read.sendBundle).not.toHaveBeenCalled()
   })
 
   it('does not probe write RPCs when the chain has none', async () => {

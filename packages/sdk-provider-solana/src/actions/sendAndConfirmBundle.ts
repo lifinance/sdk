@@ -25,6 +25,7 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * When the client has Solana bundle or write RPCs (`rpcUrls[ChainId.SOL]`),
  * the bundle is submitted once through those that pass the Jito probe - the
  * bundle list first, else the write list - and the read Jito RPCs only poll.
+ * With either list set, bundles never go to the read RPCs.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
@@ -34,24 +35,34 @@ export async function sendAndConfirmBundle(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  // Only URLs that pass the Jito probe submit: the bundle RPCs, else the write
-  // RPCs, else - with neither - the read Jito RPCs, as without either list.
-  // The write list is probed only when it is needed.
-  const jitoCapable = (
-    urls: Promise<string[]> | undefined
-  ): Promise<JitoRpcType[]> =>
-    Promise.resolve(urls).then((list) =>
-      list?.length ? getJitoCapableRpcs(list) : []
-    )
+  // With a bundle or write list set, bundles go only to those: the bundle
+  // RPCs that pass the Jito probe, else the write RPCs that do. The write list
+  // is probed only when it is needed. With neither list, each branch submits
+  // through its own read Jito RPC, as before.
+  const [bundleUrls = [], writeUrls = []] = await Promise.all([
+    client.getBundleRpcUrlsByChainId?.(ChainId.SOL),
+    client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
+  ])
+  const findSubmitRpcs = async (): Promise<JitoRpcType[]> => {
+    const bundleRpcs = bundleUrls.length
+      ? await getJitoCapableRpcs(bundleUrls)
+      : []
+    if (bundleRpcs.length || !writeUrls.length) {
+      return bundleRpcs
+    }
+    return getJitoCapableRpcs(writeUrls)
+  }
   const [{ rpcs: jitoRpcs, unreachable }, submitRpcs] = await Promise.all([
     getJitoRpcs(client),
-    jitoCapable(client.getBundleRpcUrlsByChainId?.(ChainId.SOL)).then(
-      (bundleRpcs) =>
-        bundleRpcs.length
-          ? bundleRpcs
-          : jitoCapable(client.getWriteRpcUrlsByChainId?.(ChainId.SOL))
-    ),
+    findSubmitRpcs(),
   ])
+
+  if ((bundleUrls.length || writeUrls.length) && !submitRpcs.length) {
+    throw new RPCError(
+      LiFiErrorCode.RpcUnavailable,
+      'Jito bundle required, but no URL in `rpcUrls[ChainId.SOL].bundle` or `.write` passed the Jito capability probe: they do not support `sendBundle`, or the probe failed temporarily - retry. Bundles never go to the read RPCs while either list is set.'
+    )
+  }
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The

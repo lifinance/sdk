@@ -69,8 +69,8 @@ export interface RPCUrlsByRole {
   write?: string[]
   /**
    * Bundle submissions (Jito `sendBundle`). Unset, empty, or with no URL that
-   * supports bundles, the write URLs that do submit them, then the read URLs
-   * that do.
+   * supports bundles, the write URLs that do submit them. While `bundle` or
+   * `write` is set, bundles never go to the read URLs.
    *
    * Only `@lifi/sdk-provider-solana` uses this today; other providers ignore
    * it.
