@@ -150,6 +150,34 @@ describe('withDedupe with abort signals', () => {
     expect(request.signal()).toBeUndefined()
   })
 
+  it('passes a failure of the shared request to every caller', async () => {
+    let fail!: (error: Error) => void
+    const fn = vi.fn(
+      () =>
+        new Promise<string>((_, reject) => {
+          fail = reject
+        })
+    )
+    const first = new AbortController()
+    const second = new AbortController()
+    const error = new Error('request failed')
+
+    const results = [
+      withDedupe(fn, { id: 'shared-failure', signal: first.signal }),
+      withDedupe(fn, { id: 'shared-failure', signal: second.signal }),
+      withDedupe(fn, { id: 'shared-failure' }),
+    ]
+    fail(error)
+
+    for (const result of results) {
+      await expect(result).rejects.toBe(error)
+    }
+    // A listener left on a signal would keep the request alive with it.
+    expect(getEventListeners(first.signal, 'abort')).toHaveLength(0)
+    expect(getEventListeners(second.signal, 'abort')).toHaveLength(0)
+    expect(fn).toHaveBeenCalledOnce()
+  })
+
   it('does not abort a settled request when its caller aborts afterwards', async () => {
     const request = deferredRequest()
     const controller = new AbortController()
