@@ -359,6 +359,12 @@ describe('sendAndConfirmBundle with write RPCs', () => {
 
     expect(result.kind).toBe('rpc-unavailable')
     expect(acceptingRead.sendBundle).not.toHaveBeenCalled()
+    // The write RPC's own refusal, as a single configured RPC would report
+    // it - not a nested AggregateError.
+    if (result.kind !== 'rpc-unavailable') {
+      throw new Error('unreachable')
+    }
+    expect(result.errors[0].message).toBe('403')
   })
 
   it('submits through the configured Jito RPCs when no write RPC passes the probe', async () => {

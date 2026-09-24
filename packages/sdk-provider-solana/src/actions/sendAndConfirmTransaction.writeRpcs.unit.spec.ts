@@ -80,4 +80,63 @@ describe('sendAndConfirmTransaction with a slow write RPC', () => {
     expect(write.signals.length).toBeGreaterThan(0)
     expect(write.signals.every((signal) => signal.aborted)).toBe(true)
   }, 5_000)
+
+  /** A write RPC that accepts each send after `ms`, whatever its signal says. */
+  const slowWriteRpc = (ms: number) => ({
+    sendTransaction: () => ({
+      send: () => new Promise((resolve) => setTimeout(() => resolve('ok'), ms)),
+    }),
+  })
+
+  /** A read RPC that reports the transaction confirmed after `ms`. */
+  const readRpcConfirmingAfter = (ms: number) => {
+    const start = Date.now()
+    return {
+      getSignatureStatuses: () => ({
+        send: () =>
+          Promise.resolve({
+            value: [
+              Date.now() - start >= ms
+                ? { confirmationStatus: 'confirmed', err: null, slot: 1n }
+                : null,
+            ],
+          }),
+      }),
+    }
+  }
+
+  it('reports a write RPC that accepts after the branch stopped waiting', async () => {
+    // The branch gives up on the send after one interval and polls. The
+    // acceptance lands later, while the race still runs, so only the
+    // call-wide recorder can report it.
+    getSolanaRpcs.mockResolvedValue([readRpcConfirmingAfter(1_600)])
+    getSolanaWriteRpcs.mockReturnValue([slowWriteRpc(1_200)])
+    const onBroadcast = vi.fn()
+
+    const result = await sendAndConfirmTransaction(
+      clientWith(['https://write.example']),
+      {} as never,
+      { onBroadcast }
+    )
+
+    expect(result).toMatchObject({ kind: 'confirmed' })
+    expect(onBroadcast).toHaveBeenCalledTimes(1)
+  }, 5_000)
+
+  it('does not report an acceptance that lands after the race is over', async () => {
+    // A late report would regress an action status the wait task already
+    // finalized.
+    getSolanaRpcs.mockResolvedValue([confirmingReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([slowWriteRpc(1_400)])
+    const onBroadcast = vi.fn()
+
+    await sendAndConfirmTransaction(
+      clientWith(['https://write.example']),
+      {} as never,
+      { onBroadcast }
+    )
+    await new Promise((resolve) => setTimeout(resolve, 700))
+
+    expect(onBroadcast).not.toHaveBeenCalled()
+  }, 5_000)
 })

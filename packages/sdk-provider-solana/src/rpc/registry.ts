@@ -148,13 +148,23 @@ export const probeJitoRpc = async (
  */
 const ensureSolanaRpcs = async (client: SDKClient): Promise<string[]> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  ensureSolanaRpcsFor(rpcUrls)
+  return rpcUrls
+}
+
+/** Creates and caches a client for each URL that has none yet. */
+const ensureSolanaRpcsFor = (rpcUrls: string[]): void => {
   for (const rpcUrl of rpcUrls) {
     if (!solanaRpcs.has(rpcUrl)) {
       solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
     }
   }
-  return rpcUrls
 }
+
+const cachedSolanaRpcs = (rpcUrls: string[]): SolanaRpcType[] =>
+  rpcUrls
+    .map((rpcUrl) => solanaRpcs.get(rpcUrl))
+    .filter((rpc): rpc is SolanaRpcType => Boolean(rpc))
 
 /**
  * Probes each URL for Jito support and caches a client for every supported
@@ -240,10 +250,7 @@ const cachedJitoRpcs = (rpcUrls: string[]): JitoRpcType[] =>
 export const getSolanaRpcs = async (
   client: SDKClient
 ): Promise<SolanaRpcType[]> => {
-  const rpcUrls = await ensureSolanaRpcs(client)
-  return rpcUrls
-    .map((rpcUrl) => solanaRpcs.get(rpcUrl))
-    .filter((rpc): rpc is SolanaRpcType => Boolean(rpc))
+  return cachedSolanaRpcs(await ensureSolanaRpcs(client))
 }
 
 /**
@@ -253,15 +260,10 @@ export const getSolanaRpcs = async (
  * @param rpcUrls - The write RPC URLs.
  * @returns - Solana RPCs to send transactions through.
  */
-export const getSolanaWriteRpcs = (rpcUrls: string[]): SolanaRpcType[] =>
-  rpcUrls.map((rpcUrl) => {
-    let rpc = solanaRpcs.get(rpcUrl)
-    if (!rpc) {
-      rpc = createSolanaRpc(rpcUrl)
-      solanaRpcs.set(rpcUrl, rpc)
-    }
-    return rpc
-  })
+export const getSolanaWriteRpcs = (rpcUrls: string[]): SolanaRpcType[] => {
+  ensureSolanaRpcsFor(rpcUrls)
+  return cachedSolanaRpcs(rpcUrls)
+}
 
 /** `unreachable` counts endpoints whose probe failed without naming the
  * method unknown. Empty `rpcs` with a non-zero count is usually an outage, but

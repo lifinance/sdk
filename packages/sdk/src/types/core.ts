@@ -60,14 +60,20 @@ export interface RPCUrlsByRole {
    */
   read?: string[]
   /**
-   * Sends, for providers that broadcast transactions themselves (Solana).
-   * Unset or empty, the read URLs send as well.
+   * Sends. Unset or empty, the read URLs send as well. When `bundle` is unset,
+   * the write URLs that support bundles also submit bundles.
+   *
+   * Only `@lifi/sdk-provider-solana` uses this today; other providers send
+   * through the read URLs and ignore it.
    */
   write?: string[]
   /**
-   * Bundle submissions, for providers that submit bundles themselves (Jito
-   * `sendBundle` on Solana). Unset, empty, or with no URL that supports
-   * bundles, the write URLs that do submit them, then the read URLs that do.
+   * Bundle submissions (Jito `sendBundle`). Unset, empty, or with no URL that
+   * supports bundles, the write URLs that do submit them, then the read URLs
+   * that do.
+   *
+   * Only `@lifi/sdk-provider-solana` uses this today; other providers ignore
+   * it.
    */
   bundle?: string[]
 }
