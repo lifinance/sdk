@@ -1,3 +1,4 @@
+import { getEventListeners } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { withDedupe } from './withDedupe.js'
 
@@ -166,17 +167,21 @@ describe('withDedupe with abort signals', () => {
   })
 
   it('lets the first caller leave when fn aborts its signal', async () => {
-    const request = deferredRequest()
     const leaving = new AbortController()
+    let requestSignal: AbortSignal | undefined
+    // The request ignores its signal, so it never settles.
     const fn = (signal?: AbortSignal) => {
+      requestSignal = signal
       leaving.abort()
-      return request.fn(signal)
+      return new Promise<string>(() => {})
     }
 
     const left = withDedupe(fn, { id: 'sync-abort', signal: leaving.signal })
 
     await expect(left).rejects.toBe(leaving.signal.reason)
-    expect(request.signal()?.aborted).toBe(true)
+    expect(requestSignal?.aborted).toBe(true)
+    // A listener left on the signal would keep the request alive with it.
+    expect(getEventListeners(leaving.signal, 'abort')).toHaveLength(0)
   })
 
   it('rejects with an AbortError when a signal aborts without a reason', async () => {

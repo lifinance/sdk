@@ -20,12 +20,19 @@ export class LruMap<value = unknown> extends Map<string, value> {
   }
 }
 
+type Caller = {
+  resolve: (value: any) => void
+  reject: (error: unknown) => void
+}
+
 type InFlight = {
   promise: Promise<any>
   /** Absent when the first caller had no signal: then nothing can abort it. */
   controller?: AbortController | undefined
-  /** Callers that have not aborted. One without a signal never aborts. */
-  waiting: number
+  /** Callers with a signal that are still waiting. */
+  callers: Set<Caller>
+  /** A caller without a signal joined, so the request must run to the end. */
+  pinned: boolean
 }
 
 /** @internal */
@@ -67,8 +74,27 @@ export function withDedupe<T>(
   if (!inFlight) {
     const controller = signal ? new AbortController() : undefined
     const promise = fn(controller?.signal).finally(() => evict(id, promise))
-    inFlight = { promise, controller, waiting: 0 }
-    promiseCache.set(id, inFlight)
+    const created: InFlight = {
+      promise,
+      controller,
+      callers: new Set(),
+      pinned: false,
+    }
+    // One reaction per request, so a caller that leaves holds nothing here.
+    promise.then(
+      (value) => {
+        for (const caller of created.callers) {
+          caller.resolve(value)
+        }
+      },
+      (error) => {
+        for (const caller of created.callers) {
+          caller.reject(error)
+        }
+      }
+    )
+    promiseCache.set(id, created)
+    inFlight = created
   }
   return join<T>(id, inFlight, signal)
 }
@@ -78,38 +104,40 @@ function join<T>(
   inFlight: InFlight,
   signal: AbortSignal | undefined
 ): Promise<T> {
-  inFlight.waiting++
   if (!signal) {
+    inFlight.pinned = true
     return inFlight.promise
   }
   return new Promise<T>((resolve, reject) => {
+    // Stop listening before settling, so a later abort cannot reach the request.
+    const caller: Caller = {
+      resolve: (value) => {
+        signal.removeEventListener('abort', leave)
+        resolve(value)
+      },
+      reject: (error) => {
+        signal.removeEventListener('abort', leave)
+        reject(error)
+      },
+    }
     const leave = () => {
+      // `leave` can run without the event, so the listener is not always gone.
+      signal.removeEventListener('abort', leave)
+      inFlight.callers.delete(caller)
       const reason = abortReason(signal)
-      inFlight.waiting--
       reject(reason)
-      if (inFlight.waiting === 0) {
+      if (!inFlight.pinned && inFlight.callers.size === 0) {
         // A caller arriving now must start a new request, not join this one.
         evict(id, inFlight.promise)
         inFlight.controller?.abort(reason)
       }
     }
-    // Stop listening before settling, so a later abort cannot reach the request.
-    const detach = () => signal.removeEventListener('abort', leave)
+    inFlight.callers.add(caller)
     signal.addEventListener('abort', leave, { once: true })
     // `fn` runs before this listener exists and may have aborted the signal.
     if (signal.aborted) {
       leave()
     }
-    inFlight.promise.then(
-      (value) => {
-        detach()
-        resolve(value)
-      },
-      (error) => {
-        detach()
-        reject(error)
-      }
-    )
   })
 }
 
