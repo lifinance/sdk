@@ -133,7 +133,7 @@ describe('withDedupe with abort signals', () => {
     expect(second.fn).toHaveBeenCalledOnce()
   })
 
-  it('never aborts a request started by a caller without a signal', async () => {
+  it('never aborts or restarts a request started by a caller without a signal', async () => {
     const request = deferredRequest()
     const leaving = new AbortController()
 
@@ -143,11 +143,86 @@ describe('withDedupe with abort signals', () => {
       signal: leaving.signal,
     })
     leaving.abort()
+    const later = withDedupe(request.fn, { id: 'no-signal-first' })
     request.resolve('result')
 
     await expect(left).rejects.toBe(leaving.signal.reason)
     await expect(stayed).resolves.toBe('result')
+    await expect(later).resolves.toBe('result')
     expect(request.signal()).toBeUndefined()
+    expect(request.fn).toHaveBeenCalledOnce()
+  })
+
+  it('starts a new request for the same id once the last one settled', async () => {
+    const first = deferredRequest()
+    const done = withDedupe(first.fn, { id: 'settled-then-again' })
+    first.resolve('first')
+    await expect(done).resolves.toBe('first')
+
+    const second = deferredRequest()
+    const again = withDedupe(second.fn, { id: 'settled-then-again' })
+    second.resolve('second')
+
+    await expect(again).resolves.toBe('second')
+    expect(second.fn).toHaveBeenCalledOnce()
+  })
+
+  it('lets a call made while the request is being aborted start a new request', async () => {
+    const leaving = new AbortController()
+    const second = deferredRequest()
+    let nested: Promise<string> | undefined
+    // The request never settles; its abort handler asks for the same id.
+    const fn = (signal?: AbortSignal) => {
+      signal?.addEventListener('abort', () => {
+        nested = withDedupe(second.fn, { id: 'reentrant' })
+      })
+      return new Promise<string>(() => {})
+    }
+
+    const left = withDedupe(fn, { id: 'reentrant', signal: leaving.signal })
+    leaving.abort()
+    second.resolve('fresh')
+
+    await expect(left).rejects.toBe(leaving.signal.reason)
+    await expect(nested).resolves.toBe('fresh')
+    expect(second.fn).toHaveBeenCalledOnce()
+  })
+
+  it('adds no handler of its own while only callers without a signal share a request', async () => {
+    // Counts the handlers added to each promise, so the test can see ours.
+    class CountingPromise<T> extends Promise<T> {
+      handlers = 0
+      // biome-ignore lint/suspicious/noThenProperty: counts the handlers added to the promise
+      override then<A = T, B = never>(
+        onFulfilled?: ((value: T) => A | PromiseLike<A>) | null,
+        onRejected?: ((reason: unknown) => B | PromiseLike<B>) | null
+      ): Promise<A | B> {
+        this.handlers++
+        return super.then(onFulfilled, onRejected)
+      }
+    }
+    let resolve!: (value: string) => void
+    const fn = () =>
+      new CountingPromise<string>((res) => {
+        resolve = res
+      })
+
+    // Without a handler of ours, a failure every caller ignores stays reported.
+    const shared = withDedupe(fn, {
+      id: 'no-handler',
+    }) as CountingPromise<string>
+    withDedupe(fn, { id: 'no-handler' })
+    expect(shared.handlers).toBe(0)
+
+    const withSignal = withDedupe(fn, {
+      id: 'no-handler',
+      signal: new AbortController().signal,
+    })
+    expect(shared.handlers).toBe(1)
+    resolve('result')
+
+    await expect(shared).resolves.toBe('result')
+    await expect(withSignal).resolves.toBe('result')
   })
 
   it('passes a failure of the shared request to every caller', async () => {
