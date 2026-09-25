@@ -549,11 +549,43 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     ).catch((e) => e)
 
     expect(thrown).toBeInstanceOf(RPCError)
-    // Only the list that is set is named, and no retry is promised for an
-    // answer that never changes.
-    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].bundle')
-    expect(thrown.message).not.toContain('.write')
-    expect(thrown.message).not.toContain('retry')
+    // Only the list that is set is named, no retry is promised for an answer
+    // that never changes, and the read RPCs are fine, so they are not named.
+    expect(thrown.message).toBe(
+      'Jito bundle required, but no URL in `rpcUrls[ChainId.SOL].bundle` passed the Jito capability probe. They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`. Bundles never go to the read RPCs while `bundle` or `write` is set.'
+    )
+  })
+
+  it('asks for a retry when only the bundle list probe failed and the write list is unsupported', async () => {
+    const BUNDLE_URLS = ['https://bundle.example']
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
+      rpcs: [],
+      unreachable: urls === BUNDLE_URLS ? 1 : 0,
+    }))
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS, BUNDLE_URLS),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown.message).toContain('retry')
+  })
+
+  it('does not blame the read list when its probe was only unreachable', async () => {
+    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 1 })
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.message).not.toContain('rpcUrls[ChainId.SOL].read')
   })
 
   it('asks for a retry when the probe of a listed URL failed', async () => {

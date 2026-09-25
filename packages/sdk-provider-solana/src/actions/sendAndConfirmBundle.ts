@@ -74,10 +74,13 @@ export async function sendAndConfirmBundle(
       [
         `Jito bundle required, but no URL in ${lists} passed the Jito capability probe.`,
         submitUnreachable > 0
-          ? `The probe failed against ${submitUnreachable} of them. This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
+          ? 'The probe got no answer from some of them. This is usually temporary - retry. If it persists, the endpoint may refuse `sendBundle` for your plan.'
           : 'They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`.',
         'Bundles never go to the read RPCs while `bundle` or `write` is set.',
+        // Only a definite gap: a read RPC that did not answer the probe may
+        // support bundles, and the next attempt reports that case itself.
         jitoRpcs.length === 0 &&
+          unreachable === 0 &&
           'No read RPC supports `getBundleStatuses` to confirm a bundle either: also add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.',
       ]
         .filter(Boolean)

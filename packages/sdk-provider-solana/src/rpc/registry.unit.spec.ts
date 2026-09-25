@@ -367,19 +367,25 @@ describe('write RPCs', () => {
           send: () =>
             rpcUrl.includes('plain')
               ? Promise.reject(methodNotFound)
-              : Promise.resolve({ value: [null] }),
+              : rpcUrl.includes('down')
+                ? Promise.reject(new Error('429 Too Many Requests'))
+                : Promise.resolve({ value: [null] }),
         }),
       } as never
     })
 
-    const { rpcs } = await getJitoCapableRpcs([
+    const { rpcs, unreachable } = await getJitoCapableRpcs([
       'https://plain-write.example',
+      'https://down-write.example',
       'https://jito-write.example',
     ])
 
     expect(rpcs.map((rpc) => (rpc as { rpcUrl?: string }).rpcUrl)).toEqual([
       'https://jito-write.example',
     ])
+    // Only the URL whose probe got no answer: an unsupported one is not a
+    // reason to retry.
+    expect(unreachable).toBe(1)
   })
 
   it('shares the probe cache with the configured RPCs', async () => {
