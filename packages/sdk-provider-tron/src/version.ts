@@ -1,2 +1,2 @@
 export const name = '@lifi/sdk-provider-tron'
-export const version = '4.1.3'
+export const version = '4.1.4'
