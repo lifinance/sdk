@@ -1,4 +1,4 @@
-import { ChainType } from '@lifi/sdk'
+import { ChainId, ChainType } from '@lifi/sdk'
 import { Account, Keypair, MuxedAccount, StrKey } from '@stellar/stellar-sdk'
 import { describe, expect, it } from 'vitest'
 import { StellarProvider } from './StellarProvider.js'
@@ -86,5 +86,17 @@ describe('StellarProvider', () => {
       ).toBe(false)
       expect(provider.isTokenAddress?.('')).toBe(false)
     })
+  })
+
+  it('answers isAddress as without a chain ID', () => {
+    const provider = StellarProvider()
+    const g = Keypair.random().publicKey()
+    expect(provider.isAddress(g, ChainId.XLM)).toBe(true)
+    for (const address of [g, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.XLM)).toBe(
+        provider.isAddress(address)
+      )
+    }
+    expect(provider.isAddress('laptop', ChainId.XLM)).toBe(false)
   })
 })

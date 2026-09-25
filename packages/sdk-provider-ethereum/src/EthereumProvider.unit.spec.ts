@@ -1,4 +1,4 @@
-import { ChainType } from '@lifi/sdk'
+import { ChainId, ChainType } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { EthereumProvider } from './EthereumProvider.js'
 
@@ -85,5 +85,25 @@ describe('EthereumProvider', () => {
 
     expect(executor).toBeDefined()
     expect(mockGetWalletClient).toHaveBeenCalledOnce()
+  })
+
+  describe('isAddress with a chain ID', () => {
+    const provider = EthereumProvider()
+    const usdt = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+
+    it('answers as without one, for every EVM chain', () => {
+      for (const address of [
+        usdt,
+        usdt.toLowerCase(),
+        `0x${usdt.slice(2).toUpperCase()}`,
+        'laptop',
+      ]) {
+        for (const chainId of [ChainId.ETH, ChainId.ARB]) {
+          expect(provider.isAddress(address, chainId)).toBe(
+            provider.isAddress(address)
+          )
+        }
+      }
+    })
   })
 })
