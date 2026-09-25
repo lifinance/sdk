@@ -1,5 +1,12 @@
 # @lifi/sdk
 
+## 4.9.1
+
+### Patch Changes
+
+- [#496](https://github.com/lifinance/sdk/pull/496) [`dcbbdcc`](https://github.com/lifinance/sdk/commit/dcbbdccc2684c4549cbfe06444698f11347206af) Thanks [@chybisov](https://github.com/chybisov)! - Bump the `@lifi/types` pin to `^18.12.1`, which adds `slippageScope` and the route-wide
+  slippage commitment types.
+
 ## 4.9.0
 
 ### Minor Changes
