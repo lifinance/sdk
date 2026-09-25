@@ -1,7 +1,8 @@
 import { ChainId } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { delay, HttpResponse, http } from 'msw'
+import { describe, expect, it, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
+import { SDKError } from '../errors/SDKError.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getTokens } from './getTokens.js'
 
@@ -44,5 +45,95 @@ describe('getTokens', () => {
 
     expect(fromA.tokens[ChainId.ETH]?.[0]?.symbol).toBe('A')
     expect(fromB.tokens[ChainId.ETH]?.[0]?.symbol).toBe('B')
+  })
+
+  // A signal belongs to the caller that passed it. Callers that share an
+  // in-flight request must not fail because another one aborted.
+  it('lets a caller finish when another caller of the same request aborts', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://abort.example/v1',
+    })
+    let requests = 0
+    server.use(
+      http.get('https://abort.example/v1/tokens', async () => {
+        requests++
+        await delay(50)
+        return HttpResponse.json({
+          tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
+        })
+      })
+    )
+    const leaving = new AbortController()
+
+    const left = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: leaving.signal }
+    )
+    const stayed = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: new AbortController().signal }
+    )
+    leaving.abort()
+
+    const error = await left.catch((error: unknown) => error)
+    expect(error).toBeInstanceOf(SDKError)
+    expect((error as SDKError).cause).toBe(leaving.signal.reason)
+    await expect(stayed).resolves.toMatchObject({
+      tokens: { [ChainId.ETH]: [{ symbol: 'ETH' }] },
+    })
+    expect(requests).toBe(1)
+  })
+
+  it('aborts the request once every caller has left', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://abort-all.example/v1',
+    })
+    let requestAborted = false
+    let reached!: () => void
+    const handlerReached = new Promise<void>((resolve) => {
+      reached = resolve
+    })
+    server.use(
+      http.get('https://abort-all.example/v1/tokens', async ({ request }) => {
+        request.signal.addEventListener('abort', () => {
+          requestAborted = true
+        })
+        reached()
+        await delay(50)
+        return HttpResponse.json({ tokens: {} })
+      })
+    )
+    const leaving = new AbortController()
+
+    const left = getTokens(
+      base,
+      { chains: [ChainId.ETH] },
+      { signal: leaving.signal }
+    )
+    // Abort only once the server has the request, so the test cannot race it.
+    await handlerReached
+    leaving.abort()
+
+    await expect(left).rejects.toBeInstanceOf(SDKError)
+    await vi.waitFor(() => expect(requestAborted).toBe(true))
+  })
+
+  // Older runtimes and polyfills can abort a signal without a `reason`.
+  it('rejects with an SDKError when an abort has no reason', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    Object.defineProperty(controller.signal, 'reason', { value: undefined })
+
+    await expect(
+      getTokens(
+        client,
+        { chains: [ChainId.ETH] },
+        { signal: controller.signal }
+      )
+    ).rejects.toBeInstanceOf(SDKError)
   })
 })
