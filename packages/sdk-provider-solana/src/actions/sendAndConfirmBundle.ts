@@ -43,24 +43,45 @@ export async function sendAndConfirmBundle(
     client.getBundleRpcUrlsByChainId?.(ChainId.SOL),
     client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
   ])
-  const findSubmitRpcs = async (): Promise<JitoRpcType[]> => {
-    const bundleRpcs = bundleUrls.length
+  const noSubmitRpcs = { rpcs: [] as JitoRpcType[], unreachable: 0 }
+  const findSubmitRpcs = async (): Promise<typeof noSubmitRpcs> => {
+    const bundle = bundleUrls.length
       ? await getJitoCapableRpcs(bundleUrls)
-      : []
-    if (bundleRpcs.length || !writeUrls.length) {
-      return bundleRpcs
+      : noSubmitRpcs
+    if (bundle.rpcs.length || !writeUrls.length) {
+      return bundle
     }
-    return getJitoCapableRpcs(writeUrls)
+    const write = await getJitoCapableRpcs(writeUrls)
+    return {
+      rpcs: write.rpcs,
+      unreachable: bundle.unreachable + write.unreachable,
+    }
   }
-  const [{ rpcs: jitoRpcs, unreachable }, submitRpcs] = await Promise.all([
-    getJitoRpcs(client),
-    findSubmitRpcs(),
-  ])
+  const [
+    { rpcs: jitoRpcs, unreachable },
+    { rpcs: submitRpcs, unreachable: submitUnreachable },
+  ] = await Promise.all([getJitoRpcs(client), findSubmitRpcs()])
 
   if ((bundleUrls.length || writeUrls.length) && !submitRpcs.length) {
+    const lists = [
+      bundleUrls.length && '`rpcUrls[ChainId.SOL].bundle`',
+      writeUrls.length && '`rpcUrls[ChainId.SOL].write`',
+    ]
+      .filter(Boolean)
+      .join(' or ')
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
-      'Jito bundle required, but no URL in `rpcUrls[ChainId.SOL].bundle` or `.write` passed the Jito capability probe: they do not support `sendBundle`, or the probe failed temporarily - retry. Bundles never go to the read RPCs while either list is set.'
+      [
+        `Jito bundle required, but no URL in ${lists} passed the Jito capability probe.`,
+        submitUnreachable > 0
+          ? `The probe failed against ${submitUnreachable} of them. This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
+          : 'They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`.',
+        'Bundles never go to the read RPCs while `bundle` or `write` is set.',
+        jitoRpcs.length === 0 &&
+          'No read RPC supports `getBundleStatuses` to confirm a bundle either: also add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.',
+      ]
+        .filter(Boolean)
+        .join(' ')
     )
   }
 

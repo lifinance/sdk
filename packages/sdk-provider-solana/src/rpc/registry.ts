@@ -280,12 +280,14 @@ export const getJitoRpcs = async (
 /**
  * The given URLs that pass the Jito probe - the bundle or write RPCs of
  * `rpcUrls[ChainId.SOL]`. They share the probe cache with the read RPCs.
+ * `unreachable` counts the URLs whose probe failed without an answer, as in
+ * `getJitoRpcs`.
  * @param rpcUrls - The URLs to probe.
- * @returns - Jito RPCs to submit bundles through. Empty when none passed.
+ * @returns - Jito RPCs to submit bundles through, and the unreachable count.
  */
 export const getJitoCapableRpcs = async (
   rpcUrls: string[]
-): Promise<JitoRpcType[]> => {
-  await ensureJitoRpcsFor(rpcUrls)
-  return cachedJitoRpcs(rpcUrls)
+): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {
+  const unreachable = await ensureJitoRpcsFor(rpcUrls)
+  return { rpcs: cachedJitoRpcs(rpcUrls), unreachable }
 }

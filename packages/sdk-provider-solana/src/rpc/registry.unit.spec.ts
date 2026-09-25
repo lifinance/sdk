@@ -372,7 +372,7 @@ describe('write RPCs', () => {
       } as never
     })
 
-    const rpcs = await getJitoCapableRpcs([
+    const { rpcs } = await getJitoCapableRpcs([
       'https://plain-write.example',
       'https://jito-write.example',
     ])
@@ -387,7 +387,7 @@ describe('write RPCs', () => {
     getBundleStatuses.mockResolvedValue({ value: [null] })
 
     await getJitoRpcs(clientWith(['https://jito.example']))
-    const rpcs = await getJitoCapableRpcs(['https://jito.example'])
+    const { rpcs } = await getJitoCapableRpcs(['https://jito.example'])
 
     // One probe per URL across both lists: the write list must not add a
     // second probe to the pre-submission latency path.

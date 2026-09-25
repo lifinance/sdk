@@ -298,7 +298,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     const readB = createReadJitoRpc()
     const write = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [readA, readB], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([write])
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [write], unreachable: 0 })
 
     const result = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
@@ -331,7 +331,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       rpcs: [createReadJitoRpc()],
       unreachable: 0,
     })
-    getJitoCapableRpcs.mockResolvedValue([refusing, accepting])
+    getJitoCapableRpcs.mockResolvedValue({
+      rpcs: [refusing, accepting],
+      unreachable: 0,
+    })
 
     const result = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
@@ -348,9 +351,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     // submission really goes to the write RPCs.
     const acceptingRead = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [acceptingRead], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([
-      createWriteJitoRpc(() => Promise.reject(new Error('403'))),
-    ])
+    getJitoCapableRpcs.mockResolvedValue({
+      rpcs: [createWriteJitoRpc(() => Promise.reject(new Error('403')))],
+      unreachable: 0,
+    })
 
     const result = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
@@ -372,7 +376,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     // those could take the bundle.
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([])
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
     const thrown = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
@@ -390,9 +394,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     // The write RPC can submit, but polling needs a Jito-capable read RPC.
     // "No configured RPC supports sendBundle" would be false here.
     getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([
-      createWriteJitoRpc(() => Promise.resolve('bundle-1')),
-    ])
+    getJitoCapableRpcs.mockResolvedValue({
+      rpcs: [createWriteJitoRpc(() => Promise.resolve('bundle-1'))],
+      unreachable: 0,
+    })
 
     const thrown = await sendAndConfirmBundle(
       clientWith(WRITE_URLS),
@@ -425,9 +430,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       unreachable: 0,
     })
     // Both pass the Jito probe; only the bundle list may submit.
-    getJitoCapableRpcs.mockImplementation(async (urls: string[]) =>
-      urls === BUNDLE_URLS ? [bundleRpc] : [writeRpc]
-    )
+    getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
+      rpcs: urls === BUNDLE_URLS ? [bundleRpc] : [writeRpc],
+      unreachable: 0,
+    }))
 
     const result = await sendAndConfirmBundle(
       clientWith(WRITE_URLS, BUNDLE_URLS),
@@ -446,9 +452,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       rpcs: [createReadJitoRpc()],
       unreachable: 0,
     })
-    getJitoCapableRpcs.mockImplementation(async (urls: string[]) =>
-      urls === BUNDLE_URLS ? [] : [writeRpc]
-    )
+    getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
+      rpcs: urls === BUNDLE_URLS ? [] : [writeRpc],
+      unreachable: 0,
+    }))
 
     const result = await sendAndConfirmBundle(
       clientWith(WRITE_URLS, BUNDLE_URLS),
@@ -466,7 +473,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       rpcs: [createReadJitoRpc()],
       unreachable: 0,
     })
-    getJitoCapableRpcs.mockResolvedValue([bundleRpc])
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [bundleRpc], unreachable: 0 })
 
     await sendAndConfirmBundle(
       clientWith(WRITE_URLS, BUNDLE_URLS),
@@ -482,7 +489,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   it('fails instead of using the read RPCs when no bundle RPC passes the probe and there is no write list', async () => {
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([])
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
     const thrown = await sendAndConfirmBundle(
       clientWith([], ['https://bundle.example']),
@@ -496,7 +503,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   it('fails when neither the bundle nor the write list passes the probe', async () => {
     const read = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     getJitoRpcs.mockResolvedValue({ rpcs: [read], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue([])
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
     const thrown = await sendAndConfirmBundle(
       clientWith(WRITE_URLS, ['https://bundle.example']),
@@ -510,6 +517,75 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       [WRITE_URLS],
     ])
     expect(read.sendBundle).not.toHaveBeenCalled()
+  })
+
+  it('hands the shared submission the branch signal, so a hung endpoint can be aborted', async () => {
+    // confirmBundle awaits the submission before it polls. Without the signal,
+    // BRANCH_TIMEOUT_MS could not end a submission to a hung write RPC.
+    const write = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [write], unreachable: 0 })
+
+    await sendAndConfirmBundle(clientWith(WRITE_URLS), TRANSACTIONS)
+
+    const { signal } = confirmBundle.mock.calls[0][0] as { signal: AbortSignal }
+    expect(signal).toBeInstanceOf(AbortSignal)
+    expect(write.send).toHaveBeenCalledWith({ abortSignal: signal })
+  })
+
+  it('does not ask for a retry when the listed URLs do not support bundles', async () => {
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith([], ['https://bundle.example']),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    // Only the list that is set is named, and no retry is promised for an
+    // answer that never changes.
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].bundle')
+    expect(thrown.message).not.toContain('.write')
+    expect(thrown.message).not.toContain('retry')
+  })
+
+  it('asks for a retry when the probe of a listed URL failed', async () => {
+    getJitoRpcs.mockResolvedValue({
+      rpcs: [createReadJitoRpc()],
+      unreachable: 0,
+    })
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 1 })
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].write')
+    expect(thrown.message).not.toContain('.bundle')
+    expect(thrown.message).toContain('retry')
+  })
+
+  it('also names the read gap when no read RPC can confirm a bundle either', async () => {
+    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
+    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
+
+    const thrown = await sendAndConfirmBundle(
+      clientWith(WRITE_URLS, ['https://bundle.example']),
+      TRANSACTIONS
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].bundle')
+    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].read')
   })
 
   it('does not probe write RPCs when the chain has none', async () => {

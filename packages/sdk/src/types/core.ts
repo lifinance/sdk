@@ -60,11 +60,13 @@ export interface RPCUrlsByRole {
    */
   read?: string[]
   /**
-   * Sends. Unset or empty, the read URLs send as well. When `bundle` is unset,
-   * the write URLs that support bundles also submit bundles.
+   * Sends. Unset or empty, the read URLs send as well. While `write` is set,
+   * nothing is sent through the read URLs: when `bundle` is unset, the write
+   * URLs that support bundles also submit bundles, and with none of them, a
+   * route that needs a bundle fails.
    *
-   * Only `@lifi/sdk-provider-solana` uses this today; other providers send
-   * through the read URLs and ignore it.
+   * Only `@lifi/sdk-provider-solana` uses this today; other providers ignore
+   * it.
    */
   write?: string[]
   /**
@@ -122,7 +124,7 @@ export interface SDKClient {
   getRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
   /**
    * The chain's dedicated write RPC URLs (`rpcUrls[chainId].write`). Empty
-   * when the chain has none, in which case the read URLs also send.
+   * when the chain has none.
    *
    * Optional so clients from other SDK versions, and hand-written ones, still
    * satisfy `SDKClient`. Providers treat a missing method as no write list.
