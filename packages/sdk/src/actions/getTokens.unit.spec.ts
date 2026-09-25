@@ -2,6 +2,7 @@ import { ChainId } from '@lifi/types'
 import { delay, HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { createClient } from '../client/createClient.js'
+import { HTTPError } from '../errors/httpError.js'
 import { SDKError } from '../errors/SDKError.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getTokens } from './getTokens.js'
@@ -135,5 +136,39 @@ describe('getTokens', () => {
         { signal: controller.signal }
       )
     ).rejects.toBeInstanceOf(SDKError)
+  })
+
+  // The shared request already rejects with an SDKError; it must not be wrapped twice.
+  it('gives every caller of a failed request the same SDKError', async () => {
+    const base = createClient({
+      integrator: 'lifi-sdk',
+      apiUrl: 'https://not-found.example/v1',
+    })
+    server.use(
+      http.get('https://not-found.example/v1/tokens', async () => {
+        await delay(20)
+        return HttpResponse.json({ message: 'not found' }, { status: 404 })
+      })
+    )
+
+    const [withSignal, withoutSignal] = await Promise.allSettled([
+      getTokens(
+        base,
+        { chains: [ChainId.ETH] },
+        { signal: new AbortController().signal }
+      ),
+      getTokens(base, { chains: [ChainId.ETH] }),
+    ])
+
+    for (const result of [withSignal, withoutSignal]) {
+      expect(result.status).toBe('rejected')
+      const error = (result as PromiseRejectedResult).reason
+      expect(error).toBeInstanceOf(SDKError)
+      expect(error.cause).toBeInstanceOf(HTTPError)
+      expect(error.cause.status).toBe(404)
+    }
+    expect((withSignal as PromiseRejectedResult).reason).toBe(
+      (withoutSignal as PromiseRejectedResult).reason
+    )
   })
 })

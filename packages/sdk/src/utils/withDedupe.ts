@@ -29,8 +29,8 @@ type InFlight = {
   promise: Promise<any>
   /** Absent when the first caller had no signal: then nothing can abort it. */
   controller?: AbortController | undefined
-  /** Callers with a signal that are still waiting. */
-  callers: Set<Caller>
+  /** Callers with a signal that are still waiting, once the first one joins. */
+  callers?: Set<Caller> | undefined
   /** A caller without a signal joined, so the request must run to the end. */
   pinned: boolean
 }
@@ -76,27 +76,8 @@ export function withDedupe<T>(
   if (!inFlight) {
     const controller = signal ? new AbortController() : undefined
     const promise = fn(controller?.signal).finally(() => evict(id, promise))
-    const created: InFlight = {
-      promise,
-      controller,
-      callers: new Set(),
-      pinned: false,
-    }
-    // One reaction per request, so a caller that leaves holds nothing here.
-    promise.then(
-      (value) => {
-        for (const caller of created.callers) {
-          caller.resolve(value)
-        }
-      },
-      (error) => {
-        for (const caller of created.callers) {
-          caller.reject(error)
-        }
-      }
-    )
-    promiseCache.set(id, created)
-    inFlight = created
+    inFlight = { promise, controller, pinned: false }
+    promiseCache.set(id, inFlight)
   }
   return join<T>(id, inFlight, signal)
 }
@@ -110,6 +91,7 @@ function join<T>(
     inFlight.pinned = true
     return inFlight.promise
   }
+  const callers = inFlight.callers ?? subscribe(inFlight)
   return new Promise<T>((resolve, reject) => {
     // Stop listening before settling, so a later abort cannot reach the request.
     const caller: Caller = {
@@ -125,22 +107,47 @@ function join<T>(
     const leave = () => {
       // `leave` can run without the event, so the listener is not always gone.
       signal.removeEventListener('abort', leave)
-      inFlight.callers.delete(caller)
+      callers.delete(caller)
       const reason = abortReason(signal)
       reject(reason)
-      if (!inFlight.pinned && inFlight.callers.size === 0) {
+      if (!inFlight.pinned && callers.size === 0) {
         // A caller arriving now must start a new request, not join this one.
         evict(id, inFlight.promise)
         inFlight.controller?.abort(reason)
       }
     }
-    inFlight.callers.add(caller)
+    callers.add(caller)
     signal.addEventListener('abort', leave, { once: true })
     // `fn` runs before this listener exists and may have aborted the signal.
     if (signal.aborted) {
       leave()
     }
   })
+}
+
+/**
+ * Hands the result to the callers with a signal, through one reaction per
+ * request, so a caller that leaves holds nothing here. It is added only when
+ * the first such caller joins: a request shared only by callers without a
+ * signal gets no handler of ours, and a failure they all ignore is still
+ * reported as an unhandled rejection.
+ */
+function subscribe(inFlight: InFlight): Set<Caller> {
+  const callers = new Set<Caller>()
+  inFlight.callers = callers
+  inFlight.promise.then(
+    (value) => {
+      for (const caller of callers) {
+        caller.resolve(value)
+      }
+    },
+    (error) => {
+      for (const caller of callers) {
+        caller.reject(error)
+      }
+    }
+  )
+  return callers
 }
 
 /** Drops the entry for `id` only while it still holds this request. */
