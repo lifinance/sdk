@@ -1,5 +1,19 @@
 # @lifi/sdk
 
+## 4.9.0
+
+### Minor Changes
+
+- [#493](https://github.com/lifinance/sdk/pull/493) [`145f2b4`](https://github.com/lifinance/sdk/commit/145f2b49dbbc55776e0b0fe34b0b890f3e5be199) Thanks [@chybisov](https://github.com/chybisov)! - The `rpcUrls` option of `createClient` can split a chain's RPCs by role: `{ read?: string[]; write?: string[]; bundle?: string[] }` next to the existing plain list. Reads use `read` (unset: the chain's own RPCs). `write` and `bundle` are dedicated send and bundle-submission RPCs; only `@lifi/sdk-provider-solana` uses them today, and other providers ignore them. `client.config.rpcUrls`, `getRpcUrls` and `getRpcUrlsByChainId` keep holding plain read lists; the new optional `client.getWriteRpcUrlsByChainId` and `client.getBundleRpcUrlsByChainId` return a chain's write and bundle lists, empty when it has none.
+  
+  Plain lists work as before. At the type level, `SDKConfig['rpcUrls']` is now `RPCUrlsConfig`, so code that reads it back from a config object must narrow each entry with `Array.isArray`.
+
+### Patch Changes
+
+- [#491](https://github.com/lifinance/sdk/pull/491) [`a65b003`](https://github.com/lifinance/sdk/commit/a65b00391698c3e8c2a1cd826bb0969c6977ecb6) Thanks [@chybisov](https://github.com/chybisov)! - A caller that aborts a deduplicated request no longer fails the other callers of that request. `getTokens` and `getChains` share an in-flight request between callers that ask the same query, and the shared request carried the first caller's signal, so when that caller aborted, every other caller got its `AbortError`. Now a caller that aborts leaves the shared request at once, and the request is aborted only when every caller has aborted. `withDedupe` takes an optional `signal` and passes its callback the signal to hand on to the request.
+
+- [#495](https://github.com/lifinance/sdk/pull/495) [`9e815bd`](https://github.com/lifinance/sdk/commit/9e815bdd0d818b7e0866c78bdf48065185b64210) Thanks [@chybisov](https://github.com/chybisov)! - `withDedupe` adds its own handler to a shared request only once a caller with a signal joins. A request shared only by callers without a signal is still reported as an unhandled rejection when it fails and no caller handles it, as it was before `signal` support.
+
 ## 4.8.2
 
 ### Patch Changes
