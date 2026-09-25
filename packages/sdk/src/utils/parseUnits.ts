@@ -2,6 +2,10 @@
  * Multiplies a string representation of a number by a given exponent of base 10 (10exponent).
  */
 export function parseUnits(value: string, decimals: number): bigint {
+  if (!Number.isInteger(decimals) || decimals < 0) {
+    throw new Error(`Decimals \`${decimals}\` is not a non-negative integer.`)
+  }
+
   if (!/^(-?)([0-9]*)\.?([0-9]*)$/.test(value)) {
     throw new Error(`Number \`${value}\` is not a valid decimal number.`)
   }
