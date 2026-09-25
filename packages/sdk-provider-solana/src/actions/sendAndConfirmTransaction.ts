@@ -1,21 +1,27 @@
-import type { SDKClient } from '@lifi/sdk'
+import { ChainId, type SDKClient } from '@lifi/sdk'
 import {
   type Commitment,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   type Transaction,
 } from '@solana/kit'
-import { confirmSignature } from '../confirmation/confirmSignature.js'
+import {
+  confirmSignature,
+  RESEND_INTERVAL_MS,
+} from '../confirmation/confirmSignature.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
 import type { SignatureStatus } from '../confirmation/types.js'
-import { getSolanaRpcs } from '../rpc/registry.js'
+import { getSolanaRpcs, getSolanaWriteRpcs } from '../rpc/registry.js'
 import type { SolanaRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
  * Sends a Solana transaction to every configured RPC and returns as soon as
  * one of them confirms it.
+ *
+ * When the client has Solana write RPCs (`rpcUrls[ChainId.SOL].write`), the
+ * transaction is sent only through those, and the read RPCs only confirm it.
  *
  * The polling horizon comes from the signed transaction's own blockhash and a
  * wall-clock ceiling. It deliberately never comes from `getBlockHeight`: at
@@ -30,7 +36,10 @@ export async function sendAndConfirmTransaction(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<SignatureStatus>> {
-  const solanaRpcs = await getSolanaRpcs(client)
+  const [solanaRpcs, writeRpcUrls = []] = await Promise.all([
+    getSolanaRpcs(client),
+    client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
+  ])
 
   let broadcastReported = false
   // Distinct from `broadcastReported`, which records whether the integrator
@@ -76,7 +85,7 @@ export async function sendAndConfirmTransaction(
     encoding: 'base64' as const,
   }
 
-  const resend = async (
+  const send = async (
     rpc: SolanaRpcType,
     signal: AbortSignal
   ): Promise<void> => {
@@ -85,19 +94,100 @@ export async function sendAndConfirmTransaction(
       .send({ abortSignal: signal })
   }
 
-  const result = await raceRpcs(
-    solanaRpcs,
-    (rpc, signal) =>
-      confirmSignature({
-        rpc,
-        signal,
-        signature: txSignature,
-        lifetimes: [lifetime],
-        resend,
-        onBroadcast: reportBroadcast,
-      }),
-    { timeoutMs: BRANCH_TIMEOUT_MS }
-  )
+  const writeRpcs = writeRpcUrls.length
+    ? getSolanaWriteRpcs(writeRpcUrls)
+    : undefined
+
+  // Sends to the write RPCs belong to the whole call, not to one branch:
+  // other branches wait on the same send, so the branch that started it must
+  // not cancel it by ending. They end when the race does.
+  const writes = new AbortController()
+
+  // Every confirmation branch resends about once a second. Branches share one
+  // send to the write RPCs per interval, so each write RPC sees the same rate
+  // it would as a configured RPC, however many configured RPCs are polling.
+  let lastWrite: { at: number; sent: Promise<void> } | undefined
+  // A write RPC that has not answered its last send gets no new one, so a
+  // hung endpoint holds one open request, not one per interval.
+  const openSends = new Set<SolanaRpcType>()
+  const sendToWriteRpc = async (rpc: SolanaRpcType): Promise<void> => {
+    openSends.add(rpc)
+    try {
+      await send(rpc, writes.signal)
+    } finally {
+      openSends.delete(rpc)
+    }
+  }
+  const sendToWriteRpcs = (rpcs: SolanaRpcType[]): Promise<void> => {
+    const now = Date.now()
+    if (lastWrite && now - lastWrite.at < RESEND_INTERVAL_MS) {
+      return lastWrite.sent
+    }
+    // With every write RPC busy this rejects at once, and the branch polls.
+    const ready = rpcs.filter((rpc) => !openSends.has(rpc))
+    // Accepted as soon as one write RPC accepts it.
+    const sent = Promise.any(ready.map(sendToWriteRpc)).then(() => undefined)
+    // Recorded here, not only by the branches: a branch stops waiting after
+    // one interval (below), and an acceptance after that must still count.
+    // Skipped once the race is over, so a late acceptance cannot regress an
+    // action status the wait task already finalized.
+    sent.then(
+      () => {
+        if (!writes.signal.aborted) {
+          reportBroadcast()
+        }
+      },
+      () => {}
+    )
+    lastWrite = { at: now, sent }
+    return sent
+  }
+
+  // `confirmSignature` awaits its first send before it starts polling. Every
+  // branch waits on the same shared send, so a write RPC that hangs would hold
+  // up polling on all of them - even for a transaction that already landed.
+  // A branch waits at most one resend interval, then polls either way.
+  const waitForWrite = (sent: Promise<void>): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () =>
+          reject(new Error('No write RPC accepted the transaction in time.')),
+        RESEND_INTERVAL_MS
+      )
+      sent.then(
+        () => {
+          clearTimeout(timer)
+          resolve()
+        },
+        (error: unknown) => {
+          clearTimeout(timer)
+          reject(error)
+        }
+      )
+    })
+
+  const resend = writeRpcs
+    ? (): Promise<void> => waitForWrite(sendToWriteRpcs(writeRpcs))
+    : send
+
+  let result: RaceResult<SignatureStatus>
+  try {
+    result = await raceRpcs(
+      solanaRpcs,
+      (rpc, signal) =>
+        confirmSignature({
+          rpc,
+          signal,
+          signature: txSignature,
+          lifetimes: [lifetime],
+          resend,
+          onBroadcast: reportBroadcast,
+        }),
+      { timeoutMs: BRANCH_TIMEOUT_MS }
+    )
+  } finally {
+    writes.abort()
+  }
 
   // Only this scope knows whether ANY branch accepted the send. A branch that
   // polls to its deadline reports `not-confirmed` regardless - correct per

@@ -322,3 +322,82 @@ describe('getJitoRpcs', () => {
     expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('write RPCs', () => {
+  const clientWith = (rpcUrls: string[]) =>
+    ({ getRpcUrlsByChainId: vi.fn().mockResolvedValue(rpcUrls) }) as never
+
+  const methodNotFound = Object.assign(new Error('erreur JSON-RPC'), {
+    name: 'SolanaError',
+    context: { __code: -32601 },
+  })
+
+  // The same forwarding the file-level mock starts with. One test below swaps
+  // in a per-URL answer, and `mockClear` would not undo that.
+  const forwardToGetBundleStatuses = (..._args: unknown[]) => ({
+    getBundleStatuses: (...args: unknown[]) => ({
+      send: () => getBundleStatuses(...args),
+    }),
+  })
+
+  beforeEach(() => {
+    vi.resetModules()
+    getBundleStatuses.mockReset()
+    createJitoRpc.mockClear()
+    createJitoRpc.mockImplementation(forwardToGetBundleStatuses)
+  })
+
+  it('builds one client per write URL and reuses it', async () => {
+    const { getSolanaWriteRpcs } = await import('./registry.js')
+
+    const first = getSolanaWriteRpcs(['https://write-a.example'])
+    const second = getSolanaWriteRpcs(['https://write-a.example'])
+
+    expect(first).toHaveLength(1)
+    expect(second[0]).toBe(first[0])
+  })
+
+  it('returns only the URLs that pass the Jito probe', async () => {
+    const { getJitoCapableRpcs } = await import('./registry.js')
+    createJitoRpc.mockImplementation((...args: unknown[]) => {
+      const rpcUrl = String(args[0])
+      return {
+        rpcUrl,
+        getBundleStatuses: () => ({
+          send: () =>
+            rpcUrl.includes('plain')
+              ? Promise.reject(methodNotFound)
+              : rpcUrl.includes('down')
+                ? Promise.reject(new Error('429 Too Many Requests'))
+                : Promise.resolve({ value: [null] }),
+        }),
+      } as never
+    })
+
+    const { rpcs, unreachable } = await getJitoCapableRpcs([
+      'https://plain-write.example',
+      'https://down-write.example',
+      'https://jito-write.example',
+    ])
+
+    expect(rpcs.map((rpc) => (rpc as { rpcUrl?: string }).rpcUrl)).toEqual([
+      'https://jito-write.example',
+    ])
+    // Only the URL whose probe got no answer: an unsupported one is not a
+    // reason to retry.
+    expect(unreachable).toBe(1)
+  })
+
+  it('shares the probe cache with the configured RPCs', async () => {
+    const { getJitoRpcs, getJitoCapableRpcs } = await import('./registry.js')
+    getBundleStatuses.mockResolvedValue({ value: [null] })
+
+    await getJitoRpcs(clientWith(['https://jito.example']))
+    const { rpcs } = await getJitoCapableRpcs(['https://jito.example'])
+
+    // One probe per URL across both lists: the write list must not add a
+    // second probe to the pre-submission latency path.
+    expect(rpcs).toHaveLength(1)
+    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+  })
+})

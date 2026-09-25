@@ -1,4 +1,4 @@
-import { LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
+import { ChainId, LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
 import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
 import {
   type BundleConfirmation,
@@ -6,7 +6,8 @@ import {
 } from '../confirmation/confirmBundle.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
-import { getJitoRpcs } from '../rpc/registry.js'
+import { getJitoCapableRpcs, getJitoRpcs } from '../rpc/registry.js'
+import type { JitoRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
@@ -20,6 +21,11 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * `sendBundle` is handed to `confirmBundle` rather than awaited here, so the
  * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
  * the submission returns.
+ *
+ * When the client has Solana bundle or write RPCs (`rpcUrls[ChainId.SOL]`),
+ * the bundle is submitted once through those that pass the Jito probe - the
+ * bundle list first, else the write list - and the read Jito RPCs only poll.
+ * With either list set, bundles never go to the read RPCs.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
@@ -29,7 +35,58 @@ export async function sendAndConfirmBundle(
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
-  const { rpcs: jitoRpcs, unreachable } = await getJitoRpcs(client)
+  // With a bundle or write list set, bundles go only to those: the bundle
+  // RPCs that pass the Jito probe, else the write RPCs that do. The write list
+  // is probed only when it is needed. With neither list, each branch submits
+  // through its own read Jito RPC, as before.
+  const [bundleUrls = [], writeUrls = []] = await Promise.all([
+    client.getBundleRpcUrlsByChainId?.(ChainId.SOL),
+    client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
+  ])
+  const noSubmitRpcs = { rpcs: [] as JitoRpcType[], unreachable: 0 }
+  const findSubmitRpcs = async (): Promise<typeof noSubmitRpcs> => {
+    const bundle = bundleUrls.length
+      ? await getJitoCapableRpcs(bundleUrls)
+      : noSubmitRpcs
+    if (bundle.rpcs.length || !writeUrls.length) {
+      return bundle
+    }
+    const write = await getJitoCapableRpcs(writeUrls)
+    return {
+      rpcs: write.rpcs,
+      unreachable: bundle.unreachable + write.unreachable,
+    }
+  }
+  const [
+    { rpcs: jitoRpcs, unreachable },
+    { rpcs: submitRpcs, unreachable: submitUnreachable },
+  ] = await Promise.all([getJitoRpcs(client), findSubmitRpcs()])
+
+  if ((bundleUrls.length || writeUrls.length) && !submitRpcs.length) {
+    const lists = [
+      bundleUrls.length && '`rpcUrls[ChainId.SOL].bundle`',
+      writeUrls.length && '`rpcUrls[ChainId.SOL].write`',
+    ]
+      .filter(Boolean)
+      .join(' or ')
+    throw new RPCError(
+      LiFiErrorCode.RpcUnavailable,
+      [
+        `Jito bundle required, but no URL in ${lists} passed the Jito capability probe.`,
+        submitUnreachable > 0
+          ? 'The probe got no answer from some of them. This is usually temporary - retry. If it persists, the endpoint may refuse `sendBundle` for your plan.'
+          : 'They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`.',
+        'Bundles never go to the read RPCs while `bundle` or `write` is set.',
+        // Only a definite gap: a read RPC that did not answer the probe may
+        // support bundles, and the next attempt reports that case itself.
+        jitoRpcs.length === 0 &&
+          unreachable === 0 &&
+          'No read RPC supports `getBundleStatuses` to confirm a bundle either: also add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.',
+      ]
+        .filter(Boolean)
+        .join(' ')
+    )
+  }
 
   // Named here, where the emptiness is known: racing zero RPCs would surface
   // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
@@ -46,7 +103,9 @@ export async function sendAndConfirmBundle(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
         ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
-        : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
+        : submitRpcs.length > 0
+          ? 'Jito bundle required. A bundle or write RPC can submit it, but no read RPC supports `getBundleStatuses` to confirm it. Add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.'
+          : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
 
@@ -83,6 +142,23 @@ export async function sendAndConfirmBundle(
     signedTransactions.map((transaction) => getTransactionLifetime(transaction))
   )
 
+  // One submission for every polling branch: the bundle id is derived from
+  // the transactions, so each branch polls the same bundle. Started by the
+  // first branch that asks, so its deadline already runs.
+  let submission: Promise<string> | undefined
+  const submitOnce = (signal: AbortSignal): Promise<string> => {
+    submission ??= Promise.any(
+      submitRpcs.map((rpc) =>
+        rpc.sendBundle(serializedTransactions).send({ abortSignal: signal })
+      )
+    ).catch((error: unknown) => {
+      // Surface a refusal the way a single configured RPC would, not as a
+      // nested AggregateError inside the race's own error list.
+      throw error instanceof AggregateError ? error.errors[0] : error
+    })
+    return submission
+  }
+
   return raceRpcs(
     jitoRpcs,
     (rpc, signal) =>
@@ -91,7 +167,11 @@ export async function sendAndConfirmBundle(
         signal,
         lifetimes,
         send: () =>
-          rpc.sendBundle(serializedTransactions).send({ abortSignal: signal }),
+          submitRpcs.length
+            ? submitOnce(signal)
+            : rpc
+                .sendBundle(serializedTransactions)
+                .send({ abortSignal: signal }),
         onBroadcast: reportBroadcast,
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }

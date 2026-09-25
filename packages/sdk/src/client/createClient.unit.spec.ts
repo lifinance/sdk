@@ -2,6 +2,7 @@ import { ChainId, ChainType } from '@lifi/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SDKConfig } from '../types/core.js'
 import { createClient } from './createClient.js'
+import { getClientStorage } from './getClientStorage.js'
 
 // Mock providers locally
 const createMockProvider = (type: ChainType) => ({
@@ -260,6 +261,116 @@ describe('createClient', () => {
       await expect(client.getRpcUrlsByChainId(999)).rejects.toThrow(
         'RPC URL not found for chainId: 999'
       )
+    })
+  })
+
+  describe('rpcUrls by role', () => {
+    const rolesConfig: SDKConfig = {
+      integrator: 'test-app',
+      rpcUrls: {
+        [ChainId.SOL]: {
+          read: ['https://sol-read.example'],
+          write: ['https://sol-write.example'],
+        },
+        [ChainId.ETH]: ['https://eth.example'],
+        [ChainId.POL]: { write: ['https://pol-write.example'] },
+      },
+    }
+
+    it('keeps plain read lists in client.config.rpcUrls', () => {
+      const client = createClient(rolesConfig)
+
+      // Code that reads `config.rpcUrls` - the client storage included - keeps
+      // seeing `string[]` per chain. A chain with only a write list is left to
+      // the chain's own RPCs for reads.
+      expect(client.config.rpcUrls).toEqual({
+        [ChainId.SOL]: ['https://sol-read.example'],
+        [ChainId.ETH]: ['https://eth.example'],
+      })
+      expect(vi.mocked(getClientStorage)).toHaveBeenCalledWith(
+        expect.objectContaining({ rpcUrls: client.config.rpcUrls })
+      )
+    })
+
+    it('passes a config with only plain lists through as the same object', () => {
+      // As on main: the storage re-reads `config.rpcUrls` on every chain
+      // refresh, so keys a caller adds to its own object later still arrive.
+      const rpcUrls = { [ChainId.ETH]: ['https://eth.example'] }
+
+      const client = createClient({ integrator: 'test-app', rpcUrls })
+
+      expect(client.config.rpcUrls).toBe(rpcUrls)
+    })
+
+    it('returns the write list of a chain', async () => {
+      const client = createClient(rolesConfig)
+
+      await expect(
+        client.getWriteRpcUrlsByChainId?.(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-write.example'])
+      await expect(
+        client.getWriteRpcUrlsByChainId?.(ChainId.POL)
+      ).resolves.toEqual(['https://pol-write.example'])
+    })
+
+    it('returns no write list for a plain list, a read-only entry or an unset chain', async () => {
+      // No write list means "send the way the provider always has": through
+      // the read URLs. An empty answer lets each provider keep that path.
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.ETH]: ['https://eth.example'],
+          [ChainId.SOL]: { read: ['https://sol-read.example'] },
+        },
+      })
+
+      for (const chainId of [ChainId.ETH, ChainId.SOL, ChainId.POL]) {
+        await expect(
+          client.getWriteRpcUrlsByChainId?.(chainId)
+        ).resolves.toEqual([])
+      }
+    })
+  })
+
+  describe('bundle RPC URLs', () => {
+    it('returns the bundle list of a chain', async () => {
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.SOL]: {
+            read: ['https://sol-read.example'],
+            write: ['https://sol-write.example'],
+            bundle: ['https://sol-bundle.example'],
+          },
+        },
+      })
+
+      await expect(
+        client.getBundleRpcUrlsByChainId?.(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-bundle.example'])
+      // Bundle URLs are neither read nor write URLs.
+      expect(client.config.rpcUrls).toEqual({
+        [ChainId.SOL]: ['https://sol-read.example'],
+      })
+      await expect(
+        client.getWriteRpcUrlsByChainId?.(ChainId.SOL)
+      ).resolves.toEqual(['https://sol-write.example'])
+    })
+
+    it('returns no bundle list unless a chain sets one', async () => {
+      const client = createClient({
+        integrator: 'test-app',
+        rpcUrls: {
+          [ChainId.ETH]: ['https://eth.example'],
+          [ChainId.SOL]: { write: ['https://sol-write.example'], bundle: [] },
+        },
+      })
+
+      for (const chainId of [ChainId.ETH, ChainId.SOL, ChainId.POL]) {
+        await expect(
+          client.getBundleRpcUrlsByChainId?.(chainId)
+        ).resolves.toEqual([])
+      }
     })
   })
 

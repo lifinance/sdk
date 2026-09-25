@@ -38,11 +38,55 @@ export interface SDKBaseConfig {
   storage?: SDKStorage
 }
 
-export interface SDKConfig extends Partial<Omit<SDKBaseConfig, 'integrator'>> {
+export interface SDKConfig
+  extends Partial<Omit<SDKBaseConfig, 'integrator' | 'rpcUrls'>> {
   integrator: string
+  /**
+   * Per chain, one list for reads and sends, or lists by role. The client
+   * keeps the read lists in `config.rpcUrls` and serves the write and bundle
+   * lists through `getWriteRpcUrlsByChainId` and `getBundleRpcUrlsByChainId`.
+   */
+  rpcUrls?: RPCUrlsConfig
   providers?: SDKProvider[]
 }
 
+/**
+ * RPC URLs for one chain, split by what they are used for.
+ */
+export interface RPCUrlsByRole {
+  /**
+   * Reads: balances, simulation and confirmation. Unset, the chain's own RPC
+   * URLs serve reads, as for a chain with no `rpcUrls` entry.
+   */
+  read?: string[]
+  /**
+   * Sends. Unset or empty, the read URLs send as well. While `write` is set,
+   * nothing is sent through the read URLs: when `bundle` is unset, the write
+   * URLs that support bundles also submit bundles, and with none of them, a
+   * route that needs a bundle fails.
+   *
+   * Only `@lifi/sdk-provider-solana` uses this today; other providers ignore
+   * it.
+   */
+  write?: string[]
+  /**
+   * Bundle submissions (Jito `sendBundle`). Unset, empty, or with no URL that
+   * supports bundles, the write URLs that do submit them. While `bundle` or
+   * `write` is set, bundles never go to the read URLs.
+   *
+   * Only `@lifi/sdk-provider-solana` uses this today; other providers ignore
+   * it.
+   */
+  bundle?: string[]
+}
+
+/**
+ * The `rpcUrls` option of `createClient`: per chain, either one list for reads
+ * and sends, or lists by role.
+ */
+export type RPCUrlsConfig = Partial<Record<ChainId, string[] | RPCUrlsByRole>>
+
+/** RPC URL lists per chain. `client.config.rpcUrls` holds the read lists. */
 export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface SDKProvider {
@@ -78,6 +122,20 @@ export interface SDKClient {
   getChainById(chainId: ChainId): Promise<ExtendedChain>
   getRpcUrls(): Promise<RPCUrls>
   getRpcUrlsByChainId(chainId: ChainId): Promise<string[]>
+  /**
+   * The chain's dedicated write RPC URLs (`rpcUrls[chainId].write`). Empty
+   * when the chain has none.
+   *
+   * Optional so clients from other SDK versions, and hand-written ones, still
+   * satisfy `SDKClient`. Providers treat a missing method as no write list.
+   */
+  getWriteRpcUrlsByChainId?(chainId: ChainId): Promise<string[]>
+  /**
+   * The chain's dedicated bundle RPC URLs (`rpcUrls[chainId].bundle`). Empty
+   * when the chain has none. Optional for the same reason as
+   * `getWriteRpcUrlsByChainId`.
+   */
+  getBundleRpcUrlsByChainId?(chainId: ChainId): Promise<string[]>
 }
 
 export interface StepExecutorOptions {

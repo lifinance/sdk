@@ -3,8 +3,10 @@ import { createSolanaRpc } from '@solana/kit'
 import { createJitoRpc } from './jito/createJitoRpc.js'
 import type { JitoRpcType, SolanaRpcType } from './types.js'
 
-const solanaRpcs = new LruMap<SolanaRpcType>(12)
-const jitoRpcs = new LruMap<JitoRpcType>(12)
+// Read, write and bundle URLs share these caches, so they hold more than one
+// list's worth: an entry evicted mid-use is probed or built again.
+const solanaRpcs = new LruMap<SolanaRpcType>(64)
+const jitoRpcs = new LruMap<JitoRpcType>(64)
 
 /**
  * A well-formed but non-existent Jito bundle id used solely to probe RPC
@@ -52,7 +54,7 @@ type JitoProbeRecord = JitoProbeResult & { at: number }
  * set never shrinks, and every bundle submission re-probes every non-Jito
  * endpoint at up to `PROBE_TIMEOUT_MS` each, on the latency path before
  * submission can start. */
-const jitoProbes = new LruMap<JitoProbeRecord>(12)
+const jitoProbes = new LruMap<JitoProbeRecord>(64)
 
 /** One rule for every outcome: a record is fresh until its own window closes.
  * `Infinity` covers the answers that cannot change. */
@@ -146,27 +148,36 @@ export const probeJitoRpc = async (
  */
 const ensureSolanaRpcs = async (client: SDKClient): Promise<string[]> => {
   const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  ensureSolanaRpcsFor(rpcUrls)
+  return rpcUrls
+}
+
+/** Creates and caches a client for each URL that has none yet. */
+const ensureSolanaRpcsFor = (rpcUrls: string[]): void => {
   for (const rpcUrl of rpcUrls) {
     if (!solanaRpcs.has(rpcUrl)) {
       solanaRpcs.set(rpcUrl, createSolanaRpc(rpcUrl))
     }
   }
-  return rpcUrls
 }
 
+const cachedSolanaRpcs = (rpcUrls: string[]): SolanaRpcType[] =>
+  rpcUrls
+    .map((rpcUrl) => solanaRpcs.get(rpcUrl))
+    .filter((rpc): rpc is SolanaRpcType => Boolean(rpc))
+
 /**
- * Initializes and caches Jito RPCs for every configured Solana RPC URL.
+ * Probes each URL for Jito support and caches a client for every supported
+ * one. The configured RPCs and the write RPCs share this cache.
  *
  * Every probe outcome is cached, so a non-Jito endpoint is probed once rather
  * than once per bundle submission. Each record carries its own retry window:
  * see `JITO_PROBE_RETRY_MS` and `JITO_PROBE_GATEWAY_RETRY_MS` for the two that
  * expire.
- * @param client - The SDK client used to fetch RPC URLs.
+ * @param rpcUrls - The URLs to probe.
+ * @returns - How many of the URLs are currently unreachable.
  */
-const ensureJitoRpcs = async (
-  client: SDKClient
-): Promise<{ rpcUrls: string[]; unreachable: number }> => {
-  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+const ensureJitoRpcsFor = async (rpcUrls: string[]): Promise<number> => {
   // Probed in parallel: serially, one slow endpoint delayed every URL behind
   // it before submission could start.
   const unprobed = rpcUrls.filter(
@@ -210,12 +221,27 @@ const ensureJitoRpcs = async (
   // `unreachable` still has to reach `sendAndConfirmBundle`, which uses the
   // count to choose between "retry, likely temporary" and "supply a
   // Jito-capable URL".
-  const unreachable = rpcUrls.filter(
+  return rpcUrls.filter(
     (rpcUrl) => jitoProbes.get(rpcUrl)?.outcome === 'unreachable'
   ).length
+}
 
+/**
+ * Initializes and caches Jito RPCs for every configured Solana RPC URL.
+ * @param client - The SDK client used to fetch RPC URLs.
+ */
+const ensureJitoRpcs = async (
+  client: SDKClient
+): Promise<{ rpcUrls: string[]; unreachable: number }> => {
+  const rpcUrls = await client.getRpcUrlsByChainId(ChainId.SOL)
+  const unreachable = await ensureJitoRpcsFor(rpcUrls)
   return { rpcUrls, unreachable }
 }
+
+const cachedJitoRpcs = (rpcUrls: string[]): JitoRpcType[] =>
+  rpcUrls
+    .map((rpcUrl) => jitoRpcs.get(rpcUrl))
+    .filter((rpc): rpc is JitoRpcType => Boolean(rpc))
 
 /**
  * Wrapper around getting the Solana RPCs
@@ -224,10 +250,19 @@ const ensureJitoRpcs = async (
 export const getSolanaRpcs = async (
   client: SDKClient
 ): Promise<SolanaRpcType[]> => {
-  const rpcUrls = await ensureSolanaRpcs(client)
-  return rpcUrls
-    .map((rpcUrl) => solanaRpcs.get(rpcUrl))
-    .filter((rpc): rpc is SolanaRpcType => Boolean(rpc))
+  return cachedSolanaRpcs(await ensureSolanaRpcs(client))
+}
+
+/**
+ * Clients for the write RPCs (`rpcUrls[ChainId.SOL].write`). They only
+ * send transactions; the one read they get is the Jito probe in
+ * `getJitoCapableRpcs`.
+ * @param rpcUrls - The write RPC URLs.
+ * @returns - Solana RPCs to send transactions through.
+ */
+export const getSolanaWriteRpcs = (rpcUrls: string[]): SolanaRpcType[] => {
+  ensureSolanaRpcsFor(rpcUrls)
+  return cachedSolanaRpcs(rpcUrls)
 }
 
 /** `unreachable` counts endpoints whose probe failed without naming the
@@ -239,10 +274,20 @@ export const getJitoRpcs = async (
   client: SDKClient
 ): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {
   const { rpcUrls, unreachable } = await ensureJitoRpcs(client)
-  return {
-    rpcs: rpcUrls
-      .map((rpcUrl) => jitoRpcs.get(rpcUrl))
-      .filter((rpc): rpc is JitoRpcType => Boolean(rpc)),
-    unreachable,
-  }
+  return { rpcs: cachedJitoRpcs(rpcUrls), unreachable }
+}
+
+/**
+ * The given URLs that pass the Jito probe - the bundle or write RPCs of
+ * `rpcUrls[ChainId.SOL]`. They share the probe cache with the read RPCs.
+ * `unreachable` counts the URLs whose probe failed without an answer, as in
+ * `getJitoRpcs`.
+ * @param rpcUrls - The URLs to probe.
+ * @returns - Jito RPCs to submit bundles through, and the unreachable count.
+ */
+export const getJitoCapableRpcs = async (
+  rpcUrls: string[]
+): Promise<{ rpcs: JitoRpcType[]; unreachable: number }> => {
+  const unreachable = await ensureJitoRpcsFor(rpcUrls)
+  return { rpcs: cachedJitoRpcs(rpcUrls), unreachable }
 }
