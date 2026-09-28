@@ -118,6 +118,11 @@ export const checkBalance = async (
     Math.floor((1 - slippage) * Number(SLIPPAGE_PRECISION))
   )
 
+  // Aborted once `withTimeout` settles. A timeout rejects at once, but the
+  // loop keeps running; the signal stops it before it can change `step`.
+  const controller = new AbortController()
+  const { signal } = controller
+
   await withTimeout(
     async () => {
       for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -133,8 +138,11 @@ export const checkBalance = async (
               error as Error
             )
           }
-          await sleep(BACKOFF_BASE_MS * 2 ** attempt)
+          await sleep(BACKOFF_BASE_MS * 2 ** attempt, { signal })
           continue
+        }
+        if (signal.aborted) {
+          return
         }
 
         const balanceByAddress = new Map(
@@ -207,12 +215,12 @@ export const checkBalance = async (
           )
         }
 
-        await sleep(BACKOFF_BASE_MS * 2 ** attempt)
+        await sleep(BACKOFF_BASE_MS * 2 ** attempt, { signal })
       }
     },
     {
       timeout: OVERALL_TIMEOUT_MS,
       errorInstance: new BalanceError('Could not read wallet balance.'),
     }
-  )
+  ).finally(() => controller.abort())
 }
