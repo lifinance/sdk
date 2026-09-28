@@ -14,6 +14,12 @@ describe('isZeroAddress', () => {
     )
   })
 
+  it('should return true for the checksummed alternative zero address', () => {
+    expect(isZeroAddress('0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE')).toBe(
+      true
+    )
+  })
+
   it('should return false for valid address', () => {
     expect(isZeroAddress('0x1234567890123456789012345678901234567890')).toBe(
       false

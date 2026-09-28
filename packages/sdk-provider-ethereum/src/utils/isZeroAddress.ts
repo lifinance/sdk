@@ -1,10 +1,13 @@
-export const AddressZero = '0x0000000000000000000000000000000000000000'
+import { zeroAddress } from 'viem'
+
 export const AlternativeAddressZero =
   '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
 
 export const isZeroAddress = (address: string): boolean => {
-  if (address === AddressZero || address === AlternativeAddressZero) {
-    return true
-  }
-  return false
+  // Addresses can come checksummed, e.g. 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE.
+  const lowercaseAddress = address.toLowerCase()
+  return (
+    lowercaseAddress === zeroAddress ||
+    lowercaseAddress === AlternativeAddressZero
+  )
 }
