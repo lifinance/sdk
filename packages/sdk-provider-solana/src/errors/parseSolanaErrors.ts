@@ -37,13 +37,12 @@ const userRejectionMessage =
  * says the user caused it. The SDK's own errors keep their code.
  */
 const isUserRejection = (e: any): boolean =>
-  e.name === 'WalletSignTransactionError' ||
-  (!(e instanceof BaseError) &&
-    (e.code === 4001 ||
-      (typeof e.message === 'string' && userRejectionMessage.test(e.message))))
+  !(e instanceof BaseError) &&
+  (e.code === 4001 ||
+    (typeof e.message === 'string' && userRejectionMessage.test(e.message)))
 
 const handleSpecificErrors = (e: any) => {
-  if (isUserRejection(e)) {
+  if (e.name === 'WalletSignTransactionError') {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
@@ -53,6 +52,12 @@ const handleSpecificErrors = (e: any) => {
 
   if (e.name === 'TransactionExpiredBlockheightExceededError') {
     return new TransactionError(LiFiErrorCode.TransactionExpired, e.message, e)
+  }
+
+  // After the name checks: a known error keeps its code, even when its
+  // message quotes program logs that look like a rejection.
+  if (isUserRejection(e)) {
+    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }
 
   if (e.message?.includes('simulate')) {

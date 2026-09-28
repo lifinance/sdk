@@ -88,6 +88,23 @@ describe('parseSolanaErrors', () => {
     expect(parsedError.cause).toBeInstanceOf(UnknownError)
   })
 
+  it.each([
+    ['SendTransactionError', LiFiErrorCode.TransactionFailed],
+    [
+      'TransactionExpiredBlockheightExceededError',
+      LiFiErrorCode.TransactionExpired,
+    ],
+  ])('keeps %s when its logs look like a rejection', async (name, code) => {
+    const error = {
+      name,
+      message: 'Program log: order cancelled by the user',
+    }
+
+    const parsedError = await parseSolanaErrors(error as any)
+
+    expect(parsedError.cause.code).toBe(code)
+  })
+
   it('keeps the code of an SDK error whose message looks like a rejection', async () => {
     const error = new TransactionError(
       LiFiErrorCode.TransactionCanceled,
