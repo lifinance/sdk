@@ -2,4 +2,4 @@
 "@lifi/sdk-provider-ethereum": patch
 ---
 
-`isZeroAddress` ignores case, so the checksummed `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` counts as a native token address.
+`isZeroAddress` ignores case, so it also matches the checksummed `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`.
