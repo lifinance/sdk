@@ -9,7 +9,12 @@ export function parseUnits(value: string, decimals: number): bigint {
     )
   }
 
-  // Requires at least one digit, so '', '.', '-' and '-.' are rejected.
+  // Unlike viem, which throws, an input with no digit is 0n, as it was before
+  // the sync. The widget parses an empty amount field.
+  if (/^-?\.?$/.test(value)) {
+    return 0n
+  }
+
   if (!/^-?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/.test(value)) {
     throw new Error(`Number \`${value}\` is not a valid decimal number.`)
   }

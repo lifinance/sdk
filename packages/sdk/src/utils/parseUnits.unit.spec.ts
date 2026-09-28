@@ -86,7 +86,16 @@ describe('parseUnits', () => {
     }
   )
 
-  it.each(['123.456.789', '100e2', '0x50', '', '.', '-', '-.'])(
+  // Unlike viem, which throws. The widget parses an empty amount field.
+  it.each(['', '.', '-', '-.'])(
+    'parses %j, which has no digit, as 0n',
+    (value) => {
+      expect(parseUnits(value, 18)).toBe(0n)
+      expect(parseUnits(value, 0)).toBe(0n)
+    }
+  )
+
+  it.each(['123.456.789', '100e2', '0x50', '1-', '--1', ' 1'])(
     'rejects %j',
     (value) => {
       expect(() => parseUnits(value, 18)).toThrow(
