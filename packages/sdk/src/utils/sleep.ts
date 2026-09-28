@@ -10,22 +10,21 @@ export function sleep(
   { signal }: { signal?: AbortSignal | undefined } = {}
 ): Promise<null> {
   return new Promise((resolve, reject) => {
-    if (!signal) {
-      setTimeout(() => resolve(null), ms)
-      return
-    }
-    if (signal.aborted) {
+    if (signal?.aborted) {
       reject(getAbortError(signal))
       return
     }
-    const onAbort = (): void => {
-      clearTimeout(timer)
-      reject(getAbortError(signal))
-    }
+
+    const cleanup = (): void => signal?.removeEventListener('abort', onAbort)
     const timer = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
+      cleanup()
       resolve(null)
     }, ms)
-    signal.addEventListener('abort', onAbort, { once: true })
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      cleanup()
+      reject(getAbortError(signal!))
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 }
