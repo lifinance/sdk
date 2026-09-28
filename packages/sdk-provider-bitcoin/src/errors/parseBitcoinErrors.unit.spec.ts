@@ -34,6 +34,40 @@ describe('parseBitcoinErrors', () => {
     expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
   })
 
+  it("maps bigmi's UserRejectedRequestError to SignatureRejected", async () => {
+    // bigmi's RpcErrorCode.USER_REJECTION is -32000.
+    const error = Object.assign(
+      new Error('UserRejectedRequestError:  User rejected'),
+      { name: 'UserRejectedRequestError', code: -32000 }
+    )
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+  })
+
+  it('does not treat an AbortError as a user rejection', async () => {
+    const error = Object.assign(new Error('This operation was aborted'), {
+      name: 'AbortError',
+    })
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+  })
+
+  it('keeps TransactionExpired when signing took too long', async () => {
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionExpired,
+      'Transaction has expired.'
+    )
+
+    const parsedError = await parseBitcoinErrors(error)
+
+    expect(parsedError.cause).toBe(error)
+  })
+
   it('should handle generic Error', async () => {
     const error = new Error('Something went wrong')
 
