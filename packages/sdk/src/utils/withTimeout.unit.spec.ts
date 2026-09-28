@@ -38,6 +38,22 @@ describe('withTimeout', () => {
     ).rejects.toBe(errorInstance)
   })
 
+  it('passes through an AbortError that the timeout did not cause', async () => {
+    const abortError = Object.assign(new Error('aborted elsewhere'), {
+      name: 'AbortError',
+    })
+    for (const signal of [false, true]) {
+      await expect(
+        withTimeout(
+          async () => {
+            throw abortError
+          },
+          { timeout: 100, signal, errorInstance: new Error('timed out') }
+        )
+      ).rejects.toBe(abortError)
+    }
+  })
+
   it('propagates the function error when it rejects before the timeout', async () => {
     const inner = new Error('inner')
     await expect(
