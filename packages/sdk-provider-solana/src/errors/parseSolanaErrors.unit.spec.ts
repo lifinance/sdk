@@ -57,6 +57,60 @@ describe('parseSolanaErrors', () => {
     expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionExpired)
   })
 
+  it('maps a wallet rejection with code 4001 to SignatureRejected', async () => {
+    const error = Object.assign(new Error('Request declined.'), { code: 4001 })
+
+    const parsedError = await parseSolanaErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+  })
+
+  it.each([
+    'User rejected the request.',
+    'user denied transaction signature',
+    'Transaction cancelled by the user',
+  ])('maps the rejection message %j to SignatureRejected', async (message) => {
+    const parsedError = await parseSolanaErrors(new Error(message))
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.SignatureRejected)
+  })
+
+  it.each([
+    Object.assign(new Error('This operation was aborted'), {
+      name: 'AbortError',
+    }),
+    new Error('Request rejected by the node'),
+  ])('does not treat %o as a user rejection', async (error) => {
+    const parsedError = await parseSolanaErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+  })
+
+  it('keeps the code of an SDK error whose message looks like a rejection', async () => {
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionCanceled,
+      'Transaction cancelled by the user'
+    )
+
+    const parsedError = await parseSolanaErrors(error)
+
+    expect(parsedError.cause).toBe(error)
+  })
+
+  it('keeps TransactionExpired when signing took too long', async () => {
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionExpired,
+      'Transaction has expired: blockhash is no longer recent enough.'
+    )
+
+    const parsedError = await parseSolanaErrors(error)
+
+    expect(parsedError.cause).toBe(error)
+    expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionExpired)
+  })
+
   it('should handle generic Error', async () => {
     const error = new Error('Something went wrong')
 
