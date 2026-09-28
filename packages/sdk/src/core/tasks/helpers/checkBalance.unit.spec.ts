@@ -7,6 +7,7 @@ vi.mock('../../../utils/sleep.js', () => ({
 
 import { LiFiErrorCode } from '../../../errors/constants.js'
 import type { SDKClient, SDKProvider } from '../../../types/core.js'
+import { sleep } from '../../../utils/sleep.js'
 import { checkBalance } from './checkBalance.js'
 
 const SOURCE_CHAIN = 1
@@ -663,6 +664,25 @@ describe('checkBalance — RPC failures', () => {
 describe('checkBalance — overall timeout', () => {
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('passes a signal to every backoff sleep and aborts it when it settles', async () => {
+    const { client } = buildClient([
+      'reject',
+      { [USDC.address.toLowerCase()]: 0n },
+      { [USDC.address.toLowerCase()]: 1_000_000n },
+    ])
+
+    await expect(
+      checkBalance(client, WALLET, buildStep())
+    ).resolves.toBeUndefined()
+
+    // One sleep after the failed read, one after the low balance.
+    const calls = vi.mocked(sleep).mock.calls
+    expect(calls).toHaveLength(2)
+    for (const [, options] of calls) {
+      expect(options?.signal?.aborted).toBe(true)
+    }
   })
 
   it('does not change the step after the timeout has rejected', async () => {
