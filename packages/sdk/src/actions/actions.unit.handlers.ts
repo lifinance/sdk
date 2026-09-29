@@ -62,7 +62,7 @@ export const setupTestServer = (): SetupServer => {
 
   beforeAll(() => {
     server.listen({
-      onUnhandledRequest: 'warn',
+      onUnhandledFrame: 'warn',
     })
     requestSettings.retries = 0
   })

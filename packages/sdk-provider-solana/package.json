@@ -46,17 +46,17 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@solana/kit": "^8.3.0",
+    "@solana/kit": "^8.4.0",
     "@solana/wallet-standard-features": "^1.5.0",
     "@wallet-standard/base": "^1.1.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.1.5",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@lifi/data-types": "^7.1.6",
+    "@vitest/coverage-v8": "^5.0.2",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   },
   "publishConfig": {
     "access": "public"

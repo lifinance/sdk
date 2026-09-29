@@ -33,6 +33,10 @@ minimumReleaseAgeExclude:
   - yuku-codegen@0.6.1
   - yuku-parser@0.6.1
   - '@rolldown/binding-openharmony-arm64@1.2.8'
+  - '@stellar/stellar-sdk@17.2.0'
+  - '@types/ws@8.18.2'
+  - msw@3.0.0
+  - viem@2.57.0
 overrides:
   axios: ^1.20.0
-  ws@<=8.21.3: 8.21.3
+  ws@<=8.22.0: 8.22.0
