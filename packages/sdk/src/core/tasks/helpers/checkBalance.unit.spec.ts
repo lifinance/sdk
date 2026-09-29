@@ -1,5 +1,5 @@
 import type { LiFiStep, Token, TokenAmount } from '@lifi/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../utils/sleep.js', () => ({
   sleep: vi.fn(() => Promise.resolve(null)),
@@ -7,6 +7,7 @@ vi.mock('../../../utils/sleep.js', () => ({
 
 import { LiFiErrorCode } from '../../../errors/constants.js'
 import type { SDKClient, SDKProvider } from '../../../types/core.js'
+import { sleep } from '../../../utils/sleep.js'
 import { checkBalance } from './checkBalance.js'
 
 const SOURCE_CHAIN = 1
@@ -657,5 +658,64 @@ describe('checkBalance — RPC failures', () => {
       checkBalance(client, WALLET, buildStep())
     ).resolves.toBeUndefined()
     expect(getBalance).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('checkBalance — overall timeout', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('passes a signal to every backoff sleep and aborts it when it settles', async () => {
+    const { client } = buildClient([
+      'reject',
+      { [USDC.address.toLowerCase()]: 0n },
+      { [USDC.address.toLowerCase()]: 1_000_000n },
+    ])
+
+    await expect(
+      checkBalance(client, WALLET, buildStep())
+    ).resolves.toBeUndefined()
+
+    // One sleep after the failed read, one after the low balance.
+    const calls = vi.mocked(sleep).mock.calls
+    expect(calls).toHaveLength(2)
+    for (const [, options] of calls) {
+      expect(options?.signal?.aborted).toBe(true)
+    }
+  })
+
+  it('does not change the step after the timeout has rejected', async () => {
+    vi.useFakeTimers()
+    const step = buildStep({ slippage: 0.005, fromAmount: '1000000' })
+    const { client, getBalance } = buildClient([])
+    // Inside slippage: the final attempt trims `fromAmount` to this balance.
+    const withinSlippage = (tokens: Token[]): TokenAmount[] =>
+      tokens.map((token) => ({ ...token, amount: 996_000n }))
+    let releaseFinalRead!: () => void
+    getBalance.mockImplementation(async (_client, _wallet, tokens: Token[]) => {
+      if (getBalance.mock.calls.length < 6) {
+        return withinSlippage(tokens)
+      }
+      // The final read hangs past the overall timeout.
+      return new Promise<TokenAmount[]>((resolve) => {
+        releaseFinalRead = () => resolve(withinSlippage(tokens))
+      })
+    })
+
+    const checked = expect(
+      checkBalance(client, WALLET, step)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.BalanceError,
+      message: 'Could not read wallet balance.',
+    })
+    await vi.advanceTimersByTimeAsync(10_000)
+    await checked
+
+    releaseFinalRead()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(getBalance).toHaveBeenCalledTimes(6)
+    expect(step.action.fromAmount).toBe('1000000')
   })
 })

@@ -1,3 +1,5 @@
+import { isAbortError } from './abort.js'
+
 /**
  * Wraps a function in a timeout.
  * Based on viem's withTimeout implementation.
@@ -25,8 +27,8 @@ export function withTimeout<T>(
   return new Promise((resolve, reject) => {
     ;(async () => {
       let timeoutId!: NodeJS.Timeout
+      const controller = new AbortController()
       try {
-        const controller = new AbortController()
         if (timeout > 0) {
           timeoutId = setTimeout(() => {
             if (signal) {
@@ -38,8 +40,11 @@ export function withTimeout<T>(
         }
         resolve(await fn({ signal: controller?.signal || null }))
       } catch (err) {
-        if ((err as Error)?.name === 'AbortError') {
+        // Only an abort from our own timeout is a timeout. Any other
+        // AbortError belongs to the caller and passes through.
+        if (controller.signal.aborted && isAbortError(err)) {
           reject(errorInstance)
+          return
         }
         reject(err)
       } finally {

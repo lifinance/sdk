@@ -1,24 +1,5 @@
-/**
- * Map with a LRU (Least recently used) policy.
- *
- * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
- */
-export class LruMap<value = unknown> extends Map<string, value> {
-  maxSize: number
-
-  constructor(size: number) {
-    super()
-    this.maxSize = size
-  }
-
-  override set(key: string, value: value): this {
-    super.set(key, value)
-    if (this.maxSize && this.size > this.maxSize) {
-      this.delete(this.keys().next().value!)
-    }
-    return this
-  }
-}
+import { getAbortError } from './abort.js'
+import { LruMap } from './lru.js'
 
 type Caller = {
   resolve: (value: any) => void
@@ -70,7 +51,7 @@ export function withDedupe<T>(
     return fn(signal)
   }
   if (signal?.aborted) {
-    return Promise.reject(abortReason(signal))
+    return Promise.reject(getAbortError(signal))
   }
   let inFlight = promiseCache.get(id)
   if (!inFlight) {
@@ -108,7 +89,7 @@ function join<T>(
       // `leave` can run without the event, so the listener is not always gone.
       signal.removeEventListener('abort', leave)
       callers.delete(caller)
-      const reason = abortReason(signal)
+      const reason = getAbortError(signal)
       reject(reason)
       if (!inFlight.pinned && callers.size === 0) {
         // A caller arriving now must start a new request, not join this one.
@@ -156,8 +137,3 @@ function evict(id: string, promise: Promise<unknown>): void {
     promiseCache.delete(id)
   }
 }
-
-/** Older runtimes and polyfills can abort a signal without a `reason`. */
-const abortReason = (signal: AbortSignal): unknown =>
-  signal.reason ??
-  Object.assign(new Error('This operation was aborted'), { name: 'AbortError' })

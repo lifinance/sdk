@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getTransactionRequestData = vi.fn()
 
@@ -14,6 +14,10 @@ vi.mock('@lifi/sdk', async (importActual) => {
 // Mutable so one spec can make the decoder throw. `vi.hoisted` because the
 // `vi.mock` factory below is hoisted above ordinary top-level declarations.
 const decoder = vi.hoisted(() => ({ throws: false }))
+// Mutable so one spec can replace the wallet's answer.
+const wallet = vi.hoisted(() => ({
+  signTransaction: undefined as undefined | (() => Promise<never>),
+}))
 
 vi.mock('../../utils/base64ToUint8Array.js', () => ({
   base64ToUint8Array: () => new Uint8Array([1]),
@@ -25,6 +29,7 @@ vi.mock('../../utils/getWalletFeature.js', () => ({
     // tag every output with its position so the decoder below can hand back a
     // distinct transaction per position.
     signTransaction: (...inputs: unknown[]) =>
+      wallet.signTransaction?.() ??
       inputs.map((_, index) => ({
         signedTransaction: new Uint8Array([index]),
       })),
@@ -59,6 +64,7 @@ vi.mock('@solana/kit', async (importActual) => {
 const { SolanaSignAndExecuteTask } = await import(
   './SolanaSignAndExecuteTask.js'
 )
+const { LiFiErrorCode } = await import('@lifi/sdk')
 
 const updateAction = vi.fn()
 
@@ -105,6 +111,36 @@ describe('SolanaSignAndExecuteTask', () => {
     getTransactionRequestData.mockReset()
     updateAction.mockReset()
     decoder.throws = false
+    wallet.signTransaction = undefined
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('reports TransactionExpired when the wallet does not answer within two minutes', async () => {
+    vi.useFakeTimers()
+    getTransactionRequestData.mockResolvedValue('tx-a')
+    wallet.signTransaction = () => new Promise<never>(() => {})
+
+    const run = expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionExpired })
+    await vi.advanceTimersByTimeAsync(120_000)
+
+    await run
+  })
+
+  it('passes an AbortError from the wallet through, not as TransactionExpired', async () => {
+    getTransactionRequestData.mockResolvedValue('tx-a')
+    const abortError = Object.assign(new Error('This operation was aborted'), {
+      name: 'AbortError',
+    })
+    wallet.signTransaction = () => Promise.reject(abortError)
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toBe(abortError)
   })
 
   it('flags a bundle when transaction data is an array', async () => {
