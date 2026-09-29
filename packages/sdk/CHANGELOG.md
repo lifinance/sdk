@@ -1,5 +1,24 @@
 # @lifi/sdk
 
+## 4.10.0
+
+### Minor Changes
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - `sleep` takes an optional `{ signal }`. It rejects with the abort reason as soon as the signal aborts.
+
+### Patch Changes
+
+- [#496](https://github.com/lifinance/sdk/pull/496) [`dcbbdcc`](https://github.com/lifinance/sdk/commit/dcbbdccc2684c4549cbfe06444698f11347206af) Thanks [@chybisov](https://github.com/chybisov)! - Bump the `@lifi/types` pin to `^18.12.1`, which adds `slippageScope` and the route-wide
+  slippage commitment types.
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - Stop the balance check's retry loop once its 10 s timeout rejects, so a late balance read can no longer change `step.action.fromAmount`.
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - `LruMap` now evicts the least recently used entry instead of the oldest one, and no longer grows past its size on iOS 18.
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - `parseUnits` rounds long fractions exactly, and `parseUnits` and `formatUnits` throw on a negative or fractional `decimals` instead of giving a wrong amount. An input with no digit, such as `''`, still parses as `0n`.
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - `withTimeout` now rejects with its timeout error only when its own timeout fires. Any other `AbortError` from the wrapped function passes through, so a wallet `AbortError` in the Bitcoin and Solana signing steps is no longer reported as `TransactionExpired`.
+
 ## 4.9.0
 
 ### Minor Changes
