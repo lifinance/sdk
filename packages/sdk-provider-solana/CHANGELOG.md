@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.1
+
+### Patch Changes
+
+- [#499](https://github.com/lifinance/sdk/pull/499) [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80) Thanks [@chybisov](https://github.com/chybisov)! - A user rejection from a Wallet Standard wallet (code `4001`, or a message such as "User rejected the request") is now reported as `SignatureRejected` instead of `UnknownError`. An `AbortError` is not treated as a rejection.
+- Updated dependencies [[`dcbbdcc`](https://github.com/lifinance/sdk/commit/dcbbdccc2684c4549cbfe06444698f11347206af), [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80), [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80), [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80), [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80), [`2d60ab4`](https://github.com/lifinance/sdk/commit/2d60ab43af2ecd1c17a3bbb126de408952a46d80)]:
+  - @lifi/sdk@4.10.0
+
 ## 4.3.0
 
 ### Minor Changes
