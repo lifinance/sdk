@@ -1,6 +1,5 @@
 /**
  * Multiplies a string representation of a number by a given exponent of base 10 (10exponent).
- * Copied from viem 2.56.9 (`Value.from` in `src/utils/unit/Value.ts`).
  */
 export function parseUnits(value: string, decimals: number): bigint {
   if (!Number.isInteger(decimals) || decimals < 0) {
@@ -9,8 +8,7 @@ export function parseUnits(value: string, decimals: number): bigint {
     )
   }
 
-  // Unlike viem, which throws, an input with no digit is 0n, as it was before
-  // the sync. The widget parses an empty amount field.
+  // An input with no digit is 0n: the widget parses an empty amount field.
   if (/^-?\.?$/.test(value)) {
     return 0n
   }

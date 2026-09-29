@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseUnits } from './parseUnits.js'
 
-// Cases from viem 2.56.9 (`src/utils/unit/parseUnits.test.ts` and the `from`
-// block of `src/utils/unit/Value.test.ts`).
 describe('parseUnits', () => {
   it.each([
     ['69', 1, 690n],
@@ -64,7 +62,7 @@ describe('parseUnits', () => {
     expect(parseUnits(value, decimals)).toBe(expected)
   })
 
-  // viem#4855: `Math.round(Number(...))` is not exact for long fractions.
+  // `Math.round(Number(...))` is not exact for long fractions.
   it.each([
     ['1.4499999999999999999', 1, 14n],
     ['1.14999999999999999', 1, 11n],
@@ -86,7 +84,7 @@ describe('parseUnits', () => {
     }
   )
 
-  // Unlike viem, which throws. The widget parses an empty amount field.
+  // The widget parses an empty amount field.
   it.each(['', '.', '-', '-.'])(
     'parses %j, which has no digit, as 0n',
     (value) => {

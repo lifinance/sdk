@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatUnits } from './formatUnits.js'
 
-// Cases from viem 2.56.9 (`src/utils/unit/formatUnits.test.ts` and the
-// `format` block of `src/utils/unit/Value.test.ts`).
 describe('formatUnits', () => {
   it.each([
     [69n, 0, '69'],

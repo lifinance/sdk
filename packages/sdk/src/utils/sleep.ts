@@ -3,7 +3,6 @@ import { getAbortError } from './abort.js'
 /**
  * Resolves with `null` after `ms`. With a `signal`, it rejects with the abort
  * reason as soon as the signal aborts, and clears its timer.
- * Based on viem's `wait` (viem 2.56.9, `src/utils/wait.ts`).
  */
 export function sleep(
   ms: number,

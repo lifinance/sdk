@@ -1,6 +1,5 @@
 /**
  *  Divides a number by a given exponent of base 10 (10exponent), and formats it into a string representation of the number.
- *  Copied from viem 2.56.9 (`Value.format` in `src/utils/unit/Value.ts`).
  */
 export function formatUnits(value: bigint, decimals: number): string {
   if (!Number.isInteger(decimals) || decimals < 0) {

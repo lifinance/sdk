@@ -2,7 +2,7 @@ import { isAbortError } from './abort.js'
 
 /**
  * Wraps a function in a timeout.
- * Based on viem's withTimeout (viem 2.56.9, `src/utils/promise/withTimeout.ts`).
+ * Based on viem's withTimeout implementation.
  * @param fn - The function to wrap.
  * @param timeout - The timeout in milliseconds.
  * @param errorInstance - The error instance to throw when the timeout is reached.

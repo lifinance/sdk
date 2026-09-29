@@ -60,8 +60,8 @@ describe('LruMap', () => {
     expect(cache.has('b')).toBe(false)
   })
 
-  // Regression guards for viem#4377. The iOS 18 iterator bug does not
-  // reproduce in Node, so these pass on the old code too.
+  // Regression guards for the iOS 18 iterator bug. It does not reproduce
+  // in Node, so these pass on the old code too.
   it('stays within maxSize under heavy load', () => {
     const cache = new LruMap<boolean>(100)
     for (let i = 0; i < 10_000; i++) {

@@ -1,6 +1,5 @@
 /**
  * Map with a LRU (Least recently used) policy.
- * Copied from viem 2.56.9 (`src/utils/lru.ts`).
  *
  * https://en.wikipedia.org/wiki/Cache_replacement_policies#LRU
  */
