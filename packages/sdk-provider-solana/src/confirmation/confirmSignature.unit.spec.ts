@@ -15,6 +15,7 @@ vi.mock('./abortableSleep.js', () => ({
 }))
 
 const reached = vi.fn<() => boolean>()
+const expiredAt = vi.fn<() => bigint | undefined>(() => undefined)
 const tick = vi.fn<() => Promise<void>>(() => Promise.resolve())
 /** Options every `createConfirmationDeadline` call received, in order. */
 const deadlineCalls: unknown[] = []
@@ -25,6 +26,7 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
     deadlineCalls.push(options)
     return {
       reached: () => reached(),
+      expiredAt: () => expiredAt(),
       tick: () => tick(),
     }
   },
@@ -74,6 +76,7 @@ describe('confirmSignature', () => {
     statusSendOptions.length = 0
     sleepSignals.length = 0
     reached.mockReturnValue(false)
+    expiredAt.mockReturnValue(undefined)
     tick.mockResolvedValue(undefined)
   })
 
@@ -466,5 +469,13 @@ describe('confirmSignature', () => {
     // the assertion under test is the callback, not the throw.
     await expect(pending).rejects.toThrow(/ever completed/i)
     expect(onBroadcast).not.toHaveBeenCalled()
+  })
+
+  it('returns expired with its slot when the deadline ends on the blockhash verdict', async () => {
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    getSignatureStatuses.mockResolvedValue(noStatus())
+
+    await expect(run()).resolves.toEqual({ kind: 'expired', slot: 900n })
   })
 })

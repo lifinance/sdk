@@ -31,7 +31,9 @@ const signal = (): AbortSignal => new AbortController().signal
 let currentTime = 0
 const now = (): number => currentTime
 
-const valid = (value: boolean) => ({ value })
+/** An `isBlockhashValid` answer. The slot is where a dropped check later
+ * places the head it needs; a `false` without one is no verdict. */
+const valid = (value: boolean, slot = 100n) => ({ context: { slot }, value })
 
 /**
  * One tick that is guaranteed to probe: the poll loop calls `tick` far more
@@ -488,5 +490,94 @@ describe('createConfirmationDeadline', () => {
     await deadline.tick(controller.signal)
 
     expect(isBlockhashValid).not.toHaveBeenCalled()
+  })
+
+  it('reports the slot of the latest false answer through expiredAt()', async () => {
+    // `reached()` fires for a dead blockhash and for the ceiling alike. Only
+    // the first may end in a final "dropped", and that check needs the slot
+    // at which the blockhash was seen dead.
+    isBlockhashValid
+      .mockResolvedValueOnce(valid(false, 101n))
+      .mockResolvedValueOnce(valid(false, 118n))
+      .mockResolvedValueOnce(valid(false, 136n))
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS; attempt += 1) {
+      expect(deadline.expiredAt()).toBeUndefined()
+      await probeTick(deadline)
+    }
+
+    expect(deadline.reached()).toBe(true)
+    expect(deadline.expiredAt()).toBe(136n)
+  })
+
+  it('reaches the ceiling without an expiry verdict', () => {
+    const deadline = createConfirmationDeadline({
+      lifetimes: [{ kind: 'nonce' }],
+      rpc,
+      now,
+    })
+
+    currentTime = CONFIRMATION_TIMEOUT_MS
+
+    expect(deadline.reached()).toBe(true)
+    expect(deadline.expiredAt()).toBeUndefined()
+  })
+
+  it('withdraws the verdict once the blockhash reads valid again', async () => {
+    isBlockhashValid.mockResolvedValue(valid(false))
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS; attempt += 1) {
+      await probeTick(deadline)
+    }
+    expect(deadline.expiredAt()).toBe(100n)
+
+    isBlockhashValid.mockResolvedValue(valid(true))
+    await probeTick(deadline)
+
+    expect(deadline.expiredAt()).toBeUndefined()
+  })
+
+  it('does not count a false answer that carries no slot', async () => {
+    // Unvalidated wire data. A verdict without its slot could not bound the
+    // head of the dropped check, so it is a read that answered nothing.
+    isBlockhashValid.mockResolvedValue({ value: false })
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS + 1; attempt += 1) {
+      await probeTick(deadline)
+    }
+
+    expect(deadline.reached()).toBe(false)
+    expect(deadline.expiredAt()).toBeUndefined()
+  })
+
+  it('reports the latest slot when several blockhashes expired', async () => {
+    isBlockhashValid.mockImplementation((value: string) =>
+      Promise.resolve(valid(false, value === 'A' ? 200n : 210n))
+    )
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A'), blockhash('B')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS; attempt += 1) {
+      await probeTick(deadline)
+    }
+
+    expect(deadline.expiredAt()).toBe(210n)
   })
 })
