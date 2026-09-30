@@ -22,6 +22,9 @@ const PRE_PUSH_REJECTION_CODES: ReadonlySet<string> = new Set([
   'SERVER_BUSY',
   'CONTRACT_VALIDATE_ERROR',
   'CONTRACT_EXE_ERROR',
+  // java-tron's spelling (api.proto `BANDWITH_ERROR = 4`). The HTTP API sends
+  // the enum name. `BANDWIDTH_ERROR` is a harmless alias.
+  'BANDWITH_ERROR',
   'BANDWIDTH_ERROR',
   'TAPOS_ERROR',
   'TOO_BIG_TRANSACTION_ERROR',

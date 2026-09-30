@@ -105,6 +105,8 @@ describe('broadcastTronTransaction', () => {
     'SERVER_BUSY',
     'CONTRACT_VALIDATE_ERROR',
     'CONTRACT_EXE_ERROR',
+    // java-tron's spelling (api.proto `BANDWITH_ERROR = 4`), and the alias.
+    'BANDWITH_ERROR',
     'BANDWIDTH_ERROR',
     'TAPOS_ERROR',
     'TOO_BIG_TRANSACTION_ERROR',
