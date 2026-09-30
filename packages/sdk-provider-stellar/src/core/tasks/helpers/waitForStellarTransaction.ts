@@ -5,10 +5,12 @@ import { callStellarRpcsWithRetry } from '../../../client/getStellarRpc.js'
 const CONFIRM_POLL_INTERVAL_MS = 3_000
 
 /**
- * Outlives the backend's `[0, now + 300 s]` timebounds, so a transaction that
- * has not been applied by the deadline is genuinely dead rather than still in
- * flight. Expressed as a deadline, not an attempt count, so a caller-supplied
- * polling interval cannot shorten the budget.
+ * Outlives the backend's `[0, now + 300 s]` timebounds, so the wait normally
+ * lasts until the envelope can no longer be applied. A timeout is still not
+ * proof that the transaction is dead: the RPC may lag, or its history may not
+ * reach the transaction, so the outcome stays unknown. Expressed as a deadline,
+ * not an attempt count, so a caller-supplied polling interval cannot shorten
+ * the budget.
  */
 const CONFIRM_TIMEOUT_MS = 330_000
 

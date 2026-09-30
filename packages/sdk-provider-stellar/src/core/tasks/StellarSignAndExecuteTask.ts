@@ -6,6 +6,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
+import { classifySubmitFailure } from './helpers/classifySubmitFailure.js'
 import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
 import { getStellarTxLink } from './helpers/getStellarTxLink.js'
 import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
@@ -67,7 +68,18 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
       signedAt: Date.now(),
     })
 
-    await submitStellarTransaction(client, signedTxXdr, networkPassphrase)
+    try {
+      await submitStellarTransaction(client, signedTxXdr, networkPassphrase)
+    } catch (error) {
+      // A rejection is final only with a chain proof that the envelope was never
+      // applied and can no longer be, and when the LI.FI status API does not
+      // know the hash. On the first run the envelope has usually not expired
+      // yet, so the outcome stays unknown and a resume checks it again.
+      throw await classifySubmitFailure(
+        { client, step, transactionHash, signedTxXdr, networkPassphrase },
+        error
+      )
+    }
 
     return { status: 'COMPLETED', context: { transactionHash } }
   }
