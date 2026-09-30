@@ -6,10 +6,14 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
-  - '@stellar/stellar-sdk@17.2.0'
-  - '@types/ws@8.18.2'
-  - msw@3.0.0
-  - viem@2.57.0
+  - '@mysten/sui@2.33.2'
+  - '@vitest/coverage-v8@5.0.3'
+  - knip@6.39.0
+  - msw@3.0.1
+  - viem@2.57.1
+  - vitest@5.0.3
+  - '@vitest/mocker@5.0.3'
+  - '@vitest/spy@5.0.3'
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
