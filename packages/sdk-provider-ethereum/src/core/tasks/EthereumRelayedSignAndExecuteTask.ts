@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
   relayTransaction,
   type SignedTypedData,
@@ -91,6 +92,9 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       taskId: relayedTransaction.taskId as Hash,
       txType: 'relayed',
       txLink: relayedTransaction.txLink,

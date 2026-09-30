@@ -233,3 +233,43 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
     )
   })
 })
+
+describe('EthereumStandardSignAndExecuteTask.run transaction fields', () => {
+  it('clears the previous transaction fields when it writes the new hash', async () => {
+    const context = buildContext({
+      stepTypedData: [permit2Allowance()],
+      signedTypedData: [signedNativePermit(), signedPermit2Allowance()],
+    })
+    // The action still holds the data of an earlier, final transaction.
+    vi.mocked(context.statusManager.findAction).mockReturnValue({
+      type: 'SWAP',
+      status: 'FAILED',
+      txHash: `0x${'01'.repeat(32)}`,
+      txLink: 'https://etherscan.io/tx/old',
+      txHex: '0x02',
+      txFinal: true,
+      taskId: `0x${'03'.repeat(32)}`,
+    } as never)
+
+    await task.run(context)
+
+    const params = vi
+      .mocked(context.statusManager.updateAction)
+      .mock.calls.find(([, , status]) => status === 'PENDING')?.[3] as Record<
+      string,
+      unknown
+    >
+    expect(Object.keys(params ?? {})).toEqual(
+      expect.arrayContaining(['txHash', 'txLink', 'txHex', 'txFinal', 'taskId'])
+    )
+    expect(params).toMatchObject({ txHash: TX_HASH, txType: 'standard' })
+    // `toMatchObject` ignores `undefined` values, so the cleared keys are
+    // checked one by one.
+    expect('txHex' in params).toBe(true)
+    expect(params.txHex).toBeUndefined()
+    expect('txFinal' in params).toBe(true)
+    expect(params.txFinal).toBeUndefined()
+    expect('taskId' in params).toBe(true)
+    expect(params.taskId).toBeUndefined()
+  })
+})

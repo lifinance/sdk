@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -66,6 +67,9 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       taskId: id as Hash,
       txType: 'batched',
       signedAt: Date.now(),
