@@ -244,6 +244,19 @@ describe('sendAndConfirmTransaction', () => {
       sendAndConfirmTransaction(clientWith(), {} as never)
     ).resolves.toEqual({ kind: 'confirmed', value: { err: null } })
   })
+
+  it('keeps expired even when no RPC ever accepted the send', async () => {
+    // Once the blockhash is dead every send may be rejected, so "nothing was
+    // accepted" is expected there and says nothing about an outage.
+    // Rewriting it to rpc-unavailable would block the dropped verdict for
+    // good, and "Try again" could never sign again.
+    getSolanaRpcs.mockResolvedValue([createRpc(), createRpc()])
+    confirmSignature.mockResolvedValue({ kind: 'expired', slot: 900n })
+
+    await expect(
+      sendAndConfirmTransaction(clientWith(), {} as never)
+    ).resolves.toEqual({ kind: 'expired', slot: 900n, errors: [] })
+  })
 })
 
 describe('sendAndConfirmTransaction with write RPCs', () => {

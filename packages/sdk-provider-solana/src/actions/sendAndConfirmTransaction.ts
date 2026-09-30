@@ -197,6 +197,10 @@ export async function sendAndConfirmTransaction(
   // Reads `sendAccepted`, never `broadcastReported`: the latter is false
   // whenever the integrator's callback threw, which says nothing about whether
   // the network took the transaction.
+  //
+  // `expired` is left alone: once the blockhash is dead every send may be
+  // rejected, so "nothing was accepted" is expected there. Rewriting it would
+  // block the dropped verdict for good.
   if (result.kind === 'not-confirmed' && !sendAccepted) {
     return { kind: 'rpc-unavailable', errors: result.errors }
   }
