@@ -46,6 +46,16 @@ const answeringNode = (head: number, txInfo: unknown): Node => ({
 /** A node with the given head time that has not included the transaction. */
 const makeNode = (head: number): Node => answeringNode(head, {})
 
+/** A node whose head request fails, with the given answer to the lookup. */
+const headlessNode = (txInfo: unknown): Node => ({
+  trx: {
+    getCurrentBlock: vi.fn(async () => {
+      throw new Error('socket hang up')
+    }),
+    getUnconfirmedTransactionInfo: vi.fn(async () => txInfo),
+  },
+})
+
 const failingNode = (): Node => ({
   trx: {
     getCurrentBlock: vi.fn(async () => {
@@ -120,8 +130,10 @@ describe('isTronTransactionDropped', () => {
     ).resolves.toBe(false)
   })
 
-  it('uses block time: a local clock a day ahead does not expire the transaction', async () => {
-    vi.setSystemTime(EXPIRATION + WINDOW)
+  // `Date.now()` as the head would pass both bounds here (1 h past the
+  // expiration, inside the 24 h window), so only the block time keeps it unknown.
+  it('uses block time: a local clock an hour ahead does not expire the transaction', async () => {
+    vi.setSystemTime(EXPIRATION + 60 * 60_000)
     const client = withTronNodes(makeNode(EXPIRATION - 1))
 
     await expect(
@@ -163,6 +175,44 @@ describe('isTronTransactionDropped', () => {
     await expect(
       isTronTransactionDropped(client, stepSignedAt(), TX_HASH, EXPIRATION)
     ).resolves.toBe(false)
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+  })
+
+  // Spec 4.2.8 (b): no node may return the transaction, also a node that
+  // does not cover the window.
+  it('is not dropped when a lagging node returns the transaction', async () => {
+    const client = withTronNodes(
+      makeNode(HEAD_OK),
+      answeringNode(EXPIRATION, { id: TX_HASH })
+    )
+
+    await expect(
+      isTronTransactionDropped(client, stepSignedAt(), TX_HASH, EXPIRATION)
+    ).resolves.toBe(false)
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+  })
+
+  it('is not dropped when a node without a head returns the transaction', async () => {
+    const headless = headlessNode({ id: TX_HASH })
+    const client = withTronNodes(makeNode(HEAD_OK), headless)
+
+    await expect(
+      isTronTransactionDropped(client, stepSignedAt(), TX_HASH, EXPIRATION)
+    ).resolves.toBe(false)
+    expect(headless.trx.getUnconfirmedTransactionInfo).toHaveBeenCalledWith(
+      TX_HASH
+    )
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+  })
+
+  it('never counts the "not found" of a node without a head', async () => {
+    const headless = headlessNode({})
+    const client = withTronNodes(headless)
+
+    await expect(
+      isTronTransactionDropped(client, stepSignedAt(), TX_HASH, EXPIRATION)
+    ).resolves.toBe(false)
+    expect(headless.trx.getUnconfirmedTransactionInfo).toHaveBeenCalled()
     expect(isKnownToStatusApi).not.toHaveBeenCalled()
   })
 

@@ -36,6 +36,12 @@ const errorBody: SendRawTransaction = async (transaction) => ({
   Error: 'lack of computing resources',
   transaction,
 })
+const answersCode =
+  (code: string): SendRawTransaction =>
+  async () => ({ result: false, code })
+// java-tron returns this code after it put the transaction into its pending
+// pool: the node holds the transaction although the answer is `result: false`.
+const postPush = answersCode('NOT_ENOUGH_EFFECTIVE_CONNECTION')
 
 /** One fake TronWeb per RPC URL; `callTronRpcsWithRetry` tries them in order. */
 const withNodes = (...sends: SendRawTransaction[]) =>
@@ -85,6 +91,59 @@ describe('broadcastTronTransaction', () => {
   ])('is unknown after %s', async (_label, sends) => {
     const result = await broadcastTronTransaction(
       withNodes(...sends),
+      SIGNED_TRANSACTION
+    )
+
+    expect(result.status).toBe('unknown')
+  })
+
+  // The codes that java-tron returns before the pending-pool push.
+  it.each([
+    'SIGERROR',
+    'BLOCK_UNSOLIDIFIED',
+    'NO_CONNECTION',
+    'SERVER_BUSY',
+    'CONTRACT_VALIDATE_ERROR',
+    'CONTRACT_EXE_ERROR',
+    'BANDWIDTH_ERROR',
+    'TAPOS_ERROR',
+    'TOO_BIG_TRANSACTION_ERROR',
+    'TRANSACTION_EXPIRATION_ERROR',
+  ])('is rejected when every node answers %s', async (code) => {
+    const result = await broadcastTronTransaction(
+      withNodes(answersCode(code), answersCode(code)),
+      SIGNED_TRANSACTION
+    )
+
+    expect(result.status).toBe('rejected')
+  })
+
+  it.each([
+    'NOT_ENOUGH_EFFECTIVE_CONNECTION',
+    'OTHER_ERROR',
+    'A_CODE_THAT_DOES_NOT_EXIST',
+  ])('is unknown when every node answers %s', async (code) => {
+    const result = await broadcastTronTransaction(
+      withNodes(answersCode(code), answersCode(code)),
+      SIGNED_TRANSACTION
+    )
+
+    expect(result.status).toBe('unknown')
+    // The same message as a refusal before this change.
+    expect(result).toMatchObject({
+      error: {
+        name: 'AggregateError',
+        errors: [
+          { message: `Transaction broadcast failed: ${code}` },
+          { message: `Transaction broadcast failed: ${code}` },
+        ],
+      },
+    })
+  })
+
+  it('is unknown when one node refuses before the push and another after it', async () => {
+    const result = await broadcastTronTransaction(
+      withNodes(answersCode('SIGERROR'), postPush),
       SIGNED_TRANSACTION
     )
 

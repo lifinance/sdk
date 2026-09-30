@@ -5,6 +5,7 @@ import {
   type LiFiStepExtended,
   type SDKClient,
 } from '@lifi/sdk'
+import type { TronWeb } from 'tronweb'
 import { callTronRpcsWithRetry } from '../../../rpc/callTronRpcsWithRetry.js'
 import { stripHexPrefix } from '../../../utils/stripHexPrefix.js'
 import {
@@ -86,7 +87,8 @@ function getLandingWindow(
  * Asks every node. `found` as soon as one returns the transaction;
  * `not-found` when none returns it and at least one covering node answered
  * `{}`; `unknown` otherwise (errors, answers other than `{}` without `id`, or
- * no node covers the window).
+ * no node covers the window). A node without a head is still asked: its
+ * transaction vetoes, but its `{}` never counts.
  */
 async function lookUpOnTronNodes(
   client: SDKClient,
@@ -96,8 +98,8 @@ async function lookUpOnTronNodes(
   let coveringNotFound = 0
   try {
     await callTronRpcsWithRetry(client, async (tronWeb) => {
-      const block = await tronWeb.trx.getCurrentBlock()
-      const head = block.block_header.raw_data.timestamp
+      // The head comes first, so the lookup below sees at least this head.
+      const head = await getHeadTime(tronWeb)
       // The full node answers: unlike `getTransactionInfo`, this call does not
       // wait for the solidity node.
       const txInfo: unknown =
@@ -112,6 +114,7 @@ async function lookUpOnTronNodes(
         throw new Error('The node answered neither the transaction nor {}.')
       }
       const covers =
+        head !== undefined &&
         head > window.latest + TRON_HEAD_MARGIN_MS &&
         head - window.earliest < TRON_LOOKUP_WINDOW_MS
       if (covers) {
@@ -123,6 +126,16 @@ async function lookUpOnTronNodes(
     return 'found'
   } catch {
     return coveringNotFound > 0 ? 'not-found' : 'unknown'
+  }
+}
+
+/** The node's latest block time, or `undefined` when the request fails. */
+async function getHeadTime(tronWeb: TronWeb): Promise<number | undefined> {
+  try {
+    const block = await tronWeb.trx.getCurrentBlock()
+    return block.block_header.raw_data.timestamp
+  } catch {
+    return undefined
   }
 }
 
