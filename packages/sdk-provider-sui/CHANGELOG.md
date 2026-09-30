@@ -1,5 +1,12 @@
 # @lifi/sdk-provider-sui
 
+## 4.2.6
+
+### Patch Changes
+
+- [#500](https://github.com/lifinance/sdk/pull/500) [`6ffd1be`](https://github.com/lifinance/sdk/commit/6ffd1be6f6c2bd2b7f00cde9bcc72dfee56afe3d) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.1, @solana/kit to 8.4.0, @stellar/stellar-sdk to
+  17.2.0 and @mysten/sui to 2.33.2.
+
 ## 4.2.5
 
 ### Patch Changes
