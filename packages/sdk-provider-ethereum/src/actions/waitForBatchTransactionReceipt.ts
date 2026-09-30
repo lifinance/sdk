@@ -27,7 +27,9 @@ export const waitForBatchTransactionReceipt = async (
       onFailed?.(result)
       throw new TransactionError(
         LiFiErrorCode.TransactionFailed,
-        'Transaction was reverted.'
+        'Transaction was reverted.',
+        undefined,
+        { final: true }
       )
     }
     const transactionReceipt = result.receipts.at(-1)!
@@ -37,12 +39,16 @@ export const waitForBatchTransactionReceipt = async (
     onFailed?.(result)
     throw new TransactionError(
       LiFiErrorCode.TransactionCanceled,
-      'Transaction was canceled.'
+      'Transaction was canceled.',
+      undefined,
+      { final: true }
     )
   }
   onFailed?.(result)
   throw new TransactionError(
     LiFiErrorCode.TransactionFailed,
-    'Transaction failed.'
+    'Transaction failed.',
+    undefined,
+    { final: true }
   )
 }
