@@ -197,6 +197,38 @@ describe('createClient', () => {
       expect(client.getProvider(ChainType.EVM)).toBe(evmProvider2)
       expect(client.getProvider(ChainType.SVM)).toBe(solanaProvider)
     })
+
+    it('keeps a chain-specific provider beside the generic one of its type', () => {
+      const bitcoin = UTXO()
+      const zcash = { ...UTXO(), chainIds: [ChainId.ZEC] }
+      const client = createClient({ integrator: 'test-app' })
+
+      client.setProviders([bitcoin, zcash])
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.providers[0]).toBe(bitcoin)
+      expect(client.providers[1]).toBe(zcash)
+      expect(client.getProvider(ChainType.UTXO)).toBe(bitcoin)
+      expect(client.getProvider(ChainType.UTXO, ChainId.BTC)).toBe(bitcoin)
+      expect(client.getProvider(ChainType.UTXO, ChainId.ZEC)).toBe(zcash)
+    })
+
+    it('replaces only the provider that serves the same chains', () => {
+      const bitcoin1 = UTXO()
+      const bitcoin2 = UTXO()
+      const zcash = { ...UTXO(), chainIds: [ChainId.ZEC] }
+      const client = createClient({
+        integrator: 'test-app',
+        providers: [bitcoin1, zcash],
+      })
+
+      client.setProviders([bitcoin2])
+
+      expect(client.providers).toHaveLength(2)
+      expect(client.providers[0]).toBe(bitcoin2)
+      expect(client.providers[1]).toBe(zcash)
+      expect(client.getProvider(ChainType.UTXO, ChainId.ZEC)).toBe(zcash)
+    })
   })
 
   describe('chain management', () => {
