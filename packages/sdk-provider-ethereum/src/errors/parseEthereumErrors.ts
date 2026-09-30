@@ -19,10 +19,14 @@ export const parseEthereumErrors = async (
   action?: ExecutionAction,
   retryParams?: ExecuteStepRetryParams
 ): Promise<SDKError | ExecuteStepRetryError> => {
-  if (
-    isAtomicReadyWalletRejectedUpgradeError(e) &&
-    !retryParams?.atomicityNotReady
-  ) {
+  // A task asked for the replay itself; it is not a failure to classify.
+  if (e instanceof ExecuteStepRetryError) {
+    return e
+  }
+
+  // `executeRoute` replays a step once, so a step that was already replayed —
+  // for any reason — gets no second retry request; it fails instead.
+  if (isAtomicReadyWalletRejectedUpgradeError(e) && !retryParams) {
     return new ExecuteStepRetryError(
       'Wallet rejected 7702 upgrade based on the EIP-5792 capabilities; retry with atomicityNotReady',
       { atomicityNotReady: true },

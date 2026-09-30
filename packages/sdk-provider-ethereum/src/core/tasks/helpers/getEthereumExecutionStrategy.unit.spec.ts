@@ -7,7 +7,10 @@ vi.mock('../../../actions/isBatchingSupported.js', () => ({
 
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { getEthereumExecutionStrategy } from './getEthereumExecutionStrategy.js'
+import {
+  getEthereumExecutionStrategy,
+  STRATEGY_AFTER_PREPARE,
+} from './getEthereumExecutionStrategy.js'
 
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af'
@@ -192,6 +195,43 @@ describe('getEthereumExecutionStrategy', () => {
       expect(await getEthereumExecutionStrategy(buildContext(), true)).toBe(
         'standard'
       )
+    })
+  })
+
+  // JUMEMB-102: the replay `EthereumPrepareTransactionTask` asks for when a step
+  // left `batched` after its calls were queued.
+  describe('the strategy a replay carries from the previous prepare', () => {
+    it('starts the replay in that strategy, before any batching probe', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext()
+      context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'relayed' }
+
+      expect(await getEthereumExecutionStrategy(context)).toBe('relayed')
+      expect(isBatchingSupported).not.toHaveBeenCalled()
+    })
+
+    it('lets prepare decide again from its own re-quote', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext(undefined, undefined, true)
+      context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'relayed' }
+
+      expect(await getEthereumExecutionStrategy(context, true)).toBe('batched')
+    })
+
+    it('ignores a value that is not a strategy', async () => {
+      vi.mocked(isBatchingSupported).mockResolvedValue(true)
+      const context = buildContext()
+      context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'gasless' }
+
+      expect(await getEthereumExecutionStrategy(context)).toBe('batched')
+    })
+
+    it('still returns the memoized strategy within the replay', async () => {
+      const context = buildContext()
+      context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'relayed' }
+      context.executionStrategy = 'standard'
+
+      expect(await getEthereumExecutionStrategy(context)).toBe('standard')
     })
   })
 })
