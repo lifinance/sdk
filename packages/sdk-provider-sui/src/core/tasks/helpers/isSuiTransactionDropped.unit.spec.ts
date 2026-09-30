@@ -1,4 +1,5 @@
 import type { SDKClient } from '@lifi/sdk'
+import { GrpcTypes } from '@mysten/sui/grpc'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const isKnownToStatusApi = vi.fn()
@@ -42,18 +43,30 @@ const client = {} as SDKClient
 const timeOf = (sequenceNumber: bigint, intervalMs: number) =>
   NOW - Number(TIP - sequenceNumber) * intervalMs
 
+const {
+  CONSENSUS_COMMIT_PROLOGUE_V4: PROLOGUE,
+  PROGRAMMABLE_SYSTEM_TRANSACTION: PROGRAMMABLE_SYSTEM,
+  PROGRAMMABLE_TRANSACTION: PROGRAMMABLE,
+  RANDOMNESS_STATE_UPDATE: RANDOMNESS,
+} = GrpcTypes.TransactionKind_Kind
+
+/** A checkpoint transaction: its digest and its kind (none: no kind). */
+type FakeTransaction = [digest: string, kind?: GrpcTypes.TransactionKind_Kind]
+
 /**
  * Checkpoint `n` holds the consensus commit prologue, then user
- * transactions. The last one is `tx-<n>`.
+ * transactions. The last user transaction is `tx-<n>`.
  */
-const checkpointTransactions = (sequenceNumber: bigint) => [
-  `prologue-${sequenceNumber}`,
-  `user-${sequenceNumber}`,
-  `tx-${sequenceNumber}`,
+const checkpointTransactions = (sequenceNumber: bigint): FakeTransaction[] => [
+  [`prologue-${sequenceNumber}`, PROLOGUE],
+  [`user-${sequenceNumber}`, PROGRAMMABLE],
+  [`tx-${sequenceNumber}`, PROGRAMMABLE],
 ]
 
 /** A checkpoint that holds only the consensus commit prologue. */
-const prologueOnly = (sequenceNumber: bigint) => [`prologue-${sequenceNumber}`]
+const prologueOnly = (sequenceNumber: bigint): FakeTransaction[] => [
+  [`prologue-${sequenceNumber}`, PROLOGUE],
+]
 
 interface NodeOptions {
   /** Lowest checkpoint the node still has. */
@@ -62,8 +75,8 @@ interface NodeOptions {
   head?: bigint
   /** Milliseconds between two checkpoints. */
   intervalMs?: number
-  /** The transaction digests of a checkpoint, in checkpoint order. */
-  transactionsOf?: (sequenceNumber: bigint) => string[]
+  /** The transactions of a checkpoint, in checkpoint order. */
+  transactionsOf?: (sequenceNumber: bigint) => FakeTransaction[]
   /** Checkpoint timestamps (ms) that break the regular spacing. */
   timestamps?: Map<bigint, number>
   /** The node has executed the target digest. */
@@ -121,6 +134,7 @@ const makeNode = ({
           checkpointId,
         }: {
           checkpointId: { oneofKind?: string; sequenceNumber?: bigint }
+          readMask?: { paths: string[] }
         }) => {
           const sequenceNumber = checkpointId.sequenceNumber ?? head
           const timestampMs =
@@ -135,9 +149,12 @@ const makeNode = ({
                     nanos: (timestampMs % 1000) * 1_000_000,
                   },
                 },
-                transactions: transactionsOf(sequenceNumber).map((digest) => ({
-                  digest,
-                })),
+                transactions: transactionsOf(sequenceNumber).map(
+                  ([digest, kind]) =>
+                    kind === undefined
+                      ? { digest }
+                      : { digest, transaction: { kind: { kind } } }
+                ),
               },
             },
           }
@@ -201,20 +218,34 @@ describe('isSuiTransactionDropped', () => {
 
     // One request carries the target and both canaries: a checkpoint before
     // signing - skew (40 min back at 200 ms per checkpoint = 12,000) and one
-    // 120 checkpoints behind the tip. Each canary is the last transaction of
-    // its checkpoint.
+    // 120 checkpoints behind the tip. Each canary is the last user
+    // transaction of its checkpoint.
     expectCanaries(node, 'tx-988000', 'tx-999880')
     expect(isKnownToStatusApi).toHaveBeenCalledWith(
       client,
       expect.anything(),
       DIGEST
     )
+    // Every checkpoint request asks for the transaction kinds.
+    for (const [request] of node.ledgerService.getCheckpoint.mock.calls) {
+      expect(request.readMask).toEqual({
+        paths: [
+          'sequence_number',
+          'summary.timestamp',
+          'transactions.digest',
+          'transactions.transaction.kind',
+        ],
+      })
+    }
   })
 
-  it('takes the last transaction of a checkpoint with two transactions as its canary', async () => {
+  it('takes the only user transaction of a checkpoint as its canary', async () => {
     const [node] = useNodes(
       makeNode({
-        transactionsOf: (n) => [`prologue-${n}`, `tx-${n}`],
+        transactionsOf: (n) => [
+          [`prologue-${n}`, PROLOGUE],
+          [`tx-${n}`, PROGRAMMABLE],
+        ],
       })
     )
 
@@ -222,6 +253,65 @@ describe('isSuiTransactionDropped', () => {
       isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
     ).resolves.toBe(true)
     expectCanaries(node, 'tx-988000', 'tx-999880')
+  })
+
+  // Testnet checkpoint 389,597,491 ends with a PROGRAMMABLE_SYSTEM_TRANSACTION.
+  it.each([
+    ['RANDOMNESS_STATE_UPDATE', RANDOMNESS],
+    ['PROGRAMMABLE_SYSTEM_TRANSACTION', PROGRAMMABLE_SYSTEM],
+  ])(
+    'takes the earlier user transaction when a %s is last',
+    async (_, kind) => {
+      const [node] = useNodes(
+        makeNode({
+          transactionsOf: (n) => [
+            ...checkpointTransactions(n),
+            [`system-${n}`, kind],
+          ],
+        })
+      )
+
+      await expect(
+        isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+      ).resolves.toBe(true)
+      expectCanaries(node, 'tx-988000', 'tx-999880')
+    }
+  )
+
+  it('skips a checkpoint with only system transactions', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 988_000n || n === 999_880n
+            ? [
+                [`prologue-${n}`, PROLOGUE],
+                [`randomness-${n}`, RANDOMNESS],
+                [`system-${n}`, PROGRAMMABLE_SYSTEM],
+              ]
+            : checkpointTransactions(n),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-987999', 'tx-999881')
+  })
+
+  it('skips a transaction without a kind', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 988_000n || n === 999_880n
+            ? [[`prologue-${n}`, PROLOGUE], [`tx-${n}`]]
+            : checkpointTransactions(n),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-987999', 'tx-999881')
   })
 
   it('steps back over prologue-only checkpoints for the before canary', async () => {

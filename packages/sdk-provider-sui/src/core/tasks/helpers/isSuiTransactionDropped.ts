@@ -6,7 +6,7 @@ import {
   MAX_RESEND_AGE_MS,
   type SDKClient,
 } from '@lifi/sdk'
-import { GrpcStatusCode, type SuiGrpcClient } from '@mysten/sui/grpc'
+import { GrpcStatusCode, GrpcTypes, type SuiGrpcClient } from '@mysten/sui/grpc'
 import { callSuiWithRetry } from '../../../client/suiClient.js'
 import {
   SUI_CANARY_TIP_OFFSET,
@@ -18,13 +18,19 @@ import {
 // transaction.
 const MAX_SKIPPED_CHECKPOINTS = 10
 
+// The kind of a user transaction. System transactions (the consensus commit
+// prologue, randomness updates, programmable system transactions, epoch
+// changes) have other kinds.
+const PROGRAMMABLE_TRANSACTION =
+  GrpcTypes.TransactionKind_Kind.PROGRAMMABLE_TRANSACTION
+
 interface CheckpointInfo {
   sequenceNumber: bigint
   timestampMs: number
   /**
-   * The last transaction digest of the checkpoint, only if the checkpoint
-   * holds a user transaction. The first transaction of a checkpoint is the
-   * consensus commit prologue, a system transaction.
+   * The digest of the last user transaction of the checkpoint, the last one
+   * whose kind is `PROGRAMMABLE_TRANSACTION`. A transaction without a kind
+   * does not count.
    */
   userTransactionDigest?: string
 }
@@ -188,7 +194,12 @@ async function getCheckpoint(
         ? { oneofKind: undefined }
         : { oneofKind: 'sequenceNumber', sequenceNumber },
     readMask: {
-      paths: ['sequence_number', 'summary.timestamp', 'transactions.digest'],
+      paths: [
+        'sequence_number',
+        'summary.timestamp',
+        'transactions.digest',
+        'transactions.transaction.kind',
+      ],
     },
   })
   const checkpoint = response.checkpoint
@@ -200,12 +211,12 @@ async function getCheckpoint(
   if (checkpoint?.sequenceNumber === undefined || timestampMs <= 0) {
     throw new Error('The checkpoint has no sequence number or timestamp.')
   }
-  const { transactions } = checkpoint
   return {
     sequenceNumber: checkpoint.sequenceNumber,
     timestampMs,
-    userTransactionDigest:
-      transactions.length >= 2 ? transactions.at(-1)?.digest : undefined,
+    userTransactionDigest: checkpoint.transactions.findLast(
+      ({ transaction }) => transaction?.kind?.kind === PROGRAMMABLE_TRANSACTION
+    )?.digest,
   }
 }
 
