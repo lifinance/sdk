@@ -1,5 +1,7 @@
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   getTransactionRequestData,
   LiFiErrorCode,
   type TaskResult,
@@ -37,6 +39,10 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    // Defence in depth: the selector never routes an open transaction here,
+    // and signing again could execute the swap twice.
+    assertNoOpenTransaction(action)
+
     const transactionRequestData = await getTransactionRequestData(
       step,
       executionOptions
@@ -62,6 +68,9 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       txHash: transactionHash,
       txLink: getStellarTxLink(fromChain, transactionHash),
       txHex: signedTxXdr,

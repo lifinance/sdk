@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   type SDKError,
@@ -103,9 +104,11 @@ export class StellarStepExecutor extends BaseStepExecutor {
     // envelope was signed and very likely broadcast. Resuming such a step at
     // CheckBalanceTask would re-prepare, re-sign and submit a SECOND
     // transaction — executing the swap twice. Resume at the confirmation poll
-    // instead and let the already-broadcast transaction settle.
-    const taskName = swapOrBridgeAction?.txHash
-      ? swapOrBridgeAction.status === 'DONE'
+    // instead and let the already-broadcast transaction settle. Only a FAILED
+    // action with a final outcome (`txFinal`) signs again; this is the same
+    // predicate as the pre-sign guard.
+    const taskName = hasOpenTransaction(swapOrBridgeAction)
+      ? swapOrBridgeAction?.status === 'DONE'
         ? WaitForTransactionStatusTask.name
         : StellarWaitForTransactionTask.name
       : CheckBalanceTask.name

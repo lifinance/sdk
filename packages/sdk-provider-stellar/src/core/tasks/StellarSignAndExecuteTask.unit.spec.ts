@@ -41,7 +41,8 @@ const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
 
 const makeContext = (
   signedTxXdr: string,
-  onUpdateAction?: () => void
+  onUpdateAction?: () => void,
+  action: Record<string, unknown> = { type: 'SWAP' }
 ): {
   context: never
   updateAction: ReturnType<typeof vi.fn>
@@ -61,7 +62,7 @@ const makeContext = (
       checkWallet: () => {},
       step: { action: { fromAddress: keypair.publicKey() } },
       statusManager: {
-        findAction: () => ({ type: 'SWAP' }),
+        findAction: () => action,
         updateAction: (...args: unknown[]) => {
           onUpdateAction?.()
           updateAction(...args)
@@ -203,5 +204,77 @@ describe('StellarSignAndExecuteTask submit rejection (first run)', () => {
     expect(isFinalTransactionError(thrown)).toBe(false)
     expect(getTransaction).not.toHaveBeenCalled()
     expect(isKnownToStatusApi).not.toHaveBeenCalled()
+  })
+})
+
+describe('StellarSignAndExecuteTask pre-sign guard', () => {
+  beforeEach(() => {
+    getTransactionRequestData.mockReset().mockResolvedValue('UNSIGNED_XDR')
+    submitStellarTransaction.mockReset().mockResolvedValue('network-hash')
+  })
+
+  it.each([
+    [
+      'a pending hash',
+      { type: 'SWAP', status: 'PENDING', txHash: 'h', txHex: 'XDR' },
+    ],
+    [
+      'a FAILED hash without txFinal',
+      { type: 'SWAP', status: 'FAILED', txHash: 'h', txHex: 'XDR' },
+    ],
+    ['stored bytes only', { type: 'SWAP', status: 'PENDING', txHex: 'XDR' }],
+  ])(
+    'throws TransactionConflict and never opens the wallet for %s',
+    async (_label, action) => {
+      const { context, signTransaction, updateAction } = makeContext(
+        buildSignedTransaction().toXdr(),
+        undefined,
+        action
+      )
+
+      await expect(
+        new StellarSignAndExecuteTask().run(context)
+      ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+      expect(signTransaction).not.toHaveBeenCalled()
+      expect(getTransactionRequestData).not.toHaveBeenCalled()
+      expect(submitStellarTransaction).not.toHaveBeenCalled()
+      expect(updateAction).not.toHaveBeenCalled()
+    }
+  )
+
+  it('signs again after a final outcome and clears the old transaction fields', async () => {
+    const transaction = buildSignedTransaction()
+    const expectedHash = Buffer.from(transaction.hash()).toString('hex')
+    const { context, signTransaction, updateAction } = makeContext(
+      transaction.toXdr(),
+      undefined,
+      {
+        type: 'SWAP',
+        status: 'FAILED',
+        txHash: 'old-hash',
+        txHex: 'OLD_XDR',
+        txFinal: true,
+      }
+    )
+
+    await new StellarSignAndExecuteTask().run(context)
+
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+    const params = updateAction.mock.calls.find(
+      ([, , status]) => status === 'PENDING'
+    )?.[3] as Record<string, unknown>
+    expect(Object.keys(params)).toEqual(
+      expect.arrayContaining(['txHash', 'txLink', 'txHex', 'txFinal', 'taskId'])
+    )
+    expect(params).toMatchObject({
+      txHash: expectedHash,
+      txHex: transaction.toXdr(),
+    })
+    // `toMatchObject` ignores `undefined` values, so the cleared keys are
+    // checked one by one.
+    expect('txFinal' in params).toBe(true)
+    expect(params.txFinal).toBeUndefined()
+    expect('taskId' in params).toBe(true)
+    expect(params.taskId).toBeUndefined()
   })
 })

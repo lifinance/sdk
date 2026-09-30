@@ -74,6 +74,34 @@ describe('proveStellarTransactionAbsent', () => {
     await expect(prove()).resolves.toBe(false)
   })
 
+  // The head margin is 30 s: a latest close time exactly at the margin does
+  // not count, one second past it does.
+  it.each([
+    [30, false],
+    [31, true],
+  ])(
+    'with a latest ledger at maxTime + %i s, resolves %s',
+    async (secondsPastMaxTime, expected) => {
+      nodes(
+        notFound({ latestLedgerCloseTime: WINDOW.maxTime + secondsPastMaxTime })
+      )
+
+      await expect(prove()).resolves.toBe(expected)
+    }
+  )
+
+  // Coverage and head must come from the SAME response (spec 4.2.8). Each node
+  // proves one half only; combining the oldest of one with the latest of the
+  // other would prove nothing about either node.
+  it('does not combine a covering node and a node past the head', async () => {
+    nodes(
+      notFound({ latestLedgerCloseTime: WINDOW.maxTime + 10 }),
+      notFound({ oldestLedgerCloseTime: WINDOW.earliest + 1 })
+    )
+
+    await expect(prove()).resolves.toBe(false)
+  })
+
   it('does not count a NOT_FOUND without the coverage fields', async () => {
     nodes(
       notFound({
