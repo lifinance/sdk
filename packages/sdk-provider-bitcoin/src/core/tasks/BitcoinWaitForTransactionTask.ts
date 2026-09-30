@@ -54,7 +54,9 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
     if (replacementReason === 'cancelled') {
       throw new TransactionError(
         LiFiErrorCode.TransactionCanceled,
-        'User canceled transaction.'
+        'User canceled transaction.',
+        undefined,
+        { final: true }
       )
     }
 
