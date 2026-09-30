@@ -34,11 +34,11 @@ export const getBitcoinBalance = async (
 
   const blockNumber =
     blockCount.status === 'fulfilled' ? BigInt(blockCount.value) : 0n
-  // RPC failed — leave amount undefined so callers can distinguish
-  // an unknown balance from a known zero.
-  const amount = balance.status === 'fulfilled' ? balance.value : undefined
+  // A failed request sets no amount, so callers can tell an unknown balance
+  // from a known zero.
+  const amount = balance.status === 'fulfilled' ? { amount: balance.value } : {}
 
   return tokens.map((token) =>
-    isBitcoinToken(token) ? { ...token, amount, blockNumber } : { ...token }
+    isBitcoinToken(token) ? { ...token, ...amount, blockNumber } : { ...token }
   )
 }

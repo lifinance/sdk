@@ -63,4 +63,18 @@ describe('getBitcoinBalance', () => {
     }
     warn.mockRestore()
   })
+
+  it('adds no amount for BTC when the balance request fails', async () => {
+    mocks.getBitcoinPublicClient.mockResolvedValue({
+      getBalance: vi.fn().mockRejectedValue(new Error('RPC down')),
+      getBlockCount: vi.fn().mockResolvedValue(900_000),
+    })
+
+    const [balance] = await getBitcoinBalance(client, walletAddress, [
+      nativeToken(ChainId.BTC, 'BTC'),
+    ])
+
+    expect(balance).not.toHaveProperty('amount')
+    expect(balance.blockNumber).toBe(900_000n)
+  })
 })
