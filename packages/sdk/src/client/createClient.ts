@@ -11,9 +11,12 @@ import { name, version } from '../version.js'
 import { findProvider } from './findProvider.js'
 import { getClientStorage } from './getClientStorage.js'
 
-// A provider replaces only one that serves the same chains.
+// A provider replaces only one that serves the same chains. A provider that
+// lists no chains keeps the bare type, so even an empty list stays apart.
 const providerScope = (provider: SDKProvider): string =>
-  `${provider.type}:${provider.chainIds?.join(',') ?? ''}`
+  provider.chainIds
+    ? `${provider.type}:${[...provider.chainIds].sort().join(',')}`
+    : provider.type
 
 export function createClient(options: SDKConfig): SDKClient {
   if (!options.integrator) {
