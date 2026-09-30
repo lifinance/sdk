@@ -37,11 +37,17 @@ const HISTORY_BLOCK_CONFIG = {
 }
 const HEAD_BLOCK_CONFIG = { commitment: 'confirmed', ...HISTORY_BLOCK_CONFIG }
 
-const landed = (confirmationStatus = 'finalized') => ({
+const landed = (confirmationStatus = 'finalized', slot = 1n) => ({
   confirmationStatus,
   err: null,
-  slot: 1n,
+  slot,
 })
+/** A status of the history canary. A valid one has the slot of the block
+ * the canary was taken from. */
+const historyAt = (slot = CANARY_SLOT) => landed('finalized', slot)
+/** A status of the head canary, by default from the block at the expiry
+ * slot. */
+const headAt = (slot = 900n) => landed('confirmed', slot)
 
 /** A `getSignatureStatuses` response whose head is `headSlot`. */
 const statusesAt =
@@ -97,7 +103,7 @@ describe('lookupSignatureStatus', () => {
   describe('with bounds (the dropped check)', () => {
     it('asks for the target and both canaries in one request, with the history', async () => {
       const rpc = rpcWith({
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([rpc])
 
@@ -120,7 +126,7 @@ describe('lookupSignatureStatus', () => {
 
     it('returns not-found when a covering RPC with its head past the expiry slot answers null', async () => {
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(950n, null, landed(), landed()) }),
+        rpcWith({ statuses: statusesAt(950n, null, historyAt(), headAt()) }),
       ])
 
       await expect(
@@ -132,7 +138,7 @@ describe('lookupSignatureStatus', () => {
       // The expiry slot is the highest slot of the expiry streak: a head at
       // that slot has seen every slot the transaction could land in.
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(900n, null, landed(), landed()) }),
+        rpcWith({ statuses: statusesAt(900n, null, historyAt(), headAt()) }),
       ])
 
       await expect(
@@ -144,7 +150,7 @@ describe('lookupSignatureStatus', () => {
       // A pruned node answers null for the target and for the history canary
       // alike: its history does not reach the signing time.
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(950n, null, null, landed()) }),
+        rpcWith({ statuses: statusesAt(950n, null, null, headAt()) }),
       ])
 
       await expect(
@@ -156,7 +162,7 @@ describe('lookupSignatureStatus', () => {
       // A node on a minority fork does not know the confirmed block of the
       // majority at the head, whatever its own head slot says.
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(950n, null, landed(), null) }),
+        rpcWith({ statuses: statusesAt(950n, null, historyAt(), null) }),
       ])
 
       await expect(
@@ -167,7 +173,7 @@ describe('lookupSignatureStatus', () => {
     it('returns unknown when the head of the answering node is behind the expiry slot', async () => {
       // The node has not seen every slot the transaction could land in.
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(899n, null, landed(), landed()) }),
+        rpcWith({ statuses: statusesAt(899n, null, historyAt(), headAt()) }),
       ])
 
       await expect(
@@ -178,7 +184,7 @@ describe('lookupSignatureStatus', () => {
     it('returns unknown when the response has no context slot', async () => {
       getSolanaRpcs.mockResolvedValue([
         rpcWith({
-          statuses: async () => ({ value: [null, landed(), landed()] }),
+          statuses: async () => ({ value: [null, historyAt(), headAt()] }),
         }),
       ])
 
@@ -197,13 +203,65 @@ describe('lookupSignatureStatus', () => {
       ).resolves.toMatchObject({ kind: 'unknown', answered: true })
     })
 
+    it.each([
+      ['history', historyAt(CANARY_SLOT + 1n), headAt()],
+      ['head', historyAt(), headAt(901n)],
+    ])(
+      'returns unknown when the %s canary status has another slot than its block',
+      async (_canary, history, head) => {
+        // A node on a minority fork can hold the head canary transaction if
+        // the same transaction also landed on its fork: its status then has
+        // another slot.
+        getSolanaRpcs.mockResolvedValue([
+          rpcWith({ statuses: statusesAt(950n, null, history, head) }),
+        ])
+
+        await expect(
+          lookupSignatureStatus(client, TARGET, BOUNDS)
+        ).resolves.toMatchObject({ kind: 'unknown', answered: true })
+      }
+    )
+
+    it.each([
+      [
+        'history',
+        'without a slot',
+        { confirmationStatus: 'finalized', err: null },
+        headAt(),
+      ],
+      [
+        'head',
+        'without a slot',
+        historyAt(),
+        { confirmationStatus: 'confirmed', err: null },
+      ],
+      ['history', 'an empty object', {}, headAt()],
+      ['head', 'an empty object', historyAt(), {}],
+      ['head', 'an array', historyAt(), []],
+      ['history', 'at a number slot', { ...historyAt(), slot: 850 }, headAt()],
+      ['head', 'at a number slot', historyAt(), { ...headAt(), slot: 900 }],
+      // Only the head canary is bad: the history canary alone must not pass.
+      ['head', 'not an object', historyAt(), 'landed'],
+    ])(
+      'returns unknown when the %s canary status is %s',
+      async (_canary, _shape, history, head) => {
+        getSolanaRpcs.mockResolvedValue([
+          rpcWith({ statuses: statusesAt(950n, null, history, head) }),
+        ])
+
+        await expect(
+          lookupSignatureStatus(client, TARGET, BOUNDS)
+        ).resolves.toMatchObject({ kind: 'unknown', answered: true })
+      }
+    )
+
     it('returns unknown when no single response carries the whole proof', async () => {
       // Each part of the proof has to come from the same response: parts
       // from several nodes prove nothing about any one of them.
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(899n, null, landed(), landed()) }),
-        rpcWith({ statuses: statusesAt(950n, null, null, landed()) }),
-        rpcWith({ statuses: statusesAt(950n, null, landed(), null) }),
+        rpcWith({ statuses: statusesAt(899n, null, historyAt(), headAt()) }),
+        rpcWith({ statuses: statusesAt(950n, null, null, headAt()) }),
+        rpcWith({ statuses: statusesAt(950n, null, historyAt(), null) }),
       ])
 
       await expect(
@@ -213,11 +271,11 @@ describe('lookupSignatureStatus', () => {
 
     it('places the history canary from the lowest current slot, so an RPC ahead cannot move it after the anchor', async () => {
       const onTime = rpcWith({
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       const ahead = rpcWith({
         slot: async () => 5_000n,
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([onTime, ahead])
 
@@ -233,11 +291,11 @@ describe('lookupSignatureStatus', () => {
     it('uses the freshest current slot as the head when there is no expiry verdict', async () => {
       const lagging = rpcWith({
         slot: async () => 1_000n,
-        statuses: statusesAt(1_005n, null, landed(), landed()),
+        statuses: statusesAt(1_005n, null, historyAt(), headAt(1_010n)),
       })
       const fresh = rpcWith({
         slot: async () => 1_010n,
-        statuses: statusesAt(1_009n, null, landed(), landed()),
+        statuses: statusesAt(1_009n, null, historyAt(), headAt(1_010n)),
       })
       getSolanaRpcs.mockResolvedValue([lagging, fresh])
       const bounds = { anchor: NOW - 60_000, now: NOW }
@@ -252,7 +310,7 @@ describe('lookupSignatureStatus', () => {
       expect(headBlockSlots(lagging)).toEqual([1_010n])
 
       fresh.getSignatureStatuses.mockImplementation(() => ({
-        send: statusesAt(1_010n, null, landed(), landed()),
+        send: statusesAt(1_010n, null, historyAt(), headAt(1_010n)),
       }))
       await expect(
         lookupSignatureStatus(client, TARGET, bounds)
@@ -261,9 +319,14 @@ describe('lookupSignatureStatus', () => {
 
     it('returns found when any RPC has the target, whatever another one proves', async () => {
       getSolanaRpcs.mockResolvedValue([
-        rpcWith({ statuses: statusesAt(950n, null, landed(), landed()) }),
+        rpcWith({ statuses: statusesAt(950n, null, historyAt(), headAt()) }),
         rpcWith({
-          statuses: statusesAt(950n, landed('confirmed'), landed(), landed()),
+          statuses: statusesAt(
+            950n,
+            landed('confirmed'),
+            historyAt(),
+            headAt()
+          ),
         }),
       ])
 
@@ -280,7 +343,7 @@ describe('lookupSignatureStatus', () => {
           }
           return { signatures: [HEAD_CANARY] }
         },
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(CANARY_SLOT - 2n), headAt()),
       })
       const archival = rpcWith({
         block: async (slot) => {
@@ -294,7 +357,7 @@ describe('lookupSignatureStatus', () => {
             signatures: [slot <= CANARY_SLOT ? HISTORY_CANARY : HEAD_CANARY],
           }
         },
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(CANARY_SLOT - 2n), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([pruned, archival])
 
@@ -328,7 +391,7 @@ describe('lookupSignatureStatus', () => {
             signatures: [slot <= CANARY_SLOT ? HISTORY_CANARY : HEAD_CANARY],
           }
         },
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt(901n)),
       })
       getSolanaRpcs.mockResolvedValue([rpc])
 
@@ -353,7 +416,7 @@ describe('lookupSignatureStatus', () => {
               ? ['0'.repeat(64), 'not-a-signature', 42, HISTORY_CANARY]
               : [HEAD_CANARY],
         }),
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([rpc])
 
@@ -429,7 +492,7 @@ describe('lookupSignatureStatus', () => {
       // An age of 0 would put the history canary at the current slot: the
       // weakest canary there is.
       const rpc = rpcWith({
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([rpc])
 
@@ -445,7 +508,7 @@ describe('lookupSignatureStatus', () => {
 
     it('returns unknown instead of throwing when the anchor is not a number', async () => {
       const rpc = rpcWith({
-        statuses: statusesAt(950n, null, landed(), landed()),
+        statuses: statusesAt(950n, null, historyAt(), headAt()),
       })
       getSolanaRpcs.mockResolvedValue([rpc])
 
@@ -473,12 +536,12 @@ describe('lookupSignatureStatus', () => {
       async (_method, hang) => {
         vi.useFakeTimers()
         const hung = rpcWith({
-          statuses: statusesAt(950n, null, landed(), landed()),
+          statuses: statusesAt(950n, null, historyAt(), headAt()),
           ...hang,
         })
         getSolanaRpcs.mockResolvedValue([
           hung,
-          rpcWith({ statuses: statusesAt(950n, null, landed(), landed()) }),
+          rpcWith({ statuses: statusesAt(950n, null, historyAt(), headAt()) }),
         ])
 
         let result: unknown
@@ -640,6 +703,31 @@ describe('lookupSignatureStatus', () => {
     await expect(
       lookupSignatureStatus(client, TARGET, BOUNDS)
     ).resolves.toMatchObject({ kind: 'unknown', answered: false })
+  })
+
+  it('returns unknown instead of throwing when a failure reason cannot be printed', async () => {
+    // `String()` throws on an object without a prototype.
+    getSolanaRpcs.mockRejectedValue(Object.create(null))
+
+    const result = await lookupSignatureStatus(client, TARGET, BOUNDS)
+
+    expect(result).toMatchObject({ kind: 'unknown', answered: false })
+    if (result.kind !== 'unknown') {
+      throw new Error('unreachable')
+    }
+    expect(result.errors[0]).toBeInstanceOf(Error)
+  })
+
+  it('keeps the answers of the other RPCs when one fails with a reason that cannot be printed', async () => {
+    getSolanaRpcs.mockResolvedValue([
+      rpcWith({ statuses: () => Promise.reject(Object.create(null)) }),
+      rpcWith({ statuses: statusesAt(950n, landed('confirmed')) }),
+    ])
+
+    await expect(lookupSignatureStatus(client, TARGET)).resolves.toEqual({
+      kind: 'found',
+      status: landed('confirmed'),
+    })
   })
 
   it('gives up on a hung RPC after SIGNATURE_LOOKUP_TIMEOUT_MS', async () => {

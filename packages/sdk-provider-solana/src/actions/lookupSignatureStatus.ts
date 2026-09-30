@@ -55,13 +55,16 @@ export type SignatureLookup =
 type CoverageProof = {
   /** A landed signature from before the anchor: the node's history reaches
    * back to the signing time. */
-  historyCanary: Signature
+  historyCanary: Canary
   /** A signature from a confirmed block at or after the expiry slot (or,
    * without a verdict, a recent one): the node is on the majority fork. */
-  headCanary: Signature
+  headCanary: Canary
   /** The slot the answering node's head has to reach. */
   headSlot: bigint
 }
+
+/** A canary signature and the slot of the block that supplied it. */
+type Canary = { signature: Signature; slot: bigint }
 
 /** The history canary block. Old enough to be finalized everywhere. */
 const HISTORY_BLOCK_CONFIG = {
@@ -75,13 +78,29 @@ const HEAD_BLOCK_CONFIG = {
   ...HISTORY_BLOCK_CONFIG,
 } as const
 
-const toError = (reason: unknown): Error =>
-  reason instanceof Error ? reason : new Error(String(reason))
+/** Never throws: `String()` throws on an object without a prototype, and a
+ * proxy can throw on `instanceof`. */
+const toError = (reason: unknown): Error => {
+  try {
+    return reason instanceof Error ? reason : new Error(String(reason))
+  } catch {
+    return new Error('An RPC call failed with a reason that cannot be read.')
+  }
+}
 
 /** Only an object is a status. Unvalidated wire data, so `true` or a
  * string is no answer. */
 const isStatus = (entry: unknown): entry is SignatureStatus =>
   typeof entry === 'object' && entry !== null
+
+/** A canary status counts only with the slot of the block that supplied the
+ * canary. A node on a minority fork can hold the head canary transaction if
+ * the same transaction also landed on its fork; its status then has another
+ * slot. This also rejects `{}`, arrays and a status without a bigint slot. */
+const isCanaryStatus = (entry: unknown, canary: Canary): boolean =>
+  isStatus(entry) &&
+  typeof entry.slot === 'bigint' &&
+  entry.slot === canary.slot
 
 /** `isSignature` throws on a 64-88 character string that is not base58.
  * Here a throw means "not a signature". */
@@ -151,7 +170,7 @@ export async function lookupSignatureStatus(
     const rpcs = await getSolanaRpcs(client)
     const proof = bounds ? await findCoverageProof(rpcs, bounds) : undefined
     const signatures = proof
-      ? [signature, proof.historyCanary, proof.headCanary]
+      ? [signature, proof.historyCanary.signature, proof.headCanary.signature]
       : [signature]
     // Every RPC, also one that timed out in the proof search: it may still
     // return the target.
@@ -230,16 +249,16 @@ function classifyReads(
           'This null carries no coverage proof: no canary was asked for.'
         )
       )
-    } else if (!isStatus(historyCanary)) {
+    } else if (!isCanaryStatus(historyCanary, proof.historyCanary)) {
       errors.push(
         new Error(
-          'This RPC does not cover the signing time: it has no status for the history canary.'
+          'This RPC does not cover the signing time: it has no status for the history canary at the slot of its block.'
         )
       )
-    } else if (!isStatus(headCanary)) {
+    } else if (!isCanaryStatus(headCanary, proof.headCanary)) {
       errors.push(
         new Error(
-          'This RPC does not know the confirmed block at the head: it has no status for the head canary.'
+          'This RPC does not know the confirmed block at the head: it has no status for the head canary at the slot of its block.'
         )
       )
     } else if (typeof headSlot !== 'bigint' || headSlot < proof.headSlot) {
@@ -338,11 +357,12 @@ async function findCoverageProof(
     return answers
   }
 
-  /** A signature from the first of `slots` whose block any RPC supplies. */
+  /** A signature from the first of `slots` whose block any RPC supplies,
+   * with the slot of that block. */
   const canaryFrom = async (
     slots: bigint[],
     config: typeof HISTORY_BLOCK_CONFIG | typeof HEAD_BLOCK_CONFIG
-  ): Promise<Signature | undefined> => {
+  ): Promise<Canary | undefined> => {
     for (const slot of slots) {
       if (outOfTime) {
         return undefined
@@ -350,9 +370,9 @@ async function findCoverageProof(
       const blocks = await ask<unknown>((rpc, abortSignal) =>
         rpc.getBlock(slot, config).send({ abortSignal })
       )
-      const canary = firstSignatureOf(blocks)
-      if (canary) {
-        return canary
+      const signature = firstSignatureOf(blocks)
+      if (signature) {
+        return { signature, slot }
       }
     }
     return undefined
