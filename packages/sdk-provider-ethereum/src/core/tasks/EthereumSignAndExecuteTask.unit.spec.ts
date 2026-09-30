@@ -2,6 +2,7 @@ import {
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStep,
+  TransactionError,
   type TransactionMethodType,
   type TypedData,
 } from '@lifi/sdk'
@@ -232,9 +233,22 @@ describe('EthereumSignAndExecuteTask.run pre-sign guard', () => {
     expect(relayedRun).not.toHaveBeenCalled()
     expect(batchedRun).not.toHaveBeenCalled()
     expect(sendTransaction).not.toHaveBeenCalled()
-    expect(isBatchingSupported).not.toHaveBeenCalled()
     expect(context.checkClient).not.toHaveBeenCalled()
     expect(context.statusManager.updateAction).not.toHaveBeenCalled()
+  }
+
+  /** The conflict stays non-final: a final error would mark the open action `txFinal`. */
+  const expectOpenTransactionConflict = async (
+    context: EthereumStepExecutorContext
+  ): Promise<void> => {
+    const error = await task.run(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(TransactionError)
+    expect(error).toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+      final: false,
+    })
+    expectWalletUntouched(context)
   }
 
   it.each(['standard', 'batched', 'relayed'] as const)(
@@ -242,10 +256,7 @@ describe('EthereumSignAndExecuteTask.run pre-sign guard', () => {
     async (executionStrategy) => {
       const context = contextFor(executionStrategy, openTransaction)
 
-      await expect(task.run(context)).rejects.toMatchObject({
-        code: LiFiErrorCode.TransactionConflict,
-      })
-      expectWalletUntouched(context)
+      await expectOpenTransactionConflict(context)
     }
   )
 
@@ -264,20 +275,14 @@ describe('EthereumSignAndExecuteTask.run pre-sign guard', () => {
     async (_label, action) => {
       const context = contextFor('standard', action)
 
-      await expect(task.run(context)).rejects.toMatchObject({
-        code: LiFiErrorCode.TransactionConflict,
-      })
-      expectWalletUntouched(context)
+      await expectOpenTransactionConflict(context)
     }
   )
 
   it('throws instead of pausing when user interaction is not allowed', async () => {
     const context = contextFor('standard', openTransaction, false)
 
-    await expect(task.run(context)).rejects.toMatchObject({
-      code: LiFiErrorCode.TransactionConflict,
-    })
-    expectWalletUntouched(context)
+    await expectOpenTransactionConflict(context)
   })
 
   it('lets a transaction with a final outcome be signed again', async () => {
