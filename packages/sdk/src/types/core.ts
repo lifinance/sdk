@@ -304,7 +304,20 @@ export type ExecutionAction = {
   txLink?: string
   taskId?: string
   txType?: TransactionMethodType
+  /**
+   * Provider-specific serialized signed transaction (hex, XDR, base64 or JSON).
+   * Present while the transaction may still need to be (re)sent or looked up.
+   * Bitcoin and Stellar keep it; Solana, Tron and Sui clear it when no longer
+   * needed.
+   */
   txHex?: string
+  /**
+   * Set together with status `FAILED` when the outcome of this action's
+   * transaction is known and final (reverted, dropped, cancelled or replaced).
+   * A FAILED action without this flag has an unknown outcome and is re-checked
+   * on resume instead of being signed again.
+   */
+  txFinal?: boolean
   // Errors occured during the action execution (within tasks)
   error?: { code: string | number; message: string; htmlMessage?: string }
 }

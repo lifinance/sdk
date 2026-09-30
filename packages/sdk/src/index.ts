@@ -51,9 +51,23 @@ export { getTransactionRequestData } from './core/tasks/helpers/getTransactionRe
 export { stepComparison } from './core/tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './core/tasks/PrepareTransactionTask.js'
 export { WaitForTransactionStatusTask } from './core/tasks/WaitForTransactionStatusTask.js'
+export {
+  assertNoOpenTransaction,
+  CLEARED_TRANSACTION_FIELDS,
+  CLOCK_SKEW_MARGIN_MS,
+  DROPPED_FALLBACK_AGE_MS,
+  hasOpenTransaction,
+  hasStepOpenTransaction,
+  isFinalTransactionError,
+  isOldEnoughToDrop,
+  isResendAllowed,
+  MAX_RESEND_AGE_MS,
+  TRANSACTION_ACTION_TYPES,
+} from './core/transactionState.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
 export { ErrorMessage, ErrorName, LiFiErrorCode } from './errors/constants.js'
+export type { TransactionErrorOptions } from './errors/errors.js'
 export {
   BalanceError,
   ExecuteStepRetryError,
