@@ -38,19 +38,40 @@ const INTERVAL_MS = 250
 const DIGEST = 'TargetDigest111111111111111111111111111111111'
 const client = {} as SDKClient
 
-/** Checkpoint `n` is `TIP - n` intervals before now and holds one transaction `tx-<n>`. */
-const timeOf = (sequenceNumber: bigint) =>
-  NOW - Number(TIP - sequenceNumber) * INTERVAL_MS
+/** Checkpoint `n` is `TIP - n` intervals before now. */
+const timeOf = (sequenceNumber: bigint, intervalMs: number) =>
+  NOW - Number(TIP - sequenceNumber) * intervalMs
+
+/**
+ * Checkpoint `n` holds the consensus commit prologue, then user
+ * transactions. The last one is `tx-<n>`.
+ */
+const checkpointTransactions = (sequenceNumber: bigint) => [
+  `prologue-${sequenceNumber}`,
+  `user-${sequenceNumber}`,
+  `tx-${sequenceNumber}`,
+]
+
+/** A checkpoint that holds only the consensus commit prologue. */
+const prologueOnly = (sequenceNumber: bigint) => [`prologue-${sequenceNumber}`]
 
 interface NodeOptions {
   /** Lowest checkpoint the node still has. */
   lowest?: bigint
   /** Highest checkpoint the node has (its head). */
   head?: bigint
+  /** Milliseconds between two checkpoints. */
+  intervalMs?: number
+  /** The transaction digests of a checkpoint, in checkpoint order. */
+  transactionsOf?: (sequenceNumber: bigint) => string[]
+  /** Checkpoint timestamps (ms) that break the regular spacing. */
+  timestamps?: Map<bigint, number>
   /** The node has executed the target digest. */
   hasTarget?: boolean
   /** The per-digest error code for the target when the node does not have it. */
   targetErrorCode?: number
+  /** The target's result has no oneof case. */
+  targetUnset?: boolean
   /** The request indices in the order the response lists them. */
   resultOrder?: number[]
   /** The batch lookup fails as a whole. */
@@ -60,8 +81,12 @@ interface NodeOptions {
 const makeNode = ({
   lowest = 0n,
   head = TIP,
+  intervalMs = INTERVAL_MS,
+  transactionsOf = checkpointTransactions,
+  timestamps = new Map(),
   hasTarget = false,
   targetErrorCode = 5,
+  targetUnset = false,
   resultOrder = [0, 1, 2],
   failing = false,
 }: NodeOptions = {}) => {
@@ -69,8 +94,25 @@ const makeNode = ({
     if (digest === DIGEST) {
       return hasTarget
     }
-    const sequenceNumber = BigInt(digest.slice('tx-'.length))
+    const sequenceNumber = BigInt(digest.slice(digest.lastIndexOf('-') + 1))
     return sequenceNumber >= lowest && sequenceNumber <= head
+  }
+  const answer = (digest: string) => {
+    if (digest === DIGEST && targetUnset) {
+      return { result: { oneofKind: undefined } }
+    }
+    return has(digest)
+      ? { result: { oneofKind: 'transaction', transaction: { digest } } }
+      : {
+          result: {
+            oneofKind: 'error',
+            error: {
+              code: digest === DIGEST ? targetErrorCode : 5,
+              message: 'not found',
+              details: [],
+            },
+          },
+        }
   }
   return {
     ledgerService: {
@@ -81,7 +123,8 @@ const makeNode = ({
           checkpointId: { oneofKind?: string; sequenceNumber?: bigint }
         }) => {
           const sequenceNumber = checkpointId.sequenceNumber ?? head
-          const timestampMs = timeOf(sequenceNumber)
+          const timestampMs =
+            timestamps.get(sequenceNumber) ?? timeOf(sequenceNumber, intervalMs)
           return {
             response: {
               checkpoint: {
@@ -92,7 +135,9 @@ const makeNode = ({
                     nanos: (timestampMs % 1000) * 1_000_000,
                   },
                 },
-                transactions: [{ digest: `tx-${sequenceNumber}` }],
+                transactions: transactionsOf(sequenceNumber).map((digest) => ({
+                  digest,
+                })),
               },
             },
           }
@@ -103,25 +148,7 @@ const makeNode = ({
           if (failing) {
             throw new Error('upstream connect error')
           }
-          const results = digests.map((digest) =>
-            has(digest)
-              ? {
-                  result: {
-                    oneofKind: 'transaction',
-                    transaction: { digest },
-                  },
-                }
-              : {
-                  result: {
-                    oneofKind: 'error',
-                    error: {
-                      code: digest === DIGEST ? targetErrorCode : 5,
-                      message: 'not found',
-                      details: [],
-                    },
-                  },
-                }
-          )
+          const results = digests.map(answer)
           return {
             response: {
               transactions: resultOrder.map((index) => results[index]),
@@ -133,10 +160,19 @@ const makeNode = ({
   }
 }
 
-const useNodes = (...list: ReturnType<typeof makeNode>[]) => {
+type FakeNode = ReturnType<typeof makeNode>
+
+const useNodes = (...list: FakeNode[]) => {
   nodes.splice(0, nodes.length, ...list)
   return list
 }
+
+/** The node got one batch request with the target and these canaries. */
+const expectCanaries = (node: FakeNode, before: string, after: string) =>
+  expect(node.ledgerService.batchGetTransactions).toHaveBeenCalledWith({
+    digests: [DIGEST, before, after],
+    readMask: { paths: ['digest'] },
+  })
 
 const stepSignedAt = (signedAt?: number) =>
   ({ execution: { signedAt } }) as never
@@ -165,16 +201,174 @@ describe('isSuiTransactionDropped', () => {
 
     // One request carries the target and both canaries: a checkpoint before
     // signing - skew (40 min back at 200 ms per checkpoint = 12,000) and one
-    // 120 checkpoints behind the tip.
-    expect(node.ledgerService.batchGetTransactions).toHaveBeenCalledWith({
-      digests: [DIGEST, 'tx-988000', 'tx-999880'],
-      readMask: { paths: ['digest'] },
-    })
+    // 120 checkpoints behind the tip. Each canary is the last transaction of
+    // its checkpoint.
+    expectCanaries(node, 'tx-988000', 'tx-999880')
     expect(isKnownToStatusApi).toHaveBeenCalledWith(
       client,
       expect.anything(),
       DIGEST
     )
+  })
+
+  it('takes the last transaction of a checkpoint with two transactions as its canary', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) => [`prologue-${n}`, `tx-${n}`],
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-988000', 'tx-999880')
+  })
+
+  it('steps back over prologue-only checkpoints for the before canary', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 988_000n || n === 987_999n
+            ? prologueOnly(n)
+            : checkpointTransactions(n),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-987998', 'tx-999880')
+  })
+
+  it('steps toward the tip over prologue-only checkpoints for the after canary', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 999_880n ? prologueOnly(n) : checkpointTransactions(n),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-988000', 'tx-999881')
+  })
+
+  it('stays unknown after 10 skipped prologue-only checkpoints', async () => {
+    // Checkpoints 987,990 to 988,000: the search skips 10 and stops at the 11th.
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n >= 987_990n && n <= 988_000n
+            ? prologueOnly(n)
+            : checkpointTransactions(n),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+  })
+
+  it('steps further back when checkpoints come faster than the minimum interval', async () => {
+    // At 150 ms, 12,000 checkpoints back is 30 min ago, after the earliest
+    // landing time (40 min ago); 24,000 back is 60 min ago.
+    const [node] = useNodes(makeNode({ intervalMs: 150 }))
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-976000', 'tx-999880')
+  })
+
+  it('stops at checkpoint 0 when the chain starts after the earliest landing time', async () => {
+    // Signed 60 h ago; at 100 ms, checkpoint 0 is only about 28 h old.
+    const [node] = useNodes(makeNode({ intervalMs: 100 }))
+
+    await expect(
+      isSuiTransactionDropped(
+        client,
+        stepSignedAt(NOW - 60 * 60 * 60_000),
+        DIGEST
+      )
+    ).resolves.toBe(false)
+    const genesisCalls = node.ledgerService.getCheckpoint.mock.calls.filter(
+      ([{ checkpointId }]) => checkpointId.sequenceNumber === 0n
+    )
+    expect(genesisCalls).toHaveLength(1)
+    expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+  })
+
+  it('takes the tip as the after canary when 120 checkpoints behind it is not past the latest landing time', async () => {
+    // The latest landing time is 10 s ago; 120 checkpoints back is 30 s ago.
+    // The before canary: 27 min 10 s back at 200 ms = 8,150 checkpoints.
+    const [node] = useNodes(makeNode())
+
+    await expect(
+      isSuiTransactionDropped(
+        client,
+        stepSignedAt(NOW - 17 * 60_000 - 10_000),
+        DIGEST
+      )
+    ).resolves.toBe(true)
+    expectCanaries(node, 'tx-991850', 'tx-1000000')
+  })
+
+  it('stays unknown when a checkpoint timestamp is the protobuf default', async () => {
+    // At 150 ms, checkpoint 988,000 is 30 min old, after the earliest landing
+    // time. A zero timestamp must not make it look older.
+    const [node] = useNodes(
+      makeNode({ intervalMs: 150, timestamps: new Map([[988_000n, 0]]) })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+  })
+
+  // Checkpoint timestamps grow with the sequence number. A node that breaks
+  // this must not move a canary into the landing window.
+  it('stays unknown when a stepped-back checkpoint is not older than the earliest landing time', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 988_000n ? prologueOnly(n) : checkpointTransactions(n),
+        timestamps: new Map([[987_999n, NOW]]),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+  })
+
+  it('stays unknown when a checkpoint toward the tip is not past the latest landing time', async () => {
+    const [node] = useNodes(
+      makeNode({
+        transactionsOf: (n) =>
+          n === 999_880n ? prologueOnly(n) : checkpointTransactions(n),
+        timestamps: new Map([[999_881n, NOW - 20 * 60_000]]),
+      })
+    )
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+  })
+
+  it('asks the next node for canaries when the first node lags', async () => {
+    // The first node's head is 16 min 40 s old, not past the latest landing
+    // time (13 min ago).
+    const [, second] = useNodes(makeNode({ head: TIP - 4_000n }), makeNode())
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(true)
+    expectCanaries(second, 'tx-988000', 'tx-999880')
   })
 
   it('stays unknown when the covering proof is missing (the node pruned the early canary)', async () => {
@@ -200,11 +394,26 @@ describe('isSuiTransactionDropped', () => {
     }
   )
 
-  // The node has the target but pruned the early canary. If it listed the
-  // results out of request order, the canary's NOT_FOUND would take the
-  // target's position.
-  it('stays unknown when a response does not keep the request order', async () => {
+  it.each<[string, NodeOptions]>([
+    ['the response has more than three results', { resultOrder: [0, 1, 2, 1] }],
+    ['the before slot holds another digest', { resultOrder: [0, 2, 2] }],
+    ['the after slot holds another digest', { resultOrder: [0, 1, 1] }],
+    ['the target result has no case', { targetUnset: true }],
+  ])('stays unknown when %s', async (_, options) => {
+    useNodes(makeNode(options))
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+  })
+
+  // The first node covers and answers "not found". The second node has the
+  // target but pruned the early canary, and lists the results out of request
+  // order: the canary's NOT_FOUND is first, the target second.
+  it('is not dropped when a node returns the digest out of request order', async () => {
     useNodes(
+      makeNode(),
       makeNode({ hasTarget: true, lowest: 995_000n, resultOrder: [1, 0, 2] })
     )
 
@@ -217,11 +426,15 @@ describe('isSuiTransactionDropped', () => {
   // The first node supplies the canaries (its own batch lookup fails); the
   // second answers "not found" but its head is behind the head canary.
   it('stays unknown when the answering node lags behind the head canary', async () => {
-    useNodes(makeNode({ failing: true }), makeNode({ head: TIP - 1_000n }))
+    const [, lagging] = useNodes(
+      makeNode({ failing: true }),
+      makeNode({ head: TIP - 1_000n })
+    )
 
     await expect(
       isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
     ).resolves.toBe(false)
+    expectCanaries(lagging, 'tx-988000', 'tx-999880')
   })
 
   it('stays unknown while the chain is not past the latest landing time + margin', async () => {
@@ -241,6 +454,11 @@ describe('isSuiTransactionDropped', () => {
     await expect(
       isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
     ).resolves.toBe(false)
+    expect(isKnownToStatusApi).toHaveBeenCalledWith(
+      client,
+      expect.anything(),
+      DIGEST
+    )
   })
 
   it('is not dropped when any node returns the digest', async () => {

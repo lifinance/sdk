@@ -6,7 +6,7 @@ import {
   MAX_RESEND_AGE_MS,
   type SDKClient,
 } from '@lifi/sdk'
-import type { SuiGrpcClient } from '@mysten/sui/grpc'
+import { GrpcStatusCode, type SuiGrpcClient } from '@mysten/sui/grpc'
 import { callSuiWithRetry } from '../../../client/suiClient.js'
 import {
   SUI_CANARY_TIP_OFFSET,
@@ -14,14 +14,19 @@ import {
   SUI_MIN_CHECKPOINT_INTERVAL_MS,
 } from '../../constants.js'
 
-// `google.rpc.Code.NOT_FOUND` in a per-digest `GetTransactionResult` error.
-const GRPC_NOT_FOUND = 5
+// A canary search skips at most this many checkpoints without a user
+// transaction.
+const MAX_SKIPPED_CHECKPOINTS = 10
 
-interface CheckpointCanary {
+interface CheckpointInfo {
   sequenceNumber: bigint
   timestampMs: number
-  /** A transaction digest from this checkpoint. */
-  transactionDigest: string
+  /**
+   * The last transaction digest of the checkpoint, only if the checkpoint
+   * holds a user transaction. The first transaction of a checkpoint is the
+   * consensus commit prologue, a system transaction.
+   */
+  userTransactionDigest?: string
 }
 
 interface Canaries {
@@ -37,11 +42,12 @@ interface Canaries {
  * (a) the resend age cap has passed, so the SDK never sends the bytes again.
  *     An unknown signing time never drops;
  * (b) a node answers "not found" for the digest in the same
- *     `BatchGetTransactions` response that finds one canary transaction from
- *     before the earliest landing time and one from after the latest landing
- *     time + margin, and no node returns the digest. The canaries prove that
- *     this very response covers the whole landing window; a separate coverage
- *     request can reach another backend of a load-balanced RPC;
+ *     `BatchGetTransactions` response that finds one canary user transaction
+ *     from before the earliest landing time and one from after the latest
+ *     landing time + margin, and no node returns the digest. The canaries
+ *     prove that this very response covers the whole landing window; a
+ *     separate coverage request can reach another backend of a load-balanced
+ *     RPC;
  * (c) the LI.FI status API does not know the digest (veto only).
  *
  * Any lookup error leaves the outcome unknown and returns false.
@@ -61,12 +67,11 @@ export async function isSuiTransactionDropped(
     const earliest = signedAt - CLOCK_SKEW_MARGIN_MS
     const latest =
       signedAt + MAX_RESEND_AGE_MS + CLOCK_SKEW_MARGIN_MS + SUI_HEAD_MARGIN_MS
+    // `findCanaries` throws when a node cannot supply them, so that
+    // `callSuiWithRetry` asks the next node.
     const canaries = await callSuiWithRetry(client, (suiClient) =>
       findCanaries(suiClient, earliest, latest)
     )
-    if (!canaries) {
-      return false
-    }
     if ((await lookUpWithCanaries(client, digest, canaries)) !== 'not-found') {
       return false
     }
@@ -76,28 +81,54 @@ export async function isSuiTransactionDropped(
   }
 }
 
-/** Any node may supply the canaries; the proof is in the lookup response. */
+/**
+ * Any node may supply the canaries; the proof is in the lookup response.
+ * Throws when this node cannot supply them.
+ */
 async function findCanaries(
   suiClient: SuiGrpcClient,
   earliest: number,
   latest: number
-): Promise<Canaries | undefined> {
+): Promise<Canaries> {
   const tip = await getCheckpoint(suiClient)
-  if (!tip || tip.timestampMs <= latest) {
-    // The chain is not yet past the latest landing time.
-    return undefined
+  if (tip.timestampMs <= latest) {
+    throw new Error('The chain is not yet past the latest landing time.')
   }
 
-  let after = await getCheckpoint(
+  // Prefer a checkpoint behind the tip; the search moves toward the tip.
+  let afterStart = await getCheckpoint(
     suiClient,
     tip.sequenceNumber > SUI_CANARY_TIP_OFFSET
       ? tip.sequenceNumber - SUI_CANARY_TIP_OFFSET
       : 0n
   )
-  if (!after || after.timestampMs <= latest) {
-    after = tip
+  if (afterStart.timestampMs <= latest) {
+    afterStart = tip
   }
+  const after = await findUserTransaction(
+    suiClient,
+    afterStart,
+    1n,
+    (checkpoint) =>
+      checkpoint.timestampMs > latest &&
+      checkpoint.sequenceNumber <= tip.sequenceNumber
+  )
 
+  const before = await findUserTransaction(
+    suiClient,
+    await findCheckpointBefore(suiClient, tip, earliest),
+    -1n,
+    (checkpoint) => checkpoint.timestampMs < earliest
+  )
+  return { before, after }
+}
+
+/** A checkpoint older than `earliest`. Throws if none is found. */
+async function findCheckpointBefore(
+  suiClient: SuiGrpcClient,
+  tip: CheckpointInfo,
+  earliest: number
+): Promise<CheckpointInfo> {
   // Estimated with the shortest interval, the guess lands at or before
   // `earliest`; step further back if the interval was even shorter.
   let distance = BigInt(
@@ -106,26 +137,51 @@ async function findCanaries(
   for (let attempt = 0; attempt < 3; attempt++) {
     const sequenceNumber =
       tip.sequenceNumber > distance ? tip.sequenceNumber - distance : 0n
-    const before = await getCheckpoint(suiClient, sequenceNumber)
-    if (before && before.timestampMs < earliest) {
-      return {
-        before: before.transactionDigest,
-        after: after.transactionDigest,
-      }
+    const checkpoint = await getCheckpoint(suiClient, sequenceNumber)
+    if (checkpoint.timestampMs < earliest) {
+      return checkpoint
     }
     if (sequenceNumber === 0n) {
-      return undefined
+      throw new Error('The chain starts after the earliest landing time.')
     }
     distance *= 2n
   }
-  return undefined
+  throw new Error('No checkpoint before the earliest landing time was found.')
 }
 
-/** The latest checkpoint without `sequenceNumber`. */
+/**
+ * From `start`, steps one checkpoint at a time in `direction` over
+ * checkpoints without a user transaction, and returns the first user
+ * transaction digest. Every checkpoint on the way must be `inRange`.
+ */
+async function findUserTransaction(
+  suiClient: SuiGrpcClient,
+  start: CheckpointInfo,
+  direction: bigint,
+  inRange: (checkpoint: CheckpointInfo) => boolean
+): Promise<string> {
+  let checkpoint = start
+  for (let skipped = 0; inRange(checkpoint); skipped++) {
+    if (checkpoint.userTransactionDigest) {
+      return checkpoint.userTransactionDigest
+    }
+    const next = checkpoint.sequenceNumber + direction
+    if (skipped === MAX_SKIPPED_CHECKPOINTS || next < 0n) {
+      break
+    }
+    checkpoint = await getCheckpoint(suiClient, next)
+  }
+  throw new Error('No checkpoint in range holds a user transaction.')
+}
+
+/**
+ * The latest checkpoint without `sequenceNumber`. Throws when the sequence
+ * number or the timestamp is missing.
+ */
 async function getCheckpoint(
   suiClient: SuiGrpcClient,
   sequenceNumber?: bigint
-): Promise<CheckpointCanary | undefined> {
+): Promise<CheckpointInfo> {
   const { response } = await suiClient.ledgerService.getCheckpoint({
     checkpointId:
       sequenceNumber === undefined
@@ -137,19 +193,19 @@ async function getCheckpoint(
   })
   const checkpoint = response.checkpoint
   const timestamp = checkpoint?.summary?.timestamp
-  const transactionDigest = checkpoint?.transactions[0]?.digest
-  if (
-    checkpoint?.sequenceNumber === undefined ||
-    !timestamp ||
-    !transactionDigest
-  ) {
-    return undefined
+  const timestampMs = timestamp
+    ? Number(timestamp.seconds) * 1000 + Math.floor(timestamp.nanos / 1e6)
+    : 0
+  // A zero timestamp is the protobuf default, so it counts as missing.
+  if (checkpoint?.sequenceNumber === undefined || timestampMs <= 0) {
+    throw new Error('The checkpoint has no sequence number or timestamp.')
   }
+  const { transactions } = checkpoint
   return {
     sequenceNumber: checkpoint.sequenceNumber,
-    timestampMs:
-      Number(timestamp.seconds) * 1000 + Math.floor(timestamp.nanos / 1e6),
-    transactionDigest,
+    timestampMs,
+    userTransactionDigest:
+      transactions.length >= 2 ? transactions.at(-1)?.digest : undefined,
   }
 }
 
@@ -171,7 +227,15 @@ async function lookUpWithCanaries(
         readMask: { paths: ['digest'] },
       })
       const [target, before, after] = response.transactions
-      if (target?.result.oneofKind === 'transaction') {
+      // A node that returns the digest vetoes, in any position.
+      if (
+        target?.result.oneofKind === 'transaction' ||
+        response.transactions.some(
+          ({ result }) =>
+            result.oneofKind === 'transaction' &&
+            result.transaction.digest === digest
+        )
+      ) {
         return
       }
       // Each canary must sit at its own request position: then the result at
@@ -185,7 +249,7 @@ async function lookUpWithCanaries(
         after.result.transaction.digest === canaries.after
       const notFound =
         target?.result.oneofKind === 'error' &&
-        target.result.error.code === GRPC_NOT_FOUND
+        target.result.error.code === GrpcStatusCode.NOT_FOUND
       if (covers && notFound) {
         coveringNotFound++
       }
