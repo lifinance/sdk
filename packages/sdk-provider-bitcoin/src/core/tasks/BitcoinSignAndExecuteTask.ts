@@ -7,7 +7,9 @@ import {
 } from '@bigmi/core'
 import * as ecc from '@bitcoinerlab/secp256k1'
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   getTransactionRequestData,
   LiFiErrorCode,
   type TaskResult,
@@ -43,6 +45,10 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
         'Unable to prepare transaction. Action not found.'
       )
     }
+
+    // Defence in depth: the selector never routes an open transaction here,
+    // and signing again could spend the same funds twice.
+    assertNoOpenTransaction(action)
 
     const transactionRequestData = await getTransactionRequestData(
       step,
@@ -155,6 +161,9 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       txHash: txHash,
       txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
       txHex,
