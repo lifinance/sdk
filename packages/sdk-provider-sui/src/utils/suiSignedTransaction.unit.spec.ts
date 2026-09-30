@@ -1,6 +1,6 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
-import { Transaction, TransactionDataBuilder } from '@mysten/sui/transactions'
-import { toBase58, toBase64 } from '@mysten/sui/utils'
+import { TransactionDataBuilder } from '@mysten/sui/transactions'
+import { toBase64 } from '@mysten/sui/utils'
 import { isValidTransactionSignature } from '@mysten/sui/verify'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -9,6 +9,11 @@ import {
   serializeSuiSignedTransaction,
   verifySuiSignedTransaction,
 } from './suiSignedTransaction.js'
+import {
+  BYTES,
+  buildTransactionBytes,
+  SIGNATURE,
+} from './suiSignedTransaction.unit.mock.js'
 
 vi.mock('@mysten/sui/verify', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mysten/sui/verify')>()
@@ -18,24 +23,6 @@ vi.mock('@mysten/sui/verify', async (importOriginal) => {
   }
 })
 
-// A fully specified transaction builds offline, without a client.
-function buildTransactionBytes(sender: string): Promise<Uint8Array> {
-  const transaction = new Transaction()
-  transaction.setSender(sender)
-  transaction.setGasPrice(1000)
-  transaction.setGasBudget(10_000_000)
-  transaction.setGasPayment([
-    {
-      objectId: `0x${'2'.repeat(64)}`,
-      version: '1',
-      digest: toBase58(new Uint8Array(32).fill(3)),
-    },
-  ])
-  return transaction.build()
-}
-
-const BYTES = await buildTransactionBytes(`0x${'1'.repeat(64)}`)
-const SIGNATURE = 'AFakeSerializedSignature'
 // 26 characters is not a multiple of 4, so `atob` rejects the `=`.
 const NOT_BASE64_SIGNATURE = 'AFakeSerializedSignature=='
 
