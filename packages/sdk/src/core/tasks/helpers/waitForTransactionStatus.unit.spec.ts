@@ -110,6 +110,34 @@ describe('waitForTransactionStatus', () => {
     )
   })
 
+  it('sends the step fields and the hash in the status request', async () => {
+    const txHash = nextHash()
+    vi.mocked(getStatus).mockResolvedValueOnce(done())
+
+    await waitForTransactionStatus(
+      {} as SDKClient,
+      { updateAction: vi.fn() } as unknown as StatusManager,
+      txHash,
+      step,
+      'RECEIVING_CHAIN',
+      1
+    )
+
+    expect(getStatus).toHaveBeenCalledWith(
+      {},
+      {
+        fromChain: 1,
+        fromAddress: '0xowner',
+        toChain: 137,
+        txHash,
+        bridge: 'across',
+      }
+    )
+    expect(vi.mocked(getStatus).mock.calls[0][1]).not.toHaveProperty(
+      'transactionId'
+    )
+  })
+
   it('still reports the substatus alongside the link', async () => {
     const updateAction = await run([
       pending({ lifiExplorerLink: LIFI_LINK }),

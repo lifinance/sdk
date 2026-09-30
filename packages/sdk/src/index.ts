@@ -48,6 +48,7 @@ export {
   checkBalance,
 } from './core/tasks/helpers/checkBalance.js'
 export { getTransactionRequestData } from './core/tasks/helpers/getTransactionRequestData.js'
+export { isKnownToStatusApi } from './core/tasks/helpers/isKnownToStatusApi.js'
 export { stepComparison } from './core/tasks/helpers/stepComparison.js'
 export { PrepareTransactionTask } from './core/tasks/PrepareTransactionTask.js'
 export { WaitForTransactionStatusTask } from './core/tasks/WaitForTransactionStatusTask.js'
