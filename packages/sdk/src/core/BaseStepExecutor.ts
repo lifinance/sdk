@@ -1,5 +1,5 @@
-import { ExecuteStepRetryError } from '../errors/errors.js'
-import type { SDKError } from '../errors/SDKError.js'
+import { ExecuteStepRetryError, UnknownError } from '../errors/errors.js'
+import { SDKError } from '../errors/SDKError.js'
 import type {
   ExecuteStepRetryParams,
   ExecutionAction,
@@ -16,6 +16,10 @@ import type {
 } from '../types/execution.js'
 import { StatusManager } from './StatusManager.js'
 import type { TaskPipeline } from './TaskPipeline.js'
+import {
+  hasStepOpenTransaction,
+  isFinalTransactionError,
+} from './transactionState.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
 const defaultInteractionSettings = {
@@ -104,7 +108,23 @@ export abstract class BaseStepExecutor implements StepExecutor {
     } catch (error: any) {
       // Derive failing action from last in execution.actions
       const action = step.execution?.actions?.at(-1)
-      const parsed = await this.parseErrors(error, step, action, retryParams)
+      // Read before parsing: parsers may rebuild the error and drop the marker.
+      let isFinal = isFinalTransactionError(error)
+      let parsed = await this.parseErrors(error, step, action, retryParams)
+      if (
+        parsed instanceof ExecuteStepRetryError &&
+        hasStepOpenTransaction(step)
+      ) {
+        // A retry runs the step again on an empty execution, which would erase
+        // the hash of a transaction that may still land. Fail with the original
+        // error instead, and keep the outcome unknown so a resume re-checks it.
+        parsed = new SDKError(
+          new UnknownError(error?.message || parsed.message, error),
+          step,
+          action
+        )
+        isFinal = false
+      }
       if (!(parsed instanceof ExecuteStepRetryError)) {
         if (action) {
           this.statusManager.updateAction(step, action.type, 'FAILED', {
@@ -112,6 +132,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
               message: parsed.cause?.message,
               code: parsed.code,
             },
+            ...(isFinal && { txFinal: true }),
           })
         } else {
           this.statusManager.updateExecution(step, {
