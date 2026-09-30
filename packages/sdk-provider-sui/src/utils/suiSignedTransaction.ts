@@ -1,5 +1,7 @@
+import { bcs } from '@mysten/sui/bcs'
 import { TransactionDataBuilder } from '@mysten/sui/transactions'
 import { fromBase64, toBase64 } from '@mysten/sui/utils'
+import { isValidTransactionSignature } from '@mysten/sui/verify'
 
 export interface SuiSignedTransaction {
   /** The BCS `TransactionData` bytes that were signed. */
@@ -38,6 +40,11 @@ export function parseSuiSignedTransaction(
     }
     // Throws on anything that is not a `TransactionData`.
     TransactionDataBuilder.fromBytes(transactionBytes)
+    // `fromBytes` reads a `TransactionData` prefix and ignores the bytes after
+    // it, which still change the digest.
+    if (!isCanonicalTransactionData(transactionBytes)) {
+      return undefined
+    }
     return {
       bytes: transactionBytes,
       signature,
@@ -46,6 +53,45 @@ export function parseSuiSignedTransaction(
   } catch {
     return undefined
   }
+}
+
+/** Whether the canonical BCS encoding of the parsed bytes is exactly `bytes`. */
+function isCanonicalTransactionData(bytes: Uint8Array): boolean {
+  const canonical = bcs.TransactionData.serialize(
+    bcs.TransactionData.parse(bytes)
+  ).toBytes()
+  return (
+    canonical.length === bytes.length &&
+    canonical.every((byte, index) => byte === bytes[index])
+  )
+}
+
+/**
+ * Verifies that `signature` signs `bytes` and that the signer is the sender
+ * of the transaction, so stored bytes that were changed after signing are
+ * detected.
+ *
+ * Resolves `false` only for a definite failure: the bytes have no sender, or
+ * the signature is malformed, is not valid for the bytes, or is not the
+ * sender's. Rejects when the verification cannot run, so that such a failure
+ * never counts as damaged bytes. A well-formed zkLogin signature, also as a
+ * multisig member, needs a client to verify, so it rejects here.
+ */
+export async function verifySuiSignedTransaction(
+  transaction: SuiSignedTransaction
+): Promise<boolean> {
+  let sender: string | null
+  try {
+    sender = TransactionDataBuilder.fromBytes(transaction.bytes).sender
+  } catch {
+    return false
+  }
+  if (!sender) {
+    return false
+  }
+  return isValidTransactionSignature(transaction.bytes, transaction.signature, {
+    address: sender,
+  })
 }
 
 /**
