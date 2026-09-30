@@ -34,7 +34,10 @@ describe('waitForBatchTransactionReceipt', () => {
     expect(onFailed).toHaveBeenCalledTimes(1)
   })
 
-  it('marks a successful batch without receipts as a final failure', async () => {
+  // Status 200 means the wallet reports the batch as executed. Without a
+  // complete set of receipts that proves nothing: the outcome stays unknown.
+  it('leaves a successful batch without receipts unknown', async () => {
+    const onFailed = vi.fn()
     const client = clientReturning({
       status: 'success',
       statusCode: 200,
@@ -42,12 +45,34 @@ describe('waitForBatchTransactionReceipt', () => {
     })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID)
+      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction was reverted.',
-      final: true,
+      final: false,
     })
+    expect(onFailed).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a successful batch with a receipt without a hash unknown', async () => {
+    const onFailed = vi.fn()
+    const client = clientReturning({
+      status: 'success',
+      statusCode: 200,
+      receipts: [
+        { status: 'success', transactionHash: TX_HASH },
+        { status: 'success' },
+      ],
+    })
+
+    await expect(
+      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction was reverted.',
+      final: false,
+    })
+    expect(onFailed).toHaveBeenCalledTimes(1)
   })
 
   it('marks a batch the wallet did not include (4xx) as a final failure', async () => {
@@ -62,17 +87,56 @@ describe('waitForBatchTransactionReceipt', () => {
     })
   })
 
-  it('marks a failed batch (5xx) as a final failure', async () => {
+  it('marks a batch that reverted completely (500) as a final failure', async () => {
+    const onFailed = vi.fn()
     const client = clientReturning({ status: 'failure', statusCode: 500 })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID)
+      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction failed.',
       final: true,
     })
+    expect(onFailed).toHaveBeenCalledTimes(1)
   })
+
+  // Some calls of a partial batch may be onchain.
+  it('leaves a partially reverted batch (600) unknown', async () => {
+    const onFailed = vi.fn()
+    const client = clientReturning({ status: 'failure', statusCode: 600 })
+
+    await expect(
+      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction failed.',
+      final: false,
+    })
+    expect(onFailed).toHaveBeenCalledTimes(1)
+  })
+
+  // viem maps 300–699 to `failure` and leaves codes from 700 without a status.
+  it.each([
+    { status: 'failure', statusCode: 300 },
+    { status: 'failure', statusCode: 501 },
+    { status: undefined, statusCode: 700 },
+  ])(
+    'leaves a batch with the undefined code $statusCode unknown',
+    async (result) => {
+      const onFailed = vi.fn()
+      const client = clientReturning(result)
+
+      await expect(
+        waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      ).rejects.toMatchObject({
+        code: LiFiErrorCode.TransactionFailed,
+        message: 'Transaction failed.',
+        final: false,
+      })
+      expect(onFailed).toHaveBeenCalledTimes(1)
+    }
+  )
 
   it('leaves a wallet error unknown', async () => {
     const walletError = new Error('wallet_getCallsStatus timed out')
