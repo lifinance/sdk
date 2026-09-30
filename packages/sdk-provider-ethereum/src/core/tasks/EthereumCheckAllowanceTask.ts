@@ -55,6 +55,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
         hasAllowance: allowance > 0n,
         hasSufficientAllowance: fromAmount <= allowance,
         executionStrategy,
+        allowanceSpender: spenderAddress as Address,
       },
     }
   }

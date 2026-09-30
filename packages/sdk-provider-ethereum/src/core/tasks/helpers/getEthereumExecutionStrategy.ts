@@ -4,6 +4,28 @@ import type { EthereumStepExecutorContext } from '../../../types.js'
 import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
 
 /**
+ * Retry param set by `EthereumPrepareTransactionTask` when prepare moved a step
+ * off `batched` and the allowance work done for the batch — queued calls, or an
+ * allowance checked against the batch spender — does not hold in the new
+ * strategy. It carries the strategy prepare established, so the replay starts
+ * in it. Prepare never sets it to `batched`.
+ */
+export const STRATEGY_AFTER_PREPARE = 'strategyAfterPrepare'
+
+// A `Record` over the union, so a new strategy fails to compile here instead of
+// being ignored by the replay.
+const TRANSACTION_METHOD_TYPES: Record<TransactionMethodType, true> = {
+  standard: true,
+  relayed: true,
+  batched: true,
+}
+
+const isTransactionMethodType = (
+  value: unknown
+): value is TransactionMethodType =>
+  typeof value === 'string' && Object.hasOwn(TRANSACTION_METHOD_TYPES, value)
+
+/**
  * Determines the execution strategy: 'relayed', 'batched', or 'standard'.
  * Falls back to 'standard' when EIP-5792 batching is unavailable,
  * the wallet rejected the 7702 upgrade, or the tool doesn't support it.
@@ -30,6 +52,15 @@ export async function getEthereumExecutionStrategy(
 
   if (!afterPrepare && executionStrategyContext) {
     return executionStrategyContext
+  }
+
+  // The replay of a step whose first attempt learned its strategy only at
+  // prepare. Before prepare nothing on the step says so — that is why the first
+  // attempt queued its calls — so the verdict comes from the retry. Prepare
+  // still decides again from its own re-quote.
+  const strategyAfterPrepare = retryParams?.[STRATEGY_AFTER_PREPARE]
+  if (!afterPrepare && isTransactionMethodType(strategyAfterPrepare)) {
+    return strategyAfterPrepare
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
