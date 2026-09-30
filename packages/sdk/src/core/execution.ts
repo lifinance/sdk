@@ -75,9 +75,12 @@ export const resumeRoute = async (
     }
   }
 
-  prepareRestart(route)
+  // Restart from a copy: the caller's route (e.g. an integrator's store) must
+  // only change through `updateRouteHook`.
+  const restartRoute = structuredClone<RouteExtended>(route)
+  prepareRestart(restartRoute)
 
-  return executeRoute(client, route, executionOptions)
+  return executeRoute(client, restartRoute, executionOptions)
 }
 
 const executeSteps = async (

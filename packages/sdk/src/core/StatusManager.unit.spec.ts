@@ -291,4 +291,73 @@ describe('StatusManager', () => {
       }
     })
   })
+
+  describe('initializeExecution after a FAILED execution', () => {
+    it('keeps signedAt while a tx action has an open transaction', () => {
+      statusManager = initializeStatusManager({ includingExecution: true })
+      step.execution!.status = 'FAILED'
+      step.execution!.signedAt = 1234
+      const swap = step.execution!.actions.find((a) => a.type === 'SWAP')!
+      swap.txHash = '0xswap'
+
+      statusManager.initializeExecution(step)
+
+      expect(step.execution!.status).toBe('PENDING')
+      expect(step.execution!.signedAt).toBe(1234)
+    })
+
+    it('clears signedAt when no tx action has an open transaction', () => {
+      statusManager = initializeStatusManager({ includingExecution: true })
+      step.execution!.status = 'FAILED'
+      step.execution!.signedAt = 1234
+
+      statusManager.initializeExecution(step)
+
+      expect(step.execution!.signedAt).toBeUndefined()
+    })
+  })
+
+  describe('initializeAction on an existing action', () => {
+    it('clears the transaction fields of a final-failed action', () => {
+      statusManager = initializeStatusManager({ includingExecution: true })
+      const swap = step.execution!.actions.find((a) => a.type === 'SWAP')!
+      Object.assign(swap, {
+        status: 'FAILED',
+        txHash: '0xold',
+        txLink: 'https://explorer/tx/0xold',
+        txHex: 'AQID',
+        taskId: 'task-old',
+        txFinal: true,
+      })
+
+      const action = statusManager.initializeAction({
+        step,
+        type: 'SWAP',
+        chainId: 137,
+        status: 'STARTED',
+      })
+
+      expect(action.status).toBe('STARTED')
+      expect(action.txHash).toBeUndefined()
+      expect(action.txLink).toBeUndefined()
+      expect(action.txHex).toBeUndefined()
+      expect(action.taskId).toBeUndefined()
+      expect(action.txFinal).toBeUndefined()
+    })
+
+    it('keeps the hash of an action with an unknown outcome', () => {
+      statusManager = initializeStatusManager({ includingExecution: true })
+      const swap = step.execution!.actions.find((a) => a.type === 'SWAP')!
+      Object.assign(swap, { status: 'PENDING', txHash: '0xopen' })
+
+      const action = statusManager.initializeAction({
+        step,
+        type: 'SWAP',
+        chainId: 137,
+        status: 'PENDING',
+      })
+
+      expect(action.txHash).toBe('0xopen')
+    })
+  })
 })

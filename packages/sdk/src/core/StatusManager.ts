@@ -8,6 +8,10 @@ import type {
 } from '../types/core.js'
 import { getActionMessage } from './actionMessages.js'
 import { executionState } from './executionState.js'
+import {
+  CLEARED_TRANSACTION_FIELDS,
+  hasStepOpenTransaction,
+} from './transactionState.js'
 
 type ActionProps = {
   step: LiFiStepExtended
@@ -46,7 +50,12 @@ export class StatusManager {
     if (step.execution.status === 'FAILED') {
       step.execution.startedAt = Date.now()
       step.execution.status = 'PENDING'
-      step.execution.signedAt = undefined
+      // Keep the signing time while a signed transaction may still land: the
+      // resume path uses it to decide when stored bytes are too old to resend
+      // or old enough to be declared dropped.
+      if (!hasStepOpenTransaction(step)) {
+        step.execution.signedAt = undefined
+      }
       step.execution.error = undefined
       this.updateStepInRoute(step)
     }
@@ -144,6 +153,12 @@ export class StatusManager {
     if (action) {
       return this.updateAction(step, type, status, {
         error: undefined,
+        // A final outcome is dead. A new attempt starts without its data, so
+        // the pre-sign guard does not mistake it for an open transaction (the
+        // route was run again without `prepareRestart`, e.g. `executeRoute`).
+        ...(action.status === 'FAILED' &&
+          action.txFinal === true &&
+          CLEARED_TRANSACTION_FIELDS),
       })
     }
 

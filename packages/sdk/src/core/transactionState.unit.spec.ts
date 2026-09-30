@@ -79,6 +79,14 @@ describe('hasStepOpenTransaction', () => {
   it('is false for a step without execution', () => {
     expect(hasStepOpenTransaction({} as LiFiStepExtended)).toBe(false)
   })
+
+  it('is false for a damaged stored step with execution but no actions', () => {
+    const damaged = {
+      execution: { startedAt: 0, status: 'PENDING' },
+    } as unknown as LiFiStepExtended
+
+    expect(hasStepOpenTransaction(damaged)).toBe(false)
+  })
 })
 
 describe('isFinalTransactionError', () => {

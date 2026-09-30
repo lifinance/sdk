@@ -65,7 +65,7 @@ export function hasOpenTransaction(action?: ExecutionAction): boolean {
 
 /** True when any SWAP / CROSS_CHAIN action of the step has an open transaction. */
 export function hasStepOpenTransaction(step: LiFiStepExtended): boolean {
-  return !!step.execution?.actions.some(
+  return !!step.execution?.actions?.some(
     (action) =>
       TRANSACTION_ACTION_TYPES.includes(action.type) &&
       hasOpenTransaction(action)
