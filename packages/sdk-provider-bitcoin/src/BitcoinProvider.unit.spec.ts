@@ -1,6 +1,7 @@
-import { ChainId, ChainType } from '@lifi/sdk'
+import { ChainId, ChainType, type SDKProvider } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { BitcoinProvider } from './BitcoinProvider.js'
+import { isBitcoinProvider } from './types.js'
 
 describe('BitcoinProvider', () => {
   it('should create provider with default options', () => {
@@ -58,9 +59,6 @@ describe('BitcoinProvider', () => {
     const bitcoinSegwit = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'
     const bitcoinLegacy = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'
     const zcashP2pkh = 't1VmmGiyjVNeCjxDZzg7vZmd99WyzVby9yC'
-    const zcashP2sh = 't3LmX1cxWPPPqL4TZHx42HU3U5ghbFjRiif'
-    const zcashUnified =
-      'u1l8xunezsvhq8fgzfl7404m450nwnd76zshscn6nfys7vyz2ywyh4cc5daaq0c7q2su5lqfh23sp7fkf3kt27ve5948mzpfdvckzaect2jtte308mkwlycj2u0eac077wu70vqcetkxf'
 
     it('keeps today’s answer without a chain ID and for Bitcoin', () => {
       for (const address of [
@@ -77,23 +75,34 @@ describe('BitcoinProvider', () => {
       expect(provider.isAddress(zcashP2pkh)).toBe(false)
     })
 
-    it('accepts only transparent Zcash addresses for ZEC', () => {
-      expect(provider.isAddress(zcashP2pkh, ChainId.ZEC)).toBe(true)
-      expect(provider.isAddress(zcashP2sh, ChainId.ZEC)).toBe(true)
-      expect(provider.isAddress(zcashUnified, ChainId.ZEC)).toBe(false)
-    })
-
-    it('refuses a Bitcoin address for ZEC and a Zcash address for BTC', () => {
-      expect(provider.isAddress(bitcoinSegwit, ChainId.ZEC)).toBe(false)
-      expect(provider.isAddress(bitcoinLegacy, ChainId.ZEC)).toBe(false)
-      expect(provider.isAddress(zcashP2pkh, ChainId.BTC)).toBe(false)
-    })
-
-    it('refuses every address for a UTXO chain it does not know', () => {
-      for (const chainId of [ChainId.LTC, ChainId.BCH, ChainId.DGE]) {
+    it('refuses every address for a UTXO chain other than BTC', () => {
+      for (const chainId of [
+        ChainId.ZEC,
+        ChainId.LTC,
+        ChainId.BCH,
+        ChainId.DGE,
+      ]) {
         expect(provider.isAddress(bitcoinSegwit, chainId)).toBe(false)
         expect(provider.isAddress(zcashP2pkh, chainId)).toBe(false)
       }
+    })
+  })
+
+  describe('isBitcoinProvider', () => {
+    it('matches the Bitcoin provider only', () => {
+      const otherUtxoProvider: SDKProvider = {
+        type: ChainType.UTXO,
+        chainIds: [ChainId.ZEC],
+        isAddress: () => false,
+        resolveAddress: async () => undefined,
+        getBalance: async () => [],
+        getStepExecutor: async () => {
+          throw new Error('Not used.')
+        },
+      }
+
+      expect(isBitcoinProvider(BitcoinProvider())).toBe(true)
+      expect(isBitcoinProvider(otherUtxoProvider)).toBe(false)
     })
   })
 })

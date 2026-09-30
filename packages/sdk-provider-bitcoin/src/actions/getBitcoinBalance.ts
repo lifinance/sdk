@@ -20,8 +20,7 @@ export const getBitcoinBalance = async (
       console.warn('Requested tokens have to be on the same chain.')
     }
   }
-  // The client reads Bitcoin only. Another UTXO chain, such as ZEC, shares this
-  // provider but not its balances, so its amount stays unknown, not zero.
+  // The client reads Bitcoin only, so another chain's amount stays unknown, not zero.
   const isBitcoinToken = (token: Token): boolean =>
     token.chainId === ChainId.BTC
   if (!tokens.some(isBitcoinToken)) {
