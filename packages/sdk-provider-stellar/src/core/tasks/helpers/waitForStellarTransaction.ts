@@ -50,7 +50,9 @@ export const waitForStellarTransaction = async (
           LiFiErrorCode.TransactionFailed,
           `Stellar transaction ${transactionHash} failed: ${
             response.resultXdr?.result.type ?? 'unknown reason'
-          }`
+          }`,
+          undefined,
+          { final: true }
         )
       }
     } catch (error) {
