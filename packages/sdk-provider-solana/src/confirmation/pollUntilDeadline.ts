@@ -159,7 +159,7 @@ export async function pollUntilDeadline<T>(options: {
       // detached loop keeps probing through the final probe, and a blockhash
       // that reads valid again withdraws the verdict. A withdrawn verdict and
       // one that arrived only after the ceiling are both no expiry. The slot
-      // is the latest observation.
+      // is the one the deadline reports now.
       const expiredAt =
         expiredAtDeadline === undefined ? undefined : deadline.expiredAt()
       return expiredAt === undefined

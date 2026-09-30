@@ -492,7 +492,7 @@ describe('createConfirmationDeadline', () => {
     expect(isBlockhashValid).not.toHaveBeenCalled()
   })
 
-  it('reports the slot of the latest false answer through expiredAt()', async () => {
+  it('reports the highest slot of the false streak through expiredAt()', async () => {
     // `reached()` fires for a dead blockhash and for the ceiling alike. Only
     // the first may end in a final "dropped", and that check needs the slot
     // at which the blockhash was seen dead.
@@ -513,6 +513,54 @@ describe('createConfirmationDeadline', () => {
 
     expect(deadline.reached()).toBe(true)
     expect(deadline.expiredAt()).toBe(136n)
+  })
+
+  it('keeps the highest slot when a later false answer reports a lower one', async () => {
+    // A `false` from a node whose head is behind the others must not lower
+    // the bound. A bound below the slot where the transaction can land lets
+    // the dropped check trust a lagging node's `null`.
+    isBlockhashValid
+      .mockResolvedValueOnce(valid(false, 136n))
+      .mockResolvedValueOnce(valid(false, 120n))
+      .mockResolvedValueOnce(valid(false, 118n))
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS; attempt += 1) {
+      await probeTick(deadline)
+    }
+
+    expect(deadline.reached()).toBe(true)
+    expect(deadline.expiredAt()).toBe(136n)
+  })
+
+  it('resets the streak on a false answer that carries no slot', async () => {
+    // A slot-less `false` is a failed probe, not a skipped one: it clears the
+    // streak, so the answers before it do not count toward the verdict.
+    isBlockhashValid
+      .mockResolvedValueOnce(valid(false))
+      .mockResolvedValueOnce({ value: false })
+      .mockResolvedValueOnce(valid(false))
+      .mockResolvedValueOnce(valid(false))
+      .mockResolvedValue(valid(false))
+    const deadline = createConfirmationDeadline({
+      lifetimes: [blockhash('A')],
+      rpc,
+      now,
+    })
+
+    for (let attempt = 0; attempt < EXPIRY_CONFIRMATIONS + 1; attempt += 1) {
+      await probeTick(deadline)
+    }
+    expect(deadline.reached()).toBe(false)
+    expect(deadline.expiredAt()).toBeUndefined()
+
+    // Not vacuous: one more `false` with a slot completes the new streak.
+    await probeTick(deadline)
+    expect(deadline.expiredAt()).toBe(100n)
   })
 
   it('reaches the ceiling without an expiry verdict', () => {
@@ -564,9 +612,11 @@ describe('createConfirmationDeadline', () => {
     expect(deadline.expiredAt()).toBeUndefined()
   })
 
-  it('reports the latest slot when several blockhashes expired', async () => {
+  it('reports the highest slot when several blockhashes expired', async () => {
+    // 'A' is inserted first and has the higher slot, so a result that took
+    // the last expired blockhash in map order would give 200n.
     isBlockhashValid.mockImplementation((value: string) =>
-      Promise.resolve(valid(false, value === 'A' ? 200n : 210n))
+      Promise.resolve(valid(false, value === 'A' ? 210n : 200n))
     )
     const deadline = createConfirmationDeadline({
       lifetimes: [blockhash('A'), blockhash('B')],

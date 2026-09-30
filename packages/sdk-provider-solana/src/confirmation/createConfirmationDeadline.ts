@@ -35,10 +35,11 @@ export type BlockhashProbeRpc = Pick<SolanaRpcType, 'isBlockhashValid'>
 export interface ConfirmationDeadline {
   /** Checked at the top of every poll iteration. */
   reached(): boolean
-  /** The slot at which the blockhash probe confirmed expiry - the
-   * `context.slot` of the latest `false` answer - or `undefined` without a
-   * verdict. Tells the two reasons `reached()` fires apart: a dead blockhash
-   * may later count as "dropped", the wall-clock ceiling never does. */
+  /** The slot at which the blockhash probe confirmed expiry - the highest
+   * `context.slot` of the `false` answers in the streak - or `undefined`
+   * without a verdict. Tells the two reasons `reached()` fires apart: a dead
+   * blockhash may later count as "dropped", the wall-clock ceiling never
+   * does. */
   expiredAt(): bigint | undefined
   /** Advances the policy; never throws. Probes at most once per
    * `EXPIRY_PROBE_INTERVAL_MS`. */
@@ -77,8 +78,9 @@ export function createConfirmationDeadline(options: {
 
   // Keyed by blockhash: expiry is a property of a blockhash, not of the set.
   const expiredStreaks = new Map<Blockhash, number>()
-  // The `context.slot` of each blockhash's latest `false` answer: where a
-  // dropped check has to find a node's head before it trusts a `null`.
+  // The highest `context.slot` of each blockhash's current `false` streak:
+  // where a dropped check has to find a node's head before it trusts a
+  // `null`. A reset of the streak deletes it.
   const expiredSlots = new Map<Blockhash, bigint>()
   // Keyed for the same reason: a sibling's broken probe is not evidence about
   // this blockhash, so it must not spend this blockhash's error budget.
@@ -89,7 +91,7 @@ export function createConfirmationDeadline(options: {
   let lastProbeAt: number | undefined
 
   /** Derived, not latched: a blockhash that reads valid again zeroes its
-   * streak and clears the verdict with it. The latest slot among the expired
+   * streak and clears the verdict with it. The highest slot among the expired
    * blockhashes is the strictest head bound. */
   const expiredAt = (): bigint | undefined => {
     let slot: bigint | undefined
@@ -186,7 +188,14 @@ export function createConfirmationDeadline(options: {
             blockhash,
             (expiredStreaks.get(blockhash) ?? 0) + 1
           )
-          expiredSlots.set(blockhash, slot)
+          // The highest slot, not the latest: a `false` from a node whose head
+          // is behind the others must not lower the bound below the slots
+          // where the transaction can still land.
+          const previous = expiredSlots.get(blockhash)
+          expiredSlots.set(
+            blockhash,
+            previous === undefined || slot > previous ? slot : previous
+          )
           return
         }
 
