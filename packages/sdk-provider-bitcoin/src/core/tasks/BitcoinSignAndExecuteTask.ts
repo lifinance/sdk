@@ -16,10 +16,17 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import { address, initEccLib, networks, Psbt } from 'bitcoinjs-lib'
-import type { BitcoinStepExecutorContext } from '../../types.js'
+import type {
+  BitcoinStepExecutorContext,
+  BitcoinTaskContext,
+} from '../../types.js'
 import { generateRedeemScript } from '../../utils/generateRedeemScript.js'
 import { isPsbtFinalized } from '../../utils/isPsbtFinalized.js'
 import { toXOnly } from '../../utils/toXOnly.js'
+import {
+  classifyBitcoinSendFailure,
+  lookUpBitcoinTransaction,
+} from './classifyBitcoinSendFailure.js'
 
 export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: BitcoinStepExecutorContext): Promise<TaskResult> {
@@ -154,24 +161,71 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       signedPsbt.finalizeAllInputs()
     }
 
-    const txHex = signedPsbt.extractTransaction().toHex()
+    const transaction = signedPsbt.extractTransaction()
+    const txHex = transaction.toHex()
+    const txHash = transaction.getId()
+    const txLinkOf = (txid: string): string =>
+      `${fromChain.metamask.blockExplorerUrls[0]}tx/${txid}`
 
-    const txHash = await publicClient.sendUTXOTransaction({
-      hex: txHex,
-    })
-
+    // Written before the send: a reload during the send finds the bytes and
+    // resumes at the wait task instead of signing a second transaction.
     statusManager.updateAction(step, action.type, 'PENDING', {
       // A new transaction: nothing of the previous one may survive, least of
       // all its `txFinal` verdict.
       ...CLEARED_TRANSACTION_FIELDS,
-      txHash: txHash,
-      txLink: `${fromChain.metamask.blockExplorerUrls[0]}tx/${txHash}`,
+      txHash,
+      txLink: txLinkOf(txHash),
       txHex,
       signedAt: Date.now(),
     })
 
+    try {
+      // One round: bigmi's fallback retries a failed round up to 3 times, and
+      // its error keeps only the last round. A node of an earlier round may
+      // have accepted the bytes.
+      const sentTxHash: unknown = await publicClient.request(
+        { method: 'sendrawtransaction', params: [txHex] },
+        { retryCount: 0 }
+      )
+      // A node answers with the txid of the bytes it got. Without a txid,
+      // `getId()` stays; a different txid is not expected.
+      if (
+        typeof sentTxHash === 'string' &&
+        sentTxHash !== '' &&
+        sentTxHash !== txHash
+      ) {
+        statusManager.updateAction(step, action.type, 'PENDING', {
+          txHash: sentTxHash,
+          txLink: txLinkOf(sentTxHash),
+        })
+      }
+    } catch (error) {
+      const failure = classifyBitcoinSendFailure(error)
+      if (failure === 'unknown') {
+        // An earlier URL may have accepted the bytes. Keep them: "Try again"
+        // resumes at the wait task, which resends them within the age cap.
+        throw error
+      }
+      if (failure === 'refused') {
+        const lookup = await lookUpBitcoinTransaction(publicClient, txHash)
+        if (lookup === 'absent') {
+          // Every node refuses these bytes alike and no node holds them, so
+          // they can never land: "Try again" signs a new transaction.
+          statusManager.updateAction(step, action.type, 'PENDING', {
+            ...CLEARED_TRANSACTION_FIELDS,
+          })
+          throw error
+        }
+        if (lookup === 'unknown') {
+          throw error
+        }
+      }
+      // A node already holds the transaction.
+    }
+
     return {
       status: 'COMPLETED',
+      context: { bitcoinSent: true } satisfies BitcoinTaskContext,
     }
   }
 }

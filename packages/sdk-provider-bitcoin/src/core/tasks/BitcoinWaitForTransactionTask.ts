@@ -2,6 +2,7 @@ import type { ReplacementReason } from '@bigmi/core'
 import { waitForTransaction } from '@bigmi/core'
 import {
   BaseStepExecutionTask,
+  isResendAllowed,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -36,6 +37,24 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
     }
 
     checkClient(step)
+
+    // A resume, or "Try again" after a send with an unknown outcome: the
+    // bytes may never have reached a node. Send them once more, but only
+    // within the age cap, so a page load long after signing cannot execute a
+    // swap on an old quote. The same bytes keep the same txid, so a resend
+    // can never make the transaction land twice.
+    if (
+      context.bitcoinSent !== true &&
+      isResendAllowed(step.execution?.signedAt)
+    ) {
+      try {
+        await publicClient.sendUTXOTransaction({ hex: txHex })
+      } catch {
+        // Ignored: an "already" answer, a refusal and a transport error all
+        // leave it to the wait below to find the transaction or its
+        // replacement.
+      }
+    }
 
     let replacementReason: ReplacementReason | undefined
     const transaction = await waitForTransaction(publicClient, {
