@@ -47,7 +47,9 @@ export async function waitForTransactionReceipt(
   if (transactionReceipt?.status === 'reverted') {
     throw new TransactionError(
       LiFiErrorCode.TransactionFailed,
-      'Transaction was reverted.'
+      'Transaction was reverted.',
+      undefined,
+      { final: true }
     )
   }
   // We should only allow repriced transaction to continue the execution.
@@ -55,7 +57,9 @@ export async function waitForTransactionReceipt(
   if (replacementReason === 'cancelled' || replacementReason === 'replaced') {
     throw new TransactionError(
       LiFiErrorCode.TransactionCanceled,
-      'Transaction was canceled or replaced.'
+      'Transaction was canceled or replaced.',
+      undefined,
+      { final: true }
     )
   }
 

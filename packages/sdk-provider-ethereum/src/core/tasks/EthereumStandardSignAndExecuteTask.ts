@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -135,6 +136,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       txHash: resolvedTxHash,
       txLink: getTxLink(fromChain, resolvedTxHash),
       txType: 'standard',

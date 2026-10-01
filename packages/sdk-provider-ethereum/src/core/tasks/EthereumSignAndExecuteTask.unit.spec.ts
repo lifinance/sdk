@@ -1,6 +1,8 @@
 import {
+  type ExecutionAction,
   LiFiErrorCode,
   type LiFiStep,
+  TransactionError,
   type TransactionMethodType,
   type TypedData,
 } from '@lifi/sdk'
@@ -199,5 +201,99 @@ describe('EthereumSignAndExecuteTask.run', () => {
       code: LiFiErrorCode.TransactionUnprepared,
     })
     expect(relayedRun).not.toHaveBeenCalled()
+  })
+})
+
+describe('EthereumSignAndExecuteTask.run pre-sign guard', () => {
+  const openTransaction: ExecutionAction = {
+    type: 'SWAP',
+    status: 'PENDING',
+    txHash: TX_HASH,
+  }
+
+  /** Each lane as the existing tests reach it: every one resolves COMPLETED without the guard. */
+  const contextFor = (
+    executionStrategy: TransactionMethodType,
+    action: ExecutionAction,
+    allowUserInteraction = true
+  ): EthereumStepExecutorContext => {
+    const context = buildContext({
+      typedData: [permit2Allowance()],
+      withTransactionRequest: executionStrategy !== 'relayed',
+      executionStrategy,
+    })
+    vi.mocked(context.statusManager.findAction).mockReturnValue(action)
+    context.allowUserInteraction = allowUserInteraction
+    return context
+  }
+
+  const expectWalletUntouched = (
+    context: EthereumStepExecutorContext
+  ): void => {
+    expect(relayedRun).not.toHaveBeenCalled()
+    expect(batchedRun).not.toHaveBeenCalled()
+    expect(sendTransaction).not.toHaveBeenCalled()
+    expect(context.checkClient).not.toHaveBeenCalled()
+    expect(context.statusManager.updateAction).not.toHaveBeenCalled()
+  }
+
+  /** The conflict stays non-final: a final error would mark the open action `txFinal`. */
+  const expectOpenTransactionConflict = async (
+    context: EthereumStepExecutorContext
+  ): Promise<void> => {
+    const error = await task.run(context).catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(TransactionError)
+    expect(error).toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+      final: false,
+    })
+    expectWalletUntouched(context)
+  }
+
+  it.each(['standard', 'batched', 'relayed'] as const)(
+    'throws TransactionConflict before the %s lane can reach the wallet',
+    async (executionStrategy) => {
+      const context = contextFor(executionStrategy, openTransaction)
+
+      await expectOpenTransactionConflict(context)
+    }
+  )
+
+  it.each([
+    [
+      'a relay or batch taskId',
+      { type: 'SWAP', status: 'PENDING', taskId: TX_HASH },
+    ],
+    [
+      'a FAILED hash without txFinal',
+      { type: 'SWAP', status: 'FAILED', txHash: TX_HASH },
+    ],
+    ['stored bytes only', { type: 'SWAP', status: 'PENDING', txHex: '0x02f8' }],
+  ] as [string, ExecutionAction][])(
+    'treats %s as an open transaction',
+    async (_label, action) => {
+      const context = contextFor('standard', action)
+
+      await expectOpenTransactionConflict(context)
+    }
+  )
+
+  it('throws instead of pausing when user interaction is not allowed', async () => {
+    const context = contextFor('standard', openTransaction, false)
+
+    await expectOpenTransactionConflict(context)
+  })
+
+  it('lets a transaction with a final outcome be signed again', async () => {
+    const context = contextFor('relayed', {
+      type: 'SWAP',
+      status: 'FAILED',
+      txHash: TX_HASH,
+      txFinal: true,
+    })
+
+    await expect(task.run(context)).resolves.toEqual({ status: 'COMPLETED' })
+    expect(relayedRun).toHaveBeenCalledTimes(1)
   })
 })

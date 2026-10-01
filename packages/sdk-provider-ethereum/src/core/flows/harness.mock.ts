@@ -555,6 +555,12 @@ export interface ScenarioOptions {
    * own interaction gate.
    */
   executeInBackground?: boolean
+  /**
+   * Called with the live route on every `updateRouteHook` fire, after the
+   * harness recorded it. The reload specs persist a snapshot from here, the
+   * way the widget writes the route to storage.
+   */
+  onRouteUpdate?: (route: RouteExtended) => void
 }
 
 export interface Scenario {
@@ -566,6 +572,11 @@ export interface Scenario {
   runExpectingFailure(): Promise<Error>
   /** The retry a consumer performs after a failure: `resumeRoute`. */
   retry(): Promise<RouteExtended>
+  /**
+   * `resumeRoute` with a route the caller supplies, e.g. a snapshot restored
+   * from storage after a page reload. Uses this scenario's client and hook.
+   */
+  resume(route: RouteExtended): Promise<RouteExtended>
   /** The route as the consumer last saw it through `updateRouteHook`. */
   route(): RouteExtended
   /** The step inside {@link Scenario.route}, after the pipeline mutated it. */
@@ -911,6 +922,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     updateRouteHook: (updatedRoute: RouteExtended) => {
       latestRoute = updatedRoute
       record({ kind: 'routeUpdate' })
+      options.onRouteUpdate?.(updatedRoute)
     },
     ...(options.executeInBackground !== undefined && {
       executeInBackground: options.executeInBackground,
@@ -989,6 +1001,8 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       throw new Error('Expected the route execution to fail, but it succeeded.')
     },
     retry: () => resumeRoute(client, requireRoute(), executionOptions),
+    resume: (persistedRoute: RouteExtended) =>
+      resumeRoute(client, persistedRoute, executionOptions),
     route: requireRoute,
     executedStep: () => requireRoute().steps[0],
     events<K extends TimelineKind>(kind: K, fromSeq = 0): TimelineEventOf<K>[] {

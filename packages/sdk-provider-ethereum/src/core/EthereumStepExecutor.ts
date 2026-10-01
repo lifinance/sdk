@@ -4,6 +4,7 @@ import {
   type ExecuteStepRetryError,
   type ExecuteStepRetryParams,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   type SDKClient,
@@ -166,12 +167,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step,
         isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
       )
-      taskName =
-        swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
-          ? swapOrBridgeAction?.status === 'DONE'
-            ? EthereumWaitForTransactionStatusTask.name
-            : EthereumWaitForTransactionTask.name
-          : EthereumCheckBalanceTask.name
+      // Same predicate as the pre-sign guard: an open transaction is waited
+      // for, a FAILED action with a final outcome signs again.
+      taskName = hasOpenTransaction(swapOrBridgeAction)
+        ? swapOrBridgeAction?.status === 'DONE'
+          ? EthereumWaitForTransactionStatusTask.name
+          : EthereumWaitForTransactionTask.name
+        : EthereumCheckBalanceTask.name
     }
 
     const firstTaskIndex = tasks.findIndex(

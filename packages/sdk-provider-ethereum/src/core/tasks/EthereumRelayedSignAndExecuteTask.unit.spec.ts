@@ -253,3 +253,27 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
     expect(relayTransaction).not.toHaveBeenCalled()
   })
 })
+
+describe('EthereumRelayedSignAndExecuteTask.run transaction fields', () => {
+  it('clears the previous transaction fields when it writes the task id', async () => {
+    const context = buildContext()
+
+    await task.run(context)
+
+    const params = vi
+      .mocked(context.statusManager.updateAction)
+      .mock.calls.find(
+        ([, , status, update]) => status === 'PENDING' && !!update?.taskId
+      )?.[3]
+    expect(Object.keys(params ?? {})).toEqual(
+      expect.arrayContaining(['txHash', 'txLink', 'txHex', 'txFinal'])
+    )
+    expect(params).toMatchObject({
+      taskId: TASK_ID,
+      txType: 'relayed',
+      txLink: 'https://example.invalid/task',
+    })
+    expect(params?.txHash).toBeUndefined()
+    expect(params?.txFinal).toBeUndefined()
+  })
+})
