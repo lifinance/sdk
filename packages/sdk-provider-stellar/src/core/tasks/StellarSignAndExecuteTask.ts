@@ -50,6 +50,10 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
 
     checkWallet(step)
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the await above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const { signedTxXdr } = await wallet.signTransaction(
       transactionRequestData,
       {
