@@ -413,19 +413,63 @@ describe('TronWaitForTransactionTask', () => {
       expect(clearedTxHex(updateAction)).toBe(false)
     })
 
-    it('prefers the persisted txHash over the stored txID', async () => {
-      const { context } = makeContext(withTronNodes(makeNode(accepts)), {
-        type: 'SWAP',
-        txHash: 'persisted-hash',
-        txHex: TX_HEX,
+    describe('stored txID that is not the stored txHash (damaged storage)', () => {
+      const NOW = 1_790_000_000_000
+      const OTHER_TX_ID =
+        'd4f8b5d6d1c9e3f2fab7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3'
+
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] })
+        vi.setSystemTime(NOW)
       })
 
-      await new TronWaitForTransactionTask().run(context)
+      // The stored bytes prove nothing about the stored txHash, and they may
+      // have been sent. Both drop checks would fire here: the head is past
+      // the stored expiration, and the signing time is 20 minutes old.
+      it('never sends or drops, and waits by the stored txHash', async () => {
+        const node = makeNode(accepts)
+        node.trx.getCurrentBlock.mockResolvedValue({
+          block_header: { raw_data: { timestamp: HEAD_PAST } },
+        })
+        const timeout = confirmationTimeout()
+        waitForTronTxConfirmation.mockRejectedValue(timeout)
+        const { context, updateAction } = makeContext(
+          withTronNodes(node),
+          { type: 'SWAP', txHash: OTHER_TX_ID, txHex: TX_HEX },
+          { step: { execution: { signedAt: NOW - 20 * 60_000 } } }
+        )
 
-      expect(waitForTronTxConfirmation).toHaveBeenCalledWith(
-        expect.anything(),
-        'persisted-hash'
-      )
+        const error = await new TronWaitForTransactionTask()
+          .run(context)
+          .catch((error: unknown) => error)
+
+        expect(error).toBe(timeout)
+        expect(isFinalTransactionError(error)).toBe(false)
+        expect(node.trx.sendRawTransaction).not.toHaveBeenCalled()
+        expect(node.trx.getUnconfirmedTransactionInfo).not.toHaveBeenCalled()
+        expect(isKnownToStatusApi).not.toHaveBeenCalled()
+        expect(waitForTronTxConfirmation).toHaveBeenCalledWith(
+          expect.anything(),
+          OTHER_TX_ID
+        )
+        // txHex and txHash stay.
+        expect(updateAction).not.toHaveBeenCalled()
+      })
+
+      // A hex hash does not depend on its case.
+      it('treats a txHash that differs only in case as the same transaction', async () => {
+        const node = makeNode(accepts)
+        const { context } = makeContext(withTronNodes(node), {
+          type: 'SWAP',
+          txHash: TX_ID.toUpperCase(),
+          txHex: TX_HEX,
+        })
+
+        await expect(
+          new TronWaitForTransactionTask().run(context)
+        ).resolves.toEqual({ status: 'COMPLETED' })
+        expect(node.trx.sendRawTransaction).toHaveBeenCalledTimes(1)
+      })
     })
 
     it('strips a 0x prefix from the stored txID', async () => {

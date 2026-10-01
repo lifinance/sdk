@@ -60,12 +60,9 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
         txLink: getTronTxLink(fromChain, broadcast.txHash),
       })
 
-      return confirm(
-        context,
-        action,
-        broadcast.txHash,
-        signedTransaction.raw_data.expiration
-      )
+      return confirm(context, action, broadcast.txHash, {
+        expiration: signedTransaction.raw_data.expiration,
+      })
     }
 
     // Resuming: the signing task did not run in this session. Continue with
@@ -88,9 +85,23 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       }
     }
 
-    const txHash =
-      action.txHash ??
-      (storedTransaction ? stripHexPrefix(storedTransaction.txID) : undefined)
+    const storedTxId = storedTransaction
+      ? stripHexPrefix(storedTransaction.txID)
+      : undefined
+
+    if (
+      storedTxId &&
+      action.txHash &&
+      storedTxId.toLowerCase() !== stripHexPrefix(action.txHash).toLowerCase()
+    ) {
+      // Stored bytes whose txID is not the stored txHash (damaged storage)
+      // prove nothing about that transaction, and they may have been sent.
+      // Then the SDK neither sends nor drops; it only waits by txHash, and
+      // the outcome stays unknown.
+      return confirm(context, action, action.txHash, { mayDrop: false })
+    }
+
+    const txHash = action.txHash ?? storedTxId
 
     if (!txHash) {
       throw new TransactionError(
@@ -120,15 +131,20 @@ export class TronWaitForTransactionTask extends BaseStepExecutionTask {
       }
     }
 
-    return confirm(context, action, txHash, expiration)
+    return confirm(context, action, txHash, { expiration })
   }
 }
 
+/**
+ * Waits for the inclusion of `txHash`. After a timeout, the dropped rule runs
+ * with `options.expiration`; with `{ mayDrop: false }` it never runs, and the
+ * outcome stays unknown.
+ */
 async function confirm(
   context: TronStepExecutorContext,
   action: ExecutionAction,
   txHash: string,
-  expiration: number | undefined
+  options: { expiration: number | undefined } | { mayDrop: false }
 ): Promise<TaskResult> {
   const { client, step, statusManager, fromChain, isBridgeExecution } = context
   // Included in a block: the stored bytes are no longer needed.
@@ -147,7 +163,10 @@ async function confirm(
     }
     // The wait ended without a result. Only an expired transaction that no
     // source knows is final; anything else stays unknown and keeps `txHex`.
-    if (await isTronTransactionDropped(client, step, txHash, expiration)) {
+    if (
+      'expiration' in options &&
+      (await isTronTransactionDropped(client, step, txHash, options.expiration))
+    ) {
       throw dropped(context, action)
     }
     throw error
