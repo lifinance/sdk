@@ -1,6 +1,28 @@
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import { Networks } from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  buildSignedTransaction,
+  coveringNotFound,
+  MAX_TIME,
+  MIN_TIME,
+  rejection,
+} from './helpers/classifySubmitFailure.unit.mock.js'
+
+const isKnownToStatusApi = vi.fn()
+vi.mock('@lifi/sdk', async () => {
+  const actual = await vi.importActual<typeof import('@lifi/sdk')>('@lifi/sdk')
+  return {
+    ...actual,
+    isKnownToStatusApi: (...args: unknown[]) => isKnownToStatusApi(...args),
+  }
+})
+
+// The absence proof reads every RPC; only the transport is replaced.
+const getTransaction = vi.fn()
+vi.mock('../../client/getStellarRpc.js', () => ({
+  getStellarRpcs: async () => [{ getTransaction }],
+}))
 
 const submitStellarTransaction = vi.fn()
 vi.mock('./helpers/submitStellarTransaction.js', () => ({
@@ -206,5 +228,70 @@ describe('StellarWaitForTransactionTask', () => {
     const swap = makeContext({ type: 'SWAP' }, { transactionHash: 'h' })
     await new StellarWaitForTransactionTask().run(swap.context)
     expect(swap.updateAction).not.toHaveBeenCalled()
+  })
+})
+
+describe('StellarWaitForTransactionTask rejected re-submit on resume', () => {
+  const runResumed = async (error: unknown): Promise<unknown> => {
+    submitStellarTransaction.mockRejectedValue(error)
+    const { context } = makeContext({
+      type: 'SWAP',
+      txHash: 'persisted-hash',
+      // The stored envelope; `classifySubmitFailure` reads its time bounds.
+      txHex: buildSignedTransaction({
+        minTime: MIN_TIME,
+        maxTime: MAX_TIME,
+      }).toXdr(),
+    })
+    return new StellarWaitForTransactionTask()
+      .run(context)
+      .catch((caught: unknown) => caught)
+  }
+
+  beforeEach(() => {
+    submitStellarTransaction.mockReset()
+    waitForStellarTransaction
+      .mockReset()
+      .mockRejectedValue(
+        new TransactionError(LiFiErrorCode.Timeout, 'not confirmed in time')
+      )
+    probeStellarTransaction.mockReset().mockResolvedValue('not-found')
+    getTransaction.mockReset().mockResolvedValue(coveringNotFound())
+    isKnownToStatusApi.mockReset().mockResolvedValue(false)
+  })
+
+  it('is final for a covering NOT_FOUND past the head that the status API does not know', async () => {
+    const thrown = await runResumed(rejection('txTooLate'))
+
+    expect(thrown).toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Stellar transaction submission failed: txTooLate',
+      final: true,
+    })
+    expect(getTransaction).toHaveBeenCalledWith('persisted-hash')
+    expect(isKnownToStatusApi).toHaveBeenCalledWith({}, {}, 'persisted-hash')
+  })
+
+  // An RPC past its retention window: its history starts after the anchor.
+  it('stays unknown when oldestLedgerCloseTime is after the anchor', async () => {
+    getTransaction.mockResolvedValue(
+      coveringNotFound({ oldestLedgerCloseTime: MIN_TIME + 60 })
+    )
+    const error = rejection('txTooLate')
+
+    const thrown = await runResumed(error)
+
+    expect(thrown).toBe(error)
+    expect(thrown).toMatchObject({ final: false })
+  })
+
+  it('stays unknown when isKnownToStatusApi is true', async () => {
+    isKnownToStatusApi.mockResolvedValue(true)
+    const error = rejection('txTooLate')
+
+    const thrown = await runResumed(error)
+
+    expect(thrown).toBe(error)
+    expect(thrown).toMatchObject({ final: false })
   })
 })

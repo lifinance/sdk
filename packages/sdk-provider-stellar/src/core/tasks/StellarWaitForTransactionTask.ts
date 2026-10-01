@@ -6,6 +6,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
+import { classifySubmitFailure } from './helpers/classifySubmitFailure.js'
 import { probeStellarTransaction } from './helpers/probeStellarTransaction.js'
 import { submitStellarTransaction } from './helpers/submitStellarTransaction.js'
 import { waitForStellarTransaction } from './helpers/waitForStellarTransaction.js'
@@ -74,13 +75,25 @@ export class StellarWaitForTransactionTask extends BaseStepExecutionTask {
       await waitForStellarTransaction(client, hash, pollingIntervalMs)
     } catch (error) {
       // The envelope never reached the network, and the poll can only report
-      // that as a timeout. The submission error says why.
+      // that as a timeout. The submission error says why. It becomes final only
+      // with a chain proof that the envelope was never applied and when the
+      // LI.FI status API does not know the hash.
       if (
         resubmitError &&
+        action.txHex &&
         error instanceof BaseError &&
         error.code === LiFiErrorCode.Timeout
       ) {
-        throw resubmitError
+        throw await classifySubmitFailure(
+          {
+            client,
+            step,
+            transactionHash: hash,
+            signedTxXdr: action.txHex,
+            networkPassphrase,
+          },
+          resubmitError
+        )
       }
       throw error
     }

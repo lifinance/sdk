@@ -110,6 +110,24 @@ describe('StellarStepExecutor', () => {
         )
       }
     })
+
+    it('signs again from CheckBalanceTask after a final failure', () => {
+      const names = taskNames(
+        makeExecutor(),
+        contextWith([
+          {
+            type: 'SWAP',
+            status: 'FAILED',
+            txHash: '0xabc',
+            txHex: 'SIGNED_XDR',
+            txFinal: true,
+          },
+        ])
+      )
+
+      expect(names[0]).toBe(CheckBalanceTask.name)
+      expect(names).toContain('StellarSignAndExecuteTask')
+    })
   })
 
   describe('checkWallet', () => {
