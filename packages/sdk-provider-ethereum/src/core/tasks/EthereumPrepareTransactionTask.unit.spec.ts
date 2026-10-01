@@ -181,8 +181,8 @@ describe('EthereumPrepareTransactionTask.run', () => {
   })
 })
 
-// JUMEMB-102: the allowance tasks queued calls for a batch, and prepare is the
-// first point where the step turns out not to batch.
+// JUMEMB-102: prepare finds that the work done for the batch does not fit the
+// strategy it establishes.
 describe('EthereumPrepareTransactionTask.run — calls queued for a batch that will not be sent', () => {
   const order = (): TypedData =>
     ({
@@ -220,8 +220,17 @@ describe('EthereumPrepareTransactionTask.run — calls queued for a batch that w
     })
   })
 
+  it('restores the typed data from before prepare, so the replay re-quotes the same way', async () => {
+    const context = buildQueuedContext([QUEUED_APPROVE])
+    const before = context.step.typedData
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      name: 'ExecuteStepRetryError',
+    })
+    expect(context.step.typedData).toBe(before)
+  })
+
   it('fails loudly instead of dropping the calls on a replay', async () => {
-    // `executeRoute` replays a step once; a second request would escape it.
     const context = buildQueuedContext([QUEUED_APPROVE])
     context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'relayed' }
 

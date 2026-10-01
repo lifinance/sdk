@@ -198,8 +198,7 @@ describe('getEthereumExecutionStrategy', () => {
     })
   })
 
-  // JUMEMB-102: the replay `EthereumPrepareTransactionTask` asks for when a step
-  // left `batched` after its calls were queued.
+  // JUMEMB-102: the replay that `EthereumPrepareTransactionTask` requests.
   describe('the strategy a replay carries from the previous prepare', () => {
     it('starts the replay in that strategy, before any batching probe', async () => {
       vi.mocked(isBatchingSupported).mockResolvedValue(true)

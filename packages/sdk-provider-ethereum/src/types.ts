@@ -37,9 +37,9 @@ export interface EthereumTaskContext {
   hasAllowance?: boolean
   hasSufficientAllowance?: boolean
   /**
-   * The spender `EthereumCheckAllowanceTask` checked the allowance against, and
-   * `EthereumSetAllowanceTask` approves. Prepare compares it with the spender
-   * the strategy it establishes needs.
+   * The spender `EthereumCheckAllowanceTask` checked the allowance against. The
+   * other allowance tasks approve the same one. Prepare compares it with the
+   * spender of the strategy it establishes.
    */
   allowanceSpender?: Address
   /**

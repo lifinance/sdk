@@ -6,7 +6,7 @@ import { waitForTransactionReceipt } from '../../actions/waitForTransactionRecei
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
-import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
+import { resolveAllowanceSpender } from './helpers/resolveAllowanceSpender.js'
 
 export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -53,13 +53,10 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-    const permit2Supported = await resolvePermit2Support(
+    const { spenderAddress } = await resolveAllowanceSpender(
       context,
       executionStrategy
     )
-    const spenderAddress = permit2Supported
-      ? fromChain.permit2
-      : step.estimate.approvalAddress
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
@@ -71,7 +68,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       client,
       updatedClient,
       step.action.fromToken.address as Address,
-      spenderAddress as Address,
+      spenderAddress,
       0n,
       executionOptions,
       batchingSupported

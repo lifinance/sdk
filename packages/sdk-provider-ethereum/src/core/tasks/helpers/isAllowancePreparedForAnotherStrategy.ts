@@ -1,22 +1,17 @@
 import type { TransactionMethodType } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { resolvePermit2Support } from './resolvePermit2Support.js'
+import { resolveAllowanceSpender } from './resolveAllowanceSpender.js'
 
 /**
- * Whether the allowance tasks, which ran in `preparedFor`, left the step unable
- * to execute in `needed` — the strategy prepare established from the re-quote.
- *
- * Two outcomes of those tasks depend on the strategy, and either one can break:
+ * Whether the allowance work done in `preparedFor` does not fit `needed`, the
+ * strategy prepare established. Two things can break:
  * - Calls queued for a batch are sent only by the batched task.
- * - The spender. `resolvePermit2Support` rejects `batched`, answers the relayed
- *   lane without probing and probes the signer for `standard`, so the same step
- *   is checked against `approvalAddress` in one strategy and needs canonical
- *   Permit2 in another. A sufficient allowance to the wrong spender queues
- *   nothing, so the calls alone do not show it.
+ * - The spender: `resolvePermit2Support` never picks Permit2 for `batched`, but
+ *   can for the other strategies. An allowance that is sufficient for the wrong
+ *   spender queues nothing, so the calls alone do not show it.
  *
- * The spender is compared with the one `EthereumCheckAllowanceTask` recorded,
- * not derived again: prepare has already replaced the step's typed data and
- * estimate with the re-quote's.
+ * The spender recorded by `EthereumCheckAllowanceTask` is compared, because
+ * prepare has already replaced the step with the re-quote.
  */
 export const isAllowancePreparedForAnotherStrategy = async (
   context: EthereumStepExecutorContext,
@@ -33,12 +28,10 @@ export const isAllowancePreparedForAnotherStrategy = async (
   if (context.hasMatchingPermit) {
     return false
   }
-  const { allowanceSpender, fromChain, step } = context
+  const { allowanceSpender } = context
   if (!allowanceSpender) {
     return false
   }
-  const neededSpender = (await resolvePermit2Support(context, needed))
-    ? fromChain.permit2
-    : step.estimate.approvalAddress
-  return allowanceSpender.toLowerCase() !== neededSpender?.toLowerCase()
+  const { spenderAddress } = await resolveAllowanceSpender(context, needed)
+  return allowanceSpender.toLowerCase() !== spenderAddress?.toLowerCase()
 }

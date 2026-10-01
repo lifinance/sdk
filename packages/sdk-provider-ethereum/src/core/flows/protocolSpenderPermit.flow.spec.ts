@@ -41,10 +41,7 @@ import {
   WALLET_SIGNATURE,
 } from './harness.mock.js'
 
-/**
- * The contract the protocol pulls the sold tokens with — CoW's GPv2VaultRelayer.
- * A valid checksummed address, because the retry ABI-encodes it into an approve.
- */
+/** CoW's GPv2VaultRelayer. Checksummed, because the approve ABI-encodes it. */
 const ORDER_SPENDER: Address = '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110'
 
 const ORDER_TYPED_DATA = buildTypedData({
@@ -54,12 +51,8 @@ const ORDER_TYPED_DATA = buildTypedData({
 })
 
 /**
- * A limit order whose protocol pulls the tokens with its own contract, as the
- * Jumper limit-order backend builds it for a token with an EIP-2612 permit (CoW
- * and 1inch, JUMEMB-121): the permit names that contract, the approval address
- * is that contract too, `skipPermit` keeps LI.FI's Permit2 flows out, and
- * `executionType: 'message'` says at routes time that the order is relayed.
- * `/stepTransaction` answers with the order to sign and no transaction.
+ * A limit order with a permit to the protocol's own contract, as the Jumper
+ * limit-order backend builds it for CoW and 1inch (JUMEMB-121).
  */
 const buildProtocolPermitScenario = (
   options: Pick<ScenarioOptions, 'onSignTypedData'> & {
@@ -105,7 +98,7 @@ describe('C16 — an order with a permit to the protocol’s own spender', () =>
       ORDER_SPENDER
     )
 
-    // The backend builds the pre-hook from the signed permit it receives here.
+    // The backend builds the CoW pre-hook from this signed permit.
     expect(posted).toHaveLength(1)
     expect(
       (posted[0] as SignedTypedData[]).map((entry) => [
@@ -114,8 +107,7 @@ describe('C16 — an order with a permit to the protocol’s own spender', () =>
       ])
     ).toEqual([['Permit', WALLET_SIGNATURE]])
 
-    // Relayed in signing order, which is why the backend must pick the order
-    // by type and not by position.
+    // Relayed in signing order, so the backend must pick the Order by type.
     const [relayed] = scenario.events('relayTransaction')
     expect(
       relayed.typedData.map((entry) => [entry.primaryType, entry.signature])
@@ -124,7 +116,6 @@ describe('C16 — an order with a permit to the protocol’s own spender', () =>
       ['Order', WALLET_SIGNATURE],
     ])
 
-    // The permit replaces the approval: nothing is sent, batched or read.
     expect(scenario.events('sendTransaction')).toEqual([])
     expect(scenario.events('sendCalls')).toEqual([])
     expect(
@@ -152,10 +143,8 @@ describe('C16 — an order with a permit to the protocol’s own spender', () =>
     const retryStartsAt = scenario.timeline.length
     await scenario.retry()
 
-    // The retry no longer holds the permit (attempt 1 re-quoted the order into
-    // `step.typedData`; see C3), so it takes the allowance path. Without
-    // `skipPermit` that path reads and approves canonical Permit2 for a relayed
-    // step, and the protocol could not pull the tokens (C3 pins that read).
+    // The retry has no permit left (see C3). Without `skipPermit` it would
+    // approve canonical Permit2.
     const allowanceReads = scenario
       .events('readContract', retryStartsAt)
       .filter((event) => event.functionName === 'allowance')
@@ -171,8 +160,6 @@ describe('C16 — an order with a permit to the protocol’s own spender', () =>
     expect(spender).not.toBe(LIFI_PERMIT2_PROXY)
     expect(amount).toBe(BigInt(FROM_AMOUNT))
 
-    // Neither a Permit2Proxy permit nor a batch: the approve is a real
-    // transaction, sent before the order is signed and relayed.
     const signed = scenario.events('signTypedData', retryStartsAt)
     expect(signed.map((event) => event.primaryType)).toEqual(['Order'])
     expect(scenario.events('sendCalls')).toEqual([])
