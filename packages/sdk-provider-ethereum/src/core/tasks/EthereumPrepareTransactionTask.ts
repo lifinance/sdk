@@ -1,5 +1,6 @@
 import {
   BaseStepExecutionTask,
+  ExecuteStepRetryError,
   LiFiErrorCode,
   stepComparison,
   type TaskResult,
@@ -8,8 +9,12 @@ import {
 } from '@lifi/sdk'
 import { getMaxPriorityFeePerGas } from '../../actions/getMaxPriorityFeePerGas.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
+import {
+  getEthereumExecutionStrategy,
+  STRATEGY_AFTER_PREPARE,
+} from './helpers/getEthereumExecutionStrategy.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
+import { isAllowancePreparedForAnotherStrategy } from './helpers/isAllowancePreparedForAnotherStrategy.js'
 import { preservePermit2Allowances } from './helpers/preservePermit2Allowances.js'
 
 export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
@@ -38,6 +43,9 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
         'Unable to prepare transaction. Action not found.'
       )
     }
+
+    // A replay restores it, so the replay re-quotes like this attempt did.
+    const typedDataBeforePrepare = step.typedData
 
     // Try to prepare a new transaction request and update the step with typed data
     const updatedStep = await getUpdatedStep(
@@ -72,6 +80,44 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Transaction request is not found.'
+      )
+    }
+
+    // Recompute execution strategy after PrepareTransaction mutates step
+    const executionStrategy = await getEthereumExecutionStrategy(context, true)
+
+    // The allowance tasks ran before prepare, in the strategy the step seemed
+    // to have. In `batched` they only queued their work. If the re-quote moves
+    // the step to a strategy that work does not fit, replay the step in the new
+    // strategy (JUMEMB-102): only the batched task sends queued calls, and the
+    // new strategy can need another spender. Sending the queued calls instead
+    // could approve that wrong spender.
+    //
+    // A first run in `standard` is not replayed: its approval can already be
+    // on-chain, and a signer that fails the Permit2 probe cannot use the relayed
+    // lane anyway. A replay is checked again, whatever its strategy.
+    const allowanceStrategy = context.executionStrategy
+    const isReplay = context.retryParams !== undefined
+    if (
+      allowanceStrategy &&
+      (allowanceStrategy === 'batched' || isReplay) &&
+      (await isAllowancePreparedForAnotherStrategy(
+        context,
+        allowanceStrategy,
+        executionStrategy
+      ))
+    ) {
+      // `executeRoute` replays a step only once, so a second change fails it.
+      if (isReplay) {
+        throw new TransactionError(
+          LiFiErrorCode.TransactionUnprepared,
+          `Unable to prepare transaction. The step resolved to the ${executionStrategy} strategy after its allowance was prepared for ${allowanceStrategy}.`
+        )
+      }
+      step.typedData = typedDataBeforePrepare
+      throw new ExecuteStepRetryError(
+        `The step resolved to the ${executionStrategy} strategy after its allowance was prepared for ${allowanceStrategy}; retry in that strategy`,
+        { [STRATEGY_AFTER_PREPARE]: executionStrategy }
       )
     }
 
@@ -125,9 +171,6 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
         ...customizedTransactionRequest,
       }
     }
-
-    // Recompute execution strategy after PrepareTransaction mutates step
-    const executionStrategy = await getEthereumExecutionStrategy(context, true)
 
     return {
       status: 'COMPLETED',

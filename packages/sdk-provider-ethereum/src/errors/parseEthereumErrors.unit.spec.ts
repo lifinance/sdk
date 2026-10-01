@@ -3,13 +3,14 @@ import {
   BaseError,
   ErrorMessage,
   ErrorName,
-  type ExecuteStepRetryError,
+  ExecuteStepRetryError,
   type ExecutionAction,
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
+import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
@@ -23,6 +24,58 @@ function assertSDKError(
 }
 
 describe('parseEVMStepErrors', () => {
+  describe('when an ExecuteStepRetryError is passed', () => {
+    it('should return it unchanged so the step is replayed', async () => {
+      // Wrapped in an SDKError, the replay request would become a failure.
+      const error = new ExecuteStepRetryError('replay the step', {
+        strategyAfterPrepare: 'relayed',
+      })
+      const step = buildStepObject({ includingExecution: true })
+
+      const parsedError = await parseEthereumErrors(
+        error,
+        step,
+        step.execution!.actions[0]
+      )
+
+      expect(parsedError).toBe(error)
+      expect(parsedError).toBeInstanceOf(ExecuteStepRetryError)
+    })
+  })
+
+  describe('when the wallet rejects the EIP-7702 upgrade', () => {
+    const rejection = () => {
+      const error = new Error('Wallet declined the 7702 upgrade.')
+      Object.defineProperty(error, 'cause', {
+        value: new AtomicReadyWalletRejectedUpgradeError(new Error('rejected')),
+      })
+      return error
+    }
+
+    it('asks for an unbatched retry on the first attempt', async () => {
+      const parsedError = await parseEthereumErrors(rejection())
+
+      expect(parsedError).toBeInstanceOf(ExecuteStepRetryError)
+      expect((parsedError as ExecuteStepRetryError).retryParams).toEqual({
+        atomicityNotReady: true,
+      })
+    })
+
+    it('asks for no second retry once the step was replayed for another reason', async () => {
+      // `executeRoute` replays a step once; a second request would escape it.
+      const parsedError = await parseEthereumErrors(
+        rejection(),
+        undefined,
+        undefined,
+        {
+          strategyAfterPrepare: 'relayed',
+        }
+      )
+
+      expect(parsedError).toBeInstanceOf(SDKError)
+    })
+  })
+
   describe('when a SDKError is passed', async () => {
     it('should return the original error', async () => {
       const error = new SDKError(
