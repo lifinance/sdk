@@ -142,6 +142,29 @@ describe('BitcoinSignAndExecuteTask pre-sign guard', () => {
     }
   )
 
+  // An older run's late write can merge its transaction into this action
+  // while the task awaits the quote (spec addendum §5.2 case 1).
+  it('checks the action again right before the wallet and never opens it when a transaction merged meanwhile', async () => {
+    const { context, updateAction, request } = makeContext(FRESH_ACTION)
+    vi.mocked(getTransactionRequestData).mockImplementationOnce(async () => {
+      vi.mocked(context.statusManager.findAction).mockReturnValue({
+        type: 'SWAP',
+        status: 'STARTED',
+        txHash: TX_ID,
+        txHex: TX_HEX,
+      })
+      return 'PSBT_HEX'
+    })
+
+    await expect(
+      new BitcoinSignAndExecuteTask().run(context)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+    expect(getTransactionRequestData).toHaveBeenCalledTimes(1)
+    expect(signPsbt).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
   it('signs again after a final outcome and clears the old transaction fields', async () => {
     const { context, updateAction } = makeContext({
       type: 'SWAP',

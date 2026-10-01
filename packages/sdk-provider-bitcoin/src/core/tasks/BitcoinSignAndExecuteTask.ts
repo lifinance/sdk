@@ -138,6 +138,10 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
         .values()
     )
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the awaits above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     // We give users 10 minutes to sign the transaction or it should be considered expired
     const signedPsbtHex = await withTimeout(
       () =>
