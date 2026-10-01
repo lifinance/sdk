@@ -72,6 +72,16 @@ describe('BitcoinStepExecutor.createPipeline', () => {
     expect(names).not.toContain(BitcoinSignAndExecuteTask.name)
   })
 
+  // Same predicate as the pre-sign guard. A selector keyed on `txHash` alone
+  // would route this to signing, where the guard throws TransactionConflict.
+  it('waits for an action that holds stored bytes only', () => {
+    const names = taskNames([
+      { type: 'SWAP', status: 'PENDING', txHex: 'SIGNED_TX_HEX' },
+    ])
+
+    expect(names[0]).toBe(BitcoinWaitForTransactionTask.name)
+  })
+
   it('goes to the status wait once the transaction is DONE', () => {
     const names = taskNames([
       { type: 'SWAP', status: 'DONE', txHash: TX_HASH, txHex: 'SIGNED_TX_HEX' },
