@@ -310,6 +310,33 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(updateAction).not.toHaveBeenCalled()
   })
 
+  // An older run's late write can merge its transaction into this action
+  // while the task awaits the quote (spec addendum §5.2 case 1).
+  it('checks the action again right before the wallet and never asks it to sign when a transaction merged meanwhile', async () => {
+    const context = baseContext({ type: 'SWAP', status: 'STARTED' }) as {
+      statusManager: { findAction: () => object }
+    }
+    getTransactionRequestData.mockImplementationOnce(async () => {
+      context.statusManager.findAction = () => ({
+        type: 'SWAP',
+        status: 'PENDING',
+        txHex: 'AA==',
+      })
+      return 'tx-a'
+    })
+    // Records the wallet call; `undefined` keeps the default answer.
+    const walletSignTransaction = vi.fn(() => undefined)
+    wallet.signTransaction = walletSignTransaction as never
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(context as never)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(getTransactionRequestData).toHaveBeenCalledTimes(1)
+    expect(walletSignTransaction).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
   it('signs again after a final failure, and clears its fields', async () => {
     getTransactionRequestData.mockResolvedValue('tx-a')
 

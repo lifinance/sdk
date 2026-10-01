@@ -67,6 +67,10 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       base64ToUint8Array(data)
     )
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the await above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const signedTransactionOutputs = await withTimeout(
       async () => {
         const { signTransaction } = getWalletFeature(
