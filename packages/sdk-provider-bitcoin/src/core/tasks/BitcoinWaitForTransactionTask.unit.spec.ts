@@ -1,5 +1,5 @@
-import { LiFiErrorCode } from '@lifi/sdk'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { LiFiErrorCode, MAX_RESEND_AGE_MS } from '@lifi/sdk'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@bigmi/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@bigmi/core')>()
@@ -9,18 +9,34 @@ vi.mock('@bigmi/core', async (importOriginal) => {
 import { type ReplacementReason, waitForTransaction } from '@bigmi/core'
 import type { BitcoinStepExecutorContext } from '../../types.js'
 import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
+import {
+  allTransportsFailed,
+  timeoutError,
+} from './bitcoinRpcErrors.unit.mock.js'
 
 const SENDER = 'bc1qsender'
 const TX_HASH = 'ab'.repeat(32)
 const REPLACEMENT_TXID = 'cd'.repeat(32)
+const NOW = 1_800_000_000_000
 
-const makeContext = (): {
+const makeContext = (
+  options: { signedAt?: number; bitcoinSent?: boolean } = {}
+): {
   context: BitcoinStepExecutorContext
   updateAction: ReturnType<typeof vi.fn>
+  sendUTXOTransaction: ReturnType<typeof vi.fn>
 } => {
   const updateAction = vi.fn()
+  const sendUTXOTransaction = vi.fn().mockResolvedValue(TX_HASH)
   const context = {
-    step: { action: { fromAddress: SENDER } },
+    step: {
+      action: { fromAddress: SENDER },
+      execution: {
+        status: 'PENDING',
+        actions: [],
+        signedAt: options.signedAt,
+      },
+    },
     statusManager: {
       findAction: vi.fn().mockReturnValue({
         type: 'SWAP',
@@ -33,10 +49,11 @@ const makeContext = (): {
     fromChain: { metamask: { blockExplorerUrls: ['https://mempool.space/'] } },
     isBridgeExecution: false,
     walletClient: { account: { address: SENDER } },
-    publicClient: {},
+    publicClient: { sendUTXOTransaction },
     checkClient: vi.fn(),
+    bitcoinSent: options.bitcoinSent,
   } as unknown as BitcoinStepExecutorContext
-  return { context, updateAction }
+  return { context, updateAction, sendUTXOTransaction }
 }
 
 /** bigmi reports the replacement, then resolves with the replacing transaction. */
@@ -55,6 +72,11 @@ const replacedWith = (reason: ReplacementReason): void => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.spyOn(Date, 'now').mockReturnValue(NOW)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('BitcoinWaitForTransactionTask', () => {
@@ -96,5 +118,73 @@ describe('BitcoinWaitForTransactionTask', () => {
       .catch((error: unknown) => error)
 
     expect(thrown).toBe(rpcError)
+  })
+})
+
+describe('BitcoinWaitForTransactionTask resend on resume', () => {
+  beforeEach(() => {
+    vi.mocked(waitForTransaction).mockResolvedValue({
+      txid: TX_HASH,
+    } as never)
+  })
+
+  it('sends the stored bytes once before it waits, within the age cap', async () => {
+    const { context, sendUTXOTransaction } = makeContext({
+      signedAt: NOW - 30_000,
+    })
+
+    await expect(
+      new BitcoinWaitForTransactionTask().run(context)
+    ).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
+    expect(sendUTXOTransaction).toHaveBeenCalledWith({ hex: 'SIGNED_TX_HEX' })
+    expect(waitForTransaction).toHaveBeenCalledTimes(1)
+    expect(sendUTXOTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(waitForTransaction).mock.invocationCallOrder[0] as number
+    )
+  })
+
+  it('waits when the resend fails', async () => {
+    const { context, sendUTXOTransaction } = makeContext({
+      signedAt: NOW - 30_000,
+    })
+    sendUTXOTransaction.mockRejectedValue(
+      allTransportsFailed('sendrawtransaction', [
+        timeoutError('sendrawtransaction'),
+      ])
+    )
+
+    await expect(
+      new BitcoinWaitForTransactionTask().run(context)
+    ).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
+    expect(waitForTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['at the age cap', NOW - MAX_RESEND_AGE_MS],
+    ['past the age cap', NOW - MAX_RESEND_AGE_MS - 1],
+    ['without signedAt', undefined],
+  ])('never sends %s, and only waits', async (_label, signedAt) => {
+    const { context, sendUTXOTransaction } = makeContext({ signedAt })
+
+    await new BitcoinWaitForTransactionTask().run(context)
+
+    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(waitForTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not resend right after the sign task sent the bytes', async () => {
+    const { context, sendUTXOTransaction } = makeContext({
+      signedAt: NOW - 1_000,
+      bitcoinSent: true,
+    })
+
+    await new BitcoinWaitForTransactionTask().run(context)
+
+    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(waitForTransaction).toHaveBeenCalledTimes(1)
   })
 })
