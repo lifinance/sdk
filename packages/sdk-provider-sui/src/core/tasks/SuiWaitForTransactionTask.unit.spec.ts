@@ -48,11 +48,24 @@ vi.mock('../constants.js', () => ({
 const getTransaction = vi.fn()
 const waitForTransaction = vi.fn()
 const executeTransaction = vi.fn()
+// The fake nodes behind `callSuiWithRetry`. It tries each node in turn and
+// throws the last error, as the real one does.
+const suiNodes: unknown[] = []
 vi.mock('../../client/suiClient.js', () => ({
-  callSuiWithRetry: (
+  callSuiWithRetry: async (
     _client: unknown,
     fn: (client: unknown) => Promise<unknown>
-  ) => fn({ core: { getTransaction, waitForTransaction, executeTransaction } }),
+  ) => {
+    let lastError: unknown
+    for (const node of suiNodes) {
+      try {
+        return await fn(node)
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError
+  },
 }))
 
 const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
@@ -62,7 +75,8 @@ const { SuiWaitForTransactionTask } = await import(
 
 const EXPLORER = 'https://suiscan.xyz/mainnet/'
 const NOW = 1_790_000_000_000
-const TX_LINK = `${EXPLORER}txblock/${DIGEST}`
+// Not the digest of the stored bytes.
+const FIRST_RUN_DIGEST = 'FirstRunDigestInMemory'
 
 const succeeded = {
   $kind: 'Transaction',
@@ -114,17 +128,18 @@ const clearedTxHex = (updateAction: ReturnType<typeof vi.fn>): boolean =>
  */
 const expectResultWrite = (
   updateAction: ReturnType<typeof vi.fn>,
-  type: string
+  type: string,
+  digest: string = DIGEST
 ): void => {
   const call = updateAction.mock.calls.find(
     (call) =>
       call[1] === type &&
       call[2] === 'PENDING' &&
-      paramsOf(call)?.txHash === DIGEST
+      paramsOf(call)?.txHash === digest
   )
   const params = call && paramsOf(call)
   expect(params).toBeDefined()
-  expect(params?.txLink).toBe(TX_LINK)
+  expect(params?.txLink).toBe(`${EXPLORER}txblock/${digest}`)
   expect(params && 'txHex' in params).toBe(true)
   expect(params?.txHex).toBeUndefined()
 }
@@ -133,6 +148,9 @@ describe('SuiWaitForTransactionTask', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
+    suiNodes.splice(0, suiNodes.length, {
+      core: { getTransaction, waitForTransaction, executeTransaction },
+    })
     getTransaction.mockReset().mockRejectedValue(notFound())
     waitForTransaction.mockReset().mockResolvedValue(succeeded)
     executeTransaction.mockReset().mockResolvedValue(succeeded)
@@ -148,21 +166,34 @@ describe('SuiWaitForTransactionTask', () => {
   })
 
   describe('first run (executed in this session)', () => {
-    it('waits for the digest, writes it and clears txHex', async () => {
+    // The executed transaction in memory comes first in the digest order,
+    // before a stored txHash and the digest of the stored bytes.
+    it('waits for the digest in memory, writes it and clears txHex', async () => {
+      const executed = {
+        $kind: 'Transaction',
+        Transaction: {
+          digest: FIRST_RUN_DIGEST,
+          status: { success: true, error: null },
+        },
+      }
+      waitForTransaction.mockResolvedValue(executed)
       const { context, updateAction } = makeContext(
-        { type: 'CROSS_CHAIN', txHex: TX_HEX },
-        { signedTransaction: succeeded.Transaction, isBridgeExecution: true }
+        { type: 'CROSS_CHAIN', txHash: DIGEST, txHex: TX_HEX },
+        { signedTransaction: executed.Transaction, isBridgeExecution: true }
       )
 
       await expect(
         new SuiWaitForTransactionTask().run(context)
       ).resolves.toEqual({ status: 'COMPLETED' })
 
-      expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
+      expect(waitForTransaction).toHaveBeenCalledTimes(1)
+      expect(waitForTransaction).toHaveBeenCalledWith({
+        digest: FIRST_RUN_DIGEST,
+      })
       expect(getTransaction).not.toHaveBeenCalled()
       expect(executeTransaction).not.toHaveBeenCalled()
       expect(verifySuiSignedTransaction).not.toHaveBeenCalled()
-      expectResultWrite(updateAction, 'CROSS_CHAIN')
+      expectResultWrite(updateAction, 'CROSS_CHAIN', FIRST_RUN_DIGEST)
       expect(updateAction).toHaveBeenLastCalledWith(
         expect.anything(),
         'CROSS_CHAIN',
@@ -307,10 +338,92 @@ describe('SuiWaitForTransactionTask', () => {
       expect(executeTransaction).toHaveBeenCalledWith({
         transaction: BYTES,
         signatures: [SIGNATURE],
+        signal: expect.any(AbortSignal),
       })
       expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
       expect(isSuiTransactionDropped).not.toHaveBeenCalled()
       expectResultWrite(updateAction, 'SWAP')
+    })
+
+    it('aborts each re-execution try when the age cap passes', async () => {
+      const timeout = vi.spyOn(AbortSignal, 'timeout')
+      try {
+        const { context } = makeContext(
+          { type: 'SWAP', txHex: TX_HEX },
+          {},
+          { signedAt: NOW - 60_000 }
+        )
+
+        await new SuiWaitForTransactionTask().run(context)
+
+        // The cap passes 60 s from now.
+        expect(timeout).toHaveBeenCalledTimes(1)
+        expect(timeout).toHaveBeenCalledWith(60_000)
+        expect(executeTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({ signal: timeout.mock.results[0]?.value })
+        )
+      } finally {
+        timeout.mockRestore()
+      }
+    })
+
+    // `callSuiWithRetry` tries the nodes one by one, so the cap is checked
+    // again before each try (spec 4.2.8: before every send).
+    // The skipped try is not a definite refusal, so even with the Task 0
+    // flag on it never leads to "dropped".
+    it('re-checks the age cap before each node and never sends past it', async () => {
+      task0.reexecutionReturnsEffects = true
+      const refusal = new RpcError(
+        'object version unavailable',
+        'INVALID_ARGUMENT'
+      )
+      const firstNode = vi.fn(async () => {
+        // The first node answers when the cap has passed.
+        vi.setSystemTime(NOW + 60_000)
+        throw refusal
+      })
+      const secondNode = vi.fn().mockResolvedValue(succeeded)
+      suiNodes.splice(
+        0,
+        suiNodes.length,
+        {
+          core: {
+            getTransaction,
+            waitForTransaction,
+            executeTransaction: firstNode,
+          },
+        },
+        {
+          core: {
+            getTransaction,
+            waitForTransaction,
+            executeTransaction: secondNode,
+          },
+        }
+      )
+      const { context, updateAction } = makeContext(
+        { type: 'SWAP', txHex: TX_HEX },
+        {},
+        { signedAt: NOW - 60_000 }
+      )
+
+      const error = await new SuiWaitForTransactionTask()
+        .run(context)
+        .catch((error: unknown) => error)
+
+      expect(firstNode).toHaveBeenCalledTimes(1)
+      expect(secondNode).not.toHaveBeenCalled()
+      // The last try is the skipped one, so its error is the outcome.
+      expect(error).toBeInstanceOf(Error)
+      expect(error).not.toBe(refusal)
+      expect(error).not.toMatchObject({
+        code: LiFiErrorCode.TransactionExpired,
+      })
+      expect(isFinalTransactionError(error)).toBe(false)
+      expect(isKnownToStatusApi).not.toHaveBeenCalled()
+      expect(isSuiTransactionDropped).not.toHaveBeenCalled()
+      expect(waitForTransaction).not.toHaveBeenCalled()
+      expect(clearedTxHex(updateAction)).toBe(false)
     })
 
     it('never sends past the age cap and reports dropped when the batch lookup proves absence', async () => {
@@ -373,12 +486,19 @@ describe('SuiWaitForTransactionTask', () => {
       expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
     })
 
-    it('never sends and never drops when the signing time is unknown', async () => {
+    // `isSuiTransactionDropped` never drops without `signedAt`; the task
+    // leaves that decision to it.
+    it('never sends when the signing time is unknown and leaves the drop decision to the batch lookup', async () => {
       const { context } = makeContext({ type: 'SWAP', txHex: TX_HEX }, {}, {})
 
       await new SuiWaitForTransactionTask().run(context)
 
       expect(executeTransaction).not.toHaveBeenCalled()
+      expect(isSuiTransactionDropped).toHaveBeenCalledWith(
+        expect.anything(),
+        { execution: {} },
+        DIGEST
+      )
       expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
     })
 
@@ -444,8 +564,7 @@ describe('SuiWaitForTransactionTask', () => {
         expect(clearedTxHex(updateAction)).toBe(false)
       })
 
-      it('still completes when the digest is found', async () => {
-        waitForTransaction.mockResolvedValue(succeeded)
+      it('completes when the wait finds the digest that the lookup did not', async () => {
         const { context, updateAction } = makeContext({
           type: 'SWAP',
           txHex: TX_HEX,
@@ -454,10 +573,44 @@ describe('SuiWaitForTransactionTask', () => {
         await expect(
           new SuiWaitForTransactionTask().run(context)
         ).resolves.toEqual({ status: 'COMPLETED' })
+        expect(getTransaction).toHaveBeenCalledTimes(1)
         expect(executeTransaction).not.toHaveBeenCalled()
         expectResultWrite(updateAction, 'SWAP')
       })
     })
+
+    // Sui writes txHash from the execution result, which is the digest of
+    // the stored bytes. A different txHash means damaged storage: neither
+    // value proves anything, so the SDK only waits by txHash.
+    it.each([
+      ['within the age cap', NOW - 60_000],
+      ['past the age cap', NOW - 120_001],
+    ])(
+      'never sends and never drops when txHash and the stored bytes disagree, %s',
+      async (_, signedAt) => {
+        const txHash = 'AnotherDigestThanTheStoredBytes'
+        isSuiTransactionDropped.mockResolvedValue(true)
+        const timeout = new DOMException('signal timed out', 'TimeoutError')
+        waitForTransaction.mockRejectedValue(timeout)
+        const { context, updateAction } = makeContext(
+          { type: 'SWAP', txHash, txHex: TX_HEX },
+          {},
+          { signedAt }
+        )
+
+        const error = await new SuiWaitForTransactionTask()
+          .run(context)
+          .catch((error: unknown) => error)
+
+        expect(error).toBe(timeout)
+        expect(isFinalTransactionError(error)).toBe(false)
+        expect(getTransaction).toHaveBeenCalledWith({ digest: txHash })
+        expect(executeTransaction).not.toHaveBeenCalled()
+        expect(isSuiTransactionDropped).not.toHaveBeenCalled()
+        expect(waitForTransaction).toHaveBeenCalledWith({ digest: txHash })
+        expect(clearedTxHex(updateAction)).toBe(false)
+      }
+    )
 
     it('reports dropped on a definite refusal when Task 0 confirmed that an executed transaction returns its effects', async () => {
       task0.reexecutionReturnsEffects = true
@@ -547,9 +700,13 @@ describe('SuiWaitForTransactionTask', () => {
       expect(clearedTxHex(updateAction)).toBe(false)
     })
 
-    it('stays unknown on a transport error of the re-execution', async () => {
+    // An abort (the age cap passed during the try) arrives as CANCELLED.
+    it.each([
+      ['a transport error', 'UNAVAILABLE'],
+      ['an abort', 'CANCELLED'],
+    ])('stays unknown on %s of the re-execution', async (_, code) => {
       task0.reexecutionReturnsEffects = true
-      const unavailable = new RpcError('upstream connect error', 'UNAVAILABLE')
+      const unavailable = new RpcError('upstream connect error', code)
       executeTransaction.mockRejectedValue(unavailable)
       const { context, updateAction } = makeContext({
         type: 'SWAP',

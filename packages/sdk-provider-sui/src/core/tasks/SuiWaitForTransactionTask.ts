@@ -4,6 +4,7 @@ import {
   isKnownToStatusApi,
   isResendAllowed,
   LiFiErrorCode,
+  MAX_RESEND_AGE_MS,
   type SDKClient,
   type TaskResult,
   TransactionError,
@@ -88,25 +89,27 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
       return complete(context, action, found)
     }
 
-    // A signature that does not verify does not prove damaged bytes: the
-    // check also fails for a scheme it cannot parse or cannot run, and the
-    // bytes may have been sent. Then the SDK neither sends nor drops; it only
-    // waits, and the outcome stays unknown.
-    const verified = storedTransaction
-      ? await isVerifiedSuiTransaction(storedTransaction)
-      : undefined
+    // Stored bytes prove nothing when their digest is not the stored txHash
+    // (damaged storage) or their signature does not verify: the check also
+    // fails for a scheme it cannot parse or cannot run, and the bytes may
+    // have been sent. Then the SDK neither sends nor drops; it only waits,
+    // and the outcome stays unknown.
+    const doubtful =
+      !!storedTransaction &&
+      (storedTransaction.digest !== digest ||
+        !(await isVerifiedSuiTransaction(storedTransaction)))
 
     const signedAt = step.execution?.signedAt
-    if (storedTransaction && verified && isResendAllowed(signedAt)) {
+    if (
+      !doubtful &&
+      storedTransaction &&
+      signedAt !== undefined &&
+      isResendAllowed(signedAt)
+    ) {
       // A digest executes at most once, so re-executing the stored bytes can
       // never run the swap twice.
       try {
-        await callSuiWithRetry(client, (client) =>
-          client.core.executeTransaction({
-            transaction: storedTransaction.bytes,
-            signatures: [storedTransaction.signature],
-          })
-        )
+        await reexecuteWithinAgeCap(client, storedTransaction, signedAt)
       } catch (error) {
         if (!isDefiniteSuiRejection(error)) {
           throw error
@@ -129,11 +132,15 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
         throw error
       }
     } else if (
-      verified !== false &&
+      !doubtful &&
       (await isSuiTransactionDropped(client, step, digest))
     ) {
-      // Past the age cap the bytes are never sent again, so a swap on an old
-      // quote cannot execute hours later; the batch lookup proves absence.
+      // No resend: past the age cap, with no stored bytes, or with an unknown
+      // signing time. Past the cap the bytes are never sent again, so a swap
+      // on an old quote cannot execute hours later; the batch lookup proves
+      // absence. Within the cap with only a txHash, and with an unknown
+      // signing time, `isSuiTransactionDropped` returns false, so the task
+      // waits.
       throw dropped(context, action)
     }
 
@@ -165,6 +172,34 @@ async function findSuiTransaction(
     }
     throw error
   }
+}
+
+/**
+ * Re-executes the stored bytes. `callSuiWithRetry` tries the nodes one by
+ * one, so the age cap is checked before every try, and each try aborts when
+ * the cap passes (spec 4.2.8). Past the cap it throws a timeout, which is not
+ * a definite rejection, so the outcome stays unknown.
+ */
+async function reexecuteWithinAgeCap(
+  client: SDKClient,
+  transaction: SuiSignedTransaction,
+  signedAt: number
+): Promise<void> {
+  await callSuiWithRetry(client, async (client) => {
+    if (!isResendAllowed(signedAt)) {
+      throw new DOMException(
+        'The resend age cap passed before the re-execution.',
+        'TimeoutError'
+      )
+    }
+    return client.core.executeTransaction({
+      transaction: transaction.bytes,
+      signatures: [transaction.signature],
+      signal: AbortSignal.timeout(
+        Math.max(0, signedAt + MAX_RESEND_AGE_MS - Date.now())
+      ),
+    })
+  })
 }
 
 /** True only when the check runs and confirms the sender's signature. */
