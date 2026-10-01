@@ -1,5 +1,9 @@
 import type { SDKClient } from '@lifi/sdk'
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import {
+  isFinalTransactionError,
+  LiFiErrorCode,
+  TransactionError,
+} from '@lifi/sdk'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { callTronRpcsWithRetry } from './callTronRpcsWithRetry.js'
 import { waitForTronTxConfirmation } from './waitForTronTxConfirmation.js'
@@ -233,5 +237,104 @@ describe('waitForTronTxConfirmation', () => {
 
     // Should have polled exactly once — the FAILED result is not retried.
     expect(vi.mocked(callTronRpcsWithRetry)).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The outcome marker BaseStepExecutor turns into `txFinal`. Only an on-chain
+// failure is final; a timeout or an RPC outage says nothing about whether the
+// transaction still lands.
+describe('waitForTronTxConfirmation outcome marker', () => {
+  afterEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('marks an on-chain failure as final', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
+    })
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction failed on-chain: REVERT.',
+      final: true,
+    })
+  })
+
+  it('marks OUT_OF_ENERGY as final', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue(
+      OUT_OF_ENERGY_APPROVAL_TX_INFO
+    )
+
+    await expect(
+      waitForTronTxConfirmation(client, TX_HASH)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.InsufficientFunds,
+      final: true,
+    })
+  })
+
+  it('keeps the confirmation timeout non-final', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({})
+
+    const error = await waitForTronTxConfirmation(client, TX_HASH).catch(
+      (error: unknown) => error
+    )
+
+    expect(error).toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction confirmation timeout.',
+      final: false,
+    })
+    expect(isFinalTransactionError(error)).toBe(false)
+  })
+
+  it('keeps exhausted RPC errors non-final', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockRejectedValue(
+      new Error('network error')
+    )
+
+    const error = await waitForTronTxConfirmation(client, TX_HASH).catch(
+      (error: unknown) => error
+    )
+
+    expect(error).toMatchObject({ message: 'network error' })
+    expect(isFinalTransactionError(error)).toBe(false)
+  })
+
+  // TronSetAllowanceTask uses the same helper. Its on-chain failure is final
+  // too; that flag lands on SET_ALLOWANCE, which prepareRestart and the
+  // selector ignore. Its timeout must stay non-final like the swap's.
+  it('applies the same marker on the approval path', async () => {
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({
+      id: TX_HASH,
+      result: 'FAILED',
+      receipt: { result: 'REVERT' },
+    })
+    await expect(
+      waitForTronTxConfirmation(
+        client,
+        TX_HASH,
+        'Approval transaction failed on-chain'
+      )
+    ).rejects.toMatchObject({
+      message: 'Approval transaction failed on-chain: REVERT.',
+      final: true,
+    })
+
+    vi.mocked(callTronRpcsWithRetry).mockResolvedValue({})
+    await expect(
+      waitForTronTxConfirmation(
+        client,
+        TX_HASH,
+        'Approval transaction failed on-chain'
+      )
+    ).rejects.toMatchObject({
+      message: 'Transaction confirmation timeout.',
+      final: false,
+    })
   })
 })

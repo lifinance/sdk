@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
@@ -81,8 +82,14 @@ export class TronStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
+    // A transaction signed for this action may still land (`txHash` after a
+    // broadcast, `txHex` right after signing). Resume at the confirmation wait:
+    // re-checking the allowance, re-preparing or re-signing could execute the
+    // swap twice. A final failure is not open, so "Try again" signs anew.
+    const isTransactionOpen = hasOpenTransaction(swapOrBridgeAction)
+
     const doCheckAllowance =
-      !swapOrBridgeAction?.txHash &&
+      !isTransactionOpen &&
       !isFromNativeToken &&
       !!step.estimate.approvalAddress &&
       !step.estimate.skipApproval
@@ -90,11 +97,13 @@ export class TronStepExecutor extends BaseStepExecutor {
     let taskName: string
     if (doCheckAllowance) {
       taskName = TronCheckAllowanceTask.name
-    } else {
+    } else if (isTransactionOpen) {
       taskName =
-        swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+        swapOrBridgeAction?.status === 'DONE'
           ? WaitForTransactionStatusTask.name
-          : CheckBalanceTask.name
+          : TronWaitForTransactionTask.name
+    } else {
+      taskName = CheckBalanceTask.name
     }
 
     const firstTaskIndex = tasks.findIndex(
