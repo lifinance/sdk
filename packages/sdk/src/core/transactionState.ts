@@ -111,7 +111,9 @@ export function isFinalTransactionError(error: unknown): boolean {
 /**
  * Called first in every sign task. With correct pipeline selectors it never
  * throws; it stops a second signature if a selector ever routes an open
- * transaction back to signing.
+ * transaction back to signing. Every sign task calls it again on the freshly
+ * found action right before its wallet call: a late write of an older run can
+ * merge a transaction into the action during the awaits in between.
  *
  * @internal
  */
