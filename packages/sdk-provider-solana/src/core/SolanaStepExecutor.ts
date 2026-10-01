@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
@@ -84,10 +85,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName =
-      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+    // Three-way, as Stellar and Bitcoin do. An open transaction - a broadcast
+    // signature, or signed bytes that may have been sent - resumes at the
+    // wait task, which looks it up and resends the same bytes. Starting at
+    // CheckBalanceTask would fetch a new quote and sign a second transaction
+    // while the first can still land. A same-chain swap stays PENDING with
+    // its signature until the LI.FI status is DONE, so this is the common
+    // reload.
+    const taskName = hasOpenTransaction(swapOrBridgeAction)
+      ? swapOrBridgeAction?.status === 'DONE'
         ? WaitForTransactionStatusTask.name
-        : CheckBalanceTask.name
+        : SolanaWaitForTransactionTask.name
+      : CheckBalanceTask.name
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task.constructor.name === taskName

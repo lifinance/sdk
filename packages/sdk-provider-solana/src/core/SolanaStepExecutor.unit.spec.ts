@@ -1,4 +1,10 @@
-import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
+import {
+  CheckBalanceTask,
+  LiFiErrorCode,
+  PrepareTransactionTask,
+  TransactionError,
+  WaitForTransactionStatusTask,
+} from '@lifi/sdk'
 import type { Wallet } from '@wallet-standard/base'
 import { describe, expect, it } from 'vitest'
 import { SolanaStepExecutor } from './SolanaStepExecutor.js'
@@ -23,6 +29,19 @@ const thrownBy = (call: () => void): unknown => {
   }
   return undefined
 }
+
+/** Reads the private task list out of the pipeline the executor built. */
+const taskNames = (executor: SolanaStepExecutor, context: never): string[] => {
+  const pipeline = executor.createPipeline(context)
+  const tasks = (pipeline as unknown as { tasks: object[] }).tasks
+  return tasks.map((task) => task.constructor.name)
+}
+
+const contextWith = (actions: object[] = [], isBridgeExecution = false) =>
+  ({
+    step: { execution: { actions } },
+    isBridgeExecution,
+  }) as never
 
 describe('SolanaStepExecutor', () => {
   describe('createContext', () => {
@@ -50,6 +69,117 @@ describe('SolanaStepExecutor', () => {
       const context = await executor.createContext({ step } as never)
 
       expect(context.getWalletAccount(step as never)).toBe(account)
+    })
+  })
+
+  describe('createPipeline', () => {
+    it('starts from CheckBalanceTask on a fresh run', () => {
+      expect(taskNames(makeExecutor(), contextWith())[0]).toBe(
+        CheckBalanceTask.name
+      )
+    })
+
+    it('resumes at the status wait when the swap action is DONE', () => {
+      expect(
+        taskNames(
+          makeExecutor(),
+          contextWith([{ type: 'SWAP', status: 'DONE', txHash: 'sig' }])
+        )
+      ).toEqual([WaitForTransactionStatusTask.name])
+    })
+
+    it('resumes at the Solana wait, and never signs or fetches a new quote, while the transaction may still land', () => {
+      // JUMEMB-79: a same-chain swap stays PENDING with its signature until
+      // the LI.FI status is DONE, so a reload in that window restarted at
+      // CheckBalanceTask, fetched a new quote and opened the wallet again.
+      for (const action of [
+        { type: 'SWAP', status: 'PENDING', txHash: 'sig' },
+        { type: 'SWAP', status: 'PENDING', txHex: 'AA==' },
+        { type: 'SWAP', status: 'ACTION_REQUIRED', txHex: 'AA==' },
+        { type: 'SWAP', status: 'FAILED', txHash: 'sig' },
+      ]) {
+        const names = taskNames(makeExecutor(), contextWith([action]))
+
+        expect(names[0], JSON.stringify(action)).toBe(
+          'SolanaWaitForTransactionTask'
+        )
+        expect(names, JSON.stringify(action)).not.toContain(
+          'SolanaSignAndExecuteTask'
+        )
+        // `getStepTransaction` runs only inside PrepareTransactionTask.
+        expect(names, JSON.stringify(action)).not.toContain(
+          PrepareTransactionTask.name
+        )
+      }
+    })
+
+    it('signs again after a final failure', () => {
+      const names = taskNames(
+        makeExecutor(),
+        contextWith([
+          { type: 'SWAP', status: 'FAILED', txFinal: true, txHash: 'sig' },
+        ])
+      )
+
+      expect(names[0]).toBe(CheckBalanceTask.name)
+      // "Try again" must reach the sign task: the whole pipeline runs.
+      expect(names).toEqual([
+        CheckBalanceTask.name,
+        PrepareTransactionTask.name,
+        'SolanaSignAndExecuteTask',
+        'SolanaWaitForTransactionTask',
+        WaitForTransactionStatusTask.name,
+      ])
+    })
+
+    it('reads the CROSS_CHAIN action of a bridge', () => {
+      const names = taskNames(
+        makeExecutor(),
+        contextWith(
+          [
+            { type: 'SWAP', status: 'PENDING' },
+            { type: 'CROSS_CHAIN', status: 'PENDING', txHash: 'sig' },
+          ],
+          true
+        )
+      )
+
+      expect(names[0]).toBe('SolanaWaitForTransactionTask')
+    })
+
+    it('ignores an open transaction on an action of another type', () => {
+      // The selector reads only the action that the sign task signs and
+      // guards (SWAP, or CROSS_CHAIN on a bridge).
+      for (const [actions, isBridgeExecution] of [
+        [
+          [
+            { type: 'SET_ALLOWANCE', status: 'PENDING', txHash: 'sig' },
+            { type: 'SWAP', status: 'PENDING' },
+          ],
+          false,
+        ],
+        [
+          [
+            { type: 'CROSS_CHAIN', status: 'PENDING', txHash: 'sig' },
+            { type: 'SWAP', status: 'PENDING' },
+          ],
+          false,
+        ],
+        [
+          [
+            { type: 'SWAP', status: 'PENDING', txHash: 'sig' },
+            { type: 'CROSS_CHAIN', status: 'PENDING' },
+          ],
+          true,
+        ],
+      ] as const) {
+        const names = taskNames(
+          makeExecutor(),
+          contextWith([...actions], isBridgeExecution)
+        )
+
+        expect(names[0], JSON.stringify(actions)).toBe(CheckBalanceTask.name)
+      }
     })
   })
 })
