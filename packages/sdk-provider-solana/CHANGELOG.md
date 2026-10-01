@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.3
+
+### Patch Changes
+
+- [#505](https://github.com/lifinance/sdk/pull/505) [`56f9913`](https://github.com/lifinance/sdk/commit/56f9913ccbc0508c94122baf3b7bbbcaa867d95b) Thanks [@chybisov](https://github.com/chybisov)! - Pick the first pipeline task by class reference instead of by class name. In builds that mangle class names, a step could start or resume at the wrong task — for example, an unneeded `approve()` before a native-token swap.
+
 ## 4.3.2
 
 ### Patch Changes
