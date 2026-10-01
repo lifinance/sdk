@@ -10,6 +10,7 @@ import {
 } from '@lifi/sdk'
 import type { Signature } from '@solana/kit'
 import { lookupSignatureStatus } from '../../actions/lookupSignatureStatus.js'
+import type { RaceResult } from '../../confirmation/raceRpcs.js'
 import {
   isConfirmedCommitment,
   type SignatureStatus,
@@ -17,7 +18,10 @@ import {
 import type { SolanaStepExecutorContext } from '../../types.js'
 import type { TransactionLifetime } from '../../utils/getTransactionLifetime.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
-import type { ConfirmationMessages } from './unwrapConfirmation.js'
+import {
+  type ConfirmationMessages,
+  confirmationError,
+} from './unwrapConfirmation.js'
 
 /** Explorer link for a signature, as both wait tasks write it. */
 export function getTxLink(
@@ -190,5 +194,80 @@ export async function resolveUnconfirmed(
     options.messages.notConfirmed,
     error instanceof Error ? error : undefined,
     { final: true }
+  )
+}
+
+/**
+ * The send-and-settle tail both wait tasks share (spec 4.4.6): runs `send`,
+ * then applies the result rules to what it reports.
+ *
+ * - A confirmation goes to `recordLanded`, with `confirmedFailure` reading
+ *   its on-chain failure.
+ * - Every other result - `rpc-unavailable` included - goes to
+ *   `resolveUnconfirmed`. Only an `expired` verdict passes its slot: the
+ *   dropped check reads any defined slot as a verdict.
+ * - A rejection comes before the first send of this run. On the first run
+ *   nothing ever left the SDK, so the bytes are cleared and the error is
+ *   rethrown: "Try again" signs again. On a resume an earlier run may have
+ *   sent the same bytes: they stay, and only the chain can make the outcome
+ *   final.
+ */
+export async function sendAndSettle<T>(
+  context: SolanaStepExecutorContext,
+  action: ExecutionAction,
+  options: {
+    signature: Signature
+    /** Sends and races the confirmation. Rejects only before its first
+     * send; the race itself never rejects. */
+    send: () => Promise<RaceResult<T>>
+    /** The on-chain failure of a confirmed value. */
+    confirmedFailure: (value: T) => { err: unknown } | undefined
+    /** An earlier run may already have sent these bytes. */
+    resuming: boolean
+    messages: ConfirmationMessages
+  }
+): Promise<TaskResult> {
+  const { signature, messages } = options
+
+  /** `resolveUnconfirmed` throws for an unknown or dropped outcome, so only
+   * a confirmed status reaches `recordLanded`. */
+  const settleUnconfirmed = async (
+    error: unknown,
+    expiredAtSlot: bigint | undefined
+  ): Promise<TaskResult> => {
+    const status = await resolveUnconfirmed(context, action, {
+      signature,
+      error,
+      expiredAtSlot,
+      messages,
+    })
+    return recordLanded(context, action, {
+      signature,
+      failure: failureOf(status),
+    })
+  }
+
+  let result: RaceResult<T>
+  try {
+    result = await options.send()
+  } catch (error) {
+    if (!options.resuming) {
+      clearStoredTransactions(context, action)
+      throw error
+    }
+    return settleUnconfirmed(error, undefined)
+  }
+
+  if (result.kind === 'confirmed') {
+    return recordLanded(context, action, {
+      signature,
+      failure: options.confirmedFailure(result.value),
+    })
+  }
+
+  return settleUnconfirmed(
+    confirmationError(result, messages),
+    // The head a covering RPC has to reach before its `null` counts.
+    result.kind === 'expired' ? result.slot : undefined
   )
 }

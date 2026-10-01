@@ -23,12 +23,15 @@ const {
   failureOf,
   recordLanded,
   resolveUnconfirmed,
+  sendAndSettle,
 } = await import('./transactionOutcome.js')
 const {
   CLOCK_SKEW_MARGIN_MS,
   DROPPED_FALLBACK_AGE_MS,
+  isFinalTransactionError,
   LiFiErrorCode,
   MAX_RESEND_AGE_MS,
+  RPCError,
   TransactionError,
 } = await import('@lifi/sdk')
 
@@ -362,6 +365,223 @@ describe('resolveUnconfirmed', () => {
 
     // No `expiredAtSlot`: the lookup takes the freshest current slot.
     expect(lookupSignatureStatus).toHaveBeenCalledWith(client, SIGNATURE, {
+      anchor: signedAt - CLOCK_SKEW_MARGIN_MS,
+      expiredAtSlot: undefined,
+    })
+  })
+})
+
+describe('sendAndSettle', () => {
+  const confirmedFailure = vi.fn()
+
+  beforeEach(() => {
+    updateAction.mockReset()
+    lookupSignatureStatus.mockReset()
+    isKnownToStatusApi.mockReset().mockResolvedValue(false)
+    confirmedFailure.mockReset().mockReturnValue(undefined)
+  })
+
+  /** Settles what `send` reports for a SWAP action signed at `signedAt`. */
+  const settle = (
+    send: () => Promise<unknown>,
+    options: { signedAt?: number; resuming?: boolean } = {}
+  ) => {
+    const { context } = contextWith({ signedAt: options.signedAt })
+    return sendAndSettle(context, action, {
+      signature: SIGNATURE,
+      send: send as () => Promise<never>,
+      confirmedFailure,
+      resuming: options.resuming ?? false,
+      messages: MESSAGES,
+    })
+  }
+  const reporting = (result: unknown) => () => Promise.resolve(result)
+  const rejecting = (error: unknown) => () => Promise.reject(error)
+
+  /** The `txHex` writes: only these clear the stored bytes. */
+  const txHexWrites = () =>
+    updateAction.mock.calls
+      .map((call) => call[3])
+      .filter((params) => params && 'txHex' in params)
+
+  it('records a confirmed result through confirmedFailure, without a lookup', async () => {
+    const value = { bundleId: 'b' }
+
+    await expect(
+      settle(reporting({ kind: 'confirmed', value }), { signedAt: ago(60_000) })
+    ).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(confirmedFailure).toHaveBeenCalledWith(value)
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+    const [params] = txHexWrites()
+    expect(params.txHash).toBe(SIGNATURE)
+    expect(params.txHex).toBeUndefined()
+  })
+
+  it('throws a final TransactionFailed for a confirmed result that failed on chain', async () => {
+    confirmedFailure.mockReturnValue({ err: 'AccountInUse' })
+
+    await expect(
+      settle(reporting({ kind: 'confirmed', value: {} }))
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      final: true,
+    })
+  })
+
+  it('rethrows the unknown error of a young not-confirmed result, without a lookup', async () => {
+    // No verdict, so no slot: a defined one would read as an expiry and
+    // start the dropped check at once.
+    const thrown = await settle(
+      reporting({ kind: 'not-confirmed', errors: [] }),
+      { signedAt: ago(60_000) }
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.message).toBe(MESSAGES.notConfirmed)
+    expect(thrown.final).toBe(false)
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('rethrows RpcUnavailable for a young rpc-unavailable result, without a lookup', async () => {
+    const errors = [new Error('429')]
+
+    const thrown = await settle(
+      reporting({ kind: 'rpc-unavailable', errors }),
+      { signedAt: ago(60_000) }
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(thrown.cause.errors).toEqual(errors)
+    expect(isFinalTransactionError(thrown)).toBe(false)
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('drops an expired result by the dropped rule, with its verdict slot as the head', async () => {
+    lookupSignatureStatus.mockResolvedValue(PROVEN_ABSENT)
+    const signedAt = ago(60_000)
+
+    await expect(
+      settle(reporting({ kind: 'expired', slot: 900n, errors: [] }), {
+        signedAt,
+      })
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionExpired,
+      final: true,
+    })
+
+    expect(lookupSignatureStatus).toHaveBeenCalledWith(client, SIGNATURE, {
+      anchor: signedAt - CLOCK_SKEW_MARGIN_MS,
+      expiredAtSlot: 900n,
+    })
+    const [params] = txHexWrites()
+    expect(params.txHex).toBeUndefined()
+  })
+
+  it('takes an old rpc-unavailable result to the dropped rule too', async () => {
+    // A permanent RPC problem must not keep "Try again" looping where the
+    // transaction can no longer land (spec 4.4.6).
+    lookupSignatureStatus.mockResolvedValue(PROVEN_ABSENT)
+    const signedAt = ago(DROPPED_FALLBACK_AGE_MS + 1_000)
+
+    const thrown = await settle(
+      reporting({ kind: 'rpc-unavailable', errors: [] }),
+      { signedAt }
+    ).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(true)
+    expect(thrown.cause).toBeInstanceOf(RPCError)
+    expect(lookupSignatureStatus).toHaveBeenCalledTimes(1)
+    expect(lookupSignatureStatus.mock.calls[0][2].expiredAtSlot).toBeUndefined()
+    expect(isKnownToStatusApi).toHaveBeenCalledTimes(1)
+  })
+
+  it('records a transaction that landed after all by its own status', async () => {
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'found',
+      status: { confirmationStatus: 'finalized', err: 'AccountInUse' },
+    })
+
+    await expect(
+      settle(reporting({ kind: 'not-confirmed', errors: [] }), {
+        signedAt: ago(DROPPED_FALLBACK_AGE_MS + 1_000),
+      })
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      final: true,
+    })
+
+    // The status is a signature status, whatever `send` confirms.
+    expect(confirmedFailure).not.toHaveBeenCalled()
+    expect(txHexWrites()[0].txHash).toBe(SIGNATURE)
+  })
+
+  it('keeps the outcome unknown, and the bytes, when the lookup sees it only as processed', async () => {
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'found',
+      status: { confirmationStatus: 'processed', err: null },
+    })
+
+    const thrown = await settle(
+      reporting({ kind: 'not-confirmed', errors: [] }),
+      { signedAt: ago(DROPPED_FALLBACK_AGE_MS + 1_000) }
+    ).catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('clears the bytes and rethrows when the first run fails before its first send', async () => {
+    // Nothing left the SDK, so "Try again" signs again.
+    const error = new Error('no RPC configured')
+
+    await expect(
+      settle(rejecting(error), {
+        signedAt: ago(DROPPED_FALLBACK_AGE_MS + 1_000),
+      })
+    ).rejects.toBe(error)
+
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    const [, , , params] = updateAction.mock.calls[0]
+    expect('txHex' in params).toBe(true)
+    expect(params.txHex).toBeUndefined()
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+  })
+
+  it('keeps the bytes on a resume that fails before its first send', async () => {
+    // An earlier run may have sent them. Without a verdict nothing is final
+    // while the transaction may still land.
+    const error = new Error('no RPC configured')
+
+    await expect(
+      settle(rejecting(error), { signedAt: ago(60_000), resuming: true })
+    ).rejects.toBe(error)
+
+    expect(updateAction).not.toHaveBeenCalled()
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+  })
+
+  it('drops a resume that fails before its first send only by the dropped rule', async () => {
+    lookupSignatureStatus.mockResolvedValue(PROVEN_ABSENT)
+    const error = new Error('no RPC configured')
+    const signedAt = ago(DROPPED_FALLBACK_AGE_MS + 1_000)
+
+    const thrown = await settle(rejecting(error), {
+      signedAt,
+      resuming: true,
+    }).catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(true)
+    expect(thrown.cause).toBe(error)
+    expect(lookupSignatureStatus.mock.calls[0][2]).toEqual({
       anchor: signedAt - CLOCK_SKEW_MARGIN_MS,
       expiredAtSlot: undefined,
     })
