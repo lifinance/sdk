@@ -91,6 +91,31 @@ describe('storedTransactions', () => {
     expect(decoded(txHex).isBundle).toBe(true)
   })
 
+  it('refuses to encode an empty single transaction list', () => {
+    expect(() => encodeStoredTransactions([], false)).toThrow(
+      'No signed transactions to store.'
+    )
+  })
+
+  it('refuses to encode an empty bundle', () => {
+    // `[]` would be stored, and `decodeStoredTransactions` rejects it.
+    expect(() => encodeStoredTransactions([], true)).toThrow(
+      'No signed transactions to store.'
+    )
+  })
+
+  it('refuses to encode two transactions that are not a bundle', () => {
+    // Stored as base64, only the first would survive a resume.
+    const wires = [
+      signedSwapTransactionBase64(7),
+      signedNonceTransactionBase64(9),
+    ]
+
+    expect(() =>
+      encodeStoredTransactions(wires.map(base64ToUint8Array), false)
+    ).toThrow('Expected one signed transaction outside a bundle, got 2.')
+  })
+
   it('rejects stored bytes whose fee payer signature is missing', () => {
     // The captured transaction's fee payer slot is all zeros.
     expect(decodeStoredTransactions(SWAP_TRANSACTION_BASE64)).toBeUndefined()
@@ -111,6 +136,7 @@ describe('storedTransactions', () => {
     ['a value that is not base64', '%%%'],
     ['base64 that is no transaction', 'AAAA'],
     ['broken JSON', '["unterminated'],
+    // These two do not start with `[`, so they go down the base64 path.
     ['a JSON object', '{"0":"AAAA"}'],
     ['a JSON string', '"AAAA"'],
     ['an empty bundle', '[]'],

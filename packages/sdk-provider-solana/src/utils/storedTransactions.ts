@@ -22,11 +22,23 @@ export type StoredTransactions = {
  *
  * The array stays for a one-element bundle too: the leading `[` is the only
  * record of `isBundleExecution` a resume gets.
+ *
+ * Throws for an empty list, which would store a value
+ * `decodeStoredTransactions` rejects, and for more than one transaction
+ * outside a bundle, of which the base64 would keep only the first.
  */
 export function encodeStoredTransactions(
   wireTransactions: readonly Uint8Array[],
   isBundle: boolean
 ): string {
+  if (wireTransactions.length === 0) {
+    throw new Error('No signed transactions to store.')
+  }
+  if (!isBundle && wireTransactions.length !== 1) {
+    throw new Error(
+      `Expected one signed transaction outside a bundle, got ${wireTransactions.length}.`
+    )
+  }
   const base64 = getBase64Decoder()
   const encoded = wireTransactions.map((bytes) => base64.decode(bytes))
   return isBundle ? JSON.stringify(encoded) : encoded[0]
