@@ -209,7 +209,8 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       if (failure === 'refused') {
         const lookup = await lookUpBitcoinTransaction(publicClient, txHash)
         if (lookup === 'absent') {
-          // Every node refuses these bytes alike and no node holds them, so
+          // Every URL refused these bytes for a reason that names no other
+          // transaction, and no node holds them. They are dropped here, so
           // they can never land: "Try again" signs a new transaction.
           statusManager.updateAction(step, action.type, 'PENDING', {
             ...CLEARED_TRANSACTION_FIELDS,

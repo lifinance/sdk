@@ -41,10 +41,10 @@ describe('the -26 reject reason lists', () => {
       'bad-txns-',
       'mandatory-script-verify-flag-failed',
       'non-mandatory-script-verify-flag',
-    ])
-    expect(MEMPOOL_STATE_REJECT_REASONS).toEqual([
       'mempool min fee not met',
       'mempool full',
+    ])
+    expect(MEMPOOL_STATE_REJECT_REASONS).toEqual([
       'txn-mempool-conflict',
       'too-long-mempool-chain',
       'insufficient fee',
@@ -93,6 +93,22 @@ describe('classifyBitcoinSendFailure', () => {
     }
   )
 
+  // One send round: a URL that accepted the bytes would have ended it with a
+  // success. A full mempool or a fee floor names no other transaction.
+  it.each(['mempool min fee not met', 'mempool full'])(
+    'counts "%s" from every URL as refused',
+    (reason) => {
+      expect(
+        classifyBitcoinSendFailure(
+          allTransportsFailed(SEND, [
+            rpcError(SEND, { code: -26, message: reason }),
+            rpcError(SEND, { code: -26, message: reason }),
+          ])
+        )
+      ).toBe('refused')
+    }
+  )
+
   it('keeps a -26 reason that is in neither list unknown', () => {
     expect(
       classifyBitcoinSendFailure(
@@ -102,9 +118,9 @@ describe('classifyBitcoinSendFailure', () => {
   })
 
   it('lets the mempool list win when a -26 message matches both lists', () => {
-    expect(classifyBitcoinSendFailure(rejected('mempool full, tx-size'))).toBe(
-      'unknown'
-    )
+    expect(
+      classifyBitcoinSendFailure(rejected('txn-mempool-conflict, tx-size'))
+    ).toBe('unknown')
   })
 
   // The "bad-txns-" prefix matches it, but the conflict is with the
@@ -163,7 +179,10 @@ describe('classifyBitcoinSendFailure', () => {
     )
     expect(
       classifyBitcoinSendFailure(
-        httpError(SEND, JSON.stringify({ code: -26, message: 'mempool full' }))
+        httpError(
+          SEND,
+          JSON.stringify({ code: -26, message: 'txn-mempool-conflict' })
+        )
       )
     ).toBe('unknown')
   })

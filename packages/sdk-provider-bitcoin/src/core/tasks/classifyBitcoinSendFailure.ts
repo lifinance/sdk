@@ -21,13 +21,15 @@ export const ALREADY_SENT_MESSAGES: readonly string[] = [
 
 /**
  * Bitcoin Core reject reasons (the message of `RPC_VERIFY_REJECTED`, -26)
- * for consensus and standardness rules: every node refuses these bytes
- * alike, whatever its mempool holds. Together with -22 and -25, a send
- * refused this way is followed by a `getrawtransaction` lookup, and only a
- * -5 answer from every URL clears the transaction data.
+ * that name no other transaction: consensus and standardness rules, which
+ * every node applies alike, and a full mempool or a mempool fee floor. The
+ * send is one round, so a URL that accepted the bytes would have ended it
+ * with a success. Together with -22 and -25, a send refused this way by
+ * every URL is followed by a `getrawtransaction` lookup, and only a -5
+ * answer from every URL clears the transaction data.
  *
  * A wrong entry here costs a new quote whose transaction may spend other
- * UTXOs, so an entry must never depend on one node's mempool.
+ * UTXOs, so an entry must never mean that another transaction exists.
  */
 export const EVERY_NODE_REJECT_REASONS: readonly string[] = [
   'min relay fee not met',
@@ -41,18 +43,19 @@ export const EVERY_NODE_REJECT_REASONS: readonly string[] = [
   'bad-txns-',
   'mandatory-script-verify-flag-failed',
   'non-mandatory-script-verify-flag',
+  'mempool min fee not met',
+  'mempool full',
 ]
 
 /**
- * Bitcoin Core reject reasons (-26) that depend on one node's mempool. An
- * earlier URL may have accepted the bytes, and a conflict can be another
- * tab's transaction, so the outcome stays unknown. Checked before
- * `EVERY_NODE_REJECT_REASONS`: a message that matches both stays unknown.
- * A wrong entry here costs only a stuck route.
+ * Bitcoin Core reject reasons (-26) that point to another transaction in
+ * one node's mempool: a conflict, a replacement fee, or too many
+ * unconfirmed parents. That transaction can be another tab's, so the
+ * outcome stays unknown. Checked before `EVERY_NODE_REJECT_REASONS`: a
+ * message that matches both stays unknown. A wrong entry here costs only a
+ * stuck route.
  */
 export const MEMPOOL_STATE_REJECT_REASONS: readonly string[] = [
-  'mempool min fee not met',
-  'mempool full',
   'txn-mempool-conflict',
   'too-long-mempool-chain',
   'insufficient fee',
@@ -63,8 +66,8 @@ export const MEMPOOL_STATE_REJECT_REASONS: readonly string[] = [
 
 /**
  * - `sent`: a node already holds the transaction.
- * - `refused`: every URL refused the bytes for a reason every node gives
- *   alike; look the txid up before clearing anything.
+ * - `refused`: every URL refused the bytes for a reason that names no
+ *   other transaction; look the txid up before clearing anything.
  * - `unknown`: anything else; the bytes may have reached a node.
  */
 export type BitcoinSendFailure = 'sent' | 'refused' | 'unknown'
@@ -189,8 +192,8 @@ function classifyNodeError({ code, text }: NodeError): BitcoinSendFailure {
 /**
  * Classifies a failed first-run `sendrawtransaction`. Any URL that already
  * holds the transaction makes it `sent`. It is `refused` only when every URL
- * refused it for a reason every node gives alike; any other answer, a
- * timeout included, keeps it `unknown`. Never throws.
+ * refused it for a reason that names no other transaction; any other
+ * answer, a timeout included, keeps it `unknown`. Never throws.
  */
 export function classifyBitcoinSendFailure(error: unknown): BitcoinSendFailure {
   const outcomes = errorsPerUrl(error).map((urlError) =>
