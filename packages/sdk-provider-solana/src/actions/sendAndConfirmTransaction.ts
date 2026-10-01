@@ -34,6 +34,13 @@ export async function sendAndConfirmTransaction(
   options?: {
     /** Runs once, when the first RPC accepts a send. */
     onBroadcast?: () => void
+    /**
+     * Asked before every send, the resends included. `false` refuses the
+     * send as a failed one, and polling goes on. The wait tasks close it at
+     * the resend age cap, so stored bytes without their own expiry are never
+     * sent past it (spec 4.2.8).
+     */
+    mayResend?: () => boolean
   }
 ): Promise<RaceResult<SignatureStatus>> {
   const [solanaRpcs, writeRpcUrls = []] = await Promise.all([
@@ -89,6 +96,13 @@ export async function sendAndConfirmTransaction(
     rpc: SolanaRpcType,
     signal: AbortSignal
   ): Promise<void> => {
+    // Refused as a failed send, so the branch keeps polling: the bytes may
+    // already be on their way from an earlier send.
+    if (options?.mayResend && !options.mayResend()) {
+      throw new Error(
+        'The resend age cap has passed; the stored transaction is not sent again.'
+      )
+    }
     await rpc
       .sendTransaction(signedTxSerialized, rawTransactionOptions)
       .send({ abortSignal: signal })

@@ -257,6 +257,38 @@ describe('sendAndConfirmTransaction', () => {
       sendAndConfirmTransaction(clientWith(), {} as never)
     ).resolves.toEqual({ kind: 'expired', slot: 900n, errors: [] })
   })
+
+  it('asks mayResend before every send and refuses the ones it denies', async () => {
+    // The resend loop runs for up to 90 s. A durable-nonce transaction
+    // resumed near the resend age cap would otherwise keep going out after
+    // the cap and could execute a swap on an old quote.
+    const rpc = createRpc()
+    getSolanaRpcs.mockResolvedValue([rpc])
+    let open = true
+    let refused: unknown
+    confirmSignature.mockImplementation(
+      async (options: {
+        rpc: unknown
+        signal: AbortSignal
+        resend: (rpc: unknown, signal: AbortSignal) => Promise<void>
+      }) => {
+        await options.resend(options.rpc, options.signal)
+        open = false
+        refused = await options.resend(options.rpc, options.signal).then(
+          () => undefined,
+          (error: unknown) => error
+        )
+        return { kind: 'confirmed', value: { err: null } }
+      }
+    )
+
+    await sendAndConfirmTransaction(clientWith(), {} as never, {
+      mayResend: () => open,
+    })
+
+    expect(rpc.sendTransaction).toHaveBeenCalledTimes(1)
+    expect(refused).toBeInstanceOf(Error)
+  })
 })
 
 describe('sendAndConfirmTransaction with write RPCs', () => {
@@ -521,5 +553,17 @@ describe('sendAndConfirmTransaction with write RPCs', () => {
 
     expect(getSolanaWriteRpcs).not.toHaveBeenCalled()
     expect(read.sendTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks mayResend before a send to the write RPCs too', async () => {
+    const write = createRpc()
+    getSolanaRpcs.mockResolvedValue([createReadRpc()])
+    getSolanaWriteRpcs.mockReturnValue([write])
+
+    await sendAndConfirmTransaction(clientWith(WRITE_URLS), {} as never, {
+      mayResend: () => false,
+    })
+
+    expect(write.sendTransaction).not.toHaveBeenCalled()
   })
 })
