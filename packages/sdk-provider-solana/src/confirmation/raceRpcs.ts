@@ -2,8 +2,17 @@ import type { ConfirmationOutcome } from './types.js'
 
 export type RaceResult<T> =
   | { kind: 'confirmed'; value: T }
+  /** `slot`: the highest verdict slot of the branches. The transaction can
+   * no longer land after it. */
+  | { kind: 'expired'; slot: bigint; errors: Error[] }
   | { kind: 'not-confirmed'; errors: Error[] }
   | { kind: 'rpc-unavailable'; errors: Error[] }
+
+/** Every result that is not a confirmation. Independent of the value type. */
+export type UnconfirmedRaceResult = Exclude<
+  RaceResult<unknown>,
+  { kind: 'confirmed' }
+>
 
 const toError = (reason: unknown): Error =>
   reason instanceof Error ? reason : new Error(String(reason))
@@ -88,6 +97,7 @@ export async function raceRpcs<Rpc, T>(
   const classify = (
     results: PromiseSettledResult<ConfirmationOutcome<T>>[]
   ): RaceResult<T> => {
+    let expiredAtSlot: bigint | undefined
     let sawNotConfirmed = false
     const errors: Error[] = []
 
@@ -98,7 +108,15 @@ export async function raceRpcs<Rpc, T>(
         if (entry.value.kind === 'confirmed') {
           return { kind: 'confirmed', value: entry.value.value }
         }
-        sawNotConfirmed = true
+        if (entry.value.kind === 'expired') {
+          // The highest verdict slot: the strictest head a dropped check can
+          // demand.
+          if (expiredAtSlot === undefined || entry.value.slot > expiredAtSlot) {
+            expiredAtSlot = entry.value.slot
+          }
+        } else {
+          sawNotConfirmed = true
+        }
         continue
       }
       // Cancelled branches are not failures. A branch the timeout killed is,
@@ -111,8 +129,16 @@ export async function raceRpcs<Rpc, T>(
 
     // A completed observation outranks a thrown error, but the collected
     // errors still travel with it as the expiry's `cause`.
+    //
+    // Among the observations, the ceiling outranks an expiry: `expired` may
+    // end in a final "dropped", so every branch that observed has to agree
+    // on it. A stale node alone must not drop a transaction that another
+    // endpoint still watched to its ceiling.
     if (sawNotConfirmed) {
       return { kind: 'not-confirmed', errors }
+    }
+    if (expiredAtSlot !== undefined) {
+      return { kind: 'expired', slot: expiredAtSlot, errors }
     }
     return { kind: 'rpc-unavailable', errors }
   }

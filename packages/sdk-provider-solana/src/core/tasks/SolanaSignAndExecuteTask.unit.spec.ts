@@ -11,9 +11,13 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-// Mutable so one spec can make the decoder throw. `vi.hoisted` because the
+// Mutable so one spec can make the decoder throw, and another can hand back
+// a transaction without its fee payer signature. `vi.hoisted` because the
 // `vi.mock` factory below is hoisted above ordinary top-level declarations.
-const decoder = vi.hoisted(() => ({ throws: false }))
+const decoder = vi.hoisted(() => ({
+  throws: false,
+  nullSignatureAt: undefined as number | undefined,
+}))
 // Mutable so one spec can replace the wallet's answer.
 const wallet = vi.hoisted(() => ({
   signTransaction: undefined as undefined | (() => Promise<never>),
@@ -54,7 +58,12 @@ vi.mock('@solana/kit', async (importActual) => {
           throw new Error('undecodable signed transaction')
         }
         return {
-          signatures: { feePayer: new Uint8Array(64).fill(bytes[0] + 1) },
+          signatures: {
+            feePayer:
+              bytes[0] === decoder.nullSignatureAt
+                ? null
+                : new Uint8Array(64).fill(bytes[0] + 1),
+          },
         }
       },
     }),
@@ -64,20 +73,21 @@ vi.mock('@solana/kit', async (importActual) => {
 const { SolanaSignAndExecuteTask } = await import(
   './SolanaSignAndExecuteTask.js'
 )
-const { LiFiErrorCode } = await import('@lifi/sdk')
+const { LiFiErrorCode, TransactionError } = await import('@lifi/sdk')
 
 const updateAction = vi.fn()
+const getWalletAccount = vi.fn((_step: unknown) => ({}))
 
-const baseContext = () =>
+const baseContext = (action: object = { type: 'SWAP' }) =>
   ({
     step: {},
     wallet: {},
-    walletAccount: {},
+    getWalletAccount: (step: unknown) => getWalletAccount(step),
     executionOptions: undefined,
     fromChain: { metamask: { blockExplorerUrls: ['https://explorer/'] } },
     isBridgeExecution: false,
     statusManager: {
-      findAction: () => ({ type: 'SWAP' }),
+      findAction: () => action,
       updateAction,
     },
   }) as never
@@ -103,15 +113,19 @@ describe('SolanaSignAndExecuteTask', () => {
     for (const param of params) {
       expect(param.txHash).toBeUndefined()
     }
-    const signingWrite = params.at(-1)
-    expect('txHash' in signingWrite).toBe(true)
+    // The clearing write comes first; the last write stores the signed bytes.
+    const clearingWrite = params[0]
+    expect('txHash' in clearingWrite).toBe(true)
   })
 
   beforeEach(() => {
     getTransactionRequestData.mockReset()
     updateAction.mockReset()
     decoder.throws = false
+    decoder.nullSignatureAt = undefined
     wallet.signTransaction = undefined
+    getWalletAccount.mockReset()
+    getWalletAccount.mockReturnValue({})
   })
 
   afterEach(() => {
@@ -168,7 +182,8 @@ describe('SolanaSignAndExecuteTask', () => {
 
     await new SolanaSignAndExecuteTask().run(baseContext())
 
-    expect(updateAction).toHaveBeenCalledTimes(1)
+    // The clearing write, then the stored bytes.
+    expect(updateAction).toHaveBeenCalledTimes(2)
     const [, , status, params] = updateAction.mock.calls[0]
     expect(status).toBe('PENDING')
     expect(typeof params.signedAt).toBe('number')
@@ -206,6 +221,9 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(params.txHash).toBeUndefined()
     expect('txLink' in params).toBe(true)
     expect(typeof params.signedAt).toBe('number')
+    // Nothing is stored for bytes that do not decode.
+    expect('txHex' in params).toBe(true)
+    expect(params.txHex).toBeUndefined()
   })
 
   it('never records a signature for a bundle either', async () => {
@@ -217,5 +235,122 @@ describe('SolanaSignAndExecuteTask', () => {
     const [, , , params] = updateAction.mock.calls[0]
     expect(params.txHash).toBeUndefined()
     expect(params.txHash).not.toBe(SIGNATURE_OF_SECOND)
+  })
+
+  it('clears the previous transaction, then stores the signed wire bytes', async () => {
+    // Spec 4.2.1: a stale final hash would look open again once its
+    // `txFinal` is gone, so every field of the previous transaction goes
+    // before the new bytes are written.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    expect(updateAction).toHaveBeenCalledTimes(2)
+    const [clearing, storing] = updateAction.mock.calls.map((call) => call[3])
+    for (const field of ['txHash', 'txLink', 'txHex', 'txFinal', 'taskId']) {
+      expect(field in clearing, field).toBe(true)
+      expect(clearing[field], field).toBeUndefined()
+    }
+    // The fake wallet signs input 0 as the byte [0]: base64 `AA==`.
+    expect(storing).toEqual({ txHex: 'AA==' })
+    expect(updateAction.mock.calls[1][2]).toBe('PENDING')
+  })
+
+  it('stores a bundle as a JSON array of wire transactions', async () => {
+    getTransactionRequestData.mockResolvedValue(['tx-a', 'tx-b'])
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    expect(updateAction.mock.calls[1][3]).toEqual({
+      txHex: '["AA==","AQ=="]',
+    })
+  })
+
+  it('keeps a one-element bundle a bundle in txHex', async () => {
+    // The leading `[` is what tells a resume to use `sendBundle`.
+    getTransactionRequestData.mockResolvedValue(['tx-a'])
+
+    const result = await new SolanaSignAndExecuteTask().run(baseContext())
+
+    expect(result.context?.isBundleExecution).toBe(true)
+    expect(updateAction.mock.calls[1][3]).toEqual({ txHex: '["AA=="]' })
+  })
+
+  it('stores nothing when a transaction carries no fee payer signature', async () => {
+    // Spec 4.2.9: bytes without a readable signature would fail every
+    // resume the same way. Nothing was sent, so "Try again" signs again.
+    getTransactionRequestData.mockResolvedValue(['tx-a', 'tx-b'])
+    decoder.nullSignatureAt = 1
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionUnprepared })
+
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    expect(updateAction.mock.calls[0][3].txHex).toBeUndefined()
+  })
+
+  it.each([
+    ['a broadcast signature', { status: 'PENDING', txHash: 'sig' }],
+    ['stored signed bytes', { status: 'PENDING', txHex: 'AA==' }],
+    ['an unknown failed outcome', { status: 'FAILED', txHash: 'sig' }],
+  ])('refuses to sign over %s', async (_label, fields) => {
+    // Defence in depth behind the selector: a second signature while the
+    // first transaction can still land is the double spend.
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(
+        baseContext({ type: 'SWAP', ...fields })
+      )
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(getWalletAccount).not.toHaveBeenCalled()
+    expect(getTransactionRequestData).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('signs again after a final failure, and clears its fields', async () => {
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(
+      baseContext({
+        type: 'SWAP',
+        status: 'FAILED',
+        txFinal: true,
+        txHash: 'old-sig',
+        txLink: 'https://explorer/tx/old-sig',
+      })
+    )
+
+    const clearing = updateAction.mock.calls[0][3]
+    expect('txFinal' in clearing).toBe(true)
+    expect(clearing.txFinal).toBeUndefined()
+    expect(clearing.txHash).toBeUndefined()
+    expect(clearing.txLink).toBeUndefined()
+  })
+
+  it('resolves the wallet account when it signs', async () => {
+    getTransactionRequestData.mockResolvedValue('tx-a')
+
+    await new SolanaSignAndExecuteTask().run(baseContext())
+
+    expect(getWalletAccount).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports WalletChangedDuringExecution from the resolver before asking for a transaction', async () => {
+    const walletChanged = new TransactionError(
+      LiFiErrorCode.WalletChangedDuringExecution,
+      'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+    )
+    getWalletAccount.mockImplementationOnce(() => {
+      throw walletChanged
+    })
+
+    await expect(
+      new SolanaSignAndExecuteTask().run(baseContext())
+    ).rejects.toBe(walletChanged)
+
+    expect(getTransactionRequestData).not.toHaveBeenCalled()
   })
 })
