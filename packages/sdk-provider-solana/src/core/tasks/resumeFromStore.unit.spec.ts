@@ -290,6 +290,18 @@ describe('resumeFromStore', () => {
     expect(send).not.toHaveBeenCalled()
   })
 
+  // A reload after the first broadcast: the sign task stored the bytes, and
+  // the wait wrote their first signature as txHash.
+  it('resends bytes whose first signature is the stored txHash', async () => {
+    await resume(
+      { txHex: signedSwapTransactionBase64(7), txHash: signatureFilledWith(7) },
+      Date.now()
+    )
+
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send.mock.calls[0][0].signature).toBe(signatureFilledWith(7))
+  })
+
   // Damaged storage: the stored bytes are another transaction than the
   // stored txHash. They prove nothing about it, and they may have been sent.
   // Without the check, the blockhash bytes would be resent and the nonce
