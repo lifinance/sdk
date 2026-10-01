@@ -7,6 +7,4 @@
 '@lifi/sdk-provider-tron': patch
 ---
 
-Select the first pipeline task by class reference instead of by class name, so a step
-resumes at the right task in minified builds that rename classes. An unknown first task
-now throws instead of running only the last task.
+Pick the first pipeline task by class reference instead of by class name. In builds that mangle class names, a step could start or resume at the wrong task — for example, an unneeded `approve()` before a native-token swap.

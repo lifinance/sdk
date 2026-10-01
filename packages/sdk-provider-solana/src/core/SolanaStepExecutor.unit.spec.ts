@@ -38,7 +38,7 @@ const tasksFrom = (first: TaskClass): TaskClass[] =>
   SOLANA_TASKS.slice(SOLANA_TASKS.indexOf(first))
 
 // A minifier renames every module-local class binding on its own, so two
-// classes can end up with the same `name` (JUMEMB-41). Give all of them one
+// classes can end up with the same `name`. Give all of them one
 // name and return a function that restores the originals.
 const giveEveryTaskClassTheSameName = (classes: TaskClass[]): (() => void) => {
   const originals = classes.map((taskClass) =>
@@ -58,7 +58,7 @@ const giveEveryTaskClassTheSameName = (classes: TaskClass[]): (() => void) => {
 }
 
 describe('SolanaStepExecutor.createPipeline when every task class has the same name', () => {
-  let restoreNames: () => void
+  let restoreNames: () => void = () => {}
 
   beforeEach(() => {
     restoreNames = giveEveryTaskClassTheSameName(SOLANA_TASKS)

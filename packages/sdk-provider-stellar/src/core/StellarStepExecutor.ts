@@ -111,7 +111,7 @@ export class StellarStepExecutor extends BaseStepExecutor {
       : CheckBalanceTask
 
     // Compare classes, not names: a minifier can give two task classes the
-    // same `name` (JUM-1621, JUMEMB-41).
+    // same name.
     const firstTaskIndex = tasks.findIndex(
       (task) => task.constructor === firstTask
     )

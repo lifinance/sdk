@@ -136,7 +136,7 @@ const contextWithActions = (
   }) as unknown as EthereumStepExecutorContext
 
 // A minifier renames every module-local class binding on its own, so two
-// classes can end up with the same `name` (JUMEMB-41). Give all of them one
+// classes can end up with the same `name`. Give all of them one
 // name and return a function that restores the originals.
 const giveEveryTaskClassTheSameName = (classes: TaskClass[]): (() => void) => {
   const originals = classes.map((taskClass) =>
@@ -156,7 +156,7 @@ const giveEveryTaskClassTheSameName = (classes: TaskClass[]): (() => void) => {
 }
 
 describe('EthereumStepExecutor.createPipeline when every task class has the same name', () => {
-  let restoreNames: () => void
+  let restoreNames: () => void = () => {}
 
   beforeEach(() => {
     restoreNames = giveEveryTaskClassTheSameName(ETHEREUM_TASKS)
@@ -240,7 +240,7 @@ describe('EthereumStepExecutor.createPipeline when every task class has the same
 
 // isFromNativeToken must stay gated on the zero address. Gas tokens with a
 // real contract address (USDT0 on Stable, CELO, …) are pulled with
-// transferFrom, so they need the allowance path (JUM-1621, JUMEMB-41).
+// transferFrom, so they need the allowance path.
 describe('EthereumStepExecutor.createContext', () => {
   const STABLE_CHAIN = 988
   const STABLE_USDT0 = '0x779Ded0c9e1022225f8E0630b35a9b54bE713736'
