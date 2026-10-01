@@ -314,4 +314,40 @@ describe('BaseStepExecutor after stopRouteExecution', () => {
       '0xlate'
     )
   })
+
+  it('delivers the FAILED + txFinal write of the catch block after the stop', async () => {
+    const final = new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction was reverted.',
+      undefined,
+      { final: true }
+    )
+    const { hook, release, running } = runAndStop({ txHash: '0xswap' }, () => {
+      throw final
+    })
+
+    release()
+    expect(await running).toBeInstanceOf(SDKError)
+
+    expect(hook).toHaveBeenCalledTimes(1)
+    const swap = swapOf(hook.mock.calls[0][0] as RouteExtended)
+    expect(swap?.status).toBe('FAILED')
+    expect(swap?.txFinal).toBe(true)
+    expect(swap?.txHash).toBe('0xswap')
+  })
+
+  it('keeps the FAILED write of the catch block without txFinal suppressed after the stop', async () => {
+    const unknown = new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction confirmation timeout.'
+    )
+    const { hook, release, running } = runAndStop({ txHash: '0xswap' }, () => {
+      throw unknown
+    })
+
+    release()
+    expect(await running).toBeInstanceOf(SDKError)
+
+    expect(hook).not.toHaveBeenCalled()
+  })
 })

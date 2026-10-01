@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   ExecutionAction,
   ExecutionActionStatus,
+  ExecutionActionType,
   ExecutionStatus,
   LiFiStepExtended,
 } from '../types/core.js'
@@ -790,4 +791,178 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(liveHook).toHaveBeenCalledTimes(1)
     })
   })
+})
+
+// Task C6 of the follow-ups plan: every write of transaction data in core
+// and the six providers goes through `updateAction`. These are the shapes of
+// those writes at 21a1bc2b, each on the action state it meets in the task;
+// every one that changes the transaction reaches the kept hook after a stop.
+// A write that bypasses `updateAction` is not delivered after a stop.
+describe('provider writes of transaction data after stopRouteExecution', () => {
+  const routeId = buildRouteObject({}).id
+
+  beforeEach(() => {
+    executionState.delete(routeId)
+  })
+
+  afterEach(() => {
+    executionState.delete(routeId)
+  })
+
+  it.each([
+    {
+      site: 'Ethereum standard sign (new hash)',
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        ...CLEARED_TRANSACTION_FIELDS,
+        txHash: '0xhash',
+        txLink: 'https://explorer/tx/0xhash',
+        txType: 'standard',
+        signedAt: SOME_DATE,
+      },
+    },
+    {
+      site: 'Ethereum relayed sign (task id)',
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        ...CLEARED_TRANSACTION_FIELDS,
+        taskId: '0xtask',
+        txType: 'relayed',
+        txLink: 'https://relayer/task',
+        signedAt: SOME_DATE,
+      },
+    },
+    {
+      site: 'Ethereum batched sign (batch id)',
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        ...CLEARED_TRANSACTION_FIELDS,
+        taskId: '0xbatch',
+        txType: 'batched',
+        signedAt: SOME_DATE,
+      },
+    },
+    {
+      site: 'Solana sign (clear before decode)',
+      before: { status: 'FAILED', txHash: '0xold', txFinal: true },
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: { ...CLEARED_TRANSACTION_FIELDS, signedAt: SOME_DATE },
+    },
+    {
+      site: 'Solana sign (stored bytes)',
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: { txHex: 'AQID' },
+    },
+    {
+      site: 'Tron and Sui sign (stored bytes)',
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        ...CLEARED_TRANSACTION_FIELDS,
+        txHex: '{}',
+        signedAt: SOME_DATE,
+      },
+    },
+    {
+      site: 'Solana and Tron confirmation (hash, bytes dropped)',
+      before: { txHex: 'AQID' },
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        txHash: '0xhash',
+        txLink: 'https://explorer/tx/0xhash',
+        txHex: undefined,
+      },
+    },
+    {
+      site: 'Solana, Sui and Tron (bytes dropped)',
+      before: { txHash: '0xhash', txHex: 'AQID' },
+      calls: 1,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: { txHex: undefined },
+    },
+    {
+      site: 'core status poll (explorer link only)',
+      before: { txHash: '0xhash' },
+      calls: 0,
+      type: 'SWAP',
+      status: 'PENDING',
+      params: {
+        substatus: 'WAIT_DESTINATION_TRANSACTION',
+        substatusMessage: 'Waiting for the destination chain.',
+        txLink: 'https://explorer.li.fi/tx/0xhash',
+      },
+    },
+    {
+      site: 'core status DONE (receiving hash)',
+      before: { txHash: '0xsending' },
+      calls: 1,
+      type: 'SWAP',
+      status: 'DONE',
+      params: {
+        chainId: 137,
+        txHash: '0xreceiving',
+        txLink: 'https://explorer/tx/0xreceiving',
+      },
+    },
+    {
+      site: 'Ethereum and Stellar allowance (clear)',
+      calls: 1,
+      type: 'SET_ALLOWANCE',
+      status: 'ACTION_REQUIRED',
+      params: { txHash: undefined, txLink: undefined },
+    },
+    {
+      site: 'Ethereum and Tron allowance (approval hash)',
+      calls: 1,
+      type: 'SET_ALLOWANCE',
+      status: 'PENDING',
+      params: { txHash: '0xapprove', txLink: 'https://explorer/tx/0xapprove' },
+    },
+  ] as {
+    site: string
+    before?: Partial<ExecutionAction>
+    calls: number
+    type: ExecutionActionType
+    status: ExecutionActionStatus
+    params: Partial<ExecutionAction & { signedAt: number }>
+  }[])(
+    'the write of $site calls the kept hook $calls time(s)',
+    ({ before, calls, type, status, params }) => {
+      const step = buildStepObject({ includingExecution: true })
+      Object.assign(
+        step.execution!.actions.find((action) => action.type === type)!,
+        before
+      )
+      const route = buildRouteObject({ step })
+      const hook = vi.fn()
+      executionState.create({
+        route,
+        executionOptions: { updateRouteHook: hook },
+      })
+      const statusManager = new StatusManager(route.id)
+      attachStatusManager(route.id, statusManager)
+      stopRouteExecution(route)
+
+      statusManager.updateAction(step, type, status, params)
+
+      expect(hook).toHaveBeenCalledTimes(calls)
+      for (const [delivered] of hook.mock.calls) {
+        expect(delivered).toBe(route)
+      }
+    }
+  )
 })
