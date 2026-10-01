@@ -1,7 +1,10 @@
 import {
   type ExecutionAction,
+  getActiveRoute,
+  hasOpenTransaction,
   LiFiErrorCode,
   type RouteExtended,
+  stopRouteExecution,
   TransactionError,
 } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -34,6 +37,7 @@ import {
   buildTransactionRequest,
   createScenario,
   type Scenario,
+  type ScenarioOptions,
 } from './harness.mock.js'
 
 // Spec 2026-09-30-resume-without-resign-design.md, section 6: the EVM
@@ -52,10 +56,13 @@ const swapActionOf = (route: RouteExtended): ExecutionAction | undefined =>
  * pipeline that re-signs gets as far as the wallet.
  */
 const buildSwapScenario = (
-  options: {
-    onRouteUpdate?: (route: RouteExtended) => void
-    executeInBackground?: boolean
-  } = {}
+  options: Pick<
+    ScenarioOptions,
+    | 'onRouteUpdate'
+    | 'executeInBackground'
+    | 'beforeSendTransaction'
+    | 'onStepTransaction'
+  > = {}
 ): Scenario =>
   createScenario({
     step: buildStep({ transactionRequest: buildTransactionRequest() }),
@@ -196,5 +203,103 @@ describe('EVM "Try again" loop exit', () => {
       expect.anything(),
       expect.objectContaining({ txHash: swap?.txHash })
     )
+  })
+})
+
+// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.5:
+// a task still running at `stopRouteExecution` writes its hash afterwards.
+describe('EVM transaction written after stopRouteExecution', () => {
+  /** The hash the wallet answered, as the sign task wrote it. */
+  const signedHashOf = (scenario: Scenario): string | undefined =>
+    scenario
+      .events('action')
+      .find((event) => event.actionType === 'SWAP' && event.txHash)?.txHash
+
+  it('stop, then reload: the resume waits for the hash and signs nothing', async () => {
+    const wallet = Promise.withResolvers<void>()
+    // Snapshot at hook time, as the widget's store does: the live route
+    // object keeps changing after the hook returned.
+    let stored: RouteExtended | undefined
+    const first = buildSwapScenario({
+      beforeSendTransaction: () => wallet.promise,
+      onRouteUpdate: (route) => {
+        stored = persist(route)
+      },
+    })
+    const running = first.run()
+    await vi.waitFor(() =>
+      expect(first.events('sendTransaction')).toHaveLength(1)
+    )
+
+    stopRouteExecution(first.route())
+    wallet.resolve()
+    await running
+
+    // A new page: new wallet client, provider, client and executor.
+    const reloaded = buildSwapScenario()
+    const resumed = await reloaded.resume(stored!)
+
+    expect(first.events('sendTransaction')).toHaveLength(1)
+    expect(reloaded.events('sendTransaction')).toEqual([])
+    expect(reloaded.events('getStepTransaction')).toEqual([])
+    const signedHash = signedHashOf(first)
+    expect(signedHash).toBeDefined()
+    // The hook got the hash although the run was stopped.
+    expect(swapActionOf(stored!)?.txHash).toBe(signedHash)
+    expect(swapActionOf(resumed)?.txHash).toBe(signedHash)
+  })
+
+  it('stop, resume at once, late release: the newer execution does not sign', async () => {
+    const wallet = Promise.withResolvers<void>()
+    let stepTransactionGate: Promise<void> | undefined
+    let stored: RouteExtended | undefined
+    const scenario = buildSwapScenario({
+      onRouteUpdate: (route) => {
+        stored = persist(route)
+      },
+      // Hold only the first run's wallet prompt.
+      beforeSendTransaction: (callIndex) =>
+        callIndex === 0 ? wallet.promise : Promise.resolve(),
+      onStepTransaction: async (step) => {
+        await stepTransactionGate
+        return { ...step, transactionRequest: buildTransactionRequest() }
+      },
+    })
+    const running = scenario.run()
+    await vi.waitFor(() =>
+      expect(scenario.events('sendTransaction')).toHaveLength(1)
+    )
+
+    stopRouteExecution(scenario.route())
+    // Armed only now: the first run also asked for a transaction.
+    const stepTransaction = Promise.withResolvers<void>()
+    stepTransactionGate = stepTransaction.promise
+    const resumeFrom = scenario.timeline.length
+    const resumed = scenario.resume(stored!).then(
+      () => undefined,
+      (error: unknown) => error
+    )
+    await vi.waitFor(() =>
+      expect(scenario.events('getStepTransaction', resumeFrom)).toHaveLength(1)
+    )
+
+    wallet.resolve()
+    // The stopped run writes its hash, which merges into the newer execution,
+    // and then finishes its step. Ending a step without DONE must not stop the
+    // newer execution of the same route id.
+    await running
+    const newerAfterOldRun = getActiveRoute(stored!.id)
+
+    stepTransaction.resolve()
+    const outcome = await resumed
+
+    expect(scenario.events('sendTransaction')).toHaveLength(1)
+    // The late hash reached the newer execution before its sign task, so
+    // the pre-sign guard refused a second signature.
+    expect(outcome).toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+    const swap = swapActionOf(stored!)
+    expect(swap?.txHash).toBe(signedHashOf(scenario))
+    expect(hasOpenTransaction(swap)).toBe(true)
+    expect(newerAfterOldRun).toBeDefined()
   })
 })
