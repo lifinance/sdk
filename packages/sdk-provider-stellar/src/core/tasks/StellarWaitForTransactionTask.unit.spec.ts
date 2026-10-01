@@ -6,8 +6,10 @@ import {
   coveringNotFound,
   MAX_TIME,
   MIN_TIME,
+  NETWORK,
   rejection,
 } from './helpers/classifySubmitFailure.unit.mock.js'
+import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
 
 const isKnownToStatusApi = vi.fn()
 vi.mock('@lifi/sdk', async () => {
@@ -232,17 +234,20 @@ describe('StellarWaitForTransactionTask', () => {
 })
 
 describe('StellarWaitForTransactionTask rejected re-submit on resume', () => {
-  const runResumed = async (error: unknown): Promise<unknown> => {
+  // The stored envelope; `classifySubmitFailure` reads its time bounds.
+  const TX_HEX = buildSignedTransaction({
+    minTime: MIN_TIME,
+    maxTime: MAX_TIME,
+  }).toXdr()
+  // The sign task persists the hash derived from the same envelope.
+  const TX_HASH = deriveTransactionHash(TX_HEX, NETWORK)
+
+  const runResumed = async (
+    error: unknown,
+    txHash: string = TX_HASH
+  ): Promise<unknown> => {
     submitStellarTransaction.mockRejectedValue(error)
-    const { context } = makeContext({
-      type: 'SWAP',
-      txHash: 'persisted-hash',
-      // The stored envelope; `classifySubmitFailure` reads its time bounds.
-      txHex: buildSignedTransaction({
-        minTime: MIN_TIME,
-        maxTime: MAX_TIME,
-      }).toXdr(),
-    })
+    const { context } = makeContext({ type: 'SWAP', txHash, txHex: TX_HEX })
     return new StellarWaitForTransactionTask()
       .run(context)
       .catch((caught: unknown) => caught)
@@ -268,8 +273,25 @@ describe('StellarWaitForTransactionTask rejected re-submit on resume', () => {
       message: 'Stellar transaction submission failed: txTooLate',
       final: true,
     })
-    expect(getTransaction).toHaveBeenCalledWith('persisted-hash')
-    expect(isKnownToStatusApi).toHaveBeenCalledWith({}, {}, 'persisted-hash')
+    expect(getTransaction).toHaveBeenCalledWith(TX_HASH)
+    expect(isKnownToStatusApi).toHaveBeenCalledWith({}, {}, TX_HASH)
+  })
+
+  // Damaged storage: the stored envelope is another transaction than the
+  // stored txHash. It proves nothing about it, and it may have been sent, so
+  // the task neither submits nor classifies: it only polls by txHash.
+  it('never submits or finalizes when the stored envelope hashes to another value', async () => {
+    const thrown = await runResumed(rejection('txTooLate'), 'persisted-hash')
+
+    expect(thrown).toMatchObject({ code: LiFiErrorCode.Timeout, final: false })
+    expect(probeStellarTransaction).not.toHaveBeenCalled()
+    expect(submitStellarTransaction).not.toHaveBeenCalled()
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+    expect(waitForStellarTransaction).toHaveBeenCalledWith(
+      {},
+      'persisted-hash',
+      undefined
+    )
   })
 
   // An RPC past its retention window: its history starts after the anchor.
