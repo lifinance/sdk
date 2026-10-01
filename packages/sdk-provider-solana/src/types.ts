@@ -1,5 +1,6 @@
 import {
   ChainType,
+  type LiFiStepExtended,
   type SDKProvider,
   type StepExecutorContext,
   type StepExecutorOptions,
@@ -25,7 +26,13 @@ export interface SolanaStepExecutorContext
   extends StepExecutorContext,
     SolanaTaskContext {
   wallet: Wallet
-  walletAccount: WalletAccount
+  /**
+   * Resolves the account that requested the quote. Only the sign task calls
+   * it, so a resume that only waits does not need the wallet to have
+   * reconnected. Throws `WalletChangedDuringExecution` when the account is
+   * gone.
+   */
+  getWalletAccount: (step: LiFiStepExtended) => WalletAccount
   skipSimulation: boolean
 }
 

@@ -54,14 +54,12 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SolanaStepExecutorContext> => {
-    const { step } = baseContext
-
-    const walletAccount = this.getWalletAccount(step)
-
+    // The account is resolved by the sign task, not here: a resume that only
+    // waits must not fail because the wallet has not reconnected yet.
     return {
       ...baseContext,
       wallet: this.wallet,
-      walletAccount,
+      getWalletAccount: this.getWalletAccount,
       skipSimulation: this.skipSimulation,
     }
   }
