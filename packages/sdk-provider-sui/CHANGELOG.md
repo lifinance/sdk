@@ -1,5 +1,18 @@
 # @lifi/sdk-provider-sui
 
+## 4.2.7
+
+### Patch Changes
+
+- [#505](https://github.com/lifinance/sdk/pull/505) [`56f9913`](https://github.com/lifinance/sdk/commit/56f9913ccbc0508c94122baf3b7bbbcaa867d95b) Thanks [@chybisov](https://github.com/chybisov)! - Pick the first pipeline task by class reference instead of by class name. In builds that mangle class names, a step could start or resume at the wrong task — for example, an unneeded `approve()` before a native-token swap.
+
+## 4.2.6
+
+### Patch Changes
+
+- [#500](https://github.com/lifinance/sdk/pull/500) [`6ffd1be`](https://github.com/lifinance/sdk/commit/6ffd1be6f6c2bd2b7f00cde9bcc72dfee56afe3d) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.1, @solana/kit to 8.4.0, @stellar/stellar-sdk to
+  17.2.0 and @mysten/sui to 2.33.2.
+
 ## 4.2.5
 
 ### Patch Changes

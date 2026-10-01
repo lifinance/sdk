@@ -6,33 +6,14 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
-  - '@yuku-codegen/binding-darwin-arm64@0.6.1'
-  - '@yuku-codegen/binding-darwin-x64@0.6.1'
-  - '@yuku-codegen/binding-freebsd-x64@0.6.1'
-  - '@yuku-codegen/binding-linux-arm-gnu@0.6.1'
-  - '@yuku-codegen/binding-linux-arm-musl@0.6.1'
-  - '@yuku-codegen/binding-linux-arm64-gnu@0.6.1'
-  - '@yuku-codegen/binding-linux-arm64-musl@0.6.1'
-  - '@yuku-codegen/binding-linux-x64-gnu@0.6.1'
-  - '@yuku-codegen/binding-linux-x64-musl@0.6.1'
-  - '@yuku-codegen/binding-win32-arm64@0.6.1'
-  - '@yuku-codegen/binding-win32-x64@0.6.1'
-  - '@yuku-parser/binding-darwin-arm64@0.6.1'
-  - '@yuku-parser/binding-darwin-x64@0.6.1'
-  - '@yuku-parser/binding-freebsd-x64@0.6.1'
-  - '@yuku-parser/binding-linux-arm-gnu@0.6.1'
-  - '@yuku-parser/binding-linux-arm-musl@0.6.1'
-  - '@yuku-parser/binding-linux-arm64-gnu@0.6.1'
-  - '@yuku-parser/binding-linux-arm64-musl@0.6.1'
-  - '@yuku-parser/binding-linux-x64-gnu@0.6.1'
-  - '@yuku-parser/binding-linux-x64-musl@0.6.1'
-  - '@yuku-parser/binding-win32-arm64@0.6.1'
-  - '@yuku-parser/binding-win32-x64@0.6.1'
-  - rolldown-plugin-dts@0.27.8
-  - tsdown@0.22.7
-  - yuku-codegen@0.6.1
-  - yuku-parser@0.6.1
-  - '@rolldown/binding-openharmony-arm64@1.2.8'
+  - '@mysten/sui@2.33.2'
+  - '@vitest/coverage-v8@5.0.3'
+  - knip@6.39.0
+  - msw@3.0.1
+  - viem@2.57.1
+  - vitest@5.0.3
+  - '@vitest/mocker@5.0.3'
+  - '@vitest/spy@5.0.3'
 overrides:
   axios: ^1.20.0
-  ws@<=8.21.3: 8.21.3
+  ws@<=8.22.0: 8.22.0

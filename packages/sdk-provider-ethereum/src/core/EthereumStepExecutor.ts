@@ -159,9 +159,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       this.statusManager
     )
 
-    let taskName: string
+    let firstTask:
+      | typeof EthereumCheckPermitsTask
+      | typeof EthereumCheckBalanceTask
+      | typeof EthereumWaitForTransactionTask
+      | typeof EthereumWaitForTransactionStatusTask
     if (doCheckAllowance) {
-      taskName = EthereumCheckPermitsTask.name
+      firstTask = EthereumCheckPermitsTask
     } else {
       const swapOrBridgeAction = this.statusManager.findAction(
         step,
@@ -169,16 +173,24 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       )
       // Same predicate as the pre-sign guard: an open transaction is waited
       // for, a FAILED action with a final outcome signs again.
-      taskName = hasOpenTransaction(swapOrBridgeAction)
+      firstTask = hasOpenTransaction(swapOrBridgeAction)
         ? swapOrBridgeAction?.status === 'DONE'
-          ? EthereumWaitForTransactionStatusTask.name
-          : EthereumWaitForTransactionTask.name
-        : EthereumCheckBalanceTask.name
+          ? EthereumWaitForTransactionStatusTask
+          : EthereumWaitForTransactionTask
+        : EthereumCheckBalanceTask
     }
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'EthereumStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

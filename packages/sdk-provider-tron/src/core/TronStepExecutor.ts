@@ -94,21 +94,33 @@ export class TronStepExecutor extends BaseStepExecutor {
       !!step.estimate.approvalAddress &&
       !step.estimate.skipApproval
 
-    let taskName: string
+    let firstTask:
+      | typeof TronCheckAllowanceTask
+      | typeof TronWaitForTransactionTask
+      | typeof WaitForTransactionStatusTask
+      | typeof CheckBalanceTask
     if (doCheckAllowance) {
-      taskName = TronCheckAllowanceTask.name
+      firstTask = TronCheckAllowanceTask
     } else if (isTransactionOpen) {
-      taskName =
+      firstTask =
         swapOrBridgeAction?.status === 'DONE'
-          ? WaitForTransactionStatusTask.name
-          : TronWaitForTransactionTask.name
+          ? WaitForTransactionStatusTask
+          : TronWaitForTransactionTask
     } else {
-      taskName = CheckBalanceTask.name
+      firstTask = CheckBalanceTask
     }
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'TronStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

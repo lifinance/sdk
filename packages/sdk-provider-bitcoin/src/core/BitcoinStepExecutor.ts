@@ -64,15 +64,23 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
 
     // Same predicate as the pre-sign guard: an open transaction is waited
     // for, a FAILED action with a final outcome signs again.
-    const taskName = hasOpenTransaction(swapOrBridgeAction)
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : BitcoinWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : BitcoinWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'BitcoinStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

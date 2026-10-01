@@ -92,15 +92,23 @@ export class SolanaStepExecutor extends BaseStepExecutor {
     // while the first can still land. A same-chain swap stays PENDING with
     // its signature until the LI.FI status is DONE, so this is the common
     // reload.
-    const taskName = hasOpenTransaction(swapOrBridgeAction)
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : SolanaWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : SolanaWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'SolanaStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

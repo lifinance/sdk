@@ -82,15 +82,23 @@ export class SuiStepExecutor extends BaseStepExecutor {
     // signing, `txHash` after execution). Resume at the confirmation wait:
     // re-preparing or re-signing could execute the swap twice. A final failure
     // is not open, so "Try again" signs anew.
-    const taskName = hasOpenTransaction(swapOrBridgeAction)
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : SuiWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : SuiWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'SuiStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

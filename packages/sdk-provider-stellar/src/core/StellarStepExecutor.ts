@@ -107,15 +107,23 @@ export class StellarStepExecutor extends BaseStepExecutor {
     // instead and let the already-broadcast transaction settle. Only a FAILED
     // action with a final outcome (`txFinal`) signs again; this is the same
     // predicate as the pre-sign guard.
-    const taskName = hasOpenTransaction(swapOrBridgeAction)
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : StellarWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : StellarWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'StellarStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 
