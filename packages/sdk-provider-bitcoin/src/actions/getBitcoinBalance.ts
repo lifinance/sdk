@@ -20,6 +20,12 @@ export const getBitcoinBalance = async (
       console.warn('Requested tokens have to be on the same chain.')
     }
   }
+  // The client reads Bitcoin only, so another chain's amount stays unknown, not zero.
+  const isBitcoinToken = (token: Token): boolean =>
+    token.chainId === ChainId.BTC
+  if (!tokens.some(isBitcoinToken)) {
+    return tokens.map((token) => ({ ...token }))
+  }
   const bigmiClient = await getBitcoinPublicClient(client, ChainId.BTC)
   const [balance, blockCount] = await Promise.allSettled([
     bigmiClient.getBalance({ address: walletAddress }),
@@ -28,19 +34,11 @@ export const getBitcoinBalance = async (
 
   const blockNumber =
     blockCount.status === 'fulfilled' ? BigInt(blockCount.value) : 0n
+  // A failed request sets no amount, so callers can tell an unknown balance
+  // from a known zero.
+  const amount = balance.status === 'fulfilled' ? { amount: balance.value } : {}
 
-  if (balance.status !== 'fulfilled') {
-    // RPC failed — leave amount undefined so callers can distinguish
-    // an unknown balance from a known zero.
-    return tokens.map((token) => ({
-      ...token,
-      blockNumber,
-    }))
-  }
-
-  return tokens.map((token) => ({
-    ...token,
-    amount: balance.value,
-    blockNumber,
-  }))
+  return tokens.map((token) =>
+    isBitcoinToken(token) ? { ...token, ...amount, blockNumber } : { ...token }
+  )
 }

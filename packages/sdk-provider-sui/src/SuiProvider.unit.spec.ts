@@ -1,4 +1,4 @@
-import { ChainType, ProviderError } from '@lifi/sdk'
+import { ChainId, ChainType, ProviderError } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { SuiProvider } from './SuiProvider.js'
 import { SuiTokenLongAddress, SuiTokenShortAddress } from './types.js'
@@ -98,5 +98,17 @@ describe('SuiProvider', () => {
     expect(executor).toBeDefined()
     expect(mockGetClient).toHaveBeenCalledOnce()
     expect(mockGetSigner).toHaveBeenCalledOnce()
+  })
+
+  it('answers isAddress as without a chain ID', () => {
+    const provider = SuiProvider()
+    const wallet = `0x${'ab'.repeat(32)}`
+    expect(provider.isAddress(wallet, ChainId.SUI)).toBe(true)
+    for (const address of [wallet, 'laptop']) {
+      expect(provider.isAddress(address, ChainId.SUI)).toBe(
+        provider.isAddress(address)
+      )
+    }
+    expect(provider.isAddress('laptop', ChainId.SUI)).toBe(false)
   })
 })
