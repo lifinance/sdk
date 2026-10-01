@@ -81,6 +81,10 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
       }
     )
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the await above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const signedTransaction = await wallet.signTransaction(transaction)
 
     // Stored before the first broadcast, so a reload after signing resends

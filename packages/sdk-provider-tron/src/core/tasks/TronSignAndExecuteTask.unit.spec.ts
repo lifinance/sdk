@@ -105,6 +105,37 @@ describe('TronSignAndExecuteTask', () => {
     expect(updateAction).not.toHaveBeenCalled()
   })
 
+  // An older run's late write can merge its transaction into this action
+  // while the task re-anchors the transaction (spec addendum §5.2 case 1).
+  it('checks the action again right before the wallet and never asks it to sign when a transaction merged meanwhile', async () => {
+    const { context, signTransaction, updateAction } = makeContext({
+      type: 'SWAP',
+      status: 'STARTED',
+    })
+    const { statusManager } = context as {
+      statusManager: { findAction: () => unknown }
+    }
+    callTronRpcsWithRetry.mockImplementationOnce(async () => {
+      statusManager.findAction = () => ({
+        type: 'SWAP',
+        status: 'ACTION_REQUIRED',
+        txHex: JSON.stringify(SIGNED_TRANSACTION),
+      })
+      return UNSIGNED_TRANSACTION
+    })
+
+    await expect(
+      new TronSignAndExecuteTask().run(context)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(callTronRpcsWithRetry).toHaveBeenCalledTimes(1)
+    expect(signTransaction).not.toHaveBeenCalled()
+    // Only the prompt status before the re-anchor; no transaction write.
+    expect(updateAction.mock.calls.map(([, , status]) => status)).toEqual([
+      'ACTION_REQUIRED',
+    ])
+  })
+
   it('signs again after a final failure of the previous transaction', async () => {
     const { context, signTransaction, updateAction } = makeContext({
       type: 'SWAP',
