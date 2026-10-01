@@ -3,6 +3,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
@@ -61,7 +62,9 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const firstTask = swapOrBridgeAction?.txHash
+    // Same predicate as the pre-sign guard: an open transaction is waited
+    // for, a FAILED action with a final outcome signs again.
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
       ? swapOrBridgeAction?.status === 'DONE'
         ? WaitForTransactionStatusTask
         : BitcoinWaitForTransactionTask

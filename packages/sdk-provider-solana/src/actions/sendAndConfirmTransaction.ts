@@ -34,6 +34,13 @@ export async function sendAndConfirmTransaction(
   options?: {
     /** Runs once, when the first RPC accepts a send. */
     onBroadcast?: () => void
+    /**
+     * Asked before every send, the resends included. `false` refuses the
+     * send as a failed one, and polling goes on. The wait tasks close it at
+     * the resend age cap, so stored bytes without their own expiry are never
+     * sent past it (spec 4.2.8).
+     */
+    mayResend?: () => boolean
   }
 ): Promise<RaceResult<SignatureStatus>> {
   const [solanaRpcs, writeRpcUrls = []] = await Promise.all([
@@ -89,6 +96,13 @@ export async function sendAndConfirmTransaction(
     rpc: SolanaRpcType,
     signal: AbortSignal
   ): Promise<void> => {
+    // Refused as a failed send, so the branch keeps polling: the bytes may
+    // already be on their way from an earlier send.
+    if (options?.mayResend && !options.mayResend()) {
+      throw new Error(
+        'The resend age cap has passed; the stored transaction is not sent again.'
+      )
+    }
     await rpc
       .sendTransaction(signedTxSerialized, rawTransactionOptions)
       .send({ abortSignal: signal })
@@ -197,6 +211,10 @@ export async function sendAndConfirmTransaction(
   // Reads `sendAccepted`, never `broadcastReported`: the latter is false
   // whenever the integrator's callback threw, which says nothing about whether
   // the network took the transaction.
+  //
+  // `expired` is left alone: once the blockhash is dead every send may be
+  // rejected, so "nothing was accepted" is expected there. Rewriting it would
+  // block the dropped verdict for good.
   if (result.kind === 'not-confirmed' && !sendAccepted) {
     return { kind: 'rpc-unavailable', errors: result.errors }
   }

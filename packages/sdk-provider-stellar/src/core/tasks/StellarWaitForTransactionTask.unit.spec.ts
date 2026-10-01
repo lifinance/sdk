@@ -1,6 +1,30 @@
 import { LiFiErrorCode, TransactionError } from '@lifi/sdk'
 import { Networks } from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  buildSignedTransaction,
+  coveringNotFound,
+  MAX_TIME,
+  MIN_TIME,
+  NETWORK,
+  rejection,
+} from './helpers/classifySubmitFailure.unit.mock.js'
+import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
+
+const isKnownToStatusApi = vi.fn()
+vi.mock('@lifi/sdk', async () => {
+  const actual = await vi.importActual<typeof import('@lifi/sdk')>('@lifi/sdk')
+  return {
+    ...actual,
+    isKnownToStatusApi: (...args: unknown[]) => isKnownToStatusApi(...args),
+  }
+})
+
+// The absence proof reads every RPC; only the transport is replaced.
+const getTransaction = vi.fn()
+vi.mock('../../client/getStellarRpc.js', () => ({
+  getStellarRpcs: async () => [{ getTransaction }],
+}))
 
 const submitStellarTransaction = vi.fn()
 vi.mock('./helpers/submitStellarTransaction.js', () => ({
@@ -206,5 +230,90 @@ describe('StellarWaitForTransactionTask', () => {
     const swap = makeContext({ type: 'SWAP' }, { transactionHash: 'h' })
     await new StellarWaitForTransactionTask().run(swap.context)
     expect(swap.updateAction).not.toHaveBeenCalled()
+  })
+})
+
+describe('StellarWaitForTransactionTask rejected re-submit on resume', () => {
+  // The stored envelope; `classifySubmitFailure` reads its time bounds.
+  const TX_HEX = buildSignedTransaction({
+    minTime: MIN_TIME,
+    maxTime: MAX_TIME,
+  }).toXdr()
+  // The sign task persists the hash derived from the same envelope.
+  const TX_HASH = deriveTransactionHash(TX_HEX, NETWORK)
+
+  const runResumed = async (
+    error: unknown,
+    txHash: string = TX_HASH
+  ): Promise<unknown> => {
+    submitStellarTransaction.mockRejectedValue(error)
+    const { context } = makeContext({ type: 'SWAP', txHash, txHex: TX_HEX })
+    return new StellarWaitForTransactionTask()
+      .run(context)
+      .catch((caught: unknown) => caught)
+  }
+
+  beforeEach(() => {
+    submitStellarTransaction.mockReset()
+    waitForStellarTransaction
+      .mockReset()
+      .mockRejectedValue(
+        new TransactionError(LiFiErrorCode.Timeout, 'not confirmed in time')
+      )
+    probeStellarTransaction.mockReset().mockResolvedValue('not-found')
+    getTransaction.mockReset().mockResolvedValue(coveringNotFound())
+    isKnownToStatusApi.mockReset().mockResolvedValue(false)
+  })
+
+  it('is final for a covering NOT_FOUND past the head that the status API does not know', async () => {
+    const thrown = await runResumed(rejection('txTooLate'))
+
+    expect(thrown).toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Stellar transaction submission failed: txTooLate',
+      final: true,
+    })
+    expect(getTransaction).toHaveBeenCalledWith(TX_HASH)
+    expect(isKnownToStatusApi).toHaveBeenCalledWith({}, {}, TX_HASH)
+  })
+
+  // Damaged storage: the stored envelope is another transaction than the
+  // stored txHash. It proves nothing about it, and it may have been sent, so
+  // the task neither submits nor classifies: it only polls by txHash.
+  it('never submits or finalizes when the stored envelope hashes to another value', async () => {
+    const thrown = await runResumed(rejection('txTooLate'), 'persisted-hash')
+
+    expect(thrown).toMatchObject({ code: LiFiErrorCode.Timeout, final: false })
+    expect(probeStellarTransaction).not.toHaveBeenCalled()
+    expect(submitStellarTransaction).not.toHaveBeenCalled()
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+    expect(waitForStellarTransaction).toHaveBeenCalledWith(
+      {},
+      'persisted-hash',
+      undefined
+    )
+  })
+
+  // An RPC past its retention window: its history starts after the anchor.
+  it('stays unknown when oldestLedgerCloseTime is after the anchor', async () => {
+    getTransaction.mockResolvedValue(
+      coveringNotFound({ oldestLedgerCloseTime: MIN_TIME + 60 })
+    )
+    const error = rejection('txTooLate')
+
+    const thrown = await runResumed(error)
+
+    expect(thrown).toBe(error)
+    expect(thrown).toMatchObject({ final: false })
+  })
+
+  it('stays unknown when isKnownToStatusApi is true', async () => {
+    isKnownToStatusApi.mockResolvedValue(true)
+    const error = rejection('txTooLate')
+
+    const thrown = await runResumed(error)
+
+    expect(thrown).toBe(error)
+    expect(thrown).toMatchObject({ final: false })
   })
 })

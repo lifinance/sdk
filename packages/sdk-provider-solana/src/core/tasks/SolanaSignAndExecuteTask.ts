@@ -1,5 +1,7 @@
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   getTransactionRequestData,
   LiFiErrorCode,
   type TaskResult,
@@ -11,13 +13,15 @@ import { SolanaSignTransaction } from '@solana/wallet-standard-features'
 import type { SolanaStepExecutorContext } from '../../types.js'
 import { base64ToUint8Array } from '../../utils/base64ToUint8Array.js'
 import { getWalletFeature } from '../../utils/getWalletFeature.js'
+import { encodeStoredTransactions } from '../../utils/storedTransactions.js'
+import { readSignature } from './readSignature.js'
 
 export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: SolanaStepExecutorContext): Promise<TaskResult> {
     const {
       step,
       wallet,
-      walletAccount,
+      getWalletAccount,
       statusManager,
       executionOptions,
       isBridgeExecution,
@@ -27,12 +31,23 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       step,
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
+
+    // Defence in depth: the selector sends an action with an open
+    // transaction to the wait task. Signing here could put a second
+    // transaction on chain while the first can still land.
+    assertNoOpenTransaction(action)
+
     if (!action) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. Action not found.'
       )
     }
+
+    // Resolved here and not in `createContext`: a resume that only waits
+    // never signs, so it must not fail because the wallet has not
+    // reconnected yet.
+    const walletAccount = getWalletAccount(step)
 
     const transactionRequestData = (await getTransactionRequestData(
       step,
@@ -51,6 +66,10 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     const transactionBytesArray = transactionDataArray.map((data) =>
       base64ToUint8Array(data)
     )
+
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the await above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
 
     const signedTransactionOutputs = await withTimeout(
       async () => {
@@ -90,17 +109,15 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // every send failure all sit between this task and the first broadcast.
     // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
     //
-    // Both are still written as an explicit `undefined`, which clears what a
-    // restarted `PENDING` action carried over from a previous run.
-    // `prepareRestart` keeps that action *because* its `txHash` is truthy, so
-    // leaving the signature in place would report the previous run's hash if
-    // this run failed before its first broadcast. It therefore has to run
-    // BEFORE the decode below, which can throw on a malformed wallet
-    // output and would otherwise strand the previous run's signature.
+    // The previous transaction's fields (`CLEARED_TRANSACTION_FIELDS`:
+    // `txHash`, `txLink`, `txHex`, `txFinal`, `taskId`) are cleared
+    // explicitly. Only a final failure reaches this task with them set, and a
+    // stale hash would look open again once its `txFinal` is gone (spec
+    // 4.2.1). This write runs BEFORE the decode below, which can throw on a
+    // malformed wallet output and would otherwise strand the old fields.
     statusManager.updateAction(step, action.type, 'PENDING', {
+      ...CLEARED_TRANSACTION_FIELDS,
       signedAt: Date.now(),
-      txHash: undefined,
-      txLink: undefined,
     })
 
     const transactionCodec = getTransactionCodec()
@@ -109,6 +126,24 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     const signedTransactions = signedTransactionOutputs.map((output) =>
       transactionCodec.decode(output.signedTransaction)
     )
+
+    // Every transaction must carry its fee payer signature before its bytes
+    // are stored (spec 4.2.9): an unreadable value would fail every resume
+    // the same way. Nothing has been sent yet, so the `TransactionUnprepared`
+    // this throws leaves "Try again" free to sign again.
+    for (const signedTransaction of signedTransactions) {
+      readSignature(signedTransaction)
+    }
+
+    // Stored before any send: a reload from here on resends these bytes
+    // instead of asking the wallet again. A bundle stays a JSON array, which
+    // is how a resume knows to submit it with `sendBundle`.
+    statusManager.updateAction(step, action.type, 'PENDING', {
+      txHex: encodeStoredTransactions(
+        signedTransactionOutputs.map((output) => output.signedTransaction),
+        isBundleExecution
+      ),
+    })
 
     return {
       status: 'COMPLETED',

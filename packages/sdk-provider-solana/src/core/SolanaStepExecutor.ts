@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
@@ -54,14 +55,12 @@ export class SolanaStepExecutor extends BaseStepExecutor {
   override createContext = async (
     baseContext: StepExecutorBaseContext
   ): Promise<SolanaStepExecutorContext> => {
-    const { step } = baseContext
-
-    const walletAccount = this.getWalletAccount(step)
-
+    // The account is resolved by the sign task, not here: a resume that only
+    // waits must not fail because the wallet has not reconnected yet.
     return {
       ...baseContext,
       wallet: this.wallet,
-      walletAccount,
+      getWalletAccount: this.getWalletAccount,
       skipSimulation: this.skipSimulation,
     }
   }
@@ -86,10 +85,18 @@ export class SolanaStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const firstTask =
-      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+    // Three-way, as Stellar and Bitcoin do. An open transaction - a broadcast
+    // signature, or signed bytes that may have been sent - resumes at the
+    // wait task, which looks it up and resends the same bytes. Starting at
+    // CheckBalanceTask would fetch a new quote and sign a second transaction
+    // while the first can still land. A same-chain swap stays PENDING with
+    // its signature until the LI.FI status is DONE, so this is the common
+    // reload.
+    const firstTask = hasOpenTransaction(swapOrBridgeAction)
+      ? swapOrBridgeAction?.status === 'DONE'
         ? WaitForTransactionStatusTask
-        : CheckBalanceTask
+        : SolanaWaitForTransactionTask
+      : CheckBalanceTask
 
     // Compare classes, not names: a minifier can give two task classes the
     // same name.

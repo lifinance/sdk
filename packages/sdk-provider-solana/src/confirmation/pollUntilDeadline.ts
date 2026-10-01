@@ -86,9 +86,13 @@ export async function pollUntilDeadline<T>(options: {
     // mid-read is not. The final probe below is a bonus on top of a complete
     // observation, so losing it must not downgrade the verdict.
     let deadlineReached = false
+    // Latched when the loop ends: did the blockhash verdict end it, or the
+    // ceiling? Only the verdict may later count as "dropped".
+    let expiredAtDeadline: bigint | undefined
     while (!signal.aborted) {
       if (deadline.reached()) {
         deadlineReached = true
+        expiredAtDeadline = deadline.expiredAt()
         break
       }
       try {
@@ -151,7 +155,16 @@ export async function pollUntilDeadline<T>(options: {
     // would discard every observation and report a fleet-wide expiry as an
     // outage.
     if (probeSucceeded && deadlineReached) {
-      return { kind: 'not-confirmed' }
+      // `expired` needs the verdict both when the loop ended and now. The
+      // detached loop keeps probing through the final probe, and a blockhash
+      // that reads valid again withdraws the verdict. A withdrawn verdict and
+      // one that arrived only after the ceiling are both no expiry. The slot
+      // is the one the deadline reports now.
+      const expiredAt =
+        expiredAtDeadline === undefined ? undefined : deadline.expiredAt()
+      return expiredAt === undefined
+        ? { kind: 'not-confirmed' }
+        : { kind: 'expired', slot: expiredAt }
     }
 
     if (options.neverBroadcast?.()) {

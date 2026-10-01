@@ -5,6 +5,7 @@ import type { ExecutionActionType, SDKClient } from '../../../types/core.js'
 import { waitForResult } from '../../../utils/waitForResult.js'
 import { getSubstatusMessage } from '../../actionMessages.js'
 import type { StatusManager } from '../../StatusManager.js'
+import { getStepStatusRequest } from './getStepStatusRequest.js'
 
 const TRANSACTION_HASH_OBSERVERS: Record<string, Promise<StatusResponse>> = {}
 
@@ -17,14 +18,7 @@ export async function waitForTransactionStatus(
   interval = 5_000
 ): Promise<StatusResponse> {
   const _getStatus = (): Promise<StatusResponse | undefined> => {
-    return getStatus(client, {
-      fromChain: step.action.fromChainId,
-      fromAddress: step.action.fromAddress,
-      toChain: step.action.toChainId,
-      txHash,
-      ...(step.tool !== 'custom' && { bridge: step.tool }),
-      ...(step.transactionId && { transactionId: step.transactionId }),
-    })
+    return getStatus(client, getStepStatusRequest(step, txHash))
       .then((statusResponse) => {
         switch (statusResponse.status) {
           case 'DONE':

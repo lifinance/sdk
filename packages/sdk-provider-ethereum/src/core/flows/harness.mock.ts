@@ -519,6 +519,12 @@ export interface ScenarioOptions {
   erc1271Response?: Hex | 'revert'
   /** Forwarded to `EthereumProvider`, i.e. the execution context flag. */
   disableMessageSigning?: boolean
+  /**
+   * Awaited inside the wallet's `sendTransaction`, after the call is recorded
+   * and before the hash is returned. `callIndex` counts the scenario's sends
+   * from 0. Return a pending promise to hold the wallet prompt open.
+   */
+  beforeSendTransaction?: (callIndex: number) => Promise<void>
   /** Wallet signing behaviour. Throw to model a user rejection. */
   onSignTypedData?: (
     request: SignTypedDataRequest,
@@ -529,7 +535,7 @@ export interface ScenarioOptions {
    * endpoint: it answers with a transaction and *drops* the typed data it was
    * posted, so a scenario that wants typed data back has to say so.
    */
-  onStepTransaction?: (step: LiFiStep) => LiFiStep
+  onStepTransaction?: (step: LiFiStep) => LiFiStep | Promise<LiFiStep>
   /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
   onRelayerQuote?: (step: LiFiStep) => LiFiStep
   /**
@@ -555,6 +561,12 @@ export interface ScenarioOptions {
    * own interaction gate.
    */
   executeInBackground?: boolean
+  /**
+   * Called with the live route on every `updateRouteHook` fire, after the
+   * harness recorded it. The reload specs persist a snapshot from here, the
+   * way the widget writes the route to storage.
+   */
+  onRouteUpdate?: (route: RouteExtended) => void
 }
 
 export interface Scenario {
@@ -566,6 +578,11 @@ export interface Scenario {
   runExpectingFailure(): Promise<Error>
   /** The retry a consumer performs after a failure: `resumeRoute`. */
   retry(): Promise<RouteExtended>
+  /**
+   * `resumeRoute` with a route the caller supplies, e.g. a snapshot restored
+   * from storage after a page reload. Uses this scenario's client and hook.
+   */
+  resume(route: RouteExtended): Promise<RouteExtended>
   /** The route as the consumer last saw it through `updateRouteHook`. */
   route(): RouteExtended
   /** The step inside {@link Scenario.route}, after the pipeline mutated it. */
@@ -714,6 +731,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
   const erc1271Response = options.erc1271Response ?? ERC1271_ACCEPTED
 
   let signCallIndex = 0
+  let sendCallIndex = 0
   let txCounter = 0
   const nextHash = (): Hash => {
     txCounter += 1
@@ -832,6 +850,9 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
         data: request.data,
         value: request.value,
       })
+      const index = sendCallIndex
+      sendCallIndex += 1
+      await options.beforeSendTransaction?.(index)
       return nextHash()
     },
     sendCalls: async (request: {
@@ -911,6 +932,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     updateRouteHook: (updatedRoute: RouteExtended) => {
       latestRoute = updatedRoute
       record({ kind: 'routeUpdate' })
+      options.onRouteUpdate?.(updatedRoute)
     },
     ...(options.executeInBackground !== undefined && {
       executeInBackground: options.executeInBackground,
@@ -989,6 +1011,8 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       throw new Error('Expected the route execution to fail, but it succeeded.')
     },
     retry: () => resumeRoute(client, requireRoute(), executionOptions),
+    resume: (persistedRoute: RouteExtended) =>
+      resumeRoute(client, persistedRoute, executionOptions),
     route: requireRoute,
     executedStep: () => requireRoute().steps[0],
     events<K extends TimelineKind>(kind: K, fromSeq = 0): TimelineEventOf<K>[] {

@@ -14,9 +14,26 @@ export class ProviderError extends BaseError {
   }
 }
 
+export interface TransactionErrorOptions {
+  /**
+   * The chain gave a definite answer about the transaction (reverted, dropped,
+   * cancelled or replaced). The step executor then flags the failed action
+   * with `txFinal`, so a restart signs a new transaction.
+   */
+  final?: boolean
+}
+
 export class TransactionError extends BaseError {
-  constructor(code: LiFiErrorCode, message: string, cause?: Error) {
+  readonly final: boolean
+
+  constructor(
+    code: LiFiErrorCode,
+    message: string,
+    cause?: Error,
+    options?: TransactionErrorOptions
+  ) {
     super(ErrorName.TransactionError, code, message, cause)
+    this.final = options?.final ?? false
   }
 }
 

@@ -21,15 +21,21 @@ function createOnChainFailureError(
   reason?: string
 ): TransactionError {
   const stem = messageStem.replace(/\.$/, '')
+  // The transaction is in a block and failed there: the outcome is final, so
+  // "Try again" may sign a new transaction.
   if (reason === 'OUT_OF_ENERGY') {
     return new TransactionError(
       LiFiErrorCode.InsufficientFunds,
-      `${stem}: ${reason}. The account may need more TRX to cover the energy fee.`
+      `${stem}: ${reason}. The account may need more TRX to cover the energy fee.`,
+      undefined,
+      { final: true }
     )
   }
   return new TransactionError(
     LiFiErrorCode.TransactionFailed,
-    reason ? `${stem}: ${reason}.` : `${stem}.`
+    reason ? `${stem}: ${reason}.` : `${stem}.`,
+    undefined,
+    { final: true }
   )
 }
 
@@ -39,9 +45,11 @@ function createOnChainFailureError(
  * Tron marks a failed execution with a top-level `result: 'FAILED'` (omitted on
  * success) and puts the reason in `receipt.result`; both are checked. Throws
  * `TransactionError` without retry on failure (`InsufficientFunds` for
- * OUT_OF_ENERGY, `TransactionFailed` otherwise). Tolerates up to
- * `TRON_POLL_MAX_ERROR_RETRIES` transient RPC errors and caps total polls at
- * `TRON_POLL_MAX_POLLS`, since `waitForResult`'s maxRetries counts errors only.
+ * OUT_OF_ENERGY, `TransactionFailed` otherwise); these errors are marked
+ * `final`. Tolerates up to `TRON_POLL_MAX_ERROR_RETRIES` transient RPC errors
+ * and caps total polls at `TRON_POLL_MAX_POLLS`, since `waitForResult`'s
+ * maxRetries counts errors only. The poll timeout and RPC errors are not
+ * final: the transaction may still be included.
  */
 export async function waitForTronTxConfirmation(
   client: SDKClient,

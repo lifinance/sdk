@@ -48,7 +48,9 @@ export const waitForRelayedTransactionReceipt = async (
         case 'FAILED':
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
-            'Transaction was reverted.'
+            'Transaction was reverted.',
+            undefined,
+            { final: true }
           )
         default:
           throw new TransactionError(

@@ -1,7 +1,7 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
 import type { RaceResult } from '../../confirmation/raceRpcs.js'
-import { unwrapConfirmation } from './unwrapConfirmation.js'
+import { confirmationError, unwrapConfirmation } from './unwrapConfirmation.js'
 
 const MESSAGES = {
   rpcUnavailable: 'every RPC failed',
@@ -85,5 +85,30 @@ describe('unwrapConfirmation', () => {
     })
 
     expect(thrown.stack).toContain('theEndpointThatActuallyFailed')
+  })
+
+  it('maps expired to the same TransactionExpired as not-confirmed, with no final marker', () => {
+    // The texts integrators see must not change. Only the wait task may call
+    // an expiry final: it needs the history lookup and the status API first.
+    const errors = [new Error('429')]
+    const thrown = capture({ kind: 'expired', slot: 900n, errors })
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    const error = thrown as TransactionError
+    expect(error.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(error.message).toBe('not confirmed before the SDK stopped waiting')
+    expect(error.final).toBe(false)
+    expect((error.cause as AggregateError).errors).toEqual(errors)
+  })
+
+  it('builds the thrown error without throwing, for the wait tasks', () => {
+    const error = confirmationError(
+      { kind: 'rpc-unavailable', errors: [new Error('429')] },
+      MESSAGES
+    )
+
+    expect(error).toBeInstanceOf(RPCError)
+    expect(error.code).toBe(LiFiErrorCode.RpcUnavailable)
+    expect(error.message).toBe('every RPC failed')
   })
 })
