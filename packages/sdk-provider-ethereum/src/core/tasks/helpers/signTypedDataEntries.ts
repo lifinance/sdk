@@ -14,12 +14,17 @@ export type SignTypedDataEntriesResult =
   | { status: 'PAUSED' }
   | { status: 'COMPLETED'; signedTypedData: SignedTypedData[] }
 
-/** Signs the entries in order, switching chains per entry, and appends the signatures. */
+/**
+ * Signs the entries in order, switching chains per entry, and appends the
+ * signatures. `beforeSignature` runs right before each wallet call, after the
+ * chain switch; it throws to stop the signing.
+ */
 export async function signTypedDataEntries(
   context: EthereumStepExecutorContext,
   entries: TypedData[],
   actionType: ExecutionActionType,
-  actionStatus: ExecutionActionStatus = 'ACTION_REQUIRED'
+  actionStatus: ExecutionActionStatus = 'ACTION_REQUIRED',
+  beforeSignature?: () => void
 ): Promise<SignTypedDataEntriesResult> {
   const {
     step,
@@ -50,6 +55,7 @@ export async function signTypedDataEntries(
       return { status: 'PAUSED' }
     }
 
+    beforeSignature?.()
     const signature = await getAction(
       client,
       signTypedData,

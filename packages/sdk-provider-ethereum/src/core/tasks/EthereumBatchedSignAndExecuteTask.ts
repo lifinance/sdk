@@ -1,4 +1,5 @@
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
   CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
@@ -56,6 +57,11 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     }
 
     calls.push(transferCall)
+
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the awaits above
+    // (strategy, chain switch).
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
 
     const { id } = await getAction(
       updatedClient,

@@ -23,8 +23,13 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   }
 })
 
+vi.mock('../../hyperliquid/agentWallet.js', () => ({
+  getOrCreateAgentWallet: vi.fn(),
+}))
+
 import { relayTransaction } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
+import { getOrCreateAgentWallet } from '../../hyperliquid/agentWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecuteTask.js'
 
@@ -275,5 +280,80 @@ describe('EthereumRelayedSignAndExecuteTask.run transaction fields', () => {
     })
     expect(params?.txHash).toBeUndefined()
     expect(params?.txFinal).toBeUndefined()
+  })
+})
+
+describe('EthereumRelayedSignAndExecuteTask.run second pre-sign guard', () => {
+  /** What an older run's late write merges into this action. */
+  const mergeOpenTransaction = (context: EthereumStepExecutorContext): void => {
+    vi.mocked(context.statusManager.findAction).mockReturnValue({
+      type: 'SWAP',
+      status: 'MESSAGE_REQUIRED',
+      taskId: `0x${'01'.repeat(32)}`,
+    } as never)
+  }
+
+  // An older run's late write can merge its transaction into this action
+  // during any await before a signature (spec addendum §5.2 case 1). The
+  // chain check of each entry is the last one.
+  it('checks the action again right before signTypedData and never calls it when a transaction merged meanwhile', async () => {
+    const context = buildContext()
+    vi.mocked(context.checkClient).mockImplementationOnce(async () => {
+      mergeOpenTransaction(context)
+      return { account: { address: FROM_ADDRESS } } as never
+    })
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(context.checkClient).toHaveBeenCalledTimes(1)
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(relayTransaction).not.toHaveBeenCalled()
+  })
+
+  it('checks the action again right before a Hyperliquid signature and never asks for it when a transaction merged meanwhile', async () => {
+    const agentSignTypedData = vi.fn()
+    vi.mocked(getOrCreateAgentWallet).mockResolvedValue({
+      account: { address: FROM_ADDRESS, signTypedData: agentSignTypedData },
+      needsApproval: true,
+      expiresAt: 1_900_000_000_000,
+    } as never)
+    const base = buildContext()
+    const context = {
+      ...base,
+      step: {
+        ...base.step,
+        tool: 'hyperliquidSpotProtocol',
+        typedData: [
+          {
+            primaryType: 'HyperliquidTransaction:ApproveAgent',
+            domain: { chainId: SOURCE_CHAIN },
+            types: {},
+            message: { agentAddress: FROM_ADDRESS, agentName: 'lifi' },
+          },
+          {
+            primaryType: 'Agent',
+            domain: { chainId: 1337 },
+            types: {},
+            message: { source: 'a', connectionId: `0x${'cc'.repeat(32)}` },
+          },
+        ],
+      },
+      fromChain: { id: SOURCE_CHAIN },
+      ethereumClient: { account: { address: FROM_ADDRESS } },
+      getStorage: () => ({}),
+    } as unknown as EthereumStepExecutorContext
+    vi.mocked(context.checkClient).mockImplementationOnce(async () => {
+      mergeOpenTransaction(context)
+      return { account: { address: FROM_ADDRESS } } as never
+    })
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(context.checkClient).toHaveBeenCalledTimes(1)
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(agentSignTypedData).not.toHaveBeenCalled()
+    expect(relayTransaction).not.toHaveBeenCalled()
   })
 })

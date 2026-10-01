@@ -1,4 +1,4 @@
-import type { LiFiStep } from '@lifi/sdk'
+import { LiFiErrorCode, type LiFiStep } from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import type { EthereumStepExecutorContext } from '../../types.js'
@@ -55,5 +55,28 @@ describe('EthereumBatchedSignAndExecuteTask.run', () => {
     expect(params).toMatchObject({ taskId: BATCH_ID, txType: 'batched' })
     expect(params?.txHash).toBeUndefined()
     expect(params?.txFinal).toBeUndefined()
+  })
+})
+
+describe('EthereumBatchedSignAndExecuteTask.run second pre-sign guard', () => {
+  // An older run's late write can merge its transaction into this action
+  // while the chain is checked (spec addendum §5.2 case 1).
+  it('checks the action again right before sendCalls and never calls it when a transaction merged meanwhile', async () => {
+    const { context, sendCalls } = buildContext()
+    vi.mocked(context.checkClient).mockImplementationOnce(async () => {
+      vi.mocked(context.statusManager.findAction).mockReturnValue({
+        type: 'SWAP',
+        status: 'ACTION_REQUIRED',
+        taskId: `0x${'01'.repeat(32)}`,
+      } as never)
+      return { account: { address: FROM_ADDRESS }, sendCalls } as never
+    })
+
+    await expect(
+      new EthereumBatchedSignAndExecuteTask().run(context)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+    expect(context.checkClient).toHaveBeenCalledTimes(1)
+    expect(sendCalls).not.toHaveBeenCalled()
+    expect(context.statusManager.updateAction).not.toHaveBeenCalled()
   })
 })
