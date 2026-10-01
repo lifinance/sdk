@@ -3,8 +3,10 @@ import {
   CheckBalanceTask,
   type ExecutionAction,
   MAX_RESEND_AGE_MS,
+  StatusManager,
   WaitForTransactionStatusTask,
 } from '@lifi/sdk'
+import { Psbt } from 'bitcoinjs-lib'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@bigmi/core', async (importOriginal) => {
@@ -239,5 +241,94 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
     expect(sendUTXOTransaction).not.toHaveBeenCalled()
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
     expect(signPsbt).not.toHaveBeenCalled()
+  })
+})
+
+describe('BitcoinStepExecutor first run', () => {
+  const stopAfterWait = new Error('stop after the wait')
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(Date, 'now').mockReturnValue(NOW)
+    // The balance check reads balances over the network.
+    vi.spyOn(CheckBalanceTask.prototype, 'run').mockResolvedValue({
+      status: 'COMPLETED',
+    })
+    vi.mocked(signPsbt).mockResolvedValue('SIGNED_PSBT' as never)
+    // An input-less PSBT keeps the signing path free of real keys.
+    vi.spyOn(Psbt, 'fromHex')
+      .mockReturnValueOnce({
+        data: { inputs: [] },
+        toHex: () => 'UNSIGNED_PSBT',
+      } as unknown as Psbt)
+      .mockReturnValueOnce({
+        extractTransaction: () => ({
+          toHex: () => TX_HEX,
+          getId: () => TX_HASH,
+        }),
+        finalizeAllInputs: vi.fn(),
+      } as unknown as Psbt)
+    // The pipeline stops at the chain wait, before the status API task.
+    vi.mocked(waitForTransaction).mockRejectedValue(stopAfterWait)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('signs, sends once and waits without a resend in the same run', async () => {
+    const executor = new BitcoinStepExecutor({
+      routeId: 'route-1',
+      client: {} as Client,
+    })
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const request = vi.fn().mockResolvedValue(TX_HASH)
+    // As in bigmi: the resend is a `sendrawtransaction` request too.
+    const sendUTXOTransaction = vi.fn(({ hex }: { hex: string }) =>
+      request({ method: 'sendrawtransaction', params: [hex] })
+    )
+    const context = {
+      step: {
+        action: { fromAddress: SENDER },
+        transactionRequest: { data: 'PSBT_HEX' },
+        execution: {
+          status: 'PENDING',
+          actions: [{ type: 'SWAP', status: 'STARTED' }],
+        },
+      },
+      isBridgeExecution: false,
+      allowUserInteraction: true,
+      statusManager,
+      walletClient: { account: { address: SENDER } },
+      publicClient: { request, sendUTXOTransaction },
+      fromChain: {
+        metamask: { blockExplorerUrls: ['https://mempool.space/'] },
+      },
+      checkClient: vi.fn(),
+    } as unknown as BitcoinStepExecutorContext
+
+    const outcome = await executor
+      .createPipeline(context)
+      .run(context)
+      .catch((error: unknown) => error)
+
+    expect(outcome).toBe(stopAfterWait)
+    expect(signPsbt).toHaveBeenCalledTimes(1)
+    // Within the age cap: only the sign task's flag stops a resend.
+    expect(context.step.execution?.signedAt).toBe(NOW)
+    expect(context.bitcoinSent).toBe(true)
+    const sends = request.mock.calls.filter(
+      ([args]) => (args as { method: string }).method === 'sendrawtransaction'
+    )
+    expect(sends).toEqual([
+      [{ method: 'sendrawtransaction', params: [TX_HEX] }, { retryCount: 0 }],
+    ])
+    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(waitForTransaction).toHaveBeenCalledTimes(1)
+    expect(waitForTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ txId: TX_HASH, txHex: TX_HEX })
+    )
   })
 })

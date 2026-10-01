@@ -1,4 +1,4 @@
-import { LiFiErrorCode, MAX_RESEND_AGE_MS } from '@lifi/sdk'
+import { LiFiErrorCode, MAX_RESEND_AGE_MS, TransactionError } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@bigmi/core', async (importOriginal) => {
@@ -146,7 +146,7 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
   })
 
   it('waits when the resend fails', async () => {
-    const { context, sendUTXOTransaction } = makeContext({
+    const { context, updateAction, sendUTXOTransaction } = makeContext({
       signedAt: NOW - 30_000,
     })
     sendUTXOTransaction.mockRejectedValue(
@@ -161,6 +161,28 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
 
     expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
+    // A failed resend changes nothing in the stored transaction.
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('checks the wallet before it resends: a changed wallet neither sends nor waits', async () => {
+    const walletChanged = new TransactionError(
+      LiFiErrorCode.WalletChangedDuringExecution,
+      'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
+    )
+    const { context, sendUTXOTransaction } = makeContext({
+      signedAt: NOW - 30_000,
+    })
+    vi.mocked(context.checkClient).mockImplementation(() => {
+      throw walletChanged
+    })
+
+    await expect(new BitcoinWaitForTransactionTask().run(context)).rejects.toBe(
+      walletChanged
+    )
+
+    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(waitForTransaction).not.toHaveBeenCalled()
   })
 
   it.each([
