@@ -26,6 +26,33 @@ const TX_ID = 'ab'.repeat(32)
 const rejected = (message: string): Error =>
   allTransportsFailed(SEND, [rpcError(SEND, { code: -26, message })])
 
+describe('the -26 reject reason lists', () => {
+  // Spec addendum §4.2. A wrong entry in the first list costs a new quote.
+  it('are the lists of the spec', () => {
+    expect(EVERY_NODE_REJECT_REASONS).toEqual([
+      'min relay fee not met',
+      'dust',
+      'scriptpubkey',
+      'bare-multisig',
+      'tx-size',
+      'version',
+      'non-final',
+      'non-BIP68-final',
+      'bad-txns-',
+      'mandatory-script-verify-flag-failed',
+      'non-mandatory-script-verify-flag',
+    ])
+    expect(MEMPOOL_STATE_REJECT_REASONS).toEqual([
+      'mempool min fee not met',
+      'mempool full',
+      'txn-mempool-conflict',
+      'too-long-mempool-chain',
+      'insufficient fee',
+      'bad-txns-spends-conflicting-tx',
+    ])
+  })
+})
+
 describe('classifyBitcoinSendFailure', () => {
   it('counts the probed decode failure (-22) as refused by every node', () => {
     expect(
@@ -78,6 +105,14 @@ describe('classifyBitcoinSendFailure', () => {
     expect(classifyBitcoinSendFailure(rejected('mempool full, tx-size'))).toBe(
       'unknown'
     )
+  })
+
+  // The "bad-txns-" prefix matches it, but the conflict is with the
+  // transaction that one node's mempool holds.
+  it('keeps bad-txns-spends-conflicting-tx unknown', () => {
+    expect(
+      classifyBitcoinSendFailure(rejected('bad-txns-spends-conflicting-tx'))
+    ).toBe('unknown')
   })
 
   // bigmi's own `message` always ends with "Version: bigmi@…". Only the

@@ -56,6 +56,9 @@ export const MEMPOOL_STATE_REJECT_REASONS: readonly string[] = [
   'txn-mempool-conflict',
   'too-long-mempool-chain',
   'insufficient fee',
+  // Matched by the `bad-txns-` prefix too, but it conflicts with what one
+  // node's mempool holds.
+  'bad-txns-spends-conflicting-tx',
 ]
 
 /**

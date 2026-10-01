@@ -180,9 +180,20 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
     })
 
     try {
-      const sentTxHash = await publicClient.sendUTXOTransaction({ hex: txHex })
-      if (sentTxHash !== txHash) {
-        // Not expected: a node answers with the txid of the bytes it got.
+      // One round: bigmi's fallback retries a failed round up to 3 times, and
+      // its error keeps only the last round. A node of an earlier round may
+      // have accepted the bytes.
+      const sentTxHash: unknown = await publicClient.request(
+        { method: 'sendrawtransaction', params: [txHex] },
+        { retryCount: 0 }
+      )
+      // A node answers with the txid of the bytes it got. Without a txid,
+      // `getId()` stays; a different txid is not expected.
+      if (
+        typeof sentTxHash === 'string' &&
+        sentTxHash !== '' &&
+        sentTxHash !== txHash
+      ) {
         statusManager.updateAction(step, action.type, 'PENDING', {
           txHash: sentTxHash,
           txLink: txLinkOf(sentTxHash),
