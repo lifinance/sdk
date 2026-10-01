@@ -35,6 +35,18 @@ describe('parseSuiErrors', () => {
     expect(parsedError.cause.code).toBe(LiFiErrorCode.TransactionFailed)
   })
 
+  it('maps an Error that says "simulate" to TransactionSimulationFailed', async () => {
+    const error = new Error('Could not simulate the call')
+
+    const parsedError = await parseSuiErrors(error)
+
+    expect(parsedError.cause).toBeInstanceOf(TransactionError)
+    expect(parsedError.cause.code).toBe(
+      LiFiErrorCode.TransactionSimulationFailed
+    )
+    expect(parsedError.cause.cause).toBe(error)
+  })
+
   // The sign task tags a wallet rejection where it happens
   // (SuiSignAndExecuteTask). Here "reject" is only text from a node or an RPC.
   it('does not read "reject" in a node message as a wallet rejection', async () => {
@@ -102,6 +114,18 @@ describe('parseSuiErrors', () => {
       expect(parsedError.cause.message).toBe(ErrorMessage.UnknownError)
     }
   )
+
+  // A TypeError here would escape the catch of the step executor.
+  it.each([
+    ['an object whose message is a number', { message: 42 }],
+    ['a string', 'Wallet is locked'],
+  ])('maps %s to UnknownError without a TypeError', async (_label, thrown) => {
+    const parsedError = await parseSuiErrors(thrown as never)
+
+    expect(parsedError.cause).toBeInstanceOf(UnknownError)
+    expect(parsedError.cause.message).toBe(ErrorMessage.UnknownError)
+    expect(parsedError.cause.cause).toBe(thrown)
+  })
 
   it('should handle generic Error', async () => {
     const error = new Error('Something went wrong')

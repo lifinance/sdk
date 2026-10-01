@@ -334,6 +334,18 @@ describe('SuiSignAndExecuteTask', () => {
       expect(signTransaction).not.toHaveBeenCalled()
     })
 
+    it('does not classify an error from after the wallet call', async () => {
+      // The wallet signed. Here a validator refused the signed transaction.
+      const nodeError = new Error('Transaction rejected by validator')
+      const { context, executeTransaction } = makeContext()
+      executeTransaction.mockRejectedValue(nodeError)
+
+      await expect(new SuiSignAndExecuteTask().run(context)).rejects.toBe(
+        nodeError
+      )
+      expect(executeTransaction).toHaveBeenCalledTimes(1)
+    })
+
     // Wallets also throw values that are not an Error. The classification
     // must read them without a TypeError.
     it.each([

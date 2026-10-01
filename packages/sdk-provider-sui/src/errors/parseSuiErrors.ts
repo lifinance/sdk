@@ -34,22 +34,26 @@ const handleSpecificErrors = (e: any): BaseError => {
     return e
   }
 
-  // `e` can be any thrown value, also `undefined` or `null`.
+  // `e` can be any thrown value: also `undefined`, `null`, a string, or an
+  // object whose `message` is not a string. A TypeError here would escape the
+  // catch of the step executor.
+  const message: string = typeof e?.message === 'string' ? e.message : ''
+  const lowerCaseMessage = message.toLowerCase()
+
   if (
-    e?.message?.toLowerCase().includes('transaction') &&
-    (e.message.toLowerCase().includes('failed') ||
-      e.message.toLowerCase().includes('error'))
+    lowerCaseMessage.includes('transaction') &&
+    (lowerCaseMessage.includes('failed') || lowerCaseMessage.includes('error'))
   ) {
-    return new TransactionError(LiFiErrorCode.TransactionFailed, e.message, e)
+    return new TransactionError(LiFiErrorCode.TransactionFailed, message, e)
   }
 
-  if (e?.message?.includes('simulate') || e?.message?.includes('simulation')) {
+  if (message.includes('simulate') || message.includes('simulation')) {
     return new TransactionError(
       LiFiErrorCode.TransactionSimulationFailed,
-      e.message,
+      message,
       e
     )
   }
 
-  return new UnknownError(e?.message || ErrorMessage.UnknownError, e)
+  return new UnknownError(message || ErrorMessage.UnknownError, e)
 }
