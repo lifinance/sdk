@@ -180,6 +180,33 @@ describe('BaseStepExecutor.executeStep failure handling', () => {
     expect(swap.txFinal).toBeUndefined()
   })
 
+  // The widget picks its text by the code, so InternalError would hide the
+  // reason of the original error.
+  it('keeps the code of an original BaseError when a retry is turned into a failure', async () => {
+    const { step, route } = setup({ txHash: '0xswap' })
+    const error = new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction was reverted.',
+      undefined,
+      { final: true }
+    )
+    const retry = async (e: Error): Promise<ExecuteStepRetryError> =>
+      new ExecuteStepRetryError('retry', { atomicityNotReady: true }, e)
+    const executor = new TestStepExecutor(route.id, error, retry)
+
+    const thrown = await executor.executeStep(client, step).catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(SDKError)
+    expect((thrown as SDKError).code).toBe(LiFiErrorCode.TransactionFailed)
+    expect((thrown as SDKError).cause).toBe(error)
+    const swap = step.execution!.actions.find((a) => a.type === 'SWAP')!
+    expect(swap.status).toBe('FAILED')
+    expect(swap.error?.code).toBe(LiFiErrorCode.TransactionFailed)
+    expect(swap.error?.message).toBe('Transaction was reverted.')
+    expect(swap.txHash).toBe('0xswap')
+    expect(swap.txFinal).toBeUndefined()
+  })
+
   it('still retries when the step has no transaction data', async () => {
     const { step, route } = setup({})
     const error = new Error('wallet rejected upgrade')

@@ -1,3 +1,4 @@
+import { BaseError } from '../errors/baseError.js'
 import { ExecuteStepRetryError, UnknownError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import type {
@@ -118,8 +119,11 @@ export abstract class BaseStepExecutor implements StepExecutor {
         // A retry runs the step again on an empty execution, which would erase
         // the hash of a transaction that may still land. Fail with the original
         // error instead, and keep the outcome unknown so a resume re-checks it.
+        // A BaseError keeps its code, so the widget shows its text.
         parsed = new SDKError(
-          new UnknownError(error?.message || parsed.message, error),
+          error instanceof BaseError
+            ? error
+            : new UnknownError(error?.message || parsed.message, error),
           step,
           action
         )
