@@ -307,8 +307,8 @@ export type ExecutionAction = {
   /**
    * Provider-specific serialized signed transaction (hex, XDR, base64 or JSON).
    * Present while the transaction may still need to be (re)sent or looked up.
-   * Bitcoin and Stellar keep it; Solana, Tron and Sui clear it when no longer
-   * needed.
+   * Stellar keeps it, and Bitcoin keeps it unless every node refuses its first
+   * send; Solana, Tron and Sui clear it when no longer needed.
    */
   txHex?: string
   /**

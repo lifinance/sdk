@@ -18,8 +18,8 @@ export const TRANSACTION_ACTION_TYPES: readonly ExecutionActionType[] = [
 
 /**
  * Stored bytes on a chain without its own expiry (Sui, Solana with a durable
- * nonce) are resent only this long after signing. Past it, a page load could
- * otherwise execute a swap on a quote the user no longer expects.
+ * nonce, Bitcoin) are resent only this long after signing. Past it, a page
+ * load could otherwise execute a swap on a quote the user no longer expects.
  *
  * @internal
  */
