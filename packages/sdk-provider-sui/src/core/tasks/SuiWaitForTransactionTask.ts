@@ -177,8 +177,11 @@ async function findSuiTransaction(
 /**
  * Re-executes the stored bytes. `callSuiWithRetry` tries the nodes one by
  * one, so the age cap is checked before every try, and each try aborts when
- * the cap passes (spec 4.2.8). Past the cap it throws a timeout, which is not
- * a definite rejection, so the outcome stays unknown.
+ * the cap passes (spec 4.2.8). Past the cap it throws a plain error, which is
+ * not a definite rejection, so the outcome stays unknown.
+ *
+ * Not `AbortSignal.timeout`: a published SDK should not raise its runtime
+ * floor for it; one controller and one timer cover it.
  */
 async function reexecuteWithinAgeCap(
   client: SDKClient,
@@ -187,19 +190,37 @@ async function reexecuteWithinAgeCap(
 ): Promise<void> {
   await callSuiWithRetry(client, async (client) => {
     if (!isResendAllowed(signedAt)) {
-      throw new DOMException(
-        'The resend age cap passed before the re-execution.',
-        'TimeoutError'
-      )
+      throw createAgeCapError()
     }
-    return client.core.executeTransaction({
-      transaction: transaction.bytes,
-      signatures: [transaction.signature],
-      signal: AbortSignal.timeout(
-        Math.max(0, signedAt + MAX_RESEND_AGE_MS - Date.now())
-      ),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(
+      () => controller.abort(createAgeCapError()),
+      Math.max(0, signedAt + MAX_RESEND_AGE_MS - Date.now())
+    )
+    // A pending timer keeps Node's event loop alive. The `finally` clears it;
+    // the unref only covers a path that skips it.
+    const handle = timer as unknown as { unref?: () => void }
+    handle.unref?.()
+    try {
+      return await client.core.executeTransaction({
+        transaction: transaction.bytes,
+        signatures: [transaction.signature],
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
   })
+}
+
+/**
+ * The resend age cap passed. The name makes the gRPC transport report an
+ * abort with this reason as DEADLINE_EXCEEDED, as for any timeout.
+ */
+function createAgeCapError(): Error {
+  const error = new Error('The resend age cap passed before the re-execution.')
+  error.name = 'TimeoutError'
+  return error
 }
 
 /** True only when the check runs and confirms the sender's signature. */

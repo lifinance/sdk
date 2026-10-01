@@ -345,26 +345,66 @@ describe('SuiWaitForTransactionTask', () => {
       expectResultWrite(updateAction, 'SWAP')
     })
 
-    it('aborts each re-execution try when the age cap passes', async () => {
-      const timeout = vi.spyOn(AbortSignal, 'timeout')
-      try {
-        const { context } = makeContext(
-          { type: 'SWAP', txHex: TX_HEX },
-          {},
-          { signedAt: NOW - 60_000 }
-        )
+    it('aborts a re-execution try when the age cap passes during it', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+      vi.setSystemTime(NOW)
+      // As the transport does: the try ends when its signal aborts, and a
+      // `TimeoutError` reason arrives as DEADLINE_EXCEEDED.
+      const deadlineExceeded = new RpcError(
+        'signal timed out',
+        'DEADLINE_EXCEEDED'
+      )
+      executeTransaction.mockImplementation(
+        ({ signal }: { signal: AbortSignal }) =>
+          new Promise((_, reject) => {
+            signal.addEventListener('abort', () => reject(deadlineExceeded))
+          })
+      )
+      const { context, updateAction } = makeContext(
+        { type: 'SWAP', txHex: TX_HEX },
+        {},
+        { signedAt: NOW - 60_000 }
+      )
 
-        await new SuiWaitForTransactionTask().run(context)
+      const run = new SuiWaitForTransactionTask()
+        .run(context)
+        .catch((error: unknown) => error)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(executeTransaction).toHaveBeenCalledTimes(1)
+      const [{ signal }] = executeTransaction.mock.calls[0] as [
+        { signal: AbortSignal },
+      ]
 
-        // The cap passes 60 s from now.
-        expect(timeout).toHaveBeenCalledTimes(1)
-        expect(timeout).toHaveBeenCalledWith(60_000)
-        expect(executeTransaction).toHaveBeenCalledWith(
-          expect.objectContaining({ signal: timeout.mock.results[0]?.value })
-        )
-      } finally {
-        timeout.mockRestore()
-      }
+      // The cap passes 60 s from now.
+      await vi.advanceTimersByTimeAsync(59_999)
+      expect(signal.aborted).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(signal.aborted).toBe(true)
+      expect(signal.reason).toBeInstanceOf(Error)
+      expect(signal.reason).not.toBeInstanceOf(RpcError)
+      expect(signal.reason).toMatchObject({ name: 'TimeoutError' })
+
+      const error = await run
+      expect(error).toBe(deadlineExceeded)
+      expect(isFinalTransactionError(error)).toBe(false)
+      expect(waitForTransaction).not.toHaveBeenCalled()
+      expect(clearedTxHex(updateAction)).toBe(false)
+    })
+
+    it('clears the age-cap timer when the try ends', async () => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+      vi.setSystemTime(NOW)
+      const { context } = makeContext(
+        { type: 'SWAP', txHex: TX_HEX },
+        {},
+        { signedAt: NOW - 60_000 }
+      )
+
+      await expect(
+        new SuiWaitForTransactionTask().run(context)
+      ).resolves.toEqual({ status: 'COMPLETED' })
+      expect(executeTransaction).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(0)
     })
 
     // `callSuiWithRetry` tries the nodes one by one, so the cap is checked
@@ -416,6 +456,7 @@ describe('SuiWaitForTransactionTask', () => {
       // The last try is the skipped one, so its error is the outcome.
       expect(error).toBeInstanceOf(Error)
       expect(error).not.toBe(refusal)
+      expect(error).not.toBeInstanceOf(RpcError)
       expect(error).not.toMatchObject({
         code: LiFiErrorCode.TransactionExpired,
       })
@@ -700,10 +741,12 @@ describe('SuiWaitForTransactionTask', () => {
       expect(clearedTxHex(updateAction)).toBe(false)
     })
 
-    // An abort (the age cap passed during the try) arrives as CANCELLED.
+    // The transport reports the age-cap abort (a `TimeoutError` reason) as
+    // DEADLINE_EXCEEDED and an abort by the caller as CANCELLED.
     it.each([
       ['a transport error', 'UNAVAILABLE'],
-      ['an abort', 'CANCELLED'],
+      ['the age-cap abort', 'DEADLINE_EXCEEDED'],
+      ['an abort by the caller', 'CANCELLED'],
     ])('stays unknown on %s of the re-execution', async (_, code) => {
       task0.reexecutionReturnsEffects = true
       const unavailable = new RpcError('upstream connect error', code)
