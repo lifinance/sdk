@@ -54,7 +54,6 @@ describe('isAllowancePreparedForAnotherStrategy', () => {
   })
 
   it('fails when calls were queued for a batch that will not be sent', async () => {
-    // A custom step keeps the spender in every strategy; only the queue breaks.
     const context = buildContext({
       calls: [QUEUED_APPROVE],
       disableMessageSigning: true,
@@ -67,8 +66,8 @@ describe('isAllowancePreparedForAnotherStrategy', () => {
   })
 
   it('fails when nothing was queued but the new strategy needs another spender', async () => {
-    // JUMEMB-102 symptom B: a sufficient allowance to `approvalAddress` queued
-    // nothing under `batched`, while the relayed lane pulls through Permit2.
+    // JUMEMB-102 symptom B: an allowance to `approvalAddress` queued nothing,
+    // but the relayed lane pulls through Permit2.
     const context = buildContext({ allowanceSpender: APPROVAL_ADDRESS })
 
     expect(
@@ -102,8 +101,7 @@ describe('isAllowancePreparedForAnotherStrategy', () => {
   })
 
   it('compares the recorded spender, not one derived again from the re-quoted step', async () => {
-    // Prepared in `relayed`, so Permit2 was checked. The batch needs the
-    // step's `approvalAddress`, which prepare may have replaced.
+    // `relayed` checked Permit2; the batch pulls through `approvalAddress`.
     const context = buildContext({ allowanceSpender: PERMIT2 })
 
     expect(
@@ -112,8 +110,8 @@ describe('isAllowancePreparedForAnotherStrategy', () => {
   })
 
   it('reports a standard signer that failed the Permit2 probe', async () => {
-    // `standard` approved `approvalAddress`; the relayed lane needs Permit2.
-    // Whether that warrants a replay is the caller's decision.
+    // The helper reports the mismatch; prepare decides not to replay after
+    // `standard`.
     vi.mocked(canAccountUsePermit2).mockResolvedValue(false)
     const context = buildContext({ allowanceSpender: APPROVAL_ADDRESS })
 

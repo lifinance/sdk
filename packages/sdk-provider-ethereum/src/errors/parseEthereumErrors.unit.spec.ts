@@ -26,8 +26,7 @@ function assertSDKError(
 describe('parseEVMStepErrors', () => {
   describe('when an ExecuteStepRetryError is passed', () => {
     it('should return it unchanged so the step is replayed', async () => {
-      // A task raises it on purpose to ask for a replay (JUMEMB-102). Wrapping
-      // it in an SDKError would turn the replay into a failure.
+      // Wrapped in an SDKError, the replay request would become a failure.
       const error = new ExecuteStepRetryError('replay the step', {
         strategyAfterPrepare: 'relayed',
       })
@@ -63,8 +62,7 @@ describe('parseEVMStepErrors', () => {
     })
 
     it('asks for no second retry once the step was replayed for another reason', async () => {
-      // `executeRoute` replays a step once; a second request would escape it
-      // and leave the action unfinished instead of FAILED.
+      // `executeRoute` replays a step once; a second request would escape it.
       const parsedError = await parseEthereumErrors(
         rejection(),
         undefined,

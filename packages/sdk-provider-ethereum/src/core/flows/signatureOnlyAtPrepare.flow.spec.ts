@@ -26,6 +26,7 @@ import type { LiFiStep } from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
 import {
   APPROVAL_ADDRESS,
+  buildPermitWitnessTypedData,
   buildStep,
   buildTypedData,
   CANONICAL_PERMIT2,
@@ -40,14 +41,10 @@ import {
   WALLET_SIGNATURE,
 } from './harness.mock.js'
 
-/**
- * The contract a limit-order protocol pulls the sold tokens with — CoW's
- * GPv2VaultRelayer. It must be a valid checksummed address: unlike a permit
- * spender, it is ABI-encoded into the approve call.
- */
+/** CoW's GPv2VaultRelayer. Checksummed, because the approve ABI-encodes it. */
 const ORDER_SPENDER: Address = '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110'
 
-/** A limit order the tool builds at `/stepTransaction`, never at routes time. */
+/** A limit order the tool builds at `/stepTransaction`, not at routes time. */
 const ORDER_TYPED_DATA = buildTypedData({
   primaryType: 'Order',
   domain: { name: 'Limit Order Protocol', chainId: CHAIN_ID },
@@ -55,15 +52,10 @@ const ORDER_TYPED_DATA = buildTypedData({
 })
 
 /**
- * The JUMEMB-102 shape: the quote carries no typed data and no transaction,
- * the source token needs an approval, the wallet advertises EIP-5792 atomic
- * batching, and `/stepTransaction` answers with the order to sign and **no**
- * transaction request.
- *
- * Before prepare the step is indistinguishable from any batchable swap, so the
- * allowance tasks queue the approve into `context.calls`. Prepare is the first
- * point where the step is known to be relayed, and the relayer never reads the
- * batch.
+ * The JUMEMB-102 shape: no typed data or transaction at routes time, an
+ * approval needed, an EIP-5792 wallet, and a re-quote with an order only.
+ * Before prepare the step looks batchable, so the allowance tasks queue the
+ * approve into a batch that the relayed lane never sends.
  */
 const buildLateRelayedScenario = (
   stepOptions: StepFixtureOptions = {}
@@ -95,8 +87,6 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
 
     await expect(scenario.run()).resolves.toBeDefined()
 
-    // The approve left the wallet as its own transaction. It was never folded
-    // into a batch: the relayer has no way to submit one.
     expect(scenario.events('sendCalls')).toEqual([])
     const sent = scenario.events('sendTransaction')
     expect(sent).toHaveLength(1)
@@ -118,9 +108,8 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
 
     await scenario.run()
 
-    // A custom step forces `disableMessageSigning`, which keeps Permit2 off in
-    // every strategy, so the relayed replay approves the same contract the
-    // batch would have: the one the protocol pulls the tokens with.
+    // A custom step keeps Permit2 off in every strategy, so the replay approves
+    // the protocol's contract, as the batch would have.
     const [approveTx] = scenario.events('sendTransaction')
     const { spender, amount } = decodeApproval(approveTx.data as Hex)
     expect(spender).toBe(ORDER_SPENDER)
@@ -128,10 +117,9 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
   })
 
   it('derives the spender again for the relayed strategy instead of reusing the batch', async () => {
-    // A LI.FI step with the same shape. Its relayed lane pulls the tokens
-    // through canonical Permit2, while the batch had queued an approve to the
-    // diamond (`resolvePermit2Support` rejects only `batched`). Flushing the
-    // queued call would have approved the wrong contract.
+    // A LI.FI step: the relayed lane pulls through Permit2, while the batch
+    // queued an approve to the diamond. Flushing that call would approve the
+    // wrong contract.
     const scenario = buildLateRelayedScenario()
 
     await scenario.run()
@@ -148,10 +136,8 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
 
     await scenario.run()
 
-    // Attempt 1 learns at prepare that the step is relayed and stops before
-    // anything is signed or sent. Attempt 2 starts from a cleared execution
-    // object, so the
-    // `SET_ALLOWANCE:DONE` attempt 1 reported for the queued call is gone.
+    // Attempt 2 starts from a cleared execution object, so the
+    // `SET_ALLOWANCE:DONE` that attempt 1 reported for the queued call is gone.
     expect(scenario.events('getStepTransaction')).toHaveLength(2)
     expect(
       scenario
@@ -180,8 +166,9 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
       'SWAP:PENDING',
     ])
 
-    // Attempt 1 stops at prepare before anything is signed or sent. Attempt 2
-    // asks no wallet capabilities: the retry already says it is relayed.
+    // Attempt 2 asks no wallet capabilities: the retry says it is relayed. It
+    // runs the same gas check as attempt 1, because prepare restored the
+    // step's typed data, and the wallet pays for the approve.
     expect(
       scenario
         .kinds()
@@ -193,13 +180,12 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
       'getStepTransaction',
       'readContract',
       'sendTransaction',
+      'getCode',
       'getStepTransaction',
       'signTypedData',
       'relayTransaction',
     ])
 
-    // The approval the consumer is finally shown carries the hash of a
-    // transaction that was actually sent.
     const allowanceDone = scenario
       .events('action')
       .filter(
@@ -212,9 +198,8 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
   })
 
   it('replays when an allowance to the batch spender hid a missing Permit2 allowance', async () => {
-    // JUMEMB-102 symptom B. The batch checks the diamond, finds it approved and
-    // queues nothing, so no call is dropped — yet the relayed lane pulls through
-    // canonical Permit2, which has no allowance.
+    // Symptom B: the diamond is already approved, so the batch queues nothing,
+    // but the relayed lane needs a Permit2 allowance.
     const scenario = createScenario({
       step: buildStep(),
       allowanceBySpender: { [APPROVAL_ADDRESS]: 10n ** 24n },
@@ -227,8 +212,7 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
 
     await scenario.run()
 
-    // Attempt 1 queued nothing, so the replay came from the spender, not from
-    // dropped calls.
+    // Attempt 1 queued nothing, so the spender check caused the replay.
     const [firstRequote] = scenario.events('getStepTransaction')
     expect(
       scenario
@@ -251,10 +235,29 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
     expect(scenario.events('relayTransaction')).toHaveLength(1)
   })
 
+  it('re-quotes the replay through /stepTransaction, as the first attempt did', async () => {
+    // The first re-quote answers with gasless typed data. Left on the step, it
+    // would send the replay's re-quote to the relayer endpoint instead.
+    const scenario = createScenario({
+      step: buildStep(),
+      capabilities: { atomic: { status: 'supported' } },
+      onStepTransaction: (step: LiFiStep) => {
+        const { transactionRequest: _dropped, ...rest } = step
+        return { ...rest, typedData: [buildPermitWitnessTypedData()] }
+      },
+    })
+
+    await scenario.run()
+
+    expect(scenario.events('getStepTransaction')).toHaveLength(2)
+    expect(scenario.events('getRelayerQuote')).toEqual([])
+    expect(scenario.events('relayTransaction')).toHaveLength(1)
+  })
+
   it('does not replay after the standard strategy, where the approval is already on-chain', async () => {
     // No EIP-5792 batching, and a smart account that fails the Permit2 probe,
     // so `standard` approves the diamond on-chain. A replay would only ask for
-    // a second approval: such a signer cannot use the relayed lane's Permit2.
+    // a second approval.
     const scenario = createScenario({
       step: buildStep(),
       accountCode: '0xef0100aabbccddeeff00112233445566778899aabbcc',
@@ -274,8 +277,6 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
   })
 
   it('needs no replay when the spender is the same and nothing was queued', async () => {
-    // A custom step keeps `approvalAddress` in every strategy, so an allowance
-    // that already covers the order holds for the relayed lane too.
     const scenario = createScenario({
       step: buildStep(CUSTOM_STEP),
       allowance: 10n ** 24n,
@@ -294,8 +295,8 @@ describe('C15 — a step that turns signature-only at prepare replays as relayed
   })
 
   it('needs no replay when the backend declares the step a message', async () => {
-    // `executionType: 'message'` is known at routes time, so the allowance
-    // tasks already run as relayed and nothing is ever queued.
+    // With `executionType: 'message'` the allowance tasks run as relayed from
+    // the start, so nothing is queued.
     const scenario = buildLateRelayedScenario({
       ...CUSTOM_STEP,
       executionType: 'message',

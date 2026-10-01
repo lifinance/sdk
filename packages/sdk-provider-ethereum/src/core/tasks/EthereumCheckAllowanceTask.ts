@@ -3,7 +3,7 @@ import type { Address } from 'viem'
 import { getAllowance } from '../../actions/getAllowance.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
-import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
+import { resolveAllowanceSpender } from './helpers/resolveAllowanceSpender.js'
 
 export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -13,7 +13,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { step, checkClient, fromChain, client, statusManager } = context
+    const { step, checkClient, client, statusManager } = context
 
     // Start new allowance check
     const action = statusManager.initializeAction({
@@ -24,13 +24,10 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
     })
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
-    const permit2Supported = await resolvePermit2Support(
+    const { spenderAddress } = await resolveAllowanceSpender(
       context,
       executionStrategy
     )
-    const spenderAddress = permit2Supported
-      ? fromChain.permit2
-      : step.estimate.approvalAddress
 
     const fromAmount = BigInt(step.action.fromAmount)
 
@@ -44,7 +41,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
-      spenderAddress as Address
+      spenderAddress
     )
 
     statusManager.updateAction(step, action.type, 'DONE')
@@ -55,7 +52,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
         hasAllowance: allowance > 0n,
         hasSufficientAllowance: fromAmount <= allowance,
         executionStrategy,
-        allowanceSpender: spenderAddress as Address,
+        allowanceSpender: spenderAddress,
       },
     }
   }

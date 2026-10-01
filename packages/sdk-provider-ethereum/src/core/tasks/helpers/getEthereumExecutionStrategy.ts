@@ -4,11 +4,9 @@ import type { EthereumStepExecutorContext } from '../../../types.js'
 import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
 
 /**
- * Retry param set by `EthereumPrepareTransactionTask` when prepare moved a step
- * off `batched` and the allowance work done for the batch — queued calls, or an
- * allowance checked against the batch spender — does not hold in the new
- * strategy. It carries the strategy prepare established, so the replay starts
- * in it. Prepare never sets it to `batched`.
+ * Retry param set by `EthereumPrepareTransactionTask`: the strategy prepare
+ * established when the allowance work done for `batched` did not fit it. The
+ * replay starts in this strategy.
  */
 export const STRATEGY_AFTER_PREPARE = 'strategyAfterPrepare'
 
@@ -54,10 +52,9 @@ export async function getEthereumExecutionStrategy(
     return executionStrategyContext
   }
 
-  // The replay of a step whose first attempt learned its strategy only at
-  // prepare. Before prepare nothing on the step says so — that is why the first
-  // attempt queued its calls — so the verdict comes from the retry. Prepare
-  // still decides again from its own re-quote.
+  // A replay starts in the strategy its first prepare established. Prepare
+  // restored the step's typed data before the replay, so nothing on the step
+  // shows that strategy yet.
   const strategyAfterPrepare = retryParams?.[STRATEGY_AFTER_PREPARE]
   if (!afterPrepare && isTransactionMethodType(strategyAfterPrepare)) {
     return strategyAfterPrepare

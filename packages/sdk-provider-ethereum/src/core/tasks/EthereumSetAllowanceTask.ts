@@ -7,7 +7,7 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { getApprovalAmount } from './helpers/getApprovalAmount.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
-import { resolvePermit2Support } from './helpers/resolvePermit2Support.js'
+import { resolveAllowanceSpender } from './helpers/resolveAllowanceSpender.js'
 
 export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
@@ -47,18 +47,14 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
 
     const executionStrategy = await getEthereumExecutionStrategy(context)
     const batchingSupported = executionStrategy === 'batched'
-    const permit2Supported = await resolvePermit2Support(
+    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
+    const { permit2Supported, spenderAddress } = await resolveAllowanceSpender(
       context,
       executionStrategy
     )
 
     // Set new allowance
     const approveAmount = getApprovalAmount(context, permit2Supported)
-
-    // Check if chain has Permit2 contract deployed. Permit2 should not be available for atomic batch.
-    const spenderAddress = permit2Supported
-      ? fromChain.permit2
-      : step.estimate.approvalAddress
 
     const updatedClient = await checkClient(step)
     if (!updatedClient) {
@@ -69,7 +65,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       client,
       updatedClient,
       step.action.fromToken.address as Address,
-      spenderAddress as Address,
+      spenderAddress,
       approveAmount,
       executionOptions,
       // We need to return the populated transaction when batching is supported
