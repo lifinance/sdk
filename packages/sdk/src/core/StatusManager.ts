@@ -96,16 +96,19 @@ const mergeLateTransaction = (
     if (!liveAction) {
       liveStep.execution.actions.push(structuredClone(lateAction))
     } else if (hasOpenTransaction(liveAction)) {
-      // Two transactions exist; the newer execution keeps its own.
+      // The live action already has an open transaction (its own, or one
+      // merged earlier); it is kept.
       return false
     } else {
       // All five fields, so a stale `txFinal` goes and the action is open.
+      // `txType` goes with them: the live one described no open transaction.
       Object.assign(liveAction, {
         txHash: lateAction.txHash,
         txLink: lateAction.txLink,
         txHex: lateAction.txHex,
         txFinal: lateAction.txFinal,
         taskId: lateAction.taskId,
+        txType: lateAction.txType,
       })
     }
   }

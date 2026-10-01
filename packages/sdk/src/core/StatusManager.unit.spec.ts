@@ -616,11 +616,15 @@ describe('StatusManager after stopRouteExecution', () => {
   })
 
   describe('with a newer execution of the same route id', () => {
-    it('copies all five transaction fields and signedAt into a live action without a transaction', () => {
+    it('copies all five transaction fields, txType and signedAt into a live action without a transaction', () => {
       const { route, step, statusManager } = startOldExecution()
       stopRouteExecution(route)
       const liveRoute = startLiveExecution(
-        liveStepWith({ status: 'STARTED', txLink: 'https://explorer/tx/stale' })
+        liveStepWith({
+          status: 'STARTED',
+          txLink: 'https://explorer/tx/stale',
+          txType: 'standard',
+        })
       )
 
       statusManager.updateAction(step, 'SWAP', 'PENDING', {
@@ -628,6 +632,7 @@ describe('StatusManager after stopRouteExecution', () => {
         txHash: '0xlate',
         txHex: 'AQID',
         taskId: 'task-late',
+        txType: 'relayed',
         signedAt: SOME_DATE + 5,
       })
 
@@ -635,6 +640,8 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(live.txHash).toBe('0xlate')
       expect(live.txHex).toBe('AQID')
       expect(live.taskId).toBe('task-late')
+      // The live `txType` described no transaction; it must not label this one.
+      expect(live.txType).toBe('relayed')
       expect('txLink' in live).toBe(true)
       expect(live.txLink).toBeUndefined()
       expect('txFinal' in live).toBe(true)
