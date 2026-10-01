@@ -18,7 +18,8 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
+const { isFinalTransactionError, LiFiErrorCode, TransactionError } =
+  await import('@lifi/sdk')
 const { SuiSignAndExecuteTask } = await import('./SuiSignAndExecuteTask.js')
 
 const EXPLORER = 'https://suiscan.xyz/mainnet/'
@@ -178,6 +179,32 @@ describe('SuiSignAndExecuteTask', () => {
     expect(params.txHex).toBeUndefined()
   })
 
+  it('reports the message of the Move error of a failed execution', async () => {
+    const { context, executeTransaction } = makeContext()
+    executeTransaction.mockResolvedValue({
+      $kind: 'FailedTransaction',
+      FailedTransaction: {
+        digest: DIGEST,
+        status: {
+          success: false,
+          error: {
+            message: 'MoveAbort in 0x2::coin',
+            $kind: 'MoveAbort',
+            MoveAbort: { abortCode: '0' },
+          },
+        },
+      },
+    })
+
+    await expect(
+      new SuiSignAndExecuteTask().run(context)
+    ).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Transaction failed: MoveAbort in 0x2::coin',
+      final: true,
+    })
+  })
+
   it('keeps the stored bytes when the execution outcome is unknown', async () => {
     const { context, executeTransaction, updateAction } = makeContext()
     const networkError = new Error('fetch failed')
@@ -223,5 +250,131 @@ describe('SuiSignAndExecuteTask', () => {
     })
     expect(executeTransaction).not.toHaveBeenCalled()
     expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  describe('an error from the wallet', () => {
+    it.each([
+      [
+        'an Error that says "rejected"',
+        new Error('User rejected the request.'),
+        'User rejected the request.',
+      ],
+      [
+        'an Error that says "REJECTED" in capitals',
+        new Error('REJECTED BY USER'),
+        'REJECTED BY USER',
+      ],
+      [
+        'an object with code 4001 and a message',
+        { code: 4001, message: 'x' },
+        'x',
+      ],
+      [
+        'an object with code 4001 and no message',
+        { code: 4001 },
+        'The wallet rejected the signature request.',
+      ],
+    ])('tags %s as SignatureRejected', async (_label, thrown, message) => {
+      const { context, signTransaction, executeTransaction, updateAction } =
+        makeContext()
+      signTransaction.mockRejectedValue(thrown)
+
+      const error = await new SuiSignAndExecuteTask()
+        .run(context)
+        .catch((error: unknown) => error)
+
+      expect(error).toBeInstanceOf(TransactionError)
+      expect(error).toMatchObject({
+        code: LiFiErrorCode.SignatureRejected,
+        message,
+        final: false,
+      })
+      expect((error as { cause?: unknown }).cause).toBe(thrown)
+      // Nothing was signed, so nothing was stored or sent.
+      expect(updateAction).not.toHaveBeenCalled()
+      expect(executeTransaction).not.toHaveBeenCalled()
+    })
+
+    // These also pass with no classification at all. They guard it: it must
+    // not tag an error without "reject", and an SDK error keeps its code.
+    it.each([
+      ['an Error without "reject"', new Error('Ledger device is locked')],
+      [
+        'an Error with another code',
+        Object.assign(new Error('Request timed out'), { code: 4900 }),
+      ],
+      [
+        'an SDK error that says "rejected"',
+        new TransactionError(
+          LiFiErrorCode.TransactionConflict,
+          'The sponsor rejected the gas payment.'
+        ),
+      ],
+    ])('rethrows %s unchanged', async (_label, thrown) => {
+      const { context, signTransaction, executeTransaction, updateAction } =
+        makeContext()
+      signTransaction.mockRejectedValue(thrown)
+
+      await expect(new SuiSignAndExecuteTask().run(context)).rejects.toBe(
+        thrown
+      )
+      expect(updateAction).not.toHaveBeenCalled()
+      expect(executeTransaction).not.toHaveBeenCalled()
+    })
+
+    it('does not classify an error from before the wallet call', async () => {
+      // Only the signer's answer is the user's. Here a node said "rejected".
+      const nodeError = new Error('Request rejected by the node')
+      getTransactionRequestData.mockRejectedValue(nodeError)
+      const { context, signTransaction } = makeContext()
+
+      await expect(new SuiSignAndExecuteTask().run(context)).rejects.toBe(
+        nodeError
+      )
+      expect(signTransaction).not.toHaveBeenCalled()
+    })
+
+    it('does not classify an error from after the wallet call', async () => {
+      // The wallet signed. Here a validator refused the signed transaction.
+      const nodeError = new Error('Transaction rejected by validator')
+      const { context, executeTransaction } = makeContext()
+      executeTransaction.mockRejectedValue(nodeError)
+
+      await expect(new SuiSignAndExecuteTask().run(context)).rejects.toBe(
+        nodeError
+      )
+      expect(executeTransaction).toHaveBeenCalledTimes(1)
+    })
+
+    // Wallets also throw values that are not an Error. The classification
+    // must read them without a TypeError.
+    it.each([
+      ['a string that says "Rejected"', 'Rejected from user', true],
+      ['a string without "reject"', 'Wallet is locked', false],
+      ['an object without a message', { reason: 'busy' }, false],
+      ['undefined', undefined, false],
+      ['null', null, false],
+    ])(
+      'classifies %s without a TypeError',
+      async (_label, thrown, isRejection) => {
+        const { context, signTransaction, executeTransaction } = makeContext()
+        signTransaction.mockRejectedValue(thrown)
+
+        const run = new SuiSignAndExecuteTask().run(context)
+
+        if (isRejection) {
+          const error = await run.catch((error: unknown) => error)
+          expect(error).toBeInstanceOf(TransactionError)
+          expect(error).toMatchObject({
+            code: LiFiErrorCode.SignatureRejected,
+            message: thrown,
+          })
+          expect((error as { cause?: unknown }).cause).toBe(thrown)
+        } else {
+          await expect(run).rejects.toBe(thrown)
+        }
+        expect(executeTransaction).not.toHaveBeenCalled()
+      }
+    )
   })
 })
