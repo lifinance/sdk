@@ -2,6 +2,7 @@ import {
   BaseStepExecutor,
   CheckBalanceTask,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   PrepareTransactionTask,
@@ -77,10 +78,15 @@ export class SuiStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName =
-      swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
+    // A transaction signed for this action may still land (`txHex` from
+    // signing, `txHash` after execution). Resume at the confirmation wait:
+    // re-preparing or re-signing could execute the swap twice. A final failure
+    // is not open, so "Try again" signs anew.
+    const taskName = hasOpenTransaction(swapOrBridgeAction)
+      ? swapOrBridgeAction?.status === 'DONE'
         ? WaitForTransactionStatusTask.name
-        : CheckBalanceTask.name
+        : SuiWaitForTransactionTask.name
+      : CheckBalanceTask.name
 
     const firstTaskIndex = tasks.findIndex(
       (task) => task.constructor.name === taskName
