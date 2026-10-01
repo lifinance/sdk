@@ -5,11 +5,14 @@ import type {
   ExecutionActionStatus,
   ExecutionActionType,
   LiFiStepExtended,
+  RouteExtended,
+  UpdateRouteHook,
 } from '../types/core.js'
 import { getActionMessage } from './actionMessages.js'
 import { executionState } from './executionState.js'
 import {
   CLEARED_TRANSACTION_FIELDS,
+  hasOpenTransaction,
   hasStepOpenTransaction,
 } from './transactionState.js'
 
@@ -21,11 +24,105 @@ type ActionProps = {
 }
 
 /**
+ * The route and hook of an execution that `stopRouteExecution` ended. A task
+ * that was still running (e.g. waiting in the wallet prompt) writes its
+ * transaction data later; without these the write would never reach the
+ * integrator, and a resume of the stored route would sign again.
+ * `startCount` is `executionState.startCount` at the stop.
+ */
+type StoppedExecution = {
+  route: RouteExtended
+  updateRouteHook?: UpdateRouteHook
+  startCount: number
+}
+
+/**
+ * A write is transaction data when it changes one of these fields. `txLink`
+ * and `signedAt` travel with such a write but never trigger one: the status
+ * poll rewrites `txLink` every few seconds.
+ */
+const TRANSACTION_KEYS = ['txHash', 'txHex', 'taskId', 'txFinal'] as const
+
+type TransactionFields = Pick<
+  ExecutionAction,
+  (typeof TRANSACTION_KEYS)[number]
+>
+
+const readTransaction = (action: ExecutionAction): TransactionFields => ({
+  txHash: action.txHash,
+  txHex: action.txHex,
+  taskId: action.taskId,
+  txFinal: action.txFinal,
+})
+
+/** True when the write changed a transaction field, also to `undefined`. */
+const changesTransaction = (
+  before: TransactionFields,
+  action: ExecutionAction
+): boolean => TRANSACTION_KEYS.some((key) => action[key] !== before[key])
+
+/**
+ * Copies a late transaction into a newer execution of the same route. The
+ * live step's objects are changed in place: the live executor holds them, so
+ * its selector and its pre-sign guard see the transaction. Returns true when
+ * something changed.
+ */
+const mergeLateTransaction = (
+  liveRoute: RouteExtended,
+  lateStep: LiFiStepExtended,
+  lateAction: ExecutionAction
+): boolean => {
+  // Cleared or final: the newer execution needs nothing from it.
+  if (!hasOpenTransaction(lateAction)) {
+    return false
+  }
+  const liveStep = liveRoute.steps.find(
+    (routeStep) => routeStep.id === lateStep.id
+  )
+  if (!liveStep) {
+    return false
+  }
+  const signedAt = lateStep.execution?.signedAt
+  if (!liveStep.execution) {
+    liveStep.execution = {
+      startedAt: Date.now(),
+      status: 'PENDING',
+      signedAt,
+      actions: [structuredClone(lateAction)],
+    }
+    return true
+  }
+  const liveAction = liveStep.execution.actions.find(
+    (action) => action.type === lateAction.type
+  )
+  if (!liveAction) {
+    liveStep.execution.actions.push(structuredClone(lateAction))
+    liveStep.execution.signedAt = signedAt
+    return true
+  }
+  // Two transactions exist; the newer execution keeps its own.
+  if (hasOpenTransaction(liveAction)) {
+    return false
+  }
+  // All five fields, so a stale `txFinal` goes and the action is open.
+  Object.assign(liveAction, {
+    txHash: lateAction.txHash,
+    txLink: lateAction.txLink,
+    txHex: lateAction.txHex,
+    txFinal: lateAction.txFinal,
+    taskId: lateAction.taskId,
+  })
+  liveStep.execution.signedAt = signedAt
+  return true
+}
+
+/**
  * Manages status updates of a route and provides various functions for tracking actions.
  */
 export class StatusManager {
   private readonly routeId: string
   private shouldUpdate = true
+  private stoppedExecution?: StoppedExecution
 
   constructor(routeId: string) {
     this.routeId = routeId
@@ -187,6 +284,11 @@ export class StatusManager {
     if (!currentAction) {
       throw new Error("Can't find an action for the given type.")
     }
+    // Read before the write: after a stop, only a write that changes the
+    // transaction reaches the integrator.
+    const transactionBefore = this.shouldUpdate
+      ? undefined
+      : readTransaction(currentAction)
 
     switch (status) {
       case 'CANCELLED':
@@ -226,7 +328,14 @@ export class StatusManager {
       ...step.execution.actions.filter((action) => action.status === 'DONE'),
       ...step.execution.actions.filter((action) => action.status !== 'DONE'),
     ]
-    this.updateStepInRoute(step) // updates the step in the route
+    if (
+      transactionBefore &&
+      changesTransaction(transactionBefore, currentAction)
+    ) {
+      this.deliverLateTransactionData(step, currentAction)
+    } else {
+      this.updateStepInRoute(step) // updates the step in the route
+    }
     return currentAction
   }
 
@@ -256,5 +365,65 @@ export class StatusManager {
 
   allowUpdates(value: boolean): void {
     this.shouldUpdate = value
+    if (value) {
+      this.stoppedExecution = undefined
+      return
+    }
+    // `stopRouteExecution` turns updates off right before it deletes the
+    // execution state, so the state is still here to keep.
+    const data = executionState.get(this.routeId)
+    if (data) {
+      this.stoppedExecution = {
+        route: data.route,
+        updateRouteHook: data.executionOptions?.updateRouteHook,
+        startCount: executionState.startCount(this.routeId),
+      }
+    }
+  }
+
+  /**
+   * A write of transaction data after `stopRouteExecution`. With a newer
+   * execution of the same route id running, the transaction is merged into
+   * it. Otherwise, if no execution of the route started since the stop, the
+   * kept route is updated and the kept hook is called.
+   */
+  private deliverLateTransactionData(
+    step: LiFiStepExtended,
+    lateAction: ExecutionAction
+  ): void {
+    const stopped = this.stoppedExecution
+    if (!stopped) {
+      return
+    }
+    // A late write must never fail the task that made it: its catch block
+    // would mark the action FAILED while the transaction may still land.
+    try {
+      // Always a newer execution: `stopRouteExecution` deleted this one.
+      const live = executionState.get(this.routeId)
+      if (live) {
+        if (mergeLateTransaction(live.route, step, lateAction)) {
+          live.executionOptions?.updateRouteHook?.(live.route)
+        }
+        return
+      }
+      // A newer execution started and ended since the stop: the integrator
+      // stored a newer route, which the kept one would roll back.
+      if (executionState.startCount(this.routeId) !== stopped.startCount) {
+        return
+      }
+      const stepIndex = stopped.route.steps.findIndex(
+        (routeStep) => routeStep.id === step.id
+      )
+      if (stepIndex === -1) {
+        return
+      }
+      stopped.route.steps[stepIndex] = {
+        ...stopped.route.steps[stepIndex],
+        ...step,
+      }
+      stopped.updateRouteHook?.(stopped.route)
+    } catch {
+      // Ignored on purpose, see above.
+    }
   }
 }

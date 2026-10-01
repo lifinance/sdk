@@ -1,7 +1,13 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { LiFiStep, Route, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import type { LiFiStepExtended } from '../types/core.js'
+import type {
+  InteractionSettings,
+  LiFiStepExtended,
+  SDKClient,
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import type { StatusManager } from './StatusManager.js'
 
 const SOME_TOKEN: Token = {
   ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
@@ -167,3 +173,29 @@ export const buildRouteObject = ({
     state: 'NOT_INSURABLE',
   },
 })
+
+/**
+ * Registers `statusManager` as a step executor of the route's running
+ * execution, the way `executeSteps` pushes one. `stopRouteExecution` then
+ * reaches it through `setInteraction`, as it reaches a `BaseStepExecutor`.
+ */
+export const attachStatusManager = (
+  routeId: string,
+  statusManager: StatusManager
+): void => {
+  const execution = executionState.get(routeId)
+  if (!execution) {
+    throw new Error(`No execution is registered for route ${routeId}.`)
+  }
+  execution.executors.push({
+    allowUserInteraction: true,
+    allowExecution: true,
+    setInteraction: (settings?: InteractionSettings): void => {
+      statusManager.allowUpdates(settings?.allowUpdates ?? true)
+    },
+    executeStep: async (
+      _client: SDKClient,
+      step: LiFiStepExtended
+    ): Promise<LiFiStepExtended> => step,
+  })
+}

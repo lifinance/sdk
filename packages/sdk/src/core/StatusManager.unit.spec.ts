@@ -1,18 +1,25 @@
 import type { Route } from '@lifi/types'
 import type { Mock } from 'vitest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
+  ExecutionAction,
   ExecutionActionStatus,
   ExecutionStatus,
   LiFiStepExtended,
 } from '../types/core.js'
+import { stopRouteExecution } from './execution.js'
 import {
+  attachStatusManager,
   buildRouteObject,
   buildStepObject,
   SOME_DATE,
 } from './execution.unit.mock.js'
 import { executionState } from './executionState.js'
 import { StatusManager } from './StatusManager.js'
+import {
+  CLEARED_TRANSACTION_FIELDS,
+  hasOpenTransaction,
+} from './transactionState.js'
 
 // Note: using structuredClone when passing objects to the StatusManager shall make sure that we are not facing any unknown call-by-reference-issues anymore
 
@@ -358,6 +365,429 @@ describe('StatusManager', () => {
       })
 
       expect(action.txHash).toBe('0xopen')
+    })
+  })
+})
+
+// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.
+describe('StatusManager after stopRouteExecution', () => {
+  const LATE_WRITE = {
+    ...CLEARED_TRANSACTION_FIELDS,
+    txHash: '0xlate',
+    txLink: 'https://explorer/tx/0xlate',
+    signedAt: SOME_DATE + 5,
+  }
+
+  // Each hook call is recorded as a copy taken at call time, the way the
+  // widget's store keeps it: the route object changes after the call.
+  let keptHook: Mock
+  let keptRoutes: Route[]
+  let liveHook: Mock
+  let liveRoutes: Route[]
+
+  /**
+   * An execution with one running executor, as `executeSteps` leaves it.
+   * `swap` is merged into its SWAP action first (an earlier transaction).
+   */
+  const startOldExecution = (
+    options: { withHook?: boolean; swap?: Partial<ExecutionAction> } = {}
+  ): { route: Route; step: LiFiStepExtended; statusManager: StatusManager } => {
+    const step = buildStepObject({ includingExecution: true })
+    Object.assign(
+      step.execution!.actions.find((action) => action.type === 'SWAP')!,
+      options.swap
+    )
+    const route = buildRouteObject({ step })
+    executionState.create({
+      route,
+      executionOptions:
+        options.withHook === false ? {} : { updateRouteHook: keptHook },
+    })
+    const statusManager = new StatusManager(route.id)
+    attachStatusManager(route.id, statusManager)
+    return { route, step, statusManager }
+  }
+
+  /** A newer execution of the same route id, as `resumeRoute` registers it. */
+  const startLiveExecution = (liveStep: LiFiStepExtended): Route => {
+    const liveRoute = buildRouteObject({ step: liveStep })
+    executionState.create({
+      route: liveRoute,
+      executionOptions: { updateRouteHook: liveHook },
+    })
+    return liveRoute
+  }
+
+  /** A live step whose SWAP action is `swap`, or that has no SWAP action. */
+  const liveStepWith = (
+    swap: Partial<ExecutionAction> | undefined
+  ): LiFiStepExtended => {
+    const liveStep = buildStepObject({ includingExecution: true })
+    const others = liveStep.execution!.actions.filter(
+      (action) => action.type !== 'SWAP'
+    )
+    liveStep.execution!.actions = swap
+      ? [...others, { type: 'SWAP', status: 'STARTED', ...swap }]
+      : others
+    return liveStep
+  }
+
+  const executionOf = (route: Route) =>
+    (route.steps[0] as LiFiStepExtended).execution
+
+  const swapOf = (route: Route): ExecutionAction | undefined =>
+    executionOf(route)?.actions.find((action) => action.type === 'SWAP')
+
+  beforeEach(() => {
+    executionState.delete(buildRouteObject({}).id)
+    keptRoutes = []
+    keptHook = vi.fn((route: Route) => {
+      keptRoutes.push(structuredClone(route))
+    })
+    liveRoutes = []
+    liveHook = vi.fn((route: Route) => {
+      liveRoutes.push(structuredClone(route))
+    })
+    vi.spyOn(Date, 'now').mockImplementation(() => SOME_DATE)
+  })
+
+  afterEach(() => {
+    executionState.delete(buildRouteObject({}).id)
+  })
+
+  describe('without a newer execution of the route', () => {
+    it('calls the kept hook with the kept route for a late txHash write', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      expect(keptHook).toHaveBeenCalledTimes(1)
+      expect(keptHook.mock.calls[0][0]).toBe(route)
+      expect(swapOf(keptRoutes[0])?.txHash).toBe('0xlate')
+      expect(swapOf(keptRoutes[0])?.status).toBe('PENDING')
+      expect(executionOf(keptRoutes[0])?.signedAt).toBe(SOME_DATE + 5)
+    })
+
+    it.each([
+      {
+        name: 'a clearing write',
+        status: 'PENDING',
+        params: { ...CLEARED_TRANSACTION_FIELDS },
+      },
+      {
+        name: 'FAILED with txFinal',
+        status: 'FAILED',
+        params: {
+          error: { code: 1003, message: 'Transaction was reverted.' },
+          txFinal: true,
+        },
+      },
+    ] as {
+      name: string
+      status: ExecutionActionStatus
+      params: Partial<ExecutionAction>
+    }[])('delivers $name to the kept hook', ({ status, params }) => {
+      const { route, step, statusManager } = startOldExecution({
+        swap: { txHash: '0xold', txLink: 'https://explorer/tx/0xold' },
+      })
+      stopRouteExecution(route)
+
+      statusManager.updateAction(step, 'SWAP', status, params)
+
+      expect(keptHook).toHaveBeenCalledTimes(1)
+      expect(swapOf(keptRoutes[0])?.status).toBe(status)
+    })
+
+    it.each([
+      {
+        name: 'a status-only write',
+        status: 'ACTION_REQUIRED',
+        params: undefined,
+      },
+      {
+        name: 'FAILED without txFinal',
+        status: 'FAILED',
+        params: {
+          error: { code: 1003, message: 'Transaction confirmation timeout.' },
+        },
+      },
+      {
+        name: 'a message write',
+        status: 'PENDING',
+        params: {
+          substatus: 'WAIT_DESTINATION_TRANSACTION',
+          substatusMessage: 'Waiting for the destination chain.',
+        },
+      },
+      {
+        name: 'a signedAt-only write',
+        status: 'PENDING',
+        params: { signedAt: SOME_DATE + 7 },
+      },
+      {
+        name: 'a clearing write over no transaction',
+        status: 'PENDING',
+        params: { ...CLEARED_TRANSACTION_FIELDS, signedAt: SOME_DATE + 7 },
+      },
+    ] as {
+      name: string
+      status: ExecutionActionStatus
+      params: Partial<ExecutionAction & { signedAt: number }> | undefined
+    }[])('keeps $name suppressed', ({ status, params }) => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+
+      statusManager.updateAction(step, 'SWAP', status, params)
+
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('ignores repeated txLink-only writes and calls the kept hook once for a txHash change', () => {
+      const { route, step, statusManager } = startOldExecution({
+        swap: { txHash: '0xold' },
+      })
+      stopRouteExecution(route)
+
+      // The status poll rewrites the explorer link on every poll.
+      for (const poll of [1, 2, 3]) {
+        statusManager.updateAction(step, 'SWAP', 'PENDING', {
+          txLink: `https://explorer.li.fi/tx/0xold?poll=${poll}`,
+        })
+      }
+      // The same hash again is no change either.
+      statusManager.updateAction(step, 'SWAP', 'PENDING', {
+        txHash: '0xold',
+        txLink: 'https://explorer/tx/0xold',
+      })
+      expect(keptHook).not.toHaveBeenCalled()
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', {
+        txHash: '0xreplaced',
+        txLink: 'https://explorer/tx/0xreplaced',
+      })
+
+      expect(keptHook).toHaveBeenCalledTimes(1)
+      expect(swapOf(keptRoutes[0])?.txHash).toBe('0xreplaced')
+      expect(swapOf(keptRoutes[0])?.txLink).toBe(
+        'https://explorer/tx/0xreplaced'
+      )
+    })
+
+    it('drops a late write when a newer execution started and ended since the stop', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      startLiveExecution(liveStepWith({ status: 'STARTED' }))
+      executionState.delete(route.id)
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      expect(keptHook).not.toHaveBeenCalled()
+      expect(liveHook).not.toHaveBeenCalled()
+    })
+
+    it('keeps a new action and an execution update suppressed', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+
+      statusManager.createAction({
+        step,
+        type: 'RECEIVING_CHAIN',
+        chainId: 137,
+        status: 'PENDING',
+      })
+      statusManager.updateExecution(step, { status: 'DONE' })
+
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('does not throw into the task when the kept hook throws', () => {
+      const { route, step, statusManager } = startOldExecution()
+      keptHook.mockImplementation(() => {
+        throw new Error('Storage is full.')
+      })
+      stopRouteExecution(route)
+
+      expect(() =>
+        statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      ).not.toThrow()
+      expect(keptHook).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not throw into the task when no hook was configured', () => {
+      const { route, step, statusManager } = startOldExecution({
+        withHook: false,
+      })
+      stopRouteExecution(route)
+
+      expect(() =>
+        statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      ).not.toThrow()
+    })
+  })
+
+  describe('with a newer execution of the same route id', () => {
+    it('copies all five transaction fields and signedAt into a live action without a transaction', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({ status: 'STARTED', txLink: 'https://explorer/tx/stale' })
+      )
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', {
+        ...CLEARED_TRANSACTION_FIELDS,
+        txHash: '0xlate',
+        txHex: 'AQID',
+        taskId: 'task-late',
+        signedAt: SOME_DATE + 5,
+      })
+
+      const live = swapOf(liveRoute)!
+      expect(live.txHash).toBe('0xlate')
+      expect(live.txHex).toBe('AQID')
+      expect(live.taskId).toBe('task-late')
+      expect('txLink' in live).toBe(true)
+      expect(live.txLink).toBeUndefined()
+      expect('txFinal' in live).toBe(true)
+      expect(live.txFinal).toBeUndefined()
+      expect(live.status).toBe('STARTED')
+      expect(executionOf(liveRoute)?.signedAt).toBe(SOME_DATE + 5)
+      expect(liveHook).toHaveBeenCalledTimes(1)
+      expect(liveHook.mock.calls[0][0]).toBe(liveRoute)
+      expect(swapOf(liveRoutes[0])?.txHash).toBe('0xlate')
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('opens a live FAILED + txFinal action by removing txFinal', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({ status: 'FAILED', txHash: '0xdead', txFinal: true })
+      )
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      const live = swapOf(liveRoute)!
+      expect(live.txHash).toBe('0xlate')
+      expect('txFinal' in live).toBe(true)
+      expect(live.txFinal).toBeUndefined()
+      expect(live.status).toBe('FAILED')
+      expect(hasOpenTransaction(live)).toBe(true)
+      expect(liveHook).toHaveBeenCalledTimes(1)
+    })
+
+    it('changes nothing in a live PENDING action for a late FAILED + txFinal write', () => {
+      const { route, step, statusManager } = startOldExecution()
+      // Written while the old execution still ran.
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      stopRouteExecution(route)
+      keptHook.mockClear()
+      const liveRoute = startLiveExecution(liveStepWith({ status: 'PENDING' }))
+      const before = structuredClone(executionOf(liveRoute))
+
+      statusManager.updateAction(step, 'SWAP', 'FAILED', {
+        error: { code: 1003, message: 'Transaction was reverted.' },
+        txFinal: true,
+      })
+
+      expect(executionOf(liveRoute)).toEqual(before)
+      expect(liveHook).not.toHaveBeenCalled()
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('adds a copy of the late action when the live step has none of its type', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(liveStepWith(undefined))
+
+      const late = statusManager.updateAction(
+        step,
+        'SWAP',
+        'PENDING',
+        LATE_WRITE
+      )
+
+      const live = swapOf(liveRoute)!
+      expect(live).not.toBe(late)
+      expect(live.txHash).toBe('0xlate')
+      expect(live.status).toBe('PENDING')
+      expect(executionOf(liveRoute)?.signedAt).toBe(SOME_DATE + 5)
+      expect(liveHook).toHaveBeenCalledTimes(1)
+
+      // Later status writes of the old task stay out of the live route.
+      statusManager.updateAction(step, 'SWAP', 'DONE')
+      expect(swapOf(liveRoute)?.status).toBe('PENDING')
+    })
+
+    it('creates the execution of a live step that has not started, and the new executor reuses it', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveStep = buildStepObject({ includingExecution: false })
+      startLiveExecution(liveStep)
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      expect(liveStep.execution?.status).toBe('PENDING')
+      expect(liveStep.execution?.signedAt).toBe(SOME_DATE + 5)
+      expect(liveStep.execution?.actions.map((a) => a.type)).toEqual(['SWAP'])
+      expect(liveHook).toHaveBeenCalledTimes(1)
+
+      const liveStatusManager = new StatusManager(route.id)
+      const execution = liveStatusManager.initializeExecution(liveStep)
+      const action = liveStatusManager.initializeAction({
+        step: liveStep,
+        type: 'SWAP',
+        chainId: 137,
+        status: 'STARTED',
+      })
+      expect(execution.actions).toHaveLength(1)
+      expect(action.txHash).toBe('0xlate')
+    })
+
+    it('leaves a live action with an open transaction unchanged', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({ status: 'PENDING', txHash: '0xlive' })
+      )
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      expect(swapOf(liveRoute)?.txHash).toBe('0xlive')
+      expect(liveHook).not.toHaveBeenCalled()
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('merges nothing and does not throw when the live route has no step of that id', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution({
+        ...liveStepWith({ status: 'STARTED' }),
+        id: 're-quoted-step',
+      })
+
+      expect(() =>
+        statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      ).not.toThrow()
+
+      expect(swapOf(liveRoute)?.txHash).toBeUndefined()
+      expect(liveHook).not.toHaveBeenCalled()
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('does not throw into the old task when the live hook throws', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(liveStepWith({ status: 'STARTED' }))
+      liveHook.mockImplementation(() => {
+        throw new Error('Storage is full.')
+      })
+
+      expect(() =>
+        statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      ).not.toThrow()
+      expect(swapOf(liveRoute)?.txHash).toBe('0xlate')
+      expect(liveHook).toHaveBeenCalledTimes(1)
     })
   })
 })

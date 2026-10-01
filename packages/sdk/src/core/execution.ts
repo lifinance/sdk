@@ -83,6 +83,14 @@ export const resumeRoute = async (
   return executeRoute(client, restartRoute, executionOptions)
 }
 
+/**
+ * True while `route` is the execution registered for its id. A stopped run
+ * keeps going until its step ends; it must not stop or delete a newer
+ * execution of the same route.
+ */
+const ownsExecution = (route: RouteExtended): boolean =>
+  executionState.get(route.id)?.route === route
+
 const executeSteps = async (
   client: SDKClient,
   route: RouteExtended
@@ -90,8 +98,10 @@ const executeSteps = async (
   // Loop over steps and execute them
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
-    // Check if execution has stopped in the meantime
-    if (!execution) {
+    // Check if execution has stopped in the meantime. A newer execution of the
+    // same route id is not ours: a stop during `getStepExecutor` does not reach
+    // the executor that this run gets after it.
+    if (!execution || execution.route !== route) {
       break
     }
 
@@ -156,7 +166,7 @@ const executeSteps = async (
       }
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
-      if (executedStep.execution?.status !== 'DONE') {
+      if (executedStep.execution?.status !== 'DONE' && ownsExecution(route)) {
         stopRouteExecution(route)
       }
 
@@ -165,13 +175,17 @@ const executeSteps = async (
         return route
       }
     } catch (e) {
-      stopRouteExecution(route)
+      if (ownsExecution(route)) {
+        stopRouteExecution(route)
+      }
       throw e
     }
   }
 
   // Clean up after the execution
-  executionState.delete(route.id)
+  if (ownsExecution(route)) {
+    executionState.delete(route.id)
+  }
   return route
 }
 
