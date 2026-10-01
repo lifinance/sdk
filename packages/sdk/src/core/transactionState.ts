@@ -6,7 +6,11 @@ import type {
   LiFiStepExtended,
 } from '../types/core.js'
 
-/** Action types that carry the step's own transaction. */
+/**
+ * Action types that carry the step's own transaction.
+ *
+ * @internal
+ */
 export const TRANSACTION_ACTION_TYPES: readonly ExecutionActionType[] = [
   'SWAP',
   'CROSS_CHAIN',
@@ -16,12 +20,16 @@ export const TRANSACTION_ACTION_TYPES: readonly ExecutionActionType[] = [
  * Stored bytes on a chain without its own expiry (Sui, Solana with a durable
  * nonce) are resent only this long after signing. Past it, a page load could
  * otherwise execute a swap on a quote the user no longer expects.
+ *
+ * @internal
  */
 export const MAX_RESEND_AGE_MS = 120_000
 
 /**
  * Without an expiry verdict, a signature younger than this is never declared
  * dropped. Solana blockhashes and Tron transactions expire well before it.
+ *
+ * @internal
  */
 export const DROPPED_FALLBACK_AGE_MS = 300_000
 
@@ -29,6 +37,8 @@ export const DROPPED_FALLBACK_AGE_MS = 300_000
  * Subtracted from `execution.signedAt` (the device clock) when it anchors a
  * history-coverage check, so a device clock that runs fast cannot make a node
  * look like it covers the signing time when it does not.
+ *
+ * @internal
  */
 export const CLOCK_SKEW_MARGIN_MS = 600_000
 
@@ -36,6 +46,8 @@ export const CLOCK_SKEW_MARGIN_MS = 600_000
  * Fields a sign task clears before it writes a new transaction's data, and
  * that re-initializing a final-failed action clears. `taskId` is included: a
  * stale relayed or batched task id would otherwise keep the action open.
+ *
+ * @internal
  */
 export const CLEARED_TRANSACTION_FIELDS: Readonly<
   Pick<ExecutionAction, 'txHash' | 'txLink' | 'txHex' | 'txFinal' | 'taskId'>
@@ -63,7 +75,11 @@ export function hasOpenTransaction(action?: ExecutionAction): boolean {
   return !(action.status === 'FAILED' && action.txFinal === true)
 }
 
-/** True when any SWAP / CROSS_CHAIN action of the step has an open transaction. */
+/**
+ * True when any SWAP / CROSS_CHAIN action of the step has an open transaction.
+ *
+ * @internal
+ */
 export function hasStepOpenTransaction(step: LiFiStepExtended): boolean {
   return !!step.execution?.actions?.some(
     (action) =>
@@ -76,6 +92,8 @@ export function hasStepOpenTransaction(step: LiFiStepExtended): boolean {
  * Walks the error and its `cause` chain. Parsers may rebuild errors, so the
  * marker is read from the original error. A property check instead of
  * `instanceof` keeps it working across duplicated installs.
+ *
+ * @internal
  */
 export function isFinalTransactionError(error: unknown): boolean {
   const seen = new Set<unknown>()
@@ -94,6 +112,8 @@ export function isFinalTransactionError(error: unknown): boolean {
  * Called first in every sign task. With correct pipeline selectors it never
  * throws; it stops a second signature if a selector ever routes an open
  * transaction back to signing.
+ *
+ * @internal
  */
 export function assertNoOpenTransaction(action?: ExecutionAction): void {
   if (hasOpenTransaction(action)) {
@@ -108,6 +128,8 @@ export function assertNoOpenTransaction(action?: ExecutionAction): void {
  * Unknown signing time never allows a resend. Nor does a signing time in the
  * future: a device clock that ran ahead at signing and was corrected later
  * would otherwise stretch the cap by the clock error.
+ *
+ * @internal
  */
 export function isResendAllowed(
   signedAt: number | undefined,
@@ -120,7 +142,11 @@ export function isResendAllowed(
   )
 }
 
-/** Unknown signing time never allows a drop. */
+/**
+ * Unknown signing time never allows a drop.
+ *
+ * @internal
+ */
 export function isOldEnoughToDrop(
   signedAt: number | undefined,
   now: number = Date.now()

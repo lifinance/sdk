@@ -18,6 +18,8 @@ const STATUS_API_TIMEOUT_MS = 10_000
  * also settles the call, in case a request interceptor dropped the signal.
  * Not `AbortSignal.timeout`: a published SDK should not raise its runtime
  * floor for it; one controller and one timer cover it.
+ *
+ * @internal
  */
 export async function isKnownToStatusApi(
   client: SDKClient,
