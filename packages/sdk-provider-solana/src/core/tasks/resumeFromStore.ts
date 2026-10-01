@@ -35,6 +35,10 @@ type ResumeSource =
   /** A broadcast signature alone: a route stored before the upgrade, or
    * bytes that no longer decode. */
   | { kind: 'hash'; signature: Signature }
+  /** Bytes whose first signature is not the stored txHash (damaged
+   * storage). They prove nothing about that transaction, and they may have
+   * been sent: nothing is sent and nothing is dropped. */
+  | { kind: 'mismatch'; signature: Signature }
 
 function readResumeSource(
   context: SolanaStepExecutorContext,
@@ -43,6 +47,9 @@ function readResumeSource(
   if (action.txHex) {
     const stored = decodeStoredTransactions(action.txHex)
     if (stored) {
+      if (action.txHash && action.txHash !== stored.signature) {
+        return { kind: 'mismatch', signature: action.txHash as Signature }
+      }
       return { kind: 'bytes', stored }
     }
     // The sign task stores only bytes that decode, so these were damaged
@@ -75,6 +82,10 @@ function readResumeSource(
  *    the task's normal send path, without simulation.
  * 3. Otherwise - a hash alone, or bytes past the resend age cap - nothing is
  *    sent, and only the dropped rule can make the outcome final.
+ *
+ * Bytes that are not the stored txHash's transaction are never sent, and the
+ * dropped rule never runs for them: the outcome stays unknown unless the
+ * lookup by txHash finds it confirmed.
  */
 export async function resumeFromStore(
   context: SolanaStepExecutorContext,
@@ -126,14 +137,19 @@ export async function resumeFromStore(
   // No RPC answered at all: an outage, as today. Otherwise the transaction
   // was simply not seen.
   const silent = lookup.kind === 'unknown' && !lookup.answered
+  const error = confirmationError(
+    silent
+      ? { kind: 'rpc-unavailable', errors: lookup.errors }
+      : { kind: 'not-confirmed', errors: [] },
+    options.messages
+  )
+  if (source.kind === 'mismatch') {
+    // Damaged storage: no dropped rule, so the outcome stays unknown.
+    throw error
+  }
   const status = await resolveUnconfirmed(context, action, {
     signature,
-    error: confirmationError(
-      silent
-        ? { kind: 'rpc-unavailable', errors: lookup.errors }
-        : { kind: 'not-confirmed', errors: [] },
-      options.messages
-    ),
+    error,
     expiredAtSlot: undefined,
     messages: options.messages,
   })

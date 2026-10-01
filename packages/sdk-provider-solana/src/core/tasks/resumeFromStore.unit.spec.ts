@@ -290,6 +290,52 @@ describe('resumeFromStore', () => {
     expect(send).not.toHaveBeenCalled()
   })
 
+  // Damaged storage: the stored bytes are another transaction than the
+  // stored txHash. They prove nothing about it, and they may have been sent.
+  // Without the check, the blockhash bytes would be resent and the nonce
+  // bytes would be dropped.
+  it.each([
+    ['blockhash', signedSwapTransactionBase64],
+    ['durable-nonce', signedNonceTransactionBase64],
+  ])(
+    'never sends or drops %s bytes whose first signature is not the stored txHash',
+    async (_kind, signedTransactionBase64) => {
+      lookupAnswers(NOTHING_FOUND, PROVEN_ABSENT)
+
+      const thrown = await resume(
+        { txHex: signedTransactionBase64(7), txHash: signatureFilledWith(8) },
+        ago(DROPPED_FALLBACK_AGE_MS + 60_000)
+      ).catch((e) => e)
+
+      expect(send).not.toHaveBeenCalled()
+      expect(thrown).toBeInstanceOf(TransactionError)
+      expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+      expect(thrown.message).toBe(MESSAGES.notConfirmed)
+      expect(thrown.final).toBe(false)
+      // One look by the stored txHash, without bounds: no dropped check.
+      expect(lookupSignatureStatus.mock.calls).toEqual([
+        [client, signatureFilledWith(8)],
+      ])
+      expect(isKnownToStatusApi).not.toHaveBeenCalled()
+      // txHex and txHash stay.
+      expect(updateAction).not.toHaveBeenCalled()
+    }
+  )
+
+  it('records the stored txHash as landed when the lookup finds it, although the stored bytes differ', async () => {
+    lookupAnswers(found('finalized'))
+    const txHash = signatureFilledWith(8)
+
+    await expect(
+      resume({ txHex: signedSwapTransactionBase64(7), txHash }, Date.now())
+    ).resolves.toEqual({ status: 'COMPLETED' })
+
+    expect(send).not.toHaveBeenCalled()
+    expect(txHexWrites()).toEqual([
+      { txHash, txLink: `https://explorer/tx/${txHash}` },
+    ])
+  })
+
   it('looks a route from before the upgrade up by hash and never sends', async () => {
     const thrown = await resume({ txHash: 'hash-sig' }, ago(60_000)).catch(
       (e) => e
