@@ -236,6 +236,33 @@ describe('SuiSignAndExecuteTask', () => {
     expect(executeTransaction).not.toHaveBeenCalled()
   })
 
+  // An older run's late write can merge its transaction into this action
+  // while the task awaits the quote (spec addendum §5.2 case 1).
+  it('checks the action again right before the wallet and never asks it to sign when a transaction merged meanwhile', async () => {
+    const { context, signTransaction, executeTransaction, updateAction } =
+      makeContext()
+    const { statusManager } = context as {
+      statusManager: { findAction: () => unknown }
+    }
+    getTransactionRequestData.mockImplementationOnce(async () => {
+      statusManager.findAction = () => ({
+        type: 'SWAP',
+        status: 'ACTION_REQUIRED',
+        txHex: TX_HEX,
+      })
+      return toBase64(BYTES)
+    })
+
+    await expect(
+      new SuiSignAndExecuteTask().run(context)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(getTransactionRequestData).toHaveBeenCalledTimes(1)
+    expect(signTransaction).not.toHaveBeenCalled()
+    expect(executeTransaction).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
   it('does not execute when the wallet returns no signature', async () => {
     const { context, signTransaction, executeTransaction, updateAction } =
       makeContext()

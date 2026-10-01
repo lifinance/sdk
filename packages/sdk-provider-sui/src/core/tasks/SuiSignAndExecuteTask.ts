@@ -56,6 +56,10 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
     transaction.setSenderIfNotSet(signer.toSuiAddress())
     const transactionBytes = await transaction.build({ client: suiClient })
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the awaits above.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     // Only the wallet's own answer is classified: an error from building the
     // transaction above can quote a node that "rejected" it.
     let signature: string
