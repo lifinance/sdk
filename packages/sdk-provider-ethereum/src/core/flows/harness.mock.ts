@@ -519,6 +519,12 @@ export interface ScenarioOptions {
   erc1271Response?: Hex | 'revert'
   /** Forwarded to `EthereumProvider`, i.e. the execution context flag. */
   disableMessageSigning?: boolean
+  /**
+   * Awaited inside the wallet's `sendTransaction`, after the call is recorded
+   * and before the hash is returned. `callIndex` counts the scenario's sends
+   * from 0. Return a pending promise to hold the wallet prompt open.
+   */
+  beforeSendTransaction?: (callIndex: number) => Promise<void>
   /** Wallet signing behaviour. Throw to model a user rejection. */
   onSignTypedData?: (
     request: SignTypedDataRequest,
@@ -529,7 +535,7 @@ export interface ScenarioOptions {
    * endpoint: it answers with a transaction and *drops* the typed data it was
    * posted, so a scenario that wants typed data back has to say so.
    */
-  onStepTransaction?: (step: LiFiStep) => LiFiStep
+  onStepTransaction?: (step: LiFiStep) => LiFiStep | Promise<LiFiStep>
   /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
   onRelayerQuote?: (step: LiFiStep) => LiFiStep
   /**
@@ -725,6 +731,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
   const erc1271Response = options.erc1271Response ?? ERC1271_ACCEPTED
 
   let signCallIndex = 0
+  let sendCallIndex = 0
   let txCounter = 0
   const nextHash = (): Hash => {
     txCounter += 1
@@ -843,6 +850,9 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
         data: request.data,
         value: request.value,
       })
+      const index = sendCallIndex
+      sendCallIndex += 1
+      await options.beforeSendTransaction?.(index)
       return nextHash()
     },
     sendCalls: async (request: {
