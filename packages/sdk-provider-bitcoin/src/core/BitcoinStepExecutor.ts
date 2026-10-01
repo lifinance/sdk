@@ -61,15 +61,23 @@ export class BitcoinStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName = swapOrBridgeAction?.txHash
+    const firstTask = swapOrBridgeAction?.txHash
       ? swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : BitcoinWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : BitcoinWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same `name` (JUM-1621, JUMEMB-41).
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'BitcoinStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 
