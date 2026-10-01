@@ -14,6 +14,7 @@ import {
   CLEARED_TRANSACTION_FIELDS,
   hasOpenTransaction,
   hasStepOpenTransaction,
+  TRANSACTION_ACTION_TYPES,
 } from './transactionState.js'
 
 type ActionProps = {
@@ -62,10 +63,10 @@ const changesTransaction = (
 ): boolean => TRANSACTION_KEYS.some((key) => action[key] !== before[key])
 
 /**
- * Copies a late transaction into a newer execution of the same route. The
- * live step's objects are changed in place: the live executor holds them, so
- * its selector and its pre-sign guard see the transaction. Returns true when
- * something changed.
+ * Copies a late transaction into the route of a newer execution of the same
+ * route id, running or ended. The step's objects are changed in place: a
+ * running executor holds them, so its selector and its pre-sign guard see
+ * the transaction. Returns true when something changed.
  */
 const mergeLateTransaction = (
   liveRoute: RouteExtended,
@@ -82,37 +83,41 @@ const mergeLateTransaction = (
   if (!liveStep) {
     return false
   }
-  const signedAt = lateStep.execution?.signedAt
   if (!liveStep.execution) {
     liveStep.execution = {
       startedAt: Date.now(),
       status: 'PENDING',
-      signedAt,
       actions: [structuredClone(lateAction)],
     }
-    return true
+  } else {
+    const liveAction = liveStep.execution.actions.find(
+      (action) => action.type === lateAction.type
+    )
+    if (!liveAction) {
+      liveStep.execution.actions.push(structuredClone(lateAction))
+    } else if (hasOpenTransaction(liveAction)) {
+      // Two transactions exist; the newer execution keeps its own.
+      return false
+    } else {
+      // All five fields, so a stale `txFinal` goes and the action is open.
+      Object.assign(liveAction, {
+        txHash: lateAction.txHash,
+        txLink: lateAction.txLink,
+        txHex: lateAction.txHex,
+        txFinal: lateAction.txFinal,
+        taskId: lateAction.taskId,
+      })
+    }
   }
-  const liveAction = liveStep.execution.actions.find(
-    (action) => action.type === lateAction.type
-  )
-  if (!liveAction) {
-    liveStep.execution.actions.push(structuredClone(lateAction))
+  // `signedAt` is the signing time of the step's own transaction: an
+  // allowance does not set it, and a write without one keeps the live time.
+  const signedAt = lateStep.execution?.signedAt
+  if (
+    TRANSACTION_ACTION_TYPES.includes(lateAction.type) &&
+    signedAt !== undefined
+  ) {
     liveStep.execution.signedAt = signedAt
-    return true
   }
-  // Two transactions exist; the newer execution keeps its own.
-  if (hasOpenTransaction(liveAction)) {
-    return false
-  }
-  // All five fields, so a stale `txFinal` goes and the action is open.
-  Object.assign(liveAction, {
-    txHash: lateAction.txHash,
-    txLink: lateAction.txLink,
-    txHex: lateAction.txHex,
-    txFinal: lateAction.txFinal,
-    taskId: lateAction.taskId,
-  })
-  liveStep.execution.signedAt = signedAt
   return true
 }
 
@@ -384,8 +389,10 @@ export class StatusManager {
   /**
    * A write of transaction data after `stopRouteExecution`. With a newer
    * execution of the same route id running, the transaction is merged into
-   * it. Otherwise, if no execution of the route started since the stop, the
-   * kept route is updated and the kept hook is called.
+   * it. If no execution of the route started since the stop, the kept route
+   * is updated and the kept hook is called. If a newer execution started and
+   * ended since the stop, the transaction is merged into the route of the
+   * last ended execution, and its hook is called.
    */
   private deliverLateTransactionData(
     step: LiFiStepExtended,
@@ -407,8 +414,13 @@ export class StatusManager {
         return
       }
       // A newer execution started and ended since the stop: the integrator
-      // stored a newer route, which the kept one would roll back.
+      // stored its route, which the kept one would roll back. The late
+      // transaction goes into that route instead.
       if (executionState.startCount(this.routeId) !== stopped.startCount) {
+        const ended = executionState.lastEnded(this.routeId)
+        if (ended && mergeLateTransaction(ended.route, step, lateAction)) {
+          ended.updateRouteHook?.(ended.route)
+        }
         return
       }
       const stepIndex = stopped.route.steps.findIndex(

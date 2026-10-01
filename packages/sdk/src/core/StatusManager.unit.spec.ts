@@ -575,18 +575,6 @@ describe('StatusManager after stopRouteExecution', () => {
       )
     })
 
-    it('drops a late write when a newer execution started and ended since the stop', () => {
-      const { route, step, statusManager } = startOldExecution()
-      stopRouteExecution(route)
-      startLiveExecution(liveStepWith({ status: 'STARTED' }))
-      executionState.delete(route.id)
-
-      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
-
-      expect(keptHook).not.toHaveBeenCalled()
-      expect(liveHook).not.toHaveBeenCalled()
-    })
-
     it('keeps a new action and an execution update suppressed', () => {
       const { route, step, statusManager } = startOldExecution()
       stopRouteExecution(route)
@@ -789,6 +777,95 @@ describe('StatusManager after stopRouteExecution', () => {
       ).not.toThrow()
       expect(swapOf(liveRoute)?.txHash).toBe('0xlate')
       expect(liveHook).toHaveBeenCalledTimes(1)
+    })
+
+    // Spec addendum section 5.4: `signedAt` is merged only from a SWAP /
+    // CROSS_CHAIN late action, and only when it is defined.
+    it.each([
+      {
+        name: 'a late SET_ALLOWANCE transaction',
+        type: 'SET_ALLOWANCE',
+        oldSignedAt: SOME_DATE + 5,
+        params: {
+          txHash: '0xapprove',
+          txLink: 'https://explorer/tx/0xapprove',
+        },
+      },
+      {
+        name: 'a late SWAP transaction without signedAt',
+        type: 'SWAP',
+        oldSignedAt: undefined,
+        params: { ...CLEARED_TRANSACTION_FIELDS, txHash: '0xlate' },
+      },
+    ] as {
+      name: string
+      type: ExecutionActionType
+      oldSignedAt: number | undefined
+      params: Partial<ExecutionAction>
+    }[])(
+      'keeps the live signedAt for $name',
+      ({ type, oldSignedAt, params }) => {
+        const { route, step, statusManager } = startOldExecution()
+        step.execution!.signedAt = oldSignedAt
+        stopRouteExecution(route)
+        // Only a SWAP action without a transaction, so the write is merged.
+        const liveStep = buildStepObject({ includingExecution: true })
+        liveStep.execution!.actions = [{ type: 'SWAP', status: 'STARTED' }]
+        liveStep.execution!.signedAt = SOME_DATE + 9
+        const liveRoute = startLiveExecution(liveStep)
+
+        statusManager.updateAction(step, type, 'PENDING', params)
+
+        expect(liveHook).toHaveBeenCalledTimes(1)
+        expect(
+          executionOf(liveRoute)?.actions.find((action) => action.type === type)
+            ?.txHash
+        ).toBe(params.txHash)
+        expect(executionOf(liveRoute)?.signedAt).toBe(SOME_DATE + 9)
+      }
+    )
+  })
+
+  // Spec addendum section 5.2, case 3.
+  describe('with a newer execution that ended since the stop', () => {
+    /** A newer execution of the route id that started and ended. */
+    const endLiveExecution = (liveStep: LiFiStepExtended): Route => {
+      const liveRoute = startLiveExecution(liveStep)
+      executionState.delete(liveRoute.id)
+      return liveRoute
+    }
+
+    it('merges the late transaction into the route of the newer execution and calls its hook', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = endLiveExecution(liveStepWith({ status: 'FAILED' }))
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      const live = swapOf(liveRoute)!
+      expect(live.txHash).toBe('0xlate')
+      expect(live.status).toBe('FAILED')
+      expect(hasOpenTransaction(live)).toBe(true)
+      expect(executionOf(liveRoute)?.signedAt).toBe(SOME_DATE + 5)
+      expect(liveHook).toHaveBeenCalledTimes(1)
+      expect(liveHook.mock.calls[0][0]).toBe(liveRoute)
+      expect(swapOf(liveRoutes[0])?.txHash).toBe('0xlate')
+      expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    it('leaves the route of the newer execution unchanged when its action is open', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = endLiveExecution(
+        liveStepWith({ status: 'PENDING', txHash: '0xlive' })
+      )
+      const before = structuredClone(executionOf(liveRoute))
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+
+      expect(executionOf(liveRoute)).toEqual(before)
+      expect(liveHook).not.toHaveBeenCalled()
+      expect(keptHook).not.toHaveBeenCalled()
     })
   })
 })

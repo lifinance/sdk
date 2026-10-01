@@ -99,8 +99,7 @@ const executeSteps = async (
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
     // Check if execution has stopped in the meantime. A newer execution of the
-    // same route id is not ours: a stop during `getStepExecutor` does not reach
-    // the executor that this run gets after it.
+    // same route id is not ours, also when our executor ignored the stop.
     if (!execution || execution.route !== route) {
       break
     }
@@ -142,6 +141,11 @@ const executeSteps = async (
         routeId: route.id,
         executionOptions: execution.executionOptions,
       })
+      // A stop during the await did not reach this executor, and a newer
+      // execution of the route may run now: do not start the step.
+      if (!ownsExecution(route)) {
+        return route
+      }
       execution.executors.push(stepExecutor)
 
       // Check if we want to execute this step in the background
