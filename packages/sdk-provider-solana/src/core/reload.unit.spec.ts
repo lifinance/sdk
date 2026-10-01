@@ -102,16 +102,17 @@ describe('Solana reload', () => {
     let afterSigning: RouteExtended | undefined
     let firstSent: string | undefined
     // The page dies when the first send leaves the SDK: the snapshot is what
-    // storage held at that instant.
+    // storage held at that instant, the copy the last `updateRouteHook` call
+    // wrote. A write that skips the hook is not in it.
     network.onSend = (wire) => {
       if (!afterSigning && latest) {
-        afterSigning = persist(latest)
+        afterSigning = latest
         firstSent = wire
       }
     }
     await executeRoute(page.client, buildRoute(buildStep(page.walletAddress)), {
       updateRouteHook: (route) => {
-        latest = route
+        latest = persist(route)
       },
     })
     expect(afterSigning).toBeDefined()
@@ -170,7 +171,7 @@ describe('Solana "Try again" loop exit', () => {
     const page = await openPage(secretKey)
     let latest: RouteExtended | undefined
     const updateRouteHook = (route: RouteExtended): void => {
-      latest = route
+      latest = persist(route)
     }
     // Included with an error: a final outcome (spec 4.3, Solana).
     network.failNext = { InstructionError: [0, { Custom: 1 }] }
@@ -179,7 +180,7 @@ describe('Solana "Try again" loop exit', () => {
         updateRouteHook,
       })
     ).rejects.toThrow()
-    const failed = persist(latest!)
+    const failed = latest!
     expect(swapActionOf(failed)).toMatchObject({
       status: 'FAILED',
       txFinal: true,
@@ -198,7 +199,7 @@ describe('Solana "Try again" loop exit', () => {
     const page = await openPage(secretKey)
     let latest: RouteExtended | undefined
     const updateRouteHook = (route: RouteExtended): void => {
-      latest = route
+      latest = persist(route)
     }
     // The transaction lands; the status API then fails: an unknown outcome.
     network.statusMode = 'no-receiving'
@@ -207,7 +208,7 @@ describe('Solana "Try again" loop exit', () => {
         updateRouteHook,
       })
     ).rejects.toThrow()
-    const failed = persist(latest!)
+    const failed = latest!
     const swap = swapActionOf(failed)
     expect(swap?.status).toBe('FAILED')
     expect(swap?.txHash).toBeDefined()

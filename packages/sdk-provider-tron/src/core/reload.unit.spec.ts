@@ -92,15 +92,16 @@ describe('Tron reload', () => {
     let latest: RouteExtended | undefined
     let afterSigning: RouteExtended | undefined
     // The page dies when the first broadcast leaves the SDK: the snapshot is
-    // what storage held at that instant.
+    // what storage held at that instant, the copy the last `updateRouteHook`
+    // call wrote. A write that skips the hook is not in it.
     network.onBroadcast = () => {
       if (!afterSigning && latest) {
-        afterSigning = persist(latest)
+        afterSigning = latest
       }
     }
     await executeRoute(page.client, buildRoute(buildStep()), {
       updateRouteHook: (route) => {
-        latest = route
+        latest = persist(route)
       },
     })
     expect(afterSigning).toBeDefined()
@@ -165,14 +166,14 @@ describe('Tron "Try again" loop exit', () => {
     const page = openPage()
     let latest: RouteExtended | undefined
     const updateRouteHook = (route: RouteExtended): void => {
-      latest = route
+      latest = persist(route)
     }
     // Included and reverted: a final outcome (spec 4.3, Tron).
     network.failNext = 'REVERT'
     await expect(
       executeRoute(page.client, buildRoute(buildStep()), { updateRouteHook })
     ).rejects.toThrow()
-    const failed = persist(latest!)
+    const failed = latest!
     expect(swapActionOf(failed)).toMatchObject({
       status: 'FAILED',
       txFinal: true,
@@ -191,14 +192,14 @@ describe('Tron "Try again" loop exit', () => {
     const page = openPage()
     let latest: RouteExtended | undefined
     const updateRouteHook = (route: RouteExtended): void => {
-      latest = route
+      latest = persist(route)
     }
     // The transaction lands; the status API then fails: an unknown outcome.
     network.statusMode = 'no-receiving'
     await expect(
       executeRoute(page.client, buildRoute(buildStep()), { updateRouteHook })
     ).rejects.toThrow()
-    const failed = persist(latest!)
+    const failed = latest!
     const swap = swapActionOf(failed)
     expect(swap?.status).toBe('FAILED')
     expect(swap?.txHash).toBeDefined()
