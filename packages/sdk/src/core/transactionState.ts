@@ -104,12 +104,20 @@ export function assertNoOpenTransaction(action?: ExecutionAction): void {
   }
 }
 
-/** Unknown signing time never allows a resend. */
+/**
+ * Unknown signing time never allows a resend. Nor does a signing time in the
+ * future: a device clock that ran ahead at signing and was corrected later
+ * would otherwise stretch the cap by the clock error.
+ */
 export function isResendAllowed(
   signedAt: number | undefined,
   now: number = Date.now()
 ): boolean {
-  return signedAt !== undefined && now - signedAt < MAX_RESEND_AGE_MS
+  return (
+    signedAt !== undefined &&
+    now >= signedAt &&
+    now - signedAt < MAX_RESEND_AGE_MS
+  )
 }
 
 /** Unknown signing time never allows a drop. */

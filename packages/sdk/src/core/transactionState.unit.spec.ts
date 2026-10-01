@@ -153,6 +153,14 @@ describe('age helpers', () => {
     expect(isResendAllowed(undefined, now)).toBe(false)
   })
 
+  // A device clock that ran ahead at signing and was corrected later would
+  // otherwise stretch the cap by the clock error.
+  it('never allows a resend while signedAt is in the future', () => {
+    expect(isResendAllowed(now, now)).toBe(true)
+    expect(isResendAllowed(now + 1, now)).toBe(false)
+    expect(isResendAllowed(now + 60 * 60_000, now)).toBe(false)
+  })
+
   it('allows a drop only above DROPPED_FALLBACK_AGE_MS and never without signedAt', () => {
     expect(isOldEnoughToDrop(now - DROPPED_FALLBACK_AGE_MS - 1, now)).toBe(true)
     expect(isOldEnoughToDrop(now - DROPPED_FALLBACK_AGE_MS, now)).toBe(false)

@@ -592,4 +592,16 @@ describe('isSuiTransactionDropped', () => {
     ).resolves.toBe(false)
     expect(node.ledgerService.getCheckpoint).not.toHaveBeenCalled()
   })
+
+  // The device clock now runs an hour behind the chain, so signedAt lies in
+  // the future. A refused resend does not mean that the age cap passed.
+  it('never looks up while signedAt is in the future', async () => {
+    vi.setSystemTime(NOW - 60 * 60_000)
+    const [node] = useNodes(makeNode())
+
+    await expect(
+      isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
+    ).resolves.toBe(false)
+    expect(node.ledgerService.getCheckpoint).not.toHaveBeenCalled()
+  })
 })

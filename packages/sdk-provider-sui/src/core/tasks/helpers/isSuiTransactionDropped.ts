@@ -1,7 +1,6 @@
 import {
   CLOCK_SKEW_MARGIN_MS,
   isKnownToStatusApi,
-  isResendAllowed,
   type LiFiStepExtended,
   MAX_RESEND_AGE_MS,
   type SDKClient,
@@ -46,7 +45,8 @@ interface Canaries {
  * True only when the digest can no longer land and no source knows it
  * (spec 4.2.8):
  * (a) the resend age cap has passed, so the SDK never sends the bytes again.
- *     An unknown signing time never drops;
+ *     An unknown signing time never drops, and nor does one in the future:
+ *     a refused resend does not mean that the cap passed;
  * (b) a node answers "not found" for the digest in the same
  *     `BatchGetTransactions` response that finds one canary user transaction
  *     from before the earliest landing time and one from after the latest
@@ -64,7 +64,7 @@ export async function isSuiTransactionDropped(
   digest: string
 ): Promise<boolean> {
   const signedAt = step.execution?.signedAt
-  if (signedAt === undefined || isResendAllowed(signedAt)) {
+  if (signedAt === undefined || Date.now() - signedAt < MAX_RESEND_AGE_MS) {
     return false
   }
   try {
