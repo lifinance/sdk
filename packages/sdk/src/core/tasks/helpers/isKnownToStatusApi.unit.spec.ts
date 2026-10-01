@@ -1,5 +1,5 @@
 import type { LiFiStep, StatusResponse } from '@lifi/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../actions/getStatus.js', () => ({
   getStatus: vi.fn(),
@@ -29,6 +29,10 @@ const respond = (status: string): void => {
 describe('isKnownToStatusApi', () => {
   beforeEach(() => {
     vi.mocked(getStatus).mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it.each(['PENDING', 'DONE', 'FAILED', 'INVALID'])(
@@ -68,8 +72,44 @@ describe('isKnownToStatusApi', () => {
         txHash: 'sig',
         bridge: 'jupiter',
         transactionId: 'tx-id-1',
+      },
+      { signal: expect.any(AbortSignal) }
+    )
+  })
+
+  // A hung status API must not stop the wait task at its final verdict. The
+  // mock never settles and ignores the signal, as a request interceptor that
+  // drops the signal would.
+  it('is false when the API does not answer within 10 s, and aborts the request', async () => {
+    vi.useFakeTimers()
+    let signal: AbortSignal | undefined
+    vi.mocked(getStatus).mockImplementationOnce((_client, _params, options) => {
+      signal = options?.signal
+      return new Promise<StatusResponse>(() => {})
+    })
+    let result: boolean | undefined
+    const pending = isKnownToStatusApi({} as SDKClient, step, 'sig').then(
+      (known) => {
+        result = known
       }
     )
+
+    await vi.advanceTimersByTimeAsync(9_999)
+    expect(result).toBeUndefined()
+    expect(signal?.aborted).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(result).toBe(false)
+    expect(signal?.aborted).toBe(true)
+    await pending
+  })
+
+  it('clears its timer when the API answers in time', async () => {
+    vi.useFakeTimers()
+    respond('PENDING')
+
+    expect(await isKnownToStatusApi({} as SDKClient, step, 'sig')).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('omits bridge for custom steps', async () => {
