@@ -77,14 +77,22 @@ export class SuiStepExecutor extends BaseStepExecutor {
       isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
     )
 
-    const taskName =
+    const firstTask =
       swapOrBridgeAction?.txHash && swapOrBridgeAction?.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'SuiStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

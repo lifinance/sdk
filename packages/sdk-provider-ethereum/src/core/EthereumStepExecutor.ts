@@ -158,25 +158,37 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       this.statusManager
     )
 
-    let taskName: string
+    let firstTask:
+      | typeof EthereumCheckPermitsTask
+      | typeof EthereumCheckBalanceTask
+      | typeof EthereumWaitForTransactionTask
+      | typeof EthereumWaitForTransactionStatusTask
     if (doCheckAllowance) {
-      taskName = EthereumCheckPermitsTask.name
+      firstTask = EthereumCheckPermitsTask
     } else {
       const swapOrBridgeAction = this.statusManager.findAction(
         step,
         isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
       )
-      taskName =
+      firstTask =
         swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
           ? swapOrBridgeAction?.status === 'DONE'
-            ? EthereumWaitForTransactionStatusTask.name
-            : EthereumWaitForTransactionTask.name
-          : EthereumCheckBalanceTask.name
+            ? EthereumWaitForTransactionStatusTask
+            : EthereumWaitForTransactionTask
+          : EthereumCheckBalanceTask
     }
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'EthereumStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 

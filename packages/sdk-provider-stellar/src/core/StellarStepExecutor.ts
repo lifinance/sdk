@@ -104,15 +104,23 @@ export class StellarStepExecutor extends BaseStepExecutor {
     // CheckBalanceTask would re-prepare, re-sign and submit a SECOND
     // transaction — executing the swap twice. Resume at the confirmation poll
     // instead and let the already-broadcast transaction settle.
-    const taskName = swapOrBridgeAction?.txHash
+    const firstTask = swapOrBridgeAction?.txHash
       ? swapOrBridgeAction.status === 'DONE'
-        ? WaitForTransactionStatusTask.name
-        : StellarWaitForTransactionTask.name
-      : CheckBalanceTask.name
+        ? WaitForTransactionStatusTask
+        : StellarWaitForTransactionTask
+      : CheckBalanceTask
 
+    // Compare classes, not names: a minifier can give two task classes the
+    // same name.
     const firstTaskIndex = tasks.findIndex(
-      (task) => task.constructor.name === taskName
+      (task) => task.constructor === firstTask
     )
+    if (firstTaskIndex === -1) {
+      throw new TransactionError(
+        LiFiErrorCode.InternalError,
+        'StellarStepExecutor.createPipeline: first task not found'
+      )
+    }
 
     const tasksToRun = tasks.slice(firstTaskIndex)
 
