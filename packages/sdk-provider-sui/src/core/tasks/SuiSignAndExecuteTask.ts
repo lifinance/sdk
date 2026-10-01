@@ -55,7 +55,6 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
     transaction.setSenderIfNotSet(signer.toSuiAddress())
     const transactionBytes = await transaction.build({ client: suiClient })
 
-    // We give users 2 minutes to sign the transaction
     const { signature } = await signer.signTransaction(transactionBytes)
 
     const txHex = serializeSuiSignedTransaction(transactionBytes, signature)
