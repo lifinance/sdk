@@ -15,6 +15,9 @@
  *   The fake parses each JSON-RPC body and answers from an in-memory chain:
  *   account sequence numbers, SAC allowances, landed transactions and a
  *   ledger counter. Every account holds {@link TOKEN_BALANCE} of every token.
+ *   The SAC `approve` simulation answers the auth entry a node records for
+ *   it (source-account credentials), and the chain lands an `approve` only
+ *   with that entry, as a ledger that runs `from.require_auth()` does.
  * - The wallet: a real `Keypair` (a new key per page) behind a
  *   `StellarWallet` whose `signTransaction` is a spy that really signs the
  *   envelope, as the Stellar Wallets Kit does. The fake node verifies the
@@ -25,13 +28,27 @@
  *   that landed.
  *
  * Anything else (an unknown URL or JSON-RPC method, a contract function the
- * fake does not know, an invalid signature, a `/status` request for a hash
- * that did not land) is recorded in {@link FakeStellarNetwork.unexpected},
- * which every spec asserts is empty in `afterEach`. Main swallows many
- * errors (`callStellarRpcsWithRetry`, the `/status` poll), so a throw alone
- * could hide. `getTransaction` for a hash that did not land answers
- * NOT_FOUND, as a node does: the provider then sleeps 3 s and polls again,
- * so a spec that reaches it without fake timers fails by the test timeout.
+ * fake does not know, an invalid signature, an `approve` without its auth
+ * entry, a `getTransaction` for a hash the node never received, a `/status`
+ * request for a hash that did not land) is recorded in
+ * {@link FakeStellarNetwork.unexpected}, which every spec asserts is empty
+ * in `afterEach`. Main swallows many errors (`callStellarRpcsWithRetry`,
+ * the confirmation poll, the `/status` poll), so a throw alone could hide.
+ * So a throw inside the fakes is recorded too (`harness error: …`): the RPC
+ * then answers a JSON-RPC error (-32603), and a LI.FI API request rejects.
+ * `getTransaction` for a hash that the node received but that did not land
+ * answers NOT_FOUND, as a node does: the provider then sleeps 3 s and polls
+ * again, so a spec that reaches it without fake timers fails by the test
+ * timeout.
+ *
+ * Closed state: when this file loads, it replaces the real `fetch` with one
+ * that rejects every request and reaches no network. `vi.stubGlobal` keeps
+ * that `fetch` as the original, so the `vi.unstubAllGlobals()` of every
+ * `afterEach` puts it back, not the real one. A request that outlives its
+ * test (the confirmation poll does not stop when a test times out) then
+ * fails without a network call. If such a poll reaches the fake of a later
+ * test, it asks for a hash that this network never received, which that
+ * test records in `unexpected`.
  *
  * `.mock.ts` keeps this file out of `dist`.
  */
@@ -208,8 +225,16 @@ export interface Invocation {
   args: unknown[]
 }
 
-/** The contract call of a one-operation Soroban envelope. */
-export const invocationOf = (envelope: string): Invocation => {
+interface ContractCall {
+  /** The source account of the transaction (`G…`). */
+  source: string
+  call: xdr.InvokeContractArgs
+  /** The auth entries of the operation. */
+  auth: xdr.SorobanAuthorizationEntry[]
+}
+
+/** The contract call of a one-operation Soroban envelope, as XDR. */
+const contractCallOf = (envelope: string): ContractCall => {
   const transaction = TransactionBuilder.fromXDR(
     envelope,
     NETWORK_PASSPHRASE
@@ -221,11 +246,16 @@ export const invocationOf = (envelope: string): Invocation => {
   ) {
     throw new Error('Not a one-operation contract call')
   }
-  const func = (operation as Operation.InvokeHostFunction).func
+  const { func, auth = [] } = operation as Operation.InvokeHostFunction
   if (func.type !== 'hostFunctionTypeInvokeContract') {
     throw new Error('Not a contract call')
   }
-  const call = func.invokeContract
+  return { source: transaction.source, call: func.invokeContract, auth }
+}
+
+/** The contract call of a one-operation Soroban envelope. */
+export const invocationOf = (envelope: string): Invocation => {
+  const { call } = contractCallOf(envelope)
   return {
     contract: Address.fromScAddress(call.contractAddress).toString(),
     method: call.functionName.toString(),
@@ -487,22 +517,71 @@ const allowanceKey = (token: string, from: string, spender: string): string =>
 
 const nowSeconds = (): number => Math.floor(Date.now() / 1000)
 
+/**
+ * The auth entry a node's recording-mode simulation returns for a contract
+ * call that requires the auth of the transaction's source account (the SAC
+ * `approve(from, …)` with `from` as the source): the transaction signature
+ * authorizes the call, so the credentials are the source account's.
+ */
+const sourceAccountAuth = (
+  call: xdr.InvokeContractArgs
+): xdr.SorobanAuthorizationEntry =>
+  new xdr.SorobanAuthorizationEntry({
+    credentials: xdr.SorobanCredentials.sorobanCredentialsSourceAccount(),
+    rootInvocation: new xdr.SorobanAuthorizedInvocation({
+      function:
+        xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+          call
+        ),
+      subInvocations: [],
+    }),
+  })
+
+/**
+ * Whether a ledger accepts the auth of an `approve`: `from` is the source
+ * account, and the operation carries exactly the simulated auth entry.
+ */
+const authorizesApprove = ({ source, call, auth }: ContractCall): boolean => {
+  const [from] = call.args.map((arg) => scValToNative(arg)) as [string]
+  return (
+    from === source &&
+    auth.length === 1 &&
+    auth[0].toXDR('base64') === sourceAccountAuth(call).toXDR('base64')
+  )
+}
+
+/** The `fetch` outside a test: it rejects and reaches no network. */
+const closedFetch = (async (input: unknown) => {
+  throw new Error(`The fake Stellar network is closed: ${urlOf(input)}`)
+}) as typeof fetch
+
+// Closed state (see the file comment): replace the real `fetch` before any
+// spec stubs it, so `vi.unstubAllGlobals()` restores `closedFetch`.
+globalThis.fetch = closedFetch
+
 const createFakeStellarNetwork = (): FakeStellarNetwork => {
   const sequences = new Map<string, bigint>()
   const allowances = new Map<string, bigint>()
   let ledger = START_LEDGER
 
   const land = (hash: string, envelope: string): void => {
+    // Decode first, so an envelope the fake cannot read does not land.
+    const call = invocationOf(envelope)
+    const approve = call.method === 'approve'
+    // `approve` runs `from.require_auth()`: without the simulated auth
+    // entry, a ledger fails the transaction.
+    const unauthorized = approve && !authorizesApprove(contractCallOf(envelope))
+    if (unauthorized) {
+      network.unexpected.push(`approve without its auth entry: ${hash}`)
+    }
     ledger += 1
-    const status = network.failNextLanding ? 'FAILED' : 'SUCCESS'
+    const status =
+      network.failNextLanding || unauthorized ? 'FAILED' : 'SUCCESS'
     network.failNextLanding = false
     network.landed.set(hash, { envelope, status, ledger })
-    if (status === 'SUCCESS') {
-      const call = invocationOf(envelope)
-      if (call.method === 'approve') {
-        const [from, spender, amount] = call.args as [string, string, bigint]
-        allowances.set(allowanceKey(call.contract, from, spender), amount)
-      }
+    if (status === 'SUCCESS' && approve) {
+      const [from, spender, amount] = call.args as [string, string, bigint]
+      allowances.set(allowanceKey(call.contract, from, spender), amount)
     }
   }
 
@@ -569,6 +648,13 @@ const createFakeStellarNetwork = (): FakeStellarNetwork => {
     }
     const landed = network.landed.get(hash)
     if (!landed) {
+      // A node answers NOT_FOUND for any hash. A hash that this node never
+      // received is a poll for the wrong hash, or a poll that outlived an
+      // earlier test. `forgetChain()` keeps `sent`, so a probe for a
+      // forgotten transaction stays legal.
+      if (!network.sent.some((envelope) => hashOf(envelope) === hash)) {
+        network.unexpected.push(`getTransaction for unknown hash ${hash}`)
+      }
       return { status: 'NOT_FOUND', txHash: hash, ...window }
     }
     const transaction = TransactionBuilder.fromXDR(
@@ -598,11 +684,19 @@ const createFakeStellarNetwork = (): FakeStellarNetwork => {
   // simulation `prepareTransaction` runs for an approval.
   const simulateTransaction = (envelope: string) => {
     const call = invocationOf(envelope)
-    const answer = (retval: xdr.ScVal) => ({
+    const answer = (
+      retval: xdr.ScVal,
+      auth: xdr.SorobanAuthorizationEntry[] = []
+    ) => ({
       latestLedger: ledger,
       minResourceFee: RESOURCE_FEE,
       transactionData: SOROBAN_DATA,
-      results: [{ auth: [], xdr: retval.toXDR('base64') }],
+      results: [
+        {
+          auth: auth.map((entry) => entry.toXDR('base64')),
+          xdr: retval.toXDR('base64'),
+        },
+      ],
       events: [],
     })
     switch (call.method) {
@@ -615,7 +709,11 @@ const createFakeStellarNetwork = (): FakeStellarNetwork => {
         return answer(nativeToScVal(allowance, { type: 'i128' }))
       }
       case 'approve':
-        return answer(xdr.ScVal.scvVoid())
+        // Recording mode: `prepareTransaction` copies this entry into the
+        // operation, so the approval the wallet signs carries it.
+        return answer(xdr.ScVal.scvVoid(), [
+          sourceAccountAuth(contractCallOf(envelope).call),
+        ])
       default:
         network.unexpected.push(`simulate ${call.contract}.${call.method}`)
         return { latestLedger: ledger, error: `unknown ${call.method}` }
@@ -753,61 +851,88 @@ const createFakeStellarNetwork = (): FakeStellarNetwork => {
       }
     },
     fetch: (async (input: unknown, init?: RequestInit) => {
-      const url = urlOf(input)
-      const body =
-        typeof init?.body === 'string'
-          ? init.body
-          : input instanceof Request
-            ? await input.text()
-            : undefined
-      if (url === STELLAR_RPC_URL) {
-        const request = JSON.parse(String(body)) as {
-          id: number
-          method: string
-          params: Record<string, unknown> | null
+      // For the error record: the URL, and the JSON-RPC method once it is
+      // known, else the URL path.
+      let url = ''
+      let target = ''
+      let rpcId: number | null = null
+      try {
+        url = urlOf(input)
+        target = url.replace(/^[a-z]+:\/\/[^/]*/i, '').split('?')[0]
+        const body =
+          typeof init?.body === 'string'
+            ? init.body
+            : input instanceof Request
+              ? await input.text()
+              : undefined
+        if (url === STELLAR_RPC_URL) {
+          const request = JSON.parse(String(body)) as {
+            id: number
+            method: string
+            params: Record<string, unknown> | null
+          }
+          target = request.method
+          rpcId = request.id
+          network.rpcMethods.push(request.method)
+          const result = rpc(request.method, request.params)
+          return result === undefined
+            ? json({
+                jsonrpc: '2.0',
+                id: request.id,
+                error: { code: -32601, message: 'method not found' },
+              })
+            : json({ jsonrpc: '2.0', id: request.id, result })
         }
-        network.rpcMethods.push(request.method)
-        const result = rpc(request.method, request.params)
-        return result === undefined
-          ? json({
-              jsonrpc: '2.0',
-              id: request.id,
-              error: { code: -32601, message: 'method not found' },
-            })
-          : json({ jsonrpc: '2.0', id: request.id, result })
-      }
-      if (url === `${API_URL}/advanced/stepTransaction`) {
-        const requested = JSON.parse(String(body)) as LiFiStep
-        network.stepTransactionRequests.push(requested)
-        const source = requested.action.fromAddress as string
-        const sequence = sequences.get(source)
-        if (sequence === undefined) {
-          network.unexpected.push(`quote for unknown account ${source}`)
-          return json({ message: 'Unknown account' }, 400)
+        if (url === `${API_URL}/advanced/stepTransaction`) {
+          const requested = JSON.parse(String(body)) as LiFiStep
+          network.stepTransactionRequests.push(requested)
+          const source = requested.action.fromAddress as string
+          const sequence = sequences.get(source)
+          if (sequence === undefined) {
+            network.unexpected.push(`quote for unknown account ${source}`)
+            return json({ message: 'Unknown account' }, 400)
+          }
+          const data = buildQuoteEnvelope(
+            source,
+            sequence,
+            requested.action.fromAmount
+          )
+          network.quotes.push(data)
+          return json({ ...requested, transactionRequest: { data } })
         }
-        const data = buildQuoteEnvelope(
-          source,
-          sequence,
-          requested.action.fromAmount
+        if (url.startsWith(`${API_URL}/status?`)) {
+          const query = Object.fromEntries(new URL(url).searchParams)
+          network.statusRequests.push(query)
+          const txHash = query.txHash ?? ''
+          if (network.landed.get(txHash)?.status !== 'SUCCESS') {
+            // Main polls `/status` forever while the answer is not DONE, so
+            // an unknown hash answers DONE without `receiving`: main then
+            // fails at once instead of hanging.
+            network.unexpected.push(`/status for unknown hash ${txHash}`)
+            return json({ status: 'DONE', substatus: 'COMPLETED' })
+          }
+          return json(statusAnswer(txHash, query))
+        }
+        network.unexpected.push(`fetch ${url}`)
+        return json({ message: `Unexpected request ${url}` }, 404)
+      } catch (error) {
+        // Main swallows a failed RPC request in places (the confirmation
+        // poll polls again), so a throw in the fakes is recorded.
+        const message = error instanceof Error ? error.message : String(error)
+        network.unexpected.push(
+          `harness error: ${target} on ${url}: ${message}`
         )
-        network.quotes.push(data)
-        return json({ ...requested, transactionRequest: { data } })
-      }
-      if (url.startsWith(`${API_URL}/status?`)) {
-        const query = Object.fromEntries(new URL(url).searchParams)
-        network.statusRequests.push(query)
-        const txHash = query.txHash ?? ''
-        if (network.landed.get(txHash)?.status !== 'SUCCESS') {
-          // Main polls `/status` forever while the answer is not DONE, so
-          // an unknown hash answers DONE without `receiving`: main then
-          // fails at once instead of hanging.
-          network.unexpected.push(`/status for unknown hash ${txHash}`)
-          return json({ status: 'DONE', substatus: 'COMPLETED' })
+        if (url !== STELLAR_RPC_URL) {
+          // The LI.FI API paths keep their visible failure: the request
+          // rejects.
+          throw error
         }
-        return json(statusAnswer(txHash, query))
+        return json({
+          jsonrpc: '2.0',
+          id: rpcId,
+          error: { code: -32603, message: `harness error: ${message}` },
+        })
       }
-      network.unexpected.push(`fetch ${url}`)
-      return json({ message: `Unexpected request ${url}` }, 404)
     }) as typeof fetch,
   }
   return network
@@ -852,7 +977,8 @@ const statusAnswer = (txHash: string, query: Record<string, string>) => {
 
 /**
  * A new fake network for one spec; `globalThis.fetch` is its RPC and its
- * LI.FI API. Undo with `vi.unstubAllGlobals()` in `afterEach`.
+ * LI.FI API. Undo with `vi.unstubAllGlobals()` in `afterEach`: it puts
+ * back the closed `fetch` (see the file comment), not the real one.
  */
 export const installFakeStellarNetwork = (): FakeStellarNetwork => {
   const network = createFakeStellarNetwork()
