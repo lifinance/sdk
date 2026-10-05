@@ -26,17 +26,41 @@
  *   provider module is being mocked.
  * - {@link createStatusApi} is a `fetch` fake for `/v1/status`, so the real
  *   `WaitForTransactionStatusTask` runs and the step reaches `DONE`.
- * - {@link routeUpdateSequence} is the §4.2.2 sequence, read off the
- *   harness timeline.
+ * - {@link recordRouteUpdates} wraps `executeRoute` and `resumeRoute` from
+ *   `@lifi/sdk`, so every `updateRouteHook` fire is copied before the
+ *   harness hook runs. {@link routeUpdateSequence} is the §4.2.2 sequence,
+ *   read off these copies. Every spec that calls it needs this addition in
+ *   its `vi.mock('@lifi/sdk')` factory:
+ *
+ *   ```ts
+ *   vi.mock('@lifi/sdk', async (importOriginal) => {
+ *     const actual = await importOriginal<typeof import('@lifi/sdk')>()
+ *     return {
+ *       ...actual,
+ *       ...(await import('./actionControls.mock.js')).recordRouteUpdates(
+ *         actual
+ *       ),
+ *       getStepTransaction: vi.fn(),
+ *       getRelayerQuote: vi.fn(),
+ *       relayTransaction: vi.fn(),
+ *     }
+ *   })
+ *   ```
+ *
+ *   For the same reason, this module must never value-import `@lifi/sdk`.
  *
  * `.mock.ts` keeps this file out of `dist`.
  */
+import type * as LiFiSdk from '@lifi/sdk'
 import type {
   AcceptExchangeRateUpdateHook,
+  ExecutionOptions,
+  RouteExtended,
   StepExecutorOptions,
   Token,
 } from '@lifi/sdk'
 import { type Client, type Hex, UserRejectedRequestError } from 'viem'
+import { getTransactionError } from 'viem/utils'
 import type * as EthereumProviderModule from '../../EthereumProvider.js'
 import type { EthereumProviderOptions } from '../../types.js'
 import type { Scenario } from './harness.mock.js'
@@ -60,8 +84,9 @@ export interface WalletControls {
   /** The user rejects this many of the next `sendTransaction` prompts. */
   rejectSends: number
   /**
-   * The chain the wallet is connected to when the page opens. `undefined`
-   * keeps the harness wallet's chain.
+   * The chain that every wallet from `getWalletClient` reports, not only the
+   * first one. `undefined` keeps the harness wallet's chain. The wallet that
+   * `switchChain` returns always reports the harness chain.
    */
   startChainId: number | undefined
   /** Chain ids the SDK asked the wallet to switch to, in order. */
@@ -101,8 +126,11 @@ type SendTransaction = (request: {
 }) => Promise<Hex>
 
 /**
- * The harness wallet, seen through {@link walletControls}. `chainId` makes
- * the wallet report that chain until the SDK switches it.
+ * The harness wallet, seen through {@link walletControls}. With `chainId`,
+ * this wallet reports that chain. `getWalletClient` passes `startChainId` on
+ * every call, so a wallet that the SDK gets later (a retry, a second step)
+ * reports the start chain again, also after a switch. A real wallet stays on
+ * the chain it switched to.
  */
 const controlledWallet = (harnessWallet: Client, chainId?: number): Client => {
   const harness = harnessWallet as unknown as {
@@ -127,9 +155,20 @@ const controlledWallet = (harnessWallet: Client, chainId?: number): Client => {
       })
       if (rejected) {
         walletControls.rejectSends -= 1
-        // What viem raises for an EIP-1193 4001 answer.
-        throw new UserRejectedRequestError(
-          new Error('User rejected the request.')
+        // What viem's `sendTransaction` action throws for an EIP-1193 4001
+        // answer: `getTransactionError` wraps the `UserRejectedRequestError`
+        // in a `TransactionExecutionError`. The wallet text (MetaMask's) must
+        // not contain "rejected": `parseEthereumErrors` maps a
+        // `TransactionExecutionError` whose `details` contain "rejected" to
+        // SignatureRejected (the Safe branch), which would hide the
+        // `e.cause?.name` branch that real wallets reach.
+        throw getTransactionError(
+          new UserRejectedRequestError(
+            new Error(
+              'MetaMask Tx Signature: User denied transaction signature.'
+            )
+          ),
+          { account: null }
         )
       }
       return harness.sendTransaction(request)
@@ -256,14 +295,74 @@ export const createStatusApi = (options: StatusApiOptions): StatusApi => {
 // ---------------------------------------------------------------------------
 
 /**
- * The §4.2.2 sequence of a harness scenario: every `routeUpdate` timeline
- * entry carries the step's actions at that fire. `fromSeq` reads one leg of
- * a run that was retried.
+ * Every `updateRouteHook` fire, by route id: the first step's
+ * `execution.actions` as `TYPE:STATUS`, copied through JSON inside the hook.
+ * The harness gives every scenario its own route id, and a retry keeps it,
+ * so one entry holds every leg of a scenario.
+ */
+const routeUpdateFires = new Map<string, string[][]>()
+
+const withRecordingHook = (
+  routeId: string,
+  executionOptions: ExecutionOptions | undefined
+): ExecutionOptions => {
+  const fires = routeUpdateFires.get(routeId) ?? []
+  routeUpdateFires.set(routeId, fires)
+  return {
+    ...executionOptions,
+    updateRouteHook: (route: RouteExtended) => {
+      const actions: { type: string; status: string }[] = JSON.parse(
+        JSON.stringify(route.steps[0]?.execution?.actions ?? [])
+      )
+      fires.push(actions.map(({ type, status }) => `${type}:${status}`))
+      executionOptions?.updateRouteHook?.(route)
+    },
+  }
+}
+
+/**
+ * `executeRoute` and `resumeRoute` for the `vi.mock('@lifi/sdk')` factory
+ * (see the preamble at the top of this file). The harness calls them with
+ * its own `updateRouteHook`; they add a hook that copies what the consumer
+ * receives and then calls the harness hook.
+ */
+export const recordRouteUpdates = (
+  actual: typeof LiFiSdk
+): Pick<typeof LiFiSdk, 'executeRoute' | 'resumeRoute'> => ({
+  executeRoute: (client, route, executionOptions) =>
+    actual.executeRoute(
+      client,
+      route,
+      withRecordingHook(route.id, executionOptions)
+    ),
+  resumeRoute: (client, route, executionOptions) =>
+    actual.resumeRoute(
+      client,
+      route,
+      withRecordingHook(route.id, executionOptions)
+    ),
+})
+
+/**
+ * The §4.2.2 sequence of a harness scenario, from what `updateRouteHook`
+ * received ({@link recordRouteUpdates}). `fromSeq` reads one leg of a run
+ * that was retried: the leg starts from the last fire before `fromSeq`,
+ * i.e. from what the consumer saw last, not from an empty step.
  */
 export const routeUpdateSequence = (
   scenario: Scenario,
   fromSeq = 0
-): string[] =>
-  dedupeActionPairs(
-    scenario.events('routeUpdate', fromSeq).map((event) => event.actions)
-  )
+): string[] => {
+  const fires = routeUpdateFires.get(scenario.route().id) ?? []
+  const harnessFires = scenario.events('routeUpdate')
+  if (fires.length !== harnessFires.length) {
+    throw new Error(
+      `Copied ${fires.length} updateRouteHook fires, the harness saw ${harnessFires.length}. Add recordRouteUpdates to the vi.mock('@lifi/sdk') factory of this spec.`
+    )
+  }
+  const legStart = harnessFires.findIndex((event) => event.seq >= fromSeq)
+  if (legStart === -1) {
+    return []
+  }
+  return dedupeActionPairs(fires.slice(legStart), fires[legStart - 1])
+}

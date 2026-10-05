@@ -12,19 +12,22 @@
  * fire that changes no status (a new `txHash`, an execution field) adds
  * nothing.
  *
+ * `lastSeen` is the fire before the first one, for a sequence that starts in
+ * the middle of a run (one leg of a retried run): the first fire is compared
+ * with it, not with an empty step. It defaults to an empty step.
+ *
  * `.mock.ts` keeps this file out of `dist`.
  */
 export const dedupeActionPairs = (
-  fires: readonly (readonly string[])[]
+  fires: readonly (readonly string[])[],
+  lastSeen: readonly string[] = []
 ): string[] => {
   const sequence: string[] = []
-  let previous = new Map<string, string>()
+  let previous = new Map(lastSeen.map(splitPair))
   for (const fire of fires) {
     const current = new Map<string, string>()
     for (const pair of fire) {
-      const separator = pair.lastIndexOf(':')
-      const type = pair.slice(0, separator)
-      const status = pair.slice(separator + 1)
+      const [type, status] = splitPair(pair)
       current.set(type, status)
       if (previous.get(type) !== status && sequence.at(-1) !== pair) {
         sequence.push(pair)
@@ -33,4 +36,10 @@ export const dedupeActionPairs = (
     previous = current
   }
   return sequence
+}
+
+/** `TYPE:STATUS` → `[TYPE, STATUS]`. */
+const splitPair = (pair: string): [type: string, status: string] => {
+  const separator = pair.lastIndexOf(':')
+  return [pair.slice(0, separator), pair.slice(separator + 1)]
 }

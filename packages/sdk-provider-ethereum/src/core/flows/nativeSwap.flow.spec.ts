@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 /**
  * Keeps the real `WaitForTransactionStatusTask` (as `destinationStatus` does)
  * and fakes `/v1/status` at `fetch`, so the step reaches `DONE` and the final
- * route can be pinned.
+ * route can be pinned. `recordRouteUpdates` copies every `updateRouteHook`
+ * fire for `routeUpdateSequence`.
  */
 vi.mock('@lifi/sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@lifi/sdk')>()
   return {
     ...actual,
+    ...(await import('./actionControls.mock.js')).recordRouteUpdates(actual),
     getStepTransaction: vi.fn(),
     getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
@@ -39,6 +41,12 @@ import {
 const SWAP_CALLDATA: Hex = `0x${'5a'.repeat(36)}`
 
 /**
+ * What `/status` says arrived. It differs from the fixture's
+ * `estimate.toAmount` (1490000), so the final `toAmount` shows its source.
+ */
+const RECEIVED_AMOUNT = '1480000'
+
+/**
  * POL → USDT on Polygon. `buildStep` has no token option, so the fixture's
  * USDC is replaced with the chain's native token before the run; the native
  * check (`EthereumStepExecutor.createContext`) compares it to
@@ -63,7 +71,7 @@ beforeEach(() => {
     chainId: CHAIN_ID,
     fromAmount: FROM_AMOUNT,
     toToken: TO_TOKEN,
-    toAmount: '1490000',
+    toAmount: RECEIVED_AMOUNT,
   })
   vi.stubGlobal('fetch', statusApi.fetch)
 })
@@ -109,7 +117,7 @@ describe('EA1 — a native-token same-chain swap', () => {
     expect(statusApi.queries.map((query) => query.txHash)).toEqual([txHash])
     const execution = scenario.executedStep().execution!
     expect(execution.status).toBe('DONE')
-    expect(execution.toAmount).toBe('1490000')
+    expect(execution.toAmount).toBe(RECEIVED_AMOUNT)
     // main: the final same-chain txHash/txLink come from the LI.FI /status answer (core WaitForTransactionStatusTask)
     expect(
       execution.actions.map(({ type, status, txHash, txLink }) => ({
