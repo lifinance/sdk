@@ -6,6 +6,7 @@ import {
   resumeRoute,
   type SDKError,
 } from '@lifi/sdk'
+import { RpcError } from '@mysten/sui/grpc'
 import { TransactionDataBuilder } from '@mysten/sui/transactions'
 import { fromBase64, toBase64 } from '@mysten/sui/utils'
 import {
@@ -43,6 +44,10 @@ const grpc = vi.hoisted(() => ({
   methods: [] as string[],
   /** Positions in `methods` of the calls made through a `SuiGrpcClient`. */
   viaGrpc: new Set<number>(),
+  /** Called right after a call through a `SuiGrpcClient` starts. */
+  afterCallStarts: undefined as
+    | ((name: string, args: unknown[]) => void)
+    | undefined,
 }))
 vi.mock('@mysten/sui/grpc', async (importOriginal) => {
   // The fake records the name of a call in `methods` when the call starts.
@@ -57,7 +62,9 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => {
           }
           return (...args: unknown[]) => {
             grpc.viaGrpc.add(grpc.methods.length)
-            return member(...args)
+            const result = member(...args)
+            grpc.afterCallStarts?.(String(property), args)
+            return result
           }
         },
       }
@@ -80,12 +87,21 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => {
 // resumes the route it stored). Sections 4.2.8 (resend age cap, dropped),
 // 4.2.9, 4.3 (Sui row), 4.6 (resume mode), 4.7, 5 and 8.
 
-/**
- * A node error without a final marker, as an RPC error reaches the provider.
- * The reload specs model no node refusal, so this is a plain `Error`.
- */
 const NODE_REFUSAL_MESSAGE =
   'Transaction rejected by the validators (non-retriable).'
+
+/**
+ * The validators refuse the transaction, as a gRPC node answers it: an
+ * `RpcError` with code INVALID_ARGUMENT. `SuiWaitForTransactionTask` reads
+ * this shape as a definite rejection (`isDefiniteSuiRejection`), and its unit
+ * spec uses it. It carries no final marker.
+ */
+const nodeRefusal = (): RpcError =>
+  new RpcError(NODE_REFUSAL_MESSAGE, 'INVALID_ARGUMENT')
+
+/** A transport error of a gRPC node: not a definite rejection. */
+const nodeUnavailable = (): RpcError =>
+  new RpcError('upstream connect error', 'UNAVAILABLE')
 
 /** The local clock when the wallet signs. */
 const SIGNING_TIME = Date.parse('2026-10-05T12:00:00.000Z')
@@ -109,6 +125,7 @@ beforeEach(() => {
   grpc.ledgerService = network.ledgerService
   grpc.methods = network.methods
   grpc.viaGrpc.clear()
+  grpc.afterCallStarts = undefined
   secretKey = newSecretKey()
   requests = []
   refusals = []
@@ -136,11 +153,14 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // A method the fake does not know would turn into an RPC error and hide
-  // the real failure behind an "unknown outcome".
-  expect(network.unsupported).toEqual([])
-  vi.useRealTimers()
-  vi.unstubAllGlobals()
+  try {
+    // A method the fake does not know would turn into an RPC error and hide
+    // the real failure behind an "unknown outcome".
+    expect(network.unsupported).toEqual([])
+  } finally {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  }
 })
 
 /** `network.methods`, each name prefixed with the client it went through. */
@@ -214,7 +234,7 @@ interface RefusedRun {
 
 /** A new swap whose first execution request the node refuses. */
 const runRefusedSwap = async (page: Page): Promise<RefusedRun> => {
-  refusals.push(new Error(NODE_REFUSAL_MESSAGE))
+  refusals.push(nodeRefusal())
   const updates = recordRouteUpdates()
   const error = (await executeRoute(
     page.client,
@@ -330,6 +350,9 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
         txLink: `https://suivision.test/txblock/${digest}`,
       }),
     ])
+    // #507 behaviour: the executed bytes are no longer needed, so the wait
+    // task clears them (spec 5, `txHex`).
+    expect(storedBytesOf(retry.snapshots.at(-1)!)).toBeUndefined()
   })
 
   it('stays FAILED without a final marker when the node refuses the stored bytes again', async () => {
@@ -339,7 +362,7 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     clearRecords()
 
     vi.setSystemTime(SIGNING_TIME + MINUTE)
-    refusals.push(new Error(NODE_REFUSAL_MESSAGE))
+    refusals.push(nodeRefusal())
     const retry = recordRouteUpdates()
     const error = (await resumeRoute(page.client, stored, {
       updateRouteHook: retry.hook,
@@ -349,6 +372,58 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     expect(getBalance).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toBe(0)
     expect(page.signTransaction).toHaveBeenCalledTimes(1)
+    // #507 behaviour: the refusal is a definite rejection, so the task looks
+    // the digest up once more (the first execution may have landed). It is
+    // not found, and the refusal proves nothing while
+    // SUI_REEXECUTION_RETURNS_EFFECTS is false (spec 4.6 "Dropped"): no
+    // status API veto check, and the task rethrows the refusal.
+    expect(methodsByClient()).toEqual([
+      'grpc.getTransaction',
+      'grpc.executeTransaction',
+      'grpc.getTransaction',
+    ])
+    expect(requests).toEqual([signed])
+    expect(network.executed).toEqual([])
+    expect(apiRequests).toEqual([])
+    expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:FAILED'])
+    // #507 behaviour: the outcome stays unknown (spec 4.3, Sui row), so the
+    // next "Try again" re-checks again instead of signing (spec 5).
+    const failed = retry.snapshots.at(-1)!
+    const action = swapActionOf(failed)
+    expect(action).toMatchObject({
+      type: 'SWAP',
+      status: 'FAILED',
+      error: { code: LiFiErrorCode.InternalError },
+    })
+    expect(storedBytesOf(failed)).toEqual({
+      bytes: signed.bytes,
+      signature: signed.signatures[0],
+    })
+    expect(action).not.toHaveProperty('txHash')
+    expect(action).not.toHaveProperty('txFinal')
+    expect(failed.steps[0].execution?.signedAt).toBe(SIGNING_TIME)
+  })
+
+  it('stays FAILED without a final marker when the node is unavailable for the re-execution', async () => {
+    const page = openPage(network, secretKey)
+    const { stored, signed } = await runRefusedSwap(page)
+    const getBalance = spyOnBalance(page)
+    clearRecords()
+
+    vi.setSystemTime(SIGNING_TIME + MINUTE)
+    refusals.push(nodeUnavailable())
+    const retry = recordRouteUpdates()
+    const error = (await resumeRoute(page.client, stored, {
+      updateRouteHook: retry.hook,
+    }).catch((e: unknown) => e)) as SDKError
+
+    expect(error.code).toBe(LiFiErrorCode.InternalError)
+    expect(getBalance).not.toHaveBeenCalled()
+    expect(network.stepTransactionRequests).toBe(0)
+    expect(page.signTransaction).toHaveBeenCalledTimes(1)
+    // #507 behaviour: a transport error is not a definite rejection, so the
+    // task rethrows it at once, without a second lookup (spec 4.3, Sui row:
+    // RPC errors are unknown).
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
       'grpc.executeTransaction',
@@ -357,10 +432,6 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     expect(network.executed).toEqual([])
     expect(apiRequests).toEqual([])
     expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:FAILED'])
-    // #507 behaviour: the second refusal is a plain RPC error, not a
-    // definite rejection, so the wait task rethrows it and the outcome stays
-    // unknown (spec 4.3, Sui row). The next "Try again" re-checks again
-    // instead of signing (spec 5).
     const failed = retry.snapshots.at(-1)!
     const action = swapActionOf(failed)
     expect(action).toMatchObject({
@@ -473,11 +544,18 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     clearRecords()
 
     // 5 minutes after signing: past the age cap, but the chain is not yet
-    // past the latest landing time (17 minutes). The fake wait by digest
-    // gives up after one second of `Date` time, so `Date` follows the real
-    // clock from here.
-    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+    // past the latest landing time (17 minutes).
     vi.setSystemTime(SIGNING_TIME + 5 * MINUTE)
+    const waits: unknown[][] = []
+    grpc.afterCallStarts = (name, args) => {
+      if (name === 'waitForTransaction') {
+        waits.push(args)
+        // The fake wait set its deadline (one second of `Date` time) when
+        // the call started. Moving `Date` past it ends the wait at its next
+        // check, so the spec does not wait on the real clock.
+        vi.setSystemTime(Date.now() + 2_000)
+      }
+    }
     const retry = recordRouteUpdates()
     const error = (await resumeRoute(page.client, stored, {
       updateRouteHook: retry.hook,
@@ -487,8 +565,9 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     // tip is not past the latest landing time, so the canary search stops
     // after one checkpoint and there is no dropped proof; the task waits by
     // digest, and the outcome stays unknown (spec 4.6). So "Try again" gives
-    // no new signature until about 17 minutes after signing. (The error is
-    // the fake's own timeout of the wait, read as an UnknownError.)
+    // no new signature until about 17 minutes after signing. The wait ends
+    // with a TimeoutError, as the real client's wait does (after its default
+    // 60 s for each RPC URL); parseSuiErrors reads it as an UnknownError.
     expect(error.code).toBe(LiFiErrorCode.InternalError)
     expect(getBalance).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toBe(0)
@@ -500,6 +579,9 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
       'grpc.ledgerService.getCheckpoint',
       'grpc.waitForTransaction',
     ])
+    // #507 behaviour: the wait gets the digest only, with no timeout and no
+    // signal, so the client's default timeout applies.
+    expect(waits).toEqual([[{ digest: digestOf(signed.bytes) }]])
     expect(apiRequests).toEqual([])
     expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:FAILED'])
     const failed = retry.snapshots.at(-1)!
@@ -515,5 +597,6 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     })
     expect(action).not.toHaveProperty('txHash')
     expect(action).not.toHaveProperty('txFinal')
+    expect(failed.steps[0].execution?.signedAt).toBe(SIGNING_TIME)
   })
 })
