@@ -27,8 +27,9 @@
  * Anything else (an unknown URL or method, an invalid signature, a `/status`
  * for a hash that is not a mined deposit to the bridge vault) is recorded in
  * {@link FakeBitcoinNetwork.unexpected}, which every spec asserts is empty in
- * `afterEach`. Main swallows many errors (the bigmi fallback, the `/status`
- * poll), so a throw alone could hide.
+ * `afterEach`. A throw inside a fake is recorded there too
+ * (`harness error: …`), then rethrown. Main swallows many errors (the bigmi
+ * fallback, the `/status` poll), so a throw alone could hide.
  *
  * A page is a fresh module graph: {@link openPage} calls `vi.resetModules()`
  * and imports `@lifi/sdk` and the provider again, so the provider's
@@ -803,12 +804,71 @@ const createFakeBitcoinNetwork = (): FakeBitcoinNetwork => {
 }
 
 /**
- * A new fake network for one spec; `globalThis.fetch` is its handler. Undo
- * with `vi.unstubAllGlobals()` in `afterEach`.
+ * The URL of a request, and its JSON-RPC method (a node request) or its
+ * path (any other URL). Never throws: it names a request that just failed.
+ */
+const describeRequest = (
+  input: unknown,
+  init?: RequestInit
+): { name: string; url: string } => {
+  let url = 'unknown url'
+  try {
+    url = urlOf(input)
+    const name =
+      url === BTC_RPC_URL
+        ? String((JSON.parse(String(init?.body)) as { method: unknown }).method)
+        : new URL(url).pathname
+    return { name, url }
+  } catch {
+    return { name: 'request', url }
+  }
+}
+
+/**
+ * A transport failure that a spec makes on purpose for a send (the
+ * phase-2 resume spec's `failNextSend`): the connection fails (`fetch`
+ * throws `TypeError: fetch failed`), or bigmi's timeout aborts the request.
+ * Not a harness error.
+ */
+const isSimulatedSendFailure = (
+  name: string,
+  error: unknown,
+  init?: RequestInit
+): boolean =>
+  name === 'sendrawtransaction' &&
+  ((error instanceof TypeError && error.message === 'fetch failed') ||
+    (init?.signal?.aborted === true &&
+      error instanceof Error &&
+      error.name === 'AbortError'))
+
+/**
+ * `network.fetch` with a try/catch around it: a throw inside a fake (a
+ * parse, a spec callback) is recorded in `unexpected` as
+ * `harness error: <method or path> on <url>: <message>`, then rethrown.
+ * bigmi's fallback and the SDK swallow many transport errors, so a throw
+ * alone could hide.
+ */
+const guarded = (network: FakeBitcoinNetwork): typeof fetch =>
+  (async (input: unknown, init?: RequestInit) => {
+    try {
+      return await network.fetch(input as RequestInfo, init)
+    } catch (error) {
+      const { name, url } = describeRequest(input, init)
+      if (!isSimulatedSendFailure(name, error, init)) {
+        const message = error instanceof Error ? error.message : String(error)
+        network.unexpected.push(`harness error: ${name} on ${url}: ${message}`)
+      }
+      throw error
+    }
+  }) as typeof fetch
+
+/**
+ * A new fake network for one spec; `globalThis.fetch` is its handler,
+ * guarded. Undo with `vi.unstubAllGlobals()` in `afterEach`.
  */
 export const installFakeBitcoinNetwork = (): FakeBitcoinNetwork => {
   const network = createFakeBitcoinNetwork()
-  vi.stubGlobal('fetch', network.fetch)
+  vi.stubGlobal('fetch', guarded(network))
   return network
 }
 
