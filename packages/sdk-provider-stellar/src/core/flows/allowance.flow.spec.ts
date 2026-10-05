@@ -1,7 +1,7 @@
 import { ChainId, executeRoute } from '@lifi/sdk'
 import {
   Address,
-  type Operation,
+  type OperationRecord,
   scValToNative,
   type Transaction,
   TransactionBuilder,
@@ -30,31 +30,83 @@ import {
   USDC_TOKEN,
 } from './harness.mock.js'
 
+/** The fields of one operation, decoded from the envelope XDR. */
+const operationFieldsOf = (operation: OperationRecord) => {
+  if (operation.type !== 'invokeHostFunction') {
+    return { type: operation.type }
+  }
+  const { func, auth = [], source } = operation
+  if (func.type !== 'hostFunctionTypeInvokeContract') {
+    return { type: operation.type, function: func.type }
+  }
+  const call = func.invokeContract
+  return {
+    type: operation.type,
+    // An operation without its own source runs as the transaction source.
+    source: source ?? null,
+    contract: Address.fromScAddress(call.contractAddress).toString(),
+    method: call.functionName.toString(),
+    args: call.args.map((arg) => scValToNative(arg)),
+    auth: auth.map(({ credentials, rootInvocation }) => {
+      const authorized = rootInvocation.function
+      if (authorized.type !== 'sorobanAuthorizedFunctionTypeContractFn') {
+        return { credentials: credentials.type, function: authorized.type }
+      }
+      const authorizedCall = authorized.contractFn
+      return {
+        credentials: credentials.type,
+        contract: Address.fromScAddress(
+          authorizedCall.contractAddress
+        ).toString(),
+        method: authorizedCall.functionName.toString(),
+        args: authorizedCall.args.map((arg) => scValToNative(arg)),
+        subInvocations: rootInvocation.subInvocations.length,
+      }
+    }),
+  }
+}
+
 /**
- * The auth entries of the one operation of an envelope, decoded from its
- * XDR: the credentials, the authorized contract call and the number of
- * sub-invocations.
+ * Every field of a signed envelope that the SDK chooses, decoded from its
+ * XDR: the transaction fields, the operations with their auth entries, and
+ * the Soroban data. The signatures are the wallet's.
  */
-const authEntriesOf = (envelope: string) => {
+const envelopeFieldsOf = (envelope: string) => {
   const transaction = TransactionBuilder.fromXDR(
     envelope,
     NETWORK_PASSPHRASE
   ) as Transaction
-  const [operation] = transaction.operations as Operation.InvokeHostFunction[]
-  return (operation.auth ?? []).map(({ credentials, rootInvocation }) => {
-    const authorized = rootInvocation.function
-    if (authorized.type !== 'sorobanAuthorizedFunctionTypeContractFn') {
-      return { credentials: credentials.type, function: authorized.type }
-    }
-    const call = authorized.contractFn
-    return {
-      credentials: credentials.type,
-      contract: Address.fromScAddress(call.contractAddress).toString(),
-      method: call.functionName.toString(),
-      args: call.args.map((arg) => scValToNative(arg)),
-      subInvocations: rootInvocation.subInvocations.length,
-    }
-  })
+  const raw = transaction.toEnvelope()
+  if (raw.type !== 'envelopeTypeTx') {
+    return { envelope: raw.type }
+  }
+  const { cond, ext } = raw.v1.tx
+  const sorobanData = ext.type === 'sorobanData' ? ext.sorobanData : undefined
+  return {
+    source: transaction.source,
+    fee: transaction.fee,
+    sequence: transaction.sequence,
+    preconditions: cond.type,
+    timeBounds: transaction.timeBounds && {
+      minTime: Number(transaction.timeBounds.minTime),
+      maxTime: Number(transaction.timeBounds.maxTime),
+    },
+    memo: transaction.memo.type,
+    operations: transaction.operations.map(operationFieldsOf),
+    sorobanData: sorobanData && {
+      resourceFee: sorobanData.resourceFee,
+      instructions: sorobanData.resources.instructions,
+      diskReadBytes: sorobanData.resources.diskReadBytes,
+      writeBytes: sorobanData.resources.writeBytes,
+      readOnly: sorobanData.resources.footprint.readOnly.map((key) =>
+        key.toXDR('base64')
+      ),
+      readWrite: sorobanData.resources.footprint.readWrite.map((key) =>
+        key.toXDR('base64')
+      ),
+      ext: sorobanData.ext.type,
+    },
+  }
 }
 
 let network: FakeStellarNetwork
@@ -78,9 +130,16 @@ describe('Stellar allowance (CCTP bridge leg pulls with transfer_from)', () => {
     const updates = recordRouteUpdates()
     const route = buildRoute('approvalBridge', page.walletAddress)
 
+    const startedAt = Math.floor(Date.now() / 1000)
     const executed = await executeRoute(page.client, route, {
       updateRouteHook: updates.hook,
     })
+    const finishedAt = Math.floor(Date.now() / 1000)
+
+    // One quote request, for the route's step.
+    expect(network.stepTransactionRequests.map((step) => step.id)).toEqual([
+      route.steps[0].id,
+    ])
 
     // Two signatures: the approval the SDK built, then the quoted route.
     const signOptions = {
@@ -112,20 +171,60 @@ describe('Stellar allowance (CCTP bridge leg pulls with transfer_from)', () => {
       hashOf(approval[0]),
       hashOf(network.quotes[0]),
     ])
-    // The signed approval carries the auth entry that prepareTransaction
-    // copied from the simulation: the source account authorizes exactly
-    // this approve call, with no sub-invocations.
-    expect(authEntriesOf(signed[0])).toEqual([
-      {
-        credentials: 'sorobanCredentialsSourceAccount',
-        contract: USDC_TOKEN.address,
-        method: 'approve',
-        args: approveArgs,
-        subInvocations: 0,
+    // The approval as the wallet signed it: every field the SDK chooses.
+    // The values were observed on main.
+    // - fee: 150, the Soroban inclusion bid (fee stats p70), plus 50000, the
+    //   resource fee of the Soroban data that prepareTransaction copied from
+    //   the simulation (also pinned below).
+    // - timeBounds: setTimeout(300) gives minTime 0 and maxTime 300 s after
+    //   the build.
+    // - auth: the entry prepareTransaction copied from the simulation. The
+    //   source account authorizes exactly this approve call, with no
+    //   sub-invocations.
+    expect(envelopeFieldsOf(signed[0])).toEqual({
+      source: page.walletAddress,
+      fee: '50150',
+      sequence: String(STARTING_SEQUENCE + 1n),
+      preconditions: 'precondTime',
+      timeBounds: {
+        minTime: 0,
+        maxTime: expect.toSatisfy(
+          (maxTime: number) =>
+            maxTime >= startedAt + 300 && maxTime <= finishedAt + 300,
+          'maxTime is 300 s after the build'
+        ),
       },
-    ])
+      memo: 'none',
+      operations: [
+        {
+          type: 'invokeHostFunction',
+          source: null,
+          contract: USDC_TOKEN.address,
+          method: 'approve',
+          args: approveArgs,
+          auth: [
+            {
+              credentials: 'sorobanCredentialsSourceAccount',
+              contract: USDC_TOKEN.address,
+              method: 'approve',
+              args: approveArgs,
+              subInvocations: 0,
+            },
+          ],
+        },
+      ],
+      sorobanData: {
+        resourceFee: 50000n,
+        instructions: 0,
+        diskReadBytes: 0,
+        writeBytes: 0,
+        readOnly: [],
+        readWrite: [],
+        ext: 'v0',
+      },
+    })
     // The approval used the account's next sequence number, and the route
-    // envelope was quoted after it landed (the next one again).
+    // envelope was quoted after the node accepted it (the next one again).
     expect(sequenceOf(approval[0])).toBe(STARTING_SEQUENCE + 1n)
     expect(sequenceOf(network.quotes[0])).toBe(STARTING_SEQUENCE + 2n)
     expect(network.rpcMethods).toEqual([
