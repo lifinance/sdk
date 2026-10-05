@@ -131,9 +131,11 @@ describe('Sui user rejection', () => {
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
+    // #507: the signed bytes are written (PENDING, open transaction) before the node answers (spec §4.6 step 2, §4.7)
     expect(updates.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
+      'SWAP:PENDING',
       'SWAP:FAILED',
     ])
     const stored = updates.snapshots.at(-1)
