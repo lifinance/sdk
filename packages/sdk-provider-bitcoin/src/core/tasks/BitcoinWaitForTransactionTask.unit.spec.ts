@@ -18,16 +18,21 @@ const SENDER = 'bc1qsender'
 const TX_HASH = 'ab'.repeat(32)
 const REPLACEMENT_TXID = 'cd'.repeat(32)
 const NOW = 1_800_000_000_000
+const SEND = 'sendrawtransaction'
+/** The one-round resend: one request, without bigmi's fallback retries. */
+const ONE_ROUND_RESEND = [
+  [{ method: SEND, params: ['SIGNED_TX_HEX'] }, { retryCount: 0 }],
+]
 
 const makeContext = (
   options: { signedAt?: number; bitcoinSent?: boolean } = {}
 ): {
   context: BitcoinStepExecutorContext
   updateAction: ReturnType<typeof vi.fn>
-  sendUTXOTransaction: ReturnType<typeof vi.fn>
+  request: ReturnType<typeof vi.fn>
 } => {
   const updateAction = vi.fn()
-  const sendUTXOTransaction = vi.fn().mockResolvedValue(TX_HASH)
+  const request = vi.fn().mockResolvedValue(TX_HASH)
   const context = {
     step: {
       action: { fromAddress: SENDER },
@@ -49,11 +54,17 @@ const makeContext = (
     fromChain: { metamask: { blockExplorerUrls: ['https://mempool.space/'] } },
     isBridgeExecution: false,
     walletClient: { account: { address: SENDER } },
-    publicClient: { sendUTXOTransaction },
+    publicClient: {
+      request,
+      // As in bigmi: `request` without options, so the fallback retries
+      // the whole round.
+      sendUTXOTransaction: ({ hex }: { hex: string }) =>
+        request({ method: SEND, params: [hex] }),
+    },
     checkClient: vi.fn(),
     bitcoinSent: options.bitcoinSent,
   } as unknown as BitcoinStepExecutorContext
-  return { context, updateAction, sendUTXOTransaction }
+  return { context, updateAction, request }
 }
 
 /** bigmi reports the replacement, then resolves with the replacing transaction. */
@@ -128,8 +139,10 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
     } as never)
   })
 
-  it('sends the stored bytes once before it waits, within the age cap', async () => {
-    const { context, sendUTXOTransaction } = makeContext({
+  // bigmi's fallback retries a failed round up to 3 times: on an
+  // "already" answer a node would get the same bytes 4 times.
+  it('sends the stored bytes in one round before it waits, within the age cap', async () => {
+    const { context, request } = makeContext({
       signedAt: NOW - 30_000,
     })
 
@@ -137,19 +150,18 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
       new BitcoinWaitForTransactionTask().run(context)
     ).resolves.toEqual({ status: 'COMPLETED' })
 
-    expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
-    expect(sendUTXOTransaction).toHaveBeenCalledWith({ hex: 'SIGNED_TX_HEX' })
+    expect(request.mock.calls).toEqual(ONE_ROUND_RESEND)
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
-    expect(sendUTXOTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(request.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(waitForTransaction).mock.invocationCallOrder[0] as number
     )
   })
 
   it('waits when the resend fails', async () => {
-    const { context, updateAction, sendUTXOTransaction } = makeContext({
+    const { context, updateAction, request } = makeContext({
       signedAt: NOW - 30_000,
     })
-    sendUTXOTransaction.mockRejectedValue(
+    request.mockRejectedValue(
       allTransportsFailed('sendrawtransaction', [
         timeoutError('sendrawtransaction'),
       ])
@@ -159,7 +171,7 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
       new BitcoinWaitForTransactionTask().run(context)
     ).resolves.toEqual({ status: 'COMPLETED' })
 
-    expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
+    expect(request.mock.calls).toEqual(ONE_ROUND_RESEND)
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
     // A failed resend changes nothing in the stored transaction.
     expect(updateAction).not.toHaveBeenCalled()
@@ -170,7 +182,7 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
       LiFiErrorCode.WalletChangedDuringExecution,
       'The wallet address that requested the quote does not match the wallet address attempting to sign the transaction.'
     )
-    const { context, sendUTXOTransaction } = makeContext({
+    const { context, request } = makeContext({
       signedAt: NOW - 30_000,
     })
     vi.mocked(context.checkClient).mockImplementation(() => {
@@ -181,7 +193,7 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
       walletChanged
     )
 
-    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
     expect(waitForTransaction).not.toHaveBeenCalled()
   })
 
@@ -190,23 +202,23 @@ describe('BitcoinWaitForTransactionTask resend on resume', () => {
     ['past the age cap', NOW - MAX_RESEND_AGE_MS - 1],
     ['without signedAt', undefined],
   ])('never sends %s, and only waits', async (_label, signedAt) => {
-    const { context, sendUTXOTransaction } = makeContext({ signedAt })
+    const { context, request } = makeContext({ signedAt })
 
     await new BitcoinWaitForTransactionTask().run(context)
 
-    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
   })
 
   it('does not resend right after the sign task sent the bytes', async () => {
-    const { context, sendUTXOTransaction } = makeContext({
+    const { context, request } = makeContext({
       signedAt: NOW - 1_000,
       bitcoinSent: true,
     })
 
     await new BitcoinWaitForTransactionTask().run(context)
 
-    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
   })
 })

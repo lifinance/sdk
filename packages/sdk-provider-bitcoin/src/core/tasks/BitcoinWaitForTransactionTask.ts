@@ -48,7 +48,13 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
       isResendAllowed(step.execution?.signedAt)
     ) {
       try {
-        await publicClient.sendUTXOTransaction({ hex: txHex })
+        // One round, as the sign task sends: bigmi's fallback retries a
+        // failed round up to 3 times, so on an "already" answer a node
+        // would get the same bytes 4 times.
+        await publicClient.request(
+          { method: 'sendrawtransaction', params: [txHex] },
+          { retryCount: 0 }
+        )
       } catch {
         // Ignored: an "already" answer, a refusal and a transport error all
         // leave it to the wait below to find the transaction or its

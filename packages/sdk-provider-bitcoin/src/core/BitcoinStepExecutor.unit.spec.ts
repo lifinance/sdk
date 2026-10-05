@@ -118,13 +118,17 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
     signedAt: number
   ): Promise<{
     outcome: unknown
-    sendUTXOTransaction: ReturnType<typeof vi.fn>
+    request: ReturnType<typeof vi.fn>
   }> => {
     const executor = new BitcoinStepExecutor({
       routeId: 'route-1',
       client: {} as Client,
     })
-    const sendUTXOTransaction = vi.fn().mockResolvedValue(TX_HASH)
+    const request = vi.fn().mockResolvedValue(TX_HASH)
+    // As in bigmi: `request` without options, so the fallback retries the
+    // whole round.
+    const sendUTXOTransaction = ({ hex }: { hex: string }) =>
+      request({ method: 'sendrawtransaction', params: [hex] })
     const context = {
       step: {
         action: { fromAddress: SENDER },
@@ -139,7 +143,7 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
         updateAction: vi.fn(),
       },
       walletClient: { account: { address: SENDER } },
-      publicClient: { sendUTXOTransaction },
+      publicClient: { request, sendUTXOTransaction },
       fromChain: {
         metamask: { blockExplorerUrls: ['https://mempool.space/'] },
       },
@@ -149,16 +153,20 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
       .createPipeline(context)
       .run(context)
       .catch((error: unknown) => error)
-    return { outcome, sendUTXOTransaction }
+    return { outcome, request }
   }
 
-  /** The send went out once with the stored bytes, before the wait. */
+  /**
+   * The send went out once with the stored bytes, in one round (without
+   * bigmi's fallback retries), before the wait.
+   */
   const expectOneResendBeforeTheWait = (
-    sendUTXOTransaction: ReturnType<typeof vi.fn>
+    request: ReturnType<typeof vi.fn>
   ): void => {
-    expect(sendUTXOTransaction).toHaveBeenCalledTimes(1)
-    expect(sendUTXOTransaction).toHaveBeenCalledWith({ hex: TX_HEX })
-    expect(sendUTXOTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(request.mock.calls).toEqual([
+      [{ method: 'sendrawtransaction', params: [TX_HEX] }, { retryCount: 0 }],
+    ])
+    expect(request.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(waitForTransaction).mock.invocationCallOrder[0] as number
     )
   }
@@ -195,10 +203,10 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
   ] satisfies [string, ExecutionAction, number][])(
     'resumes %s: resends the same bytes within the cap, waits, never signs',
     async (_label, action, signedAt) => {
-      const { outcome, sendUTXOTransaction } = await resume(action, signedAt)
+      const { outcome, request } = await resume(action, signedAt)
 
       expect(outcome).toBe(stopAfterWait)
-      expectOneResendBeforeTheWait(sendUTXOTransaction)
+      expectOneResendBeforeTheWait(request)
       expect(waitForTransaction).toHaveBeenCalledTimes(1)
       expect(waitForTransaction).toHaveBeenCalledWith(
         expect.anything(),
@@ -211,7 +219,7 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
   // A first-run send that timed out keeps the data and fails without
   // txFinal.
   it('"Try again" after a send timeout (FAILED) resends the same bytes and never signs again', async () => {
-    const { outcome, sendUTXOTransaction } = await resume(
+    const { outcome, request } = await resume(
       {
         type: 'SWAP',
         status: 'FAILED',
@@ -223,12 +231,12 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
     )
 
     expect(outcome).toBe(stopAfterWait)
-    expectOneResendBeforeTheWait(sendUTXOTransaction)
+    expectOneResendBeforeTheWait(request)
     expect(signPsbt).not.toHaveBeenCalled()
   })
 
   it('resumes a route stored by the previous version past the cap without a new signature', async () => {
-    const { outcome, sendUTXOTransaction } = await resume(
+    const { outcome, request } = await resume(
       {
         type: 'SWAP',
         status: 'PENDING',
@@ -240,7 +248,7 @@ describe('BitcoinStepExecutor resume of a stored transaction', () => {
     )
 
     expect(outcome).toBe(stopAfterWait)
-    expect(sendUTXOTransaction).not.toHaveBeenCalled()
+    expect(request).not.toHaveBeenCalled()
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
     expect(signPsbt).not.toHaveBeenCalled()
   })
