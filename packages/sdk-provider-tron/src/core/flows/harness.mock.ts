@@ -19,6 +19,16 @@
  *   records every request and can reject like TronLink does.
  * - LI.FI API: `globalThis.fetch` (`/advanced/stepTransaction`, `/status`).
  *
+ * The node handler and the `fetch` handler are the entry points of the fake
+ * network. Each one records a throw inside the fake (a payload read, a
+ * decode, a spec callback) in `unknown` as
+ * `harness error: <endpoint> on <url>: <message>`, then rethrows it: the
+ * provider swallows many transport errors (the receipt poll retries a failed
+ * read, the `/status` poll ignores one), so the throw would otherwise vanish.
+ * The wallet runs no spec callback and is not wrapped: a sign error reaches
+ * the sign task uncaught and fails the step, and `rejectNext` stays a plain
+ * wallet rejection.
+ *
  * Every quote carries a real `raw_data_hex` built with TronWeb, with a call
  * data nonce that is unique in the file, so every test has its own txIDs.
  *
@@ -357,7 +367,10 @@ export interface FakeTronNetwork {
   readonly requotes: LiFiStep[]
   /** The query of every `/status` request, in order. */
   readonly statusRequests: Record<string, string>[]
-  /** Requests no fake implements. Each spec's `afterEach` asserts none. */
+  /**
+   * Requests no fake implements, and throws inside a fake
+   * (`harness error: …`). Each spec's `afterEach` asserts none.
+   */
   readonly unknown: string[]
   /** Contract result (`'REVERT'`, …) of the next transaction that lands. */
   failNextWith: string | undefined
@@ -376,6 +389,12 @@ const json = (body: unknown, status = 200): Response =>
     status,
     headers: { 'content-type': 'application/json' },
   })
+
+/**
+ * The error of a request no fake implements. The fake puts the request in
+ * `unknown` before it throws, so the entry point does not record it again.
+ */
+class UnknownRequestError extends Error {}
 
 const urlOf = (input: unknown): string =>
   typeof input === 'string'
@@ -533,7 +552,7 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
       const body = payload as Record<string, unknown>
       if (host !== TRON_RPC_URL) {
         network.unknown.push(`${host}/${endpoint}`)
-        throw new Error(`Fake Tron node: unknown host ${host}`)
+        throw new UnknownRequestError(`Fake Tron node: unknown host ${host}`)
       }
       // A contract call also records its function, so an allowance read and a
       // balance read stay apart.
@@ -650,14 +669,16 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
           break
       }
       network.unknown.push(`${endpoint} ${JSON.stringify(payload)}`)
-      throw new Error(`Fake Tron node: ${endpoint} is not implemented`)
+      throw new UnknownRequestError(
+        `Fake Tron node: ${endpoint} is not implemented`
+      )
     },
     fetch: (async (input: unknown, init?: RequestInit) => {
       const url = urlOf(input)
       const method = init?.method ?? 'GET'
       if (!url.startsWith(API_URL)) {
         network.unknown.push(`${method} ${url}`)
-        throw new Error(`Fake LI.FI API: unexpected ${url}`)
+        throw new UnknownRequestError(`Fake LI.FI API: unexpected ${url}`)
       }
       const { pathname, searchParams } = new URL(url)
       const path = pathname.slice(new URL(API_URL).pathname.length)
@@ -691,10 +712,34 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
         )
       }
       network.unknown.push(`${method} ${path}`)
-      throw new Error(`Fake LI.FI API: unexpected ${method} ${path}`)
+      throw new UnknownRequestError(
+        `Fake LI.FI API: unexpected ${method} ${path}`
+      )
     }) as typeof fetch,
   }
   return network
+}
+
+/**
+ * Answers one request at an entry point of the fake network. A throw inside
+ * the fake goes to `unknown` as `harness error: <endpoint> on <url>:
+ * <message>` (see the file header); the request still fails with it.
+ */
+const recordHarnessErrors = async <T>(
+  network: FakeTronNetwork,
+  endpoint: string,
+  url: string,
+  answer: () => Promise<T>
+): Promise<T> => {
+  try {
+    return await answer()
+  } catch (error) {
+    if (!(error instanceof UnknownRequestError)) {
+      const message = error instanceof Error ? error.message : String(error)
+      network.unknown.push(`harness error: ${endpoint} on ${url}: ${message}`)
+    }
+    throw error
+  }
 }
 
 /**
@@ -712,10 +757,25 @@ export const installFakeTronNetwork = (): FakeTronNetwork => {
       url: string,
       payload?: unknown
     ) {
-      return network.request(this.host, url, payload) as Promise<never>
+      const endpoint = url.replace(/^\//, '')
+      return recordHarnessErrors(
+        network,
+        endpoint,
+        `${this.host}/${endpoint}`,
+        () => network.request(this.host, url, payload)
+      ) as Promise<never>
     }
   )
-  vi.stubGlobal('fetch', network.fetch)
+  vi.stubGlobal('fetch', ((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = urlOf(input)
+    const path = URL.canParse(url) ? new URL(url).pathname : url
+    return recordHarnessErrors(
+      network,
+      `${init?.method ?? 'GET'} ${path}`,
+      url,
+      () => network.fetch(input, init)
+    )
+  }) as typeof fetch)
   return network
 }
 
