@@ -234,7 +234,10 @@ export interface StatusApi {
   readonly fetch: typeof fetch
   /** The query of every `/v1/status` request, in order. */
   readonly queries: Record<string, string>[]
-  /** Every other URL. Must stay empty. */
+  /**
+   * Every other URL, and every throw inside the fake as
+   * `harness error: fetch on <url>: <message>`. Must stay empty.
+   */
   readonly unknown: string[]
 }
 
@@ -243,48 +246,63 @@ export interface StatusApi {
  * asked about; for a same-chain swap the receiving transaction is the sent
  * one. `status: 'DONE'` on the first poll matters: anything else makes
  * `waitForResult` sleep 5 seconds.
+ *
+ * A throw inside the fake (a request it cannot parse) is recorded in
+ * `unknown` before the request rejects: core turns a rejected `fetch` into
+ * an `SDKError`, so the throw would otherwise show only as a failed step.
  */
 export const createStatusApi = (options: StatusApiOptions): StatusApi => {
+  const answer = (href: string): Response => {
+    const url = new URL(href)
+    if (url.pathname !== '/v1/status') {
+      api.unknown.push(url.href)
+      return new Response('{}', { status: 404 })
+    }
+    const query = Object.fromEntries(url.searchParams.entries())
+    api.queries.push(query)
+    const txHash = query.txHash
+    return new Response(
+      JSON.stringify({
+        status: 'DONE',
+        substatus: 'COMPLETED',
+        substatusMessage: 'The transfer is complete.',
+        transactionId: `status-${txHash}`,
+        lifiExplorerLink: `https://explorer.example/tx/${txHash}`,
+        sending: {
+          txHash,
+          amount: options.fromAmount,
+          gasAmount: '10000',
+          gasAmountUSD: '0.01',
+          gasPrice: '1',
+          gasToken: options.toToken,
+          gasUsed: '21000',
+        },
+        receiving: {
+          txHash,
+          txLink: `https://polygonscan.example/tx/${txHash}`,
+          amount: options.toAmount,
+          chainId: options.chainId,
+          token: options.toToken,
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    )
+  }
   const api: StatusApi = {
     queries: [],
     unknown: [],
     fetch: (async (input: unknown) => {
-      const url = new URL(
-        typeof input === 'string' ? input : (input as Request).url
-      )
-      if (url.pathname !== '/v1/status') {
-        api.unknown.push(url.href)
-        return new Response('{}', { status: 404 })
+      const href =
+        typeof input === 'string'
+          ? input
+          : ((input as Request | undefined)?.url ?? String(input))
+      try {
+        return answer(href)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        api.unknown.push(`harness error: fetch on ${href}: ${message}`)
+        throw error
       }
-      const query = Object.fromEntries(url.searchParams.entries())
-      api.queries.push(query)
-      const txHash = query.txHash
-      return new Response(
-        JSON.stringify({
-          status: 'DONE',
-          substatus: 'COMPLETED',
-          substatusMessage: 'The transfer is complete.',
-          transactionId: `status-${txHash}`,
-          lifiExplorerLink: `https://explorer.example/tx/${txHash}`,
-          sending: {
-            txHash,
-            amount: options.fromAmount,
-            gasAmount: '10000',
-            gasAmountUSD: '0.01',
-            gasPrice: '1',
-            gasToken: options.toToken,
-            gasUsed: '21000',
-          },
-          receiving: {
-            txHash,
-            txLink: `https://polygonscan.example/tx/${txHash}`,
-            amount: options.toAmount,
-            chainId: options.chainId,
-            token: options.toToken,
-          },
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
     }) as typeof fetch,
   }
   return api
