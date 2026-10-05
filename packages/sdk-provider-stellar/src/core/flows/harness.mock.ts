@@ -458,8 +458,14 @@ const urlOf = (input: unknown): string =>
       : (input as Request).url
 
 const ZERO_HASH = Buffer.alloc(32)
-const SOROBAN_DATA = new SorobanDataBuilder().build().toXDR('base64')
 const RESOURCE_FEE = '50000'
+// A node's simulation answer is self-consistent: the Soroban data carries
+// the resource fee that `minResourceFee` names. `prepareTransaction` takes
+// the Soroban data as it is and adds its resource fee to the envelope fee.
+const SOROBAN_DATA = new SorobanDataBuilder()
+  .setResourceFee(RESOURCE_FEE)
+  .build()
+  .toXDR('base64')
 
 const ledgerHeader = (sequence: number, closeTime: number): xdr.LedgerHeader =>
   new xdr.LedgerHeader({
