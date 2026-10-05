@@ -421,6 +421,18 @@ export interface FakeNetworkOptions {
    * Defaults to the quoted `estimate.toAmount`.
    */
   receivedAmount?: (quote: LiFiStep) => string
+  /**
+   * `receiving.txLink` of a `DONE` `/status`. Defaults to
+   * `${EXPLORER_URLS[toChainId]}tx/<receiving hash>`, the link core builds
+   * when `/status` gives none, so only another link shows that core copies
+   * it.
+   */
+  receivingTxLink?: (receivingHash: Hash) => string
+  /**
+   * `receiving.chainId` of a `DONE` `/status`. Defaults to the step's
+   * `toChainId`, which is also core's fallback.
+   */
+  receivingChainId?: number
 }
 
 interface MinedTransaction {
@@ -1023,8 +1035,10 @@ export const createFakeNetwork = (
       sending,
       receiving: {
         txHash: receivingHash,
-        txLink: `${EXPLORER_URLS[toChainId]}tx/${receivingHash}`,
-        chainId: toChainId,
+        txLink:
+          options.receivingTxLink?.(receivingHash) ??
+          `${EXPLORER_URLS[toChainId]}tx/${receivingHash}`,
+        chainId: options.receivingChainId ?? toChainId,
         amount: options.receivedAmount?.(quote) ?? quote.estimate.toAmount,
         token: quote.action.toToken,
         timestamp: 1_700_000_060,
