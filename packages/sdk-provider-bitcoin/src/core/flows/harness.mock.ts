@@ -42,6 +42,7 @@
  * `.mock.ts` keeps this file out of `dist`.
  */
 import {
+  cleanupCache,
   createClient as createBigmiClient,
   custom,
   listenersCache,
@@ -938,8 +939,15 @@ export const liveBigmiObservers = (): string[] =>
     .filter(([, listeners]) => listeners.length > 0)
     .map(([id]) => id)
 
-/** Drops every bigmi observer, so a failed spec cannot block the next one. */
+/**
+ * Stops every bigmi block poll and drops every observer, so a failed
+ * spec cannot send block polls during the next one.
+ */
 export const clearBigmiObservers = (): void => {
+  for (const cleanup of cleanupCache.values()) {
+    cleanup()
+  }
+  cleanupCache.clear()
   listenersCache.clear()
 }
 
