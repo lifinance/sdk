@@ -78,11 +78,18 @@ describe('EN5 — background execution, then a foreground resume', () => {
       START_NATIVE_BALANCE
     )
 
-    // Where main pauses: `EthereumPrepareTransactionTask` runs in full (the
-    // quote, the chain check, the fee read on the wallet client, the batching
-    // probe), then `EthereumSignAndExecuteTask` sets ACTION_REQUIRED and
-    // returns PAUSED at its `if (!allowUserInteraction)` gate, before it picks
-    // a strategy. That gate is the only one on this path: the two gates in
+    // Where main pauses: `EthereumPrepareTransactionTask` runs in full, then
+    // `EthereumSignAndExecuteTask` sets ACTION_REQUIRED and returns PAUSED at
+    // its `if (!allowUserInteraction)` gate, before it picks a strategy. The
+    // prepare task makes the four wallet reads below. First the chain check
+    // of `checkClient` (`eth_chainId`) and the fee read on the wallet client
+    // (`eth_getBlockByNumber`): it makes these two only for a local account,
+    // as in this harness (a json-rpc wallet skips them and takes the fee from
+    // the quote). Then the strategy's own `checkClient` (`eth_chainId`) and
+    // the batching probe (`wallet_getCapabilities`). The sign task's gate is
+    // the only one that this same-chain path reaches. A local account on
+    // another chain pauses earlier: in background mode `switchChain` returns
+    // no client, and the prepare task returns PAUSED. The two gates in
     // `EthereumStandardSignAndExecuteTask` guard the Permit2 branch only. So
     // the wallet transport answered reads, never a prompt: no
     // `eth_fillTransaction`, `eth_getTransactionCount` or
@@ -96,9 +103,10 @@ describe('EN5 — background execution, then a foreground resume', () => {
 
     // Pinned as observed, and it looks wrong (ledger finding, cross-provider:
     // one unused quote per background pause): the background run fetches a
-    // quote and stores its transaction on the step, but never signs it. The
-    // foreground resume drops it (core `prepareRestart`) and quotes again
-    // (test 2).
+    // quote and stores its transaction on the step, but never signs it.
+    // `EthereumPrepareTransactionTask` re-quotes on every run
+    // (`getUpdatedStep`), so the foreground resume quotes again (test 2);
+    // core `prepareRestart` also clears the stored request.
     expect(network.api.map((call) => call.path)).toEqual([
       '/advanced/stepTransaction',
     ])
