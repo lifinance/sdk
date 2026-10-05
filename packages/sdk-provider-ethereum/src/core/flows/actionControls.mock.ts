@@ -75,6 +75,12 @@ export interface SendAttempt {
   to?: string
   data?: Hex
   value?: bigint
+  /**
+   * `chain.id` of the request. `undefined` when the request names no chain
+   * (the approval send in `setAllowance`); viem then sends on the wallet's
+   * chain.
+   */
+  chainId?: number
   rejected: boolean
 }
 
@@ -123,6 +129,7 @@ type SendTransaction = (request: {
   to?: string
   data?: Hex
   value?: bigint
+  chain?: { id: number }
 }) => Promise<Hex>
 
 /**
@@ -151,6 +158,7 @@ const controlledWallet = (harnessWallet: Client, chainId?: number): Client => {
         to: request.to,
         data: request.data,
         value: request.value,
+        chainId: request.chain?.id,
         rejected,
       })
       if (rejected) {

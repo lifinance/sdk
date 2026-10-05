@@ -109,7 +109,13 @@ describe('EA3 — the user rejects the sendTransaction prompt', () => {
     // The wallet showed the prompt once; nothing reached the harness wallet's
     // send, so nothing was sent and /status was never asked.
     expect(walletControls.sendAttempts).toEqual([
-      { to: APPROVAL_ADDRESS, data: SWAP_CALLDATA, value: 0n, rejected: true },
+      {
+        to: APPROVAL_ADDRESS,
+        data: SWAP_CALLDATA,
+        value: 0n,
+        chainId: CHAIN_ID,
+        rejected: true,
+      },
     ])
     expect(scenario.events('sendTransaction')).toEqual([])
     expect(statusApi.queries).toEqual([])
@@ -138,8 +144,20 @@ describe('EA3 — the user rejects the sendTransaction prompt', () => {
 
     // The second prompt carries the same transaction, and this one is sent.
     expect(walletControls.sendAttempts).toEqual([
-      { to: APPROVAL_ADDRESS, data: SWAP_CALLDATA, value: 0n, rejected: true },
-      { to: APPROVAL_ADDRESS, data: SWAP_CALLDATA, value: 0n, rejected: false },
+      {
+        to: APPROVAL_ADDRESS,
+        data: SWAP_CALLDATA,
+        value: 0n,
+        chainId: CHAIN_ID,
+        rejected: true,
+      },
+      {
+        to: APPROVAL_ADDRESS,
+        data: SWAP_CALLDATA,
+        value: 0n,
+        chainId: CHAIN_ID,
+        rejected: false,
+      },
     ])
     expect(scenario.events('sendTransaction')).toHaveLength(1)
     // "Try again" re-quotes before it prompts again.
