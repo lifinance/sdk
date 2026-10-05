@@ -17,14 +17,16 @@
  *   `core` and `ledgerService` from the installed network on every access,
  *   because `callSuiWithRetry` keeps its clients in a module-level map that
  *   no spec can reset. Its calls are recorded as `grpc.<name>` and
- *   `grpc.ledgerService.<name>`.
+ *   `grpc.ledgerService.<name>`. A read of any other member of the client
+ *   is recorded in `unexpected` as `SuiGrpcClient.<name>`.
  * - The wallet: a real `Ed25519Keypair` (a new key per page), with
  *   `signTransaction` spied. Every hash and signature is real, and the fake
  *   node verifies each signature before it executes.
  * - `globalThis.fetch`: the LI.FI API (`/advanced/stepTransaction`, `/status`).
  *
- * Anything else (a method the fake does not implement, an unknown URL, an
- * invalid signature, a wait for an unknown digest) is recorded in
+ * Anything else (a method the fake does not implement, another
+ * `SuiGrpcClient` member, an unknown URL, an invalid signature, a wait for
+ * an unknown digest) is recorded in
  * {@link FakeSuiNetwork.unexpected}, which every spec asserts is empty in
  * `afterEach`. Main swallows many errors (`callSuiWithRetry`, the `/status`
  * poll), so a throw alone could hide.
@@ -66,6 +68,8 @@ import { SuiProvider } from '../../SuiProvider.js'
 const grpc = vi.hoisted(() => ({
   core: undefined as unknown,
   ledgerService: undefined as unknown,
+  /** `unexpected` of the installed network. */
+  unexpected: [] as string[],
   /** `baseUrl` of every `SuiGrpcClient` built, in order. */
   built: [] as string[],
 }))
@@ -75,12 +79,27 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => ({
   SuiGrpcClient: class SuiGrpcClient {
     constructor(options: { baseUrl: string }) {
       grpc.built.push(options.baseUrl)
-    }
-    get core(): unknown {
-      return grpc.core
-    }
-    get ledgerService(): unknown {
-      return grpc.ledgerService
+      // `core` and `ledgerService` answer from the installed network. A read
+      // of any other member (`getBalance`, `stateService`, `mvr`, ...) is
+      // recorded in `unexpected`: the fake does not implement it, and
+      // `callSuiWithRetry` would swallow the `TypeError` of its call.
+      // biome-ignore lint/correctness/noConstructorReturn: the instance is a Proxy that records every other member read
+      return new Proxy(this, {
+        get(target, property, receiver) {
+          if (property === 'core') {
+            return grpc.core
+          }
+          if (property === 'ledgerService') {
+            return grpc.ledgerService
+          }
+          // Symbol keys are not members, and an async function that returns
+          // the client reads `then`.
+          if (typeof property === 'string' && property !== 'then') {
+            grpc.unexpected.push(`SuiGrpcClient.${property}`)
+          }
+          return Reflect.get(target, property, receiver)
+        },
+      })
     }
   },
 }))
@@ -629,6 +648,7 @@ export const installFakeSuiNetwork = (): FakeSuiNetwork => {
   const network = createFakeSuiNetwork()
   grpc.core = network.grpcCore
   grpc.ledgerService = network.grpcLedgerService
+  grpc.unexpected = network.unexpected
   vi.stubGlobal('fetch', network.fetch)
   return network
 }

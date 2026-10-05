@@ -22,9 +22,12 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // Spec §3.1: a call or request the fakes do not know fails the spec.
-  expect(network.unexpected).toEqual([])
-  vi.unstubAllGlobals()
+  try {
+    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    expect(network.unexpected).toEqual([])
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 describe('Sui same-chain swap', () => {
@@ -75,6 +78,7 @@ describe('Sui same-chain swap', () => {
     const confirmed = updates.snapshots.find(
       (snapshot) => stepOf(snapshot).execution?.actions[0]?.txHash
     )
+    expect(confirmed).toBeDefined()
     expect(stepOf(confirmed!).execution?.actions).toEqual([
       expect.objectContaining({
         type: 'SWAP',
@@ -83,7 +87,7 @@ describe('Sui same-chain swap', () => {
         txLink: `${SUI_EXPLORER_URL}txblock/${digest}`,
       }),
     ])
-    // ...then:
+    // Then the `/status` link replaces the provider's link.
     // main: the final same-chain txHash/txLink come from the LI.FI /status answer (core WaitForTransactionStatusTask)
     // (same-chain: the `/status` receiving hash is the digest).
     const execution = stepOf(executed).execution
