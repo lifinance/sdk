@@ -27,9 +27,13 @@
  * Anything else (an unknown URL or method, an invalid signature, a `/status`
  * for a hash that is not a mined deposit to the bridge vault) is recorded in
  * {@link FakeBitcoinNetwork.unexpected}, which every spec asserts is empty in
- * `afterEach`. A throw inside a fake is recorded there too
- * (`harness error: …`), then rethrown. Main swallows many errors (the bigmi
- * fallback, the `/status` poll), so a throw alone could hide.
+ * `afterEach`. Only the fake network (`fetch`) is guarded: a throw inside it
+ * is recorded there too (`harness error: …`), then rethrown, except the two
+ * send failures that a spec makes on purpose (a `sendrawtransaction` that
+ * throws `TypeError: fetch failed`, or an `AbortError` of an aborted
+ * request). The fake wallet's `signPsbt` is not guarded. Main swallows many
+ * errors (the bigmi fallback, the `/status` poll), so a throw alone could
+ * hide.
  *
  * A page is a fresh module graph: {@link openPage} calls `vi.resetModules()`
  * and imports `@lifi/sdk` and the provider again, so the provider's
