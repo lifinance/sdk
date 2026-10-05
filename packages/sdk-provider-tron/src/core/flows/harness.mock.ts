@@ -10,9 +10,10 @@
  * - Tron node: `providers.HttpProvider.prototype.request` from `tronweb`.
  *   Every TronWeb call to a full node or a solidity node ends there (TronWeb
  *   uses axios, not `fetch`). {@link FakeTronNetwork} answers the endpoints
- *   the money paths call, from an in-memory chain (TRX and TRC-20 balances,
- *   allowances, landed transactions), and records every other request in
- *   `unknown`.
+ *   the money paths call, from an in-memory chain (fixed TRX and TRC-20
+ *   balances, allowances, landed transactions), and records every other
+ *   request in `unknown`. A landed transaction changes only allowances; the
+ *   balances never change.
  * - Wallet: a TronLink-style `Adapter` whose `signTransaction` signs with a
  *   real throwaway key through TronWeb, so txIDs and signatures are real. It
  *   records every request and can reject like TronLink does.
@@ -673,7 +674,10 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
       if (method === 'GET' && path === '/status') {
         network.statusRequests.push(Object.fromEntries(searchParams))
         const txHash = searchParams.get('txHash') ?? ''
-        const answer = landed.has(txHash) ? statusDone(txHash) : undefined
+        // Only a successful landing is DONE. Any other request (unknown hash,
+        // reverted transaction) goes to `unknown`.
+        const answer =
+          landed.get(txHash) === 'SUCCESS' ? statusDone(txHash) : undefined
         if (answer) {
           return json(answer)
         }

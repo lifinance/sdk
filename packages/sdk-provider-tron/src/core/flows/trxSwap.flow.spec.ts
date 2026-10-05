@@ -74,9 +74,11 @@ describe('Tron TRX same-chain swap', () => {
     expect(network.broadcasts).toEqual(page.wallet.signed)
     expect(Trx.ecRecover(network.broadcasts[0] as never)).toBe(WALLET_ADDRESS)
 
-    // Every node read on this path, in order: the TRX balance
-    // (`CheckBalanceTask`), the ref block (`TronSignAndExecuteTask`), the
-    // broadcast and one receipt read that already finds the transaction.
+    // Every node read on this path, in order: the balance read of
+    // `CheckBalanceTask` (`getTronBalance.ts`: the TRX balance, then the head
+    // block from `getCurrentBlock`), the ref block of
+    // `TronSignAndExecuteTask` (`wallet/getblock` only), the broadcast and one
+    // receipt read that already finds the transaction.
     expect(network.nodeCalls).toEqual([
       'walletsolidity/getaccount',
       'wallet/getnowblock',
@@ -106,6 +108,7 @@ describe('Tron TRX same-chain swap', () => {
     const afterBroadcast = recorder.snapshots.find(
       (snapshot) => actionOf(snapshot, 'SWAP')?.txHash
     )
+    expect(afterBroadcast).toBeDefined()
     expect(actionOf(afterBroadcast!, 'SWAP')).toMatchObject({
       status: 'PENDING',
       txHash,
@@ -116,6 +119,8 @@ describe('Tron TRX same-chain swap', () => {
     expect(actionOf(route, 'SWAP')).toMatchObject({
       status: 'DONE',
       txHash,
+      // The only difference from the provider link above is the `/` before
+      // `#`: the API link has it, the provider link does not.
       txLink: `https://tronscan.test/#/transaction/${txHash}`,
     })
     expect(route.steps[0].execution?.toAmount).toBe('300000')
