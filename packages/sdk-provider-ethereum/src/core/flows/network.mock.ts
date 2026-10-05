@@ -49,6 +49,19 @@
  * LI.FI API, a body parse) is recorded, then rethrown. The deliberate
  * answers above (`RpcError`) pass through unrecorded.
  *
+ * ## Nonces
+ *
+ * `eth_sendRawTransaction` checks the nonce as geth's txpool does, code
+ * `-32000`. A nonce below the account nonce answers `nonce too low: next
+ * nonce N, tx nonce M`, which viem reads as `NonceTooLowError`. A resend of
+ * bytes the fake already mined is such a nonce, so it gets what a real node
+ * answers. (geth answers `already known` only while the bytes are still
+ * pending, and the fake mines at once, so that answer never applies.) A
+ * nonce above the account nonce is different: a node queues the
+ * transaction and returns its hash, but the fake has no queue. It records
+ * the transaction in {@link FakeNetwork.unknown} and rejects it at once, so
+ * that no receipt wait runs until a timeout.
+ *
  * ## Isolation
  *
  * `getPublicClient` caches one client per chain id at module level, and the
@@ -805,8 +818,25 @@ export const createFakeNetwork = (
     if (transaction.chainId !== chain.id) {
       throw new RpcError(-32000, 'invalid chain id for signer')
     }
-    if (transaction.nonce !== nonce) {
-      throw new RpcError(-32000, `invalid nonce: expected ${nonce}`)
+    // RLP encodes nonce 0 as empty bytes.
+    const txNonce = transaction.nonce ?? 0
+    if (txNonce < nonce) {
+      // geth's txpool answer, which viem reads as `NonceTooLowError`. A
+      // resend of mined bytes gets it too (see "Nonces").
+      throw new RpcError(
+        -32000,
+        `nonce too low: next nonce ${nonce}, tx nonce ${txNonce}`
+      )
+    }
+    if (txNonce > nonce) {
+      // A node queues it; the fake has no queue (see "Nonces").
+      network.unknown.push(
+        `transaction with nonce ${txNonce} above the next nonce ${nonce}`
+      )
+      throw new RpcError(
+        -32000,
+        `the fake network does not queue a transaction: next nonce ${nonce}, tx nonce ${txNonce}`
+      )
     }
     const hash = keccak256(raw)
     const to = transaction.to as Address
