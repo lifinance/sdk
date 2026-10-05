@@ -248,8 +248,9 @@ export interface StatusApi {
  * `waitForResult` sleep 5 seconds.
  *
  * A throw inside the fake (a request it cannot parse) is recorded in
- * `unknown` before the request rejects: core turns a rejected `fetch` into
- * an `SDKError`, so the throw would otherwise show only as a failed step.
+ * `unknown` before the request rejects: the status poll
+ * (`waitForTransactionStatus`) swallows a rejected request and polls again,
+ * with no limit, so the throw would otherwise show only as a test timeout.
  */
 export const createStatusApi = (options: StatusApiOptions): StatusApi => {
   const answer = (href: string): Response => {
