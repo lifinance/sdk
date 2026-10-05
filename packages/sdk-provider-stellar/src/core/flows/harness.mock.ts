@@ -74,6 +74,7 @@ import {
   Networks,
   nativeToScVal,
   type Operation,
+  type OperationRecord,
   SorobanDataBuilder,
   scValToNative,
   type Transaction,
@@ -269,6 +270,146 @@ export const sequenceOf = (envelope: string): bigint =>
     (TransactionBuilder.fromXDR(envelope, NETWORK_PASSPHRASE) as Transaction)
       .sequence
   )
+
+/** One auth entry of an operation, decoded from its XDR. */
+export type AuthEntryFields =
+  | { credentials: string; function: string }
+  | {
+      credentials: string
+      contract: string
+      method: string
+      /** The arguments, decoded with `scValToNative`. */
+      args: unknown[]
+      /** The ScVal type of each argument, which `scValToNative` drops. */
+      argTypes: string[]
+      subInvocations: number
+    }
+
+/** One operation of an envelope, decoded from its XDR. */
+export type OperationFields =
+  | { type: string }
+  | { type: string; function: string }
+  | {
+      type: string
+      /** `null`: the operation runs as the transaction source. */
+      source: string | null
+      contract: string
+      method: string
+      /** The arguments, decoded with `scValToNative`. */
+      args: unknown[]
+      /** The ScVal type of each argument, which `scValToNative` drops. */
+      argTypes: string[]
+      auth: AuthEntryFields[]
+    }
+
+export interface SorobanDataFields {
+  resourceFee: bigint
+  instructions: number
+  diskReadBytes: number
+  writeBytes: number
+  /** The footprint keys, as base64 XDR. */
+  readOnly: string[]
+  readWrite: string[]
+  ext: string
+}
+
+/** A transaction envelope, decoded from its XDR. */
+export type EnvelopeFields =
+  | { envelope: string }
+  | {
+      source: string
+      fee: string
+      sequence: string
+      preconditions: string
+      timeBounds: { minTime: number; maxTime: number } | undefined
+      memo: string
+      operations: OperationFields[]
+      sorobanData: SorobanDataFields | undefined
+    }
+
+/** The fields of one operation, decoded from the envelope XDR. */
+export const operationFieldsOf = (
+  operation: OperationRecord
+): OperationFields => {
+  if (operation.type !== 'invokeHostFunction') {
+    return { type: operation.type }
+  }
+  const { func, auth = [], source } = operation
+  if (func.type !== 'hostFunctionTypeInvokeContract') {
+    return { type: operation.type, function: func.type }
+  }
+  const call = func.invokeContract
+  return {
+    type: operation.type,
+    // An operation without its own source runs as the transaction source.
+    source: source ?? null,
+    contract: Address.fromScAddress(call.contractAddress).toString(),
+    method: call.functionName.toString(),
+    args: call.args.map((arg) => scValToNative(arg)),
+    argTypes: call.args.map((arg) => arg.type),
+    auth: auth.map(({ credentials, rootInvocation }): AuthEntryFields => {
+      const authorized = rootInvocation.function
+      if (authorized.type !== 'sorobanAuthorizedFunctionTypeContractFn') {
+        return { credentials: credentials.type, function: authorized.type }
+      }
+      const authorizedCall = authorized.contractFn
+      return {
+        credentials: credentials.type,
+        contract: Address.fromScAddress(
+          authorizedCall.contractAddress
+        ).toString(),
+        method: authorizedCall.functionName.toString(),
+        args: authorizedCall.args.map((arg) => scValToNative(arg)),
+        argTypes: authorizedCall.args.map((arg) => arg.type),
+        subInvocations: rootInvocation.subInvocations.length,
+      }
+    }),
+  }
+}
+
+/**
+ * Every field of an envelope that the SDK chooses, decoded from its XDR: the
+ * transaction fields, the operations with their auth entries (each argument
+ * as its value and its ScVal type), and the Soroban data. Not decoded: the
+ * signatures (the wallet's).
+ */
+export const envelopeFieldsOf = (envelope: string): EnvelopeFields => {
+  const transaction = TransactionBuilder.fromXDR(
+    envelope,
+    NETWORK_PASSPHRASE
+  ) as Transaction
+  const raw = transaction.toEnvelope()
+  if (raw.type !== 'envelopeTypeTx') {
+    return { envelope: raw.type }
+  }
+  const { cond, ext } = raw.v1.tx
+  const sorobanData = ext.type === 'sorobanData' ? ext.sorobanData : undefined
+  return {
+    source: transaction.source,
+    fee: transaction.fee,
+    sequence: transaction.sequence,
+    preconditions: cond.type,
+    timeBounds: transaction.timeBounds && {
+      minTime: Number(transaction.timeBounds.minTime),
+      maxTime: Number(transaction.timeBounds.maxTime),
+    },
+    memo: transaction.memo.type,
+    operations: transaction.operations.map(operationFieldsOf),
+    sorobanData: sorobanData && {
+      resourceFee: sorobanData.resourceFee,
+      instructions: sorobanData.resources.instructions,
+      diskReadBytes: sorobanData.resources.diskReadBytes,
+      writeBytes: sorobanData.resources.writeBytes,
+      readOnly: sorobanData.resources.footprint.readOnly.map((key) =>
+        key.toXDR('base64')
+      ),
+      readWrite: sorobanData.resources.footprint.readWrite.map((key) =>
+        key.toXDR('base64')
+      ),
+      ext: sorobanData.ext.type,
+    },
+  }
+}
 
 let quoteCounter = 0
 

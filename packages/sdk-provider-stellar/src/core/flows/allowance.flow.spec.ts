@@ -1,11 +1,4 @@
 import { ChainId, executeRoute } from '@lifi/sdk'
-import {
-  Address,
-  type OperationRecord,
-  scValToNative,
-  type Transaction,
-  TransactionBuilder,
-} from '@stellar/stellar-sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ARB_EXPLORER_URL,
@@ -13,6 +6,7 @@ import {
   buildRoute,
   CCTP_SPENDER,
   destinationTxHashOf,
+  envelopeFieldsOf,
   type FakeStellarNetwork,
   hashOf,
   installFakeStellarNetwork,
@@ -29,85 +23,6 @@ import {
   USDC_FROM_AMOUNT,
   USDC_TOKEN,
 } from './harness.mock.js'
-
-/** The fields of one operation, decoded from the envelope XDR. */
-const operationFieldsOf = (operation: OperationRecord) => {
-  if (operation.type !== 'invokeHostFunction') {
-    return { type: operation.type }
-  }
-  const { func, auth = [], source } = operation
-  if (func.type !== 'hostFunctionTypeInvokeContract') {
-    return { type: operation.type, function: func.type }
-  }
-  const call = func.invokeContract
-  return {
-    type: operation.type,
-    // An operation without its own source runs as the transaction source.
-    source: source ?? null,
-    contract: Address.fromScAddress(call.contractAddress).toString(),
-    method: call.functionName.toString(),
-    args: call.args.map((arg) => scValToNative(arg)),
-    auth: auth.map(({ credentials, rootInvocation }) => {
-      const authorized = rootInvocation.function
-      if (authorized.type !== 'sorobanAuthorizedFunctionTypeContractFn') {
-        return { credentials: credentials.type, function: authorized.type }
-      }
-      const authorizedCall = authorized.contractFn
-      return {
-        credentials: credentials.type,
-        contract: Address.fromScAddress(
-          authorizedCall.contractAddress
-        ).toString(),
-        method: authorizedCall.functionName.toString(),
-        args: authorizedCall.args.map((arg) => scValToNative(arg)),
-        subInvocations: rootInvocation.subInvocations.length,
-      }
-    }),
-  }
-}
-
-/**
- * Every field of a signed envelope that the SDK chooses, decoded from its
- * XDR: the transaction fields, the operations with their auth entries, and
- * the Soroban data. The signatures are the wallet's.
- */
-const envelopeFieldsOf = (envelope: string) => {
-  const transaction = TransactionBuilder.fromXDR(
-    envelope,
-    NETWORK_PASSPHRASE
-  ) as Transaction
-  const raw = transaction.toEnvelope()
-  if (raw.type !== 'envelopeTypeTx') {
-    return { envelope: raw.type }
-  }
-  const { cond, ext } = raw.v1.tx
-  const sorobanData = ext.type === 'sorobanData' ? ext.sorobanData : undefined
-  return {
-    source: transaction.source,
-    fee: transaction.fee,
-    sequence: transaction.sequence,
-    preconditions: cond.type,
-    timeBounds: transaction.timeBounds && {
-      minTime: Number(transaction.timeBounds.minTime),
-      maxTime: Number(transaction.timeBounds.maxTime),
-    },
-    memo: transaction.memo.type,
-    operations: transaction.operations.map(operationFieldsOf),
-    sorobanData: sorobanData && {
-      resourceFee: sorobanData.resourceFee,
-      instructions: sorobanData.resources.instructions,
-      diskReadBytes: sorobanData.resources.diskReadBytes,
-      writeBytes: sorobanData.resources.writeBytes,
-      readOnly: sorobanData.resources.footprint.readOnly.map((key) =>
-        key.toXDR('base64')
-      ),
-      readWrite: sorobanData.resources.footprint.readWrite.map((key) =>
-        key.toXDR('base64')
-      ),
-      ext: sorobanData.ext.type,
-    },
-  }
-}
 
 let network: FakeStellarNetwork
 
@@ -159,6 +74,9 @@ describe('Stellar allowance (CCTP bridge leg pulls with transfer_from)', () => {
       (BigInt(USDC_FROM_AMOUNT) * 110n) / 100n,
       START_LEDGER + 17280,
     ]
+    // The ScVal types the SDK gives these arguments (scValToNative drops
+    // them: i128 and u128 decode to the same bigint).
+    const approveArgTypes = ['scvAddress', 'scvAddress', 'scvI128', 'scvU32']
     expect(invocationOf(approval[0])).toEqual({
       contract: USDC_TOKEN.address,
       method: 'approve',
@@ -171,8 +89,8 @@ describe('Stellar allowance (CCTP bridge leg pulls with transfer_from)', () => {
       hashOf(approval[0]),
       hashOf(network.quotes[0]),
     ])
-    // The approval as the wallet signed it: every field the SDK chooses.
-    // The values were observed on main.
+    // The approval as the wallet signed it: every field the SDK chooses,
+    // each argument with its ScVal type. The values were observed on main.
     // - fee: 150, the Soroban inclusion bid (fee stats p70), plus 50000, the
     //   resource fee of the Soroban data that prepareTransaction copied from
     //   the simulation (also pinned below).
@@ -202,12 +120,14 @@ describe('Stellar allowance (CCTP bridge leg pulls with transfer_from)', () => {
           contract: USDC_TOKEN.address,
           method: 'approve',
           args: approveArgs,
+          argTypes: approveArgTypes,
           auth: [
             {
               credentials: 'sorobanCredentialsSourceAccount',
               contract: USDC_TOKEN.address,
               method: 'approve',
               args: approveArgs,
+              argTypes: approveArgTypes,
               subInvocations: 0,
             },
           ],
