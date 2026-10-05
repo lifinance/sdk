@@ -14,6 +14,7 @@ import {
   openPage,
   recordRouteUpdates,
   STATUS_EXPLORER_URL,
+  SUI_EXPLORER_URL,
   signatures,
   signedBytes,
   stepOf,
@@ -55,10 +56,10 @@ describe('Sui on-chain failure', () => {
     ])
     expect(network.landed.get(failedDigest)).toEqual(MOVE_ABORT)
     // The failure is the execution result: no wait, no `/status`.
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
-      'client.signAndExecuteTransaction',
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
@@ -79,7 +80,8 @@ describe('Sui on-chain failure', () => {
         code: LiFiErrorCode.TransactionFailed,
         // FINDING (pinned as main does it): SuiSignAndExecuteTask puts the
         // ExecutionError object into a template string. #507 fixes it.
-        message: 'Transaction failed: [object Object]',
+        // #507: the message uses status.error.message, not the object (addendum §2)
+        message: `Transaction failed: ${MOVE_ABORT.message}`,
       },
       actions: [
         {
@@ -93,8 +95,12 @@ describe('Sui on-chain failure', () => {
     // so the user gets no link to the failed transaction.
     const failedAction = stepOf(stored!).execution?.actions[0]
     expect(failedAction).toBeDefined()
-    expect(failedAction!.txHash).toBeUndefined()
-    expect(failedAction!.txLink).toBeUndefined()
+    // #507: a FailedTransaction has a digest; the sign task writes it as txHash (spec §4.6)
+    expect(failedAction!.txHash).toBe(failedDigest)
+    // #507: the sign task writes the txLink with the digest of a FailedTransaction (spec §4.6)
+    expect(failedAction!.txLink).toBe(
+      `${SUI_EXPLORER_URL}txblock/${failedDigest}`
+    )
 
     // "Try again": the widget resumes the route it stored.
     const retry = recordRouteUpdates()

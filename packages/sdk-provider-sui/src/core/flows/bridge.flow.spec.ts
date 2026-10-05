@@ -49,10 +49,10 @@ describe('Sui bridge (Sui → Arbitrum)', () => {
     expect(network.executed).toEqual([
       { bytes: network.quotes[0], signatures: await signatures(page) },
     ])
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
-      'client.signAndExecuteTransaction',
       'client.executeTransaction',
       'grpc.waitForTransaction',
     ])

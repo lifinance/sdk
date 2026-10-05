@@ -51,10 +51,10 @@ describe('Sui user rejection', () => {
     // The wallet was asked once, for the quoted bytes; nothing reached a node.
     expect(signedBytes(page)).toEqual(network.quotes)
     expect(network.executed).toEqual([])
+    // #507: the SDK calls the signer itself, so a rejection calls no client method (spec §4.6)
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
-      'client.signAndExecuteTransaction',
     ])
     expect(network.statusRequests).toEqual([])
     expect(first.changes).toEqual([
@@ -121,12 +121,13 @@ describe('Sui user rejection', () => {
     // FINDING (pinned as main does it): `parseSuiErrors` maps any error
     // text containing "reject" to SignatureRejected, so a node refusal
     // reads as "the user rejected".
-    expect(error.code).toBe(LiFiErrorCode.SignatureRejected)
+    // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+    expect(error.code).toBe(LiFiErrorCode.InternalError)
     // ...which refused it: no wait for the digest and no `/status` poll.
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
-      'client.signAndExecuteTransaction',
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
@@ -139,12 +140,14 @@ describe('Sui user rejection', () => {
     expect(stored).toBeDefined()
     expect(stepOf(stored!).execution).toMatchObject({
       status: 'FAILED',
-      error: { code: LiFiErrorCode.SignatureRejected },
+      // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+      error: { code: LiFiErrorCode.InternalError },
       actions: [
         {
           type: 'SWAP',
           status: 'FAILED',
-          error: { code: LiFiErrorCode.SignatureRejected },
+          // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+          error: { code: LiFiErrorCode.InternalError },
         },
       ],
     })
