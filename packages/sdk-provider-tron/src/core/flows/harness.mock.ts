@@ -660,7 +660,10 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
           }
           return { result: true, txid: transaction.txID }
         }
-        // `trx.getTransactionInfo`: `{}` until the transaction is included.
+        // `trx.getTransactionInfo` (solidity node) and
+        // `trx.getUnconfirmedTransactionInfo` (full node, the dropped-check
+        // lookup): `{}` until the transaction is included.
+        case 'wallet/gettransactioninfobyid':
         case 'walletsolidity/gettransactioninfobyid': {
           const txID = String(body.value)
           return landed.has(txID) ? transactionInfo(txID) : {}
