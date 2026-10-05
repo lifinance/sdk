@@ -1,4 +1,4 @@
-import { encodeFunctionData, erc20Abi } from 'viem'
+import { encodeFunctionData, erc20Abi, getAddress } from 'viem'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   actionSequence,
@@ -10,6 +10,7 @@ import {
   decodeDiamondCall,
   EXPLORER_URLS,
   type FakeNetwork,
+  type FakeNetworkOptions,
   moneyFields,
   type NetworkPage,
   openNetworkPage,
@@ -31,12 +32,23 @@ const TO_AMOUNT = '1490000'
  */
 const RECEIVED_AMOUNT = '1487654'
 
+/** A quote's `approvalAddress` that is not the chain's `diamondAddress`. */
+const OTHER_SPENDER = getAddress(`0x${'22'.repeat(20)}`)
+
 let network: FakeNetwork
+
+/** A new fake network for this test, answering `/status` with `RECEIVED_AMOUNT`. */
+const installNetwork = (options: FakeNetworkOptions = {}): void => {
+  network = createFakeNetwork({
+    receivedAmount: () => RECEIVED_AMOUNT,
+    ...options,
+  })
+  vi.stubGlobal('fetch', network.fetch)
+}
 
 beforeEach(() => {
   // No allowance for the diamond yet: the SDK has to approve first.
-  network = createFakeNetwork({ receivedAmount: () => RECEIVED_AMOUNT })
-  vi.stubGlobal('fetch', network.fetch)
+  installNetwork()
 })
 
 afterEach(() => {
@@ -204,5 +216,98 @@ describe('EN2 — an ERC-20 swap that needs an approval, through the real viem a
       txHash: swap.hash,
       bridge: 'paraswap',
     })
+  })
+
+  it("approves the quote's approvalAddress, not the chain's diamondAddress", async () => {
+    // The diamond may already pull FROM_AMOUNT, so the swap can complete. An
+    // SDK that took the chain's `diamondAddress` as the spender would find
+    // this allowance and skip the approval, or approve the diamond.
+    installNetwork({
+      allowances: [{ token: USDC_POLYGON, amount: FROM_AMOUNT }],
+    })
+    const step = buildNetworkStep({
+      id: 'erc20-swap-other-spender',
+      fromToken: USDC,
+      toToken: USDT,
+      fromAmount: FROM_AMOUNT.toString(),
+      toAmount: TO_AMOUNT,
+      tool: 'paraswap',
+    })
+    step.estimate.approvalAddress = OTHER_SPENDER
+    const page = openNetworkPage({ network, route: buildNetworkRoute([step]) })
+    const route = await page.run()
+
+    expect(network.signed).toHaveLength(2)
+    const [approve, swap] = network.signed
+    const [quote] = network.quotes
+
+    // The approval names exactly the quote's `approvalAddress`.
+    expect(moneyFields(approve)).toEqual({
+      chainId: SOURCE_CHAIN_ID,
+      to: USDC_POLYGON,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [OTHER_SPENDER, FROM_AMOUNT],
+      }),
+      value: 0n,
+    })
+    expect(decodeApprove(approve.data!)).toEqual({
+      spender: OTHER_SPENDER,
+      amount: FROM_AMOUNT,
+    })
+
+    // The swap still goes to the quote's target, the diamond.
+    expect(moneyFields(swap)).toEqual({
+      chainId: SOURCE_CHAIN_ID,
+      to: DIAMOND_ADDRESS,
+      data: quote.transactionRequest.data,
+      value: 0n,
+    })
+    expect(network.broadcast).toEqual([approve.serialized, swap.serialized])
+
+    // On chain: the swap spent the diamond's seeded allowance; the new
+    // allowance for the other spender stays untouched.
+    expect(network.receiptStatus(approve.hash)).toBe('success')
+    expect(network.receiptStatus(swap.hash)).toBe('success')
+    expect(network.allowance(USDC_POLYGON, WALLET_ADDRESS, OTHER_SPENDER)).toBe(
+      FROM_AMOUNT
+    )
+    expect(
+      network.allowance(USDC_POLYGON, WALLET_ADDRESS, DIAMOND_ADDRESS)
+    ).toBe(0n)
+
+    const link = (hash: string) => `${EXPLORER_URLS[SOURCE_CHAIN_ID]}tx/${hash}`
+    const execution = route.steps[0].execution!
+    expect(execution.status).toBe('DONE')
+    expect(execution.toAmount).toBe(RECEIVED_AMOUNT)
+    expect(
+      execution.actions.map(({ type, status, txHash, txLink }) => ({
+        type,
+        status,
+        txHash,
+        txLink,
+      }))
+    ).toEqual([
+      {
+        type: 'CHECK_ALLOWANCE',
+        status: 'DONE',
+        txHash: undefined,
+        txLink: undefined,
+      },
+      {
+        type: 'SET_ALLOWANCE',
+        status: 'DONE',
+        txHash: approve.hash,
+        txLink: link(approve.hash),
+      },
+      // main: the final same-chain txHash/txLink come from the LI.FI /status answer (core WaitForTransactionStatusTask)
+      {
+        type: 'SWAP',
+        status: 'DONE',
+        txHash: swap.hash,
+        txLink: link(swap.hash),
+      },
+    ])
   })
 })
