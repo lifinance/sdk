@@ -21,10 +21,29 @@ let network: FakeNetwork
 let wallet: FakeWallet
 
 beforeEach(async () => {
-  network = createFakeNetwork({ read: 'standard', write: 'standard' })
+  network = createFakeNetwork({
+    read: 'standard',
+    write: 'standard',
+    write2: 'standard',
+  })
   vi.stubGlobal('fetch', network.fetch)
   wallet = await createFakeWallet((await generateTestKeypair()).secretKey)
 })
+
+/** The JSON-RPC methods the node `name` received, in order. */
+const methodsOn = (name: string): string[] =>
+  network.rpcCalls
+    .filter((call) => call.url === network.url(name))
+    .map((call) => call.method)
+
+/** The wire transactions the node `name` received through `sendTransaction`. */
+const sentTo = (name: string): string[] =>
+  network.rpcCalls
+    .filter(
+      (call) =>
+        call.url === network.url(name) && call.method === 'sendTransaction'
+    )
+    .map((call) => call.params[0] as string)
 
 afterEach(() => {
   try {
@@ -35,9 +54,12 @@ afterEach(() => {
 })
 
 describe('Solana swap sent through write RPCs', () => {
-  it('sends only through the write RPC and reads only from the read RPC', async () => {
+  it('sends through every write RPC and reads only from the read RPC', async () => {
     const client = openPage(wallet, {
-      rpcUrls: { read: [network.url('read')], write: [network.url('write')] },
+      rpcUrls: {
+        read: [network.url('read')],
+        write: [network.url('write'), network.url('write2')],
+      },
     })
     const recorder = recordRoute()
 
@@ -59,19 +81,19 @@ describe('Solana swap sent through write RPCs', () => {
     })
     const signed = wallet.signCalls[0].outputs
 
-    // The simulation and the confirmation reads stay on the read RPC; the one
-    // send goes to the write RPC.
-    expect(submitTrail(network)).toEqual([
-      'simulateTransaction@read',
-      'sendTransaction@write',
-      'getSignatureStatuses@read',
-    ])
-    expect(sentTransactions(network)).toEqual(signed)
+    // The simulation and the confirmation read stay on the read RPC, which
+    // gets no send.
     expect(
-      network.rpcCalls
-        .filter((call) => call.url === network.url('write'))
-        .map((call) => call.method)
-    ).toEqual(['sendTransaction'])
+      submitTrail(network).filter((entry) => entry.endsWith('@read'))
+    ).toEqual(['simulateTransaction@read', 'getSignatureStatuses@read'])
+    // Each write RPC gets the one send and nothing else. The sends to the
+    // write RPCs run at the same time, so the order across nodes is not
+    // pinned.
+    expect(methodsOn('write')).toEqual(['sendTransaction'])
+    expect(methodsOn('write2')).toEqual(['sendTransaction'])
+    expect(sentTo('write')).toEqual([signed[0]])
+    expect(sentTo('write2')).toEqual([signed[0]])
+    expect(sentTransactions(network)).toEqual([signed[0], signed[0]])
 
     const txHash = signatureOf(signed[0])
     expect(recorder.trail()).toEqual([
