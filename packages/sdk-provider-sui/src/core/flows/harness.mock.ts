@@ -31,6 +31,22 @@
  * `afterEach`. Main swallows many errors (`callSuiWithRetry`, the `/status`
  * poll), so a throw alone could hide.
  *
+ * For the same reason, the entry points of the fakes record a throw inside
+ * a fake (a decode, a parameter read, a bug in a fake) in `unexpected` as
+ * `harness error: <what> on <where>: <message>`, then rethrow it, so the
+ * SDK still sees the failure. The entry points are the `fetch` handler
+ * (`fetch on <url>`) and every fake method of the integrator client
+ * (`client.<name> on the integrator client`), of `core`
+ * (`grpc.<name> on <SUI_RPC_URL>`) and of `ledgerService`
+ * (`grpc.ledgerService.<name> on <SUI_RPC_URL>`). Two kinds of throw are
+ * not recorded again: a failure the spec plans
+ * ({@link FakeSuiNetwork.refuseNextExecution}) and a miss the fake has
+ * already recorded (an invalid signature, an unknown digest, a method the
+ * fake does not implement). `client.signAndExecuteTransaction` is the
+ * library's own code, not a fake, and the wallet runs no spec callback, so
+ * neither is wrapped: a wallet rejection reaches the sign task as the specs
+ * plan it, and the library's call of `client.executeTransaction` is wrapped.
+ *
  * Import this file before any other module that imports `@mysten/sui/grpc`
  * (the specs import only `@lifi/sdk`, `vitest` and this file).
  *
@@ -371,7 +387,10 @@ export interface FakeSuiNetwork {
   readonly executed: ExecutedTransaction[]
   /** Every client, gRPC and `ledgerService` method called, in order. */
   readonly methods: string[]
-  /** Calls and requests the fakes do not expect (must stay empty). */
+  /**
+   * Calls and requests the fakes do not expect, and throws inside the fakes
+   * (`harness error: …`). Must stay empty.
+   */
   readonly unexpected: string[]
   /** Executed digests and their on-chain failure (`null` = success). */
   readonly landed: Map<string, SuiClientTypes.ExecutionError | null>
@@ -439,14 +458,53 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
   const signaturesByDigest = new Map<string, string[]>()
 
   /**
+   * Errors a fake throws on purpose: a failure the spec plans, or a miss
+   * the fake has already recorded in `unexpected`. The entry points do not
+   * record them again.
+   */
+  const deliberate = new WeakSet<Error>()
+  const deliberately = (error: Error): Error => {
+    deliberate.add(error)
+    return error
+  }
+
+  /**
+   * Answers one call at an entry point of the fakes. A throw inside the
+   * fake that is not deliberate goes to `unexpected` as
+   * `harness error: <what> on <where>: <message>` (see the file header);
+   * the caller still gets the throw.
+   */
+  const recordHarnessErrors = async <T>(
+    what: string,
+    where: string,
+    answer: () => Promise<T>
+  ): Promise<T> => {
+    try {
+      return await answer()
+    } catch (error) {
+      if (!deliberate.has(error as Error)) {
+        const message = error instanceof Error ? error.message : String(error)
+        network.unexpected.push(
+          `harness error: ${what} on ${where}: ${message}`
+        )
+      }
+      throw error
+    }
+  }
+
+  /**
    * An object whose every method call is recorded in `methods` as
-   * `${prefix}${name}`. A method missing from `implemented` is recorded in
-   * `unexpected` too, and throws. `core` answers the object itself, as
-   * `CoreClient` does (`this.core = this`).
+   * `${prefix}${name}`. A call of a `fakes` method goes through
+   * {@link recordHarnessErrors} with `where`. A call of a `library` method
+   * (the real `@mysten/sui` code) is not wrapped. A method missing from
+   * both is recorded in `unexpected` too, and throws. `core` answers the
+   * object itself, as `CoreClient` does (`this.core = this`).
    */
   const recording = (
     prefix: string,
-    implemented: Record<string, (...args: never[]) => unknown>
+    where: string,
+    fakes: Record<string, (...args: never[]) => Promise<unknown>>,
+    library: Record<string, (...args: never[]) => Promise<unknown>> = {}
   ): Record<string, (...args: never[]) => unknown> => {
     const proxy: Record<string, (...args: never[]) => unknown> = new Proxy(
       {},
@@ -459,14 +517,18 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
             return proxy
           }
           const name = `${prefix}${property}`
-          const method = implemented[property]
+          const fake = fakes[property]
+          const real = library[property]
           return (...args: never[]) => {
             network.methods.push(name)
-            if (!method) {
+            if (real) {
+              return real(...args)
+            }
+            if (!fake) {
               network.unexpected.push(name)
               throw new Error(`Fake Sui network: ${name} is not implemented`)
             }
-            return method(...args)
+            return recordHarnessErrors(name, where, () => fake(...args))
           }
         },
       }
@@ -485,7 +547,7 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     const refusal = network.refuseNextExecution
     if (refusal) {
       network.refuseNextExecution = undefined
-      throw refusal
+      throw deliberately(refusal)
     }
     const sender = Transaction.from(options.transaction).getData().sender
     for (const signature of options.signatures) {
@@ -495,7 +557,7 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
         })
       } catch {
         network.unexpected.push(`invalid signature for ${digestOf(bytes)}`)
-        throw new Error('Fake Sui node: invalid signature')
+        throw deliberately(new Error('Fake Sui node: invalid signature'))
       }
     }
     const digest = digestOf(bytes)
@@ -511,18 +573,22 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     )
   }
 
-  const integratorCore = recording('client.', {
-    // The real `@mysten/sui` implementation, so the build, the sign call
-    // and the hand-over to `executeTransaction` are the library's own.
-    signAndExecuteTransaction: (options: never) =>
-      CoreClient.prototype.signAndExecuteTransaction.call(
-        integratorCore,
-        options
-      ),
-    executeTransaction,
-  })
+  const integratorCore = recording(
+    'client.',
+    'the integrator client',
+    { executeTransaction },
+    {
+      // The real `@mysten/sui` implementation, so the build, the sign call
+      // and the hand-over to `executeTransaction` are the library's own.
+      signAndExecuteTransaction: (options: never) =>
+        CoreClient.prototype.signAndExecuteTransaction.call(
+          integratorCore,
+          options
+        ),
+    }
+  )
 
-  const grpcCore = recording('grpc.', {
+  const grpcCore = recording('grpc.', SUI_RPC_URL, {
     // Every wallet holds SUI_BALANCE of SUI and nothing else.
     async listBalances(): Promise<SuiClientTypes.ListBalancesResponse> {
       return {
@@ -543,7 +609,9 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     async waitForTransaction(options: { digest: string }) {
       if (!network.landed.has(options.digest)) {
         network.unexpected.push(`wait for unknown digest ${options.digest}`)
-        throw new Error(`Fake Sui network: unknown digest ${options.digest}`)
+        throw deliberately(
+          new Error(`Fake Sui network: unknown digest ${options.digest}`)
+        )
       }
       return transactionResult(
         options.digest,
@@ -553,11 +621,45 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     },
   })
 
-  const ledgerService = recording('grpc.ledgerService.', {
+  const ledgerService = recording('grpc.ledgerService.', SUI_RPC_URL, {
     async getServiceInfo() {
       return { response: { checkpointHeight: 1000n } }
     },
   })
+
+  // The LI.FI API: a quote for every `/advanced/stepTransaction` request,
+  // and a DONE `/status` answer for every landed digest.
+  const answerApi = async (
+    url: string,
+    init: RequestInit | undefined
+  ): Promise<Response> => {
+    if (url === `${API_URL}/advanced/stepTransaction`) {
+      const requested = JSON.parse(String(init?.body)) as LiFiStep
+      network.stepTransactionRequests.push(requested)
+      quoteCounter += 1
+      const data = await buildTransactionData(
+        requested.action.fromAddress as string,
+        quoteCounter
+      )
+      network.quotes.push(data)
+      return json({ ...requested, transactionRequest: { data } })
+    }
+    if (url.startsWith(`${API_URL}/status?`)) {
+      const query = Object.fromEntries(new URL(url).searchParams)
+      network.statusRequests.push(query)
+      const txHash = query.txHash ?? ''
+      if (!network.landed.has(txHash)) {
+        // Main polls `/status` forever while the answer is not DONE, so
+        // an unknown hash answers DONE without `receiving`: main then
+        // fails at once instead of hanging.
+        network.unexpected.push(`/status for unknown hash ${txHash}`)
+        return json({ status: 'DONE', substatus: 'COMPLETED' })
+      }
+      return json(statusAnswer(txHash, Number(query.toChain)))
+    }
+    network.unexpected.push(`fetch ${url}`)
+    return json({ message: `Unexpected request ${url}` }, 404)
+  }
 
   const network: FakeSuiNetwork = {
     integratorClient: { core: integratorCore } as unknown as ClientWithCoreApi,
@@ -574,32 +676,7 @@ const createFakeSuiNetwork = (): FakeSuiNetwork => {
     refuseNextExecution: undefined,
     fetch: (async (input: unknown, init?: RequestInit) => {
       const url = urlOf(input)
-      if (url === `${API_URL}/advanced/stepTransaction`) {
-        const requested = JSON.parse(String(init?.body)) as LiFiStep
-        network.stepTransactionRequests.push(requested)
-        quoteCounter += 1
-        const data = await buildTransactionData(
-          requested.action.fromAddress as string,
-          quoteCounter
-        )
-        network.quotes.push(data)
-        return json({ ...requested, transactionRequest: { data } })
-      }
-      if (url.startsWith(`${API_URL}/status?`)) {
-        const query = Object.fromEntries(new URL(url).searchParams)
-        network.statusRequests.push(query)
-        const txHash = query.txHash ?? ''
-        if (!network.landed.has(txHash)) {
-          // Main polls `/status` forever while the answer is not DONE, so
-          // an unknown hash answers DONE without `receiving`: main then
-          // fails at once instead of hanging.
-          network.unexpected.push(`/status for unknown hash ${txHash}`)
-          return json({ status: 'DONE', substatus: 'COMPLETED' })
-        }
-        return json(statusAnswer(txHash, Number(query.toChain)))
-      }
-      network.unexpected.push(`fetch ${url}`)
-      return json({ message: `Unexpected request ${url}` }, 404)
+      return recordHarnessErrors('fetch', url, () => answerApi(url, init))
     }) as typeof fetch,
   }
   return network
