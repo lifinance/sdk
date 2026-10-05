@@ -23,7 +23,11 @@
  * route id and by hash) never collide either.
  *
  * Unknown requests fail loudly: the fake answers them with an error and
- * records them in `unknown`; every spec asserts that list is empty.
+ * records them in `unknown`; every spec asserts that list is empty. A throw
+ * inside the fake (a bad request, or a spec's `onSend`) goes there too, as
+ * `harness error: <method or path> on <url>: <message>`: the provider
+ * swallows send errors, so the throw would otherwise vanish. A JSON-RPC
+ * request then gets the error `-32603`; an API request still rejects.
  *
  * `.mock.ts` keeps this file out of `dist` (tsdown entry, tsconfig exclude,
  * package.json `files`).
@@ -255,7 +259,10 @@ export interface FakeNetwork {
   readonly rpcCalls: RpcCall[]
   /** Every LI.FI API request, in arrival order. */
   readonly apiCalls: ApiCall[]
-  /** Requests the fake does not answer. Every spec asserts it stays empty. */
+  /**
+   * Requests the fake does not answer, and throws inside the fake
+   * (`harness error: …`). Every spec asserts it stays empty.
+   */
   readonly unknown: string[]
   /** `transactionRequest.data` of every `/advanced/stepTransaction` answer. */
   readonly quotes: (string | string[])[]
@@ -269,6 +276,7 @@ export interface FakeNetwork {
   /**
    * Called when a `sendTransaction` or `sendBundle` request arrives, before
    * the fake includes anything. Lets a spec snapshot the route at that point.
+   * A throw in it goes to `unknown`; the node answers the error `-32603`.
    */
   onSend?: (wireTransactions: string[], call: RpcCall) => void
   /** Forgets what the chain included: the send never reached a node. */
@@ -333,6 +341,8 @@ const bundleIdOf = async (signatures: string[]): Promise<string> => {
 const NOT_ANSWERED = Symbol('not answered')
 
 type RpcError = { code: number; message: string }
+
+type RpcRequest = { id: number; method: string; params?: unknown[] }
 
 /**
  * Creates a fake Solana network with the given nodes, for example
@@ -565,6 +575,17 @@ export const createFakeNetwork = (
     return json({ message: 'Not found' }, 404)
   }
 
+  /** Records a throw inside the fake in `unknown`; returns its message. */
+  const recordHarnessError = (
+    what: string,
+    url: string,
+    error: unknown
+  ): string => {
+    const message = error instanceof Error ? error.message : String(error)
+    network.unknown.push(`harness error: ${what} on ${url}: ${message}`)
+    return message
+  }
+
   const network: FakeNetwork = {
     id,
     url(name: string): string {
@@ -597,33 +618,55 @@ export const createFakeNetwork = (
       const url = urlOf(input)
       const kind = nodeUrls.get(url)
       if (kind) {
-        const request = JSON.parse(String(init?.body)) as {
-          id: number
-          method: string
-          params?: unknown[]
-        }
-        const call: RpcCall = {
-          url,
-          method: request.method,
-          params: request.params ?? [],
-        }
-        network.rpcCalls.push(call)
-        const result = await answerRpc(kind, call)
-        if (result === NOT_ANSWERED) {
-          network.unknown.push(`RPC ${request.method} on ${url}`)
+        let request: RpcRequest | null = null
+        try {
+          request = JSON.parse(String(init?.body)) as RpcRequest
+          const call: RpcCall = {
+            url,
+            method: request.method,
+            params: request.params ?? [],
+          }
+          network.rpcCalls.push(call)
+          const result = await answerRpc(kind, call)
+          if (result === NOT_ANSWERED) {
+            network.unknown.push(`RPC ${request.method} on ${url}`)
+            return json({
+              jsonrpc: '2.0',
+              id: request.id,
+              error: { code: -32601, message: 'Method not found' },
+            })
+          }
+          if (result && typeof result === 'object' && 'error' in result) {
+            return json({
+              jsonrpc: '2.0',
+              id: request.id,
+              error: result.error,
+            })
+          }
+          return json({ jsonrpc: '2.0', id: request.id, result })
+        } catch (error) {
+          // The provider swallows send errors (one RPC of several may
+          // accept), so a throw here would vanish as a transport error.
+          const message = recordHarnessError(
+            request?.method ?? 'unparsed request',
+            url,
+            error
+          )
           return json({
             jsonrpc: '2.0',
-            id: request.id,
-            error: { code: -32601, message: 'Method not found' },
+            id: request?.id ?? null,
+            error: { code: -32603, message },
           })
         }
-        if (result && typeof result === 'object' && 'error' in result) {
-          return json({ jsonrpc: '2.0', id: request.id, error: result.error })
-        }
-        return json({ jsonrpc: '2.0', id: request.id, result })
       }
       if (url.startsWith(API_URL)) {
-        return answerApi(new URL(url), init)
+        try {
+          return await answerApi(new URL(url), init)
+        } catch (error) {
+          // Still thrown: the step fails where the spec sees it.
+          recordHarnessError(new URL(url).pathname, url, error)
+          throw error
+        }
       }
       network.unknown.push(`fetch ${url}`)
       return json({ message: 'Not found' }, 404)
@@ -849,7 +892,11 @@ export interface RouteRecorder {
   /** Pass as `updateRouteHook`; stores a JSON snapshot of every update. */
   readonly updateRouteHook: (route: RouteExtended) => void
   readonly snapshots: RouteExtended[]
-  /** The last snapshot: what storage holds now. Throws when there is none. */
+  /**
+   * A new copy of the last snapshot, as a new read from storage gives:
+   * `resumeRoute` changes its input, and must not change `snapshots`.
+   * Throws when there is none.
+   */
   latest(): RouteExtended
   /**
    * The actions of the first step as `TYPE:STATUS` (space-separated, in the
@@ -871,7 +918,7 @@ export const recordRoute = (): RouteRecorder => {
       if (!last) {
         throw new Error('updateRouteHook was never called.')
       }
-      return last
+      return persist(last)
     },
     trail(): string[] {
       const trail: string[] = []
