@@ -131,7 +131,7 @@ describe('Sui user rejection', () => {
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
-    // #507: the signed bytes are written (PENDING, open transaction) before the node answers (spec §4.6 step 2, §4.7)
+    // #507 accepted (task RS1): every provider writes the signed bytes with status PENDING before it sends; spec §4.6 step 2 requires the write; no code change
     expect(updates.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
