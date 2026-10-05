@@ -28,19 +28,59 @@ afterEach(() => {
   }
 })
 
+/** The TAPOS fields every transaction gets from the fake head block. */
+const HEAD_REF_BLOCK = {
+  ref_block_bytes: '1d80',
+  ref_block_hash: 'abababababababab',
+  expiration: 1_760_000_060_000,
+  timestamp: 1_760_000_000_000,
+}
+
+/**
+ * The `raw_data` the wallet gets for a quoted swap: the quoted call,
+ * re-anchored to the head block and re-encoded by TronWeb (upper-case hex,
+ * zero token fields).
+ */
+const swapRawData = (transactionRequestData: unknown, callValue: number) => ({
+  contract: [
+    {
+      parameter: {
+        value: {
+          owner_address: '41FCAD0B19BB29D4674531D6F115237E16AFCE377C',
+          contract_address: '412222222222222222222222222222222222222222',
+          call_value: callValue,
+          data: quotedCallOf(transactionRequestData).data.toUpperCase(),
+          call_token_value: 0,
+          token_id: 0,
+        },
+        type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+      },
+      type: 'TriggerSmartContract',
+    },
+  ],
+  fee_limit: 150_000_000,
+  data: '',
+  ...HEAD_REF_BLOCK,
+})
+
 describe('Tron user rejection', () => {
   it('fails the swap with SignatureRejected, sends nothing, and "Try again" asks the wallet again', async () => {
     const page = openPage()
     const recorder = recordRoute()
+    const step = buildStep('trx-swap')
     page.wallet.rejectNext()
 
     await expect(
-      executeRoute(page.client, buildRoute(buildStep('trx-swap')), {
+      executeRoute(page.client, buildRoute(step), {
         updateRouteHook: recorder.updateRouteHook,
       })
     ).rejects.toMatchObject({ code: LiFiErrorCode.SignatureRejected })
 
+    // The wallet was asked to sign the original quote, with the 1 TRX value.
     expect(page.wallet.requests).toHaveLength(1)
+    expect(page.wallet.requests[0].raw_data).toEqual(
+      swapRawData(step.transactionRequest?.data, 1_000_000)
+    )
     expect(page.wallet.signed).toEqual([])
     expect(network.broadcasts).toEqual([])
     expect(network.apiCalls).toEqual([])
@@ -70,13 +110,9 @@ describe('Tron user rejection', () => {
       'GET /status',
     ])
     expect(page.wallet.requests).toHaveLength(2)
-    expect(
-      page.wallet.requests[1].raw_data.contract[0].parameter.value
-    ).toMatchObject({
-      data: quotedCallOf(
-        network.requotes[0].transactionRequest?.data
-      ).data.toUpperCase(),
-    })
+    expect(page.wallet.requests[1].raw_data).toEqual(
+      swapRawData(network.requotes[0].transactionRequest?.data, 1_000_000)
+    )
     expect(network.broadcasts).toEqual(page.wallet.signed)
     expect(retry.transitions()).toEqual([
       'SWAP:STARTED',
@@ -147,24 +183,32 @@ describe('Tron user rejection', () => {
       'wallet/triggersmartcontract approve(address,uint256)',
       'wallet/triggersmartcontract approve(address,uint256)',
     ])
-    const approveCall = {
-      data: '095ea7b3000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000001e8480',
-      owner_address: '41fcad0b19bb29d4674531d6f115237e16afce377c',
-      contract_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+    // `approve(diamond, fromAmount)` on USDT with the default 100 TRX fee
+    // limit (the quote has no APPROVE gas cost).
+    const approveRawData = {
+      contract: [
+        {
+          parameter: {
+            value: {
+              data: '095ea7b3000000000000000000000000222222222222222222222222222222222222222200000000000000000000000000000000000000000000000000000000001e8480',
+              owner_address: '41fcad0b19bb29d4674531d6f115237e16afce377c',
+              contract_address: '41a614f803b6fd780986a42c78ec9c7f77e6ded13c',
+            },
+            type_url: 'type.googleapis.com/protocol.TriggerSmartContract',
+          },
+          type: 'TriggerSmartContract',
+        },
+      ],
+      ...HEAD_REF_BLOCK,
+      fee_limit: 100_000_000,
     }
-    expect(
-      page.wallet.requests.map(
-        (request) => request.raw_data.contract[0].parameter.value
-      )
-    ).toMatchObject([
-      approveCall,
-      approveCall,
-      {
-        data: quotedCallOf(
-          network.requotes[0].transactionRequest?.data
-        ).data.toUpperCase(),
-      },
-    ])
+    const [rejectedApprove, approve, swap] = page.wallet.requests
+    expect(rejectedApprove.raw_data).toEqual(approveRawData)
+    expect(approve.raw_data).toEqual(approveRawData)
+    // The swap signs the new quote (no TRX value).
+    expect(swap.raw_data).toEqual(
+      swapRawData(network.requotes[0].transactionRequest?.data, 0)
+    )
     expect(network.broadcasts).toEqual(page.wallet.signed)
     expect(page.wallet.signed).toHaveLength(2)
     expect(retry.transitions()).toEqual([
