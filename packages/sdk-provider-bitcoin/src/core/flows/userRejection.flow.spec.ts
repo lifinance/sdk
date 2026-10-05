@@ -89,7 +89,10 @@ describe('Bitcoin user rejection', () => {
     // UserRejectedRequestError (code -32000); bigmi's buildRequest matches
     // code -32000 before its BaseError passthrough and wraps the full
     // message in a new UserRejectedRequestError; parseBitcoinErrors keeps
-    // that full message (characterized).
+    // that full message (characterized). The double wrap happens only with
+    // connectors whose rejection shape matches the fake (Dynamic,
+    // Unhosted). Xverse, UniSat and Phantom pass the wallet's own error,
+    // which bigmi wraps once.
     const rejection = {
       message: [
         `UserRejectedRequestError:  UserRejectedRequestError:  ${USER_REJECTION_MESSAGE}`,
