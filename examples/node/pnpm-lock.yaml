@@ -6,6 +6,7 @@ settings:
 
 overrides:
   axios: ^1.20.0
+  ws@<=8.22.0: 8.22.0
 
 importers:
 
@@ -393,7 +394,7 @@ packages:
   isows@1.0.7:
     resolution: {integrity: sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==}
     peerDependencies:
-      ws: '*'
+      ws: 8.22.0
 
   node-gyp-build@4.8.4:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
@@ -432,8 +433,8 @@ packages:
       typescript:
         optional: true
 
-  ws@8.21.0:
-    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -682,9 +683,9 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
-  isows@1.0.7(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
+  isows@1.0.7(ws@8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)):
     dependencies:
-      ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ws: 8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
 
   node-gyp-build@4.8.4:
     optional: true
@@ -747,9 +748,9 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@7.0.2)(zod@4.1.12)
-      isows: 1.0.7(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      isows: 1.0.7(ws@8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       ox: 0.14.45(typescript@7.0.2)(zod@4.1.12)
-      ws: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ws: 8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
       typescript: 7.0.2
     transitivePeerDependencies:
@@ -757,7 +758,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
+  ws@8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     optionalDependencies:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
