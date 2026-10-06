@@ -92,6 +92,13 @@ export class EthereumRelayedSignAndExecuteTask extends BaseStepExecutionTask {
       signedTypedData = result.signedTypedData
     }
 
+    // Checked once more after the wallet, also when every entry was signed
+    // already: a stopped run's late write can merge its task id while a
+    // prompt is open. Nothing awaits from here to `relayTransaction`. A
+    // merge during the relay await is not caught: both are relayed, and the
+    // write below replaces the merged task id.
+    assertNoMergedTransaction()
+
     statusManager.updateAction(step, action.type, 'PENDING')
 
     const { execution, ...stepBase } = step

@@ -4,9 +4,11 @@ import {
   hasOpenTransaction,
   LiFiErrorCode,
   type RouteExtended,
+  relayTransaction,
   stopRouteExecution,
   TransactionError,
 } from '@lifi/sdk'
+import type { Hex } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@lifi/sdk', async (importOriginal) => {
@@ -33,6 +35,7 @@ vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
 
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import {
+  buildPermitWitnessTypedData,
   buildStep,
   buildTransactionRequest,
   createScenario,
@@ -209,6 +212,11 @@ describe('EVM "Try again" loop exit', () => {
 // Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.5:
 // a task still running at `stopRouteExecution` writes its hash afterwards.
 describe('EVM transaction written after stopRouteExecution', () => {
+  const SIGNATURE_A: Hex = `0x${'aa'.repeat(64)}1b`
+  const SIGNATURE_B: Hex = `0x${'bb'.repeat(64)}1b`
+  const TASK_A: Hex = `0x${'a1'.repeat(32)}`
+  const TASK_B: Hex = `0x${'b1'.repeat(32)}`
+
   /** The hash the wallet answered, as the sign task wrote it. */
   const signedHashOf = (scenario: Scenario): string | undefined =>
     scenario
@@ -301,5 +309,61 @@ describe('EVM transaction written after stopRouteExecution', () => {
     expect(swap?.txHash).toBe(signedHashOf(scenario))
     expect(hasOpenTransaction(swap)).toBe(true)
     expect(newerAfterOldRun).toBeDefined()
+  })
+
+  // The relayed lane: the SDK, not the wallet, sends the signed message, so
+  // it can still refuse after the wallet returns.
+  it('stop during a relayed prompt, resume, approve both prompts: the newer execution does not relay', async () => {
+    const prompts = [Promise.withResolvers<Hex>(), Promise.withResolvers<Hex>()]
+    let stored: RouteExtended | undefined
+    const scenario = createScenario({
+      step: buildStep({ typedData: [buildPermitWitnessTypedData()] }),
+      allowance: 0n,
+      onRouteUpdate: (route) => {
+        stored = persist(route)
+      },
+      onSignTypedData: (_request, callIndex) => prompts[callIndex].promise,
+    })
+    // A task id per relay, so the action shows whose relay it holds. The
+    // harness implementation still records each relay.
+    const harnessRelay = vi.mocked(relayTransaction).getMockImplementation()!
+    vi.mocked(relayTransaction).mockImplementation(async (...args) => ({
+      ...(await harnessRelay(...args)),
+      taskId:
+        scenario.events('relayTransaction').length === 1 ? TASK_A : TASK_B,
+    }))
+
+    const running = scenario.run()
+    await vi.waitFor(() =>
+      expect(scenario.events('signTypedData')).toHaveLength(1)
+    )
+    stopRouteExecution(scenario.route())
+    const resumed = scenario.resume(stored!).then(
+      () => undefined,
+      (error: unknown) => error
+    )
+    // Both prompts are open before either answers.
+    await vi.waitFor(() =>
+      expect(scenario.events('signTypedData')).toHaveLength(2)
+    )
+
+    prompts[0].resolve(SIGNATURE_A)
+    // The stopped run relays, and its late write merges the task id into the
+    // newer execution while the newer prompt is still open.
+    await running
+    expect(swapActionOf(getActiveRoute(stored!.id)!)?.taskId).toBe(TASK_A)
+
+    prompts[1].resolve(SIGNATURE_B)
+    const outcome = await resumed
+
+    expect(
+      scenario
+        .events('relayTransaction')
+        .map((event) => event.typedData.map((entry) => entry.signature))
+    ).toEqual([[SIGNATURE_A]])
+    expect(outcome).toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+    const swap = swapActionOf(stored!)
+    expect(swap?.taskId).toBe(TASK_A)
+    expect(hasOpenTransaction(swap)).toBe(true)
   })
 })
