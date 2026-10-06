@@ -24,13 +24,17 @@ vi.mock('../../actions/waitForTransactionReceipt.js')
 vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
 
 import {
+  APPROVAL_ADDRESS,
   buildStep,
   buildTransactionRequest,
   buildTypedData,
+  CANONICAL_PERMIT2,
   CHAIN_ID,
   createScenario,
   FROM_ADDRESS,
   type Scenario,
+  type ScenarioOptions,
+  type StepFixtureOptions,
   type TimelineKind,
 } from './harness.mock.js'
 
@@ -46,50 +50,77 @@ const ORDER_TYPED_DATA = buildTypedData({
   message: { maker: FROM_ADDRESS, salt: '1' },
 })
 
-/** The re-quotes that move a batched step to another strategy. */
-const REQUOTES: {
-  strategy: string
+/** A custom step (CoW), as a limit-order backend builds it. */
+const CUSTOM_STEP: StepFixtureOptions = {
+  type: 'jumper',
+  tool: 'cowswap',
+  approvalAddress: '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110',
+}
+
+/** The C15 shape of `signatureOnlyAtPrepare.flow.spec.ts`: an order only. */
+const toOrder = (step: LiFiStep): LiFiStep => {
+  const { transactionRequest: _dropped, ...rest } = step
+  return { ...rest, typedData: [ORDER_TYPED_DATA] }
+}
+
+type Shape = {
+  shape: string
+  step: StepFixtureOptions
+  allowance: Pick<ScenarioOptions, 'allowance' | 'allowanceBySpender'>
   requote: (step: LiFiStep) => LiFiStep
-}[] = [
+}
+
+/** Batched first runs whose re-quote moves the step to another strategy. */
+const SHAPES: Shape[] = [
   {
-    // The C15 shape of `signatureOnlyAtPrepare.flow.spec.ts`: an order only.
-    strategy: 'relayed',
-    requote: (step) => {
-      const { transactionRequest: _dropped, ...rest } = step
-      return { ...rest, typedData: [ORDER_TYPED_DATA] }
-    },
+    shape: 'a custom step with a queued approval, re-quoted to relayed',
+    step: CUSTOM_STEP,
+    allowance: { allowance: 0n },
+    requote: toOrder,
   },
   {
     // A tool that never batches.
-    strategy: 'standard',
+    shape: 'a custom step with a queued approval, re-quoted to standard',
+    step: CUSTOM_STEP,
+    allowance: { allowance: 0n },
     requote: (step) => ({
       ...step,
       tool: 'thorswap',
       transactionRequest: buildTransactionRequest(),
     }),
   },
+  {
+    // Nothing is queued, and only the spender changes: the relayed lane pulls
+    // through Permit2. Both spenders hold an allowance, so a replay passes the
+    // allowance tasks and re-quotes.
+    shape: 'a LI.FI step with both spenders approved, re-quoted to relayed',
+    step: {},
+    allowance: {
+      allowanceBySpender: {
+        [APPROVAL_ADDRESS]: 10n ** 24n,
+        [CANONICAL_PERMIT2]: 10n ** 24n,
+      },
+    },
+    requote: toOrder,
+  },
 ]
 
 /**
- * A custom step (CoW) with an approval to queue and an EIP-5792 wallet, so
- * the first run is batched. `gate` holds every re-quote.
+ * `shape` on an EIP-5792 wallet, so the first run is batched. `gate` holds
+ * every re-quote.
  */
 const buildBatchedScenario = (
-  requote: (step: LiFiStep) => LiFiStep,
+  { step, allowance, requote }: Shape,
   gate: Promise<void>,
   onRouteUpdate?: () => void
 ): Scenario =>
   createScenario({
-    step: buildStep({
-      type: 'jumper',
-      tool: 'cowswap',
-      approvalAddress: '0xC92E8bdf79f0507f65a392b0ab4667716BFE0110',
-    }),
-    allowance: 0n,
+    step: buildStep(step),
+    ...allowance,
     capabilities: { atomic: { status: 'supported' } },
-    onStepTransaction: async (step) => {
+    onStepTransaction: async (requoted) => {
       await gate
-      return requote(step)
+      return requote(requoted)
     },
     onRouteUpdate,
   })
@@ -106,50 +137,44 @@ beforeEach(() => {
 })
 
 describe('EVM replay after prepare: stopRouteExecution during the re-quote', () => {
-  it.each(REQUOTES)(
-    'starts no replay in $strategy after the stop',
-    async ({ requote }) => {
-      const requoted = Promise.withResolvers<void>()
-      let hookCalls = 0
-      const scenario = buildBatchedScenario(requote, requoted.promise, () => {
-        hookCalls += 1
-      })
+  it.each(SHAPES)('starts no replay after the stop: $shape', async (shape) => {
+    const requoted = Promise.withResolvers<void>()
+    let hookCalls = 0
+    const scenario = buildBatchedScenario(shape, requoted.promise, () => {
+      hookCalls += 1
+    })
 
-      const running = scenario.run()
-      await vi.waitFor(() =>
-        expect(scenario.events('getStepTransaction')).toHaveLength(1)
-      )
-      const stopFrom = scenario.timeline.length
-      const hookCallsAtStop = hookCalls
-      stopRouteExecution(scenario.route())
-      requoted.resolve()
-
-      // The run resolves like any stopped step, it does not fail.
-      await expect(running).resolves.toBeDefined()
+    const running = scenario.run()
+    await vi.waitFor(() =>
       expect(scenario.events('getStepTransaction')).toHaveLength(1)
-      // The whole slice, not a list of kinds: no wallet request, re-quote,
-      // contract read, `getCode`, capability read or gas estimate.
-      expect(
-        scenario
-          .kinds()
-          .slice(stopFrom)
-          .filter((kind) => !NO_CALL_KINDS.has(kind))
-      ).toEqual([])
-      expect(hookCalls).toBe(hookCallsAtStop)
-      expect(getActiveRoute(scenario.route().id)).toBeUndefined()
-    }
-  )
+    )
+    const stopFrom = scenario.timeline.length
+    const hookCallsAtStop = hookCalls
+    stopRouteExecution(scenario.route())
+    requoted.resolve()
+
+    // The run resolves like any stopped step, it does not fail.
+    await expect(running).resolves.toBeDefined()
+    expect(scenario.events('getStepTransaction')).toHaveLength(1)
+    // The whole slice, not a list of kinds: no wallet request, re-quote,
+    // contract read, `getCode`, capability read or gas estimate.
+    expect(
+      scenario
+        .kinds()
+        .slice(stopFrom)
+        .filter((kind) => !NO_CALL_KINDS.has(kind))
+    ).toEqual([])
+    expect(hookCalls).toBe(hookCallsAtStop)
+    expect(getActiveRoute(scenario.route().id)).toBeUndefined()
+  })
 
   // Fixture guard: without the stop, the same first run replays.
-  it.each(REQUOTES)(
-    'replays in $strategy without a stop',
-    async ({ requote }) => {
-      const scenario = buildBatchedScenario(requote, Promise.resolve())
+  it.each(SHAPES)('replays without a stop: $shape', async (shape) => {
+    const scenario = buildBatchedScenario(shape, Promise.resolve())
 
-      await expect(scenario.run()).resolves.toBeDefined()
+    await expect(scenario.run()).resolves.toBeDefined()
 
-      expect(scenario.events('getStepTransaction')).toHaveLength(2)
-      expect(scenario.events('sendCalls')).toEqual([])
-    }
-  )
+    expect(scenario.events('getStepTransaction')).toHaveLength(2)
+    expect(scenario.events('sendCalls')).toEqual([])
+  })
 })
