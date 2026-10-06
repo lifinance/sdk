@@ -10,9 +10,14 @@ interface ExecutionData {
   executors: StepExecutor[]
   executionOptions?: ExecutionOptions
   promise?: Promise<RouteExtended>
+  /**
+   * One per execution: `stopRouteExecution` aborts it, so the waits of the
+   * stopped run that take its signal end.
+   */
+  abortController: AbortController
 }
 
-type ExecutionStateParams = Omit<ExecutionData, 'executors'>
+type ExecutionStateParams = Omit<ExecutionData, 'executors' | 'abortController'>
 
 /** The route and hook of an execution that ended (stopped or finished). */
 interface EndedExecution {
@@ -72,6 +77,7 @@ export const executionState: ExecutionState = {
       ...this.state[params.route.id],
       ...params,
       executors: this.state[params.route.id]?.executors ?? [],
+      abortController: new AbortController(),
     }
     return this.state[params.route.id]!
   },

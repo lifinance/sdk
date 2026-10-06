@@ -149,6 +149,9 @@ const executeSteps = async (
       // In flight until the step settles, the retry included: a stop keeps
       // the records a late write of this run needs (`executionState`).
       executionState.retain(route.id)
+      // Taken from this execution, not looked up again for the retry: a
+      // newer execution of the route id has its own.
+      const { signal } = execution.abortController
       let executedStep: LiFiStepExtended
       try {
         execution.executors.push(stepExecutor)
@@ -159,14 +162,20 @@ const executeSteps = async (
         }
 
         try {
-          executedStep = await stepExecutor.executeStep(client, step)
+          executedStep = await stepExecutor.executeStep(
+            client,
+            step,
+            undefined,
+            signal
+          )
         } catch (e) {
           if (e instanceof ExecuteStepRetryError) {
             step.execution = undefined
             executedStep = await stepExecutor.executeStep(
               client,
               step,
-              e.retryParams
+              e.retryParams,
+              signal
             )
           } else {
             throw e
@@ -248,6 +257,8 @@ export const stopRouteExecution = (route: Route): Route => {
     })
   }
   executionState.delete(route.id)
+  // Last: the waits that end on it see a stopped executor and no execution.
+  execution.abortController.abort()
   return execution.route
 }
 

@@ -54,7 +54,8 @@ export abstract class BaseStepExecutor implements StepExecutor {
   private createBaseContext = async (
     client: SDKClient,
     step: LiFiStepExtended,
-    retryParams?: ExecuteStepRetryParams
+    retryParams?: ExecuteStepRetryParams,
+    signal?: AbortSignal
   ): Promise<StepExecutorBaseContext> => {
     const fromChain = await client.getChainById(step.action.fromChainId)
     const toChain = await client.getChainById(step.action.toChainId)
@@ -71,6 +72,7 @@ export abstract class BaseStepExecutor implements StepExecutor {
       statusManager: this.statusManager,
       executionOptions: this.executionOptions,
       allowUserInteraction: this.allowUserInteraction,
+      signal,
     }
   }
 
@@ -90,7 +92,8 @@ export abstract class BaseStepExecutor implements StepExecutor {
   executeStep = async (
     client: SDKClient,
     step: LiFiStepExtended,
-    retryParams?: ExecuteStepRetryParams
+    retryParams?: ExecuteStepRetryParams,
+    signal?: AbortSignal
   ): Promise<LiFiStepExtended> => {
     try {
       step.execution = this.statusManager.initializeExecution(step)
@@ -98,7 +101,8 @@ export abstract class BaseStepExecutor implements StepExecutor {
       const baseContext = await this.createBaseContext(
         client,
         step,
-        retryParams
+        retryParams,
+        signal
       )
       const context = await this.createContext(baseContext)
       const pipeline = this.createPipeline(context)

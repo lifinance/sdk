@@ -159,10 +159,15 @@ export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
+  /**
+   * @param signal Aborts when the execution stops. Only waits that start
+   * after the broadcast may use it (`StepExecutorBaseContext.signal`).
+   */
   executeStep(
     client: SDKClient,
     step: LiFiStepExtended,
-    retryParams?: ExecuteStepRetryParams
+    retryParams?: ExecuteStepRetryParams,
+    signal?: AbortSignal
   ): Promise<LiFiStepExtended>
 }
 

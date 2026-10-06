@@ -17,6 +17,14 @@ export interface StepExecutorBaseContext {
   step: LiFiStepExtended
   allowUserInteraction: boolean
   retryParams?: ExecuteStepRetryParams
+  /**
+   * Aborts when `stopRouteExecution` stops the execution. Give it only to a
+   * wait that starts after the transaction is broadcast, such as the
+   * `/status` poll. Never give it to a sign, send or wallet call: a stopped
+   * run must finish those, so its late transaction data still reaches the
+   * stored route and a resume does not sign again.
+   */
+  signal?: AbortSignal
 }
 
 export interface StepExecutorContext extends StepExecutorBaseContext {
