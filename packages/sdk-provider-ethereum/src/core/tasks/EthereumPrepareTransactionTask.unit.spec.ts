@@ -11,13 +11,22 @@ vi.mock('./helpers/getUpdatedStep.js', () => ({
   getUpdatedStep: vi.fn(),
 }))
 
-vi.mock('./helpers/getEthereumExecutionStrategy.js', () => ({
-  getEthereumExecutionStrategy: vi.fn(),
-}))
+vi.mock(
+  './helpers/getEthereumExecutionStrategy.js',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('./helpers/getEthereumExecutionStrategy.js')
+    >()),
+    getEthereumExecutionStrategy: vi.fn(),
+  })
+)
 
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumPrepareTransactionTask } from './EthereumPrepareTransactionTask.js'
-import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
+import {
+  getEthereumExecutionStrategy,
+  STRATEGY_AFTER_PREPARE,
+} from './helpers/getEthereumExecutionStrategy.js'
 import { getUpdatedStep } from './helpers/getUpdatedStep.js'
 
 const SOURCE_CHAIN = 1
@@ -168,6 +177,92 @@ describe('EthereumPrepareTransactionTask.run', () => {
       code: LiFiErrorCode.TransactionUnprepared,
       message:
         'Unable to prepare transaction. Transaction request is not found.',
+    })
+  })
+})
+
+// JUMEMB-102: prepare finds that the work done for the batch does not fit the
+// strategy it establishes.
+describe('EthereumPrepareTransactionTask.run — calls queued for a batch that will not be sent', () => {
+  const order = (): TypedData =>
+    ({
+      primaryType: 'Order',
+      domain: { chainId: SOURCE_CHAIN },
+      types: {},
+      message: {},
+    }) as unknown as TypedData
+
+  const QUEUED_APPROVE = {
+    to: TOKEN_ADDRESS,
+    data: '0x095ea7b3' as Hex,
+    chainId: SOURCE_CHAIN,
+  }
+
+  /** A batched first attempt whose re-quote answers with an order only. */
+  const buildQueuedContext = (
+    calls: (typeof QUEUED_APPROVE)[]
+  ): EthereumStepExecutorContext => {
+    const { transactionRequest: _, ...answer } = buildApiAnswer([order()])
+    vi.mocked(getUpdatedStep).mockResolvedValue(answer as LiFiStepExtended)
+    vi.mocked(getEthereumExecutionStrategy).mockResolvedValue('relayed')
+    const context = buildContext(buildStep([]))
+    context.executionStrategy = 'batched'
+    context.calls = calls
+    return context
+  }
+
+  it('asks for a replay in the strategy prepare established', async () => {
+    const context = buildQueuedContext([QUEUED_APPROVE])
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      name: 'ExecuteStepRetryError',
+      retryParams: { [STRATEGY_AFTER_PREPARE]: 'relayed' },
+    })
+  })
+
+  it('restores the typed data from before prepare, so the replay re-quotes the same way', async () => {
+    const context = buildQueuedContext([QUEUED_APPROVE])
+    const before = context.step.typedData
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      name: 'ExecuteStepRetryError',
+    })
+    expect(context.step.typedData).toBe(before)
+  })
+
+  it('fails loudly instead of dropping the calls on a replay', async () => {
+    const context = buildQueuedContext([QUEUED_APPROVE])
+    context.retryParams = { [STRATEGY_AFTER_PREPARE]: 'relayed' }
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      name: 'TransactionError',
+      code: LiFiErrorCode.TransactionUnprepared,
+    })
+  })
+
+  it('completes when nothing was queued and the spender holds', async () => {
+    const context = buildQueuedContext([])
+
+    const result = await task.run(context)
+
+    expect(result).toMatchObject({
+      status: 'COMPLETED',
+      context: { executionStrategy: 'relayed' },
+    })
+  })
+
+  it('completes when the step still batches, so the batch carries the calls', async () => {
+    const context = buildQueuedContext([QUEUED_APPROVE])
+    vi.mocked(getUpdatedStep).mockResolvedValue(
+      buildApiAnswer([]) as LiFiStepExtended
+    )
+    vi.mocked(getEthereumExecutionStrategy).mockResolvedValue('batched')
+
+    const result = await task.run(context)
+
+    expect(result).toMatchObject({
+      status: 'COMPLETED',
+      context: { executionStrategy: 'batched' },
     })
   })
 })
