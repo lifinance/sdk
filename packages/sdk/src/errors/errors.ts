@@ -64,7 +64,8 @@ export class ValidationError extends BaseError {
 /**
  * Thrown by a step executor when executeStep should be retried with the given params
  * (e.g. wallet rejected 7702 upgrade → retry with atomicityNotReady).
- * The execution layer catches this and retries executeStep(client, step, retryParams).
+ * The execution layer catches this and retries executeStep(client, step, retryParams),
+ * unless the route was stopped or the step has an open transaction.
  */
 export class ExecuteStepRetryError extends BaseError {
   readonly retryParams: ExecuteStepRetryParams

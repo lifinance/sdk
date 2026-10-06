@@ -88,10 +88,10 @@ describe('EN5 — background execution, then a foreground resume', () => {
     // the chain check of `checkClient` (`eth_chainId`) and the fee read on
     // the wallet client (`eth_getBlockByNumber`): it makes these two only for
     // a local account, as in this harness (a json-rpc wallet skips them and
-    // takes the fee from the quote). The sign task's gate is
-    // the only one that this same-chain path reaches. A local account on
-    // another chain pauses earlier: in background mode `switchChain` returns
-    // no client, and the prepare task returns PAUSED. The two gates in
+    // takes the fee from the quote). The sign task's gate is the only one
+    // that this same-chain path reaches. A local account on another chain
+    // pauses earlier: in background mode `switchChain` returns no client, and
+    // the prepare task returns PAUSED. The two gates in
     // `EthereumStandardSignAndExecuteTask` guard the Permit2 branch only. So
     // the wallet transport answered reads, never a prompt: no
     // `eth_fillTransaction`, `eth_getTransactionCount` or

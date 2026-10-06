@@ -164,6 +164,8 @@ describe('EVM replay after prepare: stopRouteExecution during the re-quote', () 
         .slice(stopFrom)
         .filter((kind) => !NO_CALL_KINDS.has(kind))
     ).toEqual([])
+    // Context, not the replay check: the stop itself ends hook updates and
+    // drops the active route, with or without a replay.
     expect(hookCalls).toBe(hookCallsAtStop)
     expect(getActiveRoute(scenario.route().id)).toBeUndefined()
   })
