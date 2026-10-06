@@ -257,7 +257,10 @@ export const stopRouteExecution = (route: Route): Route => {
     })
   }
   executionState.delete(route.id)
-  // Last: the waits that end on it see a stopped executor and no execution.
+  // The order of these three steps is not load-bearing. The abort listeners
+  // only clear timers, drop the shared poll and reject promises. The tasks
+  // handle the rejections after this function returns, so they always see
+  // stopped executors and no execution.
   execution.abortController.abort()
   return execution.route
 }

@@ -150,6 +150,12 @@ function joinPoll(
     }
     waiters.add(waiter)
     signal.addEventListener('abort', leave, { once: true })
+    // Defensive; this branch does not run today. The check at the top of
+    // `waitForTransactionStatus` throws for an aborted signal, and no await
+    // runs between that check and this one. An aborted signal fires no more
+    // abort event, so without the branch a caller that joins with an aborted
+    // signal would not leave: it would wait, and keep the poll running,
+    // until the poll settles.
     if (signal.aborted) {
       leave()
     }
