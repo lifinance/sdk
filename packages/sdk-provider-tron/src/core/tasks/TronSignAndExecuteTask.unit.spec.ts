@@ -1,4 +1,4 @@
-import { LiFiErrorCode } from '@lifi/sdk'
+import { LiFiErrorCode, StatusManager } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const callTronRpcsWithRetry = vi.fn()
@@ -134,6 +134,51 @@ describe('TronSignAndExecuteTask', () => {
     expect(updateAction.mock.calls.map(([, , status]) => status)).toEqual([
       'ACTION_REQUIRED',
     ])
+  })
+
+  // A stop during this run's prompt, then a resume: the older run signs, and
+  // its late write merges its bytes into this action while this prompt is
+  // still open.
+  it('checks the action again after the wallet and stores nothing when a transaction merged while the prompt was open', async () => {
+    const { context, signTransaction } = makeContext({})
+    // A real manager. Without route state, `allowUpdates(false)` keeps every
+    // write on the step.
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const step = {
+      transactionRequest: { data: '0x0a021a2b' },
+      execution: {
+        status: 'PENDING',
+        actions: [{ type: 'SWAP', status: 'STARTED' }],
+      },
+    }
+    signTransaction.mockImplementationOnce(async () => {
+      statusManager.updateAction(step as never, 'SWAP', 'PENDING', {
+        txHex: 'MERGED',
+        signedAt: 1_800_000_000_000,
+      })
+      return SIGNED_TRANSACTION
+    })
+    const writes = vi.spyOn(statusManager, 'updateAction')
+
+    await expect(
+      new TronSignAndExecuteTask().run({
+        ...(context as object),
+        step,
+        statusManager,
+      } as never)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+    // The prompt status and the merge; no bytes of this run.
+    expect(writes.mock.calls.map(([, , status]) => status)).toEqual([
+      'ACTION_REQUIRED',
+      'PENDING',
+    ])
+    expect(step.execution.actions).toEqual([
+      expect.objectContaining({ type: 'SWAP', txHex: 'MERGED' }),
+    ])
+    expect(step.execution).toMatchObject({ signedAt: 1_800_000_000_000 })
   })
 
   it('signs again after a final failure of the previous transaction', async () => {

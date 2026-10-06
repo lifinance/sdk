@@ -87,6 +87,11 @@ export class TronSignAndExecuteTask extends BaseStepExecutionTask {
 
     const signedTransaction = await wallet.signTransaction(transaction)
 
+    // Checked once more after the wallet: a stopped run's late write can
+    // merge its transaction into this action while the prompt is open.
+    // Nothing awaits from here to the write below.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     // Stored before the first broadcast, so a reload after signing resends
     // these bytes instead of asking the user to sign again.
     const txHex = serializeTronSignedTransaction(signedTransaction)
