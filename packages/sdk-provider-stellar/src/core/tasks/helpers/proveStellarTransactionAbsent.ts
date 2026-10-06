@@ -1,4 +1,4 @@
-import type { SDKClient } from '@lifi/sdk'
+import { type SDKClient, withTimeout } from '@lifi/sdk'
 import { Api, type Server } from '@stellar/stellar-sdk/rpc'
 import { getStellarRpcs } from '../../../client/getStellarRpc.js'
 
@@ -9,6 +9,13 @@ import { getStellarRpcs } from '../../../client/getStellarRpc.js'
  * or six ledgers of slack.
  */
 const HEAD_MARGIN_SECONDS = 30
+
+/**
+ * The time each RPC has to answer. stellar-sdk sets no request timeout, so a
+ * node that accepts the request and never answers would hold the route. A
+ * timeout counts as a failed request: it gives no information.
+ */
+const LOOKUP_TIMEOUT_MS = 10_000
 
 /** When the transaction could have been applied, in unix seconds (chain time). */
 export interface StellarLandingWindow {
@@ -29,8 +36,9 @@ export interface StellarLandingWindow {
  * because a URL can be a load-balanced pool of different backends.
  *
  * A node that returns the transaction (SUCCESS or FAILED) makes the answer
- * false. A failed request, and a NOT_FOUND that does not prove coverage, give
- * no information.
+ * false. A failed request, a request without an answer within
+ * `LOOKUP_TIMEOUT_MS`, and a NOT_FOUND that does not prove coverage give no
+ * information.
  */
 export const proveStellarTransactionAbsent = async (
   client: SDKClient,
@@ -44,8 +52,13 @@ export const proveStellarTransactionAbsent = async (
     return false
   }
 
+  // `getTransaction` takes no abort signal, so the deadline only races it.
   const results = await Promise.allSettled(
-    servers.map((server) => server.getTransaction(transactionHash))
+    servers.map((server) =>
+      withTimeout(() => server.getTransaction(transactionHash), {
+        timeout: LOOKUP_TIMEOUT_MS,
+      })
+    )
   )
 
   let provenAbsent = false

@@ -1,5 +1,5 @@
 import { rpc } from '@stellar/stellar-sdk'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getStellarRpcs = vi.fn()
 vi.mock('../../../client/getStellarRpc.js', () => ({
@@ -22,11 +22,22 @@ const notFound = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-/** One configured RPC per answer; an `Error` makes that RPC's request fail. */
-const nodes = (...answers: (Record<string, unknown> | Error)[]): void => {
+/** An RPC that accepts the request and never answers. */
+const SILENT = 'silent'
+
+/**
+ * One configured RPC per answer; an `Error` makes that RPC's request fail,
+ * and `SILENT` makes it hang.
+ */
+const nodes = (
+  ...answers: (Record<string, unknown> | Error | typeof SILENT)[]
+): void => {
   getStellarRpcs.mockResolvedValue(
     answers.map((answer) => ({
       getTransaction: vi.fn(async () => {
+        if (answer === SILENT) {
+          return new Promise(() => {})
+        }
         if (answer instanceof Error) {
           throw answer
         }
@@ -145,5 +156,41 @@ describe('proveStellarTransactionAbsent', () => {
 
     getStellarRpcs.mockRejectedValue(new Error('chains unavailable'))
     await expect(prove()).resolves.toBe(false)
+  })
+
+  // Each node gets 10 s. A node that never answers gives no information,
+  // exactly as a node whose request fails, so it cannot hold the route.
+  describe('with a deadline per node', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('settles after 10 s with the verdict it gives for a failing node', async () => {
+      nodes(new Error('503'), notFound())
+      const withFailingNode = await prove()
+
+      nodes(SILENT, notFound())
+      let settled = false
+      const proof = prove().finally(() => {
+        settled = true
+      })
+      await vi.advanceTimersByTimeAsync(9_999)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(settled).toBe(true)
+      await expect(proof).resolves.toBe(withFailingNode)
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('proves absence from one answering node and leaves no timer', async () => {
+      nodes(notFound())
+
+      await expect(prove()).resolves.toBe(true)
+      expect(vi.getTimerCount()).toBe(0)
+    })
   })
 })
