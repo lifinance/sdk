@@ -69,6 +69,11 @@ export class SuiSignAndExecuteTask extends BaseStepExecutionTask {
       throw toSuiSignerError(error)
     }
 
+    // Checked once more after the wallet: a stopped run's late write can
+    // merge its transaction into this action while the prompt is open.
+    // Nothing awaits from here to the write below.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const txHex = serializeSuiSignedTransaction(transactionBytes, signature)
     if (!txHex) {
       // Nothing was sent yet, so "Try again" signs a new transaction.

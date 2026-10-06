@@ -18,8 +18,12 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-const { isFinalTransactionError, LiFiErrorCode, TransactionError } =
-  await import('@lifi/sdk')
+const {
+  isFinalTransactionError,
+  LiFiErrorCode,
+  StatusManager,
+  TransactionError,
+} = await import('@lifi/sdk')
 const { SuiSignAndExecuteTask } = await import('./SuiSignAndExecuteTask.js')
 
 const EXPLORER = 'https://suiscan.xyz/mainnet/'
@@ -261,6 +265,48 @@ describe('SuiSignAndExecuteTask', () => {
     expect(signTransaction).not.toHaveBeenCalled()
     expect(executeTransaction).not.toHaveBeenCalled()
     expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  // A stop during this run's prompt, then a resume: the older run signs, and
+  // its late write merges its bytes into this action while this prompt is
+  // still open.
+  it('checks the action again after the wallet and neither stores nor executes when a transaction merged while the prompt was open', async () => {
+    const { context, signTransaction, executeTransaction } = makeContext()
+    // A real manager. Without route state, `allowUpdates(false)` keeps every
+    // write on the step.
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const step = {
+      execution: {
+        status: 'PENDING',
+        actions: [{ type: 'SWAP', status: 'ACTION_REQUIRED' }],
+      },
+    }
+    signTransaction.mockImplementationOnce(async (bytes: Uint8Array) => {
+      statusManager.updateAction(step as never, 'SWAP', 'PENDING', {
+        txHex: 'MERGED',
+        signedAt: 1_800_000_000_000,
+      })
+      return { bytes: toBase64(bytes), signature: SIGNATURE }
+    })
+    const writes = vi.spyOn(statusManager, 'updateAction')
+
+    await expect(
+      new SuiSignAndExecuteTask().run({
+        ...(context as object),
+        step,
+        statusManager,
+      } as never)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+    expect(executeTransaction).not.toHaveBeenCalled()
+    // Only the merge: no bytes of this run.
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(step.execution.actions).toEqual([
+      expect.objectContaining({ type: 'SWAP', txHex: 'MERGED' }),
+    ])
+    expect(step.execution).toMatchObject({ signedAt: 1_800_000_000_000 })
   })
 
   it('does not execute when the wallet returns no signature', async () => {
