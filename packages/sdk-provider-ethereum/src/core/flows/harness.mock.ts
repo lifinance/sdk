@@ -312,6 +312,8 @@ export interface StepFixtureOptions {
   transactionRequest?: Record<string, unknown>
   tool?: string
   type?: string
+  /** `step.executionType` as the API declares it at routes time. */
+  executionType?: LiFiStepExtended['executionType']
   approvalAddress?: string
   approvalReset?: boolean
   skipApproval?: boolean
@@ -377,6 +379,9 @@ export const buildStep = (
   if (options.transactionRequest) {
     step.transactionRequest =
       options.transactionRequest as LiFiStepExtended['transactionRequest']
+  }
+  if (options.executionType) {
+    step.executionType = options.executionType
   }
   return step
 }
@@ -509,6 +514,9 @@ export interface ScenarioOptions {
   chain?: ExtendedChain
   /** ERC-20 allowance the source token reports for whichever spender is asked. */
   allowance?: bigint
+  /** Per-spender overrides of {@link ScenarioOptions.allowance}. */
+  allowanceBySpender?: Record<Address, bigint>
+
   /** `eth_getCode` for the signer: `'0x'` is an EOA. */
   accountCode?: Hex
   /** `wallet_getCapabilities` answer for the source chain (EIP-5792). */
@@ -733,8 +741,13 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       args: request.args ?? [],
     })
     switch (request.functionName) {
-      case 'allowance':
-        return allowance
+      case 'allowance': {
+        const spender = String(request.args?.[1] ?? '').toLowerCase()
+        const override = Object.entries(options.allowanceBySpender ?? {}).find(
+          ([address]) => address.toLowerCase() === spender
+        )
+        return override ? override[1] : allowance
+      }
       case 'nextNonce':
         return PERMIT2_PROXY_NONCE
       case 'eip712Domain':

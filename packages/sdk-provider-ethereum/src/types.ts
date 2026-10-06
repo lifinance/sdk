@@ -37,6 +37,12 @@ export interface EthereumTaskContext {
   hasAllowance?: boolean
   hasSufficientAllowance?: boolean
   /**
+   * The spender `EthereumCheckAllowanceTask` checked the allowance against. The
+   * other allowance tasks approve the same one. Prepare compares it with the
+   * spender of the strategy it establishes.
+   */
+  allowanceSpender?: Address
+  /**
    * Whether the signer can produce a Permit2-verifiable signature — the
    * in-flight or settled lookup, memoized per execution by
    * `resolvePermit2Support` so the allowance tasks and the sign-and-execute task
