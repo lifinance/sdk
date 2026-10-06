@@ -274,7 +274,10 @@ const expectResumeWaitsForTheSameTask = async (
   actionType: RelayedActionType = 'SWAP'
 ): Promise<void> => {
   relayerAnswersDone()
+  // The lane checks below cover the resume only.
   vi.mocked(getRelayedTransactionStatus).mockClear()
+  vi.mocked(waitForTransactionReceipt).mockClear()
+  vi.mocked(waitForBatchTransactionReceipt).mockClear()
   const resumeFrom = scenario.timeline.length
 
   const resumed = track(scenario.resume(stored))
