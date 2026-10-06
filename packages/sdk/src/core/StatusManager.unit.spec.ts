@@ -13,6 +13,7 @@ import {
   attachStatusManager,
   buildRouteObject,
   buildStepObject,
+  releaseAttachedRuns,
   SOME_DATE,
 } from './execution.unit.mock.js'
 import { executionState } from './executionState.js'
@@ -453,6 +454,7 @@ describe('StatusManager after stopRouteExecution', () => {
   })
 
   afterEach(() => {
+    releaseAttachedRuns()
     executionState.delete(buildRouteObject({}).id)
   })
 
@@ -890,6 +892,7 @@ describe('provider writes of transaction data after stopRouteExecution', () => {
   })
 
   afterEach(() => {
+    releaseAttachedRuns()
     executionState.delete(routeId)
   })
 

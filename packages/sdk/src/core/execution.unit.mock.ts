@@ -174,12 +174,15 @@ export const buildRouteObject = ({
   },
 })
 
+/** The route ids of the runs that `attachStatusManager` holds in flight. */
+const attachedRuns: string[] = []
+
 /**
  * Registers `statusManager` as a step executor of the route's running
  * execution, the way `executeSteps` pushes one. `stopRouteExecution` then
  * reaches it through `setInteraction`, as it reaches a `BaseStepExecutor`.
- * Its step stays in flight (`executionState.retain`, never released), as a
- * task that writes after the stop is.
+ * Its step stays in flight (`executionState.retain`) until
+ * {@link releaseAttachedRuns}, as a task that writes after the stop is.
  */
 export const attachStatusManager = (
   routeId: string,
@@ -190,6 +193,7 @@ export const attachStatusManager = (
     throw new Error(`No execution is registered for route ${routeId}.`)
   }
   executionState.retain(routeId)
+  attachedRuns.push(routeId)
   execution.executors.push({
     allowUserInteraction: true,
     allowExecution: true,
@@ -201,4 +205,15 @@ export const attachStatusManager = (
       step: LiFiStepExtended
     ): Promise<LiFiStepExtended> => step,
   })
+}
+
+/**
+ * Settles the steps that {@link attachStatusManager} holds in flight. Call it
+ * after each test, so the run count of a shared route id does not grow from
+ * test to test.
+ */
+export const releaseAttachedRuns = (): void => {
+  for (const routeId of attachedRuns.splice(0)) {
+    executionState.release(routeId)
+  }
 }

@@ -215,6 +215,47 @@ describe('the lifetime of executionState records', () => {
     expect(heldRecords(ids)).toEqual({})
   })
 
+  it('keeps no record of a route whose step throws', async () => {
+    const route = routeWithId('throwing-route')
+    const failed = heldExecutor(() => {
+      throw new Error('HTTP request failed. Status: 503')
+    })
+
+    const run = executeRoute(clientWith(failed.executor), route).catch(
+      (error: unknown) => error
+    )
+    await failed.entered
+    failed.release()
+
+    expect(await run).toBeInstanceOf(Error)
+    expect(heldRecords([route.id])).toEqual({})
+  })
+
+  it('delivers the hash once when a stopped step writes it and then throws, then frees its records', async () => {
+    const route = routeWithId('stopped-throwing-route')
+    const statusManager = new StatusManager(route.id)
+    // The wallet returns the hash after the stop; a later call throws.
+    const failed = heldExecutor((step) => {
+      statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      throw new Error('Transaction confirmation timeout.')
+    }, statusManager)
+    const keptHook = vi.fn()
+
+    const run = executeRoute(clientWith(failed.executor), route, {
+      updateRouteHook: keptHook,
+    }).catch((error: unknown) => error)
+    await failed.entered
+    stopRouteExecution(route)
+    failed.release()
+
+    expect(await run).toBeInstanceOf(Error)
+    expect(keptHook).toHaveBeenCalledTimes(1)
+    expect(swapOf(keptHook.mock.calls[0][0] as RouteExtended)?.txHash).toBe(
+      '0xlate'
+    )
+    expect(heldRecords([route.id])).toEqual({})
+  })
+
   it('delivers a late write into the newer execution that finished, then frees its records', async () => {
     const route = routeWithId('late-after-finish-route')
     const oldStatusManager = new StatusManager(route.id)

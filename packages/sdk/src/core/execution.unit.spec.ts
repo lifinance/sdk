@@ -18,6 +18,7 @@ import {
   attachStatusManager,
   buildRouteObject,
   buildStepObject,
+  releaseAttachedRuns,
   SOME_DATE,
 } from './execution.unit.mock.js'
 import { executionState } from './executionState.js'
@@ -68,6 +69,7 @@ describe('resumeRoute', () => {
 // Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.2.
 describe('a late transaction write after stopRouteExecution', () => {
   afterEach(() => {
+    releaseAttachedRuns()
     executionState.delete(buildRouteObject({}).id)
   })
 
@@ -371,6 +373,7 @@ describe('a late transaction write after a newer execution ended', () => {
   const routeId = buildRouteObject({}).id
 
   afterEach(() => {
+    releaseAttachedRuns()
     executionState.delete(routeId)
   })
 
