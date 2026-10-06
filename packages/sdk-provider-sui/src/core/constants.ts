@@ -22,7 +22,9 @@ export const SUI_MIN_CHECKPOINT_INTERVAL_MS = 200
 // The budget of each resume lookup call to one node: the digest lookup, a
 // checkpoint read and the batch lookup. A node that has not answered by then
 // counts as failed and the next node is asked; a timeout alone never decides
-// the outcome. A healthy node answers in well under a second. The first
-// lookup runs before the resend decision, so even several nodes in a row
-// stay well within the two-minute resend age cap.
+// the outcome. A healthy node answers in well under a second. Each node gets
+// the full 10 s, so a slow pool can use up the two-minute resend age cap
+// before the resend decision. Then the resend is lost, but it is never sent
+// late: the re-execution checks the cap before each node and aborts when the
+// cap passes.
 export const SUI_LOOKUP_TIMEOUT_MS = 10_000
