@@ -9,6 +9,7 @@ import {
   type FakeNetwork,
   openPage,
   type PageOptions,
+  persist,
   RECEIVED_SWAP_AMOUNT,
   recordRoute,
   SOLANA_EXPLORER,
@@ -106,10 +107,14 @@ describe('Solana Jito bundle resume (#507)', () => {
     expect(firstWallet.signCalls).toHaveLength(1)
     expect(apiTrail(network)).toEqual(['GET /chains', 'GET /status'])
     const txHash = signatureOf(firstSent![0])
-    // #507 behaviour: one lookup of the first signature on every RPC finds
-    // nothing, so the stored bytes go out once, as a bundle, exactly as
-    // signed and without simulation; nothing goes out one by one
-    // (spec §4.4.5 steps 2 and 3).
+    // #507 behaviour: one target-only lookup of the first signature on every
+    // RPC finds no confirmed status; the SDK resends on any answer that is not
+    // confirmed, so the stored bytes go out once, as a bundle, exactly as
+    // signed and without simulation; nothing goes out one by one (plan Task
+    // S7; spec §4.4.5 step 3, as amended).
+    // The warm module caches skip the Jito probes (see the header). A real
+    // reload starts with cold caches, so `getBundleStatuses@read` and
+    // `getBundleStatuses@jito` would come before `sendBundle@jito`.
     expect(submitTrail(network)).toEqual([
       'getSignatureStatuses@read',
       'getSignatureStatuses@jito',
@@ -174,7 +179,7 @@ describe('Solana Jito bundle resume (#507)', () => {
     const resume = recordRoute()
     const resumed = await resumeRoute(
       openPage(reloadedWallet, pageOptions()),
-      afterSend!,
+      persist(afterSend!),
       { updateRouteHook: resume.updateRouteHook }
     )
 

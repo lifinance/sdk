@@ -7,10 +7,13 @@
  * task pipeline. Only the network and the wallet key are fake:
  *
  * - The integrator client ({@link FakeSuiNetwork.integratorClient}, given to
- *   `SuiProvider({ getClient })`). `SuiSignAndExecuteTask` calls only
- *   `core.signAndExecuteTransaction` on it. That method is the real
+ *   `SuiProvider({ getClient })`). On main, `SuiSignAndExecuteTask` calls
+ *   only `core.signAndExecuteTransaction` on it. That method is the real
  *   `@mysten/sui` `CoreClient` implementation (it builds the bytes, calls
- *   `signer.signTransaction`, then `this.executeTransaction`); only
+ *   `signer.signTransaction`, then `this.executeTransaction`). On #507, the
+ *   task builds the bytes, calls the wallet's `signTransaction` itself, then
+ *   calls `core.executeTransaction` on it (spec §4.6), and does not call
+ *   `core.signAndExecuteTransaction`. On both paths only
  *   `executeTransaction` is fake. Its calls are recorded as `client.<name>`.
  * - Every `SuiGrpcClient` that `callSuiWithRetry` builds. This file mocks
  *   `@mysten/sui/grpc` (the rest of the module stays real): the class reads
@@ -42,10 +45,11 @@
  * not recorded again: a failure the spec plans
  * ({@link FakeSuiNetwork.refuseNextExecution}) and a miss the fake has
  * already recorded (an invalid signature, an unknown digest, a method the
- * fake does not implement). `client.signAndExecuteTransaction` is the
- * library's own code, not a fake, and the wallet runs no spec callback, so
- * neither is wrapped: a wallet rejection reaches the sign task as the specs
- * plan it, and the library's call of `client.executeTransaction` is wrapped.
+ * fake does not implement). `client.signAndExecuteTransaction` (the main
+ * path) is the library's own code, not a fake, and the wallet runs no spec
+ * callback, so neither is wrapped: a wallet rejection reaches the sign task
+ * as the specs plan it. `client.executeTransaction` is wrapped on both
+ * paths: on main the library calls it, and on #507 the sign task calls it.
  *
  * Import this file before any other module that imports `@mysten/sui/grpc`
  * (the specs import only `@lifi/sdk`, `vitest` and this file).

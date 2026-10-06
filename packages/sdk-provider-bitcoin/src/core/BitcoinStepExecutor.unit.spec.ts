@@ -294,7 +294,8 @@ describe('BitcoinStepExecutor first run', () => {
     const statusManager = new StatusManager('route-1')
     statusManager.allowUpdates(false)
     const request = vi.fn().mockResolvedValue(TX_HASH)
-    // As in bigmi: the resend is a `sendrawtransaction` request too.
+    // As in bigmi: `sendUTXOTransaction` is a `sendrawtransaction` request,
+    // so the `sends` filter below also counts a send through it.
     const sendUTXOTransaction = vi.fn(({ hex }: { hex: string }) =>
       request({ method: 'sendrawtransaction', params: [hex] })
     )
@@ -334,7 +335,6 @@ describe('BitcoinStepExecutor first run', () => {
     expect(sends).toEqual([
       [{ method: 'sendrawtransaction', params: [TX_HEX] }, { retryCount: 0 }],
     ])
-    expect(sendUTXOTransaction).not.toHaveBeenCalled()
     expect(waitForTransaction).toHaveBeenCalledTimes(1)
     expect(waitForTransaction).toHaveBeenCalledWith(
       expect.anything(),

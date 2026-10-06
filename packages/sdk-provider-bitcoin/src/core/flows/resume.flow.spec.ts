@@ -339,6 +339,11 @@ describe('Bitcoin reload', () => {
     const [replacement] = network.replacements
     // The page dies after the wait saw the replacement and before the
     // CROSS_CHAIN action was DONE: storage holds the last PENDING write.
+    // For a bridge this window is narrow: the replacement write and the DONE
+    // write run in one synchronous continuation. The same stored state lasts
+    // longer for a same-chain SWAP, which stays PENDING for the whole
+    // `/status` wait (also on "Try again" after a `/status` error), and with
+    // an integrator hook that persists asynchronously.
     const stored = updates.snapshots
       .filter((snapshot) => crossChainOf(snapshot)?.status === 'PENDING')
       .at(-1) as RouteExtended

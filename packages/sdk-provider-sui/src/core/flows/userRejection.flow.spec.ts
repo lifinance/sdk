@@ -101,7 +101,7 @@ describe('Sui user rejection', () => {
     ])
   })
 
-  it('also reports a node error whose text contains "rejected" as SignatureRejected', async () => {
+  it('reports a node error whose text contains "rejected" as InternalError, not SignatureRejected', async () => {
     const page = openPage(network)
     network.refuseNextExecution = new Error(NODE_REJECTION_MESSAGE)
     const updates = recordRouteUpdates()
@@ -118,9 +118,11 @@ describe('Sui user rejection', () => {
     expect(network.executed).toEqual([
       { bytes: network.quotes[0], signatures: await signatures(page) },
     ])
-    // FINDING (pinned as main does it): `parseSuiErrors` maps any error
-    // text containing "reject" to SignatureRejected, so a node refusal
-    // reads as "the user rejected".
+    // main: `parseSuiErrors` maps any error text containing "reject" to
+    // SignatureRejected, so a node refusal reads as "the user rejected"; #507:
+    // only an error of the wallet's own `signTransaction` call can be
+    // SignatureRejected, and `parseSuiErrors` no longer maps "reject"
+    // (addendum §3.1).
     // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
     expect(error.code).toBe(LiFiErrorCode.InternalError)
     // ...which refused it: no wait for the digest and no `/status` poll.
@@ -131,7 +133,7 @@ describe('Sui user rejection', () => {
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
-    // #507 accepted (task RS1): every provider writes the signed bytes with status PENDING before it sends; spec §4.6 step 2 requires the write; no code change
+    // #507 accepted (task RS1): every non-EVM provider (Solana, Tron, Sui, Bitcoin, Stellar) writes the signed bytes with status PENDING before it sends; spec §4.6 step 2 requires the write; no code change
     expect(updates.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',

@@ -48,9 +48,11 @@ export class BitcoinWaitForTransactionTask extends BaseStepExecutionTask {
       isResendAllowed(step.execution?.signedAt)
     ) {
       try {
-        // One round, as the sign task sends: bigmi's fallback retries a
-        // failed round up to 3 times, so on an "already" answer a node
-        // would get the same bytes 4 times.
+        // One round, as the sign task sends. A round sends the bytes to each
+        // RPC URL at most once and stops at the first URL that accepts them.
+        // bigmi's fallback retries a round in which every URL fails up to 3
+        // times, so if every URL answers "already", each node would get the
+        // same bytes 4 times.
         await publicClient.request(
           { method: 'sendrawtransaction', params: [txHex] },
           { retryCount: 0 }

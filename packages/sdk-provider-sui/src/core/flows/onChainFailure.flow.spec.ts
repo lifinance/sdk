@@ -63,9 +63,10 @@ describe('Sui on-chain failure', () => {
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
-    // FINDING (pinned as main does it): SuiSignAndExecuteTask sets the
-    // action to PENDING before it checks the execution result, so a
-    // failed execution shows PENDING, then FAILED.
+    // main: SuiSignAndExecuteTask sets the action to PENDING before it
+    // checks the execution result, so a failed execution shows PENDING,
+    // then FAILED; #507: the same sequence, but the PENDING write is the
+    // write of the signed bytes before the send (spec §4.6 step 2).
     expect(first.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
@@ -78,8 +79,9 @@ describe('Sui on-chain failure', () => {
       status: 'FAILED',
       error: {
         code: LiFiErrorCode.TransactionFailed,
-        // FINDING (pinned as main does it): SuiSignAndExecuteTask puts the
-        // ExecutionError object into a template string. #507 fixes it.
+        // main: SuiSignAndExecuteTask puts the ExecutionError object into a
+        // template string, so the message is "Transaction failed: [object
+        // Object]"; #507: see the next line (addendum §2).
         // #507: the message uses status.error.message, not the object (addendum §2)
         message: `Transaction failed: ${MOVE_ABORT.message}`,
       },
@@ -91,8 +93,9 @@ describe('Sui on-chain failure', () => {
         },
       ],
     })
-    // FINDING (pinned as main does it): the failed action keeps no digest,
-    // so the user gets no link to the failed transaction.
+    // main: the failed action keeps no digest, so the user gets no link to
+    // the failed transaction; #507: the sign task writes the digest and the
+    // link of a FailedTransaction too (spec §4.6 step 4).
     const failedAction = stepOf(stored!).execution?.actions[0]
     expect(failedAction).toBeDefined()
     // #507: a FailedTransaction has a digest; the sign task writes it as txHash (spec §4.6)

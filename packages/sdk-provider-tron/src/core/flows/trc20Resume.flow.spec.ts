@@ -137,10 +137,14 @@ describe('Tron TRC-20 swap resume after a reload', () => {
     // #507 behaviour: the open swap skips the allowance check, so the resume
     // starts at `TronWaitForTransactionTask`: no allowance read, no approve
     // (§4.5 "Selector"). The dropped check runs first: it reads the head and
-    // asks the full node (§4.5 "Expiry"; the fake head is never 5 min past
-    // the expiration, so no node covers and the swap is not dropped). Then
-    // the stored swap is sent again, the node answers DUP_TRANSACTION_ERROR
-    // (success), and the receipt is read (§4.5 "Resume mode").
+    // asks the full node. With a stored transaction, #507 sends this lookup
+    // on every resume; only the "not found" verdict needs a head past the
+    // expiry (§4.5 "Expiry" says the check runs "if the expiry has already
+    // passed", which does not describe the lookup). Here the full node
+    // returns the landed swap, so the lookup finds it and the swap is not
+    // dropped. Then the stored swap is sent again, the node answers
+    // DUP_TRANSACTION_ERROR (success), and the receipt is read (§4.5 "Resume
+    // mode").
     expect(network.nodeCalls.slice(mark.nodeCalls)).toEqual([
       'wallet/getnowblock',
       'wallet/gettransactioninfobyid',

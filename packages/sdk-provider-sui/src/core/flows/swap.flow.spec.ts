@@ -74,7 +74,9 @@ describe('Sui same-chain swap', () => {
       'SWAP:PENDING',
       'SWAP:DONE',
     ])
-    // SuiWaitForTransactionTask sets the provider's link...
+    // main: SuiWaitForTransactionTask sets the provider's link; #507: the
+    // sign task sets the digest and that link first, right after the
+    // execution (spec §4.6 step 4)...
     const confirmed = updates.snapshots.find(
       (snapshot) => stepOf(snapshot).execution?.actions[0]?.txHash
     )
