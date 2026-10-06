@@ -262,10 +262,12 @@ export const stopRouteExecution = (route: Route): Route => {
     })
   }
   executionState.delete(route.id)
-  // The order of these three steps is not load-bearing. The abort listeners
-  // only clear timers, drop the shared poll and reject promises. The tasks
-  // handle the rejections after this function returns, so they always see
-  // stopped executors and no execution.
+  // The abort can run before or after the two steps above: its listeners
+  // only clear timers, drop the shared poll and reject promises, and the
+  // tasks handle the rejections after this function returns. The
+  // `setInteraction` loop must run before `executionState.delete`, because
+  // `StatusManager.allowUpdates(false)` keeps the route and hook from the
+  // execution state.
   execution.abortController.abort()
   return execution.route
 }

@@ -126,7 +126,10 @@ export function transactionConflictError(): TransactionError {
  * throws; it stops a second signature if a selector ever routes an open
  * transaction back to signing. Every sign task calls it again on the freshly
  * found action right before its wallet call: a late write of an older run can
- * merge a transaction into the action during the awaits in between.
+ * merge a transaction into the action during the awaits in between. A sign
+ * task that sends the transaction itself calls it once more after the wallet
+ * returns, before it writes or sends anything: the merge can also land while
+ * the prompt is open.
  *
  * @internal
  */
