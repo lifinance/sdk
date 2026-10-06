@@ -170,6 +170,11 @@ const executeSteps = async (
           )
         } catch (e) {
           if (e instanceof ExecuteStepRetryError) {
+            // A stop ended this run while its first attempt ran: the replay
+            // would be new work on a stopped executor.
+            if (!stepExecutor.allowExecution) {
+              return route
+            }
             step.execution = undefined
             executedStep = await stepExecutor.executeStep(
               client,
