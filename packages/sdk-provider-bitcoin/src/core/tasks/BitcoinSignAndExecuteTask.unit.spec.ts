@@ -3,6 +3,7 @@ import {
   getTransactionRequestData,
   isFinalTransactionError,
   LiFiErrorCode,
+  StatusManager,
 } from '@lifi/sdk'
 import { Psbt } from 'bitcoinjs-lib'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -163,6 +164,54 @@ describe('BitcoinSignAndExecuteTask pre-sign guard', () => {
     expect(signPsbt).not.toHaveBeenCalled()
     expect(request).not.toHaveBeenCalled()
     expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  // A stop during this run's prompt, then a resume: the older run signs, and
+  // its late write merges its transaction into this action while this
+  // prompt is still open.
+  it('checks the action again after the wallet and neither stores nor sends when a transaction merged while the prompt was open', async () => {
+    const { context, request } = makeContext(FRESH_ACTION)
+    // A real manager. Without route state, `allowUpdates(false)` keeps every
+    // write on the step.
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const step = {
+      action: { fromAddress: SENDER },
+      execution: {
+        status: 'PENDING',
+        actions: [{ type: 'SWAP', status: 'STARTED' }],
+      },
+    }
+    const merged = {
+      txHash: 'cd'.repeat(32),
+      txLink: `https://mempool.space/tx/${'cd'.repeat(32)}`,
+      txHex: 'MERGED_TX_HEX',
+    }
+    vi.mocked(signPsbt).mockImplementationOnce(async () => {
+      statusManager.updateAction(step as never, 'SWAP', 'PENDING', {
+        ...merged,
+        signedAt: 1_700_000_000_000,
+      })
+      return 'SIGNED_PSBT'
+    })
+    const writes = vi.spyOn(statusManager, 'updateAction')
+
+    await expect(
+      new BitcoinSignAndExecuteTask().run({
+        ...context,
+        step,
+        statusManager,
+      } as unknown as BitcoinStepExecutorContext)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(signPsbt).toHaveBeenCalledTimes(1)
+    expect(request).not.toHaveBeenCalled()
+    // Only the merge: no transaction of this run.
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(step.execution.actions).toEqual([
+      expect.objectContaining({ type: 'SWAP', ...merged }),
+    ])
+    expect(step.execution).toMatchObject({ signedAt: 1_700_000_000_000 })
   })
 
   it('signs again after a final outcome and clears the old transaction fields', async () => {

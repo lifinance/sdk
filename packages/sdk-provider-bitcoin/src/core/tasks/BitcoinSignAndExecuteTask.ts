@@ -159,6 +159,11 @@ export class BitcoinSignAndExecuteTask extends BaseStepExecutionTask {
       }
     )
 
+    // Checked once more after the wallet: a stopped run's late write can
+    // merge its transaction into this action while the prompt is open.
+    // Nothing awaits from here to the write below.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const signedPsbt = Psbt.fromHex(signedPsbtHex)
 
     if (!isPsbtFinalized(signedPsbt)) {
