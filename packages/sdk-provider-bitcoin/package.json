@@ -44,7 +44,7 @@
     "watch": "tsdown --watch"
   },
   "dependencies": {
-    "@bigmi/core": "^0.9.2",
+    "@bigmi/core": "^0.9.3",
     "@bitcoinerlab/secp256k1": "^2.0.0",
     "@lifi/sdk": "workspace:*",
     "bech32": "^2.0.0",
