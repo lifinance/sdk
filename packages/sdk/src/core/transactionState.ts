@@ -109,6 +109,19 @@ export function isFinalTransactionError(error: unknown): boolean {
 }
 
 /**
+ * The error of a step that would sign a second transaction while its first
+ * one may still land.
+ *
+ * @internal
+ */
+export function transactionConflictError(): TransactionError {
+  return new TransactionError(
+    LiFiErrorCode.TransactionConflict,
+    'A transaction for this step was already signed and may still land. Resume the route to wait for it instead of signing a new one.'
+  )
+}
+
+/**
  * Called first in every sign task. With correct pipeline selectors it never
  * throws; it stops a second signature if a selector ever routes an open
  * transaction back to signing. Every sign task calls it again on the freshly
@@ -119,10 +132,7 @@ export function isFinalTransactionError(error: unknown): boolean {
  */
 export function assertNoOpenTransaction(action?: ExecutionAction): void {
   if (hasOpenTransaction(action)) {
-    throw new TransactionError(
-      LiFiErrorCode.TransactionConflict,
-      'A transaction for this step was already signed and may still land. Resume the route to wait for it instead of signing a new one.'
-    )
+    throw transactionConflictError()
   }
 }
 

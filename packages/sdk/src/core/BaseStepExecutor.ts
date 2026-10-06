@@ -20,6 +20,7 @@ import type { TaskPipeline } from './TaskPipeline.js'
 import {
   hasStepOpenTransaction,
   isFinalTransactionError,
+  transactionConflictError,
 } from './transactionState.js'
 
 // Please be careful when changing the defaults as it may break the behavior (e.g., background execution)
@@ -123,11 +124,15 @@ export abstract class BaseStepExecutor implements StepExecutor {
         // A retry runs the step again on an empty execution, which would erase
         // the hash of a transaction that may still land. Fail with the original
         // error instead, and keep the outcome unknown so a resume re-checks it.
-        // A BaseError keeps its code, so the widget shows its text.
+        // A BaseError keeps its code, so the widget shows its text. A replay
+        // that a task asked for has no error of its own: it fails as a sign
+        // task fails for the same state (`TransactionConflict`).
         parsed = new SDKError(
-          error instanceof BaseError
-            ? error
-            : new UnknownError(error?.message || parsed.message, error),
+          error instanceof ExecuteStepRetryError
+            ? transactionConflictError()
+            : error instanceof BaseError
+              ? error
+              : new UnknownError(error?.message || parsed.message, error),
           step,
           action
         )

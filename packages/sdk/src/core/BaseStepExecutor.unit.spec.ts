@@ -28,7 +28,10 @@ import {
 } from './execution.unit.mock.js'
 import { executionState } from './executionState.js'
 import { TaskPipeline } from './TaskPipeline.js'
-import { CLEARED_TRANSACTION_FIELDS } from './transactionState.js'
+import {
+  assertNoOpenTransaction,
+  CLEARED_TRANSACTION_FIELDS,
+} from './transactionState.js'
 
 class ThrowingTask extends BaseStepExecutionTask {
   constructor(private readonly error: Error) {
@@ -81,6 +84,16 @@ const setup = (swap: { txHash?: string }) => {
 
 const passThrough = async (error: Error): Promise<SDKError> =>
   new SDKError(error as TransactionError)
+
+/** What the check of every sign task throws for the action. */
+const conflictOf = (action: ExecutionAction): unknown => {
+  try {
+    assertNoOpenTransaction(action)
+  } catch (error) {
+    return error
+  }
+  return undefined
+}
 
 describe('BaseStepExecutor.executeStep failure handling', () => {
   beforeEach(() => {
@@ -214,6 +227,41 @@ describe('BaseStepExecutor.executeStep failure handling', () => {
     expect(swap.txHash).toBe('0xswap')
     expect(swap.txFinal).toBeUndefined()
   })
+
+  // A task asks for the replay itself (EVM prepare, JUMEMB-102), after a late
+  // write of an older run merged a transaction into the step.
+  it.each(['txHash', 'taskId'] as const)(
+    'fails a refused replay request as the sign task does while the SWAP has a %s',
+    async (field) => {
+      const { step, route } = setup({})
+      const swap = step.execution!.actions.find((a) => a.type === 'SWAP')!
+      swap[field] = '0xopen'
+      const conflict = conflictOf(swap)
+      expect(conflict).toBeInstanceOf(TransactionError)
+      const error = new ExecuteStepRetryError('retry in relayed', {
+        strategyAfterPrepare: 'relayed',
+      })
+      // As `parseEthereumErrors`: a replay request passes unchanged.
+      const keep = async (e: Error): Promise<ExecuteStepRetryError> =>
+        e as ExecuteStepRetryError
+      const executor = new TestStepExecutor(route.id, error, keep)
+
+      const thrown = await executor.executeStep(client, step).catch((e) => e)
+
+      expect(thrown).toBeInstanceOf(SDKError)
+      expect(thrown).not.toBeInstanceOf(ExecuteStepRetryError)
+      expect((thrown as SDKError).code).toBe(LiFiErrorCode.TransactionConflict)
+      expect((thrown as SDKError).cause).toBeInstanceOf(TransactionError)
+      expect((thrown as SDKError).cause).toEqual(conflict)
+      expect(swap.status).toBe('FAILED')
+      expect(swap.error).toEqual({
+        code: LiFiErrorCode.TransactionConflict,
+        message: (conflict as TransactionError).message,
+      })
+      expect(swap[field]).toBe('0xopen')
+      expect(swap.txFinal).toBeUndefined()
+    }
+  )
 
   it('still retries when the step has no transaction data', async () => {
     const { step, route } = setup({})
