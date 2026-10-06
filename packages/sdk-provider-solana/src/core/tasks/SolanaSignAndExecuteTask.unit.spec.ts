@@ -73,7 +73,9 @@ vi.mock('@solana/kit', async (importActual) => {
 const { SolanaSignAndExecuteTask } = await import(
   './SolanaSignAndExecuteTask.js'
 )
-const { LiFiErrorCode, TransactionError } = await import('@lifi/sdk')
+const { LiFiErrorCode, StatusManager, TransactionError } = await import(
+  '@lifi/sdk'
+)
 
 const updateAction = vi.fn()
 const getWalletAccount = vi.fn((_step: unknown) => ({}))
@@ -335,6 +337,47 @@ describe('SolanaSignAndExecuteTask', () => {
     expect(getTransactionRequestData).toHaveBeenCalledTimes(1)
     expect(walletSignTransaction).not.toHaveBeenCalled()
     expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  // A stop during this run's prompt, then a resume: the older run signs, and
+  // its late write merges its bytes into this action while this prompt is
+  // still open.
+  it('checks the action again after the wallet and stores nothing when a transaction merged while the prompt was open', async () => {
+    // A real manager. Without route state, `allowUpdates(false)` keeps every
+    // write on the step.
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const step = {
+      execution: {
+        status: 'PENDING',
+        actions: [{ type: 'SWAP', status: 'STARTED' }],
+      },
+    }
+    getTransactionRequestData.mockResolvedValue('tx-a')
+    wallet.signTransaction = (() => {
+      statusManager.updateAction(step as never, 'SWAP', 'PENDING', {
+        txHex: 'MERGED',
+        signedAt: 1_800_000_000_000,
+      })
+      // `undefined` keeps the default answer: a signed transaction.
+      return undefined
+    }) as never
+    const writes = vi.spyOn(statusManager, 'updateAction')
+
+    await expect(
+      new SolanaSignAndExecuteTask().run({
+        ...(baseContext() as object),
+        step,
+        statusManager,
+      } as never)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    // Only the merge: no clear, and no bytes of this run.
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(step.execution.actions).toEqual([
+      expect.objectContaining({ type: 'SWAP', txHex: 'MERGED' }),
+    ])
+    expect(step.execution).toMatchObject({ signedAt: 1_800_000_000_000 })
   })
 
   it('signs again after a final failure, and clears its fields', async () => {

@@ -96,6 +96,12 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
       }
     )
 
+    // Checked once more after the wallet: a stopped run's late write can
+    // merge its transaction into this action while the prompt is open.
+    // Nothing awaits from here to the two writes below, so no late write can
+    // land between this check and either of them.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     if (signedTransactionOutputs.length === 0) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
