@@ -81,12 +81,14 @@ describe('EN5 — background execution, then a foreground resume', () => {
     // Where main pauses: `EthereumPrepareTransactionTask` runs in full, then
     // `EthereumSignAndExecuteTask` sets ACTION_REQUIRED and returns PAUSED at
     // its `if (!allowUserInteraction)` gate, before it picks a strategy. The
-    // prepare task makes the four wallet reads below. First the chain check
-    // of `checkClient` (`eth_chainId`) and the fee read on the wallet client
-    // (`eth_getBlockByNumber`): it makes these two only for a local account,
-    // as in this harness (a json-rpc wallet skips them and takes the fee from
-    // the quote). Then the strategy's own `checkClient` (`eth_chainId`) and
-    // the batching probe (`wallet_getCapabilities`). The sign task's gate is
+    // prepare task makes the four wallet reads below. Since JUMEMB-102 it
+    // resolves the strategy right after the re-quote, before it builds the
+    // transaction request: first the strategy's own `checkClient`
+    // (`eth_chainId`) and the batching probe (`wallet_getCapabilities`). Then
+    // the chain check of `checkClient` (`eth_chainId`) and the fee read on
+    // the wallet client (`eth_getBlockByNumber`): it makes these two only for
+    // a local account, as in this harness (a json-rpc wallet skips them and
+    // takes the fee from the quote). The sign task's gate is
     // the only one that this same-chain path reaches. A local account on
     // another chain pauses earlier: in background mode `switchChain` returns
     // no client, and the prepare task returns PAUSED. The two gates in
@@ -96,9 +98,9 @@ describe('EN5 — background execution, then a foreground resume', () => {
     // `eth_sendRawTransaction`.
     expect(walletMethods()).toEqual([
       'eth_chainId',
-      'eth_getBlockByNumber',
-      'eth_chainId',
       'wallet_getCapabilities',
+      'eth_chainId',
+      'eth_getBlockByNumber',
     ])
 
     // Pinned as observed, and it looks wrong (ledger finding, cross-provider:
