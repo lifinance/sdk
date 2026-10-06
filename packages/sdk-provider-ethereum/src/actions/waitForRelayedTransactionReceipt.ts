@@ -11,19 +11,50 @@ import {
 import type { Hash } from 'viem'
 import type { WalletCallReceipt } from '../types.js'
 
+/**
+ * Polls the relayer until the relayed transaction is done or has failed.
+ *
+ * @param client - {@link SDKClient}
+ * @param taskId - The relayer task id.
+ * @param step - The step the task belongs to.
+ * @param timeout - How long to wait for a result in milliseconds. Defaults to 24 hours.
+ * @param signal - Ends the wait: no status request starts after it aborts, and the request in flight and the sleep end at once.
+ * @returns The receipt of the relayed transaction.
+ * @throws {TransactionError} If the transaction failed, was not found, or no result arrived before the timeout. Only the failed transaction is a final outcome.
+ * @throws The abort reason of `signal` once it aborts.
+ */
 export const waitForRelayedTransactionReceipt = async (
   client: SDKClient,
   taskId: Hash,
-  step: LiFiStep
+  step: LiFiStep,
+  timeout: number = 3_600_000 * 24,
+  signal?: AbortSignal
 ): Promise<WalletCallReceipt> => {
+  const startTime = Date.now()
   return waitForResult(
     async () => {
-      const result = await getRelayedTransactionStatus(client, {
-        taskId,
-        fromChain: step.action.fromChainId,
-        toChain: step.action.toChainId,
-        ...(step.tool !== 'custom' && { bridge: step.tool }),
-      }).catch((e) => {
+      // Without this check, a task that stays PENDING is polled forever:
+      // PENDING is not an error, so the retry limit does not apply.
+      // TransactionFailed is not retried, so this ends the poll. Not final:
+      // the relayer may still execute the task, so the action keeps its task
+      // id and a resume waits for it again instead of signing a new one.
+      if (Date.now() - startTime > timeout) {
+        throw new TransactionError(
+          LiFiErrorCode.TransactionFailed,
+          'Relayed transaction timed out waiting for a result.'
+        )
+      }
+
+      const result = await getRelayedTransactionStatus(
+        client,
+        {
+          taskId,
+          fromChain: step.action.fromChainId,
+          toChain: step.action.toChainId,
+          ...(step.tool !== 'custom' && { bridge: step.tool }),
+        },
+        { signal }
+      ).catch((e) => {
         if (process.env.NODE_ENV === 'development') {
           console.debug('Fetching status from relayer failed.', e)
         }
@@ -66,6 +97,7 @@ export const waitForRelayedTransactionReceipt = async (
         error instanceof TransactionError &&
         error.code === LiFiErrorCode.TransactionFailed
       )
-    }
+    },
+    signal
   )
 }
