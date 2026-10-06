@@ -216,3 +216,69 @@ describe('waitForRelayedTransactionReceipt — signal', () => {
     await expectNoMoreRequests()
   })
 })
+
+describe('waitForRelayedTransactionReceipt — development log', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  it('logs no failed request when the abort ended it', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('NODE_ENV', 'development')
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    vi.mocked(getRelayedTransactionStatus).mockImplementation(
+      (_client, _params, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () =>
+            reject(options.signal?.reason)
+          )
+        })
+    )
+    const controller = new AbortController()
+
+    const outcome = track(
+      waitForRelayedTransactionReceipt(
+        {} as SDKClient,
+        TASK_ID,
+        step,
+        undefined,
+        controller.signal
+      )
+    )
+    await vi.advanceTimersByTimeAsync(0)
+    controller.abort()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(outcome.settled).toBe(true)
+    expect(debug).not.toHaveBeenCalled()
+  })
+
+  it('still logs a failed request while the signal is live', async () => {
+    vi.useFakeTimers()
+    vi.stubEnv('NODE_ENV', 'development')
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+    const failure = new Error('relayer unavailable')
+    vi.mocked(getRelayedTransactionStatus).mockRejectedValueOnce(failure)
+    relayerAnswersPending()
+    const controller = new AbortController()
+
+    track(
+      waitForRelayedTransactionReceipt(
+        {} as SDKClient,
+        TASK_ID,
+        step,
+        undefined,
+        controller.signal
+      )
+    )
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(debug).toHaveBeenCalledWith(
+      'Fetching status from relayer failed.',
+      failure
+    )
+    controller.abort()
+    await vi.advanceTimersByTimeAsync(0)
+  })
+})

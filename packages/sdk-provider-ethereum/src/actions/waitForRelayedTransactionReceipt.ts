@@ -55,7 +55,8 @@ export const waitForRelayedTransactionReceipt = async (
         },
         { signal }
       ).catch((e) => {
-        if (process.env.NODE_ENV === 'development') {
+        // A request that the abort ended is no failure of the relayer.
+        if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
           console.debug('Fetching status from relayer failed.', e)
         }
         return undefined
