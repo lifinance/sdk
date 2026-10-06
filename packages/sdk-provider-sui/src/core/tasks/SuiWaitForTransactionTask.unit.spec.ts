@@ -1,6 +1,7 @@
 import { TransactionError as SuiClientTransactionError } from '@mysten/sui/client'
 import { RpcError } from '@mysten/sui/grpc'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SuiStepExecutorContext } from '../../types.js'
 import {
   BYTES,
   DIGEST,
@@ -37,9 +38,10 @@ vi.mock('../../utils/suiSignedTransaction.js', async (importActual) => {
   }
 })
 
-// The Task 0 flag, switchable per test.
+// The Task 0 flag, switchable per test. The other constants stay real.
 const task0 = vi.hoisted(() => ({ reexecutionReturnsEffects: false }))
-vi.mock('../constants.js', () => ({
+vi.mock('../constants.js', async (importActual) => ({
+  ...(await importActual<typeof import('../constants.js')>()),
   get SUI_REEXECUTION_RETURNS_EFFECTS() {
     return task0.reexecutionReturnsEffects
   },
@@ -69,6 +71,7 @@ vi.mock('../../client/suiClient.js', () => ({
 }))
 
 const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
+const { SUI_LOOKUP_TIMEOUT_MS } = await import('../constants.js')
 const { SuiWaitForTransactionTask } = await import(
   './SuiWaitForTransactionTask.js'
 )
@@ -268,7 +271,10 @@ describe('SuiWaitForTransactionTask', () => {
       await expect(
         new SuiWaitForTransactionTask().run(context)
       ).resolves.toEqual({ status: 'COMPLETED' })
-      expect(getTransaction).toHaveBeenCalledWith({ digest: DIGEST })
+      expect(getTransaction).toHaveBeenCalledWith({
+        digest: DIGEST,
+        signal: expect.any(AbortSignal),
+      })
       expect(executeTransaction).not.toHaveBeenCalled()
       expect(waitForTransaction).not.toHaveBeenCalled()
       expectResultWrite(updateAction, 'SWAP')
@@ -297,7 +303,10 @@ describe('SuiWaitForTransactionTask', () => {
 
       await new SuiWaitForTransactionTask().run(context)
 
-      expect(getTransaction).toHaveBeenCalledWith({ digest: DIGEST })
+      expect(getTransaction).toHaveBeenCalledWith({
+        digest: DIGEST,
+        signal: expect.any(AbortSignal),
+      })
     })
 
     it('looks up the stored txHash before the digest of the stored bytes', async () => {
@@ -315,7 +324,10 @@ describe('SuiWaitForTransactionTask', () => {
       await new SuiWaitForTransactionTask().run(context)
 
       expect(getTransaction).toHaveBeenCalledTimes(1)
-      expect(getTransaction).toHaveBeenCalledWith({ digest: txHash })
+      expect(getTransaction).toHaveBeenCalledWith({
+        digest: txHash,
+        signal: expect.any(AbortSignal),
+      })
     })
 
     it('re-executes exactly the stored bytes and signature within the age cap', async () => {
@@ -645,7 +657,10 @@ describe('SuiWaitForTransactionTask', () => {
 
         expect(error).toBe(timeout)
         expect(isFinalTransactionError(error)).toBe(false)
-        expect(getTransaction).toHaveBeenCalledWith({ digest: txHash })
+        expect(getTransaction).toHaveBeenCalledWith({
+          digest: txHash,
+          signal: expect.any(AbortSignal),
+        })
         expect(executeTransaction).not.toHaveBeenCalled()
         expect(isSuiTransactionDropped).not.toHaveBeenCalled()
         expect(waitForTransaction).toHaveBeenCalledWith({ digest: txHash })
@@ -783,6 +798,136 @@ describe('SuiWaitForTransactionTask', () => {
       expect(clearedTxHex(updateAction)).toBe(false)
     })
 
+    // A node that accepts the connection and never answers must not hold
+    // the resume, and the route with it, open for good. Each lookup call to
+    // a node has its own budget; past it the call is aborted, and the
+    // outcome stays unknown.
+    describe('when a lookup never answers', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+        vi.setSystemTime(NOW)
+      })
+
+      const never = (): Promise<never> => new Promise<never>(() => {})
+
+      /** Runs the task; `state.settled` turns true when it settles. */
+      const start = (context: SuiStepExecutorContext) => {
+        const state = { settled: false }
+        const result = new SuiWaitForTransactionTask()
+          .run(context)
+          .catch((error: unknown) => error)
+          .finally(() => {
+            state.settled = true
+          })
+        return { state, result }
+      }
+
+      it('fails non-final and never sends', async () => {
+        getTransaction.mockImplementation(never)
+        const { context, updateAction } = makeContext({
+          type: 'SWAP',
+          txHex: TX_HEX,
+        })
+
+        const { state, result } = start(context)
+        await vi.advanceTimersByTimeAsync(SUI_LOOKUP_TIMEOUT_MS - 1)
+        expect(state.settled).toBe(false)
+        const [{ signal }] = getTransaction.mock.calls[0] as [
+          { signal?: AbortSignal },
+        ]
+        expect(signal).toBeInstanceOf(AbortSignal)
+        expect(signal?.aborted).toBe(false)
+        await vi.advanceTimersByTimeAsync(2)
+        expect(state.settled).toBe(true)
+
+        const error = await result
+        expect(signal?.aborted).toBe(true)
+        expect(error).toBeInstanceOf(Error)
+        expect(error).toMatchObject({ name: 'TimeoutError' })
+        expect(isFinalTransactionError(error)).toBe(false)
+        expect(getTransaction).toHaveBeenCalledTimes(1)
+        expect(executeTransaction).not.toHaveBeenCalled()
+        expect(isSuiTransactionDropped).not.toHaveBeenCalled()
+        expect(waitForTransaction).not.toHaveBeenCalled()
+        expect(clearedTxHex(updateAction)).toBe(false)
+        expect(vi.getTimerCount()).toBe(0)
+      })
+
+      // Even when Task 0 confirmed that a refusal proves absence: without
+      // the second lookup the first execution may have landed meanwhile.
+      it('fails non-final when the lookup after a definite refusal never answers', async () => {
+        task0.reexecutionReturnsEffects = true
+        getTransaction
+          .mockRejectedValueOnce(notFound())
+          .mockImplementation(never)
+        executeTransaction.mockRejectedValue(
+          new RpcError('object version unavailable', 'INVALID_ARGUMENT')
+        )
+        const { context, updateAction } = makeContext({
+          type: 'SWAP',
+          txHex: TX_HEX,
+        })
+
+        const { state, result } = start(context)
+        await vi.advanceTimersByTimeAsync(SUI_LOOKUP_TIMEOUT_MS - 1)
+        expect(state.settled).toBe(false)
+        await vi.advanceTimersByTimeAsync(2)
+        expect(state.settled).toBe(true)
+
+        const error = await result
+        expect(error).toMatchObject({ name: 'TimeoutError' })
+        expect(error).not.toMatchObject({
+          code: LiFiErrorCode.TransactionExpired,
+        })
+        expect(isFinalTransactionError(error)).toBe(false)
+        expect(executeTransaction).toHaveBeenCalledTimes(1)
+        expect(getTransaction).toHaveBeenCalledTimes(2)
+        const [{ signal }] = getTransaction.mock.calls[1] as [
+          { signal?: AbortSignal },
+        ]
+        expect(signal?.aborted).toBe(true)
+        expect(isKnownToStatusApi).not.toHaveBeenCalled()
+        expect(waitForTransaction).not.toHaveBeenCalled()
+        expect(clearedTxHex(updateAction)).toBe(false)
+        expect(vi.getTimerCount()).toBe(0)
+      })
+
+      // As a node that fails: the budget is per node, so the next node is
+      // still asked.
+      it('asks the next node when a node never answers', async () => {
+        const hung = vi.fn(never)
+        suiNodes.splice(
+          0,
+          suiNodes.length,
+          {
+            core: {
+              getTransaction: hung,
+              waitForTransaction,
+              executeTransaction,
+            },
+          },
+          { core: { getTransaction, waitForTransaction, executeTransaction } }
+        )
+        getTransaction.mockResolvedValue(succeeded)
+        const { context, updateAction } = makeContext({
+          type: 'SWAP',
+          txHash: DIGEST,
+          txHex: TX_HEX,
+        })
+
+        const { state, result } = start(context)
+        await vi.advanceTimersByTimeAsync(SUI_LOOKUP_TIMEOUT_MS + 1)
+        expect(state.settled).toBe(true)
+
+        await expect(result).resolves.toEqual({ status: 'COMPLETED' })
+        expect(hung).toHaveBeenCalledTimes(1)
+        expect(getTransaction).toHaveBeenCalledTimes(1)
+        expect(executeTransaction).not.toHaveBeenCalled()
+        expectResultWrite(updateAction, 'SWAP')
+        expect(vi.getTimerCount()).toBe(0)
+      })
+    })
+
     it('clears an invalid txHex and fails non-final when there is no txHash', async () => {
       const { context, updateAction } = makeContext({
         type: 'SWAP',
@@ -815,7 +960,10 @@ describe('SuiWaitForTransactionTask', () => {
         new SuiWaitForTransactionTask().run(context)
       ).resolves.toEqual({ status: 'COMPLETED' })
       expect(clearedTxHex(updateAction)).toBe(true)
-      expect(getTransaction).toHaveBeenCalledWith({ digest: DIGEST })
+      expect(getTransaction).toHaveBeenCalledWith({
+        digest: DIGEST,
+        signal: expect.any(AbortSignal),
+      })
       expect(executeTransaction).not.toHaveBeenCalled()
       expect(waitForTransaction).toHaveBeenCalledWith({ digest: DIGEST })
     })

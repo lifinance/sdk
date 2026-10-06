@@ -10,8 +10,10 @@ import { callSuiWithRetry } from '../../../client/suiClient.js'
 import {
   SUI_CANARY_TIP_OFFSET,
   SUI_HEAD_MARGIN_MS,
+  SUI_LOOKUP_TIMEOUT_MS,
   SUI_MIN_CHECKPOINT_INTERVAL_MS,
 } from '../../constants.js'
+import { callWithinDeadline } from './callWithinDeadline.js'
 
 // A canary search skips at most this many checkpoints without a user
 // transaction.
@@ -56,7 +58,9 @@ interface Canaries {
  *     RPC;
  * (c) the LI.FI status API does not know the digest (veto only).
  *
- * Any lookup error leaves the outcome unknown and returns false.
+ * Any lookup error leaves the outcome unknown and returns false. Each call
+ * to a node has `SUI_LOOKUP_TIMEOUT_MS` to answer; a node that does not
+ * counts as failed, so the next node is asked.
  */
 export async function isSuiTransactionDropped(
   client: SDKClient,
@@ -188,20 +192,27 @@ async function getCheckpoint(
   suiClient: SuiGrpcClient,
   sequenceNumber?: bigint
 ): Promise<CheckpointInfo> {
-  const { response } = await suiClient.ledgerService.getCheckpoint({
-    checkpointId:
-      sequenceNumber === undefined
-        ? { oneofKind: undefined }
-        : { oneofKind: 'sequenceNumber', sequenceNumber },
-    readMask: {
-      paths: [
-        'sequence_number',
-        'summary.timestamp',
-        'transactions.digest',
-        'transactions.transaction.kind',
-      ],
-    },
-  })
+  const { response } = await callWithinDeadline(
+    (abort) =>
+      suiClient.ledgerService.getCheckpoint(
+        {
+          checkpointId:
+            sequenceNumber === undefined
+              ? { oneofKind: undefined }
+              : { oneofKind: 'sequenceNumber', sequenceNumber },
+          readMask: {
+            paths: [
+              'sequence_number',
+              'summary.timestamp',
+              'transactions.digest',
+              'transactions.transaction.kind',
+            ],
+          },
+        },
+        { abort }
+      ),
+    SUI_LOOKUP_TIMEOUT_MS
+  )
   const checkpoint = response.checkpoint
   const timestamp = checkpoint?.summary?.timestamp
   const timestampMs = timestamp
@@ -233,10 +244,17 @@ async function lookUpWithCanaries(
   let coveringNotFound = 0
   try {
     await callSuiWithRetry(client, async (suiClient) => {
-      const { response } = await suiClient.ledgerService.batchGetTransactions({
-        digests: [digest, canaries.before, canaries.after],
-        readMask: { paths: ['digest'] },
-      })
+      const { response } = await callWithinDeadline(
+        (abort) =>
+          suiClient.ledgerService.batchGetTransactions(
+            {
+              digests: [digest, canaries.before, canaries.after],
+              readMask: { paths: ['digest'] },
+            },
+            { abort }
+          ),
+        SUI_LOOKUP_TIMEOUT_MS
+      )
       const [target, before, after] = response.transactions
       // A node that returns the digest vetoes, in any position.
       if (

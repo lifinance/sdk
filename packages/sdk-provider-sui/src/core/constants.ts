@@ -18,3 +18,11 @@ export const SUI_CANARY_TIP_OFFSET = 120n
 // A lower bound of the checkpoint interval. Estimating a checkpoint for a
 // time with it lands at or before that time.
 export const SUI_MIN_CHECKPOINT_INTERVAL_MS = 200
+
+// The budget of each resume lookup call to one node: the digest lookup, a
+// checkpoint read and the batch lookup. A node that has not answered by then
+// counts as failed and the next node is asked; a timeout alone never decides
+// the outcome. A healthy node answers in well under a second. The first
+// lookup runs before the resend decision, so even several nodes in a row
+// stay well within the two-minute resend age cap.
+export const SUI_LOOKUP_TIMEOUT_MS = 10_000

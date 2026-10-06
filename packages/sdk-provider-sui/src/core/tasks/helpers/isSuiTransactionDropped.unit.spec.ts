@@ -1,6 +1,7 @@
 import type { SDKClient } from '@lifi/sdk'
 import { GrpcTypes } from '@mysten/sui/grpc'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SUI_LOOKUP_TIMEOUT_MS } from '../../constants.js'
 
 const isKnownToStatusApi = vi.fn()
 vi.mock('@lifi/sdk', async (importActual) => {
@@ -49,6 +50,12 @@ const {
   PROGRAMMABLE_TRANSACTION: PROGRAMMABLE,
   RANDOMNESS_STATE_UPDATE: RANDOMNESS,
 } = GrpcTypes.TransactionKind_Kind
+
+/** The gRPC call options a fake node records (`RpcOptions`). */
+interface RpcOptions {
+  abort?: AbortSignal
+  timeout?: number | Date
+}
 
 /** A checkpoint transaction: its digest and its kind (none: no kind). */
 type FakeTransaction = [digest: string, kind?: GrpcTypes.TransactionKind_Kind]
@@ -130,12 +137,15 @@ const makeNode = ({
   return {
     ledgerService: {
       getCheckpoint: vi.fn(
-        async ({
-          checkpointId,
-        }: {
-          checkpointId: { oneofKind?: string; sequenceNumber?: bigint }
-          readMask?: { paths: string[] }
-        }) => {
+        async (
+          {
+            checkpointId,
+          }: {
+            checkpointId: { oneofKind?: string; sequenceNumber?: bigint }
+            readMask?: { paths: string[] }
+          },
+          _options?: RpcOptions
+        ): Promise<unknown> => {
           const sequenceNumber = checkpointId.sequenceNumber ?? head
           const timestampMs =
             timestamps.get(sequenceNumber) ?? timeOf(sequenceNumber, intervalMs)
@@ -161,7 +171,10 @@ const makeNode = ({
         }
       ),
       batchGetTransactions: vi.fn(
-        async ({ digests }: { digests: string[] }) => {
+        async (
+          { digests }: { digests: string[] },
+          _options?: RpcOptions
+        ): Promise<unknown> => {
           if (failing) {
             throw new Error('upstream connect error')
           }
@@ -186,10 +199,13 @@ const useNodes = (...list: FakeNode[]) => {
 
 /** The node got one batch request with the target and these canaries. */
 const expectCanaries = (node: FakeNode, before: string, after: string) =>
-  expect(node.ledgerService.batchGetTransactions).toHaveBeenCalledWith({
-    digests: [DIGEST, before, after],
-    readMask: { paths: ['digest'] },
-  })
+  expect(node.ledgerService.batchGetTransactions).toHaveBeenCalledWith(
+    {
+      digests: [DIGEST, before, after],
+      readMask: { paths: ['digest'] },
+    },
+    { abort: expect.any(AbortSignal) }
+  )
 
 const stepSignedAt = (signedAt?: number) =>
   ({ execution: { signedAt } }) as never
@@ -603,5 +619,90 @@ describe('isSuiTransactionDropped', () => {
       isSuiTransactionDropped(client, stepSignedAt(SIGNED_AT), DIGEST)
     ).resolves.toBe(false)
     expect(node.ledgerService.getCheckpoint).not.toHaveBeenCalled()
+  })
+
+  // A node that accepts the connection and never answers must not hold the
+  // resume, and the route with it, open for good. Each call to a node has
+  // its own budget; past it the call is aborted and counts as failed.
+  describe('when a node never answers', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+      vi.setSystemTime(NOW)
+    })
+
+    const never = (): Promise<never> => new Promise<never>(() => {})
+
+    /** Starts the check; `state.settled` turns true when it settles. */
+    const start = () => {
+      const state = { settled: false }
+      const result = isSuiTransactionDropped(
+        client,
+        stepSignedAt(SIGNED_AT),
+        DIGEST
+      ).finally(() => {
+        state.settled = true
+      })
+      return { state, result }
+    }
+
+    it('stays unknown when a checkpoint read never answers', async () => {
+      const [node] = useNodes(makeNode())
+      node.ledgerService.getCheckpoint.mockImplementation(never)
+
+      const { state, result } = start()
+      await vi.advanceTimersByTimeAsync(SUI_LOOKUP_TIMEOUT_MS - 1)
+      expect(state.settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(2)
+      expect(state.settled).toBe(true)
+      await expect(result).resolves.toBe(false)
+
+      expect(node.ledgerService.getCheckpoint).toHaveBeenCalledTimes(1)
+      const [, options] = node.ledgerService.getCheckpoint.mock.calls[0]
+      expect(options?.abort).toBeInstanceOf(AbortSignal)
+      expect(options?.abort?.aborted).toBe(true)
+      expect(node.ledgerService.batchGetTransactions).not.toHaveBeenCalled()
+      expect(isKnownToStatusApi).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('stays unknown when the batch lookup never answers', async () => {
+      const [node] = useNodes(makeNode())
+      node.ledgerService.batchGetTransactions.mockImplementation(never)
+
+      const { state, result } = start()
+      await vi.advanceTimersByTimeAsync(SUI_LOOKUP_TIMEOUT_MS - 1)
+      expect(state.settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(2)
+      expect(state.settled).toBe(true)
+      await expect(result).resolves.toBe(false)
+
+      expect(node.ledgerService.batchGetTransactions).toHaveBeenCalledTimes(1)
+      const [, options] = node.ledgerService.batchGetTransactions.mock.calls[0]
+      expect(options?.abort).toBeInstanceOf(AbortSignal)
+      expect(options?.abort?.aborted).toBe(true)
+      // Every checkpoint read got its own signal, and none was aborted.
+      for (const [, readOptions] of node.ledgerService.getCheckpoint.mock
+        .calls) {
+        expect(readOptions?.abort?.aborted).toBe(false)
+      }
+      expect(isKnownToStatusApi).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    // As a node that fails: the budget is per node, so the next node is
+    // still asked, and its covering response is the proof.
+    it('asks the next node when a node never answers', async () => {
+      const [hung, second] = useNodes(makeNode(), makeNode())
+      hung.ledgerService.getCheckpoint.mockImplementation(never)
+      hung.ledgerService.batchGetTransactions.mockImplementation(never)
+
+      const { state, result } = start()
+      await vi.advanceTimersByTimeAsync(2 * SUI_LOOKUP_TIMEOUT_MS + 1)
+      expect(state.settled).toBe(true)
+      await expect(result).resolves.toBe(true)
+
+      expectCanaries(second, 'tx-988000', 'tx-999880')
+      expect(vi.getTimerCount()).toBe(0)
+    })
   })
 })

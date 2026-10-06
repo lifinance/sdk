@@ -22,7 +22,11 @@ import {
   type SuiSignedTransaction,
   verifySuiSignedTransaction,
 } from '../../utils/suiSignedTransaction.js'
-import { SUI_REEXECUTION_RETURNS_EFFECTS } from '../constants.js'
+import {
+  SUI_LOOKUP_TIMEOUT_MS,
+  SUI_REEXECUTION_RETURNS_EFFECTS,
+} from '../constants.js'
+import { callWithinDeadline } from './helpers/callWithinDeadline.js'
 import { isSuiTransactionDropped } from './helpers/isSuiTransactionDropped.js'
 
 export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
@@ -154,6 +158,8 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
 /**
  * Looks the digest up once. Resolves `undefined` only when the RPCs answer
  * that it is unknown; any other error propagates as an unknown outcome.
+ * Each node has `SUI_LOOKUP_TIMEOUT_MS` to answer; a node that does not
+ * counts as failed, so the next node is asked.
  */
 async function findSuiTransaction(
   client: SDKClient,
@@ -161,7 +167,10 @@ async function findSuiTransaction(
 ): Promise<SuiClientTypes.TransactionResult | undefined> {
   try {
     return await callSuiWithRetry(client, (client) =>
-      client.core.getTransaction({ digest })
+      callWithinDeadline(
+        (signal) => client.core.getTransaction({ digest, signal }),
+        SUI_LOOKUP_TIMEOUT_MS
+      )
     )
   } catch (error) {
     if (
