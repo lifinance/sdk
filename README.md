@@ -83,6 +83,13 @@ needs no ecosystem library. To discover and connect browser wallets such as Frei
 xBull, or Lobstr, we recommend
 [Stellar Wallets Kit](https://github.com/Creit-Tech/Stellar-Wallets-Kit).
 
+**Zcash**
+```bash
+pnpm add @lifi/sdk-provider-zcash
+```
+
+ZEC is a destination-only chain: `ZcashProvider` validates transparent `t1` and `t3` receivers, and unified `u1` receivers that carry an Orchard receiver, and needs no wallet. Register it after `BitcoinProvider`; it serves ZEC only.
+
 ## Architecture
 
 The LI.FI SDK uses a modular provider architecture:
@@ -134,6 +141,7 @@ import { BitcoinProvider } from '@lifi/sdk-provider-bitcoin'
 import { SuiProvider } from '@lifi/sdk-provider-sui'
 import { TronProvider } from '@lifi/sdk-provider-tron'
 import { StellarProvider } from '@lifi/sdk-provider-stellar'
+import { ZcashProvider } from '@lifi/sdk-provider-zcash'
 
 const client = createClient({
   integrator: 'Your dApp/company name',
@@ -144,6 +152,7 @@ const client = createClient({
     SuiProvider({ /* options */ }),
     TronProvider({ /* options */ }),
     StellarProvider({ /* options */ }),
+    ZcashProvider(),
   ],
 })
 ```

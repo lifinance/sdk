@@ -1,6 +1,7 @@
-import { ChainType } from '@lifi/sdk'
+import { ChainId, ChainType, type SDKProvider } from '@lifi/sdk'
 import { describe, expect, it, vi } from 'vitest'
 import { BitcoinProvider } from './BitcoinProvider.js'
+import { isBitcoinProvider } from './types.js'
 
 describe('BitcoinProvider', () => {
   it('should create provider with default options', () => {
@@ -51,5 +52,57 @@ describe('BitcoinProvider', () => {
 
     expect(executor).toBeDefined()
     expect(mockGetWalletClient).toHaveBeenCalledOnce()
+  })
+
+  describe('isAddress', () => {
+    const provider = BitcoinProvider()
+    const bitcoinSegwit = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'
+    const bitcoinLegacy = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2'
+    const zcashP2pkh = 't1VmmGiyjVNeCjxDZzg7vZmd99WyzVby9yC'
+
+    it('keeps today’s answer without a chain ID and for Bitcoin', () => {
+      for (const address of [
+        bitcoinSegwit,
+        bitcoinLegacy,
+        zcashP2pkh,
+        'not-an-address',
+      ]) {
+        expect(provider.isAddress(address, ChainId.BTC)).toBe(
+          provider.isAddress(address)
+        )
+      }
+      expect(provider.isAddress(bitcoinSegwit)).toBe(true)
+      expect(provider.isAddress(zcashP2pkh)).toBe(false)
+    })
+
+    it('refuses every address for a UTXO chain other than BTC', () => {
+      for (const chainId of [
+        ChainId.ZEC,
+        ChainId.LTC,
+        ChainId.BCH,
+        ChainId.DGE,
+      ]) {
+        expect(provider.isAddress(bitcoinSegwit, chainId)).toBe(false)
+        expect(provider.isAddress(zcashP2pkh, chainId)).toBe(false)
+      }
+    })
+  })
+
+  describe('isBitcoinProvider', () => {
+    it('matches the Bitcoin provider only', () => {
+      const otherUtxoProvider: SDKProvider = {
+        type: ChainType.UTXO,
+        chainIds: [ChainId.ZEC],
+        isAddress: () => false,
+        resolveAddress: async () => undefined,
+        getBalance: async () => [],
+        getStepExecutor: async () => {
+          throw new Error('Not used.')
+        },
+      }
+
+      expect(isBitcoinProvider(BitcoinProvider())).toBe(true)
+      expect(isBitcoinProvider(otherUtxoProvider)).toBe(false)
+    })
   })
 })

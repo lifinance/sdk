@@ -24,5 +24,6 @@ export interface BitcoinSDKProvider extends SDKProvider {
 export function isBitcoinProvider(
   provider: SDKProvider
 ): provider is BitcoinSDKProvider {
-  return provider.type === ChainType.UTXO
+  // Other UTXO providers, such as Zcash, share the type but take no options.
+  return provider.type === ChainType.UTXO && 'setOptions' in provider
 }

@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project
-TypeScript monorepo (pnpm workspaces) with 7 packages under `packages/`. `@lifi/sdk`
+TypeScript monorepo (pnpm workspaces) with 8 packages under `packages/`. `@lifi/sdk`
 is the hub; each provider depends on it via `workspace:*` as a **regular** dependency
 (not peer), which resolves to the exact pinned version in published tarballs.
 
