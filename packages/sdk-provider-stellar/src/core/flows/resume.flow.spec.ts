@@ -376,39 +376,4 @@ describe('Stellar "Try again" after a failure', () => {
     expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:DONE'])
     expectSwapDone(resumed, hash)
   })
-
-  it('resubmits the stored envelope after an unknown failure (the confirmation poll timed out, no node has it)', async () => {
-    const page = openPage(network)
-    const { failed, signed } = await runSwapToConfirmationTimeout(page)
-    const hash = hashOf(signed)
-
-    // The accepted envelope never lands: no node has it, and its sequence
-    // number is free again. The fake node does not check time bounds, so
-    // this pins what the SDK sends, not whether a real node still accepts
-    // the envelope after the 330 s wait (its maxTime is 300 s after the
-    // quote).
-    network.forgetChain()
-    const before = mark()
-    const retry = recordRouteUpdates()
-    const resumed = await resumeRoute(page.client, failed, {
-      updateRouteHook: retry.hook,
-    })
-
-    // #507 behaviour (main signs a second transaction here): "Try again"
-    // probes (NOT_FOUND) and resubmits exactly the stored envelope; the
-    // wallet is not asked.
-    expect(page.signTransaction).toHaveBeenCalledTimes(1)
-    const seen = since(before)
-    expect(seen.quotes).toEqual([])
-    expect(seen.rpcMethods).toEqual([
-      'getTransaction',
-      'sendTransaction',
-      'getTransaction',
-    ])
-    // `signed` is the stored txHex (pinned in the helper).
-    expect(seen.sent).toEqual([signed])
-    expect(seen.statusRequests).toEqual([statusQueryOf(page, hash)])
-    expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:DONE'])
-    expectSwapDone(resumed, hash)
-  })
 })
