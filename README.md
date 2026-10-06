@@ -88,7 +88,7 @@ xBull, or Lobstr, we recommend
 pnpm add @lifi/sdk-provider-zcash
 ```
 
-ZEC is a destination-only chain: `ZcashProvider` validates transparent `t1` and `t3` receivers and needs no wallet. Register it after `BitcoinProvider`; it serves ZEC only.
+ZEC is a destination-only chain: `ZcashProvider` validates transparent `t1` and `t3` receivers, and unified `u1` receivers that carry an Orchard receiver, and needs no wallet. Register it after `BitcoinProvider`; it serves ZEC only.
 
 ## Architecture
 

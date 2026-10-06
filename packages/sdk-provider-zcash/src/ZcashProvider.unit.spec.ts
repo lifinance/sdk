@@ -4,6 +4,8 @@ import { ZcashProvider } from './ZcashProvider.js'
 
 const t1 = 't1VmmGiyjVNeCjxDZzg7vZmd99WyzVby9yC'
 const t3 = 't3LmX1cxWPPPqL4TZHx42HU3U5ghbFjRiif'
+const unified =
+  'u1k9eh52jx5q4y8lw6x208lsep4t6yzwk7mdwz9e6239qywjkqzdcd3al3d64zwnqx296p3klxnash5w2e0elg39qrydxx0s0qz5m2gnt0'
 const bitcoin = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'
 const client = {} as SDKClient
 
@@ -15,8 +17,8 @@ describe('ZcashProvider', () => {
     expect(provider.chainIds).toEqual([ChainId.ZEC])
   })
 
-  it('accepts a transparent Zcash address without a chain and for ZEC', () => {
-    for (const address of [t1, t3]) {
+  it('accepts a transparent or Orchard unified address without a chain and for ZEC', () => {
+    for (const address of [t1, t3, unified]) {
       expect(provider.isAddress(address)).toBe(true)
       expect(provider.isAddress(address, ChainId.ZEC)).toBe(true)
     }
@@ -25,6 +27,7 @@ describe('ZcashProvider', () => {
   it('refuses a Zcash address for any other chain', () => {
     expect(provider.isAddress(t1, ChainId.BTC)).toBe(false)
     expect(provider.isAddress(t1, ChainId.ETH)).toBe(false)
+    expect(provider.isAddress(unified, ChainId.BTC)).toBe(false)
   })
 
   it('refuses a Bitcoin address', () => {
