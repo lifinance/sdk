@@ -62,6 +62,11 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
       }
     )
 
+    // Checked once more after the wallet: a stopped run's late write can
+    // merge its transaction into this action while the prompt is open.
+    // Nothing awaits from here to the write below.
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     // Recorded before the network ever sees the envelope, so a crash between
     // submit and confirmation resumes by polling for this hash rather than
     // re-signing and executing the swap twice. StellarStepExecutor.createPipeline

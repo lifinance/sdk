@@ -37,7 +37,9 @@ vi.mock('../../client/getStellarRpc.js', () => ({
 const { StellarSignAndExecuteTask } = await import(
   './StellarSignAndExecuteTask.js'
 )
-const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
+const { isFinalTransactionError, LiFiErrorCode, StatusManager } = await import(
+  '@lifi/sdk'
+)
 
 const makeContext = (
   signedTxXdr: string,
@@ -270,6 +272,55 @@ describe('StellarSignAndExecuteTask pre-sign guard', () => {
     expect(signTransaction).not.toHaveBeenCalled()
     expect(submitStellarTransaction).not.toHaveBeenCalled()
     expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  // A stop during this run's prompt, then a resume: the older run signs, and
+  // its late write merges its transaction into this action while this
+  // prompt is still open.
+  it('checks the action again after the wallet and neither stores nor submits when a transaction merged while the prompt was open', async () => {
+    const signedTxXdr = buildSignedTransaction().toXdr()
+    const { context, signTransaction } = makeContext(signedTxXdr)
+    // A real manager. Without route state, `allowUpdates(false)` keeps every
+    // write on the step.
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const step = {
+      action: { fromAddress: keypair.publicKey() },
+      execution: {
+        status: 'PENDING',
+        actions: [{ type: 'SWAP', status: 'STARTED' }],
+      },
+    }
+    const merged = {
+      txHash: 'merged-hash',
+      txLink: 'https://explorer/tx/merged-hash',
+      txHex: 'MERGED_XDR',
+    }
+    signTransaction.mockImplementationOnce(async () => {
+      statusManager.updateAction(step as never, 'SWAP', 'PENDING', {
+        ...merged,
+        signedAt: 1_700_000_000_000,
+      })
+      return { signedTxXdr }
+    })
+    const writes = vi.spyOn(statusManager, 'updateAction')
+
+    await expect(
+      new StellarSignAndExecuteTask().run({
+        ...(context as object),
+        step,
+        statusManager,
+      } as never)
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionConflict })
+
+    expect(signTransaction).toHaveBeenCalledTimes(1)
+    expect(submitStellarTransaction).not.toHaveBeenCalled()
+    // Only the merge: no envelope of this run.
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(step.execution.actions).toEqual([
+      expect.objectContaining({ type: 'SWAP', ...merged }),
+    ])
+    expect(step.execution).toMatchObject({ signedAt: 1_700_000_000_000 })
   })
 
   it('signs again after a final outcome and clears the old transaction fields', async () => {
