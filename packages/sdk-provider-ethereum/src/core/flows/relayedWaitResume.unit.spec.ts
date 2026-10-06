@@ -38,7 +38,12 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
 vi.mock('../../client/publicClient.js')
 vi.mock('../../actions/waitForTransactionReceipt.js')
 vi.mock('../../actions/waitForRelayedTransactionReceipt.js')
+// The batched wait calls the wallet's `waitForCallsStatus`, which the harness
+// does not record. The mock makes that lane visible to the assertions.
+vi.mock('../../actions/waitForBatchTransactionReceipt.js')
 
+import type { LiFiStep } from '@lifi/sdk'
+import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransactionReceipt.js'
 import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import {
@@ -46,11 +51,16 @@ import {
   buildPermitTypedData,
   buildPermitWitnessTypedData,
   buildStep,
+  buildTypedData,
   CANONICAL_PERMIT2,
   CHAIN_ID,
   createScenario,
+  FROM_AMOUNT,
+  FROM_TOKEN_ADDRESS,
+  futureDeadline,
   RELAY_TASK_ID,
   type Scenario,
+  THIRD_PARTY_ROUTER,
   type TimelineKind,
 } from './harness.mock.js'
 
@@ -124,16 +134,111 @@ const buildRelayedScenario = async (
     allowance: 0n,
     onRouteUpdate,
   })
-  // `createScenario` installs a relayed wait that answers at once. This spec
-  // needs the real one: it polls the relayer status mocked above.
+  await useTheRealRelayedWait()
+  return scenario
+}
+
+/**
+ * `createScenario` installs a relayed wait that answers at once. This spec
+ * needs the real one: it polls the relayer status mocked above.
+ */
+const useTheRealRelayedWait = async (): Promise<void> => {
   const actual = await vi.importActual<
     typeof import('../../actions/waitForRelayedTransactionReceipt.js')
   >('../../actions/waitForRelayedTransactionReceipt.js')
   vi.mocked(waitForRelayedTransactionReceipt).mockImplementation(
     actual.waitForRelayedTransactionReceipt
   )
+}
+
+/**
+ * The C2 shape of `signatureOnlyStep.flow.spec.ts`: a Permit2 `PermitSingle`
+ * for a third-party router, and a re-quote with typed data and no
+ * `transactionRequest`. The step content alone does not make it relayed:
+ * only prepare, which sees that nothing is left to send, picks the relayer.
+ * `capabilities` is the wallet's EIP-5792 answer.
+ */
+const buildSignatureOnlyRelayedScenario = async (
+  onRouteUpdate: (route: RouteExtended) => void,
+  capabilities: Record<string, unknown>
+): Promise<Scenario> => {
+  const permitSingle = buildTypedData({
+    primaryType: 'PermitSingle',
+    domain: {
+      name: 'Permit2',
+      chainId: CHAIN_ID,
+      verifyingContract: CANONICAL_PERMIT2,
+    },
+    message: {
+      details: {
+        token: FROM_TOKEN_ADDRESS,
+        amount: FROM_AMOUNT,
+        expiration: futureDeadline(),
+        nonce: '0',
+      },
+      spender: THIRD_PARTY_ROUTER,
+      sigDeadline: futureDeadline(),
+    },
+  })
+  const scenario = createScenario({
+    step: buildStep({
+      typedData: [permitSingle],
+      approvalAddress: '',
+      skipApproval: true,
+      skipPermit: true,
+    }),
+    onStepTransaction: (step: LiFiStep) => {
+      const { transactionRequest: _dropped, ...rest } = step
+      return { ...rest, typedData: [permitSingle] }
+    },
+    capabilities,
+    onRouteUpdate,
+  })
+  await useTheRealRelayedWait()
   return scenario
 }
+
+/**
+ * The first run of the C2 shape: one signature, one relay request, and the
+ * relayed wait polls that task. No transaction and no batch.
+ */
+const expectSignatureOnlyStepWasRelayed = (
+  scenario: Scenario,
+  stored: RouteExtended
+): void => {
+  expect(scenario.events('signTypedData')).toHaveLength(1)
+  expect(scenario.events('relayTransaction')).toHaveLength(1)
+  expect(scenario.events('sendTransaction')).toEqual([])
+  expect(scenario.events('sendCalls')).toEqual([])
+  expect(getRelayedTransactionStatus).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ taskId: RELAY_TASK_ID }),
+    expect.anything()
+  )
+  // Fixture guard: the stored step is the C2 shape, so its content does not
+  // name the relayer.
+  const storedStep = stored.steps[0]
+  expect(storedStep.transactionRequest).toBeUndefined()
+  expect(storedStep.typedData?.map((entry) => entry.primaryType)).toEqual([
+    'PermitSingle',
+  ])
+  expect(relayedActionOf(stored)).toMatchObject({
+    taskId: RELAY_TASK_ID,
+    txType: 'relayed',
+  })
+}
+
+/** The two wallets of a C2 resume: a wallet without and with batching. */
+const SIGNATURE_ONLY_WALLETS: {
+  wallet: string
+  capabilities: Record<string, unknown>
+}[] = [
+  { wallet: 'a wallet without batching', capabilities: {} },
+  {
+    wallet: 'a wallet with batching',
+    capabilities: { atomic: { status: 'supported' } },
+  },
+]
 
 const relayerAnswersPending = (): void => {
   vi.mocked(getRelayedTransactionStatus).mockResolvedValue({
@@ -185,9 +290,10 @@ const expectResumeWaitsForTheSameTask = async (
       .slice(resumeFrom)
       .filter((kind) => !NO_CALL_KINDS.has(kind))
   ).toEqual([])
-  // The relayed lane, not the standard one: a standard receipt wait would
-  // also sign nothing.
+  // The relayed lane, not the standard or the batched one: a standard receipt
+  // wait or a `waitForCallsStatus` would also sign nothing.
   expect(waitForTransactionReceipt).not.toHaveBeenCalled()
+  expect(waitForBatchTransactionReceipt).not.toHaveBeenCalled()
   expect(getRelayedTransactionStatus).toHaveBeenCalledTimes(1)
   expect(getRelayedTransactionStatus).toHaveBeenCalledWith(
     expect.anything(),
@@ -335,4 +441,69 @@ describe('EVM relayed wait: stopRouteExecution', () => {
     expect(scenario.events('relayTransaction')).toHaveLength(1)
     expect(scenario.events('signTypedData')).toHaveLength(2)
   })
+})
+
+// A relayed step of the C2 shape is relayed only because prepare saw that
+// nothing was left to send. A resume starts at the wait, after prepare, so
+// the step content reads as a standard or a batched step. The lane comes from
+// the stored `txType` instead: the resume waits for the same relayer task and
+// asks the wallet nothing.
+describe('EVM relayed wait of a signature-only step (C2 shape)', () => {
+  it.each(SIGNATURE_ONLY_WALLETS)(
+    'after the 24 hour deadline, "Try again" with $wallet waits for the same task on the relayed lane',
+    async ({ capabilities }) => {
+      let stored: RouteExtended | undefined
+      const scenario = await buildSignatureOnlyRelayedScenario((route) => {
+        stored = persist(route)
+      }, capabilities)
+      relayerAnswersPending()
+      const start = Date.now()
+
+      const run = track(scenario.run())
+      await vi.advanceTimersByTimeAsync(0)
+
+      vi.setSystemTime(start + DAY_MS - 10_000)
+      await vi.advanceTimersByTimeAsync(20_000)
+
+      expect(run).toMatchObject({ settled: true, resolved: false })
+      expect(run.error).toMatchObject({ code: LiFiErrorCode.TransactionFailed })
+      expectSignatureOnlyStepWasRelayed(scenario, stored!)
+      const action = relayedActionOf(stored!)
+      expect(action?.status).toBe('FAILED')
+      expect(action?.txFinal).toBeUndefined()
+      expect(hasOpenTransaction(action)).toBe(true)
+
+      await expectResumeWaitsForTheSameTask(scenario, stored!)
+      expect(scenario.events('relayTransaction')).toHaveLength(1)
+      expect(scenario.events('signTypedData')).toHaveLength(1)
+    }
+  )
+
+  it.each(SIGNATURE_ONLY_WALLETS)(
+    'after stopRouteExecution, a resume with $wallet waits for the same task on the relayed lane',
+    async ({ capabilities }) => {
+      let stored: RouteExtended | undefined
+      const scenario = await buildSignatureOnlyRelayedScenario((route) => {
+        stored = persist(route)
+      }, capabilities)
+      relayerAnswersPending()
+
+      const run = track(scenario.run())
+      await vi.advanceTimersByTimeAsync(12_000)
+      expect(relayerCalls()).toBe(3)
+
+      stopRouteExecution(scenario.route())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(run).toMatchObject({ settled: true, resolved: true })
+      expectSignatureOnlyStepWasRelayed(scenario, stored!)
+      const action = relayedActionOf(stored!)
+      expect(action?.status).toBe('PENDING')
+      expect(hasOpenTransaction(action)).toBe(true)
+
+      await expectResumeWaitsForTheSameTask(scenario, stored!)
+      expect(scenario.events('relayTransaction')).toHaveLength(1)
+      expect(scenario.events('signTypedData')).toHaveLength(1)
+    }
+  )
 })
