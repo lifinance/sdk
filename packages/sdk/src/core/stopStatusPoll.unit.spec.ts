@@ -65,10 +65,10 @@ const done = (txHash: string) => (): Response =>
   )
 
 /** The answer of the status API to every request. */
-let answer: () => Response = notFound
+let answer: (init?: RequestInit) => Response | Promise<Response> = notFound
 const fetchMock = vi.fn(
-  async (_url: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
-    answer()
+  async (_url: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+    answer(init)
 )
 const statusRequests = (): number =>
   fetchMock.mock.calls.filter(([url]) => String(url).includes('/status?'))
@@ -447,6 +447,122 @@ describe('the /status poll of a stopped route', () => {
     expect(swapOf(runA.value!)?.status).toBe('PENDING')
     expect(vi.getTimerCount()).toBe(0)
     expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
+  })
+
+  it.each([
+    'ends on the abort',
+    'answers DONE late',
+    'answers PENDING late',
+  ] as const)(
+    '(f) ends the /status request in flight at the stop; the request %s',
+    async (late) => {
+      const txHash = `0x${nextId()}`
+      wallet.mockResolvedValue(txHash)
+      const route = buildRoute()
+      startedRoutes.push(route)
+      const { updateRouteHook, last } = storeRoute()
+      let answerLate!: (response: Response) => void
+      const lateAnswer = new Promise<Response>((resolve) => {
+        answerLate = resolve
+      })
+      let requestSignal: AbortSignal | undefined
+      answer = (init) => {
+        requestSignal = init?.signal ?? undefined
+        if (late === 'ends on the abort') {
+          // Like `fetch`: the request rejects once its signal aborts.
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(init.signal?.reason)
+            )
+          })
+        }
+        // A `fetch` that does not honour the signal answers later.
+        return lateAnswer
+      }
+
+      const run = observe(
+        executeRoute(buildClient(), route, { updateRouteHook })
+      )
+      // Shorter than the interval: the first request is in flight.
+      await advance(1)
+      expect(statusRequests()).toBe(1)
+      const callsAtStop = updateRouteHook.mock.calls.length
+      const storedAtStop = last()
+      expect(swapOf(storedAtStop)).toMatchObject({ status: 'PENDING', txHash })
+
+      stopRouteExecution(route)
+      expect(requestSignal?.aborted).toBe(true)
+      await advance(0)
+
+      // The run resolves at once, before the request settles.
+      expect(run.settled).toBe(true)
+      expect(run.error).toBeUndefined()
+      expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
+
+      if (late === 'answers DONE late') {
+        answerLate(done(txHash)())
+      }
+      if (late === 'answers PENDING late') {
+        answerLate(pending(txHash)())
+      }
+      await advance(HOUR)
+
+      expect(statusRequests()).toBe(1)
+      expect(vi.getTimerCount()).toBe(0)
+      expect(updateRouteHook).toHaveBeenCalledTimes(callsAtStop)
+      expect(last()).toEqual(storedAtStop)
+      expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
+      expect(executionState.inFlight[route.id]).toBeUndefined()
+    }
+  )
+
+  it('(g) stores the hash of a wallet call that ends after the stop, polls nothing, and a resume waits for it', async () => {
+    const txHash = `0x${nextId()}`
+    let sign!: (hash: string) => void
+    wallet.mockReturnValue(
+      new Promise<string>((resolve) => {
+        sign = resolve
+      })
+    )
+    const route = buildRoute()
+    startedRoutes.push(route)
+    const { updateRouteHook, last } = storeRoute()
+    const client = buildClient()
+
+    const run = observe(executeRoute(client, route, { updateRouteHook }))
+    await advance(1)
+    expect(wallet).toHaveBeenCalledTimes(1)
+
+    // The stop comes while the wallet is open; then the wallet sends.
+    stopRouteExecution(route)
+    sign(txHash)
+    await advance(HOUR)
+
+    expect(run.settled).toBe(true)
+    expect(run.error).toBeUndefined()
+    // The late write reaches the stored route: the hash, still open.
+    expect(swapOf(last())).toMatchObject({ status: 'PENDING', txHash })
+    expect(swapOf(last())?.txFinal).toBeUndefined()
+    expect(last().steps[0].execution?.status).toBe('PENDING')
+    // The wait of the stopped run starts no poll.
+    expect(statusRequests()).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+    expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
+
+    // A resume of the stored route signs nothing and waits for the hash.
+    answer = done(txHash)
+    const resumedStore = storeRoute()
+    const resumed = observe(
+      resumeRoute(client, last(), {
+        updateRouteHook: resumedStore.updateRouteHook,
+      })
+    )
+    await advance(1)
+
+    expect(resumed.settled).toBe(true)
+    expect(resumed.value?.steps[0].execution?.status).toBe('DONE')
+    expect(statusRequests()).toBe(1)
+    expect(wallet).toHaveBeenCalledTimes(1)
   })
 })
 
