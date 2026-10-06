@@ -283,7 +283,12 @@ describe('BaseStepExecutor after stopRouteExecution', () => {
       new GatedTask(gate.promise, act)
     )
     execution.executors.push(executor)
-    const running = executor.executeStep(client, step).catch((e) => e)
+    // In flight until the step settles, as `executeSteps` counts it.
+    executionState.retain(route.id)
+    const running = executor
+      .executeStep(client, step)
+      .catch((e) => e)
+      .finally(() => executionState.release(route.id))
     stopRouteExecution(route)
     return { hook, release: () => gate.resolve(), running }
   }

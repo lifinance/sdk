@@ -418,7 +418,8 @@ export class StatusManager {
       }
       // A newer execution started and ended since the stop: the integrator
       // stored its route, which the kept one would roll back. The late
-      // transaction goes into that route instead.
+      // transaction goes into that route instead. With the records of the
+      // route freed (no run in flight, `startCount` 0) the write is dropped.
       if (executionState.startCount(this.routeId) !== stopped.startCount) {
         const ended = executionState.lastEnded(this.routeId)
         if (ended && mergeLateTransaction(ended.route, step, lateAction)) {

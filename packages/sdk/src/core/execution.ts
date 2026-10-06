@@ -146,27 +146,34 @@ const executeSteps = async (
       if (!ownsExecution(route)) {
         return route
       }
-      execution.executors.push(stepExecutor)
-
-      // Check if we want to execute this step in the background
-      if (execution.executionOptions) {
-        updateRouteExecution(route, execution.executionOptions)
-      }
-
+      // In flight until the step settles, the retry included: a stop keeps
+      // the records a late write of this run needs (`executionState`).
+      executionState.retain(route.id)
       let executedStep: LiFiStepExtended
       try {
-        executedStep = await stepExecutor.executeStep(client, step)
-      } catch (e) {
-        if (e instanceof ExecuteStepRetryError) {
-          step.execution = undefined
-          executedStep = await stepExecutor.executeStep(
-            client,
-            step,
-            e.retryParams
-          )
-        } else {
-          throw e
+        execution.executors.push(stepExecutor)
+
+        // Check if we want to execute this step in the background
+        if (execution.executionOptions) {
+          updateRouteExecution(route, execution.executionOptions)
         }
+
+        try {
+          executedStep = await stepExecutor.executeStep(client, step)
+        } catch (e) {
+          if (e instanceof ExecuteStepRetryError) {
+            step.execution = undefined
+            executedStep = await stepExecutor.executeStep(
+              client,
+              step,
+              e.retryParams
+            )
+          } else {
+            throw e
+          }
+        }
+      } finally {
+        executionState.release(route.id)
       }
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
