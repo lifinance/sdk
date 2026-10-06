@@ -293,6 +293,9 @@ const fromHex = (hex: string): Uint8Array =>
 /** How the user replaces a transaction in their wallet (RBF). */
 export type ReplacementKind = 'repriced' | 'cancelled'
 
+/** How a `sendrawtransaction` request fails before it reaches the node. */
+export type SendFailure = 'unreachable' | 'timeout'
+
 interface Utxo {
   txid: string
   vout: number
@@ -335,6 +338,19 @@ export interface FakeBitcoinNetwork {
    * the original; the original is evicted and the node answers -5 for it.
    */
   replaceNextSend: ReplacementKind | undefined
+  /**
+   * Called with the hex of every `sendrawtransaction` request as it leaves
+   * the SDK, before the node (or `failNextSend`) handles it.
+   */
+  onSend: ((hex: string) => void) | undefined
+  /**
+   * The next `sendrawtransaction` request never reaches the node:
+   * - `unreachable`: the connection fails at once (`fetch` throws);
+   * - `timeout`: no answer until bigmi's 10 s request timeout aborts it.
+   */
+  failNextSend: SendFailure | undefined
+  /** Raw hex of each `sendrawtransaction` that never reached the node. */
+  readonly lostSends: string[]
   /** Gives the key's address one confirmed UTXO of `WALLET_BALANCE`. */
   addWallet(key: WalletKey): void
   /** The confirmed balance of an address, in satoshi. */
@@ -731,6 +747,9 @@ const createFakeBitcoinNetwork = (): FakeBitcoinNetwork => {
     statusRequests: [],
     replacements: [],
     replaceNextSend: undefined,
+    onSend: undefined,
+    failNextSend: undefined,
+    lostSends: [],
     addWallet(key) {
       if (wallets.has(key.address)) {
         return
@@ -764,6 +783,26 @@ const createFakeBitcoinNetwork = (): FakeBitcoinNetwork => {
           id: number
           method: string
           params: unknown[]
+        }
+        if (body.method === 'sendrawtransaction') {
+          const hex = String(body.params[0])
+          network.onSend?.(hex)
+          const failure = network.failNextSend
+          if (failure) {
+            network.failNextSend = undefined
+            network.lostSends.push(hex)
+            if (failure === 'unreachable') {
+              throw new TypeError('fetch failed')
+            }
+            // bigmi's `withTimeout` aborts the request's signal after 10 s.
+            return new Promise<Response>((_resolve, reject) => {
+              init?.signal?.addEventListener('abort', () => {
+                reject(
+                  new DOMException('This operation was aborted', 'AbortError')
+                )
+              })
+            })
+          }
         }
         network.rpcMethods.push(body.method)
         const result = rpc(body.method, body.params ?? [])
