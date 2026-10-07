@@ -1,6 +1,8 @@
 // Usage: node scripts/size-report.mjs <base.json> <head.json> > size.md
 // Optional env: BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY, BASE_OUTCOME.
-import { readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // A change is only called out when it passes BOTH thresholds, so tiny noise stays quiet.
 const NOTICE_BYTES = 512
@@ -33,6 +35,59 @@ const kb = (bytes) => `${(bytes / 1000).toFixed(bytes < 10_000 ? 2 : 1)} kB`
 const signed = (bytes) => `${bytes > 0 ? '+' : '−'}${kb(Math.abs(bytes))}`
 const pct = (value) => `${value > 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}%`
 const short = (sha) => (sha ? sha.slice(0, 7) : '')
+
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
+const ownerOf = (file) => {
+  for (let dir = dirname(file); dir !== dirname(dir); dir = dirname(dir)) {
+    const manifest = join(dir, 'package.json')
+    if (existsSync(manifest) && readJson(manifest).name) {
+      return readJson(manifest).name
+    }
+  }
+  return null
+}
+
+// Published packages that no check measures. A package is measured when it is in the
+// breakdown of a measured bundle, or when a file-only check points into it.
+// Returns null when the breakdown is incomplete, so the guard cannot decide.
+const findUntracked = () => {
+  const config = readJson(join(repoRoot, '.size-limit.json'))
+  const measured = new Set()
+  for (const check of config) {
+    const fileOnly =
+      !check.import || check.disablePlugins?.includes('@size-limit/esbuild')
+    if (fileOnly) {
+      for (const path of [check.path].flat().filter(Boolean)) {
+        measured.add(ownerOf(resolve(repoRoot, path)))
+      }
+      continue
+    }
+    const row = head.find((r) => r.name === check.name)
+    if (!row?.packages) {
+      return null
+    }
+    for (const name of Object.keys(row.packages)) {
+      measured.add(name)
+    }
+  }
+  const packagesDir = join(repoRoot, 'packages')
+  return readdirSync(packagesDir)
+    .map((dir) => join(packagesDir, dir, 'package.json'))
+    .filter((manifest) => existsSync(manifest))
+    .map(readJson)
+    .filter((manifest) => manifest.name && !manifest.private)
+    .map((manifest) => manifest.name)
+    .filter((name) => !measured.has(name))
+    .sort()
+}
+const untracked = head.length ? findUntracked() : null
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `untracked=${untracked?.length ?? 0}\n`
+  )
+}
 
 const baseUsable = [...base.values()].some((r) => typeof r.size === 'number')
 const rows = head.map((current) => {
@@ -124,8 +179,13 @@ let verdict
 if (head.length === 0) {
   verdict =
     '❔ **No size data.** The build or the measurement step failed. See the workflow run.'
-} else if (missingRows.length || over.length) {
+} else if (missingRows.length || over.length || untracked?.length) {
   const problems = []
+  if (untracked?.length) {
+    problems.push(
+      `**${untracked.length} published ${untracked.length === 1 ? 'package has' : 'packages have'} no size check:** ${untracked.map((name) => `\`${name}\``).join(', ')}. Add a check to \`.size-limit.json\`.`
+    )
+  }
   if (missingRows.length) {
     problems.push(
       `**${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** Check the build, the import, and the path in \`.size-limit.json\`. The cause is in the "Measure PR" step log.`
@@ -239,6 +299,11 @@ const causeSection = causes.length
     ].join('\n')
   : ''
 
+const coverageNote =
+  head.length && untracked === null
+    ? '> ℹ️ The check for packages without a size check did not run. A package breakdown is missing.\n\n'
+    : ''
+
 const footer = [
   '<details>',
   '<summary>How to read this</summary>',
@@ -265,7 +330,9 @@ process.stdout.write(
     '',
     verdict,
     '',
-    baseNote + [...sections, causeSection].filter(Boolean).join('\n\n'),
+    coverageNote +
+      baseNote +
+      [...sections, causeSection].filter(Boolean).join('\n\n'),
     '',
     footer,
     '',

@@ -181,6 +181,7 @@ jobs:
           name: size-base
           path: out/base
       - name: Build report
+        id: build
         env:
           BASE_SHA: ${{ needs.base.outputs.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -197,18 +198,26 @@ jobs:
           path: out/report/size.md
       - name: Enforce budgets
         if: ${{ !cancelled() }}
+        env:
+          UNTRACKED: ${{ steps.build.outputs.untracked }}
         run: |
+          failed=0
+          if [ -n "$UNTRACKED" ] && [ "$UNTRACKED" != "0" ]; then
+            echo "::error::A published package has no size check. Add a check to .size-limit.json."
+            failed=1
+          fi
           STATUS="$(cat out/head/status 2>/dev/null || true)"
-          if [ "$STATUS" = "0" ]; then
-            exit 0
-          elif [ -z "$STATUS" ]; then
+          if [ -z "$STATUS" ]; then
             echo "::error::The PR build or the size measurement did not complete. See the 'head' job."
+            failed=1
           elif [ "$STATUS" = "1" ]; then
             echo "::error::A bundle size budget is exceeded, or a check produced no output. See the job summary or the PR comment."
-          else
+            failed=1
+          elif [ "$STATUS" != "0" ]; then
             echo "::error::The size measurement failed (exit $STATUS). See the 'Measure PR' step log."
+            failed=1
           fi
-          exit 1
+          exit "$failed"
 
   comment:
     needs: report
