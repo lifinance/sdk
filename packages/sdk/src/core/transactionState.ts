@@ -81,11 +81,12 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
  *    the transaction up and resends the stored bytes only while
  *    `isResendAllowed` (or the chain's own expiry) allows it; otherwise it
  *    only waits.
- * 5. Mark an error final only on a chain verdict: reverted, cancelled,
- *    replaced, or dropped with proof. Dropped needs all three: the
- *    transaction can no longer land, one node response that covers its
- *    window shows it absent, and `isKnownToStatusApi` is false. In doubt,
- *    throw without the marker and keep the fields.
+ * 5. Mark an error final only on a verdict about the transaction: failed
+ *    or reverted (on chain or at the relayer), cancelled, replaced, or
+ *    dropped with proof. Dropped needs all three: the transaction can no
+ *    longer land, one node response that covers its window shows it absent,
+ *    and `isKnownToStatusApi` is false. In doubt, throw without the marker
+ *    and keep the fields.
  * 6. Give `context.signal` only to waits that start after the broadcast. On
  *    abort, return `PAUSED` and write nothing.
  */
