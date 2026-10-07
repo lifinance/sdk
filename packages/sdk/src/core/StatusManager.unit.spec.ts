@@ -455,6 +455,8 @@ describe('StatusManager after stopRouteExecution', () => {
   afterEach(() => {
     releaseAttachedRuns()
     executionState.delete(buildRouteObject({}).id)
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   describe('without a newer execution of the route', () => {
@@ -602,6 +604,28 @@ describe('StatusManager after stopRouteExecution', () => {
         statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
       ).not.toThrow()
       expect(keptHook).toHaveBeenCalledTimes(1)
+    })
+
+    it.each([
+      ['reports', 'development', 1],
+      ['does not report', 'production', 0],
+    ])('%s the error of a kept hook that throws in %s', (_, env, reports) => {
+      vi.stubEnv('NODE_ENV', env)
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => {})
+      const hookError = new Error('Storage is full.')
+      const { route, step, statusManager } = startOldExecution()
+      keptHook.mockImplementation(() => {
+        throw hookError
+      })
+      stopRouteExecution(route)
+
+      expect(() =>
+        statusManager.updateAction(step, 'SWAP', 'PENDING', LATE_WRITE)
+      ).not.toThrow()
+      expect(debug).toHaveBeenCalledTimes(reports)
+      if (reports) {
+        expect(debug).toHaveBeenCalledWith(expect.any(String), hookError)
+      }
     })
 
     it('does not throw into the task when no hook was configured', () => {

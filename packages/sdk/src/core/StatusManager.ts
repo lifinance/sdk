@@ -443,8 +443,12 @@ export class StatusManager {
         ...step,
       }
       stopped.updateRouteHook?.(stopped.route)
-    } catch {
-      // Ignored on purpose, see above.
+    } catch (error) {
+      // Not rethrown, see above. The integrator's hook can throw here, so
+      // the error is reported in development, as other swallowed errors are.
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('Delivering late transaction data failed.', error)
+      }
     }
   }
 }
