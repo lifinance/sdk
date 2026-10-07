@@ -456,7 +456,7 @@ importers:
         version: 7.0.2
       vitest:
         specifier: ^5.0.3
-        version: 5.0.3(@types/node@26.6.3)(@vitest/coverage-v8@5.0.3)(msw@3.0.1(@types/node@26.6.3)(graphql@17.0.2)(supports-color@7.2.0)(typescript@7.0.2)(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(yaml@2.9.1)))(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(yaml@2.9.1))
+        version: 5.0.3(@types/node@26.6.4)(@vitest/coverage-v8@5.0.3)(msw@3.0.2(@types/node@26.6.4)(graphql@17.0.2)(supports-color@7.2.0)(typescript@7.0.2)(vite@8.3.1(@types/node@26.6.4)(jiti@2.7.0)(yaml@2.9.1)))(vite@8.3.1(@types/node@26.6.4)(jiti@2.7.0)(yaml@2.9.1))
 
 packages:
 
@@ -1762,6 +1762,9 @@ packages:
 
   '@types/node@22.7.5':
     resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
+
+  '@types/node@26.6.3':
+    resolution: {integrity: sha512-dsqMQQoeTLqu9wynDD00q573mNzso3IdQOAfHRJqLCcmCFPoGo9A1bDpUcv/9tnKpErQWv9uKeGfl37EIS02Yg==}
 
   '@types/node@26.6.4':
     resolution: {integrity: sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==}
@@ -5014,13 +5017,17 @@ snapshots:
     dependencies:
       undici-types: 6.19.8
 
+  '@types/node@26.6.3':
+    dependencies:
+      undici-types: 8.9.0
+
   '@types/node@26.6.4':
     dependencies:
       undici-types: 8.9.0
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 26.6.4
+      '@types/node': 26.6.3
 
   '@types/ws@8.18.2':
     dependencies:
