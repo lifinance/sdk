@@ -902,8 +902,9 @@ describe('StatusManager after stopRouteExecution', () => {
 })
 
 // Every write of transaction data in core and the six providers goes
-// through `updateAction`. These are the shapes of those writes at 21a1bc2b, each on the action state it meets in the task;
-// every one that changes the transaction reaches the kept hook after a stop.
+// through `updateAction`. These are the shapes of those writes, each on the
+// action state it meets in the task; every one that changes the transaction
+// reaches the kept hook after a stop.
 // A write that bypasses `updateAction` is not delivered after a stop.
 describe('provider writes of transaction data after stopRouteExecution', () => {
   const routeId = buildRouteObject({}).id

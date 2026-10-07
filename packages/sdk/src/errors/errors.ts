@@ -16,9 +16,10 @@ export class ProviderError extends BaseError {
 
 export interface TransactionErrorOptions {
   /**
-   * The chain gave a definite answer about the transaction (reverted, dropped,
-   * cancelled or replaced). The step executor then flags the failed action
-   * with `txFinal`, so a restart signs a new transaction.
+   * A definite verdict about the transaction (failed or reverted on chain or
+   * at the relayer, cancelled, replaced, or dropped with proof). The step
+   * executor then flags the failed action with `txFinal`, so a restart signs
+   * a new transaction.
    */
   final?: boolean
 }

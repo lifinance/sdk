@@ -231,7 +231,7 @@ beforeEach(() => {
   statusPlan.failNext = 0
 })
 
-describe('EVM batched wait: a partial batch on resume (P2)', () => {
+describe('EVM batched wait: a partial batch on resume', () => {
   it.each([
     { wallet: 'a wallet without batching', keepsBatching: false },
     { wallet: 'the same wallet with batching', keepsBatching: true },
@@ -278,7 +278,7 @@ describe('EVM batched wait: a partial batch on resume (P2)', () => {
   )
 })
 
-describe('EVM batched wait: a resume without the batching wallet (P1)', () => {
+describe('EVM batched wait: a resume without the batching wallet', () => {
   // Characterization of a known gap, not the wanted end state. A batched
   // swap whose receipt is already stored, resumed on a connection that has
   // neither batching nor `wallet_getCallsStatus`, fails without a final

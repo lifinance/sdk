@@ -221,8 +221,9 @@ export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 
 /**
  * Called on every update of the route. It receives the SDK's working copy of
- * the route: the same object on every call, which the SDK keeps changing
- * after the hook returns. Copy or serialize it before you store it.
+ * the route: the same object on every call of one execution, which the SDK
+ * keeps changing after the hook returns. Copy or serialize it before you
+ * store it.
  *
  * After `stopRouteExecution` it can still be called, but only to deliver the
  * transaction data (`txHash`, `txHex`, `taskId`, `txFinal`) of a task that
@@ -345,7 +346,8 @@ export type ExecutionAction = {
   txHex?: string
   /**
    * Set together with status `FAILED` when the outcome of this action's
-   * transaction is known and final (reverted, dropped, cancelled or replaced).
+   * transaction is known and final (failed or reverted on chain or at the
+   * relayer, cancelled, replaced, or dropped with proof).
    * A FAILED action without this flag has an unknown outcome and is re-checked
    * on resume instead of being signed again.
    */
