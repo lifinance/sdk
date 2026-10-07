@@ -6,6 +6,8 @@ import { readFileSync } from 'node:fs'
 const NOTICE_BYTES = 512
 const NOTICE_PERCENT = 1
 const BAR_CELLS = 10
+const CAUSE_MIN_BYTES = 200
+const CAUSE_TOP = 5
 
 const read = (path) => {
   try {
@@ -171,6 +173,56 @@ const baseNote = baseUsable
       }[BASE_OUTCOME] ?? 'No baseline was found'
     }, so changes are not shown. Budgets are still checked.\n\n`
 
+// Which packages explain a change, from the per-package minified bytes of both bundles.
+const cause = (row) => {
+  const before = row.before?.packages
+  const after = row.current.packages
+  if (!before || !after) {
+    return null
+  }
+  const changes = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .map((name) => ({
+      name,
+      from: before[name] ?? 0,
+      to: after[name] ?? 0,
+    }))
+    .map((change) => ({ ...change, delta: change.to - change.from }))
+    .filter((change) => Math.abs(change.delta) >= CAUSE_MIN_BYTES)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  if (!changes.length) {
+    return null
+  }
+  const parts = changes.slice(0, CAUSE_TOP).map(({ name, from, to, delta }) => {
+    if (!from) {
+      return `🆕 \`${name}\` ${signed(delta)}`
+    }
+    if (!to) {
+      return `➖ \`${name}\` ${signed(delta)}`
+    }
+    return `\`${name}\` ${signed(delta)}`
+  })
+  const rest = changes.length - CAUSE_TOP
+  return `${parts.join(', ')}${rest > 0 ? `, and ${rest} more` : ''}`
+}
+
+const causes = rows
+  .filter((r) => r.delta && (r.noticeable || r.overBudget))
+  .map((r) => {
+    const text = cause(r)
+    return text && `- **${r.group} · ${r.label}** (${signed(r.delta)}): ${text}`
+  })
+  .filter(Boolean)
+
+const causeSection = causes.length
+  ? [
+      '#### What changed',
+      '',
+      ...causes,
+      '',
+      '<sub>Per package, in minified bytes before compression. 🆕 = new in the bundle, ➖ = removed.</sub>',
+    ].join('\n')
+  : ''
+
 const footer = [
   '<details>',
   '<summary>How to read this</summary>',
@@ -197,7 +249,7 @@ process.stdout.write(
     '',
     verdict,
     '',
-    baseNote + sections.join('\n\n'),
+    baseNote + [...sections, causeSection].filter(Boolean).join('\n\n'),
     '',
     footer,
     '',
