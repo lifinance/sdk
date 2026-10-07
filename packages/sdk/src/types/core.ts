@@ -170,10 +170,15 @@ export interface StepExecutor {
   allowUserInteraction: boolean
   allowExecution: boolean
   setInteraction(settings?: InteractionSettings): void
+  /**
+   * @param signal Aborts when the execution stops. Only waits that start
+   * after the broadcast may use it (`StepExecutorBaseContext.signal`).
+   */
   executeStep(
     client: SDKClient,
     step: LiFiStepExtended,
-    retryParams?: ExecuteStepRetryParams
+    retryParams?: ExecuteStepRetryParams,
+    signal?: AbortSignal
   ): Promise<LiFiStepExtended>
 }
 
@@ -214,6 +219,18 @@ export type TransactionParameters = {
 
 export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
 
+/**
+ * Called on every update of the route. It receives the SDK's working copy of
+ * the route: the same object on every call of one execution, which the SDK
+ * keeps changing after the hook returns. Copy or serialize it before you
+ * store it.
+ *
+ * After `stopRouteExecution` it can still be called, but only to deliver the
+ * transaction data (`txHash`, `txHex`, `taskId`, `txFinal`) of a task that
+ * was still running at the stop, for example in an open wallet prompt. Store
+ * that data, so a resume waits for that transaction instead of signing
+ * again. If you deleted the route, ignore the call.
+ */
 export type UpdateRouteHook = (updatedRoute: RouteExtended) => void
 
 export interface TransactionRequestParameters extends TransactionParameters {
@@ -275,6 +292,11 @@ export type GetContractCallsHook = (
 
 export interface ExecutionOptions {
   acceptExchangeRateUpdateHook?: AcceptExchangeRateUpdateHook
+  /**
+   * Receives the route on every update, and after `stopRouteExecution` the
+   * late transaction data of a task that was still running. See
+   * {@link UpdateRouteHook}.
+   */
   updateRouteHook?: UpdateRouteHook
   updateTransactionRequestHook?: TransactionRequestUpdateHook
   getContractCalls?: GetContractCallsHook
@@ -315,7 +337,21 @@ export type ExecutionAction = {
   txLink?: string
   taskId?: string
   txType?: TransactionMethodType
+  /**
+   * Provider-specific serialized signed transaction (hex, XDR, base64 or JSON).
+   * Present while the transaction may still need to be (re)sent or looked up.
+   * Stellar keeps it, and Bitcoin keeps it unless every node refuses its first
+   * send; Solana, Tron and Sui clear it when no longer needed.
+   */
   txHex?: string
+  /**
+   * Set together with status `FAILED` when the outcome of this action's
+   * transaction is known and final (failed or reverted on chain or at the
+   * relayer, cancelled, replaced, or dropped with proof).
+   * A FAILED action without this flag has an unknown outcome and is re-checked
+   * on resume instead of being signed again.
+   */
+  txFinal?: boolean
   // Errors occured during the action execution (within tasks)
   error?: { code: string | number; message: string; htmlMessage?: string }
 }

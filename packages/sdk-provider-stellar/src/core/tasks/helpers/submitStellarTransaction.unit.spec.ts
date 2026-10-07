@@ -77,6 +77,9 @@ describe('submitStellarTransaction', () => {
     expect((thrown as TransactionError).code).toBe(
       LiFiErrorCode.TransactionFailed
     )
+    // The helper cannot tell a stale failover re-submit from a real rejection,
+    // so it never decides finality. The callers do, with classifySubmitFailure.
+    expect((thrown as TransactionError).final).toBe(false)
     expect(sendTransaction).toHaveBeenCalledTimes(1)
   })
 

@@ -14,6 +14,11 @@ export type SignatureStatus = NonNullable<
 /** What a single RPC branch is allowed to report. Failure is a throw. */
 export type ConfirmationOutcome<T> =
   | { kind: 'confirmed'; value: T }
+  /** The blockhash probe confirmed expiry: the transaction can no longer
+   * land after `slot`, the `isBlockhashValid` context slot of the verdict.
+   * The only outcome that may end in a final "dropped". */
+  | { kind: 'expired'; slot: bigint }
+  /** The wall-clock ceiling ended the observation without a verdict. */
   | { kind: 'not-confirmed' }
 
 export function isConfirmedCommitment(

@@ -4,6 +4,7 @@ import {
   type ExecuteStepRetryError,
   type ExecuteStepRetryParams,
   type ExecutionAction,
+  hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
   type SDKClient,
@@ -170,12 +171,13 @@ export class EthereumStepExecutor extends BaseStepExecutor {
         step,
         isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
       )
-      firstTask =
-        swapOrBridgeAction?.txHash || swapOrBridgeAction?.taskId
-          ? swapOrBridgeAction?.status === 'DONE'
-            ? EthereumWaitForTransactionStatusTask
-            : EthereumWaitForTransactionTask
-          : EthereumCheckBalanceTask
+      // Same predicate as the pre-sign guard: an open transaction is waited
+      // for, a FAILED action with a final outcome signs again.
+      firstTask = hasOpenTransaction(swapOrBridgeAction)
+        ? swapOrBridgeAction?.status === 'DONE'
+          ? EthereumWaitForTransactionStatusTask
+          : EthereumWaitForTransactionTask
+        : EthereumCheckBalanceTask
     }
 
     // Compare classes, not names: a minifier can give two task classes the

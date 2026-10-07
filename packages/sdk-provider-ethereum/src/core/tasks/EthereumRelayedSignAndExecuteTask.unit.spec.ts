@@ -2,6 +2,7 @@ import {
   LiFiErrorCode,
   type LiFiStep,
   type SignedTypedData,
+  StatusManager,
   type TypedData,
 } from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
@@ -23,8 +24,13 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   }
 })
 
+vi.mock('../../hyperliquid/agentWallet.js', () => ({
+  getOrCreateAgentWallet: vi.fn(),
+}))
+
 import { relayTransaction } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
+import { getOrCreateAgentWallet } from '../../hyperliquid/agentWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumRelayedSignAndExecuteTask } from './EthereumRelayedSignAndExecuteTask.js'
 
@@ -251,5 +257,188 @@ describe('EthereumRelayedSignAndExecuteTask.run', () => {
     )
     expect(signTypedData).not.toHaveBeenCalled()
     expect(relayTransaction).not.toHaveBeenCalled()
+  })
+})
+
+describe('EthereumRelayedSignAndExecuteTask.run transaction fields', () => {
+  it('clears the previous transaction fields when it writes the task id', async () => {
+    const context = buildContext()
+
+    await task.run(context)
+
+    const params = vi
+      .mocked(context.statusManager.updateAction)
+      .mock.calls.find(
+        ([, , status, update]) => status === 'PENDING' && !!update?.taskId
+      )?.[3]
+    expect(Object.keys(params ?? {})).toEqual(
+      expect.arrayContaining(['txHash', 'txLink', 'txHex', 'txFinal'])
+    )
+    expect(params).toMatchObject({
+      taskId: TASK_ID,
+      txType: 'relayed',
+      txLink: 'https://example.invalid/task',
+    })
+    expect(params?.txHash).toBeUndefined()
+    expect(params?.txFinal).toBeUndefined()
+  })
+})
+
+describe('EthereumRelayedSignAndExecuteTask.run second pre-sign guard', () => {
+  /** What an older run's late write merges into this action. */
+  const mergeOpenTransaction = (context: EthereumStepExecutorContext): void => {
+    vi.mocked(context.statusManager.findAction).mockReturnValue({
+      type: 'SWAP',
+      status: 'MESSAGE_REQUIRED',
+      taskId: `0x${'01'.repeat(32)}`,
+    } as never)
+  }
+
+  // An older run's late write can merge its transaction into this action
+  // during any await before a signature. The
+  // chain check of each entry is the last one.
+  it('checks the action again right before signTypedData and never calls it when a transaction merged meanwhile', async () => {
+    const context = buildContext()
+    vi.mocked(context.checkClient).mockImplementationOnce(async () => {
+      mergeOpenTransaction(context)
+      return { account: { address: FROM_ADDRESS } } as never
+    })
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(context.checkClient).toHaveBeenCalledTimes(1)
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(relayTransaction).not.toHaveBeenCalled()
+  })
+
+  it('checks the action again right before a Hyperliquid signature and never asks for it when a transaction merged meanwhile', async () => {
+    const agentSignTypedData = vi.fn()
+    vi.mocked(getOrCreateAgentWallet).mockResolvedValue({
+      account: { address: FROM_ADDRESS, signTypedData: agentSignTypedData },
+      needsApproval: true,
+      expiresAt: 1_900_000_000_000,
+    } as never)
+    const base = buildContext()
+    const context = {
+      ...base,
+      step: {
+        ...base.step,
+        tool: 'hyperliquidSpotProtocol',
+        typedData: [
+          {
+            primaryType: 'HyperliquidTransaction:ApproveAgent',
+            domain: { chainId: SOURCE_CHAIN },
+            types: {},
+            message: { agentAddress: FROM_ADDRESS, agentName: 'lifi' },
+          },
+          {
+            primaryType: 'Agent',
+            domain: { chainId: 1337 },
+            types: {},
+            message: { source: 'a', connectionId: `0x${'cc'.repeat(32)}` },
+          },
+        ],
+      },
+      fromChain: { id: SOURCE_CHAIN },
+      ethereumClient: { account: { address: FROM_ADDRESS } },
+      getStorage: () => ({}),
+    } as unknown as EthereumStepExecutorContext
+    vi.mocked(context.checkClient).mockImplementationOnce(async () => {
+      mergeOpenTransaction(context)
+      return { account: { address: FROM_ADDRESS } } as never
+    })
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(context.checkClient).toHaveBeenCalledTimes(1)
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(agentSignTypedData).not.toHaveBeenCalled()
+    expect(relayTransaction).not.toHaveBeenCalled()
+  })
+})
+
+describe('EthereumRelayedSignAndExecuteTask.run check before the relay', () => {
+  const MERGED_TASK_ID = `0x${'01'.repeat(32)}` as Hex
+  const MERGED_SIGNED_AT = 1_800_000_000_000
+
+  /**
+   * The task on a real `StatusManager` and a step with a SWAP action. Without
+   * route state, `allowUpdates(false)` keeps every write on the step.
+   */
+  const buildRealContext = (
+    options?: Parameters<typeof buildContext>[0]
+  ): EthereumStepExecutorContext => {
+    const statusManager = new StatusManager('route-1')
+    statusManager.allowUpdates(false)
+    const base = buildContext(options)
+    return {
+      ...base,
+      step: {
+        ...base.step,
+        execution: {
+          status: 'PENDING',
+          actions: [{ type: 'SWAP', status: 'STARTED' }],
+        },
+      },
+      statusManager,
+    } as unknown as EthereumStepExecutorContext
+  }
+
+  /** What the late write of an older, stopped run merges into the action. */
+  const mergeLateWrite = (context: EthereumStepExecutorContext): void => {
+    context.statusManager.updateAction(context.step, 'SWAP', 'PENDING', {
+      taskId: MERGED_TASK_ID,
+      txType: 'relayed',
+      txLink: 'https://example.invalid/merged',
+      signedAt: MERGED_SIGNED_AT,
+    })
+  }
+
+  const expectMergedTaskKept = (context: EthereumStepExecutorContext): void => {
+    expect(context.step.execution?.actions).toEqual([
+      expect.objectContaining({
+        type: 'SWAP',
+        taskId: MERGED_TASK_ID,
+        txType: 'relayed',
+        txLink: 'https://example.invalid/merged',
+      }),
+    ])
+    expect(context.step.execution?.signedAt).toBe(MERGED_SIGNED_AT)
+  }
+
+  // A stop during this run's prompt, then a resume: the older run relays
+  // while the newer prompt is open, and its late write merges the task id.
+  it('never relays when a task id merged while the wallet prompt was open', async () => {
+    const context = buildRealContext()
+    vi.mocked(signTypedData).mockImplementationOnce(async () => {
+      mergeLateWrite(context)
+      return SIGNATURE
+    })
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(signTypedData).toHaveBeenCalledTimes(1)
+    expect(relayTransaction).not.toHaveBeenCalled()
+    expectMergedTaskKept(context)
+  })
+
+  // Every entry signed already: no prompt runs a check, so only the one
+  // before the relay sees a task id merged during an earlier await.
+  it('never relays signatures it already holds when a task id merged meanwhile', async () => {
+    const context = buildRealContext({
+      typedData: [permit2Allowance()],
+      signedTypedData: [signedPermit2Allowance()],
+    })
+    mergeLateWrite(context)
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(signTypedData).not.toHaveBeenCalled()
+    expect(relayTransaction).not.toHaveBeenCalled()
+    expectMergedTaskKept(context)
   })
 })

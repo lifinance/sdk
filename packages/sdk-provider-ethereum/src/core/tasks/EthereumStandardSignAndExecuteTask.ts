@@ -1,5 +1,7 @@
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
+  CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
@@ -111,6 +113,11 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       )
     }
 
+    // Checked again right before the wallet: a late write of an older run
+    // can merge its transaction into this action during the awaits above
+    // (strategy, chain switch, permit prompt, gas estimate).
+    assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
     const txHash = await getAction(
       updatedClient,
       sendTransaction,
@@ -135,6 +142,9 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     )
 
     statusManager.updateAction(step, action.type, 'PENDING', {
+      // A new transaction: nothing of the previous one may survive, least of
+      // all its `txFinal` verdict.
+      ...CLEARED_TRANSACTION_FIELDS,
       txHash: resolvedTxHash,
       txLink: getTxLink(fromChain, resolvedTxHash),
       txType: 'standard',

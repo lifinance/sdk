@@ -77,7 +77,9 @@ export async function waitForSafeTransactionExecution(
           if (!tx.isSuccessful) {
             throw new TransactionError(
               LiFiErrorCode.TransactionFailed,
-              'Safe transaction failed.'
+              'Safe transaction failed.',
+              undefined,
+              { final: true }
             )
           }
           if (!tx.transactionHash) {
@@ -101,7 +103,9 @@ export async function waitForSafeTransactionExecution(
           if (replaced) {
             throw new TransactionError(
               LiFiErrorCode.TransactionCanceled,
-              'Safe transaction was replaced by another transaction.'
+              'Safe transaction was replaced by another transaction.',
+              undefined,
+              { final: true }
             )
           }
         }

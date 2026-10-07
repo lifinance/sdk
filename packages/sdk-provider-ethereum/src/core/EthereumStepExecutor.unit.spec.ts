@@ -1,4 +1,5 @@
 import type {
+  ExecutionAction,
   LiFiStepExtended,
   StepExecutorBaseContext,
   TaskPipeline,
@@ -46,10 +47,11 @@ const buildStep = (): LiFiStepExtended =>
 
 const buildContext = (options?: {
   isFromNativeToken?: boolean
+  isBridgeExecution?: boolean
 }): EthereumStepExecutorContext =>
   ({
     step: buildStep(),
-    isBridgeExecution: false,
+    isBridgeExecution: options?.isBridgeExecution ?? false,
     isFromNativeToken: options?.isFromNativeToken ?? false,
   }) as unknown as EthereumStepExecutorContext
 
@@ -97,6 +99,176 @@ describe('EthereumStepExecutor.createPipeline', () => {
     expect(permit2Allowance).toBeGreaterThan(-1)
     expect(prepare).toBeGreaterThan(-1)
     expect(permit2Allowance).toBeLessThan(prepare)
+  })
+})
+
+const TX_HASH = `0x${'ab'.repeat(32)}`
+
+const buildContextWithSwap = (
+  swapAction: Omit<ExecutionAction, 'type'>,
+  options?: { isFromNativeToken?: boolean }
+): EthereumStepExecutorContext => {
+  const context = buildContext(options)
+  context.step.execution!.actions = [{ type: 'SWAP', ...swapAction }]
+  return context
+}
+
+const buildContextWithBridge = (
+  bridgeAction: Omit<ExecutionAction, 'type'>,
+  options?: { isFromNativeToken?: boolean }
+): EthereumStepExecutorContext => {
+  const context = buildContext({ ...options, isBridgeExecution: true })
+  context.step.execution!.actions = [{ type: 'CROSS_CHAIN', ...bridgeAction }]
+  return context
+}
+
+describe('EthereumStepExecutor.createPipeline resume entry', () => {
+  it('signs again from EthereumCheckBalanceTask after a final failure (native token)', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap(
+          { status: 'FAILED', txHash: TX_HASH, txFinal: true },
+          { isFromNativeToken: true }
+        )
+      )
+    )
+
+    expect(names[0]).toBe('EthereumCheckBalanceTask')
+    expect(names).toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('re-checks permits and allowance after a final failure (ERC20)', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap({
+          status: 'FAILED',
+          txHash: TX_HASH,
+          txFinal: true,
+        })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumCheckPermitsTask')
+  })
+
+  it('signs again from EthereumCheckBalanceTask after a final batch or relay failure (taskId)', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap(
+          { status: 'FAILED', taskId: TX_HASH, txFinal: true },
+          { isFromNativeToken: true }
+        )
+      )
+    )
+
+    expect(names[0]).toBe('EthereumCheckBalanceTask')
+    expect(names).toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('waits for a FAILED transaction without txFinal instead of signing', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap({ status: 'FAILED', txHash: TX_HASH })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumWaitForTransactionTask')
+    expect(names).not.toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('waits for a pending batch or relay taskId', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap({ status: 'PENDING', taskId: TX_HASH })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumWaitForTransactionTask')
+  })
+
+  it('goes to the status wait once the transaction is DONE', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithSwap({ status: 'DONE', txHash: TX_HASH })
+      )
+    )
+
+    expect(names).toEqual(['EthereumWaitForTransactionStatusTask'])
+  })
+})
+
+describe('EthereumStepExecutor.createPipeline resume entry (bridge)', () => {
+  it('signs again from EthereumCheckBalanceTask after a final failure (native token)', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge(
+          { status: 'FAILED', txHash: TX_HASH, txFinal: true },
+          { isFromNativeToken: true }
+        )
+      )
+    )
+
+    expect(names[0]).toBe('EthereumCheckBalanceTask')
+    expect(names).toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('re-checks permits and allowance after a final failure (ERC20)', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge({
+          status: 'FAILED',
+          txHash: TX_HASH,
+          txFinal: true,
+        })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumCheckPermitsTask')
+  })
+
+  it('waits for a FAILED transaction without txFinal instead of signing', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge({ status: 'FAILED', txHash: TX_HASH })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumWaitForTransactionTask')
+    expect(names).not.toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('waits for a pending batch or relay taskId', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge({ status: 'PENDING', taskId: TX_HASH })
+      )
+    )
+
+    expect(names[0]).toBe('EthereumWaitForTransactionTask')
+  })
+
+  it('waits for an action with only stored bytes (txHex) instead of signing', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge(
+          { status: 'PENDING', txHex: '0x02f8' },
+          { isFromNativeToken: true }
+        )
+      )
+    )
+
+    expect(names[0]).toBe('EthereumWaitForTransactionTask')
+    expect(names).not.toContain('EthereumSignAndExecuteTask')
+  })
+
+  it('goes to the status wait once the transaction is DONE', () => {
+    const names = taskNames(
+      buildExecutor().createPipeline(
+        buildContextWithBridge({ status: 'DONE', txHash: TX_HASH })
+      )
+    )
+
+    expect(names).toEqual(['EthereumWaitForTransactionStatusTask'])
   })
 })
 

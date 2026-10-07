@@ -30,9 +30,11 @@ const {
 } = await import('./pollUntilDeadline.js')
 
 const reached = vi.fn<() => boolean>()
+const expiredAt = vi.fn<() => bigint | undefined>()
 const tick = vi.fn<() => Promise<void>>()
 const deadline: ConfirmationDeadline = {
   reached: () => reached(),
+  expiredAt: () => expiredAt(),
   tick: () => tick(),
 }
 
@@ -63,6 +65,7 @@ describe('pollUntilDeadline', () => {
     sleepCalls.length = 0
     sleepSignals.length = 0
     reached.mockReturnValue(false)
+    expiredAt.mockReturnValue(undefined)
     tick.mockResolvedValue(undefined)
   })
 
@@ -339,5 +342,75 @@ describe('pollUntilDeadline', () => {
       /stopped answering/i
     )
     expect(probe).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns expired with its slot when the blockhash verdict ended the loop', async () => {
+    // The only branch outcome that may end in a final "dropped". The ceiling
+    // alone says nothing about whether the transaction can still land.
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    probe.mockResolvedValue(null)
+
+    await expect(run()).resolves.toEqual({ kind: 'expired', slot: 900n })
+  })
+
+  it('reports the latest verdict slot when probing went on during the final probe', async () => {
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValueOnce(900n).mockReturnValue(905n)
+    probe.mockResolvedValue(null)
+
+    await expect(run()).resolves.toEqual({ kind: 'expired', slot: 905n })
+  })
+
+  it('returns not-confirmed when the verdict was withdrawn before the final probe finished', async () => {
+    // The detached loop keeps probing through the final probe. A blockhash
+    // that reads valid again clears the verdict, and a withdrawn verdict is
+    // no evidence of expiry.
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValueOnce(900n).mockReturnValue(undefined)
+    probe.mockResolvedValue(null)
+
+    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('does not upgrade a ceiling to an expiry that arrived during the final probe', async () => {
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValueOnce(undefined).mockReturnValue(900n)
+    probe.mockResolvedValue(null)
+
+    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
+  })
+
+  it('lets the final probe confirm over an expiry verdict', async () => {
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    probe.mockResolvedValue('ok')
+
+    await expect(run()).resolves.toEqual({ kind: 'confirmed', value: 'ok' })
+  })
+
+  it('keeps an expiry verdict when this RPC never accepted a send', async () => {
+    // Once the blockhash is dead every send may be rejected. The completed
+    // observation still outranks the send-failure signal.
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    probe.mockResolvedValue(null)
+
+    await expect(run({ neverBroadcast: () => true })).resolves.toEqual({
+      kind: 'expired',
+      slot: 900n,
+    })
+  })
+
+  it('throws instead of returning expired when no status read completed', async () => {
+    // The verdict ended the loop, so the loop body never ran, and the final
+    // probe failed. A blockhash verdict is not a status observation: without
+    // one completed read this RPC has no basis for any outcome.
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    probe.mockRejectedValue(new Error('read failed'))
+
+    await expect(run()).rejects.toThrow(/ever completed/i)
+    expect(probe).toHaveBeenCalledTimes(1)
   })
 })

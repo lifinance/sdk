@@ -11,7 +11,17 @@ export interface BitcoinProviderOptions {
   getWalletClient?: () => Promise<Client>
 }
 
-export interface BitcoinStepExecutorContext extends StepExecutorContext {
+export interface BitcoinTaskContext {
+  /**
+   * Set by the sign task after a send it counts as sent, so the wait task of
+   * the same run does not resend. Absent on a resume and on "Try again".
+   */
+  bitcoinSent?: boolean
+}
+
+export interface BitcoinStepExecutorContext
+  extends StepExecutorContext,
+    BitcoinTaskContext {
   walletClient: Client
   publicClient: PublicClient
   checkClient: (step: LiFiStepExtended) => void

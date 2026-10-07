@@ -11,9 +11,14 @@ import type { EthereumStepExecutorContext } from '../../../types.js'
 import { getDomainChainId } from '../../../utils/getDomainChainId.js'
 import { assertValidSignature } from '../../../utils/isValidSignature.js'
 
+/**
+ * `beforeSignature` runs right before each signature, the agent's included,
+ * after every await before it; it throws to stop the signing.
+ */
 export const signHyperliquidTypedData = async (
   context: EthereumStepExecutorContext,
-  allowanceTypedData: TypedData[]
+  allowanceTypedData: TypedData[],
+  beforeSignature?: () => void
 ): Promise<SignedTypedData[] | undefined> => {
   const {
     step,
@@ -63,6 +68,7 @@ export const signHyperliquidTypedData = async (
         return
       }
 
+      beforeSignature?.()
       const signature = await getAction(
         updatedClient,
         signTypedData,
@@ -85,6 +91,7 @@ export const signHyperliquidTypedData = async (
         return
       }
 
+      beforeSignature?.()
       const signature = await getAction(
         updatedClient,
         signTypedData,
@@ -99,6 +106,7 @@ export const signHyperliquidTypedData = async (
       assertValidSignature(signature)
       signedResults.push({ ...typedData, signature })
     } else if (isHyperliquidOrderMessage(typedData)) {
+      beforeSignature?.()
       const signature = await agentAccount.signTypedData({
         domain: typedData.domain,
         types: typedData.types,

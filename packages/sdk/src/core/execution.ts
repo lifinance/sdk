@@ -75,10 +75,21 @@ export const resumeRoute = async (
     }
   }
 
-  prepareRestart(route)
+  // Restart from a copy: the caller's route (e.g. an integrator's store) must
+  // only change through `updateRouteHook`.
+  const restartRoute = structuredClone<RouteExtended>(route)
+  prepareRestart(restartRoute)
 
-  return executeRoute(client, route, executionOptions)
+  return executeRoute(client, restartRoute, executionOptions)
 }
+
+/**
+ * True while `route` is the execution registered for its id. A stopped run
+ * keeps going until its step ends; it must not stop or delete a newer
+ * execution of the same route.
+ */
+const ownsExecution = (route: RouteExtended): boolean =>
+  executionState.get(route.id)?.route === route
 
 const executeSteps = async (
   client: SDKClient,
@@ -87,8 +98,9 @@ const executeSteps = async (
   // Loop over steps and execute them
   for (let index = 0; index < route.steps.length; index++) {
     const execution = executionState.get(route.id)
-    // Check if execution has stopped in the meantime
-    if (!execution) {
+    // Check if execution has stopped in the meantime. A newer execution of the
+    // same route id is not ours, also when our executor ignored the stop.
+    if (!execution || execution.route !== route) {
       break
     }
 
@@ -129,31 +141,57 @@ const executeSteps = async (
         routeId: route.id,
         executionOptions: execution.executionOptions,
       })
-      execution.executors.push(stepExecutor)
-
-      // Check if we want to execute this step in the background
-      if (execution.executionOptions) {
-        updateRouteExecution(route, execution.executionOptions)
+      // A stop during the await did not reach this executor, and a newer
+      // execution of the route may run now: do not start the step.
+      if (!ownsExecution(route)) {
+        return route
       }
-
+      // In flight until the step settles, the retry included: a stop keeps
+      // the records a late write of this run needs (`executionState`).
+      executionState.retain(route.id)
+      // Taken from this execution, not looked up again for the retry: a
+      // newer execution of the route id has its own.
+      const { signal } = execution.abortController
       let executedStep: LiFiStepExtended
       try {
-        executedStep = await stepExecutor.executeStep(client, step)
-      } catch (e) {
-        if (e instanceof ExecuteStepRetryError) {
-          step.execution = undefined
+        execution.executors.push(stepExecutor)
+
+        // Check if we want to execute this step in the background
+        if (execution.executionOptions) {
+          updateRouteExecution(route, execution.executionOptions)
+        }
+
+        try {
           executedStep = await stepExecutor.executeStep(
             client,
             step,
-            e.retryParams
+            undefined,
+            signal
           )
-        } else {
-          throw e
+        } catch (e) {
+          if (e instanceof ExecuteStepRetryError) {
+            // A stop ended this run while its first attempt ran: the replay
+            // would be new work on a stopped executor.
+            if (!stepExecutor.allowExecution) {
+              return route
+            }
+            step.execution = undefined
+            executedStep = await stepExecutor.executeStep(
+              client,
+              step,
+              e.retryParams,
+              signal
+            )
+          } else {
+            throw e
+          }
         }
+      } finally {
+        executionState.release(route.id)
       }
 
       // We may reach this point if user interaction isn't allowed. We want to stop execution until we resume it
-      if (executedStep.execution?.status !== 'DONE') {
+      if (executedStep.execution?.status !== 'DONE' && ownsExecution(route)) {
         stopRouteExecution(route)
       }
 
@@ -162,13 +200,17 @@ const executeSteps = async (
         return route
       }
     } catch (e) {
-      stopRouteExecution(route)
+      if (ownsExecution(route)) {
+        stopRouteExecution(route)
+      }
       throw e
     }
   }
 
   // Clean up after the execution
-  executionState.delete(route.id)
+  if (ownsExecution(route)) {
+    executionState.delete(route.id)
+  }
   return route
 }
 
@@ -220,6 +262,13 @@ export const stopRouteExecution = (route: Route): Route => {
     })
   }
   executionState.delete(route.id)
+  // The abort can run before or after the two steps above: its listeners
+  // only clear timers, drop the shared poll and reject promises, and the
+  // tasks handle the rejections after this function returns. The
+  // `setInteraction` loop must run before `executionState.delete`, because
+  // `StatusManager.allowUpdates(false)` keeps the route and hook from the
+  // execution state.
+  execution.abortController.abort()
   return execution.route
 }
 
