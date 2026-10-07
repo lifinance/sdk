@@ -1,5 +1,14 @@
 name: Bundle size
 
+# Jobs and their privileges:
+#   head     PR build + measurement         read-only, runs PR code
+#   base     base commit measurement        read-only, runs PR code. Cached per base commit,
+#                                           and warmed by the push trigger below.
+#   report   builds the markdown            read-only, runs PR code
+#   comment  posts the sticky PR comment    pull-requests: write, runs NO PR code
+#
+# head and base run in parallel. A cache hit makes `base` take a few seconds.
+
 on:
   pull_request:
     paths-ignore:
@@ -9,88 +18,207 @@ on:
       - '.editorconfig'
     branches:
       - main
+  # Measures main after every merge, so PRs usually find their base in the cache.
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.editorconfig'
 
 permissions:
   contents: read
 
 concurrency:
-  group: bundle-size-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: bundle-size-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  size:
+  head:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The PR merge commit is checked out. Its first parent is the exact base commit.
-          fetch-depth: 2
           # The job runs PR-controlled build code, so the token must not stay in .git/config.
           persist-credentials: false
-      - name: Find the base commit
-        id: base
-        # HEAD is the PR merge commit, so its first parent is the exact base.
-        run: echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
       - name: Install dependencies
         uses: ./.github/actions/pnpm-install
-        with:
-          # This job can write PR comments, so it must not restore a shared cache.
-          cache: 'false'
       - name: Build PR
         run: pnpm build
       - name: Measure PR
-        id: head
         run: |
+          mkdir -p out
           set +e
-          node scripts/size-measure.mjs . "$RUNNER_TEMP/head.json"
-          echo "status=$?" >> "$GITHUB_OUTPUT"
+          node scripts/size-measure.mjs . out/head.json
+          echo "$?" > out/status
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !cancelled() }}
+        with:
+          name: size-head
+          path: out
+          if-no-files-found: ignore
+
+  base:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      outcome: ${{ steps.result.outputs.outcome }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # On a PR, HEAD is the merge commit and HEAD^1 is the exact base.
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Find the commit to measure
+        id: target
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            echo "sha=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Restore the cached measurement
+        id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/base.json
+          # The key includes the checks, so a PR that changes them measures the base again.
+          key: bundle-size-base-${{ steps.target.outputs.sha }}-${{ hashFiles('.size-limit.json', 'scripts/size-measure.mjs') }}
+      - name: Set up pnpm
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - name: Set up Node.js
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+          cache: pnpm
+      - name: Install the size tooling only
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          HUSKY: '0'
+        # The tooling comes from this checkout. The workspace packages are installed below,
+        # in the base worktree.
+        run: pnpm install --frozen-lockfile --prefer-offline --filter .
       - name: Build base
         id: base_build
+        if: steps.cache.outputs.cache-hit != 'true'
         # A broken base only means "no baseline". The report and budgets still run.
         continue-on-error: true
         env:
           HUSKY: '0'
-          BASE_SHA: ${{ steps.base.outputs.sha }}
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
         run: |
-          git worktree add "$RUNNER_TEMP/base" "$BASE_SHA"
+          git worktree add "$RUNNER_TEMP/base" "$TARGET_SHA"
           cd "$RUNNER_TEMP/base"
           pnpm install --frozen-lockfile --prefer-offline
           pnpm build
       - name: Measure base
-        # A half-built base would give a misleading baseline, so skip it.
-        if: steps.base_build.outcome == 'success'
-        # The base is measured with the PR's checks. Checks for files the base lacks are skipped.
-        run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" --ignore-missing || true
-      - name: Build report
-        id: report
-        # Also run when a build failed, so the PR comment never shows a stale result.
+        if: steps.cache.outputs.cache-hit != 'true' && steps.base_build.outcome == 'success'
+        # The base is measured with this checkout's checks. Checks for files the base lacks are skipped.
+        run: |
+          mkdir -p out
+          node scripts/size-measure.mjs "$RUNNER_TEMP/base" out/base.json --ignore-missing || true
+      - name: Save the measurement
+        if: steps.cache.outputs.cache-hit != 'true' && hashFiles('out/base.json') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: out/base.json
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+      - name: Record the outcome
+        id: result
         if: ${{ !cancelled() }}
         env:
-          BASE_SHA: ${{ steps.base.outputs.sha }}
+          OUTCOME: ${{ steps.cache.outputs.cache-hit == 'true' && 'success' || steps.base_build.outcome }}
+        run: echo "outcome=$OUTCOME" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        with:
+          name: size-base
+          path: out/base.json
+          if-no-files-found: ignore
+
+  report:
+    needs: [head, base]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          name: size-head
+          path: out/head
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        continue-on-error: true
+        with:
+          name: size-base
+          path: out/base
+      - name: Build report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BASE_BUILD_OUTCOME: ${{ steps.base_build.outcome }}
+          BASE_BUILD_OUTCOME: ${{ needs.base.outputs.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          node scripts/size-report.mjs "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json" > "$RUNNER_TEMP/size.md.tmp"
-          mv "$RUNNER_TEMP/size.md.tmp" "$RUNNER_TEMP/size.md"
-          cat "$RUNNER_TEMP/size.md" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p out/report
+          node scripts/size-report.mjs out/base/base.json out/head/head.json > out/report/size.md.tmp
+          mv out/report/size.md.tmp out/report/size.md
+          cat out/report/size.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: size-report
+          path: out/report/size.md
+      - name: Enforce budgets
+        if: ${{ !cancelled() }}
+        run: |
+          STATUS="$(cat out/head/status 2>/dev/null || true)"
+          if [ "$STATUS" = "0" ]; then
+            exit 0
+          elif [ -z "$STATUS" ]; then
+            echo "::error::The PR build or the size measurement did not complete. See the 'head' job."
+          elif [ "$STATUS" = "1" ]; then
+            echo "::error::A bundle size budget is exceeded, or a check produced no output. See the job summary or the PR comment."
+          else
+            echo "::error::The size measurement failed (exit $STATUS). See the 'Measure PR' step log."
+          fi
+          exit 1
+
+  comment:
+    needs: report
+    # Fork PRs get a read-only token and no comment. They still get the job summary.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      # This job runs no PR code. It only posts the markdown that `report` produced.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        id: download
+        continue-on-error: true
+        with:
+          name: size-report
+          path: out
       - name: Post or update the PR comment
-        # Fork PRs get a read-only token. They still get the job summary above.
-        # Bot PRs (Dependabot, Renovate) also get a read-only token, so a failed comment
-        # must not hide the budget result.
-        if: ${{ !cancelled() && steps.report.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository }}
+        if: steps.download.outcome == 'success'
+        # Bot PRs (Dependabot, Renovate) also get a read-only token, so a failed
+        # comment must not hide the budget result.
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: bundle-size
-          path: ${{ runner.temp }}/size.md
-      - name: Replace the comment when the report failed
+          path: out/size.md
+      - name: Replace the comment when there is no report
         # Otherwise the comment from an earlier push would show an outdated result.
-        if: ${{ !cancelled() && steps.report.outcome == 'failure' && github.event.pull_request.head.repo.full_name == github.repository }}
+        if: steps.download.outcome != 'success'
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
@@ -99,16 +227,3 @@ jobs:
             ## 📦 Bundle size
 
             ❌ **The report could not be built for this commit.** See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-      - name: Enforce budgets
-        if: ${{ !cancelled() && steps.head.outputs.status != '0' }}
-        env:
-          STATUS: ${{ steps.head.outputs.status }}
-        run: |
-          if [ -z "$STATUS" ]; then
-            echo "::error::The PR build or the size measurement did not complete. See the earlier steps."
-          elif [ "$STATUS" = "1" ]; then
-            echo "::error::A bundle size budget is exceeded, or a check produced no output. See the job summary or the PR comment."
-          else
-            echo "::error::The size measurement failed (exit $STATUS). See the 'Measure PR' step log."
-          fi
-          exit 1
