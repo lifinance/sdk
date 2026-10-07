@@ -1,6 +1,7 @@
 packages:
   - packages/*
 allowBuilds:
+  esbuild: false
   msw: true
   nx: true
 minimumReleaseAgeExclude:
