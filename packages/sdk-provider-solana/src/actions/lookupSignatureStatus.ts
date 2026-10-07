@@ -155,7 +155,7 @@ function callWithin<T>(
  * one that landed before the transaction could, and one from a confirmed
  * block at or after the expiry. The `null` counts only when that response
  * knows both canaries and its head is at or past the last slot the
- * transaction could land in (spec 4.2.8).
+ * transaction could land in.
  *
  * Takes at most `COVERAGE_PROOF_TIMEOUT_MS + CANARY_CALL_TIMEOUT_MS` for
  * the proof search and `SIGNATURE_LOOKUP_TIMEOUT_MS` for the status

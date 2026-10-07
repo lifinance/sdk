@@ -104,8 +104,7 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
     try {
       txSignature = readSignature(signedTransactions[0])
     } catch (error) {
-      // Nothing left the SDK: the bytes go, so "Try again" signs again
-      // (spec 4.2.9).
+      // Nothing left the SDK: the bytes go, so "Try again" signs again.
       clearStoredTransactions(context, action)
       throw error
     }
@@ -127,8 +126,8 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
 
 /**
  * Submits the signed bundle once, confirms it and applies the result rules
- * (spec 4.4.6), on the first run and on a resume alike. A bundle lands whole
- * or not at all, so the first transaction's signature stands for it.
+ * of `sendAndSettle`, on the first run and on a resume alike. A bundle lands
+ * whole or not at all, so the first transaction's signature stands for it.
  */
 function sendSigned(
   context: SolanaStepExecutorContext,
@@ -149,9 +148,8 @@ function sendSigned(
     signature,
     send: async (): Promise<RaceResult<BundleConfirmation>> => {
       // Read right before the one submission: a bundle without its own
-      // expiry goes out only inside the resend age cap (spec 4.2.8). Past
-      // it nothing is sent, and the outcome stays unknown until the dropped
-      // rule holds.
+      // expiry goes out only inside the resend age cap. Past it nothing is
+      // sent, and the outcome stays unknown until the dropped rule holds.
       if (!canResendStored(lifetimes, step.execution?.signedAt)) {
         return {
           kind: 'not-confirmed',

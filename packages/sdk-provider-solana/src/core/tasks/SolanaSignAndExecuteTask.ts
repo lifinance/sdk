@@ -118,9 +118,9 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // The previous transaction's fields (`CLEARED_TRANSACTION_FIELDS`:
     // `txHash`, `txLink`, `txHex`, `txFinal`, `taskId`) are cleared
     // explicitly. Only a final failure reaches this task with them set, and a
-    // stale hash would look open again once its `txFinal` is gone (spec
-    // 4.2.1). This write runs BEFORE the decode below, which can throw on a
-    // malformed wallet output and would otherwise strand the old fields.
+    // stale hash would look open again once its `txFinal` is gone. This write
+    // runs BEFORE the decode below, which can throw on a malformed wallet
+    // output and would otherwise strand the old fields.
     statusManager.updateAction(step, action.type, 'PENDING', {
       ...CLEARED_TRANSACTION_FIELDS,
       signedAt: Date.now(),
@@ -134,9 +134,9 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     )
 
     // Every transaction must carry its fee payer signature before its bytes
-    // are stored (spec 4.2.9): an unreadable value would fail every resume
-    // the same way. Nothing has been sent yet, so the `TransactionUnprepared`
-    // this throws leaves "Try again" free to sign again.
+    // are stored: an unreadable value would fail every resume the same way.
+    // Nothing has been sent yet, so the `TransactionUnprepared` this throws
+    // leaves "Try again" free to sign again.
     for (const signedTransaction of signedTransactions) {
       readSignature(signedTransaction)
     }

@@ -44,8 +44,8 @@ interface Canaries {
 }
 
 /**
- * True only when the digest can no longer land and no source knows it
- * (spec 4.2.8):
+ * True only when the digest can no longer land and no source knows it (see
+ * the resume rules in `transactionState.ts`):
  * (a) the resend age cap has passed, so the SDK never sends the bytes again.
  *     An unknown signing time never drops, and nor does one in the future:
  *     a refused resend does not mean that the cap passed;

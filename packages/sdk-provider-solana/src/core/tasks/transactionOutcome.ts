@@ -36,7 +36,7 @@ export function getTxLink(
  * chain rejects it once the blockhash dies, and the deadline's probe tells
  * when. Anything else - a durable nonce, a lifetime that did not decode -
  * only inside the resend age cap, so a page load hours later cannot execute
- * a swap on an old quote (spec 4.2.8).
+ * a swap on an old quote.
  */
 export function canResendStored(
   lifetimes: TransactionLifetime[],
@@ -50,8 +50,8 @@ export function canResendStored(
 }
 
 /**
- * Condition (a) of the dropped rule (spec 4.2.8): the chain says the
- * transaction can no longer land.
+ * Condition (a) of the dropped rule in `resolveUnconfirmed`: the chain says
+ * the transaction can no longer land.
  *
  * - An `expired` verdict: the blockhash probe saw it dead.
  * - Without a verdict, `isOldEnoughToDrop` for every lifetime. For a
@@ -89,9 +89,9 @@ export function failureOf(
 }
 
 /**
- * Result rule for a transaction the chain has (spec 4.4.6): writes `txHash`
- * and `txLink`, clears the stored bytes, then completes - or throws the
- * final `TransactionFailed` for one that failed on chain.
+ * Result rule for a transaction the chain has: writes `txHash` and `txLink`,
+ * clears the stored bytes, then completes - or throws the final
+ * `TransactionFailed` for one that failed on chain.
  *
  * The hash is written for a failed transaction too: it exists on chain, and
  * a resume that found it by lookup has no `txHash` yet.
@@ -132,12 +132,12 @@ export function recordLanded(
  * (returns its status), dropped (throws a final `TransactionExpired`), or
  * unknown (rethrows `error`, the error the task built for today's outcome).
  *
- * Dropped (spec 4.2.8) = (a) `cannotLandAnymore`, AND (b) a lookup that
- * proves the absence - a covering RPC whose head is past the landing window
- * answered `null` in the same response, and no RPC has the transaction - AND
- * (c) the status API does not know the hash. The status API only vetoes: it
- * answers 404 for landed transactions it does not index too, so a miss there
- * proves nothing.
+ * Dropped (see the resume rules in `transactionState.ts`) = (a)
+ * `cannotLandAnymore`, AND (b) a lookup that proves the absence - a covering
+ * RPC whose head is past the landing window answered `null` in the same
+ * response, and no RPC has the transaction - AND (c) the status API does not
+ * know the hash. The status API only vetoes: it answers 404 for landed
+ * transactions it does not index too, so a miss there proves nothing.
  */
 export async function resolveUnconfirmed(
   context: SolanaStepExecutorContext,
@@ -198,8 +198,8 @@ export async function resolveUnconfirmed(
 }
 
 /**
- * The send-and-settle tail both wait tasks share (spec 4.4.6): runs `send`,
- * then applies the result rules to what it reports.
+ * The send-and-settle tail both wait tasks share: runs `send`, then applies
+ * the result rules to what it reports.
  *
  * - A confirmation goes to `recordLanded`, with `confirmedFailure` reading
  *   its on-chain failure.

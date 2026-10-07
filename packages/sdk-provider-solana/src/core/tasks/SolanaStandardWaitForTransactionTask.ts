@@ -89,8 +89,7 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
       lifetime = await getTransactionLifetime(signedTransaction)
     } catch (error) {
       // Nothing left the SDK: the bytes go, so "Try again" signs again
-      // instead of resending a transaction that failed before it was sent
-      // (spec 4.2.9).
+      // instead of resending a transaction that failed before it was sent.
       clearStoredTransactions(context, action)
       throw error
     }
@@ -105,8 +104,8 @@ export class SolanaStandardWaitForTransactionTask extends BaseStepExecutionTask 
 }
 
 /**
- * Sends one signed transaction, confirms it and applies the result rules
- * (spec 4.4.6), on the first run and on a resume alike.
+ * Sends one signed transaction, confirms it and applies the result rules of
+ * `sendAndSettle`, on the first run and on a resume alike.
  */
 function sendSigned(
   context: SolanaStepExecutorContext,

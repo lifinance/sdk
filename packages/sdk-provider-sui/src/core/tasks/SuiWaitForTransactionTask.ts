@@ -175,7 +175,7 @@ async function findSuiTransaction(
 /**
  * Re-executes the stored bytes. `callSuiWithRetry` tries the nodes one by
  * one, so the age cap is checked before every try, and each try aborts when
- * the cap passes (spec 4.2.8). Past the cap it throws a plain error, which is
+ * the cap passes. Past the cap it throws a plain error, which is
  * not a definite rejection, so the outcome stays unknown.
  *
  * Not `AbortSignal.timeout`: a published SDK should not raise its runtime

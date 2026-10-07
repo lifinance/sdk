@@ -38,7 +38,7 @@ export async function sendAndConfirmTransaction(
      * Asked before every send, the resends included. `false` refuses the
      * send as a failed one, and polling goes on. The wait tasks close it at
      * the resend age cap, so stored bytes without their own expiry are never
-     * sent past it (spec 4.2.8).
+     * sent past it.
      */
     mayResend?: () => boolean
   }

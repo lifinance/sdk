@@ -23,7 +23,7 @@ interface LandingWindow {
 
 /**
  * True only when the transaction can no longer land and no source knows it
- * (spec 4.2.8):
+ * (see the resume rules in `transactionState.ts`):
  * (a) it can no longer land: with a stored transaction, a node's head is past
  *     `raw_data.expiration` (block time, not `Date.now()`, so a wrong local
  *     clock cannot expire it); without one (routes stored before `txHex`),

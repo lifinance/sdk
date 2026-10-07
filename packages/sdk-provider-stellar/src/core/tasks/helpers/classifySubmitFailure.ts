@@ -66,7 +66,7 @@ const getLandingWindow = (
 
 /**
  * Decides whether a failed submission is a final outcome, and returns the error
- * to throw (spec 4.2.8 and 4.3).
+ * to throw (see the resume rules in `transactionState.ts`).
  *
  * Only a rejection can be final: `submitStellarTransaction` throws
  * `TransactionFailed` for a status other than PENDING, DUPLICATE or

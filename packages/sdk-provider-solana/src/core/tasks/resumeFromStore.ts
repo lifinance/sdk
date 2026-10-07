@@ -54,7 +54,7 @@ function readResumeSource(
     }
     // The sign task stores only bytes that decode, so these were damaged
     // after the write - by the integrator's storage, say. They would fail
-    // every resume the same way (spec 4.2.9).
+    // every resume the same way.
     clearStoredTransactions(context, action)
   }
 
@@ -72,8 +72,8 @@ function readResumeSource(
 }
 
 /**
- * Resume mode of both wait tasks (spec 4.4.5): the sign task did not run in
- * this session, so the transaction comes from the action.
+ * Resume mode of both wait tasks: the sign task did not run in this session,
+ * so the transaction comes from the action.
  *
  * 1. Look the signature up on every RPC. A confirmed status goes straight to
  *    the result rules: the transaction may have landed after the page closed.
