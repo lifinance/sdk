@@ -133,6 +133,9 @@ if (head.length === 0) {
   verdict = `⚠️ **${grew.length} ${grew.length === 1 ? 'check grew' : 'checks grew'}** by more than ${NOTICE_PERCENT}% and ${NOTICE_BYTES} B.`
 } else if (shrank.length) {
   verdict = `🎉 **Smaller bundles.** ${shrank.length} ${shrank.length === 1 ? 'check shrank' : 'checks shrank'}, none grew.`
+} else if (!baseUsable) {
+  verdict =
+    '✅ **Within budget.** There is no baseline, so changes are not compared.'
 } else {
   verdict = '✅ **No significant changes.** Every check is within budget.'
 }

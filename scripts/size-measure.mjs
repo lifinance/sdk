@@ -20,7 +20,10 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+// The repo root holds .size-limit.json and the size-limit install, whatever the cwd.
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const [root, out, ...flags] = process.argv.slice(2)
 if (!root || !out) {
   console.error(
@@ -31,12 +34,12 @@ if (!root || !out) {
 
 let checks
 try {
-  checks = JSON.parse(readFileSync('.size-limit.json', 'utf8')).map(
-    (check) => ({
-      ...check,
-      path: resolve(root, check.path),
-    })
-  )
+  checks = JSON.parse(
+    readFileSync(join(repoRoot, '.size-limit.json'), 'utf8')
+  ).map((check) => ({
+    ...check,
+    path: resolve(root, check.path),
+  }))
 } catch (error) {
   console.error(`Cannot read .size-limit.json: ${error.message}`)
   process.exit(2)
@@ -56,6 +59,7 @@ try {
       'pnpm',
       ['exec', 'size-limit', '--config', configPath, '--json', ...extraArgs],
       {
+        cwd: repoRoot,
         encoding: 'utf8',
         maxBuffer: 64 * 1024 * 1024,
         timeout: 10 * 60 * 1000,

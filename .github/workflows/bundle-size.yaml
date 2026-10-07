@@ -66,6 +66,7 @@ jobs:
         # The base is measured with the PR's checks. Checks for files the base lacks are skipped.
         run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" --ignore-missing || true
       - name: Build report
+        id: report
         # Also run when a build failed, so the PR comment never shows a stale result.
         if: ${{ !cancelled() }}
         env:
@@ -74,13 +75,14 @@ jobs:
           BASE_BUILD_OUTCOME: ${{ steps.base_build.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          node scripts/size-report.mjs "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json" > "$RUNNER_TEMP/size.md"
+          node scripts/size-report.mjs "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json" > "$RUNNER_TEMP/size.md.tmp"
+          mv "$RUNNER_TEMP/size.md.tmp" "$RUNNER_TEMP/size.md"
           cat "$RUNNER_TEMP/size.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Post or update the PR comment
         # Fork PRs get a read-only token. They still get the job summary above.
         # Bot PRs (Dependabot, Renovate) also get a read-only token, so a failed comment
         # must not hide the budget result.
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ !cancelled() && steps.report.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
@@ -91,7 +93,9 @@ jobs:
         env:
           STATUS: ${{ steps.head.outputs.status }}
         run: |
-          if [ "$STATUS" = "1" ]; then
+          if [ -z "$STATUS" ]; then
+            echo "::error::The PR build or the size measurement did not complete. See the earlier steps."
+          elif [ "$STATUS" = "1" ]; then
             echo "::error::A bundle size budget is exceeded, or a check produced no output. See the job summary or the PR comment."
           else
             echo "::error::The size measurement failed (exit $STATUS). See the 'Measure PR' step log."
