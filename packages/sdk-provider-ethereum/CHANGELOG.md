@@ -1,5 +1,20 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.7
+
+### Patch Changes
+
+- [#510](https://github.com/lifinance/sdk/pull/510) [`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.3, @stellar/stellar-sdk to 17.2.1,
+  @mysten/sui to 2.35.0, @lifi/types to 18.13.0 and @bigmi/core to 0.9.3.
+
+- [#509](https://github.com/lifinance/sdk/pull/509) [`34ecf9c`](https://github.com/lifinance/sdk/commit/34ecf9c4dcfa54cb2e60cacc931257fdc700c682) Thanks [@chybisov](https://github.com/chybisov)! - Concurrent first calls for a chain now share one public client instead of each building one. With `fallbackTransportConfig.rank` set, each extra client also ran its own transport ranking loop that never stopped.
+
+- [#503](https://github.com/lifinance/sdk/pull/503) [`c7f1d3b`](https://github.com/lifinance/sdk/commit/c7f1d3b9fdf88f75a0dcbe49f0cc1de139368a02) Thanks [@chybisov](https://github.com/chybisov)! - Send the token approval when a step only turns out to be relayed at `/stepTransaction`. With an EIP-5792 wallet, a step that carries no typed data and no `executionType: 'message'` at routes time looks batchable, so the allowance tasks prepared the approval for a batch. When `/stepTransaction` then answered with typed data only, the relayer path ran: a queued approve was dropped without an error while `SET_ALLOWANCE` read `DONE`, and an allowance already found sufficient for the batch spender could be the wrong one for the relayed lane, which pulls through Permit2. Prepare now checks whether the work done for the batch still holds in the strategy the re-quote establishes, against the spender the allowance check recorded. If it does not, the step replays once in that strategy, before anything reaches the wallet, and the allowance tasks derive the spender again and send the approve as its own transaction. If the replay's re-quote changes the strategy again, the step fails with `TransactionUnprepared`, and a wallet that declines the EIP-7702 upgrade during a replay fails the step instead of asking for a second retry.
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Mark reverted, cancelled, replaced and relayed-failed transactions as final so "Try again" signs a new transaction, while any other failure after broadcast is re-checked instead. The sign task refuses to sign while the step has an open transaction. The relayed sign task checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is not relayed. The wait for a relayed transaction now ends after 24 hours (before, a task that stayed PENDING was polled every 5 seconds forever) and at once after `stopRouteExecution`; neither end is a final outcome, so the action keeps its task id and "Try again" waits for the same task instead of signing again. After `stopRouteExecution`, the wait ends without a write to the route, and the run's `executeRoute` promise resolves with the route, as for the `/status` wait. A resume waits on the lane that sent the open transaction, as stored in the action's `txType`, so a relayed step without a `transactionRequest` waits for its relayer task again, not for a transaction receipt or a wallet call bundle. A Safe wallet is not covered: the hash is stored only after the Safe transaction executes, so a resume during that wait, or after its 24-hour timeout, still creates a second proposal (unchanged).
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.2.6
 
 ### Patch Changes

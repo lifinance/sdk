@@ -1,5 +1,18 @@
 # @lifi/sdk-provider-sui
 
+## 4.2.8
+
+### Patch Changes
+
+- [#510](https://github.com/lifinance/sdk/pull/510) [`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.3, @stellar/stellar-sdk to 17.2.1,
+  @mysten/sui to 2.35.0, @lifi/types to 18.13.0 and @bigmi/core to 0.9.3.
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Resume a signed or executed transaction instead of signing again. Signing and execution are split (same `signer.signTransaction` call), the signed bytes are stored in `txHex` before execution, and the digest is stored right after it, also for a failed execution. The sign task checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is neither stored nor executed. Stored bytes are re-executed only within two minutes of signing. After a node refuses the first execution, "Try again" cannot sign a new transaction until about 17 minutes after signing (the two-minute resend window, a 10-minute clock skew margin and a 5-minute head margin): no node can prove the transaction absent before then. The digest lookup and the absence-proof calls of a resume give each node 10 seconds to answer, so a hung node cannot hold the route: a node that does not answer in time counts as failed and the next node is asked; when no node answers, the outcome stays unknown. The final wait keeps its 60-second limit per node. A stored zkLogin signature cannot be verified offline, so such a route is never resent or declared dropped and stays unknown (the user deletes the route). A failed execution now reports the chain's error message instead of `[object Object]`. A wallet rejection is recognized at the signing call; a node message that contains "reject" is no longer reported as `SignatureRejected`, and an SDK error keeps its own code.
+
+- [#509](https://github.com/lifinance/sdk/pull/509) [`34ecf9c`](https://github.com/lifinance/sdk/commit/34ecf9c4dcfa54cb2e60cacc931257fdc700c682) Thanks [@chybisov](https://github.com/chybisov)! - Sui calls and `getSuiBalance` now use only the RPC URLs of their own SDK client. A call no longer tries every Sui RPC URL that any SDK client in the process has used, and two SDK clients no longer share an in-flight balance read; either could send a request to another tenant's URL and API key. The Sui client cache now holds at most 64 clients.
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.2.7
 
 ### Patch Changes

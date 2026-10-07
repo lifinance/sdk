@@ -1,5 +1,16 @@
 # @lifi/sdk-provider-stellar
 
+## 4.3.8
+
+### Patch Changes
+
+- [#510](https://github.com/lifinance/sdk/pull/510) [`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.3, @stellar/stellar-sdk to 17.2.1,
+  @mysten/sui to 2.35.0, @lifi/types to 18.13.0 and @bigmi/core to 0.9.3.
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Mark a FAILED result, and a rejected submission that the network confirms it never applied, as final so "Try again" signs a new transaction; any other failure after signing is re-checked instead. The check that the network never applied a rejected submission gives each RPC 10 seconds to answer; a node that does not answer in time gives no information, as a failed request does, so a hung node cannot hold this check. The sign task refuses to sign while the step has an open transaction. It checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is neither stored nor submitted.
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.3.7
 
 ### Patch Changes

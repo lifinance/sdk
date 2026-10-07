@@ -1,5 +1,0 @@
----
-"@lifi/sdk-provider-ethereum": patch
----
-
-Send the token approval when a step only turns out to be relayed at `/stepTransaction`. With an EIP-5792 wallet, a step that carries no typed data and no `executionType: 'message'` at routes time looks batchable, so the allowance tasks prepared the approval for a batch. When `/stepTransaction` then answered with typed data only, the relayer path ran: a queued approve was dropped without an error while `SET_ALLOWANCE` read `DONE`, and an allowance already found sufficient for the batch spender could be the wrong one for the relayed lane, which pulls through Permit2. Prepare now checks whether the work done for the batch still holds in the strategy the re-quote establishes, against the spender the allowance check recorded. If it does not, the step replays once in that strategy, before anything reaches the wallet, and the allowance tasks derive the spender again and send the approve as its own transaction. If the replay's re-quote changes the strategy again, the step fails with `TransactionUnprepared`, and a wallet that declines the EIP-7702 upgrade during a replay fails the step instead of asking for a second retry.
