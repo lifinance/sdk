@@ -11,7 +11,7 @@
     "@lifi/data-types": "^7.1.6",
     "@lifi/sdk": "^4.10.0",
     "@lifi/sdk-provider-ethereum": "^4.2.6",
-    "dotenv": "^18.0.5",
+    "dotenv": "^18.0.6",
     "viem": "^2.57.3"
   },
   "scripts": {

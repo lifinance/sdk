@@ -213,8 +213,8 @@ importers:
   packages/sdk:
     dependencies:
       '@lifi/types':
-        specifier: ^18.12.1
-        version: 18.12.1
+        specifier: ^18.13.0
+        version: 18.13.0
     devDependencies:
       '@lifi/data-types':
         specifier: ^7.1.6
@@ -244,8 +244,8 @@ importers:
   packages/sdk-provider-bitcoin:
     dependencies:
       '@bigmi/core':
-        specifier: ^0.9.2
-        version: 0.9.2(bs58@6.0.0)(typescript@7.0.2)
+        specifier: ^0.9.3
+        version: 0.9.3(bs58@6.0.0)(typescript@7.0.2)
       '@bitcoinerlab/secp256k1':
         specifier: ^2.0.0
         version: 2.0.0
@@ -377,8 +377,8 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       '@mysten/sui':
-        specifier: ^2.34.0
-        version: 2.34.0(typescript@7.0.2)
+        specifier: ^2.35.0
+        version: 2.35.0(typescript@7.0.2)
     devDependencies:
       '@lifi/data-types':
         specifier: ^7.1.6
@@ -509,8 +509,8 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@bigmi/core@0.9.2':
-    resolution: {integrity: sha512-b0CpRJ9FrAXaSnNc/QhSaUqbwVMn5mEA04khPGHrsmTMEQ0p5wwwKUooYK4sEhrnj7sPjBhg2j3DUMV+tmS1Sg==}
+  '@bigmi/core@0.9.3':
+    resolution: {integrity: sha512-H7Scul3cYPlcdyMdwHaYpTNQEL37on2AX5WiZkb7/K73xIltyX6MlqysfaplO8ZaURWucKbdEc6MWwwbVRdJiA==}
     peerDependencies:
       bs58: ^6.0.0
 
@@ -836,8 +836,8 @@ packages:
   '@lifi/data-types@7.1.6':
     resolution: {integrity: sha512-3WJ02zhHIWr8CJgZSXVMQVlcLC6aBpLqwAmIMt6iPP0AFSAzIgYeL40p/pxtdHby3JmsouBiQZ/OKuwa4Ltv4A==}
 
-  '@lifi/types@18.12.1':
-    resolution: {integrity: sha512-+sJISKY544osyOp1aaoILrNPRDGDTl1vef9to5kqBpnLnCHVqJQxaY+5AGZq42z/fDs3xTg4l59VlSRAGGyQSg==}
+  '@lifi/types@18.13.0':
+    resolution: {integrity: sha512-WHZTVeN6/ijMnducCNcEeW6uirVtNW86CrB6JKZki7hBgI0rg106nSuD+yf1599q4i7igezppS02Z+M6W6BPAA==}
 
   '@lifi/types@18.4.0':
     resolution: {integrity: sha512-H0c2fwrS7fyPLVzEf8UydZ1rfNXCxW7TGfsqf0goGH2BiLIkcBAVIpiCzuIB+YBgKCwZ53wIvgBa+6AZe7Y5PQ==}
@@ -864,8 +864,8 @@ packages:
   '@mysten/bcs@2.1.2':
     resolution: {integrity: sha512-fv6lyuZMTHN0xRlu4GYiV/UXUrdJDOHbXm1KfZYEU0sy/t+22yTrTVtWnAQv1Km7eyB3qHhwIrAG2aem4JMocw==}
 
-  '@mysten/sui@2.34.0':
-    resolution: {integrity: sha512-Qf/xt10YIJv3Yo0hQTU70xPgimFfw2mudBzI/dylGXZNuhuQVmkmxUm0fz49BFPOFvBxWc/MRFl204zwpwRnXw==}
+  '@mysten/sui@2.35.0':
+    resolution: {integrity: sha512-ElJsFzPtMKrOTt5GHMlIN/Umfb+Xmh7OXPM+QjQc2i92mkGqNaTBikESqoYuF0d6x157Cw5WbtgXtiuJ13RBZg==}
     engines: {node: '>=22'}
 
   '@mysten/utils@0.4.1':
@@ -3720,7 +3720,7 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@bigmi/core@0.9.2(bs58@6.0.0)(typescript@7.0.2)':
+  '@bigmi/core@0.9.3(bs58@6.0.0)(typescript@7.0.2)':
     dependencies:
       '@noble/hashes': 1.8.0
       bech32: 2.0.0
@@ -4102,7 +4102,7 @@ snapshots:
     dependencies:
       '@lifi/types': 18.4.0
 
-  '@lifi/types@18.12.1': {}
+  '@lifi/types@18.13.0': {}
 
   '@lifi/types@18.4.0': {}
 
@@ -4139,7 +4139,7 @@ snapshots:
       '@mysten/utils': 0.4.1
       '@scure/base': 2.4.0
 
-  '@mysten/sui@2.34.0(typescript@7.0.2)':
+  '@mysten/sui@2.35.0(typescript@7.0.2)':
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@17.0.2)
       '@mysten/bcs': 2.1.2

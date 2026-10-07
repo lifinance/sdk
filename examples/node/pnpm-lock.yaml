@@ -22,8 +22,8 @@ importers:
         specifier: ^4.2.6
         version: 4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)
       dotenv:
-        specifier: ^18.0.5
-        version: 18.0.5
+        specifier: ^18.0.6
+        version: 18.0.6
       viem:
         specifier: ^2.57.3
         version: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)
@@ -373,8 +373,8 @@ packages:
     resolution: {integrity: sha512-WDtdLmJvAuNNPzByAYpRo2rF1Mmradw6gvWsQKf63476DDXmomT9zUiGypLcG4ibIM67vhAj8jJRdbmEws2Aqw==}
     engines: {node: '>=6.14.2'}
 
-  dotenv@18.0.5:
-    resolution: {integrity: sha512-aBrGvt6KhjxbEnatqMWOMidftwsrCiCvqh1yNIGB9QyF0J+VcWkKDMsvYOEm7ZS82oiV+BT1sTOtIlAmUlTpwQ==}
+  dotenv@18.0.6:
+    resolution: {integrity: sha512-ZMVmohV6CvAJtj++pZNyggluUt6hbRdQAxc2+Z635RL6/AG/ruXv5lHnybUFoxMPL/yrTL/tsF4paZu2l7RA6Q==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -647,7 +647,7 @@ snapshots:
       node-gyp-build: 4.8.4
     optional: true
 
-  dotenv@18.0.5: {}
+  dotenv@18.0.6: {}
 
   esbuild@0.28.2:
     optionalDependencies:
