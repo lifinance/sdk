@@ -61,9 +61,13 @@ jobs:
           pnpm install --frozen-lockfile --prefer-offline
           pnpm build
       - name: Measure base
+        # A half-built base would give a misleading baseline, so skip it.
+        if: steps.base_build.outcome == 'success'
         # The base is measured with the PR's checks. Checks for files the base lacks are skipped.
         run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" --ignore-missing || true
       - name: Build report
+        # Also run when a build failed, so the PR comment never shows a stale result.
+        if: ${{ !cancelled() }}
         env:
           BASE_SHA: ${{ steps.base.outputs.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -76,14 +80,14 @@ jobs:
         # Fork PRs get a read-only token. They still get the job summary above.
         # Bot PRs (Dependabot, Renovate) also get a read-only token, so a failed comment
         # must not hide the budget result.
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: bundle-size
           path: ${{ runner.temp }}/size.md
       - name: Enforce budgets
-        if: steps.head.outputs.status != '0'
+        if: ${{ !cancelled() && steps.head.outputs.status != '0' }}
         env:
           STATUS: ${{ steps.head.outputs.status }}
         run: |

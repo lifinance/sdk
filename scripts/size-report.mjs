@@ -33,25 +33,29 @@ const signed = (bytes) => `${bytes > 0 ? '+' : '−'}${kb(Math.abs(bytes))}`
 const pct = (value) => `${value > 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}%`
 const short = (sha) => (sha ? sha.slice(0, 7) : '')
 
+const baseUsable = [...base.values()].some((r) => typeof r.size === 'number')
+const baseBuildFailed = BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
 const rows = head.map((current) => {
   const [first, ...rest] = current.name.split(' · ')
   // Names without ' · ' have no group, so they go in one shared section.
   const group = rest.length ? first : 'Other'
   const label = rest.length ? rest.join(' · ') : current.name
-  // A zero-size base has no meaningful delta, so treat it like a missing one.
   const previous = base.get(current.name)
-  const before = previous?.size ? previous : undefined
-  // The base had this check but could not measure it (for example, a missing export).
+  const before = typeof previous?.size === 'number' ? previous : undefined
+  // No usable base for this row: the whole baseline is missing, or the base had this
+  // check but could not measure it (for example, a missing export).
   const baselineFailed =
-    previous !== undefined && typeof previous.size !== 'number'
+    !baseUsable || (previous !== undefined && before === undefined)
   // size-limit omits `size` when a check found no files to measure.
   const missing = typeof current.size !== 'number'
   const delta = before && !missing ? current.size - before.size : null
-  const percent = delta === null ? null : (delta / before.size) * 100
+  // A zero-byte base has no percentage, so only the byte threshold applies.
+  const percent =
+    delta === null || !before.size ? null : (delta / before.size) * 100
   const noticeable =
     delta !== null &&
     Math.abs(delta) >= NOTICE_BYTES &&
-    Math.abs(percent) >= NOTICE_PERCENT
+    Math.abs(percent ?? Number.POSITIVE_INFINITY) >= NOTICE_PERCENT
   const overBudget = current.passed === false
   const used =
     !missing && current.sizeLimit ? current.size / current.sizeLimit : null
@@ -106,7 +110,9 @@ const changeCell = (row) => {
     return '—'
   }
   const arrow = row.delta > 0 ? '🔺' : '🔻'
-  const text = `${arrow} ${signed(row.delta)} (${pct(row.percent)})`
+  const text = `${arrow} ${signed(row.delta)}${
+    row.percent === null ? '' : ` (${pct(row.percent)})`
+  }`
   return row.noticeable ? `**${text}**` : text
 }
 
@@ -117,7 +123,8 @@ const shrank = rows.filter((r) => r.noticeable && r.delta < 0)
 
 let verdict
 if (head.length === 0) {
-  verdict = '❔ **No size data.** The measurement step produced no results.'
+  verdict =
+    '❔ **No size data.** The build or the measurement step failed. See the workflow run.'
 } else if (missingRows.length) {
   verdict = `❌ **${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** The build output for ${missingRows.length === 1 ? 'it is' : 'them is'} missing. Check the build, or update the path in \`.size-limit.json\`.`
 } else if (over.length) {
@@ -149,8 +156,6 @@ for (const group of [...new Set(rows.map((r) => r.group))]) {
   )
 }
 
-const baseUsable = [...base.values()].some((r) => typeof r.size === 'number')
-const baseBuildFailed = BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
 const baseNote = baseUsable
   ? ''
   : `> ℹ️ ${

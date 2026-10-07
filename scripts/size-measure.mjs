@@ -55,7 +55,11 @@ try {
     const result = spawnSync(
       'pnpm',
       ['exec', 'size-limit', '--config', configPath, '--json', ...extraArgs],
-      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+      {
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+        timeout: 10 * 60 * 1000,
+      }
     )
     // size-limit prints bundler warnings to stderr and the JSON report to stdout.
     // A budget failure exits non-zero but still prints a valid JSON array.
@@ -66,7 +70,11 @@ try {
     if (Array.isArray(parsed) && parsed.length > 0 && result.status !== null) {
       report.push(parsed[0])
       budgetFailed ||= result.status !== 0
-    } else if (Array.isArray(parsed) && parsed.length === 0) {
+    } else if (
+      Array.isArray(parsed) &&
+      parsed.length === 0 &&
+      extraArgs.length > 0
+    ) {
       // Dropped by --ignore-missing: the base has no files for this check.
     } else {
       failed += 1
