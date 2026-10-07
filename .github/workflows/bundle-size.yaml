@@ -28,6 +28,8 @@ jobs:
         with:
           # The PR merge commit is checked out. Its first parent is the exact base commit.
           fetch-depth: 2
+          # The job runs PR-controlled build code, so the token must not stay in .git/config.
+          persist-credentials: false
       - name: Find the base commit
         id: base
         # HEAD is the PR merge commit, so its first parent is the exact base.
@@ -46,6 +48,7 @@ jobs:
           node scripts/size-measure.mjs . "$RUNNER_TEMP/head.json"
           echo "status=$?" >> "$GITHUB_OUTPUT"
       - name: Build base
+        id: base_build
         # A broken base only means "no baseline". The report and budgets still run.
         continue-on-error: true
         env:
@@ -58,11 +61,12 @@ jobs:
           pnpm build
       - name: Measure base
         # The base is measured with the PR's checks. Checks for files the base lacks are skipped.
-        run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" --skip-missing || true
+        run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" --ignore-missing || true
       - name: Build report
         env:
           BASE_SHA: ${{ steps.base.outputs.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BUILD_OUTCOME: ${{ steps.base_build.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           node scripts/size-report.mjs "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json" > "$RUNNER_TEMP/size.md"
@@ -79,6 +83,12 @@ jobs:
           path: ${{ runner.temp }}/size.md
       - name: Enforce budgets
         if: steps.head.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.head.outputs.status }}
         run: |
-          echo "::error::A bundle size budget is exceeded. See the job summary or the PR comment."
+          if [ "$STATUS" = "1" ]; then
+            echo "::error::A bundle size budget is exceeded, or a check produced no output. See the job summary or the PR comment."
+          else
+            echo "::error::The size measurement failed (exit $STATUS). See the 'Measure PR' step log."
+          fi
           exit 1

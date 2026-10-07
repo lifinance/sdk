@@ -22,7 +22,8 @@ const read = (path) => {
 const [basePath, headPath] = process.argv.slice(2)
 const base = new Map(read(basePath).map((r) => [r.name, r]))
 const head = read(headPath)
-const { BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY } = process.env
+const { BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY, BASE_BUILD_OUTCOME } =
+  process.env
 const configUrl = GITHUB_REPOSITORY
   ? `https://github.com/${GITHUB_REPOSITORY}/blob/${HEAD_SHA || 'HEAD'}/.size-limit.json`
   : '.size-limit.json'
@@ -38,20 +39,24 @@ const rows = head.map((current) => {
   const group = rest.length ? first : 'Other'
   const label = rest.length ? rest.join(' · ') : current.name
   // A zero-size base has no meaningful delta, so treat it like a missing one.
-  const before = base.get(current.name)?.size
-    ? base.get(current.name)
-    : undefined
-  const delta = before ? current.size - before.size : null
-  const percent = before ? (delta / before.size) * 100 : null
+  const previous = base.get(current.name)
+  const before = previous?.size ? previous : undefined
+  // size-limit omits `size` when a check found no files to measure.
+  const missing = typeof current.size !== 'number'
+  const delta = before && !missing ? current.size - before.size : null
+  const percent = delta === null ? null : (delta / before.size) * 100
   const noticeable =
     delta !== null &&
     Math.abs(delta) >= NOTICE_BYTES &&
     Math.abs(percent) >= NOTICE_PERCENT
   const overBudget = current.passed === false
-  const used = current.sizeLimit ? current.size / current.sizeLimit : null
+  const used =
+    !missing && current.sizeLimit ? current.size / current.sizeLimit : null
 
   let icon = '⚪'
-  if (overBudget) {
+  if (missing) {
+    icon = '❔'
+  } else if (overBudget) {
     icon = '🔴'
   } else if (noticeable && delta > 0) {
     icon = '🟠'
@@ -67,6 +72,7 @@ const rows = head.map((current) => {
     delta,
     percent,
     noticeable,
+    missing,
     overBudget,
     used,
     icon,
@@ -83,6 +89,9 @@ const bar = (used) => {
 }
 
 const changeCell = (row) => {
+  if (row.missing) {
+    return '⚠️ no output'
+  }
   if (row.delta === null) {
     return '🆕 new'
   }
@@ -94,6 +103,7 @@ const changeCell = (row) => {
   return row.noticeable ? `**${text}**` : text
 }
 
+const missingRows = rows.filter((r) => r.missing)
 const over = rows.filter((r) => r.overBudget)
 const grew = rows.filter((r) => !r.overBudget && r.noticeable && r.delta > 0)
 const shrank = rows.filter((r) => r.noticeable && r.delta < 0)
@@ -101,6 +111,8 @@ const shrank = rows.filter((r) => r.noticeable && r.delta < 0)
 let verdict
 if (head.length === 0) {
   verdict = '❔ **No size data.** The measurement step produced no results.'
+} else if (missingRows.length) {
+  verdict = `❌ **${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** The build output for ${missingRows.length === 1 ? 'it is' : 'them is'} missing. Check the build, or update the path in \`.size-limit.json\`.`
 } else if (over.length) {
   verdict = `❌ **${over.length} ${over.length === 1 ? 'check is' : 'checks are'} over budget.** Reduce the size, or raise the limit in \`.size-limit.json\` and explain why in the PR.`
 } else if (grew.length) {
@@ -117,7 +129,7 @@ for (const group of [...new Set(rows.map((r) => r.group))]) {
     .filter((r) => r.group === group)
     .map(
       (r) =>
-        `| ${r.icon} | ${r.overBudget ? `**${r.label}**` : r.label} | ${r.before ? kb(r.before.size) : '—'} | ${kb(r.current.size)} | ${changeCell(r)} | ${bar(r.used)} |`
+        `| ${r.icon} | ${r.overBudget ? `**${r.label}**` : r.label} | ${r.before ? kb(r.before.size) : '—'} | ${r.missing ? '—' : kb(r.current.size)} | ${changeCell(r)} | ${bar(r.used)} |`
     )
   sections.push(
     [
@@ -132,7 +144,11 @@ for (const group of [...new Set(rows.map((r) => r.group))]) {
 
 const baseNote = base.size
   ? ''
-  : '> ℹ️ No baseline was found, so changes are not shown. Budgets are still checked.\n\n'
+  : `> ℹ️ ${
+      BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
+        ? 'The base commit failed to build, so changes are not shown.'
+        : 'No baseline was found, so changes are not shown.'
+    } Budgets are still checked.\n\n`
 
 const footer = [
   '<details>',
