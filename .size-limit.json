@@ -1,0 +1,82 @@
+[
+  {
+    "name": "@lifi/sdk · createClient + getQuote",
+    "path": "packages/sdk/dist/esm/index.js",
+    "import": "{ createClient, getQuote }",
+    "limit": "5 kB"
+  },
+  {
+    "name": "@lifi/sdk · all exports",
+    "path": "packages/sdk/dist/esm/index.js",
+    "import": "*",
+    "limit": "17 kB"
+  },
+  {
+    "name": "@lifi/sdk · CJS (no tree-shaking)",
+    "path": "packages/sdk/dist/cjs/index.js",
+    "limit": "21 kB"
+  },
+  {
+    "name": "Providers · ethereum (+ viem)",
+    "path": "packages/sdk-provider-ethereum/dist/esm/index.js",
+    "import": "{ EthereumProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "110 kB"
+  },
+  {
+    "name": "Providers · solana",
+    "path": "packages/sdk-provider-solana/dist/esm/index.js",
+    "import": "{ SolanaProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "30 kB"
+  },
+  {
+    "name": "Providers · bitcoin",
+    "path": "packages/sdk-provider-bitcoin/dist/esm/index.js",
+    "import": "{ BitcoinProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "78 kB"
+  },
+  {
+    "name": "Providers · sui",
+    "path": "packages/sdk-provider-sui/dist/esm/index.js",
+    "import": "{ SuiProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "78 kB"
+  },
+  {
+    "name": "Providers · tron",
+    "path": "packages/sdk-provider-tron/dist/esm/index.js",
+    "import": "{ TronProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "220 kB"
+  },
+  {
+    "name": "Providers · stellar",
+    "path": "packages/sdk-provider-stellar/dist/esm/index.js",
+    "import": "{ StellarProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "140 kB"
+  },
+  {
+    "name": "Providers · zcash",
+    "path": "packages/sdk-provider-zcash/dist/esm/index.js",
+    "import": "{ ZcashProvider }",
+    "ignore": [
+      "@lifi/sdk"
+    ],
+    "limit": "8 kB"
+  }
+]

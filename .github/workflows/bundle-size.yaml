@@ -1,0 +1,74 @@
+name: Bundle size
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.editorconfig'
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bundle-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The PR merge commit is checked out. Its first parent is the exact base commit.
+          fetch-depth: 2
+      - name: Install dependencies
+        uses: ./.github/actions/pnpm-install
+        with:
+          # This job can write PR comments, so it must not restore a shared cache.
+          cache: 'false'
+      - name: Build PR
+        run: pnpm build
+      - name: Measure PR
+        id: head
+        run: |
+          set +e
+          node scripts/size-measure.mjs . "$RUNNER_TEMP/head.json"
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+      - name: Build base
+        env:
+          HUSKY: '0'
+        run: |
+          git worktree add "$RUNNER_TEMP/base" "$(git rev-parse HEAD^1)"
+          cd "$RUNNER_TEMP/base"
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm build
+      - name: Measure base
+        # The base is measured with the PR's checks. A base failure only means "no baseline".
+        run: node scripts/size-measure.mjs "$RUNNER_TEMP/base" "$RUNNER_TEMP/base.json" || true
+      - name: Build report
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node scripts/size-report.mjs "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json" > "$RUNNER_TEMP/size.md"
+          cat "$RUNNER_TEMP/size.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Post or update the PR comment
+        # Fork PRs get a read-only token. They still get the job summary above.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: bundle-size
+          path: ${{ runner.temp }}/size.md
+      - name: Enforce budgets
+        if: steps.head.outputs.status != '0'
+        run: |
+          echo "::error::A bundle size budget is exceeded. See the job summary or the PR comment."
+          exit 1
