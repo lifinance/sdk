@@ -165,10 +165,10 @@ describe('getRoutes', () => {
       expect(mockedFetch).toHaveBeenCalledTimes(1)
     })
 
+    // A type check only: calling the action here would leave its request
+    // open while the test server closes.
     it('resolves to the routes response shape', () => {
-      expectTypeOf(getRoutes(client, orderRequest)).toEqualTypeOf<
-        Promise<RoutesResponse>
-      >()
+      expectTypeOf(getRoutes).returns.toEqualTypeOf<Promise<RoutesResponse>>()
     })
   })
 })

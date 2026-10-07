@@ -15,6 +15,7 @@ vi.mock('./abortableSleep.js', () => ({
 }))
 
 const reached = vi.fn<() => boolean>()
+const expiredAt = vi.fn<() => bigint | undefined>(() => undefined)
 const tick = vi.fn<() => Promise<void>>(() => Promise.resolve())
 /** Records what happened in which order, for the deadline-before-send test. */
 const events: string[] = []
@@ -29,6 +30,7 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
     deadlineCalls.push(options)
     return {
       reached: () => reached(),
+      expiredAt: () => expiredAt(),
       tick: () => tick(),
     }
   },
@@ -94,6 +96,7 @@ describe('confirmBundle', () => {
     signatureSendOptions.length = 0
     sleepCalls.length = 0
     reached.mockReturnValue(false)
+    expiredAt.mockReturnValue(undefined)
     tick.mockResolvedValue(undefined)
   })
 
@@ -520,5 +523,13 @@ describe('confirmBundle', () => {
     // thrower, and the second never renewed the silence budget, so that rule
     // cannot be either.
     expect(getBundleStatuses).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns expired with its slot when the deadline ends on the blockhash verdict', async () => {
+    reached.mockReturnValue(true)
+    expiredAt.mockReturnValue(900n)
+    getBundleStatuses.mockResolvedValue(noBundle())
+
+    await expect(run()).resolves.toEqual({ kind: 'expired', slot: 900n })
   })
 })

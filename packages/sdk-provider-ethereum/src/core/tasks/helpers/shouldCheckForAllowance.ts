@@ -1,4 +1,8 @@
-import type { LiFiStepExtended, StatusManager } from '@lifi/sdk'
+import {
+  hasOpenTransaction,
+  type LiFiStepExtended,
+  type StatusManager,
+} from '@lifi/sdk'
 
 export const shouldCheckForAllowance = (
   step: LiFiStepExtended,
@@ -11,10 +15,10 @@ export const shouldCheckForAllowance = (
   const swapOrBridgeAction = statusManager.findAction(step, exchangeActionType)
 
   return (
-    // No existing swap/bridge transaction is pending
-    !swapOrBridgeAction?.txHash &&
-    // No existing swap/bridge batch/order is pending
-    !swapOrBridgeAction?.taskId &&
+    // No swap/bridge transaction (hash, batch/relay id or stored bytes) that may
+    // still land. A FAILED action with a final outcome does not count, so the
+    // allowance is checked again before the new transaction.
+    !hasOpenTransaction(swapOrBridgeAction) &&
     // Token is not native (address is not zero)
     !isFromNativeToken &&
     // Approval address is required for allowance checks, but may be null in special cases (e.g. direct transfers)

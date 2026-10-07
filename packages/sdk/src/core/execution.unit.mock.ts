@@ -1,7 +1,13 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { LiFiStep, Route, Token } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import type { LiFiStepExtended } from '../types/core.js'
+import type {
+  InteractionSettings,
+  LiFiStepExtended,
+  SDKClient,
+} from '../types/core.js'
+import { executionState } from './executionState.js'
+import type { StatusManager } from './StatusManager.js'
 
 const SOME_TOKEN: Token = {
   ...findDefaultToken(CoinKey.USDC, ChainId.DAI),
@@ -167,3 +173,47 @@ export const buildRouteObject = ({
     state: 'NOT_INSURABLE',
   },
 })
+
+/** The route ids of the runs that `attachStatusManager` holds in flight. */
+const attachedRuns: string[] = []
+
+/**
+ * Registers `statusManager` as a step executor of the route's running
+ * execution, the way `executeSteps` pushes one. `stopRouteExecution` then
+ * reaches it through `setInteraction`, as it reaches a `BaseStepExecutor`.
+ * Its step stays in flight (`executionState.retain`) until
+ * {@link releaseAttachedRuns}, as a task that writes after the stop is.
+ */
+export const attachStatusManager = (
+  routeId: string,
+  statusManager: StatusManager
+): void => {
+  const execution = executionState.get(routeId)
+  if (!execution) {
+    throw new Error(`No execution is registered for route ${routeId}.`)
+  }
+  executionState.retain(routeId)
+  attachedRuns.push(routeId)
+  execution.executors.push({
+    allowUserInteraction: true,
+    allowExecution: true,
+    setInteraction: (settings?: InteractionSettings): void => {
+      statusManager.allowUpdates(settings?.allowUpdates ?? true)
+    },
+    executeStep: async (
+      _client: SDKClient,
+      step: LiFiStepExtended
+    ): Promise<LiFiStepExtended> => step,
+  })
+}
+
+/**
+ * Settles the steps that {@link attachStatusManager} holds in flight. Call it
+ * after each test, so the run count of a shared route id does not grow from
+ * test to test.
+ */
+export const releaseAttachedRuns = (): void => {
+  for (const routeId of attachedRuns.splice(0)) {
+    executionState.release(routeId)
+  }
+}

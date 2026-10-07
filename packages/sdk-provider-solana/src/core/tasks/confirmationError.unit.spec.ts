@@ -1,7 +1,7 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
-import type { RaceResult } from '../../confirmation/raceRpcs.js'
-import { unwrapConfirmation } from './unwrapConfirmation.js'
+import type { UnconfirmedRaceResult } from '../../confirmation/raceRpcs.js'
+import { confirmationError } from './confirmationError.js'
 
 const MESSAGES = {
   rpcUnavailable: 'every RPC failed',
@@ -10,32 +10,11 @@ const MESSAGES = {
   someRpcsFailed: 'some failed',
 }
 
-/**
- * Returns the error `unwrapConfirmation` threw, and fails loudly if it threw
- * nothing. A `try`/`catch` that simply returns whatever it caught passes just
- * as happily when the call returns normally, which is the one outcome these
- * tests exist to rule out.
- */
-const capture = (result: RaceResult<{ err: unknown }>): Error => {
-  let thrown: Error | undefined
-  try {
-    unwrapConfirmation(result, MESSAGES)
-  } catch (error) {
-    thrown = error as Error
-  }
-  if (!thrown) {
-    throw new Error('expected unwrapConfirmation to throw, but it returned')
-  }
-  return thrown
-}
+/** The error a wait task throws for `result`. */
+const capture = (result: UnconfirmedRaceResult): Error =>
+  confirmationError(result, MESSAGES)
 
-describe('unwrapConfirmation', () => {
-  it('returns the confirmed value', () => {
-    expect(
-      unwrapConfirmation({ kind: 'confirmed', value: { err: null } }, MESSAGES)
-    ).toEqual({ err: null })
-  })
-
+describe('confirmationError', () => {
   it('maps rpc-unavailable to RpcUnavailable, never to an expiry', () => {
     // Collapsing these two is what reported a live RPC-compatibility defect as
     // an expired transaction: no endpoint answered, which says nothing about
@@ -85,5 +64,19 @@ describe('unwrapConfirmation', () => {
     })
 
     expect(thrown.stack).toContain('theEndpointThatActuallyFailed')
+  })
+
+  it('maps expired to the same TransactionExpired as not-confirmed, with no final marker', () => {
+    // The texts integrators see must not change. Only the wait task may call
+    // an expiry final: it needs the history lookup and the status API first.
+    const errors = [new Error('429')]
+    const thrown = capture({ kind: 'expired', slot: 900n, errors })
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    const error = thrown as TransactionError
+    expect(error.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(error.message).toBe('not confirmed before the SDK stopped waiting')
+    expect(error.final).toBe(false)
+    expect((error.cause as AggregateError).errors).toEqual(errors)
   })
 })

@@ -1,6 +1,12 @@
-import type { SDKClient, Token } from '@lifi/sdk'
+import { ChainId, type SDKClient, type Token } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { tronWebCache } from '../rpc/callTronRpcsWithRetry.js'
+import {
+  addressArgument,
+  fakeTronNode,
+  hexAddress,
+  tronAddress,
+} from '../rpc/tronNode.unit.mock.js'
 import { getTronBalance } from './getTronBalance.js'
 
 const makeClient = (): SDKClient =>
@@ -60,6 +66,45 @@ describe('getTronBalance', () => {
 
     expect(warn).toHaveBeenCalledWith(
       'Requested tokens have to be on the same chain.'
+    )
+  })
+
+  // `tronWeb.contract().at(token)` sends `wallet/getcontract` on every call
+  // and keeps each token's ABI and bytecode in `trx.cache.contracts`, which
+  // never shrinks. A static TRC-20 ABI needs neither.
+  it('reads a TRC-20 balance without fetching the token contract', async () => {
+    const url = 'https://tron-balance.test'
+    const node = fakeTronNode(url, 500n)
+    const client = {
+      getRpcUrlsByChainId: vi.fn(async () => [url]),
+      getChains: vi.fn(async () => []),
+    } as unknown as SDKClient
+
+    const wallet = 'TJRabPrwbZy45sbavfcjinPJC18kjpRTv8'
+    const addresses = [1, 2, 3, 4, 5].map(tronAddress)
+
+    for (const address of addresses) {
+      const token: Token = {
+        chainId: ChainId.TRN,
+        address,
+        symbol: 'TKN',
+        decimals: 6,
+        name: 'Token',
+        priceUSD: '0',
+      }
+      const [balance] = await getTronBalance(client, wallet, [token])
+      expect(balance.amount).toBe(500n)
+    }
+
+    expect(node.endpoints).not.toContain('wallet/getcontract')
+    expect(node.cachedContracts()).toBe(0)
+    // Each read calls balanceOf(wallet) on its own token.
+    expect(node.constantCalls).toEqual(
+      addresses.map((address) => ({
+        contractAddress: hexAddress(address),
+        functionSelector: 'balanceOf(address)',
+        parameter: addressArgument(wallet),
+      }))
     )
   })
 })

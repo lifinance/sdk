@@ -255,6 +255,15 @@ describe('sendAndConfirmBundle', () => {
       })
     )
   })
+
+  it('passes an expired verdict through', async () => {
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
+    confirmBundle.mockResolvedValue({ kind: 'expired', slot: 900n })
+
+    await expect(
+      sendAndConfirmBundle(clientWith(), TRANSACTIONS)
+    ).resolves.toEqual({ kind: 'expired', slot: 900n, errors: [] })
+  })
 })
 
 describe('sendAndConfirmBundle with write RPCs', () => {

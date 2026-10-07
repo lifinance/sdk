@@ -1,3 +1,4 @@
+import { getAbortError } from './abort.js'
 import { sleep } from './sleep.js'
 
 /**
@@ -6,14 +7,17 @@ import { sleep } from './sleep.js'
  * @param interval The timeout in milliseconds between retries, or a function that receives the current poll count and returns the interval. Defaults to 5000
  * @param maxRetries Maximum number of calls that throw before the error is rethrown, defaults to 3
  * @param shouldRetry Optional predicate to determine if an error should trigger a retry
+ * @param signal Optional signal that ends the wait: no call starts after it aborts, and the sleep between calls ends at once
  * @returns The result of the fn function
  * @throws The error of fn if maximum retries is reached, or if shouldRetry returns false
+ * @throws The abort reason of `signal` once it aborts
  */
 export const waitForResult = async <T>(
   fn: () => Promise<T | undefined>,
   interval: number | ((poll: number) => number) = 5000,
   maxRetries = 3,
-  shouldRetry: (count: number, error: unknown) => boolean = () => true
+  shouldRetry: (count: number, error: unknown) => boolean = () => true,
+  signal?: AbortSignal
 ): Promise<T> => {
   let result: T | undefined
   let attempts = 0
@@ -22,13 +26,16 @@ export const waitForResult = async <T>(
   const getInterval = typeof interval === 'function' ? interval : () => interval
 
   while (!result) {
+    if (signal?.aborted) {
+      throw getAbortError(signal)
+    }
     try {
       result = await fn()
-      if (!result) {
-        await sleep(getInterval(polls))
-        polls++
-      }
     } catch (error) {
+      // An error of a call that the abort cut short is not a reason to retry.
+      if (signal?.aborted) {
+        throw getAbortError(signal)
+      }
       if (!shouldRetry(attempts, error)) {
         throw error
       }
@@ -36,7 +43,10 @@ export const waitForResult = async <T>(
       if (attempts === maxRetries) {
         throw error
       }
-      await sleep(getInterval(polls))
+    }
+    if (!result) {
+      // Rejects at once, also when the signal aborted during the call.
+      await sleep(getInterval(polls), { signal })
       polls++
     }
   }

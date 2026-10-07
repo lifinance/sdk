@@ -1,4 +1,5 @@
 import {
+  assertNoOpenTransaction,
   BaseStepExecutionTask,
   LiFiErrorCode,
   type TaskResult,
@@ -30,6 +31,10 @@ export class EthereumSignAndExecuteTask extends BaseStepExecutionTask {
         'Unable to prepare transaction. Action not found.'
       )
     }
+
+    // Defence in depth for every lane below: the selector never routes an open
+    // transaction here, and signing again could execute the swap twice.
+    assertNoOpenTransaction(action)
 
     statusManager.updateAction(step, action.type, 'ACTION_REQUIRED')
 

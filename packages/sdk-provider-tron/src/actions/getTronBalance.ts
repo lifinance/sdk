@@ -6,6 +6,7 @@ import { callTronRpcsWithRetry } from '../rpc/callTronRpcsWithRetry.js'
 import { encodeAddressCalldata, toEvmHex } from '../utils/address.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
 import { multicall3Abi } from '../utils/multicall3Abi.js'
+import { TRC20_ABI } from '../utils/trc20Abi.js'
 import { getMulticallAddress } from './getMulticallAddress.js'
 
 const BALANCE_OF_SELECTOR = TronWeb.sha3('balanceOf(address)').slice(2, 10)
@@ -141,7 +142,7 @@ const getTronBalanceDefault = async (
         }
         return withDedupe(
           async () => {
-            const contract = await tronWeb.contract().at(token.address)
+            const contract = tronWeb.contract(TRC20_ABI, token.address)
             const balance = await contract
               .balanceOf(walletAddress)
               .call({ from: walletAddress })

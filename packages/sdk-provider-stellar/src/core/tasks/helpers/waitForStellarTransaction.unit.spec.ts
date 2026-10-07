@@ -101,4 +101,37 @@ describe('waitForStellarTransaction', () => {
 
     expect(((await thrown) as TransactionError).cause).toBe(transport)
   })
+
+  it('marks an applied failure as a final outcome', async () => {
+    getTransaction.mockResolvedValue({
+      status: rpc.Api.GetTransactionStatus.FAILED,
+      resultXdr: undefined,
+    })
+
+    const thrown = await waitForStellarTransaction({} as never, 'h', POLL_MS)
+      .then(() => undefined)
+      .catch((error: unknown) => error)
+
+    expect(thrown).toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      message: 'Stellar transaction h failed: unknown reason',
+      final: true,
+    })
+  })
+
+  // A poll timeout proves nothing: the transaction may still be applied.
+  it('leaves a poll timeout unknown', async () => {
+    getTransaction.mockResolvedValue({
+      status: rpc.Api.GetTransactionStatus.NOT_FOUND,
+    })
+
+    const promise = waitForStellarTransaction({} as never, 'h', POLL_MS)
+    const thrown = promise.then(() => undefined).catch((error) => error)
+    await vi.advanceTimersByTimeAsync(335_000)
+
+    expect(await thrown).toMatchObject({
+      code: LiFiErrorCode.Timeout,
+      final: false,
+    })
+  })
 })

@@ -1,4 +1,9 @@
-import type { LiFiStep, SignedTypedData, TypedData } from '@lifi/sdk'
+import {
+  LiFiErrorCode,
+  type LiFiStep,
+  type SignedTypedData,
+  type TypedData,
+} from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -231,5 +236,71 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
         data: WRAPPED_CALLDATA,
       })
     )
+  })
+})
+
+describe('EthereumStandardSignAndExecuteTask.run transaction fields', () => {
+  it('clears the previous transaction fields when it writes the new hash', async () => {
+    const context = buildContext({
+      stepTypedData: [permit2Allowance()],
+      signedTypedData: [signedNativePermit(), signedPermit2Allowance()],
+    })
+    // The action still holds the data of an earlier, final transaction.
+    vi.mocked(context.statusManager.findAction).mockReturnValue({
+      type: 'SWAP',
+      status: 'FAILED',
+      txHash: `0x${'01'.repeat(32)}`,
+      txLink: 'https://etherscan.io/tx/old',
+      txHex: '0x02',
+      txFinal: true,
+      taskId: `0x${'03'.repeat(32)}`,
+    } as never)
+
+    await task.run(context)
+
+    const params = vi
+      .mocked(context.statusManager.updateAction)
+      .mock.calls.find(([, , status]) => status === 'PENDING')?.[3] as Record<
+      string,
+      unknown
+    >
+    expect(Object.keys(params ?? {})).toEqual(
+      expect.arrayContaining(['txHash', 'txLink', 'txHex', 'txFinal', 'taskId'])
+    )
+    expect(params).toMatchObject({ txHash: TX_HASH, txType: 'standard' })
+    // `toMatchObject` ignores `undefined` values, so the cleared keys are
+    // checked one by one.
+    expect('txHex' in params).toBe(true)
+    expect(params.txHex).toBeUndefined()
+    expect('txFinal' in params).toBe(true)
+    expect(params.txFinal).toBeUndefined()
+    expect('taskId' in params).toBe(true)
+    expect(params.taskId).toBeUndefined()
+  })
+})
+
+describe('EthereumStandardSignAndExecuteTask.run second pre-sign guard', () => {
+  // An older run's late write can merge its transaction into this action
+  // during any await before the wallet. The
+  // gas estimate of a native permit is the last one.
+  it('checks the action again right before sendTransaction and never calls it when a transaction merged meanwhile', async () => {
+    const context = buildContext({ signedTypedData: [signedNativePermit()] })
+    vi.mocked(estimateTransactionRequest).mockImplementationOnce(
+      async (_client, _viemClient, request) => {
+        vi.mocked(context.statusManager.findAction).mockReturnValue({
+          type: 'SWAP',
+          status: 'ACTION_REQUIRED',
+          txHash: `0x${'01'.repeat(32)}`,
+        } as never)
+        return request
+      }
+    )
+
+    await expect(task.run(context)).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionConflict,
+    })
+    expect(estimateTransactionRequest).toHaveBeenCalledTimes(1)
+    expect(sendTransaction).not.toHaveBeenCalled()
+    expect(context.statusManager.updateAction).not.toHaveBeenCalled()
   })
 })

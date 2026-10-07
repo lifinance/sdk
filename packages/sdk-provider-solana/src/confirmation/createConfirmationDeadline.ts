@@ -35,6 +35,12 @@ export type BlockhashProbeRpc = Pick<SolanaRpcType, 'isBlockhashValid'>
 export interface ConfirmationDeadline {
   /** Checked at the top of every poll iteration. */
   reached(): boolean
+  /** The slot at which the blockhash probe confirmed expiry - the highest
+   * `context.slot` of the `false` answers in the streak - or `undefined`
+   * without a verdict. Tells the two reasons `reached()` fires apart: a dead
+   * blockhash may later count as "dropped", the wall-clock ceiling never
+   * does. */
+  expiredAt(): bigint | undefined
   /** Advances the policy; never throws. Probes at most once per
    * `EXPIRY_PROBE_INTERVAL_MS`. */
   tick(signal: AbortSignal): Promise<void>
@@ -72,6 +78,10 @@ export function createConfirmationDeadline(options: {
 
   // Keyed by blockhash: expiry is a property of a blockhash, not of the set.
   const expiredStreaks = new Map<Blockhash, number>()
+  // The highest `context.slot` of each blockhash's current `false` streak:
+  // where a dropped check has to find a node's head before it trusts a
+  // `null`. A reset of the streak deletes it.
+  const expiredSlots = new Map<Blockhash, bigint>()
   // Keyed for the same reason: a sibling's broken probe is not evidence about
   // this blockhash, so it must not spend this blockhash's error budget.
   const errorStreaks = new Map<Blockhash, number>()
@@ -81,14 +91,21 @@ export function createConfirmationDeadline(options: {
   let lastProbeAt: number | undefined
 
   /** Derived, not latched: a blockhash that reads valid again zeroes its
-   * streak and clears the verdict with it. */
-  const isExpired = (): boolean => {
-    for (const streak of expiredStreaks.values()) {
-      if (streak >= EXPIRY_CONFIRMATIONS) {
-        return true
+   * streak and clears the verdict with it. The highest slot among the expired
+   * blockhashes is the strictest head bound. */
+  const expiredAt = (): bigint | undefined => {
+    let slot: bigint | undefined
+    for (const [blockhash, streak] of expiredStreaks) {
+      const observedAt = expiredSlots.get(blockhash)
+      if (
+        streak >= EXPIRY_CONFIRMATIONS &&
+        observedAt !== undefined &&
+        (slot === undefined || observedAt > slot)
+      ) {
+        slot = observedAt
       }
     }
-    return false
+    return slot
   }
 
   return {
@@ -97,8 +114,9 @@ export function createConfirmationDeadline(options: {
       if (elapsed >= CONFIRMATION_TIMEOUT_MS) {
         return true
       }
-      return isExpired()
+      return expiredAt() !== undefined
     },
+    expiredAt,
     async tick(signal: AbortSignal): Promise<void> {
       if (probeable.size === 0 || signal.aborted) {
         return
@@ -123,16 +141,17 @@ export function createConfirmationDeadline(options: {
           const result = await rpc
             .isBlockhashValid(blockhash, { commitment: 'confirmed' })
             .send({ abortSignal: signal })
-          return result.value
+          return { value: result?.value, slot: result?.context?.slot }
         })
       )
 
       // A read that produced no usable answer says nothing about this
       // blockhash: it must never spend the expiry streak, only the error
       // budget. Shared by a rejected probe and by a fulfilled one whose
-      // response carried no boolean.
+      // response carried no usable verdict.
       const recordFailedProbe = (blockhash: Blockhash): void => {
         expiredStreaks.set(blockhash, 0)
+        expiredSlots.delete(blockhash)
         const errors = (errorStreaks.get(blockhash) ?? 0) + 1
         errorStreaks.set(blockhash, errors)
         if (errors >= MAX_PROBE_ERRORS) {
@@ -149,20 +168,33 @@ export function createConfirmationDeadline(options: {
           return
         }
 
+        const { value, slot } = probe.value
+
         // `=== true` / `=== false`, never truthiness: a response carrying no
         // `value` is not a `false`, and reading it as one is the only coercion
         // here that can invent an expiry.
-        if (probe.value === true) {
+        if (value === true) {
           errorStreaks.set(blockhash, 0)
           expiredStreaks.set(blockhash, 0)
+          expiredSlots.delete(blockhash)
           return
         }
 
-        if (probe.value === false) {
+        // A `false` counts only with the slot it was observed at: a verdict
+        // without one could not bound the head of the dropped check.
+        if (value === false && typeof slot === 'bigint') {
           errorStreaks.set(blockhash, 0)
           expiredStreaks.set(
             blockhash,
             (expiredStreaks.get(blockhash) ?? 0) + 1
+          )
+          // The highest slot, not the latest: a `false` from a node whose head
+          // is behind the others must not lower the bound below the slots
+          // where the transaction can still land.
+          const previous = expiredSlots.get(blockhash)
+          expiredSlots.set(
+            blockhash,
+            previous === undefined || slot > previous ? slot : previous
           )
           return
         }

@@ -25,35 +25,35 @@ export const parseSuiErrors = async (
   return new SDKError(baseError, step, action)
 }
 
-const handleSpecificErrors = (e: any) => {
-  const isRejection =
-    typeof e === 'string'
-      ? e.toLowerCase().includes('reject')
-      : e.message?.toLowerCase().includes('reject')
-
-  if (isRejection) {
-    return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
-  }
-
-  if (
-    e.message?.toLowerCase().includes('transaction') &&
-    (e.message?.toLowerCase().includes('failed') ||
-      e.message?.toLowerCase().includes('error'))
-  ) {
-    return new TransactionError(LiFiErrorCode.TransactionFailed, e.message, e)
-  }
-
-  if (e.message?.includes('simulate') || e.message?.includes('simulation')) {
-    return new TransactionError(
-      LiFiErrorCode.TransactionSimulationFailed,
-      e.message,
-      e
-    )
-  }
-
+const handleSpecificErrors = (e: any): BaseError => {
+  // A code the SDK set on purpose wins over message matching. A wallet
+  // rejection is tagged where it happens (SuiSignAndExecuteTask), so "reject"
+  // is not read here: a node or RPC message that says "reject" is not the
+  // user's.
   if (e instanceof BaseError) {
     return e
   }
 
-  return new UnknownError(e.message || ErrorMessage.UnknownError, e)
+  // `e` can be any thrown value: also `undefined`, `null`, a string, or an
+  // object whose `message` is not a string. A TypeError here would escape the
+  // catch of the step executor.
+  const message: string = typeof e?.message === 'string' ? e.message : ''
+  const lowerCaseMessage = message.toLowerCase()
+
+  if (
+    lowerCaseMessage.includes('transaction') &&
+    (lowerCaseMessage.includes('failed') || lowerCaseMessage.includes('error'))
+  ) {
+    return new TransactionError(LiFiErrorCode.TransactionFailed, message, e)
+  }
+
+  if (message.includes('simulate') || message.includes('simulation')) {
+    return new TransactionError(
+      LiFiErrorCode.TransactionSimulationFailed,
+      message,
+      e
+    )
+  }
+
+  return new UnknownError(message || ErrorMessage.UnknownError, e)
 }

@@ -19,10 +19,20 @@ export const waitForBatchTransactionReceipt = async (
   })
 
   if (result.status === 'success') {
+    if (result.receipts?.some((receipt) => receipt.status === 'reverted')) {
+      onFailed?.(result)
+      throw new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        'Transaction was reverted.',
+        undefined,
+        { final: true }
+      )
+    }
+    // The wallet reports the batch as executed, but without a complete set of
+    // receipts we cannot prove the outcome: it stays unknown.
     if (
       !result.receipts?.length ||
-      !result.receipts.every((receipt) => receipt.transactionHash) ||
-      result.receipts.some((receipt) => receipt.status === 'reverted')
+      !result.receipts.every((receipt) => receipt.transactionHash)
     ) {
       onFailed?.(result)
       throw new TransactionError(
@@ -37,10 +47,22 @@ export const waitForBatchTransactionReceipt = async (
     onFailed?.(result)
     throw new TransactionError(
       LiFiErrorCode.TransactionCanceled,
-      'Transaction was canceled.'
+      'Transaction was canceled.',
+      undefined,
+      { final: true }
     )
   }
   onFailed?.(result)
+  // Only 500 (reverted completely) is final. Some calls of a partial batch
+  // (600) may be onchain, and other codes are undefined: the outcome is unknown.
+  if (result.statusCode === 500) {
+    throw new TransactionError(
+      LiFiErrorCode.TransactionFailed,
+      'Transaction failed.',
+      undefined,
+      { final: true }
+    )
+  }
   throw new TransactionError(
     LiFiErrorCode.TransactionFailed,
     'Transaction failed.'

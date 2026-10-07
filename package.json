@@ -35,14 +35,14 @@
     "postinstall": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
+    "@biomejs/biome": "^2.5.15",
     "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^3.0.3",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@size-limit/esbuild": "^14.1.0",
     "@size-limit/file": "^14.1.0",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^5.0.3",
     "husky": "^9.1.7",

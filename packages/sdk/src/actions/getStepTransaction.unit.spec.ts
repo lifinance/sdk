@@ -212,8 +212,10 @@ describe('getStepTransaction', () => {
       expect(mockedFetch).toHaveBeenCalledTimes(1)
     })
 
+    // A type check only: calling the action here would leave its request
+    // open while the test server closes.
     it('resolves to the step shape', () => {
-      expectTypeOf(getStepTransaction(client, getOrderStep())).toEqualTypeOf<
+      expectTypeOf(getStepTransaction).returns.toEqualTypeOf<
         Promise<LiFiStep>
       >()
     })

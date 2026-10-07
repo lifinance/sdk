@@ -1,12 +1,41 @@
-import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
-import { getSignatureFromTransaction, type Transaction } from '@solana/kit'
+import {
+  isFinalTransactionError,
+  LiFiErrorCode,
+  MAX_RESEND_AGE_MS,
+  RPCError,
+  TransactionError,
+} from '@lifi/sdk'
+import {
+  getBase64Encoder,
+  getSignatureFromTransaction,
+  getTransactionDecoder,
+  type Transaction,
+} from '@solana/kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import {
+  signedNonceTransactionBase64,
+  signedSwapTransactionBase64,
+} from '../../utils/storedTransactions.unit.mock.js'
 
 const sendAndConfirmBundle = vi.fn()
 vi.mock('../../actions/sendAndConfirmBundle.js', () => ({
   sendAndConfirmBundle: (...args: unknown[]) => sendAndConfirmBundle(...args),
 }))
+
+const lookupSignatureStatus = vi.fn()
+vi.mock('../../actions/lookupSignatureStatus.js', () => ({
+  lookupSignatureStatus: (...args: unknown[]) => lookupSignatureStatus(...args),
+}))
+
+const isKnownToStatusApi = vi.fn()
+vi.mock('@lifi/sdk', async (importActual) => {
+  const actual = await importActual<typeof import('@lifi/sdk')>()
+  return {
+    ...actual,
+    isKnownToStatusApi: (...args: unknown[]) => isKnownToStatusApi(...args),
+  }
+})
 
 const { SolanaJitoWaitForTransactionTask } = await import(
   './SolanaJitoWaitForTransactionTask.js'
@@ -14,13 +43,15 @@ const { SolanaJitoWaitForTransactionTask } = await import(
 
 const updateAction = vi.fn()
 
+const decodeWire = (wire: string): Transaction =>
+  getTransactionDecoder().decode(getBase64Encoder().encode(wire))
+
 // A decoded signed transaction, filled by position so the two fixtures carry
 // distinct signatures. `getSignatureFromTransaction` reads nothing but the
-// first entry of `signatures`.
+// first entry of `signatures`. The captured swap message gives it a blockhash
+// lifetime, so the resend gate lets it out without a signing time.
 const signedTransactionAt = (index: number): Transaction =>
-  ({
-    signatures: { feePayer: new Uint8Array(64).fill(index + 1) },
-  }) as unknown as Transaction
+  decodeWire(signedSwapTransactionBase64(index + 1))
 
 const baseContext = (
   signedTransactions: unknown[] = [
@@ -40,10 +71,26 @@ const baseContext = (
     signedTransactions,
   }) as never
 
+/** Every `updateAction` params object that names `txHex`. */
+const txHexWrites = () =>
+  updateAction.mock.calls
+    .map((call) => call[3])
+    .filter((params) => params && 'txHex' in params)
+
+/** `baseContext`, signed a moment ago: the dropped check needs the signing
+ * time for its anchor. */
+const signedContext = () =>
+  ({
+    ...(baseContext() as object),
+    step: { execution: { signedAt: Date.now() } },
+  }) as never
+
 describe('SolanaJitoWaitForTransactionTask', () => {
   beforeEach(() => {
     sendAndConfirmBundle.mockReset()
     updateAction.mockReset()
+    lookupSignatureStatus.mockReset()
+    isKnownToStatusApi.mockReset()
   })
 
   it('reports an unsignable transaction as a TransactionError', async () => {
@@ -386,6 +433,205 @@ describe('SolanaJitoWaitForTransactionTask', () => {
 
     await expect(task.run(baseContext())).resolves.toEqual({
       status: 'COMPLETED',
+    })
+  })
+
+  it('clears the stored bytes when no Jito RPC can take the bundle, because nothing was sent', async () => {
+    // `sendAndConfirmBundle` throws the configuration gap before it submits
+    // anything, so "Try again" may sign again.
+    const configurationGap = new RPCError(
+      LiFiErrorCode.RpcUnavailable,
+      'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
+    )
+    sendAndConfirmBundle.mockRejectedValue(configurationGap)
+
+    await expect(
+      new SolanaJitoWaitForTransactionTask().run(baseContext())
+    ).rejects.toBe(configurationGap)
+
+    expect(txHexWrites()).toEqual([{ txHex: undefined }])
+  })
+
+  it('clears the stored bytes when the first signature cannot be read', async () => {
+    const unsigned = {
+      signatures: { feePayer: null },
+    } as unknown as Transaction
+
+    await expect(
+      new SolanaJitoWaitForTransactionTask().run(baseContext([unsigned]))
+    ).rejects.toMatchObject({ code: LiFiErrorCode.TransactionUnprepared })
+
+    expect(txHexWrites()).toEqual([{ txHex: undefined }])
+  })
+
+  it('marks a bundle Err final and clears the stored bytes', async () => {
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'confirmed',
+      value: {
+        signatureResults: [null, null],
+        txSignatures: ['sig0', 'sig1'],
+        bundleId: 'bundle-id',
+        bundleErr: { Err: { InstructionError: [1, 'Custom'] } },
+      },
+    })
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(baseContext())
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
+    expect(thrown.final).toBe(true)
+    expect(txHexWrites()).toHaveLength(1)
+  })
+
+  it('drops an expired bundle that no covering RPC has and the status API does not know', async () => {
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({ kind: 'not-found' })
+    isKnownToStatusApi.mockResolvedValue(false)
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(signedContext())
+      .catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.message).toBe(
+      'Bundle was not confirmed before the SDK stopped waiting.'
+    )
+    expect(thrown.final).toBe(true)
+    const firstSignature = getSignatureFromTransaction(signedTransactionAt(0))
+    expect(lookupSignatureStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      firstSignature,
+      expect.objectContaining({ expiredAtSlot: 900n })
+    )
+    expect(isKnownToStatusApi).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      firstSignature
+    )
+    expect(txHexWrites().at(-1)).toEqual({ txHex: undefined })
+  })
+
+  it('keeps an expired bundle unknown while the status API knows the first signature', async () => {
+    // The veto: a covering RPC's null does not outweigh a known hash.
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({ kind: 'not-found' })
+    isKnownToStatusApi.mockResolvedValue(true)
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(signedContext())
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('keeps an expired bundle unknown while an RPC has the first signature only as processed', async () => {
+    // Only a confirmed status counts as landed: a processed one can still
+    // be dropped by a fork.
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'found',
+      status: { confirmationStatus: 'processed', err: null },
+    })
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(signedContext())
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+    expect(updateAction).not.toHaveBeenCalled()
+  })
+
+  it('looks a not-confirmed bundle up without a verdict slot', async () => {
+    // Only an `expired` verdict carries a slot: the dropped check reads any
+    // defined slot as a verdict. Signed long ago, so the time fallback runs
+    // the lookup.
+    sendAndConfirmBundle.mockResolvedValue({
+      kind: 'not-confirmed',
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'unknown',
+      answered: true,
+      errors: [],
+    })
+    const context = {
+      ...(baseContext() as object),
+      step: { execution: { signedAt: Date.now() - 600_000 } },
+    } as never
+
+    const thrown = await new SolanaJitoWaitForTransactionTask()
+      .run(context)
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(lookupSignatureStatus).toHaveBeenCalledTimes(1)
+    const lookupOptions = lookupSignatureStatus.mock.calls[0][2]
+    expect('expiredAtSlot' in lookupOptions).toBe(true)
+    expect(lookupOptions.expiredAtSlot).toBeUndefined()
+    expect(txHexWrites()).toEqual([])
+  })
+
+  describe('with a durable nonce', () => {
+    const nonceContext = (signedAt: number) =>
+      ({
+        ...(baseContext([
+          decodeWire(signedNonceTransactionBase64(1)),
+          decodeWire(signedNonceTransactionBase64(2)),
+        ]) as object),
+        step: { execution: { signedAt } },
+      }) as never
+
+    it('does not send the bundle past the resend age cap and keeps the outcome unknown', async () => {
+      // A nonce never expires on its own, so only the age cap keeps a late
+      // send from executing an old quote. Past the cap, but not old enough
+      // to drop: nothing is sent or looked up, and the bytes stay.
+      const thrown = await new SolanaJitoWaitForTransactionTask()
+        .run(nonceContext(Date.now() - MAX_RESEND_AGE_MS - 10_000))
+        .catch((e) => e)
+
+      expect(sendAndConfirmBundle).not.toHaveBeenCalled()
+      expect(thrown).toBeInstanceOf(TransactionError)
+      expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+      expect(isFinalTransactionError(thrown)).toBe(false)
+      expect(thrown.cause.errors[0].message).toContain('resend age cap')
+      expect(lookupSignatureStatus).not.toHaveBeenCalled()
+      expect(txHexWrites()).toEqual([])
+    })
+
+    it('sends the bundle inside the resend age cap', async () => {
+      sendAndConfirmBundle.mockResolvedValue({
+        kind: 'confirmed',
+        value: {
+          signatureResults: [{ err: null }, { err: null }],
+          txSignatures: ['sig0', 'sig1'],
+          bundleId: 'bundle-id',
+        },
+      })
+
+      await expect(
+        new SolanaJitoWaitForTransactionTask().run(nonceContext(Date.now()))
+      ).resolves.toEqual({ status: 'COMPLETED' })
+
+      expect(sendAndConfirmBundle).toHaveBeenCalledTimes(1)
     })
   })
 })

@@ -10,6 +10,10 @@ const confirmed = <T>(value: T): ConfirmationOutcome<T> => ({
 const notConfirmed = <T>(): ConfirmationOutcome<T> => ({
   kind: 'not-confirmed',
 })
+const expired = <T>(slot: bigint): ConfirmationOutcome<T> => ({
+  kind: 'expired',
+  slot,
+})
 
 /** Far beyond anything these tests take, so only the branches decide. */
 const timeout = { timeoutMs: 30_000 }
@@ -249,5 +253,53 @@ describe('raceRpcs', () => {
     )
 
     expect(result).toEqual({ kind: 'confirmed', value: 'status' })
+  })
+
+  it('returns expired with the highest slot when every observing branch saw the blockhash expire', async () => {
+    // The highest verdict slot is the strictest head a dropped check can
+    // demand; every branch's verdict holds from its own slot on.
+    const result = await raceRpcs(
+      ['a', 'b'],
+      async (rpc) => expired<string>(rpc === 'a' ? 900n : 905n),
+      timeout
+    )
+
+    expect(result).toEqual({ kind: 'expired', slot: 905n, errors: [] })
+  })
+
+  it('returns not-confirmed when one branch saw the expiry and another only reached the ceiling', async () => {
+    // `expired` can end in a final "dropped", so every branch that observed
+    // has to agree on it. A stale node alone must not drop a transaction
+    // that another endpoint still watched to its ceiling.
+    const result = await raceRpcs(
+      ['stale', 'ceiling'],
+      async (rpc) =>
+        rpc === 'stale' ? expired<string>(900n) : notConfirmed<string>(),
+      timeout
+    )
+
+    expect(result).toEqual({ kind: 'not-confirmed', errors: [] })
+  })
+
+  it('keeps the expiry verdict over a failed branch and carries its error', async () => {
+    const result = await raceRpcs(
+      ['good', 'broken'],
+      async (rpc) => {
+        if (rpc === 'broken') {
+          throw new Error('connection refused')
+        }
+        return expired<string>(900n)
+      },
+      timeout
+    )
+
+    expect(result.kind).toBe('expired')
+    if (result.kind !== 'expired') {
+      throw new Error('unreachable')
+    }
+    expect(result.slot).toBe(900n)
+    expect(result.errors.map((error) => error.message)).toEqual([
+      'connection refused',
+    ])
   })
 })

@@ -1,5 +1,6 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createNonceMessageBytes } from '../../utils/getTransactionLifetime.unit.mock.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 
 // Mutable so one spec can make the signature read throw the way
@@ -34,9 +35,24 @@ vi.mock('../../actions/sendAndConfirmTransaction.js', () => ({
     sendAndConfirmTransaction(...args),
 }))
 
+const lookupSignatureStatus = vi.fn()
+vi.mock('../../actions/lookupSignatureStatus.js', () => ({
+  lookupSignatureStatus: (...args: unknown[]) => lookupSignatureStatus(...args),
+}))
+
+const isKnownToStatusApi = vi.fn()
+vi.mock('@lifi/sdk', async (importActual) => {
+  const actual = await importActual<typeof import('@lifi/sdk')>()
+  return {
+    ...actual,
+    isKnownToStatusApi: (...args: unknown[]) => isKnownToStatusApi(...args),
+  }
+})
+
 const { SolanaStandardWaitForTransactionTask } = await import(
   './SolanaStandardWaitForTransactionTask.js'
 )
+const { MAX_RESEND_AGE_MS } = await import('@lifi/sdk')
 
 const updateAction = vi.fn()
 
@@ -55,11 +71,19 @@ const baseContext = (overrides: Record<string, unknown> = {}) =>
     ...overrides,
   }) as never
 
+/** Every `updateAction` params object that names `txHex`. */
+const txHexWrites = () =>
+  updateAction.mock.calls
+    .map((call) => call[3])
+    .filter((params) => params && 'txHex' in params)
+
 describe('SolanaStandardWaitForTransactionTask', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     callSolanaRpcsWithRetry.mockReset()
     sendAndConfirmTransaction.mockReset()
+    lookupSignatureStatus.mockReset()
+    isKnownToStatusApi.mockReset()
     kit.signatureThrows = false
   })
 
@@ -370,5 +394,249 @@ describe('SolanaStandardWaitForTransactionTask', () => {
       'base64-encoded-tx',
       expect.objectContaining({ replaceRecentBlockhash: true })
     )
+  })
+
+  it('clears the stored bytes when the simulation fails, because nothing was sent', async () => {
+    // "Try again" must sign again here. Resending bytes the simulation
+    // rejected would only fail the same way.
+    callSolanaRpcsWithRetry.mockResolvedValue({
+      value: {
+        err: { InsufficientFundsForRent: { account_index: 0 } },
+        logs: [],
+      },
+    })
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext())
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionSimulationFailed)
+    expect(sendAndConfirmTransaction).not.toHaveBeenCalled()
+    expect(updateAction).toHaveBeenCalledTimes(1)
+    expect(txHexWrites()).toEqual([{ txHex: undefined }])
+  })
+
+  it('clears the stored bytes when the send path rejects before its first send', async () => {
+    // `sendAndConfirmTransaction` rejects only before it sends anything - the
+    // RPC lists, the encoding. The race itself never rejects.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    const rejection = new Error('Solana RPC URLs could not be read')
+    sendAndConfirmTransaction.mockRejectedValue(rejection)
+
+    await expect(
+      new SolanaStandardWaitForTransactionTask().run(baseContext())
+    ).rejects.toBe(rejection)
+
+    expect(txHexWrites()).toEqual([{ txHex: undefined }])
+  })
+
+  it('clears the stored bytes once the transaction confirms', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'confirmed',
+      value: { err: null },
+    })
+
+    await new SolanaStandardWaitForTransactionTask().run(baseContext())
+
+    const [, , , params] = updateAction.mock.calls.at(-1) ?? []
+    expect(params.txHash).toBe('sig')
+    expect('txHex' in params).toBe(true)
+    expect(params.txHex).toBeUndefined()
+  })
+
+  it('marks a confirmed-with-err result final and clears the stored bytes', async () => {
+    const err = { InstructionError: [0, 'AccountInUse'] }
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'confirmed',
+      value: { err },
+    })
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext())
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionFailed)
+    expect(thrown.final).toBe(true)
+    const [, , , params] = updateAction.mock.calls.at(-1) ?? []
+    expect(params.txHash).toBe('sig')
+    expect('txHex' in params).toBe(true)
+  })
+
+  it('drops an expired transaction that no covering RPC has and the status API does not know', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    // What the lookup returns when a covering RPC's head passed slot 900.
+    lookupSignatureStatus.mockResolvedValue({ kind: 'not-found' })
+    isKnownToStatusApi.mockResolvedValue(false)
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext({ step: { execution: { signedAt: Date.now() } } }))
+      .catch((e) => e)
+
+    expect(thrown).toBeInstanceOf(TransactionError)
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    // Today's text: the widget shows the same message as before.
+    expect(thrown.message).toBe(
+      'Transaction was not confirmed before the SDK stopped waiting.'
+    )
+    expect(thrown.final).toBe(true)
+    // The head the covering RPC must reach is the slot of the verdict.
+    expect(lookupSignatureStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      'sig',
+      expect.objectContaining({ expiredAtSlot: 900n })
+    )
+    expect(isKnownToStatusApi).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'sig'
+    )
+    expect(txHexWrites().at(-1)).toEqual({ txHex: undefined })
+  })
+
+  it('keeps an expired transaction unknown while the status API knows its hash', async () => {
+    // A covering RPC answered null, but the status API has the hash. It is a
+    // veto: the transaction is real, whatever one node's history says.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({ kind: 'not-found' })
+    isKnownToStatusApi.mockResolvedValue(true)
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext({ step: { execution: { signedAt: Date.now() } } }))
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('keeps an expired transaction unknown when no RPC can prove the absence', async () => {
+    // A pruned node's null, or a head behind the verdict slot: the lookup
+    // says unknown, and a status API miss cannot make up for it.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'expired',
+      slot: 900n,
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'unknown',
+      answered: true,
+      errors: [],
+    })
+    isKnownToStatusApi.mockResolvedValue(false)
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext({ step: { execution: { signedAt: Date.now() } } }))
+      .catch((e) => e)
+
+    expect(thrown.final).toBe(false)
+    expect(isKnownToStatusApi).not.toHaveBeenCalled()
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('keeps a first-run not-confirmed unknown without asking the chain', async () => {
+    // The 90 s ceiling says nothing about whether the transaction can still
+    // land, and a transaction signed a moment ago is too young for the time
+    // fallback.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'not-confirmed',
+      errors: [],
+    })
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(baseContext({ step: { execution: { signedAt: Date.now() } } }))
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(lookupSignatureStatus).not.toHaveBeenCalled()
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('passes no verdict slot to the lookup when the ceiling ended the wait', async () => {
+    // Only an `expired` verdict names a slot. The time fallback of an old
+    // transaction asks the chain without one, so a covering RPC's head is
+    // checked against the current slot, not a verdict that never came.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'not-confirmed',
+      errors: [],
+    })
+    lookupSignatureStatus.mockResolvedValue({
+      kind: 'unknown',
+      answered: true,
+      errors: [],
+    })
+
+    const thrown = await new SolanaStandardWaitForTransactionTask()
+      .run(
+        baseContext({
+          step: { execution: { signedAt: Date.now() - 6 * 60_000 } },
+        })
+      )
+      .catch((e) => e)
+
+    expect(thrown.code).toBe(LiFiErrorCode.TransactionExpired)
+    expect(thrown.final).toBe(false)
+    expect(lookupSignatureStatus).toHaveBeenCalledTimes(1)
+    const [, signature, lookupOptions] = lookupSignatureStatus.mock.calls[0]
+    expect(signature).toBe('sig')
+    expect(lookupOptions.anchor).toEqual(expect.any(Number))
+    expect(lookupOptions.expiredAtSlot).toBeUndefined()
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('keeps the stored bytes on an RPC outage', async () => {
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'rpc-unavailable',
+      errors: [new Error('429')],
+    })
+
+    await expect(
+      new SolanaStandardWaitForTransactionTask().run(baseContext())
+    ).rejects.toBeInstanceOf(RPCError)
+
+    expect(txHexWrites()).toEqual([])
+  })
+
+  it('closes the resend gate of a first-run durable-nonce send at the age cap', async () => {
+    // A durable nonce has no expiry of its own. The first run's resend loop
+    // reads the age cap at every send, as a resume does.
+    callSolanaRpcsWithRetry.mockResolvedValue({ value: { err: null } })
+    sendAndConfirmTransaction.mockResolvedValue({
+      kind: 'confirmed',
+      value: { err: null },
+    })
+    const step = {
+      execution: { signedAt: Date.now() - (MAX_RESEND_AGE_MS - 10_000) },
+    }
+    const nonceTransaction = {
+      messageBytes: createNonceMessageBytes(),
+      signatures: { signer: new Uint8Array(64).fill(9) },
+    }
+
+    await new SolanaStandardWaitForTransactionTask().run(
+      baseContext({ step, signedTransactions: [nonceTransaction] })
+    )
+
+    const [, sent, options] = sendAndConfirmTransaction.mock.calls[0]
+    expect(sent).toBe(nonceTransaction)
+    expect(options.mayResend()).toBe(true)
+    step.execution.signedAt = Date.now() - (MAX_RESEND_AGE_MS + 1_000)
+    expect(options.mayResend()).toBe(false)
   })
 })

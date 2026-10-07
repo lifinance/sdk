@@ -14,9 +14,27 @@ export class ProviderError extends BaseError {
   }
 }
 
+export interface TransactionErrorOptions {
+  /**
+   * A definite verdict about the transaction (failed or reverted on chain or
+   * at the relayer, cancelled, replaced, or dropped with proof). The step
+   * executor then flags the failed action with `txFinal`, so a restart signs
+   * a new transaction.
+   */
+  final?: boolean
+}
+
 export class TransactionError extends BaseError {
-  constructor(code: LiFiErrorCode, message: string, cause?: Error) {
+  readonly final: boolean
+
+  constructor(
+    code: LiFiErrorCode,
+    message: string,
+    cause?: Error,
+    options?: TransactionErrorOptions
+  ) {
     super(ErrorName.TransactionError, code, message, cause)
+    this.final = options?.final ?? false
   }
 }
 
@@ -47,7 +65,8 @@ export class ValidationError extends BaseError {
 /**
  * Thrown by a step executor when executeStep should be retried with the given params
  * (e.g. wallet rejected 7702 upgrade → retry with atomicityNotReady).
- * The execution layer catches this and retries executeStep(client, step, retryParams).
+ * The execution layer catches this and retries executeStep(client, step, retryParams),
+ * unless the route was stopped or the step has an open transaction.
  */
 export class ExecuteStepRetryError extends BaseError {
   readonly retryParams: ExecuteStepRetryParams

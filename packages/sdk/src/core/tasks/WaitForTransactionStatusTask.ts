@@ -3,6 +3,7 @@ import { LiFiErrorCode } from '../../errors/constants.js'
 import { TransactionError } from '../../errors/errors.js'
 import type { ExecutionActionType } from '../../types/core.js'
 import type { StepExecutorContext, TaskResult } from '../../types/execution.js'
+import { isAbortError } from '../../utils/abort.js'
 import { getTransactionFailedMessage } from '../../utils/getTransactionMessage.js'
 import { BaseStepExecutionTask } from '../BaseStepExecutionTask.js'
 import { waitForTransactionStatus } from './helpers/waitForTransactionStatus.js'
@@ -23,6 +24,7 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
       pollingIntervalMs,
       toChain,
       isBridgeExecution,
+      signal,
     } = context
 
     // At this point, we should have a txHash or taskId
@@ -56,7 +58,8 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
         transactionHash,
         step,
         action.type,
-        pollingIntervalMs
+        pollingIntervalMs,
+        signal
       )) as FullStatusData
 
       const statusReceiving =
@@ -98,6 +101,12 @@ export class WaitForTransactionStatusTask extends BaseStepExecutionTask {
 
       return { status: 'COMPLETED' }
     } catch (e: any) {
+      // `stopRouteExecution` ended the wait; the outcome of the transaction is
+      // still unknown. Pause like a stopped step, with no write: the stored
+      // action keeps its hash, and a resume waits for it again.
+      if (signal?.aborted && isAbortError(e)) {
+        return { status: 'PAUSED' }
+      }
       const htmlMessage = await getTransactionFailedMessage(
         client,
         step,
