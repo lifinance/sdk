@@ -8,7 +8,15 @@ import type {
 } from '../types/core.js'
 import { checkPackageUpdates } from '../utils/checkPackageUpdates.js'
 import { name, version } from '../version.js'
+import { findProvider } from './findProvider.js'
 import { getClientStorage } from './getClientStorage.js'
+
+// A provider replaces only one that serves the same chains. A provider that
+// lists no chains keeps the bare type, so even an empty list stays apart.
+const providerScope = (provider: SDKProvider): string =>
+  provider.chainIds
+    ? `${provider.type}:${[...provider.chainIds].sort().join(',')}`
+    : provider.type
 
 export function createClient(options: SDKConfig): SDKClient {
   if (!options.integrator) {
@@ -68,15 +76,15 @@ export function createClient(options: SDKConfig): SDKClient {
     get providers() {
       return _providers
     },
-    getProvider(type: ChainType) {
-      return this.providers.find((provider) => provider.type === type)
+    getProvider(type: ChainType, chainId?: ChainId) {
+      return findProvider(this.providers, type, chainId)
     },
     setProviders(newProviders: SDKProvider[]) {
       const providerMap = new Map(
-        this.providers.map((provider) => [provider.type, provider])
+        this.providers.map((provider) => [providerScope(provider), provider])
       )
       for (const provider of newProviders) {
-        providerMap.set(provider.type, provider)
+        providerMap.set(providerScope(provider), provider)
       }
       _providers = Array.from(providerMap.values())
     },

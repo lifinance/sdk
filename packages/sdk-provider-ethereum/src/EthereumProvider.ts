@@ -10,6 +10,11 @@ function isEthereumTokenAddress(address: string): boolean {
   return isAddress(address, { strict: false })
 }
 
+/** viem reads a second argument as options, so a chain ID must not reach it. */
+function isEthereumAddress(address: string): boolean {
+  return isAddress(address)
+}
+
 export function EthereumProvider(
   options?: EthereumProviderOptions
 ): EthereumSDKProvider {
@@ -21,7 +26,7 @@ export function EthereumProvider(
     get options() {
       return _options
     },
-    isAddress,
+    isAddress: isEthereumAddress,
     isTokenAddress: isEthereumTokenAddress,
     resolveAddress: resolveEthereumAddress,
     getBalance: getEthereumBalance,

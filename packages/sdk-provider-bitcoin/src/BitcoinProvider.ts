@@ -1,9 +1,14 @@
 import { isUTXOAddress } from '@bigmi/core'
-import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
+import { ChainId, ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { getBitcoinBalance } from './actions/getBitcoinBalance.js'
 import { resolveBitcoinAddress } from './actions/resolveBitcoinAddress.js'
 import { BitcoinStepExecutor } from './core/BitcoinStepExecutor.js'
 import type { BitcoinProviderOptions, BitcoinSDKProvider } from './types.js'
+
+// Each UTXO chain has its own address format, so any chain but BTC is refused.
+// The chain ID must not reach bigmi, which reads a second argument as a network.
+const isAddress = (address: string, chainId?: ChainId): boolean =>
+  (chainId === undefined || chainId === ChainId.BTC) && isUTXOAddress(address)
 
 export function BitcoinProvider(
   options?: BitcoinProviderOptions
@@ -13,7 +18,7 @@ export function BitcoinProvider(
     get type() {
       return ChainType.UTXO
     },
-    isAddress: isUTXOAddress,
+    isAddress,
     resolveAddress: resolveBitcoinAddress,
     getBalance: getBitcoinBalance,
     async getStepExecutor(

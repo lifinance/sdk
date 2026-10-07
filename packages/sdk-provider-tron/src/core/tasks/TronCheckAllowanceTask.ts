@@ -6,6 +6,7 @@ import {
 } from '@lifi/sdk'
 import { callTronRpcsWithRetry } from '../../rpc/callTronRpcsWithRetry.js'
 import type { TronStepExecutorContext } from '../../types.js'
+import { TRC20_ABI } from '../../utils/trc20Abi.js'
 
 export class TronCheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(context: TronStepExecutorContext): Promise<boolean> {
@@ -42,7 +43,7 @@ export class TronCheckAllowanceTask extends BaseStepExecutionTask {
     const fromAmount = BigInt(step.action.fromAmount)
 
     const allowance = await callTronRpcsWithRetry(client, async (tronWeb) => {
-      const contract = await tronWeb.contract().at(tokenAddress)
+      const contract = tronWeb.contract(TRC20_ABI, tokenAddress)
       const result = await contract
         .allowance(ownerAddress, spenderAddress)
         .call({ from: ownerAddress })

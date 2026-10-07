@@ -74,10 +74,15 @@ describe('getSuiBalance', () => {
       })
     )
     const tokens = [token(SuiTokenShortAddress), token(USDC)]
+    // getSuiBalance puts the SDK client's Sui RPC URLs in its dedupe ids, so
+    // the client must have them.
+    const client = {
+      getRpcUrlsByChainId: async () => ['https://sui.test'],
+    } as never
 
     const [first, second] = await Promise.all([
-      getSuiBalance({} as never, WALLET, tokens),
-      getSuiBalance({} as never, OTHER_WALLET, tokens),
+      getSuiBalance(client, WALLET, tokens),
+      getSuiBalance(client, OTHER_WALLET, tokens),
     ])
 
     expect(first.map((balance) => balance.amount)).toEqual([1000n, 500n])

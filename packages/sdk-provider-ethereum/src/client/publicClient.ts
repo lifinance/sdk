@@ -5,8 +5,10 @@ import { type Chain, mainnet } from 'viem/chains'
 import { UNS_PROXY_READER_ADDRESSES } from '../actions/constants.js'
 import type { EthereumSDKProvider } from '../types.js'
 
-// cached providers
-const publicClients: Record<number, Client> = {}
+// One client per chain. The cache holds the build promise, not the client,
+// so concurrent first calls share one build: each extra client would keep
+// its own fallback ranking loop running.
+const publicClients = new Map<number, Promise<Client>>()
 
 /**
  * Get an instance of a provider for a specific chain
@@ -14,14 +16,26 @@ const publicClients: Record<number, Client> = {}
  * @param chainId - Id of the chain the provider is for
  * @returns The public client for the given chain
  */
-export const getPublicClient = async (
+export const getPublicClient = (
   client: SDKClient,
   chainId: number
 ): Promise<Client> => {
-  if (publicClients[chainId]) {
-    return publicClients[chainId]
+  let publicClient = publicClients.get(chainId)
+  if (!publicClient) {
+    // A failed build is removed, so the next call builds again.
+    publicClient = buildPublicClient(client, chainId).catch((error) => {
+      publicClients.delete(chainId)
+      throw error
+    })
+    publicClients.set(chainId, publicClient)
   }
+  return publicClient
+}
 
+const buildPublicClient = async (
+  client: SDKClient,
+  chainId: number
+): Promise<Client> => {
   const urls = await client.getRpcUrlsByChainId(chainId)
   const fallbackTransports = urls.map((url) =>
     url.startsWith('wss')
@@ -63,7 +77,7 @@ export const getPublicClient = async (
   const provider = client.getProvider(ChainType.EVM) as
     | EthereumSDKProvider
     | undefined
-  publicClients[chainId] = createClient({
+  return createClient({
     chain: chain,
     transport: fallback(
       fallbackTransports,
@@ -73,6 +87,4 @@ export const getPublicClient = async (
       multicall: true,
     },
   })
-
-  return publicClients[chainId]
 }

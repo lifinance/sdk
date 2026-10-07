@@ -37,13 +37,14 @@ const fakeTronWeb = (
     getCurrentBlock: () =>
       Promise.resolve({ block_header: { raw_data: { number: 7 } } }),
   },
+  // getTronBalance builds the token contract from a static TRC-20 ABI with
+  // `contract(abi, address)`, not with `contract().at(address)`, which
+  // fetched the ABI from the node and cached it per token without a limit.
+  // So the fake returns the contract directly.
   contract: () => ({
-    at: () =>
-      Promise.resolve({
-        balanceOf: (wallet: string) => ({
-          call: () => Promise.resolve(balancesByWallet[wallet].usdt),
-        }),
-      }),
+    balanceOf: (wallet: string) => ({
+      call: () => Promise.resolve(balancesByWallet[wallet].usdt),
+    }),
   }),
 })
 

@@ -1,4 +1,5 @@
 import {
+  ChainId,
   type SDKClient,
   type Token,
   type TokenAmount,
@@ -33,32 +34,47 @@ const getSuiBalanceDefault = async (
   tokens: Token[],
   walletAddress: string
 ): Promise<TokenAmount[]> => {
+  // The dedupe ids carry the RPC URLs of this SDK client. Two SDK clients
+  // with different URLs (one per tenant, each with its own API key) must not
+  // share a request. The lookup runs inside each settled entry, so a failed
+  // lookup leaves the amounts undefined, as a failed request does.
+  const rpcUrlsKey = client
+    .getRpcUrlsByChainId(ChainId.SUI)
+    .then((rpcUrls) => rpcUrls.join(' '))
   const [coins, checkpoint] = await Promise.allSettled([
-    withDedupe(
-      () =>
-        callSuiWithRetry(client, async (suiClient) => {
-          // listBalances is paginated; page through to collect every coin type.
-          const balances: SuiClientTypes.Balance[] = []
-          let cursor: string | null | undefined
-          do {
-            const page = await suiClient.core.listBalances({
-              owner: walletAddress,
-              cursor,
-            })
-            balances.push(...page.balances)
-            cursor = page.hasNextPage ? page.cursor : null
-          } while (cursor)
-          return balances
-        }),
-      { id: `${getSuiBalanceDefault.name}.listBalances.${walletAddress}` }
+    rpcUrlsKey.then((urlsKey) =>
+      withDedupe(
+        () =>
+          callSuiWithRetry(client, async (suiClient) => {
+            // listBalances is paginated; page through to collect every coin type.
+            const balances: SuiClientTypes.Balance[] = []
+            let cursor: string | null | undefined
+            do {
+              const page = await suiClient.core.listBalances({
+                owner: walletAddress,
+                cursor,
+              })
+              balances.push(...page.balances)
+              cursor = page.hasNextPage ? page.cursor : null
+            } while (cursor)
+            return balances
+          }),
+        {
+          id: `${getSuiBalanceDefault.name}.listBalances.${walletAddress}.${urlsKey}`,
+        }
+      )
     ),
-    withDedupe(
-      () =>
-        callSuiWithRetry(client, async (suiClient) => {
-          const { response } = await suiClient.ledgerService.getServiceInfo({})
-          return response.checkpointHeight ?? 0n
-        }),
-      { id: `${getSuiBalanceDefault.name}.getServiceInfo` }
+    rpcUrlsKey.then((urlsKey) =>
+      withDedupe(
+        () =>
+          callSuiWithRetry(client, async (suiClient) => {
+            const { response } = await suiClient.ledgerService.getServiceInfo(
+              {}
+            )
+            return response.checkpointHeight ?? 0n
+          }),
+        { id: `${getSuiBalanceDefault.name}.getServiceInfo.${urlsKey}` }
+      )
     ),
   ])
 

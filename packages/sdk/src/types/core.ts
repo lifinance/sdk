@@ -91,7 +91,18 @@ export type RPCUrls = Partial<Record<ChainId, string[]>>
 
 export interface SDKProvider {
   readonly type: ChainType
-  isAddress(address: string): boolean
+  /**
+   * The chains this provider serves. Omit it to serve every chain of `type`
+   * that no other provider lists.
+   */
+  readonly chainIds?: readonly ChainId[]
+  /**
+   * Validates a wallet address. With `chainId`, a provider whose chains use
+   * different address formats accepts only that chain's format and refuses a
+   * chain it does not know. Never forward `chainId` to a library function whose
+   * second parameter means something else.
+   */
+  isAddress(address: string, chainId?: ChainId): boolean
   /**
    * Validates a token identifier, which several ecosystems shape unlike a
    * wallet address. A provider that omits the method has no token address
@@ -115,7 +126,7 @@ export interface SDKProvider {
 export interface SDKClient {
   config: SDKBaseConfig
   providers: SDKProvider[]
-  getProvider(type: ChainType): SDKProvider | undefined
+  getProvider(type: ChainType, chainId?: ChainId): SDKProvider | undefined
   setProviders(providers: SDKProvider[]): void
   setChains(chains: ExtendedChain[]): void
   getChains(): Promise<ExtendedChain[]>
