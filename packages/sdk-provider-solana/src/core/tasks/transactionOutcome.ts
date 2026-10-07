@@ -21,7 +21,7 @@ import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 import {
   type ConfirmationMessages,
   confirmationError,
-} from './unwrapConfirmation.js'
+} from './confirmationError.js'
 
 /** Explorer link for a signature, as both wait tasks write it. */
 export function getTxLink(

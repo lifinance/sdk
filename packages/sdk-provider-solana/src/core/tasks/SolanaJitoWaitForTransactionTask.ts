@@ -14,6 +14,7 @@ import {
   getTransactionLifetime,
   type TransactionLifetime,
 } from '../../utils/getTransactionLifetime.js'
+import type { ConfirmationMessages } from './confirmationError.js'
 import { readSignature } from './readSignature.js'
 import { resumeFromStore } from './resumeFromStore.js'
 import {
@@ -22,7 +23,6 @@ import {
   getTxLink,
   sendAndSettle,
 } from './transactionOutcome.js'
-import type { ConfirmationMessages } from './unwrapConfirmation.js'
 
 // The `rpc-unavailable` message is distinct from the empty-list throw inside
 // `sendAndConfirmBundle`: RPCs were configured and every one of them failed.

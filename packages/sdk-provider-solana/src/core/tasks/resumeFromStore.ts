@@ -17,16 +17,16 @@ import {
   type StoredTransactions,
 } from '../../utils/storedTransactions.js'
 import {
+  type ConfirmationMessages,
+  confirmationError,
+} from './confirmationError.js'
+import {
   canResendStored,
   clearStoredTransactions,
   failureOf,
   recordLanded,
   resolveUnconfirmed,
 } from './transactionOutcome.js'
-import {
-  type ConfirmationMessages,
-  confirmationError,
-} from './unwrapConfirmation.js'
 
 /** What a resumed wait task can work from. */
 type ResumeSource =

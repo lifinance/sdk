@@ -1,8 +1,5 @@
 import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
-import type {
-  RaceResult,
-  UnconfirmedRaceResult,
-} from '../../confirmation/raceRpcs.js'
+import type { UnconfirmedRaceResult } from '../../confirmation/raceRpcs.js'
 
 /** Only the nouns differ between the standard and bundle paths. */
 export type ConfirmationMessages = {
@@ -31,6 +28,9 @@ const chainErrors = (
 /**
  * The error the integrator sees for a result that did not confirm.
  *
+ * `rpc-unavailable` and `not-confirmed` must stay distinct: collapsing them
+ * reported a live RPC defect as an expired transaction.
+ *
  * `expired` maps exactly like `not-confirmed` - same code, same message - so
  * no text changes. The wait tasks tell the two apart by `result.kind` before
  * they call this: only they can run the history lookup and the status API a
@@ -57,22 +57,4 @@ export function confirmationError(
     messages.notConfirmed,
     chainErrors(result.errors, messages.someRpcsFailed)
   )
-}
-
-/**
- * Returns the confirmed value, or throws the error the integrator sees.
- *
- * Both wait tasks map the same outcomes onto the same two error classes, so
- * the mapping lives here once. `rpc-unavailable` and `not-confirmed` must
- * stay distinct: collapsing them reported a live RPC defect as an expired
- * transaction.
- */
-export function unwrapConfirmation<T>(
-  result: RaceResult<T>,
-  messages: ConfirmationMessages
-): T {
-  if (result.kind === 'confirmed') {
-    return result.value
-  }
-  throw confirmationError(result, messages)
 }

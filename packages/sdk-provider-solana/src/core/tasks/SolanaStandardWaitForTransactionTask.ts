@@ -18,6 +18,7 @@ import {
   type TransactionLifetime,
 } from '../../utils/getTransactionLifetime.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
+import type { ConfirmationMessages } from './confirmationError.js'
 import { readSignature } from './readSignature.js'
 import { resumeFromStore } from './resumeFromStore.js'
 import {
@@ -27,7 +28,6 @@ import {
   getTxLink,
   sendAndSettle,
 } from './transactionOutcome.js'
-import type { ConfirmationMessages } from './unwrapConfirmation.js'
 
 const MESSAGES: ConfirmationMessages = {
   rpcUnavailable:
