@@ -9,7 +9,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { Hex } from 'viem'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@lifi/sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@lifi/sdk')>()
@@ -94,8 +94,31 @@ const persistedAfterBroadcast = async (): Promise<RouteExtended> => {
   return afterBroadcast!
 }
 
+const TENDERLY_URL =
+  /^https:\/\/api\.tenderly\.co\/api\/v1\/public-contract\/\d+\/tx\/0x[0-9a-f]+$/
+
+/**
+ * The error parser asks Tenderly about every reverted transaction
+ * (`fetchTxErrorDetails`). This stub answers it inside the process, as
+ * `network.mock.ts` does; any other request throws, so no request leaves
+ * the process.
+ */
+const fetchStub = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
+  const url = String(input)
+  if (!TENDERLY_URL.test(url)) {
+    throw new Error(`Unexpected fetch in the reload spec: ${url}`)
+  }
+  // Not an out-of-gas revert, so the parser keeps `TransactionFailed`.
+  return Response.json({ error_message: 'execution reverted' })
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubGlobal('fetch', fetchStub)
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('EVM reload (regression)', () => {
@@ -169,6 +192,10 @@ describe('EVM "Try again" loop exit', () => {
       status: 'FAILED',
       txFinal: true,
     })
+    // The parser looked the revert up on the stub, not on the real API.
+    expect(fetchStub).toHaveBeenCalledWith(
+      `https://api.tenderly.co/api/v1/public-contract/${failed.steps[0].action.fromChainId}/tx/${swapActionOf(failed)?.txHash}`
+    )
 
     const retryFrom = scenario.timeline.length
     // Count only the resume's receipt waits: the first run waited on the
