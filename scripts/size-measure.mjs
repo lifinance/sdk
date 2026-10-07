@@ -5,6 +5,10 @@
 // Exit codes: 0 = all checks within budget, 1 = a budget is exceeded or a check
 // produced no output, 2 = the measurement itself failed.
 //
+// Each check runs in its own size-limit process. One check that cannot be bundled
+// (for example, it imports an export the base commit does not have) then only loses
+// its own row, not the whole report. It is reported with a name and no size.
+//
 // --ignore-missing is passed to size-limit. It drops checks whose files do not exist
 // in <checkout-root>. The base commit uses it, so a PR that adds a package still gets
 // deltas for everything else.
@@ -25,42 +29,59 @@ if (!root || !out) {
   process.exit(2)
 }
 
-const checks = JSON.parse(readFileSync('.size-limit.json', 'utf8')).map(
-  (check) => ({ ...check, path: resolve(root, check.path) })
-)
-const tempDir = mkdtempSync(join(tmpdir(), 'size-limit-'))
-const configPath = join(tempDir, 'config.json')
-writeFileSync(configPath, JSON.stringify(checks))
-
-let result
+let checks
 try {
-  result = spawnSync(
-    'pnpm',
-    [
-      'exec',
-      'size-limit',
-      '--config',
-      configPath,
-      '--json',
-      ...(flags.includes('--ignore-missing') ? ['--ignore-missing'] : []),
-    ],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  checks = JSON.parse(readFileSync('.size-limit.json', 'utf8')).map(
+    (check) => ({
+      ...check,
+      path: resolve(root, check.path),
+    })
   )
+} catch (error) {
+  console.error(`Cannot read .size-limit.json: ${error.message}`)
+  process.exit(2)
+}
+
+const tempDir = mkdtempSync(join(tmpdir(), 'size-limit-'))
+const extraArgs = flags.includes('--ignore-missing') ? ['--ignore-missing'] : []
+const report = []
+let failed = 0
+let budgetFailed = false
+
+try {
+  for (const [index, check] of checks.entries()) {
+    const configPath = join(tempDir, `${index}.json`)
+    writeFileSync(configPath, JSON.stringify([check]))
+    const result = spawnSync(
+      'pnpm',
+      ['exec', 'size-limit', '--config', configPath, '--json', ...extraArgs],
+      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+    )
+    // size-limit prints bundler warnings to stderr and the JSON report to stdout.
+    // A budget failure exits non-zero but still prints a valid JSON array.
+    let parsed = null
+    try {
+      parsed = JSON.parse(result.stdout ?? '')
+    } catch {}
+    if (Array.isArray(parsed) && parsed.length > 0 && result.status !== null) {
+      report.push(parsed[0])
+      budgetFailed ||= result.status !== 0
+    } else if (Array.isArray(parsed) && parsed.length === 0) {
+      // Dropped by --ignore-missing: the base has no files for this check.
+    } else {
+      failed += 1
+      console.error(`Check failed: ${check.name}`)
+      console.error(result.stdout, result.stderr, result.signal)
+      report.push({ name: check.name })
+    }
+  }
 } finally {
   rmSync(tempDir, { recursive: true, force: true })
 }
 
-// size-limit prints bundler warnings to stderr and the JSON report to stdout.
-// A budget failure exits non-zero but still prints a valid JSON array, so only a
-// missing report, a non-array report (`{ "error": ... }`) or a killed process is
-// a real error.
-let report = null
-try {
-  report = JSON.parse(result.stdout ?? '')
-} catch {}
-if (!Array.isArray(report) || result.status === null) {
-  console.error(result.stdout, result.stderr, result.signal)
+// No check could be measured at all: there is no report worth writing.
+if (failed > 0 && failed === checks.length) {
   process.exit(2)
 }
 writeFileSync(out, JSON.stringify(report, null, 2))
-process.exit(result.status)
+process.exit(failed > 0 || budgetFailed ? 1 : 0)

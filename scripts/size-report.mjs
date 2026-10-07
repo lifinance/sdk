@@ -161,8 +161,9 @@ const footer = [
 ].join('\n')
 
 const meta = [
-  BASE_SHA && `base \`${short(BASE_SHA)}\``,
-  HEAD_SHA && `head \`${short(HEAD_SHA)}\``,
+  HEAD_SHA &&
+    BASE_SHA &&
+    `\`${short(HEAD_SHA)}\` merged into \`${short(BASE_SHA)}\``,
   RUN_URL && `[workflow run](${RUN_URL})`,
 ]
   .filter(Boolean)
