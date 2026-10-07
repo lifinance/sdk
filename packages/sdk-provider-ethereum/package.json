@@ -45,11 +45,11 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "viem": "^2.57.1"
+    "viem": "^2.57.3"
   },
   "devDependencies": {
     "@lifi/data-types": "^7.1.6",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "@vitest/coverage-v8": "^5.0.3",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
