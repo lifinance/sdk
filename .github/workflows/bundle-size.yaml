@@ -126,8 +126,8 @@ jobs:
           node scripts/size-measure.mjs "$RUNNER_TEMP/base" out/base.json --ignore-missing
           status=$?
           echo "status=$status" >> "$GITHUB_OUTPUT"
-          # Exit 1 can be a base over the PR's budgets; only cache a report with every size.
-          if [ -f out/base.json ] && node -e "process.exit(require('./out/base.json').every((r) => typeof r.size === 'number') ? 0 : 1)"; then
+          # Exit 1 can be a base over the PR's budgets; only cache a complete report.
+          if [ -f out/base.json ] && node -e "process.exit(require('./out/base.json').every((r) => typeof r.size === 'number' && !r.breakdownError) ? 0 : 1)"; then
             echo "complete=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Save the measurement
