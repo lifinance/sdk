@@ -1,8 +1,5 @@
-// Builds the markdown for the single, self-updating bundle size PR comment.
-//
-//   node scripts/size-report.mjs <base.json> <head.json> > size.md
-//
-// Optional env: BASE_SHA, HEAD_SHA, RUN_URL.
+// Usage: node scripts/size-report.mjs <base.json> <head.json> > size.md
+// Optional env: BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY, BASE_OUTCOME.
 import { readFileSync } from 'node:fs'
 
 // A change is only called out when it passes BOTH thresholds, so tiny noise stays quiet.
@@ -22,7 +19,7 @@ const read = (path) => {
 const [basePath, headPath] = process.argv.slice(2)
 const base = new Map(read(basePath).map((r) => [r.name, r]))
 const head = read(headPath)
-const { BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY, BASE_BUILD_OUTCOME } =
+const { BASE_SHA, HEAD_SHA, RUN_URL, GITHUB_REPOSITORY, BASE_OUTCOME } =
   process.env
 const configUrl = GITHUB_REPOSITORY
   ? `https://github.com/${GITHUB_REPOSITORY}/blob/${HEAD_SHA || 'HEAD'}/.size-limit.json`
@@ -34,16 +31,13 @@ const pct = (value) => `${value > 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}%
 const short = (sha) => (sha ? sha.slice(0, 7) : '')
 
 const baseUsable = [...base.values()].some((r) => typeof r.size === 'number')
-const baseBuildFailed = BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
 const rows = head.map((current) => {
   const [first, ...rest] = current.name.split(' · ')
-  // Names without ' · ' have no group, so they go in one shared section.
   const group = rest.length ? first : 'Other'
   const label = rest.length ? rest.join(' · ') : current.name
   const previous = base.get(current.name)
   const before = typeof previous?.size === 'number' ? previous : undefined
-  // No usable base for this row: the whole baseline is missing, or the base had this
-  // check but could not measure it (for example, a missing export).
+  // The base had this check but could not measure it, e.g. a missing export.
   const baselineFailed =
     !baseUsable || (previous !== undefined && before === undefined)
   // size-limit omits `size` when a check found no files to measure.
@@ -125,10 +119,19 @@ let verdict
 if (head.length === 0) {
   verdict =
     '❔ **No size data.** The build or the measurement step failed. See the workflow run.'
-} else if (missingRows.length) {
-  verdict = `❌ **${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** Check the build, the import, and the path in \`.size-limit.json\`. The cause is in the "Measure PR" step log.`
-} else if (over.length) {
-  verdict = `❌ **${over.length} ${over.length === 1 ? 'check is' : 'checks are'} over budget.** Reduce the size, or raise the limit in \`.size-limit.json\` and explain why in the PR.`
+} else if (missingRows.length || over.length) {
+  const problems = []
+  if (missingRows.length) {
+    problems.push(
+      `**${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** Check the build, the import, and the path in \`.size-limit.json\`. The cause is in the "Measure PR" step log.`
+    )
+  }
+  if (over.length) {
+    problems.push(
+      `**${over.length} ${over.length === 1 ? 'check is' : 'checks are'} over budget.** Reduce the size, or raise the limit in \`.size-limit.json\` and explain why in the PR.`
+    )
+  }
+  verdict = `❌ ${problems.join(' ')}`
 } else if (grew.length) {
   verdict = `⚠️ **${grew.length} ${grew.length === 1 ? 'check grew' : 'checks grew'}** by more than ${NOTICE_PERCENT}% and ${NOTICE_BYTES} B.`
 } else if (shrank.length) {
@@ -162,10 +165,11 @@ for (const group of [...new Set(rows.map((r) => r.group))]) {
 const baseNote = baseUsable
   ? ''
   : `> ℹ️ ${
-      baseBuildFailed
-        ? 'The base commit failed to build, so changes are not shown.'
-        : 'No baseline was found, so changes are not shown.'
-    } Budgets are still checked.\n\n`
+      {
+        failure: 'The base commit failed to build',
+        'measure-failure': 'The base commit could not be measured',
+      }[BASE_OUTCOME] ?? 'No baseline was found'
+    }, so changes are not shown. Budgets are still checked.\n\n`
 
 const footer = [
   '<details>',

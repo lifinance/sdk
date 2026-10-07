@@ -1,22 +1,7 @@
-// Runs the size-limit checks from `.size-limit.json` against a built checkout.
-//
-//   node scripts/size-measure.mjs <checkout-root> <output.json> [--ignore-missing]
-//
-// Exit codes: 0 = all checks within budget, 1 = a budget is exceeded or a check
-// produced no output, 2 = the measurement itself failed.
-//
-// Each check runs in its own size-limit process, several at a time. One check that
-// cannot be bundled (for example, it imports an export the base commit does not have)
-// then only loses its own row, not the whole report. It is reported with a name and
-// no size.
-//
-// --ignore-missing is passed to size-limit. It drops checks whose files do not exist
-// in <checkout-root>. The base commit uses it, so a PR that adds a package still gets
-// deltas for everything else.
-//
-// The PR checkout always supplies the config and the size-limit binary. Paths are
-// rewritten to point at <checkout-root>, so the base commit is measured with exactly
-// the same checks as the PR, even when the base has no size-limit setup of its own.
+// Usage: node scripts/size-measure.mjs <checkout-root> <output.json> [--ignore-missing]
+// Exit codes: 0 = within budget, 1 = over budget or a check not measured, 2 = failed.
+// The config and size-limit come from this repo, so the base is measured with the PR's
+// checks even when the base has no size-limit setup of its own.
 import { spawn } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { availableParallelism, tmpdir } from 'node:os'
@@ -25,7 +10,6 @@ import { fileURLToPath } from 'node:url'
 
 const CHECK_TIMEOUT_MS = 10 * 60 * 1000
 
-// The repo root holds .size-limit.json and the size-limit install, whatever the cwd.
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const sizeLimitBin = join(repoRoot, 'node_modules', 'size-limit', 'bin.js')
 const [root, out, ...flags] = process.argv.slice(2)
@@ -81,6 +65,7 @@ const run = (configPath) =>
     )
   })
 
+// One process per check, so a check that cannot be bundled only loses its own row.
 const measure = async (check, index) => {
   const configPath = join(tempDir, `${index}.json`)
   writeFileSync(configPath, JSON.stringify([check]))
@@ -95,7 +80,6 @@ const measure = async (check, index) => {
     return { row: parsed[0], overBudget: result.status !== 0 }
   }
   if (Array.isArray(parsed) && parsed.length === 0 && ignoreMissing) {
-    // Dropped by --ignore-missing: the base has no files for this check.
     return { row: null }
   }
   console.error(`Check failed: ${check.name}`)
@@ -128,7 +112,6 @@ try {
 }
 
 const failed = results.filter((result) => result.failed).length
-// No check could be measured at all: there is no report worth writing.
 if (failed > 0 && failed === checks.length) {
   process.exit(2)
 }
