@@ -1,7 +1,6 @@
 import {
   BaseStepExecutionTask,
   type ExecutionAction,
-  isKnownToStatusApi,
   isResendAllowed,
   LiFiErrorCode,
   MAX_RESEND_AGE_MS,
@@ -22,10 +21,7 @@ import {
   type SuiSignedTransaction,
   verifySuiSignedTransaction,
 } from '../../utils/suiSignedTransaction.js'
-import {
-  SUI_LOOKUP_TIMEOUT_MS,
-  SUI_REEXECUTION_RETURNS_EFFECTS,
-} from '../constants.js'
+import { SUI_LOOKUP_TIMEOUT_MS } from '../constants.js'
 import { callWithinDeadline } from './helpers/callWithinDeadline.js'
 import { isSuiTransactionDropped } from './helpers/isSuiTransactionDropped.js'
 
@@ -124,15 +120,8 @@ export class SuiWaitForTransactionTask extends BaseStepExecutionTask {
         if (landed) {
           return complete(context, action, landed)
         }
-        // The refusal proves that the digest never executed only if
-        // re-executing an executed transaction returns its effects (Task 0).
-        // The status API can still veto.
-        if (
-          SUI_REEXECUTION_RETURNS_EFFECTS &&
-          !(await isKnownToStatusApi(client, step, digest))
-        ) {
-          throw dropped(context, action)
-        }
+        // A node refusal does not prove the transaction absent, so the
+        // outcome stays unknown.
         throw error
       }
     } else if (

@@ -374,9 +374,8 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     expect(page.signTransaction).toHaveBeenCalledTimes(1)
     // #507 behaviour: the refusal is a definite rejection, so the task looks
     // the digest up once more (the first execution may have landed). It is
-    // not found, and the refusal proves nothing while
-    // SUI_REEXECUTION_RETURNS_EFFECTS is false (spec 4.6 "Dropped"): no
-    // status API veto check, and the task rethrows the refusal.
+    // not found, and a node refusal does not prove the transaction absent:
+    // no status API check, and the task rethrows the refusal.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
       'grpc.executeTransaction',

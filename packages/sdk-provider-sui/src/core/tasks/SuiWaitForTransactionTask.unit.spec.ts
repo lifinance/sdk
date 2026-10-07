@@ -38,15 +38,6 @@ vi.mock('../../utils/suiSignedTransaction.js', async (importActual) => {
   }
 })
 
-// The Task 0 flag, switchable per test. The other constants stay real.
-const task0 = vi.hoisted(() => ({ reexecutionReturnsEffects: false }))
-vi.mock('../constants.js', async (importActual) => ({
-  ...(await importActual<typeof import('../constants.js')>()),
-  get SUI_REEXECUTION_RETURNS_EFFECTS() {
-    return task0.reexecutionReturnsEffects
-  },
-}))
-
 const getTransaction = vi.fn()
 const waitForTransaction = vi.fn()
 const executeTransaction = vi.fn()
@@ -161,7 +152,6 @@ describe('SuiWaitForTransactionTask', () => {
     // Veto only: an unknown digest says nothing.
     isKnownToStatusApi.mockReset().mockResolvedValue(false)
     isSuiTransactionDropped.mockReset().mockResolvedValue(false)
-    task0.reexecutionReturnsEffects = false
   })
 
   afterEach(() => {
@@ -421,10 +411,7 @@ describe('SuiWaitForTransactionTask', () => {
 
     // `callSuiWithRetry` tries the nodes one by one, so the cap is checked
     // again before each try (spec 4.2.8: before every send).
-    // The skipped try is not a definite refusal, so even with the Task 0
-    // flag on it never leads to "dropped".
     it('re-checks the age cap before each node and never sends past it', async () => {
-      task0.reexecutionReturnsEffects = true
       const refusal = new RpcError(
         'object version unavailable',
         'INVALID_ARGUMENT'
@@ -668,35 +655,9 @@ describe('SuiWaitForTransactionTask', () => {
       }
     )
 
-    it('reports dropped on a definite refusal when Task 0 confirmed that an executed transaction returns its effects', async () => {
-      task0.reexecutionReturnsEffects = true
-      executeTransaction.mockRejectedValue(
-        new RpcError('object version unavailable', 'INVALID_ARGUMENT')
-      )
-      const { context, updateAction } = makeContext({
-        type: 'SWAP',
-        txHex: TX_HEX,
-      })
-
-      await expect(
-        new SuiWaitForTransactionTask().run(context)
-      ).rejects.toMatchObject({
-        code: LiFiErrorCode.TransactionExpired,
-        final: true,
-      })
-      // Looked up before and again after the refusal.
-      expect(getTransaction).toHaveBeenCalledTimes(2)
-      expect(isKnownToStatusApi).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        DIGEST
-      )
-      expect(clearedTxHex(updateAction)).toBe(true)
-    })
-
-    // Until Task 0 confirms it, the refusal may come from a digest that
-    // already executed, so it proves nothing.
-    it('keeps a definite refusal unknown while the Task 0 flag is off', async () => {
+    // A node refusal does not prove the transaction absent: a digest that
+    // already executed is refused too.
+    it('keeps a definite refusal unknown', async () => {
       const refusal = new RpcError(
         'object version unavailable',
         'INVALID_ARGUMENT'
@@ -736,26 +697,6 @@ describe('SuiWaitForTransactionTask', () => {
       expectResultWrite(updateAction, 'SWAP')
     })
 
-    it('stays unknown when the refusal meets a status API that knows the digest', async () => {
-      task0.reexecutionReturnsEffects = true
-      isKnownToStatusApi.mockResolvedValue(true)
-      const refusal = new RpcError(
-        'object version unavailable',
-        'INVALID_ARGUMENT'
-      )
-      executeTransaction.mockRejectedValue(refusal)
-      const { context, updateAction } = makeContext({
-        type: 'SWAP',
-        txHex: TX_HEX,
-      })
-
-      await expect(new SuiWaitForTransactionTask().run(context)).rejects.toBe(
-        refusal
-      )
-      expect(isKnownToStatusApi).toHaveBeenCalledTimes(1)
-      expect(clearedTxHex(updateAction)).toBe(false)
-    })
-
     // The transport reports the age-cap abort (a `TimeoutError` reason) as
     // DEADLINE_EXCEEDED and an abort by the caller as CANCELLED.
     it.each([
@@ -763,7 +704,6 @@ describe('SuiWaitForTransactionTask', () => {
       ['the age-cap abort', 'DEADLINE_EXCEEDED'],
       ['an abort by the caller', 'CANCELLED'],
     ])('stays unknown on %s of the re-execution', async (_, code) => {
-      task0.reexecutionReturnsEffects = true
       const unavailable = new RpcError('upstream connect error', code)
       executeTransaction.mockRejectedValue(unavailable)
       const { context, updateAction } = makeContext({
@@ -853,10 +793,9 @@ describe('SuiWaitForTransactionTask', () => {
         expect(vi.getTimerCount()).toBe(0)
       })
 
-      // Even when Task 0 confirmed that a refusal proves absence: without
-      // the second lookup the first execution may have landed meanwhile.
+      // Without the second lookup the first execution may have landed
+      // meanwhile.
       it('fails non-final when the lookup after a definite refusal never answers', async () => {
-        task0.reexecutionReturnsEffects = true
         getTransaction
           .mockRejectedValueOnce(notFound())
           .mockImplementation(never)
