@@ -1,2 +1,2 @@
 export const name = '@lifi/sdk-provider-bitcoin'
-export const version = '4.0.16'
+export const version = '4.1.0'

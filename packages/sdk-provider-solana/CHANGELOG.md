@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.4
+
+### Patch Changes
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Resume a signed or broadcast transaction instead of signing again. The signed transaction is stored in `txHex` and resent after a reload until it confirms or its blockhash expires (a durable-nonce transaction only within two minutes of signing); a transaction is declared dropped only when it can no longer land, an RPC whose history covers the signing time does not find it, and the LI.FI status API does not know it. It can no longer land when its blockhash expired or, without a blockhash verdict (an RPC without `isBlockhashValid`, a probe error, no RPC answering, a route stored without `txHex`, or a durable-nonce transaction past its two-minute resend window), about 5 minutes after signing (`isOldEnoughToDrop`). The sign task checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is neither stored nor sent. The wallet account is resolved only when signing. An expired blockhash after the SDK stopped waiting now reports `TransactionExpired` instead of `RpcUnavailable` when an RPC answered.
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.3.3
 
 ### Patch Changes

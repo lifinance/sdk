@@ -1,5 +1,15 @@
 # @lifi/sdk-provider-tron
 
+## 4.1.7
+
+### Patch Changes
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Resume a signed or broadcast transaction instead of signing again. The sign task checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is neither stored nor broadcast. The signed transaction is stored in `txHex` and rebroadcast after a reload; it is declared dropped only after `raw_data.expiration` (by block time), when the node does not find it within the lookup window and the LI.FI status API does not know it. A route stored without `txHex` has no `raw_data.expiration`; its transaction counts as expired about 5 minutes after `signedAt` (`isOldEnoughToDrop`, on the device clock), and it can be declared dropped only once the chain's block time is past `signedAt` plus the clock-skew and head margins, about 16 minutes after signing. A confirmation timeout is no longer treated as a final failure.
+
+- [#509](https://github.com/lifinance/sdk/pull/509) [`34ecf9c`](https://github.com/lifinance/sdk/commit/34ecf9c4dcfa54cb2e60cacc931257fdc700c682) Thanks [@chybisov](https://github.com/chybisov)! - TRC-20 balance and allowance reads now use a static TRC-20 ABI instead of fetching the token contract from the node. This saves one request per read, stops TronWeb from keeping the ABI and bytecode of every token read (which grew memory without a limit), and makes the reads also work for a token whose on-chain ABI is empty or holds only a proxy's functions.
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.1.6
 
 ### Patch Changes

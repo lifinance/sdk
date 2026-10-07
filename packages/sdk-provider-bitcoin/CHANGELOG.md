@@ -1,5 +1,22 @@
 # @lifi/sdk-provider-bitcoin
 
+## 4.1.0
+
+### Minor Changes
+
+- [#492](https://github.com/lifinance/sdk/pull/492) [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409) Thanks [@chybisov](https://github.com/chybisov)! - `BitcoinProvider.isAddress(address, chainId)` refuses every UTXO chain other than BTC, so a Bitcoin address never passes as the receiver of a chain whose format the provider does not know; ZEC receivers are validated by `@lifi/sdk-provider-zcash`. `getBitcoinBalance` leaves the amount of a non-BTC token unknown instead of reporting the Bitcoin balance for it. `isBitcoinProvider` no longer matches another UTXO provider, such as `ZcashProvider`.
+
+### Patch Changes
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Require `@bigmi/core` 0.9.3, which fixes `waitForTransaction`. A wait whose block budget ran out no longer stops the shared block watcher, so a resumed Bitcoin route, and every later wait on the same client, can no longer wait forever. Finished waits release their observers and timers. A transaction that a lagging node still reports as unconfirmed is no longer reported as its own replacement, and a replacement is always compared with the awaited transaction, so a fee bump of a cancel is still reported as cancelled.
+
+- [#510](https://github.com/lifinance/sdk/pull/510) [`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: viem to 2.57.3, @stellar/stellar-sdk to 17.2.1,
+  @mysten/sui to 2.35.0, @lifi/types to 18.13.0 and @bigmi/core to 0.9.3.
+
+- [#507](https://github.com/lifinance/sdk/pull/507) [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e) Thanks [@chybisov](https://github.com/chybisov)! - Mark a cancelled replacement as final so "Try again" signs a new transaction; any other failure after broadcast is re-checked instead. The sign task refuses to sign while the step has an open transaction. It checks the action again after the wallet returns: if a stopped run's transaction merged into it while the prompt was open, the step fails with `TransactionConflict` and the new signature is neither stored nor sent. The signed transaction (`txHex`, `txHash`, `signedAt`) is now stored before it is sent, so a reload during the send resumes it instead of signing again. A first send that every configured node refuses for a reason that proves none of them holds it (bytes that do not decode, consensus or standardness rules, a fee above the cap or below the floor, or a full mempool), and that no node knows by txid, clears it, so "Try again" signs anew; any other send failure is re-checked, and the stored transaction is resent on a resume (a reload or "Try again") only within two minutes of signing. If the first send's outcome stays unknown and no resend happens within two minutes of signing, a resume only waits; the wait ends after about ten blocks with an error that is not final, and the exit is to delete the route.
+- Updated dependencies [[`bb964c0`](https://github.com/lifinance/sdk/commit/bb964c03d8ea1770303ab1bba803373a80e6388f), [`48af3ae`](https://github.com/lifinance/sdk/commit/48af3aeb250299ef9d2ff9eb79a38a6b8f52d409), [`14f4ecc`](https://github.com/lifinance/sdk/commit/14f4ecc2714799449d57b61ff06b040df505184e)]:
+  - @lifi/sdk@4.11.0
+
 ## 4.0.16
 
 ### Patch Changes
