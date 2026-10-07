@@ -365,6 +365,11 @@ export class StatusManager {
       throw new Error("Couldn't find a step to update.")
     }
 
+    // A shallow copy on purpose: the route's step must keep sharing the
+    // step's `execution` object. `mergeLateTransaction` changes the live
+    // route in place, and the running sign task's check after the wallet
+    // must see the merge (pinned by the stop-and-resume race test in
+    // `sdk-provider-ethereum/src/core/flows/reload.unit.spec.ts`).
     data.route.steps[stepIndex] = { ...data.route.steps[stepIndex], ...step }
 
     data.executionOptions?.updateRouteHook?.(data.route)
