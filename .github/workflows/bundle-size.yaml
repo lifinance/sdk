@@ -88,6 +88,17 @@ jobs:
         with:
           header: bundle-size
           path: ${{ runner.temp }}/size.md
+      - name: Replace the comment when the report failed
+        # Otherwise the comment from an earlier push would show an outdated result.
+        if: ${{ !cancelled() && steps.report.outcome == 'failure' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: bundle-size
+          message: |
+            ## 📦 Bundle size
+
+            ❌ **The report could not be built for this commit.** See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
       - name: Enforce budgets
         if: ${{ !cancelled() && steps.head.outputs.status != '0' }}
         env:

@@ -98,7 +98,7 @@ const bar = (used) => {
 
 const changeCell = (row) => {
   if (row.missing) {
-    return '⚠️ no output'
+    return '⚠️ not measured'
   }
   if (row.baselineFailed) {
     return '— baseline n/a'
@@ -126,7 +126,7 @@ if (head.length === 0) {
   verdict =
     '❔ **No size data.** The build or the measurement step failed. See the workflow run.'
 } else if (missingRows.length) {
-  verdict = `❌ **${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** The build output for ${missingRows.length === 1 ? 'it is' : 'them is'} missing. Check the build, or update the path in \`.size-limit.json\`.`
+  verdict = `❌ **${missingRows.length} ${missingRows.length === 1 ? 'check' : 'checks'} could not be measured.** Check the build, the import, and the path in \`.size-limit.json\`. The cause is in the "Measure PR" step log.`
 } else if (over.length) {
   verdict = `❌ **${over.length} ${over.length === 1 ? 'check is' : 'checks are'} over budget.** Reduce the size, or raise the limit in \`.size-limit.json\` and explain why in the PR.`
 } else if (grew.length) {
