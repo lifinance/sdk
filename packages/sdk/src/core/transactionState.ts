@@ -60,10 +60,34 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
 })
 
 /**
- * True when the action holds transaction data that may still land: a hash, a
+ * True when the action has a transaction to follow, landed or not: a hash, a
  * task id or stored signed bytes, unless the action FAILED with a final
  * outcome. Every resume decision uses this one predicate, so the pipeline
  * selector and the pre-sign guard can never disagree.
+ *
+ * Resume rules for providers. A step never signs or sends a second
+ * transaction while an earlier one can still land:
+ * 1. Pick the first task with this predicate: open and DONE, the status
+ *    wait; open, the provider's wait task; otherwise the first task.
+ * 2. In the sign task, call `assertNoOpenTransaction` at the start, right
+ *    before the wallet call and, where the SDK sends, right after the wallet
+ *    returns. Write the new data with `CLEARED_TRANSACTION_FIELDS` and
+ *    `signedAt`.
+ * 3. Where the SDK sends signed bytes, store them as `txHex` in the same
+ *    synchronous block as the last check, before the first send. Elsewhere,
+ *    nothing awaits between the last check and the send. Clear `txHex` on
+ *    confirmation, or once the bytes provably never left the SDK.
+ * 4. A resume never signs, and its wait needs no user interaction. It looks
+ *    the transaction up and resends the stored bytes only while
+ *    `isResendAllowed` (or the chain's own expiry) allows it; otherwise it
+ *    only waits.
+ * 5. Mark an error final only on a chain verdict: reverted, cancelled,
+ *    replaced, or dropped with proof. Dropped needs all three: the
+ *    transaction can no longer land, one node response that covers its
+ *    window shows it absent, and `isKnownToStatusApi` is false. In doubt,
+ *    throw without the marker and keep the fields.
+ * 6. Give `context.signal` only to waits that start after the broadcast. On
+ *    abort, return `PAUSED` and write nothing.
  */
 export function hasOpenTransaction(action?: ExecutionAction): boolean {
   if (!action) {
