@@ -59,12 +59,10 @@ export {
   CLOCK_SKEW_MARGIN_MS,
   DROPPED_FALLBACK_AGE_MS,
   hasOpenTransaction,
-  hasStepOpenTransaction,
   isFinalTransactionError,
   isOldEnoughToDrop,
   isResendAllowed,
   MAX_RESEND_AGE_MS,
-  TRANSACTION_ACTION_TYPES,
 } from './core/transactionState.js'
 export { BaseError } from './errors/baseError.js'
 export type { ErrorCode } from './errors/constants.js'
