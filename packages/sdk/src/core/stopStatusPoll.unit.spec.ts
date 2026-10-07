@@ -30,8 +30,9 @@ import {
 import { WaitForTransactionStatusTask } from './tasks/WaitForTransactionStatusTask.js'
 import { hasOpenTransaction } from './transactionState.js'
 
-// The `/status` poll of a route that `stopRouteExecution` stopped (memory-leak
-// findings, core L2). `fetch` is stubbed; the poll runs on fake timers.
+// The `/status` poll of a route ends when `stopRouteExecution` stops the
+// route, so it does not keep the records of the route alive. `fetch` is
+// stubbed; the poll runs on fake timers.
 
 const INTERVAL = 5_000
 const HOUR = 3_600_000
@@ -257,7 +258,7 @@ afterEach(() => {
 })
 
 describe('the /status poll of a stopped route', () => {
-  it('(a) ends after the stop and frees the records of the route', async () => {
+  it('ends after the stop and frees the records of the route', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const route = buildRoute()
@@ -284,7 +285,7 @@ describe('the /status poll of a stopped route', () => {
     expect(executionState.inFlight[route.id]).toBeUndefined()
   })
 
-  it('(a) ends after the stop also when the step runs again after ExecuteStepRetryError', async () => {
+  it('ends after the stop also when the step runs again after ExecuteStepRetryError', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     retryFirstAttempt = true
@@ -304,7 +305,7 @@ describe('the /status poll of a stopped route', () => {
     expect(run.error).toBeUndefined()
   })
 
-  it('(b) leaves the stored route as it was at the stop', async () => {
+  it('leaves the stored route as it was at the stop', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const route = buildRoute()
@@ -325,7 +326,7 @@ describe('the /status poll of a stopped route', () => {
     expect(swapOf(last())?.txFinal).toBeUndefined()
   })
 
-  it('(b) leaves the stored route unchanged also when the abort reaches the catch block of the step', async () => {
+  it('leaves the stored route unchanged also when the abort reaches the catch block of the step', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const route = buildRoute()
@@ -353,7 +354,7 @@ describe('the /status poll of a stopped route', () => {
     expect(last()).toEqual(storedAtStop)
   })
 
-  it('(c) resumes the stored route without a signature and polls the hash again', async () => {
+  it('resumes the stored route without a signature and polls the hash again', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const route = buildRoute()
@@ -395,7 +396,7 @@ describe('the /status poll of a stopped route', () => {
     expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
   })
 
-  it('(d) keeps polling for another route that waits for the same hash, and ends when both stopped', async () => {
+  it('keeps polling for another route that waits for the same hash, and ends when both stopped', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const client = buildClient()
@@ -426,7 +427,7 @@ describe('the /status poll of a stopped route', () => {
     expect(TRANSACTION_HASH_OBSERVERS[txHash]).toBeUndefined()
   })
 
-  it('(d) completes the other route that waits for the same hash', async () => {
+  it('completes the other route that waits for the same hash', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     const client = buildClient()
@@ -454,7 +455,7 @@ describe('the /status poll of a stopped route', () => {
     'answers DONE late',
     'answers PENDING late',
   ] as const)(
-    '(f) ends the /status request in flight at the stop; the request %s',
+    'ends the /status request in flight at the stop; the request %s',
     async (late) => {
       const txHash = `0x${nextId()}`
       wallet.mockResolvedValue(txHash)
@@ -516,7 +517,7 @@ describe('the /status poll of a stopped route', () => {
     }
   )
 
-  it('(g) stores the hash of a wallet call that ends after the stop, polls nothing, and a resume waits for it', async () => {
+  it('stores the hash of a wallet call that ends after the stop, polls nothing, and a resume waits for it', async () => {
     const txHash = `0x${nextId()}`
     let sign!: (hash: string) => void
     wallet.mockReturnValue(
@@ -569,7 +570,7 @@ describe('the /status poll of a stopped route', () => {
 describe('the /status poll of a running route', () => {
   // Characterization: a FAILED answer does not end the wait of a running
   // execution.
-  it('(e) keeps polling on FAILED while the route runs', async () => {
+  it('keeps polling on FAILED while the route runs', async () => {
     const txHash = `0x${nextId()}`
     wallet.mockResolvedValue(txHash)
     answer = failed

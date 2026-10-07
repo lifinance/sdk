@@ -176,7 +176,7 @@ describe('Tron background execution', () => {
       })
     ).resolves.toBeDefined()
 
-    // Pinned as observed, and it looks wrong (Finding 1):
+    // Pinned as observed, and it looks wrong:
     // `TronSetAllowanceTask` has no `allowUserInteraction` gate, so a
     // background run asks the wallet for the approval and broadcasts it.
     // Only the swap pauses (core `PrepareTransactionTask`).

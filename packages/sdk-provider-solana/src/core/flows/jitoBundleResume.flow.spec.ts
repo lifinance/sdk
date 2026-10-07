@@ -18,9 +18,8 @@ import {
   submitTrail,
 } from './harness.mock.js'
 
-// The Jito bundle variants of the #507 reload specs (matrix spec
-// 2026-10-05-money-path-matrix-design.md §5 step 4, optional item;
-// `reload.unit.spec.ts` covers the single transaction). A reload is a new
+// The Jito bundle variants of the #507 reload specs
+// (`reload.unit.spec.ts` covers the single transaction). A reload is a new
 // page - a new wallet object with the same key, a new provider and a new
 // client - that resumes what storage held. The module caches (RPC clients,
 // Jito probe answers) survive it, as they do in these specs generally, so
@@ -85,7 +84,7 @@ describe('Solana Jito bundle resume (#507)', () => {
     })
     expect(firstSent).toEqual(firstWallet.signCalls[0].outputs)
     // #507 behaviour: the signed bundle is stored as a JSON array before the
-    // send, and no txHash exists yet (spec §4.4.1).
+    // send, and no txHash exists yet.
     expect(swapOf(atSend!)?.txHex).toBe(JSON.stringify(firstSent))
     expect(swapOf(atSend!)?.txHash).toBeUndefined()
 
@@ -102,7 +101,7 @@ describe('Solana Jito bundle resume (#507)', () => {
     )
 
     // #507 behaviour: the SDK sends the same signed bytes; the wallet is not
-    // opened and no new quote is fetched (spec §2, §4.7 row "txHex only").
+    // opened and no new quote is fetched.
     expect(reloadedWallet.signCalls).toEqual([])
     expect(firstWallet.signCalls).toHaveLength(1)
     expect(apiTrail(network)).toEqual(['GET /chains', 'GET /status'])
@@ -110,8 +109,7 @@ describe('Solana Jito bundle resume (#507)', () => {
     // #507 behaviour: one target-only lookup of the first signature on every
     // RPC finds no confirmed status; the SDK resends on any answer that is not
     // confirmed, so the stored bytes go out once, as a bundle, exactly as
-    // signed and without simulation; nothing goes out one by one (plan Task
-    // S7; spec §4.4.5 step 3, as amended).
+    // signed and without simulation; nothing goes out one by one.
     // The warm module caches skip the Jito probes (see the header). A real
     // reload starts with cold caches, so `getBundleStatuses@read` and
     // `getBundleStatuses@jito` would come before `sendBundle@jito`.
@@ -169,7 +167,7 @@ describe('Solana Jito bundle resume (#507)', () => {
     })
     expect(afterSend).toBeDefined()
     // #507 behaviour: the accepted send writes the first signature, and the
-    // stored bundle stays until the confirmation (spec §4.4.1).
+    // stored bundle stays until the confirmation.
     expect(swapOf(afterSend!)?.txHash).toBe(txHash)
     expect(swapOf(afterSend!)?.txHex).toBe(JSON.stringify(signed))
 
@@ -184,12 +182,12 @@ describe('Solana Jito bundle resume (#507)', () => {
     )
 
     // #507 behaviour: the SDK waits for the first transaction; the wallet is
-    // not opened and no new quote is fetched (spec §2, §4.7 row "txHash").
+    // not opened and no new quote is fetched.
     expect(reloadedWallet.signCalls).toEqual([])
     expect(firstWallet.signCalls).toHaveLength(1)
     expect(apiTrail(network)).toEqual(['GET /chains', 'GET /status'])
     // #507 behaviour: the lookup finds the first signature confirmed, so
-    // nothing is sent (spec §4.4.5 step 2).
+    // nothing is sent.
     expect(submitTrail(network)).toEqual([
       'getSignatureStatuses@read',
       'getSignatureStatuses@jito',

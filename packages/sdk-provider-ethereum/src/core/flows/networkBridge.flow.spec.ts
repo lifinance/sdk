@@ -76,7 +76,7 @@ const openBridgePage = (): NetworkPage =>
     ]),
   })
 
-describe('EN3 — a bridge: source transaction, /status to DONE, RECEIVING_CHAIN', () => {
+describe('a bridge: source transaction, /status to DONE, RECEIVING_CHAIN', () => {
   it('signs one bridge transaction on the source chain and switches nothing', async () => {
     const page = openBridgePage()
     await page.run()

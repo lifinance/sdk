@@ -74,8 +74,8 @@ const RATE_UPDATE = {
 }
 
 /**
- * The EA1 native swap, re-quoted at the worse rate. The re-quote carries its
- * own transaction, so a send of the old one shows.
+ * The native swap of `nativeSwap.flow.spec.ts`, re-quoted at the worse rate.
+ * The re-quote carries its own transaction, so a send of the old one shows.
  */
 const buildRateScenario = (): Scenario => {
   const step = buildStep({
@@ -124,7 +124,7 @@ afterEach(() => {
   expect(statusApi.unknown).toEqual([])
 })
 
-describe('EA5 — the exchange rate changed past the slippage', () => {
+describe('the exchange rate changed past the slippage', () => {
   it('accepted: asks the hook once, then sends the re-quote and completes', async () => {
     const accept = vi.fn(async () => true)
     walletControls.acceptExchangeRateUpdateHook = accept

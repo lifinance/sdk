@@ -97,9 +97,9 @@ const SUI_CHAIN = {
 
 /**
  * Fully resolved transaction bytes (base64), as the backend sends them in
- * `transactionRequest.data`: sender, gas data and the epoch expiration that
- * Task 0.5 observed. Building them needs no client. `variant` changes the
- * split amount, so every quote has its own digest.
+ * `transactionRequest.data`: sender, gas data and the epoch expiration.
+ * Building them needs no client. `variant` changes the split amount, so
+ * every quote has its own digest.
  */
 export const buildTransactionData = async (
   sender: string,
@@ -200,7 +200,7 @@ export interface FakeSuiNetwork {
   readonly client: ClientWithCoreApi
   /**
    * `SuiGrpcClient.ledgerService` of the LI.FI gRPC clients: the batch
-   * transaction lookup (Task 0.3c) and the checkpoints of the canary search
+   * transaction lookup and the checkpoints of the canary search
    * answer from the same fake chain.
    */
   readonly ledgerService: {
@@ -239,10 +239,9 @@ const json = (body: unknown, status = 200): Response =>
   })
 
 /**
- * What `GET /v1/status` answers for a hash LI.FI never saw (Task 0.3): HTTP
- * 404 with body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi`
- * reads it as "no information" (false); only an HTTP 200 answer vetoes
- * "dropped".
+ * What `GET /v1/status` answers for a hash LI.FI never saw: HTTP 404 with
+ * body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi` reads it
+ * as "no information" (false); only an HTTP 200 answer vetoes "dropped".
  */
 const statusNotFound = (): Response =>
   json(
@@ -399,7 +398,7 @@ export const createFakeSuiNetwork = (): FakeSuiNetwork => {
 
   const ledgerService = recording('ledgerService.', {
     // One request, one result per digest; an unknown digest is a per-item
-    // google.rpc.Status with code 5 (NOT_FOUND), as on mainnet (Task 0.3c).
+    // google.rpc.Status with code 5 (NOT_FOUND), as on mainnet.
     async batchGetTransactions(input: { digests: string[] }) {
       return {
         response: {

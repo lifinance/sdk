@@ -157,7 +157,7 @@ export const USDC_ARBITRUM: Address =
 export const START_NATIVE_BALANCE: bigint = 10n ** 21n
 export const START_TOKEN_BALANCE: bigint = 10n ** 12n
 
-/** Gas and fee answers. No spec pins them (spec §3.5). */
+/** Gas and fee answers. No spec pins them. */
 const BASE_FEE = 30_000_000_000n
 const PRIORITY_FEE = 1_500_000_000n
 const GAS_ESTIMATE = 100_000n
@@ -1221,7 +1221,7 @@ export const openNetworkPage = (options: NetworkPageOptions): NetworkPage => {
 // ---------------------------------------------------------------------------
 
 /**
- * The §4.2.2 sequence of one step (see `routeUpdates.mock.ts`), from the
+ * The route-update sequence of one step (see `routeUpdates.mock.ts`), from the
  * snapshots of {@link NetworkPage.snapshots}, which are copied through JSON
  * inside `updateRouteHook`. `fromSnapshot` reads one leg of a run that was
  * retried: the leg starts from the last snapshot before `fromSnapshot`, i.e.

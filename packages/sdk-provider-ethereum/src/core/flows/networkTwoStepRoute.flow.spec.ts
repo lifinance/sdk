@@ -73,7 +73,7 @@ const openTwoStepPage = (): NetworkPage =>
 const link = (chainId: number, hash: string): string =>
   `${EXPLORER_URLS[chainId]}tx/${hash}`
 
-describe('EN6 — a two-step route', () => {
+describe('a two-step route', () => {
   it('starts step 2 only after step 1 is DONE, and ends with both DONE', async () => {
     const page = openTwoStepPage()
     const route = await page.run()

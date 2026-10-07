@@ -73,7 +73,8 @@ describe('Solana background execution', () => {
     const stored = recorder.latest()
     expect(stored.steps[0].execution?.status).toBe('ACTION_REQUIRED')
     // main: storage holds the quote the background run fetched; the resume
-    // below drops it and never signs it (finding).
+    // below drops it and never signs it. This looks wrong and is pinned as
+    // observed.
     expect(stored.steps[0].transactionRequest?.data).toBe(network.quotes[0])
     // The paused run is stopped, not parked: nothing is active any more.
     expect(getActiveRoute(route.id)).toBeUndefined()

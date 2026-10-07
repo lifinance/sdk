@@ -35,7 +35,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()
@@ -59,7 +59,7 @@ describe('Stellar background execution', () => {
 
     // main: StellarSignAndExecuteTask has no allowUserInteraction check.
     // The run pauses earlier, in core PrepareTransactionTask, right after
-    // it fetched the step transaction (spec §1 example).
+    // it fetched the step transaction.
     expect(page.signTransaction).not.toHaveBeenCalled()
     expect(network.sent).toEqual([])
     expect(network.stepTransactionRequests.map((step) => step.id)).toEqual([

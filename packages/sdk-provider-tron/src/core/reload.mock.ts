@@ -215,10 +215,9 @@ const json = (body: unknown, status = 200): Response =>
   })
 
 /**
- * What `GET /v1/status` answers for a hash LI.FI never saw (Task 0.3): HTTP
- * 404 with body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi`
- * reads it as "no information" (false); only an HTTP 200 answer vetoes
- * "dropped".
+ * What `GET /v1/status` answers for a hash LI.FI never saw: HTTP 404 with
+ * body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi` reads it
+ * as "no information" (false); only an HTTP 200 answer vetoes "dropped".
  */
 const statusNotFound = (): Response =>
   json(

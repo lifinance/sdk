@@ -245,7 +245,7 @@ describe('StellarSignAndExecuteTask pre-sign guard', () => {
   )
 
   // An older run's late write can merge its transaction into this action
-  // while the task awaits the quote (spec addendum §5.2 case 1).
+  // while the task awaits the quote.
   it('checks the action again right before the wallet and never opens it when a transaction merged meanwhile', async () => {
     const { context, signTransaction, updateAction } = makeContext(
       buildSignedTransaction().toXdr(),

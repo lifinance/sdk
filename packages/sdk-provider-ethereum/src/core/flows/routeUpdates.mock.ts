@@ -1,7 +1,7 @@
 /**
- * The route-update sequence of the money-path spec (§4.2.2), shared by the
+ * The route-update sequence that the EVM flow specs pin, shared by the
  * action-level (`harness.mock.ts`) and the network-level (`network.mock.ts`)
- * EVM flow specs.
+ * specs.
  *
  * Input: one entry per `updateRouteHook` fire, each the step's
  * `execution.actions` at that fire as `TYPE:STATUS` strings. Output: for every

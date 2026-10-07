@@ -84,7 +84,7 @@ const decodedSwapOfQuote = (index: number) => ({
   ],
 })
 
-describe('EN4 — the swap reverts on chain, then "Try again"', () => {
+describe('the swap reverts on chain, then "Try again"', () => {
   it('fails the step with TransactionFailed and never asks /status', async () => {
     network.revertNext = true
     const page = openSwapPage()
@@ -113,7 +113,7 @@ describe('EN4 — the swap reverts on chain, then "Try again"', () => {
       network.allowance(USDC_POLYGON, WALLET_ADDRESS, DIAMOND_ADDRESS)
     ).toBe(SEEDED_ALLOWANCE)
 
-    // Pinned as observed, and it looks wrong (ledger finding F3): the error
+    // Pinned as observed, and it looks wrong: the error
     // parser (`parseEthereumErrors`, core `fetchTxErrorDetails`) sends the
     // reverted transaction hash to Tenderly, a service outside LI.FI, on every
     // on-chain revert, only to tell an out-of-gas revert apart. The fake
@@ -195,7 +195,7 @@ describe('EN4 — the swap reverts on chain, then "Try again"', () => {
       network.allowance(USDC_POLYGON, WALLET_ADDRESS, DIAMOND_ADDRESS)
     ).toBe(SEEDED_ALLOWANCE - FROM_AMOUNT)
 
-    // Only the revert was looked up on Tenderly (finding F3, see test 1).
+    // Only the revert was looked up on Tenderly (see the first test).
     expect(network.tenderly).toEqual([reverted.hash])
     expect(network.api.map((call) => call.path)).toEqual([
       '/advanced/stepTransaction',

@@ -209,8 +209,8 @@ describe('resumeFromStore', () => {
   })
 
   it('never sends a durable-nonce transaction past the resend age cap', async () => {
-    // A send there would execute a swap on an old quote (spec 4.2.8). Just
-    // past the cap, the dropped check does not run yet either.
+    // A send there would execute a swap on an old quote. Just past the cap,
+    // the dropped check does not run yet either.
     const thrown = await resume(
       { txHex: signedNonceTransactionBase64(9) },
       ago(MAX_RESEND_AGE_MS + 1_000)
@@ -381,7 +381,7 @@ describe('resumeFromStore', () => {
 
   it('keeps an old route unknown when no RPC can prove the absence', async () => {
     // Every node that answered has pruned the signing time: its null proves
-    // nothing, and the exit is "delete the route" (spec 4.2.8, section 8).
+    // nothing, and the exit is "delete the route".
     lookupAnswers(NOTHING_FOUND, NOTHING_FOUND)
 
     const thrown = await resume(

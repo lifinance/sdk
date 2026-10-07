@@ -35,9 +35,8 @@ const HEAD_REF_BLOCK = {
   timestamp: 1_760_000_000_000,
 }
 
-// Spec 2026-10-05-money-path-matrix-design.md §5 step 4 (optional item): a
-// Tron TRC-20 resume. A reload is a JSON copy of what `updateRouteHook` wrote
-// and a new page (wallet, provider, client, empty TronWeb cache).
+// A Tron TRC-20 resume. A reload is a JSON copy of what `updateRouteHook`
+// wrote and a new page (wallet, provider, client, empty TronWeb cache).
 describe('Tron TRC-20 swap resume after a reload', () => {
   it('skips the allowance check, waits for the broadcast swap and never signs again', async () => {
     const page = openPage()
@@ -107,8 +106,7 @@ describe('Tron TRC-20 swap resume after a reload', () => {
       txHash: approve.txID,
     })
     // #507 behaviour: the sign task stores the signed swap JSON in `txHex`;
-    // the broadcast adds `txHash` and keeps `txHex` until the confirmation
-    // (spec 2026-09-30-resume-without-resign-design.md §4.5 "Sign task").
+    // the broadcast adds `txHash` and keeps `txHex` until the confirmation.
     const storedSwap = actionOf(afterBroadcast, 'SWAP')
     expect(storedSwap).toMatchObject({
       status: 'PENDING',
@@ -130,29 +128,24 @@ describe('Tron TRC-20 swap resume after a reload', () => {
     })
 
     // #507 behaviour: a broadcast swap that is not DONE is waited for by its
-    // hash; no signature and no new quote (§4.7 row "`txHash` (broadcast),
-    // not `DONE`").
+    // hash; no signature and no new quote.
     expect(reloaded.wallet.requests).toEqual([])
     expect(network.apiCalls.slice(mark.apiCalls)).toEqual(['GET /status'])
     // #507 behaviour: the open swap skips the allowance check, so the resume
-    // starts at `TronWaitForTransactionTask`: no allowance read, no approve
-    // (§4.5 "Selector"). The dropped check runs first: it reads the head and
-    // asks the full node. With a stored transaction, #507 sends this lookup
-    // on every resume; only the "not found" verdict needs a head past the
-    // expiry (§4.5 "Expiry" says the check runs "if the expiry has already
-    // passed", which does not describe the lookup). Here the full node
-    // returns the landed swap, so the lookup finds it and the swap is not
-    // dropped. Then the stored swap is sent again, the node answers
-    // DUP_TRANSACTION_ERROR (success), and the receipt is read (§4.5 "Resume
-    // mode").
+    // starts at `TronWaitForTransactionTask`: no allowance read, no approve.
+    // The dropped check runs first: it reads the head and asks the full node.
+    // With a stored transaction, #507 sends this lookup on every resume; only
+    // the "not found" verdict needs a head past the expiry. Here the full
+    // node returns the landed swap, so the lookup finds it and the swap is
+    // not dropped. Then the stored swap is sent again, the node answers
+    // DUP_TRANSACTION_ERROR (success), and the receipt is read.
     expect(network.nodeCalls.slice(mark.nodeCalls)).toEqual([
       'wallet/getnowblock',
       'wallet/gettransactioninfobyid',
       'wallet/broadcasttransaction',
       'walletsolidity/gettransactioninfobyid',
     ])
-    // #507 behaviour: the resend is exactly the stored `txHex` (§4.5
-    // "Resume mode").
+    // #507 behaviour: the resend is exactly the stored `txHex`.
     expect(network.broadcasts.slice(mark.broadcasts)).toEqual([
       JSON.parse(storedSwap?.txHex ?? ''),
     ])
@@ -172,8 +165,8 @@ describe('Tron TRC-20 swap resume after a reload', () => {
       'SWAP:PENDING',
       'SWAP:DONE',
     ])
-    // #507 behaviour: `txHex` is cleared on confirmation (§4.5), so storage
-    // no longer holds the signed bytes.
+    // #507 behaviour: `txHex` is cleared on confirmation, so storage no
+    // longer holds the signed bytes.
     const storedAfterResume = actionOf(resume.last(), 'SWAP')
     expect(storedAfterResume).toBeDefined()
     expect(Object.hasOwn(storedAfterResume ?? {}, 'txHex')).toBe(false)

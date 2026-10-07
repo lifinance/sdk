@@ -371,7 +371,6 @@ describe('StatusManager', () => {
   })
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.
 describe('StatusManager after stopRouteExecution', () => {
   const LATE_WRITE = {
     ...CLEARED_TRANSACTION_FIELDS,
@@ -788,8 +787,8 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(liveHook).toHaveBeenCalledTimes(1)
     })
 
-    // Spec addendum section 5.4: `signedAt` is merged only from a SWAP /
-    // CROSS_CHAIN late action, and only when it is defined.
+    // `signedAt` is merged only from a SWAP / CROSS_CHAIN late action, and
+    // only when it is defined.
     it.each([
       {
         name: 'a late SET_ALLOWANCE transaction',
@@ -835,7 +834,6 @@ describe('StatusManager after stopRouteExecution', () => {
     )
   })
 
-  // Spec addendum section 5.2, case 3.
   describe('with a newer execution that ended since the stop', () => {
     /** A newer execution of the route id that started and ended. */
     const endLiveExecution = (liveStep: LiFiStepExtended): Route => {
@@ -879,9 +877,8 @@ describe('StatusManager after stopRouteExecution', () => {
   })
 })
 
-// Task C6 of the follow-ups plan: every write of transaction data in core
-// and the six providers goes through `updateAction`. These are the shapes of
-// those writes at 21a1bc2b, each on the action state it meets in the task;
+// Every write of transaction data in core and the six providers goes
+// through `updateAction`. These are the shapes of those writes at 21a1bc2b, each on the action state it meets in the task;
 // every one that changes the transaction reaches the kept hook after a stop.
 // A write that bypasses `updateAction` is not delivered after a stop.
 describe('provider writes of transaction data after stopRouteExecution', () => {

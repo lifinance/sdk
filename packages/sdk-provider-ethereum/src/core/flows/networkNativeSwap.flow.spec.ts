@@ -57,7 +57,7 @@ const openNativeSwapPage = (): NetworkPage =>
     ]),
   })
 
-describe('EN1 — a native-token swap, through the real viem actions', () => {
+describe('a native-token swap, through the real viem actions', () => {
   it('signs one transaction that sends the native amount to the diamond', async () => {
     const page = openNativeSwapPage()
     await page.run()

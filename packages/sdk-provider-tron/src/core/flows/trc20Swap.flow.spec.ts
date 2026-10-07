@@ -99,11 +99,11 @@ describe('Tron TRC-20 same-chain swap', () => {
     )
 
     // The allowance is read once, before the approve. Pinned as observed, and
-    // one thing looks wrong here (Finding 2): the balance read (`balanceOf`)
-    // comes after the approval is sent and confirmed, so a wallet without
-    // enough USDT pays for the approval before it learns the balance is too
-    // low. The TRC-20 reads use a static ABI, so no `wallet/getcontract`
-    // request is sent and the balance read starts before the block read.
+    // one thing looks wrong here: the balance read (`balanceOf`) comes after
+    // the approval is sent and confirmed, so a wallet without enough USDT
+    // pays for the approval before it learns the balance is too low. The
+    // TRC-20 reads use a static ABI, so no `wallet/getcontract` request is
+    // sent and the balance read starts before the block read.
     expect(network.nodeCalls).toEqual([
       'wallet/triggerconstantcontract allowance(address,address)',
       'wallet/triggersmartcontract approve(address,uint256)',

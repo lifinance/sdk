@@ -55,9 +55,10 @@ const SWAP_CALLDATA: Hex = `0x${'4e'.repeat(36)}`
 const RECEIVED_AMOUNT = '1480000'
 
 /**
- * The EA2 lane: no Permit2, enough allowance, one wallet prompt. The
- * re-quote answers with a transaction, as the real endpoint does:
- * `prepareRestart` drops the step's `transactionRequest` before "Try again".
+ * The lane of `erc20SwapSufficientAllowance.flow.spec.ts`: no Permit2,
+ * enough allowance, one wallet prompt. The re-quote answers with a
+ * transaction, as the real endpoint does: `prepareRestart` drops the step's
+ * `transactionRequest` before "Try again".
  */
 const buildRejectScenario = (): Scenario =>
   createScenario({
@@ -99,7 +100,7 @@ afterEach(() => {
   expect(statusApi.unknown).toEqual([])
 })
 
-describe('EA3 — the user rejects the sendTransaction prompt', () => {
+describe('the user rejects the sendTransaction prompt', () => {
   it('fails the step with SignatureRejected and sends nothing', async () => {
     const scenario = buildRejectScenario()
 

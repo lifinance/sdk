@@ -117,8 +117,6 @@ describe('executionState start numbers', () => {
   })
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.2,
-// case 3.
 describe('executionState.lastEnded', () => {
   it('keeps the route and hook of the last ended execution while a stopped run is in flight', () => {
     const first = routeWithId('last-ended-route')

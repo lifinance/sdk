@@ -43,8 +43,8 @@ import {
   type ScenarioOptions,
 } from './harness.mock.js'
 
-// Spec 2026-09-30-resume-without-resign-design.md, section 6: the EVM
-// regression of the central reload test, and the "Try again" loop exit.
+// A resume waits for the stored transaction instead of signing again, and
+// "Try again" signs anew only after a final failure.
 
 /** Widget persistence: what `updateRouteHook` wrote to storage. */
 const persist = (route: RouteExtended): RouteExtended =>
@@ -124,9 +124,9 @@ describe('EVM reload (regression)', () => {
   it('resumes a sent transaction in the background without pausing or signing', async () => {
     // The widget's Activities page resumes with `executeInBackground: true`,
     // so every interaction gate pauses. Waiting for a sent transaction needs
-    // no user interaction (spec 4.7). The harness stubs the terminal status
-    // watcher, so the step stays PENDING instead of DONE; what matters is that
-    // it reached the receipt wait and no action asks for the user.
+    // no user interaction. The harness stubs the terminal status watcher, so
+    // the step stays PENDING instead of DONE; what matters is that it reached
+    // the receipt wait and no action asks for the user.
     const afterBroadcast = await persistedAfterBroadcast()
     const txHash = swapActionOf(afterBroadcast)?.txHash
 
@@ -154,7 +154,7 @@ describe('EVM "Try again" loop exit', () => {
   it('signs exactly once after a final failure', async () => {
     const scenario = buildSwapScenario()
     // The error the real `waitForTransactionReceipt` throws for a reverted
-    // receipt once the Ethereum task marks that site final (spec 4.3).
+    // receipt once the Ethereum task marks that site final.
     vi.mocked(waitForTransactionReceipt).mockRejectedValueOnce(
       new TransactionError(
         LiFiErrorCode.TransactionFailed,
@@ -209,8 +209,7 @@ describe('EVM "Try again" loop exit', () => {
   })
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.5:
-// a task still running at `stopRouteExecution` writes its hash afterwards.
+// A task still running at `stopRouteExecution` writes its hash afterwards.
 describe('EVM transaction written after stopRouteExecution', () => {
   const SIGNATURE_A: Hex = `0x${'aa'.repeat(64)}1b`
   const SIGNATURE_B: Hex = `0x${'bb'.repeat(64)}1b`

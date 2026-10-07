@@ -34,10 +34,9 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => ({
   },
 }))
 
-// Spec 2026-09-30-resume-without-resign-design.md, section 6 "Central reload
-// test" and "Loop exit". A reload is: persist the route as the widget does
-// (JSON round-trip inside `updateRouteHook`), build a new page (signer,
-// provider, client), then `resumeRoute`.
+// A reload is: persist the route as the widget does (JSON round-trip inside
+// `updateRouteHook`), build a new page (signer, provider, client), then
+// `resumeRoute`.
 
 let network: FakeSuiNetwork
 let secretKey: string
@@ -96,7 +95,7 @@ describe('Sui reload', () => {
       'wallet sign calls'
     ).toBe(0)
     expect(network.stepTransactionRequests).toBe(0)
-    // Spec 4.6 resume mode: the digest is found, so nothing is executed.
+    // A resume finds the digest, so nothing is executed.
     expect(network.executed).toEqual([])
     expect(swapActionOf(resumed)?.txHash).toBe(digest)
     expect(resumed.steps[0].execution?.status).toBe('DONE')
@@ -126,7 +125,7 @@ describe('Sui reload', () => {
     expect(afterSigning).toBeDefined()
     const signed = await signedBy(page)
     const stored = swapActionOf(afterSigning!)
-    // Spec 4.6 step 2: bytes and signature are stored before the execution.
+    // Bytes and signature are stored before the execution.
     // The JSON field names are the Sui task's choice; the values are not.
     expect(stored?.txHex).toBeDefined()
     expect(stored?.txHash).toBeUndefined()
@@ -159,7 +158,7 @@ describe('Sui reload', () => {
   it('resumes an open transaction in the background without pausing or signing', async () => {
     // The widget's Activities page resumes with `executeInBackground: true`,
     // so every interaction gate pauses. An open transaction needs no user
-    // interaction (spec 4.7), so the resume must run to the end.
+    // interaction, so the resume must run to the end.
     const afterBroadcast = await persistedAfterBroadcast(
       openPage(network, secretKey)
     )
@@ -192,7 +191,7 @@ describe('Sui "Try again" loop exit', () => {
     const updateRouteHook = (route: RouteExtended): void => {
       latest = persist(route)
     }
-    // Executed and failed: a final outcome (spec 4.3, Sui).
+    // Executed and failed: a final outcome.
     network.failNext = { $kind: 'MoveAbort', message: 'MoveAbort in command 0' }
     await expect(
       executeRoute(

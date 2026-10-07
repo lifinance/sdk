@@ -60,7 +60,7 @@ describe('EthereumBatchedSignAndExecuteTask.run', () => {
 
 describe('EthereumBatchedSignAndExecuteTask.run second pre-sign guard', () => {
   // An older run's late write can merge its transaction into this action
-  // while the chain is checked (spec addendum §5.2 case 1).
+  // while the chain is checked.
   it('checks the action again right before sendCalls and never calls it when a transaction merged meanwhile', async () => {
     const { context, sendCalls } = buildContext()
     vi.mocked(context.checkClient).mockImplementationOnce(async () => {

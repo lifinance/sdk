@@ -75,7 +75,7 @@ const openApprovalPage = (): NetworkPage =>
     ]),
   })
 
-describe('EN2 — an ERC-20 swap that needs an approval, through the real viem actions', () => {
+describe('an ERC-20 swap that needs an approval, through the real viem actions', () => {
   it('approves the diamond for the amount, waits for that receipt, then signs the swap', async () => {
     const page = openApprovalPage()
     await page.run()
@@ -130,7 +130,7 @@ describe('EN2 — an ERC-20 swap that needs an approval, through the real viem a
     expect(approveReceipt).toBeGreaterThan(approveSent)
     expect(approveReceipt).toBeLessThan(swapSent)
 
-    // Pinned as observed, and it looks wrong (ledger finding F2):
+    // Pinned as observed, and it looks wrong:
     // `createPipeline` runs `EthereumCheckBalanceTask` after
     // `EthereumSetAllowanceTask`, so the USDC balance (`balanceOf` on the
     // public client; the allowance read goes through the wallet) is read only

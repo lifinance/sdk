@@ -81,7 +81,7 @@ afterEach(() => {
   expect(statusApi.unknown).toEqual([])
 })
 
-describe('EA1 — a native-token same-chain swap', () => {
+describe('a native-token same-chain swap', () => {
   it('sends one transaction carrying the amount, with no allowance read and no signature', async () => {
     const scenario = buildNativeScenario()
 

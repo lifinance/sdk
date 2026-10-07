@@ -868,8 +868,8 @@ const describeRequest = (
 }
 
 /**
- * A transport failure that a spec makes on purpose for a send (the
- * phase-2 resume spec's `failNextSend`): the connection fails (`fetch`
+ * A transport failure that a spec makes on purpose for a send (the resume
+ * spec's `failNextSend`): the connection fails (`fetch`
  * throws `TypeError: fetch failed`), or bigmi's timeout aborts the request.
  * Not a harness error.
  */

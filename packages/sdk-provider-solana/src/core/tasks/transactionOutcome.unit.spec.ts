@@ -48,10 +48,10 @@ const BLOCKHASH: TransactionLifetime = {
 }
 const NONCE: TransactionLifetime = { kind: 'nonce' }
 const UNKNOWN: TransactionLifetime = { kind: 'unknown' }
-/** An RPC's `null` proven by its canary and head (Task S3). */
+/** An RPC's `null` proven by its canary and head. */
 const PROVEN_ABSENT = { kind: 'not-found' }
 const UNPROVEN = { kind: 'unknown', answered: true, errors: [] }
-/** No RPC gave a usable status response: an outage (Task S3). */
+/** No RPC gave a usable status response: an outage. */
 const SILENT = { kind: 'unknown', answered: false, errors: [] }
 
 /** A signing time `ms` before now. */
@@ -484,7 +484,7 @@ describe('sendAndSettle', () => {
 
   it('takes an old rpc-unavailable result to the dropped rule too', async () => {
     // A permanent RPC problem must not keep "Try again" looping where the
-    // transaction can no longer land (spec 4.4.6).
+    // transaction can no longer land.
     lookupSignatureStatus.mockResolvedValue(PROVEN_ABSENT)
     const signedAt = ago(DROPPED_FALLBACK_AGE_MS + 1_000)
 

@@ -25,7 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()

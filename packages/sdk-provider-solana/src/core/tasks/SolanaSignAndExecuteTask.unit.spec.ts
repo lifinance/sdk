@@ -240,9 +240,9 @@ describe('SolanaSignAndExecuteTask', () => {
   })
 
   it('clears the previous transaction, then stores the signed wire bytes', async () => {
-    // Spec 4.2.1: a stale final hash would look open again once its
-    // `txFinal` is gone, so every field of the previous transaction goes
-    // before the new bytes are written.
+    // A stale final hash would look open again once its `txFinal` is gone,
+    // so every field of the previous transaction goes before the new bytes
+    // are written.
     getTransactionRequestData.mockResolvedValue('tx-a')
 
     await new SolanaSignAndExecuteTask().run(baseContext())
@@ -279,8 +279,8 @@ describe('SolanaSignAndExecuteTask', () => {
   })
 
   it('stores nothing when a transaction carries no fee payer signature', async () => {
-    // Spec 4.2.9: bytes without a readable signature would fail every
-    // resume the same way. Nothing was sent, so "Try again" signs again.
+    // Bytes without a readable signature would fail every resume the same
+    // way. Nothing was sent, so "Try again" signs again.
     getTransactionRequestData.mockResolvedValue(['tx-a', 'tx-b'])
     decoder.nullSignatureAt = 1
 
@@ -313,7 +313,7 @@ describe('SolanaSignAndExecuteTask', () => {
   })
 
   // An older run's late write can merge its transaction into this action
-  // while the task awaits the quote (spec addendum §5.2 case 1).
+  // while the task awaits the quote.
   it('checks the action again right before the wallet and never asks it to sign when a transaction merged meanwhile', async () => {
     const context = baseContext({ type: 'SWAP', status: 'STARTED' }) as {
       statusManager: { findAction: () => object }

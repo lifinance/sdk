@@ -41,7 +41,10 @@ afterEach(() => {
   expect(network.unknown).toEqual([])
 })
 
-/** The EN1 native swap, started with `executeInBackground: true`. */
+/**
+ * The native swap of `networkNativeSwap.flow.spec.ts`, started with
+ * `executeInBackground: true`.
+ */
 const openBackgroundPage = (): NetworkPage =>
   openNetworkPage({
     network,
@@ -62,7 +65,7 @@ const openBackgroundPage = (): NetworkPage =>
 const walletMethods = (): string[] =>
   network.rpc.filter((call) => call.via === 'wallet').map((call) => call.method)
 
-describe('EN5 — background execution, then a foreground resume', () => {
+describe('background execution, then a foreground resume', () => {
   it('pauses at the swap prompt without signing anything', async () => {
     const page = openBackgroundPage()
 
@@ -103,8 +106,8 @@ describe('EN5 — background execution, then a foreground resume', () => {
       'eth_getBlockByNumber',
     ])
 
-    // Pinned as observed, and it looks wrong (ledger finding, cross-provider:
-    // one unused quote per background pause): the background run fetches a
+    // Pinned as observed, and it looks wrong (in every provider, one unused
+    // quote per background pause): the background run fetches a
     // quote and stores its transaction on the step, but never signs it.
     // `EthereumPrepareTransactionTask` re-quotes on every run
     // (`getUpdatedStep`), so the foreground resume quotes again (test 2);

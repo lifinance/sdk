@@ -62,8 +62,8 @@ const BLOCKHASH = blockhash(
 )
 /**
  * The head of every fake node, a mainnet-sized slot. A bounded lookup places
- * its history canary `ceil(age / 400)` slots below the lowest current slot
- * (spec 4.2.8); a slot this high keeps that bound positive.
+ * its history canary `ceil(age / 400)` slots below the lowest current slot;
+ * a slot this high keeps that bound positive.
  */
 const CURRENT_SLOT = 300_000_000
 const BLOCK_HEIGHT = 280_000_000
@@ -77,7 +77,7 @@ const CANARY_BYTE = 9
  * The canary of the block at `slot`: a transaction that landed in that block
  * long before the test. Every fake node has every block, so every fake node
  * knows every canary, at the slot of its block - which is what a bounded
- * lookup checks (spec 4.2.8).
+ * lookup checks.
  */
 const canaryAt = (slot: number): string => {
   const bytes = new Uint8Array(64).fill(CANARY_BYTE)
@@ -269,10 +269,9 @@ const json = (body: unknown, status = 200): Response =>
   })
 
 /**
- * What `GET /v1/status` answers for a hash LI.FI never saw (Task 0.3): HTTP
- * 404 with body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi`
- * reads it as "no information" (false); only an HTTP 200 answer vetoes
- * "dropped".
+ * What `GET /v1/status` answers for a hash LI.FI never saw: HTTP 404 with
+ * body code 1003, never a `NOT_FOUND` status. `isKnownToStatusApi` reads it
+ * as "no information" (false); only an HTTP 200 answer vetoes "dropped".
  */
 const statusNotFound = (): Response =>
   json(
@@ -406,7 +405,7 @@ const answerRpc = (
     }
     case 'getSignatureStatuses': {
       // `[target]`, or `[target, historyCanary, headCanary]` for a bounded
-      // lookup (spec 4.2.8).
+      // lookup.
       const signatures = params[0] as string[]
       return {
         context,

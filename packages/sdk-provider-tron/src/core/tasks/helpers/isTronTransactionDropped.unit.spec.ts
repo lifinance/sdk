@@ -178,8 +178,8 @@ describe('isTronTransactionDropped', () => {
     expect(isKnownToStatusApi).not.toHaveBeenCalled()
   })
 
-  // Spec 4.2.8 (b): no node may return the transaction, also a node that
-  // does not cover the window.
+  // Condition (b) of `isTronTransactionDropped`: no node may return the
+  // transaction, also a node that does not cover the window.
   it('is not dropped when a lagging node returns the transaction', async () => {
     const client = withTronNodes(
       makeNode(HEAD_OK),

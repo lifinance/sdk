@@ -66,7 +66,6 @@ describe('resumeRoute', () => {
   })
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.2.
 describe('a late transaction write after stopRouteExecution', () => {
   afterEach(() => {
     releaseAttachedRuns()
@@ -144,8 +143,7 @@ describe('a late transaction write after stopRouteExecution', () => {
   )
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.2:
-// an old run never stops or deletes a newer execution of its route.
+// An old run never stops or deletes a newer execution of its route.
 describe('a stopped run whose step ends after a newer execution started', () => {
   const routeId = buildRouteObject({}).id
 
@@ -249,9 +247,8 @@ describe('a stopped run whose step ends after a newer execution started', () => 
     }
   )
 
-  // Spec addendum section 5.4: a stop during `getStepExecutor` does not reach
-  // the executor that the old run gets after it, so the run does not start
-  // the step.
+  // A stop during `getStepExecutor` does not reach the executor that the old
+  // run gets after it, so the run does not start the step.
   it('neither registers nor runs the old executor when the stop came during getStepExecutor', async () => {
     const oldExecutor: StepExecutor = {
       allowUserInteraction: true,
@@ -309,8 +306,8 @@ describe('a stopped run whose step ends after a newer execution started', () => 
     await newerRun
   })
 
-  // Spec addendum section 5.4: the run checks its ownership again before the
-  // next step, also for an executor that does not stop when it is told to.
+  // The run checks its ownership again before the next step, also for an
+  // executor that does not stop when it is told to.
   it('does not continue into the next step when the old executor ignores the stop', async () => {
     const old = heldExecutor(async (step) => step, { stoppable: false })
     const newer = heldExecutor(async (step) => step, { stoppable: true })
@@ -367,8 +364,6 @@ describe('a stopped run whose step ends after a newer execution started', () => 
   })
 })
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.2,
-// case 3.
 describe('a late transaction write after a newer execution ended', () => {
   const routeId = buildRouteObject({}).id
 

@@ -311,7 +311,6 @@ class GatedStepExecutor extends BaseStepExecutor {
   override parseErrors = (error: Error): Promise<SDKError> => passThrough(error)
 }
 
-// Spec 2026-10-01-resume-without-resign-followups-design.md, section 5.
 describe('BaseStepExecutor after stopRouteExecution', () => {
   /** Starts the step on a registered executor and stops the route. */
   const runAndStop = (

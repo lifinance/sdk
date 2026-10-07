@@ -25,11 +25,10 @@ import {
   stepOf,
 } from './harness.mock.js'
 
-// Spec 2026-10-05-money-path-matrix-design.md §5 step 4 (Stellar resume
-// variants), on the #507 branch (resume-without-resign spec §4.2 and the
-// §4.3 Stellar row). A reload is: take the route as storage held it (the
-// JSON snapshot `updateRouteHook` wrote), open a new page with the same
-// wallet key (new client, provider and wallet), then `resumeRoute`.
+// The Stellar resume variants, on the #507 branch. A reload is: take the
+// route as storage held it (the JSON snapshot `updateRouteHook` wrote), open
+// a new page with the same wallet key (new client, provider and wallet),
+// then `resumeRoute`.
 
 let network: FakeStellarNetwork
 
@@ -39,7 +38,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.useRealTimers()

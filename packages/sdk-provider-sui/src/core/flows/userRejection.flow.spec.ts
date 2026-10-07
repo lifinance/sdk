@@ -28,7 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()
@@ -51,7 +51,7 @@ describe('Sui user rejection', () => {
     // The wallet was asked once, for the quoted bytes; nothing reached a node.
     expect(signedBytes(page)).toEqual(network.quotes)
     expect(network.executed).toEqual([])
-    // #507: the SDK calls the signer itself, so a rejection calls no client method (spec §4.6)
+    // #507: the SDK calls the signer itself, so a rejection calls no client method
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
@@ -121,19 +121,18 @@ describe('Sui user rejection', () => {
     // main: `parseSuiErrors` maps any error text containing "reject" to
     // SignatureRejected, so a node refusal reads as "the user rejected"; #507:
     // only an error of the wallet's own `signTransaction` call can be
-    // SignatureRejected, and `parseSuiErrors` no longer maps "reject"
-    // (addendum §3.1).
-    // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+    // SignatureRejected, and `parseSuiErrors` no longer maps "reject".
+    // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError
     expect(error.code).toBe(LiFiErrorCode.InternalError)
     // ...which refused it: no wait for the digest and no `/status` poll.
-    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
       'client.executeTransaction',
     ])
     expect(network.statusRequests).toEqual([])
-    // #507 accepted (task RS1): every non-EVM provider (Solana, Tron, Sui, Bitcoin, Stellar) writes the signed bytes with status PENDING before it sends; spec §4.6 step 2 requires the write; no code change
+    // #507: every non-EVM provider writes the signed bytes with status PENDING before it sends, so a reload resends them instead of signing again
     expect(updates.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
@@ -144,13 +143,13 @@ describe('Sui user rejection', () => {
     expect(stored).toBeDefined()
     expect(stepOf(stored!).execution).toMatchObject({
       status: 'FAILED',
-      // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+      // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError
       error: { code: LiFiErrorCode.InternalError },
       actions: [
         {
           type: 'SWAP',
           status: 'FAILED',
-          // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError (addendum §3.1)
+          // #507: a node "reject" text is not a user rejection; parseSuiErrors gives UnknownError
           error: { code: LiFiErrorCode.InternalError },
         },
       ],

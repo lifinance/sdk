@@ -28,9 +28,9 @@
  *   `WaitForTransactionStatusTask` runs and the step reaches `DONE`.
  * - {@link recordRouteUpdates} wraps `executeRoute` and `resumeRoute` from
  *   `@lifi/sdk`, so every `updateRouteHook` fire is copied before the
- *   harness hook runs. {@link routeUpdateSequence} is the §4.2.2 sequence,
- *   read off these copies. Every spec that calls it needs this addition in
- *   its `vi.mock('@lifi/sdk')` factory:
+ *   harness hook runs. {@link routeUpdateSequence} is the route-update
+ *   sequence, read off these copies. Every spec that calls it needs this
+ *   addition in its `vi.mock('@lifi/sdk')` factory:
  *
  *   ```ts
  *   vi.mock('@lifi/sdk', async (importOriginal) => {
@@ -371,10 +371,11 @@ export const recordRouteUpdates = (
 })
 
 /**
- * The §4.2.2 sequence of a harness scenario, from what `updateRouteHook`
- * received ({@link recordRouteUpdates}). `fromSeq` reads one leg of a run
- * that was retried: the leg starts from the last fire before `fromSeq`,
- * i.e. from what the consumer saw last, not from an empty step.
+ * The route-update sequence of a harness scenario, from what
+ * `updateRouteHook` received ({@link recordRouteUpdates}). `fromSeq` reads
+ * one leg of a run that was retried: the leg starts from the last fire
+ * before `fromSeq`, i.e. from what the consumer saw last, not from an empty
+ * step.
  */
 export const routeUpdateSequence = (
   scenario: Scenario,

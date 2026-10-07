@@ -31,11 +31,9 @@ import {
   WALLET_BALANCE,
 } from './harness.mock.js'
 
-// The resume variants of the #507 specs for Bitcoin: parent spec
-// 2026-09-30-resume-without-resign-design.md §4.3 and §4.7, addendum
-// 2026-10-01-resume-without-resign-followups-design.md §4. A reload is a
-// new page (fresh `@lifi/sdk` and provider modules, the same wallet key)
-// that resumes the route storage held (a JSON copy from `updateRouteHook`).
+// The resume variants of the #507 specs for Bitcoin. A reload is a new page
+// (fresh `@lifi/sdk` and provider modules, the same wallet key) that resumes
+// the route storage held (a JSON copy from `updateRouteHook`).
 // Every test uses fake time: the resend and the replacement scan sleep
 // before the wait task reads the chain.
 
@@ -99,8 +97,8 @@ const recordSendAnswers = (): unknown[] => {
 }
 
 /**
- * The final route of a completed bridge (spec §4.2 item 2): the execution
- * status and `toAmount`, and both actions with their hashes and links.
+ * The final route of a completed bridge: the execution status and
+ * `toAmount`, and both actions with their hashes and links.
  */
 const expectBridgeDone = (route: RouteExtended, txid: string): void => {
   const execution = stepOf(route).execution
@@ -135,8 +133,8 @@ const expectBridgeDone = (route: RouteExtended, txid: string): void => {
 /**
  * Runs a bridge to the end on `page` and returns what storage held while
  * the CROSS_CHAIN transaction was pending: the one PENDING write, made
- * before the send (addendum §4.1). The send succeeded, so this is also what
- * storage holds after the send.
+ * before the send. The send succeeded, so this is also what storage holds
+ * after the send.
  */
 const storedAfterSend = async (page: Page): Promise<RouteExtended> => {
   const updates = recordRouteUpdates()
@@ -189,8 +187,8 @@ describe('Bitcoin reload', () => {
     expect(reloaded.signPsbt).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toHaveLength(1)
     // #507 behaviour: within MAX_RESEND_AGE_MS the wait task resends the
-    // stored bytes once, in one round (addendum §4.3, RB1). The node holds
-    // them in a block and answers -27; the wait ignores the answer.
+    // stored bytes once, in one round. The node holds them in a block and
+    // answers -27; the wait ignores the answer.
     expect(network.sent).toEqual([txHex, txHex])
     expect(answers).toEqual([
       { code: -27, message: 'Transaction outputs already in utxo set' },
@@ -241,8 +239,7 @@ describe('Bitcoin reload', () => {
     const sentHex = leaving as string
     expect(sentHex).toBe(finalizedHexOf(signed))
     // #507 behaviour: the sign task writes txHex, txHash and signedAt
-    // before the send (addendum §4.1), so storage already holds the signed
-    // bytes.
+    // before the send, so storage already holds the signed bytes.
     expect(stored).toBeDefined()
     const storedRoute = stored as RouteExtended
     expect(crossChainOf(storedRoute)).toMatchObject({
@@ -252,7 +249,7 @@ describe('Bitcoin reload', () => {
     })
     expect(stepOf(storedRoute).execution?.signedAt).toEqual(expect.any(Number))
     // #507 behaviour: the first page's own end. An unknown send failure
-    // keeps the bytes and is not final (addendum §4.2, "Anything else").
+    // keeps the bytes and is not final.
     expect(firstPageError?.code).toBe(LiFiErrorCode.InternalError)
     const failed = updates.snapshots.at(-1) as RouteExtended
     expect(stepOf(failed).execution?.status).toBe('FAILED')
@@ -307,12 +304,12 @@ describe('Bitcoin reload', () => {
       })
     )
 
-    // The resume-by-hash path needs no user interaction (parent §4.7), so
-    // the background run neither pauses nor asks the wallet.
+    // The resume-by-hash path needs no user interaction, so the background
+    // run neither pauses nor asks the wallet.
     expect(reloaded.signPsbt).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toHaveLength(1)
     // #507 behaviour: the first page sent the bytes once; the background
-    // resume resends exactly the stored bytes once (addendum §4.3, RB1).
+    // resume resends exactly the stored bytes once.
     expect(network.sent).toEqual([txHex, txHex])
     expect(updates.changes).toEqual(AFTER_THE_WAIT)
     expectBridgeDone(resumed, txHash as string)
@@ -347,7 +344,7 @@ describe('Bitcoin reload', () => {
     const stored = updates.snapshots
       .filter((snapshot) => crossChainOf(snapshot)?.status === 'PENDING')
       .at(-1) as RouteExtended
-    // #507 behaviour (ledger MB2 F1, as on main): after a repriced
+    // #507 behaviour, as on main: after a repriced
     // replacement, txHash names the replacement while txHex keeps the
     // original bytes.
     expect(crossChainOf(stored)).toMatchObject({
@@ -374,7 +371,7 @@ describe('Bitcoin reload', () => {
     // #507 behaviour: the wait task resends the stored txHex, which are the
     // original bytes, not the replacement. The node refuses them: the mined
     // replacement already spent their input. The wait ignores the answer
-    // (addendum §4.3) and follows txHash, the replacement.
+    // and follows txHash, the replacement.
     expect(network.sent).toEqual([originalHex, originalHex])
     expect(answers).toEqual([
       { code: -25, message: 'bad-txns-inputs-missingorspent' },
@@ -421,11 +418,11 @@ describe('Bitcoin "Try again"', () => {
     const originalHex = finalizedHexOf(firstSigned)
     expect(network.sent).toEqual([originalHex])
     const [cancel] = network.replacements
-    // A cancelled replacement is final (parent §4.3, Bitcoin row).
+    // A cancelled replacement is final.
     expect(error?.code).toBe(LiFiErrorCode.TransactionCanceled)
     const failed = updates.snapshots.at(-1) as RouteExtended
     expect(stepOf(failed).execution?.status).toBe('FAILED')
-    // #507 behaviour (ledger MB5 F1): the FAILED action names the cancel
+    // #507 behaviour: the FAILED action names the cancel
     // and keeps the original bytes in txHex, and it carries txFinal.
     expect(crossChainOf(failed)).toMatchObject({
       status: 'FAILED',
@@ -474,7 +471,7 @@ describe('Bitcoin "Try again"', () => {
     )
 
     // bigmi's 10 s request timeout: an unknown outcome, the bytes are kept
-    // and the failure is not final (addendum §4.2, "Anything else").
+    // and the failure is not final.
     expect(Date.now() - startedAt).toBe(10_000)
     expect(error?.code).toBe(LiFiErrorCode.InternalError)
     expect(page.signPsbt.mock.calls).toEqual([
@@ -501,9 +498,8 @@ describe('Bitcoin "Try again"', () => {
       page.resumeRoute(failed, { updateRouteHook: retryUpdates.hook })
     )
 
-    // "Try again" within MAX_RESEND_AGE_MS: the kept action is re-checked
-    // (parent §4.7), the wait task resends the stored bytes once and the
-    // node takes them.
+    // "Try again" within MAX_RESEND_AGE_MS: the kept action is re-checked,
+    // the wait task resends the stored bytes once and the node takes them.
     expect(Date.now() - startedAt).toBeLessThan(MAX_RESEND_AGE_MS)
     expect(page.signPsbt).toHaveBeenCalledTimes(1)
     expect(network.stepTransactionRequests).toHaveLength(1)

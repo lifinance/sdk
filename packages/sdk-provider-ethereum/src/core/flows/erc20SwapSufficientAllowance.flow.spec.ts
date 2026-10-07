@@ -90,7 +90,7 @@ afterEach(() => {
   expect(statusApi.unknown).toEqual([])
 })
 
-describe('EA2 — an ERC-20 same-chain swap with enough allowance', () => {
+describe('an ERC-20 same-chain swap with enough allowance', () => {
   it('reads the diamond allowance once and sends only the swap', async () => {
     const scenario = buildSufficientScenario()
 

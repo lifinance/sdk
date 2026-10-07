@@ -13,10 +13,9 @@ import {
   swapActionOf,
 } from './reload.mock.js'
 
-// Spec 2026-09-30-resume-without-resign-design.md, section 6 "Central reload
-// test" and "Loop exit". A reload is: persist the route as the widget does
-// (JSON round-trip inside `updateRouteHook`), build a new page (wallet,
-// provider, client), then `resumeRoute`.
+// A reload is: persist the route as the widget does (JSON round-trip inside
+// `updateRouteHook`), build a new page (wallet, provider, client), then
+// `resumeRoute`.
 
 let network: FakeTronNetwork
 
@@ -79,7 +78,7 @@ describe('Tron reload', () => {
       'wallet sign calls'
     ).toBe(0)
     expect(network.stepTransactionRequests).toBe(0)
-    // Spec 4.5 resume mode may resend; it must be the same transaction.
+    // A resume may resend; it must be the same transaction.
     for (const broadcast of network.broadcasts) {
       expect(identity(broadcast)).toEqual(signed)
     }
@@ -107,7 +106,7 @@ describe('Tron reload', () => {
     expect(afterSigning).toBeDefined()
     const signed = identity(await page.signTransaction.mock.results[0].value)
     const stored = swapActionOf(afterSigning!)
-    // Spec 4.5: the signed transaction JSON is stored before the broadcast.
+    // The signed transaction JSON is stored before the broadcast.
     expect(stored?.txHex).toBeDefined()
     expect(stored?.txHash).toBeUndefined()
     expect(identity(JSON.parse(stored!.txHex!))).toEqual(signed)
@@ -138,7 +137,7 @@ describe('Tron reload', () => {
   it('resumes an open transaction in the background without pausing or signing', async () => {
     // The widget's Activities page resumes with `executeInBackground: true`,
     // so every interaction gate pauses. An open transaction needs no user
-    // interaction (spec 4.7), so the resume must run to the end.
+    // interaction, so the resume must run to the end.
     const afterBroadcast = await persistedAfterBroadcast(openPage())
 
     network.clearRecords()
@@ -168,7 +167,7 @@ describe('Tron "Try again" loop exit', () => {
     const updateRouteHook = (route: RouteExtended): void => {
       latest = persist(route)
     }
-    // Included and reverted: a final outcome (spec 4.3, Tron).
+    // Included and reverted: a final outcome.
     network.failNext = 'REVERT'
     await expect(
       executeRoute(page.client, buildRoute(buildStep()), { updateRouteHook })

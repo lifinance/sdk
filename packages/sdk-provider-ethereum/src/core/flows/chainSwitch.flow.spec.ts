@@ -56,9 +56,10 @@ const SWAP_CALLDATA: Hex = `0x${'c5'.repeat(36)}`
 const RECEIVED_AMOUNT = '1480000'
 
 /**
- * The EA1 native swap: no allowance task runs, so the first chain check
- * (`checkClient`) is the one in `EthereumPrepareTransactionTask`, after the
- * re-quote and before `ACTION_REQUIRED` and the wallet prompt.
+ * The native swap of `nativeSwap.flow.spec.ts`: no allowance task runs, so
+ * the first chain check (`checkClient`) is the one in
+ * `EthereumPrepareTransactionTask`, after the re-quote and before
+ * `ACTION_REQUIRED` and the wallet prompt.
  */
 const buildSwitchScenario = (): Scenario => {
   const step = buildStep({
@@ -91,7 +92,7 @@ afterEach(() => {
   expect(statusApi.unknown).toEqual([])
 })
 
-describe('EA4 — the wallet is on another chain', () => {
+describe('the wallet is on another chain', () => {
   it('asks the wallet to switch to the source chain once, before the prompt', async () => {
     const scenario = buildSwitchScenario()
 

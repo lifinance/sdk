@@ -12,7 +12,7 @@
  *   `@mysten/sui` `CoreClient` implementation (it builds the bytes, calls
  *   `signer.signTransaction`, then `this.executeTransaction`). On #507, the
  *   task builds the bytes, calls the wallet's `signTransaction` itself, then
- *   calls `core.executeTransaction` on it (spec §4.6), and does not call
+ *   calls `core.executeTransaction` on it, and does not call
  *   `core.signAndExecuteTransaction`. On both paths only
  *   `executeTransaction` is fake. Its calls are recorded as `client.<name>`.
  * - Every `SuiGrpcClient` that `callSuiWithRetry` builds. This file mocks

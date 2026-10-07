@@ -23,7 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()
@@ -50,7 +50,7 @@ describe('Sui same-chain swap', () => {
     expect(network.executed).toEqual([
       { bytes: network.quotes[0], signatures: await signatures(page) },
     ])
-    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
@@ -76,7 +76,7 @@ describe('Sui same-chain swap', () => {
     ])
     // main: SuiWaitForTransactionTask sets the provider's link; #507: the
     // sign task sets the digest and that link first, right after the
-    // execution (spec §4.6 step 4)...
+    // execution...
     const confirmed = updates.snapshots.find(
       (snapshot) => stepOf(snapshot).execution?.actions[0]?.txHash
     )

@@ -27,8 +27,9 @@ const rejected = (message: string): Error =>
   allTransportsFailed(SEND, [rpcError(SEND, { code: -26, message })])
 
 describe('the -26 reject reason lists', () => {
-  // Spec addendum §4.2. A wrong entry in the first list costs a new quote.
-  it('are the lists of the spec', () => {
+  // A wrong entry in the first list costs a new quote, so both lists are
+  // pinned word for word.
+  it('are pinned word for word', () => {
     expect(EVERY_NODE_REJECT_REASONS).toEqual([
       'min relay fee not met',
       'dust',

@@ -410,7 +410,7 @@ describe('SuiWaitForTransactionTask', () => {
     })
 
     // `callSuiWithRetry` tries the nodes one by one, so the cap is checked
-    // again before each try (spec 4.2.8: before every send).
+    // again before each try: the cap applies to every send.
     it('re-checks the age cap before each node and never sends past it', async () => {
       const refusal = new RpcError(
         'object version unavailable',

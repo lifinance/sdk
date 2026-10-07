@@ -397,8 +397,8 @@ describe('SolanaStandardWaitForTransactionTask', () => {
   })
 
   it('clears the stored bytes when the simulation fails, because nothing was sent', async () => {
-    // Spec 4.2.9: "Try again" must sign again here. Resending bytes the
-    // simulation rejected would only fail the same way.
+    // "Try again" must sign again here. Resending bytes the simulation
+    // rejected would only fail the same way.
     callSolanaRpcsWithRetry.mockResolvedValue({
       value: {
         err: { InsufficientFundsForRent: { account_index: 0 } },

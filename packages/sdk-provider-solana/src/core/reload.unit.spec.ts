@@ -21,10 +21,9 @@ import {
   swapActionOf,
 } from './reload.mock.js'
 
-// Spec 2026-09-30-resume-without-resign-design.md, section 6 "Central reload
-// test" and "Loop exit". A reload is: persist the route as the widget does
-// (JSON round-trip inside `updateRouteHook`), build a new page (wallet,
-// provider, client), then `resumeRoute`.
+// A reload is: persist the route as the widget does (JSON round-trip inside
+// `updateRouteHook`), build a new page (wallet, provider, client), then
+// `resumeRoute`.
 
 let secretKey: string
 let network: FakeNetwork
@@ -90,7 +89,7 @@ describe('Solana reload', () => {
 
     expect(signCalls(first, reloaded), 'wallet sign calls').toBe(0)
     expect(network.stepTransactionRequests).toBe(0)
-    // Spec 4.4.5 step 2: the lookup finds the signature, so nothing is sent.
+    // The lookup finds the signature, so nothing is sent.
     expect(network.sent).toEqual([])
     expect(swapActionOf(resumed)?.txHash).toBe(broadcastHash)
     expect(resumed.steps[0].execution?.status).toBe('DONE')
@@ -117,8 +116,8 @@ describe('Solana reload', () => {
     })
     expect(afterSigning).toBeDefined()
     const stored = swapActionOf(afterSigning!)
-    // Spec 4.4.1: `txHex` is written before the first send, `txHash` on the
-    // first accepted send.
+    // `txHex` is written before the first send, `txHash` on the first
+    // accepted send.
     expect(stored?.txHex).toBe(firstSent)
     expect(stored?.txHash).toBeUndefined()
 
@@ -136,7 +135,7 @@ describe('Solana reload', () => {
     expect(network.stepTransactionRequests).toBe(0)
     expect(network.sent.length).toBeGreaterThan(0)
     expect(new Set(network.sent)).toEqual(new Set([stored!.txHex]))
-    // Spec 4.4.5 step 3: the resend skips simulation.
+    // The resend skips simulation.
     expect(network.methods).not.toContain('simulateTransaction')
     expect(swapActionOf(resumed)?.txHash).toBe(signatureOf(stored!.txHex!))
     expect(resumed.steps[0].execution?.status).toBe('DONE')
@@ -145,7 +144,7 @@ describe('Solana reload', () => {
   it('resumes an open transaction in the background without pausing or signing', async () => {
     // The widget's Activities page resumes with `executeInBackground: true`,
     // so every interaction gate pauses. An open transaction needs no user
-    // interaction (spec 4.7), so the resume must run to the end.
+    // interaction, so the resume must run to the end.
     const first = await openPage(secretKey)
     const afterBroadcast = await persistedAfterBroadcast(first)
 
@@ -173,7 +172,7 @@ describe('Solana "Try again" loop exit', () => {
     const updateRouteHook = (route: RouteExtended): void => {
       latest = persist(route)
     }
-    // Included with an error: a final outcome (spec 4.3, Solana).
+    // Included with an error: a final outcome.
     network.failNext = { InstructionError: [0, { Custom: 1 }] }
     await expect(
       executeRoute(page.client, buildRoute(buildStep(page.walletAddress)), {

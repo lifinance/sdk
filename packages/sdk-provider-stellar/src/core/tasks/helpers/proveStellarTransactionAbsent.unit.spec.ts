@@ -101,9 +101,9 @@ describe('proveStellarTransactionAbsent', () => {
     }
   )
 
-  // Coverage and head must come from the SAME response (spec 4.2.8). Each node
-  // proves one half only; combining the oldest of one with the latest of the
-  // other would prove nothing about either node.
+  // Coverage and head must come from the SAME response. Each node proves one
+  // half only; combining the oldest of one with the latest of the other
+  // would prove nothing about either node.
   it('does not combine a covering node and a node past the head', async () => {
     nodes(
       notFound({ latestLedgerCloseTime: WINDOW.maxTime + 10 }),

@@ -53,7 +53,7 @@ describe('Bitcoin background execution', () => {
 
     // main: a background run pauses in core PrepareTransactionTask, after
     // the balance read and the quote, before the sign task: the Bitcoin
-    // sign task has no allowUserInteraction check (spec §1).
+    // sign task has no allowUserInteraction check.
     expect(page.signPsbt).not.toHaveBeenCalled()
     expect(network.sent).toEqual([])
     expect(network.balanceReads).toEqual([page.walletAddress])

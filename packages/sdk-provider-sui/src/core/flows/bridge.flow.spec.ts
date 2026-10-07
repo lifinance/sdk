@@ -25,7 +25,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()
@@ -49,7 +49,7 @@ describe('Sui bridge (Sui → Arbitrum)', () => {
     expect(network.executed).toEqual([
       { bytes: network.quotes[0], signatures: await signatures(page) },
     ])
-    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',

@@ -28,7 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
   try {
-    // Spec §3.1: a call or request the fakes do not know fails the spec.
+    // A call or request the fakes do not know fails the spec.
     expect(network.unexpected).toEqual([])
   } finally {
     vi.unstubAllGlobals()
@@ -56,7 +56,7 @@ describe('Sui on-chain failure', () => {
     ])
     expect(network.landed.get(failedDigest)).toEqual(MOVE_ABORT)
     // The failure is the execution result: no wait, no `/status`.
-    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction (spec §4.6)
+    // #507: the SDK signs, then calls executeTransaction itself; no signAndExecuteTransaction
     expect(network.methods).toEqual([
       'grpc.listBalances',
       'grpc.ledgerService.getServiceInfo',
@@ -66,7 +66,7 @@ describe('Sui on-chain failure', () => {
     // main: SuiSignAndExecuteTask sets the action to PENDING before it
     // checks the execution result, so a failed execution shows PENDING,
     // then FAILED; #507: the same sequence, but the PENDING write is the
-    // write of the signed bytes before the send (spec §4.6 step 2).
+    // write of the signed bytes before the send.
     expect(first.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
@@ -81,8 +81,8 @@ describe('Sui on-chain failure', () => {
         code: LiFiErrorCode.TransactionFailed,
         // main: SuiSignAndExecuteTask puts the ExecutionError object into a
         // template string, so the message is "Transaction failed: [object
-        // Object]"; #507: see the next line (addendum §2).
-        // #507: the message uses status.error.message, not the object (addendum §2)
+        // Object]"; #507: see the next line.
+        // #507: the message uses status.error.message, not the object
         message: `Transaction failed: ${MOVE_ABORT.message}`,
       },
       actions: [
@@ -95,12 +95,12 @@ describe('Sui on-chain failure', () => {
     })
     // main: the failed action keeps no digest, so the user gets no link to
     // the failed transaction; #507: the sign task writes the digest and the
-    // link of a FailedTransaction too (spec §4.6 step 4).
+    // link of a FailedTransaction too.
     const failedAction = stepOf(stored!).execution?.actions[0]
     expect(failedAction).toBeDefined()
-    // #507: a FailedTransaction has a digest; the sign task writes it as txHash (spec §4.6)
+    // #507: a FailedTransaction has a digest; the sign task writes it as txHash
     expect(failedAction!.txHash).toBe(failedDigest)
-    // #507: the sign task writes the txLink with the digest of a FailedTransaction (spec §4.6)
+    // #507: the sign task writes the txLink with the digest of a FailedTransaction
     expect(failedAction!.txLink).toBe(
       `${SUI_EXPLORER_URL}txblock/${failedDigest}`
     )

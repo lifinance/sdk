@@ -82,10 +82,10 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => {
   }
 })
 
-// Spec 2026-09-30-resume-without-resign-design.md: a node refuses the first
-// execution of the signed bytes, and the user clicks "Try again" (the widget
-// resumes the route it stored). Sections 4.2.8 (resend age cap, dropped),
-// 4.2.9, 4.3 (Sui row), 4.6 (resume mode), 4.7, 5 and 8.
+// A node refuses the first execution of the signed bytes, and the user
+// clicks "Try again" (the widget resumes the route it stored). The specs
+// cover the resend age cap, the dropped proof and the resume mode of the
+// wait task (see the resume rules in `transactionState.ts`).
 
 const NODE_REFUSAL_MESSAGE =
   'Transaction rejected by the validators (non-retriable).'
@@ -276,16 +276,16 @@ describe('Sui node refusal of the first execution', () => {
     expect(network.stepTransactionRequests).toBe(0)
     expect(apiRequests).toEqual([])
     // #507 behaviour: the signed bytes are written with status PENDING
-    // before the execution request (spec 4.6 step 2).
+    // before the execution request.
     expect(updates.changes).toEqual([
       'SWAP:STARTED',
       'SWAP:ACTION_REQUIRED',
       'SWAP:PENDING',
       'SWAP:FAILED',
     ])
-    // #507 behaviour: the refusal is an RPC error, an unknown outcome
-    // (spec 4.3, Sui row). It comes at the first send attempt, not before
-    // it, so `txHex` stays (spec 4.2.9), and there is no `txFinal`.
+    // #507 behaviour: the refusal is an RPC error, an unknown outcome. It
+    // comes at the first send attempt, not before it, so `txHex` stays, and
+    // there is no `txFinal`.
     const execution = stored.steps[0].execution
     expect(execution).toMatchObject({
       status: 'FAILED',
@@ -321,14 +321,13 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
       updateRouteHook: retry.hook,
     })
 
-    // #507 behaviour: the kept action starts the pipeline at the wait task
-    // (spec 4.7 "FAILED, unknown"): no balance check, no quote, no wallet.
+    // #507 behaviour: the kept action (FAILED, unknown outcome) starts the
+    // pipeline at the wait task: no balance check, no quote, no wallet.
     expect(getBalance).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toBe(0)
     expect(page.signTransaction).toHaveBeenCalledTimes(1)
     // #507 behaviour: the digest is not found, so the SDK's gRPC clients
-    // re-execute exactly the stored bytes, then wait by digest (spec 4.6
-    // resume mode).
+    // re-execute exactly the stored bytes, then wait by digest.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
       'grpc.executeTransaction',
@@ -351,7 +350,7 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
       }),
     ])
     // #507 behaviour: the executed bytes are no longer needed, so the wait
-    // task clears them (spec 5, `txHex`).
+    // task clears `txHex`.
     expect(storedBytesOf(retry.snapshots.at(-1)!)).toBeUndefined()
   })
 
@@ -385,8 +384,8 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     expect(network.executed).toEqual([])
     expect(apiRequests).toEqual([])
     expect(retry.changes).toEqual(['SWAP:PENDING', 'SWAP:FAILED'])
-    // #507 behaviour: the outcome stays unknown (spec 4.3, Sui row), so the
-    // next "Try again" re-checks again instead of signing (spec 5).
+    // #507 behaviour: the outcome stays unknown, so the next "Try again"
+    // re-checks again instead of signing.
     const failed = retry.snapshots.at(-1)!
     const action = swapActionOf(failed)
     expect(action).toMatchObject({
@@ -421,8 +420,8 @@ describe('Sui "Try again" after a node refusal, within the resend age cap', () =
     expect(network.stepTransactionRequests).toBe(0)
     expect(page.signTransaction).toHaveBeenCalledTimes(1)
     // #507 behaviour: a transport error is not a definite rejection, so the
-    // task rethrows it at once, without a second lookup (spec 4.3, Sui row:
-    // RPC errors are unknown).
+    // task rethrows it at once, without a second lookup: RPC errors are
+    // unknown.
     expect(methodsByClient()).toEqual([
       'grpc.getTransaction',
       'grpc.executeTransaction',
@@ -464,9 +463,9 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
       updateRouteHook: retry.hook,
     }).catch((e: unknown) => e)) as SDKError
 
-    // #507 behaviour: past the cap the SDK never sends (spec 4.2.8); the
-    // batch lookup proves absence, and the status API does not know the
-    // digest (spec 4.6 "Dropped"): a final TransactionExpired.
+    // #507 behaviour: past the cap the SDK never sends; the batch lookup
+    // proves absence, and the status API does not know the digest: a final
+    // TransactionExpired.
     expect(error.code).toBe(LiFiErrorCode.TransactionExpired)
     expect(getBalance).not.toHaveBeenCalled()
     expect(network.stepTransactionRequests).toBe(0)
@@ -497,7 +496,7 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
     expect(action).not.toHaveProperty('txHash')
 
     // #507 behaviour: "Try again" after a final failure signs new bytes
-    // exactly once (spec 4.7 "FAILED + txFinal").
+    // exactly once.
     clearRecords()
     const again = recordRouteUpdates()
     const resumed = await resumeRoute(page.client, failed, {
@@ -560,10 +559,10 @@ describe('Sui "Try again" after a node refusal, past the resend age cap', () => 
       updateRouteHook: retry.hook,
     }).catch((e: unknown) => e)) as SDKError
 
-    // #507 behaviour: past the cap the SDK never sends (spec 4.2.8). The
-    // tip is not past the latest landing time, so the canary search stops
-    // after one checkpoint and there is no dropped proof; the task waits by
-    // digest, and the outcome stays unknown (spec 4.6). So "Try again" gives
+    // #507 behaviour: past the cap the SDK never sends. The tip is not past
+    // the latest landing time, so the canary search stops after one
+    // checkpoint and there is no dropped proof; the task waits by digest,
+    // and the outcome stays unknown. So "Try again" gives
     // no new signature until about 17 minutes after signing. The wait ends
     // with a TimeoutError, as the real client's wait does (after its default
     // 60 s for each RPC URL); parseSuiErrors reads it as an UnknownError.

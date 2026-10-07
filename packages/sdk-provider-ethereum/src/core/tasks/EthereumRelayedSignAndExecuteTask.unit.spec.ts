@@ -295,7 +295,7 @@ describe('EthereumRelayedSignAndExecuteTask.run second pre-sign guard', () => {
   }
 
   // An older run's late write can merge its transaction into this action
-  // during any await before a signature (spec addendum §5.2 case 1). The
+  // during any await before a signature. The
   // chain check of each entry is the last one.
   it('checks the action again right before signTypedData and never calls it when a transaction merged meanwhile', async () => {
     const context = buildContext()

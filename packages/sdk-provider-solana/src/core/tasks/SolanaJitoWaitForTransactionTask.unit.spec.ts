@@ -438,7 +438,7 @@ describe('SolanaJitoWaitForTransactionTask', () => {
 
   it('clears the stored bytes when no Jito RPC can take the bundle, because nothing was sent', async () => {
     // `sendAndConfirmBundle` throws the configuration gap before it submits
-    // anything, so "Try again" may sign again (spec 4.2.9).
+    // anything, so "Try again" may sign again.
     const configurationGap = new RPCError(
       LiFiErrorCode.RpcUnavailable,
       'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
@@ -602,8 +602,8 @@ describe('SolanaJitoWaitForTransactionTask', () => {
 
     it('does not send the bundle past the resend age cap and keeps the outcome unknown', async () => {
       // A nonce never expires on its own, so only the age cap keeps a late
-      // send from executing an old quote (spec 4.2.8). Past the cap, but not
-      // old enough to drop: nothing is sent or looked up, and the bytes stay.
+      // send from executing an old quote. Past the cap, but not old enough
+      // to drop: nothing is sent or looked up, and the bytes stay.
       const thrown = await new SolanaJitoWaitForTransactionTask()
         .run(nonceContext(Date.now() - MAX_RESEND_AGE_MS - 10_000))
         .catch((e) => e)

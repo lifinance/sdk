@@ -281,7 +281,7 @@ describe('EthereumStandardSignAndExecuteTask.run transaction fields', () => {
 
 describe('EthereumStandardSignAndExecuteTask.run second pre-sign guard', () => {
   // An older run's late write can merge its transaction into this action
-  // during any await before the wallet (spec addendum §5.2 case 1). The
+  // during any await before the wallet. The
   // gas estimate of a native permit is the last one.
   it('checks the action again right before sendTransaction and never calls it when a transaction merged meanwhile', async () => {
     const context = buildContext({ signedTypedData: [signedNativePermit()] })
