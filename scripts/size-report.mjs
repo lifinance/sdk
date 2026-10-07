@@ -33,10 +33,16 @@ const pct = (value) => `${value > 0 ? '+' : '−'}${Math.abs(value).toFixed(1)}%
 const short = (sha) => (sha ? sha.slice(0, 7) : '')
 
 const rows = head.map((current) => {
-  const [group, ...rest] = current.name.split(' · ')
-  const before = base.get(current.name)
+  const [first, ...rest] = current.name.split(' · ')
+  // Names without ' · ' have no group, so they go in one shared section.
+  const group = rest.length ? first : 'Other'
+  const label = rest.length ? rest.join(' · ') : current.name
+  // A zero-size base has no meaningful delta, so treat it like a missing one.
+  const before = base.get(current.name)?.size
+    ? base.get(current.name)
+    : undefined
   const delta = before ? current.size - before.size : null
-  const percent = before?.size ? (delta / before.size) * 100 : null
+  const percent = before ? (delta / before.size) * 100 : null
   const noticeable =
     delta !== null &&
     Math.abs(delta) >= NOTICE_BYTES &&
@@ -55,7 +61,7 @@ const rows = head.map((current) => {
 
   return {
     group,
-    label: rest.join(' · ') || group,
+    label,
     before,
     current,
     delta,
