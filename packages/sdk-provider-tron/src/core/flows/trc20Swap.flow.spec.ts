@@ -99,22 +99,18 @@ describe('Tron TRC-20 same-chain swap', () => {
     )
 
     // The allowance is read once, before the approve. Pinned as observed, and
-    // two things look wrong here:
-    // - Finding 2: the balance read (`balanceOf`) comes after the approval is
-    //   sent and confirmed, so a wallet without enough USDT pays for the
-    //   approval before it learns the balance is too low.
-    // - Finding 3: every TRC-20 read calls `wallet/getcontract` again
-    //   (TronWeb 6.5.1 looks its ABI cache up by the base58 address but
-    //   stores it under the hex address, so the cache never hits).
+    // one thing looks wrong here (Finding 2): the balance read (`balanceOf`)
+    // comes after the approval is sent and confirmed, so a wallet without
+    // enough USDT pays for the approval before it learns the balance is too
+    // low. The TRC-20 reads use a static ABI, so no `wallet/getcontract`
+    // request is sent and the balance read starts before the block read.
     expect(network.nodeCalls).toEqual([
-      'wallet/getcontract',
       'wallet/triggerconstantcontract allowance(address,address)',
       'wallet/triggersmartcontract approve(address,uint256)',
       'wallet/broadcasttransaction',
       'walletsolidity/gettransactioninfobyid',
-      'wallet/getcontract',
-      'wallet/getnowblock',
       'wallet/triggerconstantcontract balanceOf(address)',
+      'wallet/getnowblock',
       'wallet/getblock',
       'wallet/broadcasttransaction',
       'walletsolidity/gettransactioninfobyid',

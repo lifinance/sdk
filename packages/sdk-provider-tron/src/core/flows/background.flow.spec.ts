@@ -191,14 +191,12 @@ describe('Tron background execution', () => {
     // The background run builds, sends and confirms the approval, reads the
     // balance, and stops before the ref block read of the swap.
     expect(network.nodeCalls).toEqual([
-      'wallet/getcontract',
       'wallet/triggerconstantcontract allowance(address,address)',
       'wallet/triggersmartcontract approve(address,uint256)',
       'wallet/broadcasttransaction',
       'walletsolidity/gettransactioninfobyid',
-      'wallet/getcontract',
-      'wallet/getnowblock',
       'wallet/triggerconstantcontract balanceOf(address)',
+      'wallet/getnowblock',
     ])
     expect(recorder.transitions()).toEqual([
       'CHECK_ALLOWANCE:STARTED',

@@ -181,36 +181,6 @@ const selectorOf = (signature: string): string =>
 const QUOTE_SELECTOR = selectorOf('swapTokensGeneric(bytes32,uint256)')
 const APPROVE_SELECTOR = selectorOf('approve(address,uint256)')
 
-const TRC20_ABI = [
-  {
-    type: 'function',
-    name: 'allowance',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    type: 'function',
-    name: 'approve',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'value', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-]
-
 // ---------------------------------------------------------------------------
 // Quotes and routes
 // ---------------------------------------------------------------------------
@@ -571,15 +541,6 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
         case 'walletsolidity/getaccount':
           return body.address === WALLET_HEX
             ? { address: WALLET_HEX, balance: Number(trxBalance) }
-            : {}
-        // `tronWeb.contract().at(token)`: the ABI of a TRC-20.
-        case 'wallet/getcontract':
-          return body.value === USDT_HEX
-            ? {
-                contract_address: USDT_HEX,
-                bytecode: '',
-                abi: { entrys: TRC20_ABI },
-              }
             : {}
         // TRC-20 `allowance(owner, spender)` and `balanceOf(account)` reads.
         case 'wallet/triggerconstantcontract': {
