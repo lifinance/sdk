@@ -41,6 +41,9 @@ const rows = head.map((current) => {
   // A zero-size base has no meaningful delta, so treat it like a missing one.
   const previous = base.get(current.name)
   const before = previous?.size ? previous : undefined
+  // The base had this check but could not measure it (for example, a missing export).
+  const baselineFailed =
+    previous !== undefined && typeof previous.size !== 'number'
   // size-limit omits `size` when a check found no files to measure.
   const missing = typeof current.size !== 'number'
   const delta = before && !missing ? current.size - before.size : null
@@ -73,6 +76,7 @@ const rows = head.map((current) => {
     percent,
     noticeable,
     missing,
+    baselineFailed,
     overBudget,
     used,
     icon,
@@ -91,6 +95,9 @@ const bar = (used) => {
 const changeCell = (row) => {
   if (row.missing) {
     return '⚠️ no output'
+  }
+  if (row.baselineFailed) {
+    return '— baseline n/a'
   }
   if (row.delta === null) {
     return '🆕 new'
@@ -142,10 +149,12 @@ for (const group of [...new Set(rows.map((r) => r.group))]) {
   )
 }
 
-const baseNote = base.size
+const baseUsable = [...base.values()].some((r) => typeof r.size === 'number')
+const baseBuildFailed = BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
+const baseNote = baseUsable
   ? ''
   : `> ℹ️ ${
-      BASE_BUILD_OUTCOME && BASE_BUILD_OUTCOME !== 'success'
+      baseBuildFailed
         ? 'The base commit failed to build, so changes are not shown.'
         : 'No baseline was found, so changes are not shown.'
     } Budgets are still checked.\n\n`

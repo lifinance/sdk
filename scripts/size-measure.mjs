@@ -71,7 +71,11 @@ try {
     } else {
       failed += 1
       console.error(`Check failed: ${check.name}`)
-      console.error(result.stdout, result.stderr, result.signal)
+      console.error(
+        result.error ?? result.stderr ?? '',
+        result.signal ?? '',
+        result.stdout ?? ''
+      )
       report.push({ name: check.name })
     }
   }
