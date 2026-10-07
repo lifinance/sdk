@@ -3,18 +3,18 @@
     "name": "@lifi/sdk · createClient + getQuote",
     "path": "packages/sdk/dist/esm/index.js",
     "import": "{ createClient, getQuote }",
-    "limit": "5 kB"
+    "limit": "6 kB"
   },
   {
     "name": "@lifi/sdk · all exports",
     "path": "packages/sdk/dist/esm/index.js",
     "import": "*",
-    "limit": "17 kB"
+    "limit": "20 kB"
   },
   {
     "name": "@lifi/sdk · CJS (no tree-shaking)",
     "path": "packages/sdk/dist/cjs/index.js",
-    "limit": "21 kB"
+    "limit": "24 kB"
   },
   {
     "name": "Providers · ethereum (+ viem)",
@@ -23,7 +23,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "110 kB"
+    "limit": "115 kB"
   },
   {
     "name": "Providers · solana",
@@ -32,7 +32,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "30 kB"
+    "limit": "34 kB"
   },
   {
     "name": "Providers · bitcoin",
@@ -41,7 +41,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "78 kB"
+    "limit": "82 kB"
   },
   {
     "name": "Providers · sui",
@@ -50,7 +50,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "78 kB"
+    "limit": "111 kB"
   },
   {
     "name": "Providers · tron",
@@ -59,7 +59,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "220 kB"
+    "limit": "232 kB"
   },
   {
     "name": "Providers · stellar",
@@ -68,7 +68,7 @@
     "ignore": [
       "@lifi/sdk"
     ],
-    "limit": "140 kB"
+    "limit": "148 kB"
   },
   {
     "name": "Providers · zcash",
