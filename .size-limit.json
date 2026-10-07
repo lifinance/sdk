@@ -78,5 +78,19 @@
       "@lifi/sdk"
     ],
     "limit": "8 kB"
+  },
+  {
+    "name": "Full integration · createClient + all providers",
+    "import": {
+      "packages/sdk/dist/esm/index.js": "{ createClient }",
+      "packages/sdk-provider-ethereum/dist/esm/index.js": "{ EthereumProvider }",
+      "packages/sdk-provider-solana/dist/esm/index.js": "{ SolanaProvider }",
+      "packages/sdk-provider-bitcoin/dist/esm/index.js": "{ BitcoinProvider }",
+      "packages/sdk-provider-sui/dist/esm/index.js": "{ SuiProvider }",
+      "packages/sdk-provider-tron/dist/esm/index.js": "{ TronProvider }",
+      "packages/sdk-provider-stellar/dist/esm/index.js": "{ StellarProvider }",
+      "packages/sdk-provider-zcash/dist/esm/index.js": "{ ZcashProvider }"
+    },
+    "limit": "673 kB"
   }
 ]
