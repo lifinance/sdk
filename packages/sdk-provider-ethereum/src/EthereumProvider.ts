@@ -1,6 +1,5 @@
 import { ChainType, type StepExecutorOptions } from '@lifi/sdk'
 import { isAddress } from 'viem'
-import * as chains from 'viem/chains'
 import { getEthereumBalance } from './actions/getEthereumBalance.js'
 import { resolveEthereumAddress } from './actions/resolveEthereumAddress.js'
 import { EthereumStepExecutor } from './core/EthereumStepExecutor.js'
@@ -20,8 +19,6 @@ export function EthereumProvider(
   options?: EthereumProviderOptions
 ): EthereumSDKProvider {
   const _options: EthereumProviderOptions = options ?? {}
-  // DEMO ONLY, reverted in the next commit: grows the bundle to show the size report.
-  ;(globalThis as Record<string, unknown>).__bundleSizeDemo = chains
   return {
     get type() {
       return ChainType.EVM
