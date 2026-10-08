@@ -54,7 +54,8 @@ const handleSpecificErrors = async (
     e.name === 'UserRejectedRequestError' ||
     e.cause?.name === 'UserRejectedRequestError' ||
     /**
-     * This error is specific to MetaMask and thrown when the user rejects the signature of the native token transfer, at that point, the bundle id is unknown.
+     * MetaMask removes a rejected bundle, and `wallet_getCallsStatus` then throws this error.
+     * `waitForBatchTransactionReceipt` handles that case first; this branch stays for any other call that throws it.
      * @see https://github.com/MetaMask/metamask-extension/blob/main/app/scripts/lib/transaction/eip5792.ts#L141-L146
      */
     e.name === 'UnknownBundleIdError'
