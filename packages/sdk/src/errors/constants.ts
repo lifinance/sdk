@@ -44,6 +44,7 @@ export enum LiFiErrorCode {
   InsufficientGas = 1025,
   ConfigError = 1026,
   RpcUnavailable = 1027,
+  CallBundleNotFound = 1028,
 }
 
 export enum ErrorMessage {

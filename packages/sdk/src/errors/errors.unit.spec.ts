@@ -19,6 +19,19 @@ describe('RPCError', () => {
   })
 })
 
+describe('CallBundleNotFound', () => {
+  it('is code 1028 and keeps the outcome unknown', () => {
+    const error = new TransactionError(
+      LiFiErrorCode.CallBundleNotFound,
+      'The wallet has no record of the call bundle.'
+    )
+
+    expect(LiFiErrorCode.CallBundleNotFound).toBe(1028)
+    expect(error.code).toBe(1028)
+    expect(error.final).toBe(false)
+  })
+})
+
 describe('TransactionError final option', () => {
   it('defaults final to false', () => {
     expect(
