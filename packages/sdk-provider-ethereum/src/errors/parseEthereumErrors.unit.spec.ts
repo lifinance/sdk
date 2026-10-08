@@ -10,9 +10,13 @@ import {
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
-import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
+import {
+  AtomicReadyWalletRejectedUpgradeError,
+  UnknownBundleIdError,
+} from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
+import { CallBundleDroppedError } from './CallBundleDroppedError.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
 
 function assertSDKError(
@@ -235,6 +239,42 @@ describe('parseEVMStepErrors', () => {
 
         expect(baseError.cause?.cause).toBe(UserRejectedRequestError)
       })
+    })
+  })
+
+  // The batched wait handles an unknown bundle first. Its errors carry the
+  // viem error as a cause, and the parser must keep their codes.
+  describe('when the batched wait reports a bundle the wallet does not know', () => {
+    const unknownBundle = (): UnknownBundleIdError =>
+      new UnknownBundleIdError(new Error('No matching bundle found'))
+
+    it.each([
+      {
+        outcome: 'a dropped bundle',
+        error: () =>
+          new TransactionError(
+            LiFiErrorCode.SignatureRejected,
+            'The wallet dropped the call bundle before it sent it.',
+            new CallBundleDroppedError(unknownBundle())
+          ),
+      },
+      {
+        outcome: 'an unknown bundle',
+        error: () =>
+          new TransactionError(
+            LiFiErrorCode.CallBundleNotFound,
+            'The wallet has no record of the call bundle.',
+            unknownBundle()
+          ),
+      },
+    ])('keeps the code of $outcome', async ({ error }) => {
+      const transactionError = error()
+
+      const parsedError = await parseEthereumErrors(transactionError)
+
+      assertSDKError(parsedError)
+      expect(parsedError.cause).toBe(transactionError)
+      expect(parsedError.code).toBe(transactionError.code)
     })
   })
 
