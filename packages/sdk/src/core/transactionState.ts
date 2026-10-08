@@ -76,7 +76,10 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
  * 3. From the last check, nothing awaits until the send or, where the SDK
  *    sends signed bytes, until they are stored as `txHex`, before the first
  *    send. Clear `txHex` only when the outcome is known, no node can still
- *    hold the bytes, or they no longer decode.
+ *    hold the bytes, or they no longer decode. A wallet that reported a call
+ *    bundle in the same wait and then has no record of it, within 10 minutes
+ *    of signing, never sent it: clear with `CLEARED_TRANSACTION_FIELDS` and
+ *    throw without the marker.
  * 4. A resume never signs. It looks the transaction up and resends the
  *    stored bytes only while `isResendAllowed` (or the chain's own expiry)
  *    allows it; otherwise it only waits.
