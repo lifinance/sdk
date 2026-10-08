@@ -64,6 +64,7 @@ export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask
         // signs anew.
         statusManager.updateAction(step, action.type, 'PENDING', {
           ...CLEARED_TRANSACTION_FIELDS,
+          txType: undefined,
         })
         throw new TransactionError(
           LiFiErrorCode.SignatureRejected,

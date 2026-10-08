@@ -118,13 +118,16 @@ describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not kn
     expect((error as Error).cause).toBe(dropped)
     expect(isFinalTransactionError(error)).toBe(false)
     expect(statusManager.updateAction).toHaveBeenCalledTimes(1)
-    expect(statusManager.updateAction).toHaveBeenCalledWith(
-      context.step,
-      'SWAP',
-      'PENDING',
-      CLEARED_TRANSACTION_FIELDS
-    )
+    const [step, type, status, fields] = vi.mocked(statusManager.updateAction)
+      .mock.calls[0]
+    expect([step, type, status]).toEqual([context.step, 'SWAP', 'PENDING'])
+    // Strict: a missing key would leave that field of the bundle in place.
+    expect(fields).toStrictEqual({
+      ...CLEARED_TRANSACTION_FIELDS,
+      txType: undefined,
+    })
     expect(action.taskId).toBeUndefined()
+    expect(action.txType).toBeUndefined()
     expect(hasOpenTransaction(failed(action))).toBe(false)
   })
 
