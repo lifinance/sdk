@@ -226,10 +226,10 @@ export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
  * store it.
  *
  * After `stopRouteExecution` it can still be called, but only to deliver the
- * transaction data (`txHash`, `txHex`, `taskId`, `txFinal`) of a task that
- * was still running at the stop, for example in an open wallet prompt. Store
- * that data, so a resume waits for that transaction instead of signing
- * again. If you deleted the route, ignore the call.
+ * transaction data (`txHash`, `txHex`, `taskId`, `callCount`, `txFinal`) of a
+ * task that was still running at the stop, for example in an open wallet
+ * prompt. Store that data, so a resume waits for that transaction instead of
+ * signing again. If you deleted the route, ignore the call.
  */
 export type UpdateRouteHook = (updatedRoute: RouteExtended) => void
 
