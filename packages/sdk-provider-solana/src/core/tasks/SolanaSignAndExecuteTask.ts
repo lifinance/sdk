@@ -115,8 +115,7 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // every send failure all sit between this task and the first broadcast.
     // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
     //
-    // The previous transaction's fields (`CLEARED_TRANSACTION_FIELDS`:
-    // `txHash`, `txLink`, `txHex`, `txFinal`, `taskId`, `callCount`) are
+    // The previous transaction's fields (`CLEARED_TRANSACTION_FIELDS`) are
     // cleared explicitly. Only a final failure reaches this task with them
     // set, and a stale hash would look open again once its `txFinal` is gone.
     // This write runs BEFORE the decode below, which can throw on a malformed
