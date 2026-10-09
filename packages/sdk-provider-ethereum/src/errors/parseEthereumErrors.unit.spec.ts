@@ -278,6 +278,20 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.code).toBe(transactionError.code)
       expect(isFinalTransactionError(parsedError)).toBe(transactionError.final)
     })
+
+    // The batched wait handles 5730 first, so no call reaches the parser
+    // with it today. If one does, the bundle may still land.
+    it('maps a raw UnknownBundleIdError to CallBundleNotFound, which is not final', async () => {
+      const error = unknownBundle()
+
+      const parsedError = await parseEthereumErrors(error)
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(LiFiErrorCode.CallBundleNotFound)
+      expect(parsedError.cause).toBeInstanceOf(TransactionError)
+      expect(parsedError.cause?.cause).toBe(error)
+      expect(isFinalTransactionError(parsedError)).toBe(false)
+    })
   })
 
   describe('when the error is a Transaction reverted error caused by low gas', () => {

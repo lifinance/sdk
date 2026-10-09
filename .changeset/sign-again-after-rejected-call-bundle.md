@@ -11,3 +11,5 @@ This rule applies only to a bundle with one call. MetaMask returns the id of a b
 If a wallet sends a bundle with one call and then loses its record of it within 10 minutes of signing, "Try again" can sign a second bundle. Examples are "Delete activity and nonce data" or "Reset account" in MetaMask, or a remote status service that forgets the bundle.
 
 When the wallet has no record of the bundle at its first answer, the step fails with the new code `LiFiErrorCode.CallBundleNotFound`. A page reload after the reject is an example. The step also fails with this code when the wallet loses the bundle 10 minutes or more after signing, or when the rule does not apply. The SDK cannot know if the wallet sent this bundle. Thus the action keeps the bundle id, and "Try again" waits for the bundle again and does not sign. A route that is stuck after a reject on 4.11.0 fails with `CallBundleNotFound` on its next "Try again".
+
+If an "unknown bundle id" error (5730) reaches the error parser from another call, the step also fails with `CallBundleNotFound`, not with `SignatureRejected`.
