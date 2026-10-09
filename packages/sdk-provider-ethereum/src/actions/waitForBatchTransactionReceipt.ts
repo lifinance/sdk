@@ -34,8 +34,8 @@ export const waitForBatchTransactionReceipt = async (
 ): Promise<WalletCallReceipt> => {
   // MetaMask returns the id of a single-call bundle before the user approves
   // it, and removes the bundle on a reject: `wallet_getCallsStatus` then
-  // fails with 5730 (`UnknownBundleIdError`). It returns the id of two or
-  // more calls only after it sent the bundle.
+  // fails with 5730 (`UnknownBundleIdError`). It returns the id of a bundle
+  // of two or more calls only after it sent the bundle.
   let known = false
   let result: GetCallsStatusReturnType
   try {
@@ -64,8 +64,9 @@ export const waitForBatchTransactionReceipt = async (
       throw new CallBundleDroppedError(error as Error)
     }
     // Unknown from the first answer (a reload after the reject, another
-    // wallet), too long after signing, or no proof of a single call (the
-    // wallet sent a bundle of more calls): the bundle may still land.
+    // wallet), too long after signing, or no stored count of one call (two
+    // or more calls, or a route stored without the count): the bundle may
+    // still land.
     throw new TransactionError(
       LiFiErrorCode.CallBundleNotFound,
       'The wallet has no record of the call bundle.',
