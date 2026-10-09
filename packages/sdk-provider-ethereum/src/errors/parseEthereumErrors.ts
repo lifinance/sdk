@@ -58,7 +58,7 @@ const handleSpecificErrors = async (
   }
   /**
    * The wallet has no record of an EIP-5792 bundle (5730), so the outcome is unknown: the bundle may still land.
-   * `waitForBatchTransactionReceipt` handles that case first; this branch stays for any other call that throws it.
+   * No call reaches this branch today, because `waitForBatchTransactionReceipt` handles 5730 first. A later call that reaches it gets the unknown outcome.
    * Only the error itself matches: an error of the batched wait carries it as a cause and keeps its own code.
    * @see https://github.com/MetaMask/core/blob/main/packages/eip-5792-middleware/src/hooks/getCallsStatus.ts
    */
