@@ -5,6 +5,7 @@ import {
   ErrorName,
   ExecuteStepRetryError,
   type ExecutionAction,
+  isFinalTransactionError,
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
@@ -16,7 +17,6 @@ import {
 } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
-import { CallBundleDroppedError } from './CallBundleDroppedError.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
 
 function assertSDKError(
@@ -250,12 +250,13 @@ describe('parseEVMStepErrors', () => {
 
     it.each([
       {
-        outcome: 'a dropped bundle',
+        outcome: 'a bundle never sent',
         error: () =>
           new TransactionError(
             LiFiErrorCode.SignatureRejected,
-            'The wallet dropped the call bundle before it sent it.',
-            new CallBundleDroppedError(unknownBundle())
+            'The wallet removed the call bundle before it sent it.',
+            unknownBundle(),
+            { final: true }
           ),
       },
       {
@@ -275,6 +276,7 @@ describe('parseEVMStepErrors', () => {
       assertSDKError(parsedError)
       expect(parsedError.cause).toBe(transactionError)
       expect(parsedError.code).toBe(transactionError.code)
+      expect(isFinalTransactionError(parsedError)).toBe(transactionError.final)
     })
   })
 

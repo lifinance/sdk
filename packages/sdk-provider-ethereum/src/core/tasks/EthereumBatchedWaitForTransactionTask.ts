@@ -1,13 +1,11 @@
 import {
   BaseStepExecutionTask,
-  CLEARED_TRANSACTION_FIELDS,
   LiFiErrorCode,
   type TaskResult,
   TransactionError,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransactionReceipt.js'
-import { CallBundleDroppedError } from '../../errors/CallBundleDroppedError.js'
 import type {
   EthereumStepExecutorContext,
   WalletCallReceipt,
@@ -36,47 +34,28 @@ export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask
       return { status: 'PAUSED' }
     }
 
-    let transactionReceipt: WalletCallReceipt
-    try {
-      transactionReceipt = await waitForBatchTransactionReceipt(
-        updatedClient,
-        action.taskId as Hash,
-        {
-          onFailed: (result) => {
-            const receipt = result.receipts?.find(
-              (r) => r.status === 'reverted'
-            ) as WalletCallReceipt | undefined
-            if (receipt) {
-              updateActionWithReceipt(
-                statusManager,
-                step,
-                fromChain,
-                receipt,
-                action
-              )
-            }
-          },
-          signedAt: step.execution?.signedAt,
-          callCount: action.callCount,
-        }
-      )
-    } catch (error) {
-      if (error instanceof CallBundleDroppedError) {
-        // The bundle never left the wallet, so it can never land. Nothing of
-        // it may stay, as after a rejection before sending: "Try again"
-        // signs anew.
-        statusManager.updateAction(step, action.type, 'PENDING', {
-          ...CLEARED_TRANSACTION_FIELDS,
-          txType: undefined,
-        })
-        throw new TransactionError(
-          LiFiErrorCode.SignatureRejected,
-          error.message,
-          error
-        )
+    const transactionReceipt = await waitForBatchTransactionReceipt(
+      updatedClient,
+      action.taskId as Hash,
+      {
+        onFailed: (result) => {
+          const receipt = result.receipts?.find(
+            (r) => r.status === 'reverted'
+          ) as WalletCallReceipt | undefined
+          if (receipt) {
+            updateActionWithReceipt(
+              statusManager,
+              step,
+              fromChain,
+              receipt,
+              action
+            )
+          }
+        },
+        signedAt: step.execution?.signedAt,
+        callCount: action.callCount,
       }
-      throw error
-    }
+    )
 
     updateActionWithReceipt(
       statusManager,

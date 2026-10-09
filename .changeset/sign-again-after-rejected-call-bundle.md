@@ -4,7 +4,7 @@
 
 After a user rejected a single-call EIP-5792 bundle in MetaMask, every "Try again" failed with "This bundle id is unknown". The wallet showed no new prompt. MetaMask returns the bundle id before the user approves the bundle. When the user rejects the bundle, MetaMask removes it.
 
-Now, when the wallet reports a bundle with one call and then has no record of it in the same wait, the step fails with `SignatureRejected`. The action keeps no bundle id, and "Try again" signs a new bundle. The SDK accepts this proof only for 10 minutes after signing. Some wallets get the bundle status from a remote service, and that service can forget an old bundle.
+Now, when the wallet reports a bundle with one call and then has no record of it in the same wait, the SDK treats the bundle as never sent. The step fails with a final `SignatureRejected`. The action keeps the bundle id with `txFinal: true`, so the action is closed, and "Try again" signs a new bundle. The SDK accepts this proof only for 10 minutes after signing. Some wallets get the bundle status from a remote service, and that service can forget an old bundle.
 
 This rule applies only to a bundle with one call. MetaMask returns the id of a bundle with two or more calls only after it sent the bundle. The action stores the number of calls in `callCount`, so the rule also works after a page reload. A bundle that the SDK stored before this release has no `callCount`, and the rule does not apply to it.
 

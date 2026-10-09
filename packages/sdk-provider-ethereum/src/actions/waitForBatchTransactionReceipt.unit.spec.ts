@@ -5,7 +5,6 @@ import {
 } from '@lifi/sdk'
 import { type Client, type Hash, UnknownBundleIdError } from 'viem'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CallBundleDroppedError } from '../errors/CallBundleDroppedError.js'
 import { waitForBatchTransactionReceipt } from './waitForBatchTransactionReceipt.js'
 
 const BATCH_ID = `0x${'ba'.repeat(32)}` as Hash
@@ -286,9 +285,14 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     expect((error as Error).cause).toBeInstanceOf(UnknownBundleIdError)
   }
 
+  // A final rejection: the SDK treats the bundle as never sent.
   const expectDropped = (error: unknown): void => {
-    expect(error).toBeInstanceOf(CallBundleDroppedError)
-    expect(isFinalTransactionError(error)).toBe(false)
+    expect(error).toBeInstanceOf(TransactionError)
+    expect(error).toMatchObject({
+      code: LiFiErrorCode.SignatureRejected,
+      message: 'The wallet removed the call bundle before it sent it.',
+    })
+    expect(isFinalTransactionError(error)).toBe(true)
   }
 
   beforeEach(() => {
@@ -420,7 +424,6 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
         })
       )
 
-      expect(outcome.error).not.toBeInstanceOf(CallBundleDroppedError)
       expectBundleNotFound(outcome.error)
       // The wallet answered 100 first: only the count keeps it from a drop.
       expect(getCallsStatus.mock.calls.length).toBeGreaterThan(1)

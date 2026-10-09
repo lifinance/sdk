@@ -50,11 +50,12 @@ import {
 } from './harness.mock.js'
 
 // A single-call batch rejected in MetaMask. MetaMask returns the bundle id
-// before the user decides, and removes the bundle on a reject. A bundle the
-// wallet reported in the same wait and then no longer knows never left the
-// wallet: the step fails as a rejection, and "Try again" signs anew. A bundle
-// that is unknown from the first answer may still land: the action keeps
-// its bundle id, and "Try again" waits for it again.
+// before the user decides, and removes the bundle on a reject. The SDK
+// treats a bundle that the wallet reported in the same wait and then no
+// longer knows as never sent: the step fails with a final rejection, and
+// "Try again" signs anew. A bundle that is unknown from the first answer
+// may still land: the action keeps its bundle id, and "Try again" waits for
+// it again.
 //
 // A batch of two or more calls (EIP-7702) is different. MetaMask returns its
 // id only after the user approved it and the wallet sent it, and a reject
@@ -397,14 +398,14 @@ describe('EVM batched wait: a bundle rejected in the wallet', () => {
     expect(run).toMatchObject({ settled: true, resolved: false })
     expect(run.error).toMatchObject({ code: LiFiErrorCode.SignatureRejected })
     expect(metamask.answers(bundle)).toEqual([100, 5730])
-    // Stored as a rejection before sending: no bundle id, no `txFinal`.
+    // Stored as a final rejection: the bundle id stays, with `txFinal`.
     const swap = swapOf(page.stored())
     expect(swap).toMatchObject({
       status: 'FAILED',
+      taskId: bundle,
+      txFinal: true,
       error: { code: LiFiErrorCode.SignatureRejected },
     })
-    expect(swap?.taskId).toBeUndefined()
-    expect(swap?.txFinal).toBeUndefined()
     expect(hasOpenTransaction(swap)).toBe(false)
 
     await expectTryAgainSignsOnceAndCompletes(metamask, page)
@@ -429,7 +430,7 @@ describe('EVM batched wait: a bundle rejected in the wallet', () => {
     })
     expect(metamask.answers(bundle)).toEqual([100, 5730])
     const swap = swapOf(page.stored())
-    expect(swap?.taskId).toBeUndefined()
+    expect(swap).toMatchObject({ taskId: bundle, txFinal: true })
     expect(hasOpenTransaction(swap)).toBe(false)
 
     await expectTryAgainSignsOnceAndCompletes(metamask, page)
@@ -593,7 +594,7 @@ describe('EVM batched wait: a bundle of two calls (an approval and a swap)', () 
 describe('EVM batched wait: a bundle rejected after stopRouteExecution', () => {
   // The batched wait has no abort signal, so the stopped run keeps waiting.
   // Its write after the reject reaches storage through the hook it kept.
-  it('stores the cleared action of the stopped run, and "Try again" signs once', async () => {
+  it('stores the final rejection of the stopped run, and "Try again" signs once', async () => {
     const metamask = createMetaMask()
     const page = await openPage(metamask)
     const { run, bundle } = await runUntilPending(metamask, page)
@@ -605,7 +606,12 @@ describe('EVM batched wait: a bundle rejected after stopRouteExecution', () => {
     expect(run).toMatchObject({ settled: true, resolved: false })
     expect(run.error).toMatchObject({ code: LiFiErrorCode.SignatureRejected })
     const swap = swapOf(page.stored())
-    expect(swap?.taskId).toBeUndefined()
+    expect(swap).toMatchObject({
+      status: 'FAILED',
+      taskId: bundle,
+      txFinal: true,
+      error: { code: LiFiErrorCode.SignatureRejected },
+    })
     expect(hasOpenTransaction(swap)).toBe(false)
 
     await expectTryAgainSignsOnceAndCompletes(metamask, page)
@@ -613,8 +619,9 @@ describe('EVM batched wait: a bundle rejected after stopRouteExecution', () => {
 
   // The resume on the same page waits on the same client and bundle id, so
   // viem joins it to the poll of the stopped run. Only the stopped run's
-  // wait sees the answers, so only it can prove the drop. Its cleared action
-  // must not reach the newer execution, which still holds the bundle id.
+  // wait sees the answers, so only it can prove the drop. Its final
+  // rejection must not reach the newer execution, which still holds the
+  // bundle id.
   it('leaves the newer execution alone, which fails with CallBundleNotFound and never signs', async () => {
     const metamask = createMetaMask()
     const page = await openPage(metamask)
@@ -638,10 +645,14 @@ describe('EVM batched wait: a bundle rejected after stopRouteExecution', () => {
       code: LiFiErrorCode.CallBundleNotFound,
     })
     expect(page.scenario.events('sendCalls', resumeFrom)).toEqual([])
-    // No stored route since the stop lost the bundle id.
-    expect(
-      page.snapshots.slice(storedSince).map((route) => swapOf(route)?.taskId)
-    ).toEqual(Array(page.snapshots.length - storedSince).fill(bundle))
+    // No stored route since the stop lost the bundle id or closed it.
+    const since = page.snapshots.slice(storedSince).map(swapOf)
+    expect(since.map((swap) => swap?.taskId)).toEqual(
+      Array(since.length).fill(bundle)
+    )
+    expect(since.map((swap) => hasOpenTransaction(swap))).toEqual(
+      Array(since.length).fill(true)
+    )
     const swap = swapOf(page.stored())
     expect(swap).toMatchObject({
       status: 'FAILED',

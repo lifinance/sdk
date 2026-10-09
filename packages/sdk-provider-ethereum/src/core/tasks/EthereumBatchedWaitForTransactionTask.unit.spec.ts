@@ -1,8 +1,5 @@
 import {
-  CLEARED_TRANSACTION_FIELDS,
   type ExecutionAction,
-  hasOpenTransaction,
-  isFinalTransactionError,
   LiFiErrorCode,
   type LiFiStepExtended,
   type StatusManager,
@@ -16,7 +13,6 @@ vi.mock('../../actions/waitForBatchTransactionReceipt.js', () => ({
 }))
 
 import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransactionReceipt.js'
-import { CallBundleDroppedError } from '../../errors/CallBundleDroppedError.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedWaitForTransactionTask } from './EthereumBatchedWaitForTransactionTask.js'
 
@@ -77,12 +73,6 @@ const buildContext = (
   return { context, statusManager, action, client }
 }
 
-/** The action as the step executor leaves it after a non-final error. */
-const failed = (action: ExecutionAction): ExecutionAction => ({
-  ...action,
-  status: 'FAILED',
-})
-
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -108,67 +98,50 @@ describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not kn
     }
   )
 
-  // The bundle never left the wallet: the action must look as after a
-  // rejection before sending, so "Try again" signs anew.
-  it('clears the transaction of a dropped bundle and fails with SignatureRejected', async () => {
-    const { context, statusManager, action } = buildContext()
-    const dropped = new CallBundleDroppedError(unknownBundle())
-    vi.mocked(waitForBatchTransactionReceipt).mockRejectedValue(dropped)
+  // The task writes nothing on an error: the step executor stores it. A
+  // final rejection closes the action with `txFinal`, and "Try again" signs
+  // anew. Any other error keeps the bundle open.
+  it.each([
+    {
+      error: 'a final rejection',
+      thrown: (): Error =>
+        new TransactionError(
+          LiFiErrorCode.SignatureRejected,
+          'The wallet removed the call bundle before it sent it.',
+          unknownBundle(),
+          { final: true }
+        ),
+    },
+    {
+      error: 'CallBundleNotFound',
+      thrown: (): Error =>
+        new TransactionError(
+          LiFiErrorCode.CallBundleNotFound,
+          'The wallet has no record of the call bundle.',
+          unknownBundle()
+        ),
+    },
+    {
+      error: 'a wallet error',
+      thrown: (): Error => new Error('wallet_getCallsStatus timed out'),
+    },
+  ])(
+    'rethrows $error of the wait unchanged and writes nothing',
+    async ({ thrown }) => {
+      const { context, statusManager, action } = buildContext()
+      const error = thrown()
+      vi.mocked(waitForBatchTransactionReceipt).mockRejectedValue(error)
 
-    const error = await new EthereumBatchedWaitForTransactionTask()
-      .run(context)
-      .catch((error: unknown) => error)
+      await expect(
+        new EthereumBatchedWaitForTransactionTask().run(context)
+      ).rejects.toBe(error)
 
-    expect(error).toBeInstanceOf(TransactionError)
-    expect(error).toMatchObject({
-      code: LiFiErrorCode.SignatureRejected,
-      message: 'The wallet dropped the call bundle before it sent it.',
-    })
-    expect((error as Error).cause).toBe(dropped)
-    expect(isFinalTransactionError(error)).toBe(false)
-    expect(statusManager.updateAction).toHaveBeenCalledTimes(1)
-    const [step, type, status, fields] = vi.mocked(statusManager.updateAction)
-      .mock.calls[0]
-    expect([step, type, status]).toEqual([context.step, 'SWAP', 'PENDING'])
-    // Strict: a missing key would leave that field of the bundle in place.
-    expect(fields).toStrictEqual({
-      ...CLEARED_TRANSACTION_FIELDS,
-      txType: undefined,
-    })
-    expect(action.taskId).toBeUndefined()
-    expect(action.txType).toBeUndefined()
-    expect(action.callCount).toBeUndefined()
-    expect(hasOpenTransaction(failed(action))).toBe(false)
-  })
-
-  it('keeps the bundle of an unknown outcome and rethrows CallBundleNotFound', async () => {
-    const { context, statusManager, action } = buildContext()
-    const notFound = new TransactionError(
-      LiFiErrorCode.CallBundleNotFound,
-      'The wallet has no record of the call bundle.',
-      unknownBundle()
-    )
-    vi.mocked(waitForBatchTransactionReceipt).mockRejectedValue(notFound)
-
-    await expect(
-      new EthereumBatchedWaitForTransactionTask().run(context)
-    ).rejects.toBe(notFound)
-
-    expect(statusManager.updateAction).not.toHaveBeenCalled()
-    expect(action.taskId).toBe(BUNDLE_ID)
-    expect(hasOpenTransaction(failed(action))).toBe(true)
-  })
-
-  it('rethrows any other error of the wait unchanged and writes nothing', async () => {
-    const { context, statusManager, action } = buildContext()
-    const walletError = new Error('wallet_getCallsStatus timed out')
-    vi.mocked(waitForBatchTransactionReceipt).mockRejectedValue(walletError)
-
-    await expect(
-      new EthereumBatchedWaitForTransactionTask().run(context)
-    ).rejects.toBe(walletError)
-
-    expect(statusManager.updateAction).not.toHaveBeenCalled()
-    expect(hasOpenTransaction(failed(action))).toBe(true)
-  })
+      expect(statusManager.updateAction).not.toHaveBeenCalled()
+      expect(action).toMatchObject({
+        taskId: BUNDLE_ID,
+        txType: 'batched',
+        callCount: 1,
+      })
+    }
+  )
 })
