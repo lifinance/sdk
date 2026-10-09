@@ -1,5 +1,13 @@
 # @lifi/sdk
 
+## 4.12.0
+
+### Minor Changes
+
+- [#514](https://github.com/lifinance/sdk/pull/514) [`5dc9cc5`](https://github.com/lifinance/sdk/commit/5dc9cc5f52b0308962b822cfacd766dbf27bab3c) Thanks [@chybisov](https://github.com/chybisov)! - `LiFiErrorCode` has a new code, `CallBundleNotFound` (1028). A step fails with this code when the wallet has no record of an EIP-5792 bundle. The SDK uses it only when it cannot prove that the wallet did not send the bundle. The outcome stays unknown: the action keeps the bundle id, and a resume waits for the bundle again and does not sign.
+  
+  `ExecutionAction` has a new optional field, `callCount`. It is the number of calls of a batched (EIP-5792) transaction. The Ethereum provider sets it together with `taskId` for a batched transaction.
+
 ## 4.11.0
 
 ### Minor Changes
