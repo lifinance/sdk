@@ -55,7 +55,8 @@ export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask
             )
           }
         },
-        step.execution?.signedAt
+        step.execution?.signedAt,
+        action.callCount
       )
     } catch (error) {
       if (error instanceof CallBundleDroppedError) {

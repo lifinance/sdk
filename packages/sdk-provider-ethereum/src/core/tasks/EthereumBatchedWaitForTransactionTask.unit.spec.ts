@@ -27,10 +27,13 @@ const unknownBundle = (): UnknownBundleIdError =>
   new UnknownBundleIdError(new Error('No matching bundle found'))
 
 /**
- * A SWAP action that waits for a bundle, and a status manager that writes
- * into it, so the test reads the action as the step executor leaves it.
+ * A SWAP action that waits for a single-call bundle, unless `fields` say
+ * otherwise, and a status manager that writes into it, so the test reads
+ * the action as the step executor leaves it.
  */
-const buildContext = (): {
+const buildContext = (
+  fields: Partial<ExecutionAction> = {}
+): {
   context: EthereumStepExecutorContext
   statusManager: StatusManager
   action: ExecutionAction
@@ -41,6 +44,8 @@ const buildContext = (): {
     status: 'PENDING',
     taskId: BUNDLE_ID,
     txType: 'batched',
+    callCount: 1,
+    ...fields,
   }
   const statusManager = {
     findAction: vi.fn(() => action),
@@ -83,21 +88,27 @@ beforeEach(() => {
 })
 
 describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not know', () => {
-  it('passes the signing time of the step to the wait', async () => {
-    const { context, client } = buildContext()
-    vi.mocked(waitForBatchTransactionReceipt).mockResolvedValue({
-      status: 'success',
-    } as never)
+  // The stored count, not the calls of the context: after a reload the
+  // context has no calls.
+  it.each([{ callCount: 1 }, { callCount: 2 }, { callCount: undefined }])(
+    'passes the signing time of the step and the call count $callCount of the action to the wait',
+    async ({ callCount }) => {
+      const { context, client } = buildContext({ callCount })
+      vi.mocked(waitForBatchTransactionReceipt).mockResolvedValue({
+        status: 'success',
+      } as never)
 
-    await new EthereumBatchedWaitForTransactionTask().run(context)
+      await new EthereumBatchedWaitForTransactionTask().run(context)
 
-    expect(waitForBatchTransactionReceipt).toHaveBeenCalledWith(
-      client,
-      BUNDLE_ID,
-      expect.any(Function),
-      SIGNED_AT
-    )
-  })
+      expect(waitForBatchTransactionReceipt).toHaveBeenCalledWith(
+        client,
+        BUNDLE_ID,
+        expect.any(Function),
+        SIGNED_AT,
+        callCount
+      )
+    }
+  )
 
   // The bundle never left the wallet: the action must look as after a
   // rejection before sending, so "Try again" signs anew.
@@ -128,6 +139,7 @@ describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not kn
     })
     expect(action.taskId).toBeUndefined()
     expect(action.txType).toBeUndefined()
+    expect(action.callCount).toBeUndefined()
     expect(hasOpenTransaction(failed(action))).toBe(false)
   })
 

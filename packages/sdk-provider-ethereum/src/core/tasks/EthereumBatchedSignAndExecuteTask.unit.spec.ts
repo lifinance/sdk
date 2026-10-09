@@ -1,15 +1,30 @@
-import { LiFiErrorCode, type LiFiStep } from '@lifi/sdk'
+import {
+  CLEARED_TRANSACTION_FIELDS,
+  LiFiErrorCode,
+  type LiFiStep,
+} from '@lifi/sdk'
 import type { Address, Hex } from 'viem'
-import { describe, expect, it, vi } from 'vitest'
-import type { EthereumStepExecutorContext } from '../../types.js'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Call, EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedSignAndExecuteTask } from './EthereumBatchedSignAndExecuteTask.js'
 
 const SOURCE_CHAIN = 1
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
+const TOKEN = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' as Address
 const BATCH_ID = `0x${'ba'.repeat(32)}` as Hex
+const SIGNED_AT = 1_700_000_000_000
 
-const buildContext = (): {
+/** The approval that `EthereumSetAllowanceTask` queues on the batched lane. */
+const APPROVE_CALL: Call = {
+  chainId: SOURCE_CHAIN,
+  to: TOKEN,
+  data: '0x095ea7b3',
+}
+
+const buildContext = (
+  calls: Call[] = []
+): {
   context: EthereumStepExecutorContext
   sendCalls: ReturnType<typeof vi.fn>
 } => {
@@ -33,7 +48,7 @@ const buildContext = (): {
       sendCalls,
     }),
     transactionRequest: { to: ROUTER, data: '0xdeadbeef', value: 0n },
-    calls: [],
+    calls,
   } as unknown as EthereumStepExecutorContext
   return { context, sendCalls }
 }
@@ -56,6 +71,47 @@ describe('EthereumBatchedSignAndExecuteTask.run', () => {
     expect(params?.txHash).toBeUndefined()
     expect(params?.txFinal).toBeUndefined()
   })
+})
+
+// The batched wait reads the call count to decide if a bundle the wallet
+// lost was sent. It must be the length of the array sent to the wallet.
+describe('EthereumBatchedSignAndExecuteTask.run call count', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    { bundle: 'a swap only', calls: [], callCount: 1 },
+    {
+      bundle: 'an approval and a swap',
+      calls: [APPROVE_CALL],
+      callCount: 2,
+    },
+  ])(
+    'writes the call count of $bundle with the batch id',
+    async ({ calls, callCount }) => {
+      vi.spyOn(Date, 'now').mockReturnValue(SIGNED_AT)
+      const { context, sendCalls } = buildContext(calls)
+
+      await new EthereumBatchedSignAndExecuteTask().run(context)
+
+      expect(sendCalls).toHaveBeenCalledTimes(1)
+      expect(sendCalls.mock.calls[0][0].calls).toHaveLength(callCount)
+      expect(context.statusManager.updateAction).toHaveBeenCalledTimes(1)
+      const [, type, status, fields] = vi.mocked(
+        context.statusManager.updateAction
+      ).mock.calls[0]
+      expect([type, status]).toEqual(['SWAP', 'PENDING'])
+      // Strict: a missing key would keep the count of an earlier bundle.
+      expect(fields).toStrictEqual({
+        ...CLEARED_TRANSACTION_FIELDS,
+        taskId: BATCH_ID,
+        txType: 'batched',
+        callCount,
+        signedAt: SIGNED_AT,
+      })
+    }
+  )
 })
 
 describe('EthereumBatchedSignAndExecuteTask.run second pre-sign guard', () => {

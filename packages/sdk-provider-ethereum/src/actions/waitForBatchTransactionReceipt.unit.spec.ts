@@ -197,7 +197,8 @@ describe('waitForBatchTransactionReceipt: the status predicate', () => {
 
 // MetaMask returns the id of a single-call bundle before the user approves
 // it. After a reject it removes the bundle, and `wallet_getCallsStatus`
-// fails with 5730. These tests run viem's real `waitForCallsStatus`.
+// fails with 5730. These tests run viem's real `waitForCallsStatus`. A
+// bundle has one call unless a test says otherwise.
 describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', () => {
   const POLL_MS = 1_000
   // Longer than every poll and retry here: viem retries a failed request 4
@@ -317,7 +318,13 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const { client } = walletAnswering(PENDING, unknown)
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(client, BATCH_ID, onFailed, Date.now())
+        waitForBatchTransactionReceipt(
+          client,
+          BATCH_ID,
+          onFailed,
+          Date.now(),
+          1
+        )
       )
 
       expectDropped(outcome.error)
@@ -331,7 +338,7 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client } = walletAnswering(unknownBundle())
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now())
+      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now(), 1)
     )
 
     expectBundleNotFound(outcome.error)
@@ -355,7 +362,7 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const signedAt = age === undefined ? undefined : answerAt - age
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt)
+        waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
       )
 
       expectBundleNotFound(outcome.error)
@@ -380,19 +387,54 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
         client,
         BATCH_ID,
         undefined,
-        answerAt - age
+        answerAt - age,
+        1
       )
     )
 
     expectDropped(outcome.error)
   })
 
+  // MetaMask returns the id of a bundle of two or more calls only after it
+  // sent the bundle. A wallet that then has no record of it removed a sent
+  // bundle (e.g. "Delete activity and nonce data"), which can still land.
+  // Without a stored count the SDK cannot know the kind of bundle.
+  it.each([
+    { calls: 'two calls', callCount: 2 },
+    { calls: 'an unknown number of calls', callCount: undefined },
+  ])(
+    'fails with CallBundleNotFound, never a drop, for a bundle of $calls that the wallet answered for',
+    async ({ callCount }) => {
+      const onFailed = vi.fn()
+      const { client, getCallsStatus } = walletAnswering(
+        PENDING,
+        unknownBundle()
+      )
+
+      const outcome = await settle(
+        waitForBatchTransactionReceipt(
+          client,
+          BATCH_ID,
+          onFailed,
+          Date.now(),
+          callCount
+        )
+      )
+
+      expect(outcome.error).not.toBeInstanceOf(CallBundleDroppedError)
+      expectBundleNotFound(outcome.error)
+      // The wallet answered 100 first: only the count keeps it from a drop.
+      expect(getCallsStatus.mock.calls.length).toBeGreaterThan(1)
+      expect(onFailed).not.toHaveBeenCalled()
+    }
+  )
+
   it('returns the receipt of a bundle that is pending and then succeeds, as before', async () => {
     const onFailed = vi.fn()
     const { client, getCallsStatus } = walletAnswering(PENDING, SUCCEEDED)
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed, Date.now())
+      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed, Date.now(), 1)
     )
 
     expect(outcome).toEqual({
@@ -415,7 +457,13 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const { client } = walletAnswering(...answers, unknownBundle(), SUCCEEDED)
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(client, BATCH_ID, onFailed, Date.now())
+        waitForBatchTransactionReceipt(
+          client,
+          BATCH_ID,
+          onFailed,
+          Date.now(),
+          1
+        )
       )
 
       expect(outcome).toEqual({
@@ -431,7 +479,7 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client } = walletAnswering(PENDING, walletError)
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now())
+      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now(), 1)
     )
 
     expect(outcome.error).toBe(walletError)
@@ -445,12 +493,12 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client, getCallsStatus } = walletAnswering(PENDING, unknownBundle())
 
     const first = track(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt)
+      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
     )
     await vi.advanceTimersByTimeAsync(0)
     expect(getCallsStatus).toHaveBeenCalledTimes(1)
     const joined = track(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt)
+      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
     )
     await vi.advanceTimersByTimeAsync(0)
     // The joined wait did not start a poll of its own.
