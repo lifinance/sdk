@@ -46,17 +46,22 @@ export const CLOCK_SKEW_MARGIN_MS = 600_000
  * Fields a sign task clears before it writes a new transaction's data, and
  * that re-initializing a final-failed action clears. `taskId` is included: a
  * stale relayed or batched task id would otherwise keep the action open.
+ * `callCount` goes with a batched task id.
  *
  * @internal
  */
 export const CLEARED_TRANSACTION_FIELDS: Readonly<
-  Pick<ExecutionAction, 'txHash' | 'txLink' | 'txHex' | 'txFinal' | 'taskId'>
+  Pick<
+    ExecutionAction,
+    'txHash' | 'txLink' | 'txHex' | 'txFinal' | 'taskId' | 'callCount'
+  >
 > = Object.freeze({
   txHash: undefined,
   txLink: undefined,
   txHex: undefined,
   txFinal: undefined,
   taskId: undefined,
+  callCount: undefined,
 })
 
 /**
@@ -76,10 +81,10 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
  * 3. From the last check, nothing awaits until the send or, where the SDK
  *    sends signed bytes, until they are stored as `txHex`, before the first
  *    send. Clear `txHex` only when the outcome is known, no node can still
- *    hold the bytes, or they no longer decode. A wallet that reported a call
- *    bundle in the same wait and then has no record of it, within 10 minutes
- *    of signing, never sent it: clear with `CLEARED_TRANSACTION_FIELDS` and
- *    throw without the marker.
+ *    hold the bytes, or they no longer decode. A wallet that reported a
+ *    single-call bundle in the same wait and then has no record of it,
+ *    within 10 minutes of signing, never sent it: clear with
+ *    `CLEARED_TRANSACTION_FIELDS` and throw without the marker.
  * 4. A resume never signs. It looks the transaction up and resends the
  *    stored bytes only while `isResendAllowed` (or the chain's own expiry)
  *    allows it; otherwise it only waits.

@@ -116,11 +116,11 @@ export class SolanaSignAndExecuteTask extends BaseStepExecutionTask {
     // The wait tasks write both on `onBroadcast`, when an RPC has accepted it.
     //
     // The previous transaction's fields (`CLEARED_TRANSACTION_FIELDS`:
-    // `txHash`, `txLink`, `txHex`, `txFinal`, `taskId`) are cleared
-    // explicitly. Only a final failure reaches this task with them set, and a
-    // stale hash would look open again once its `txFinal` is gone. This write
-    // runs BEFORE the decode below, which can throw on a malformed wallet
-    // output and would otherwise strand the old fields.
+    // `txHash`, `txLink`, `txHex`, `txFinal`, `taskId`, `callCount`) are
+    // cleared explicitly. Only a final failure reaches this task with them
+    // set, and a stale hash would look open again once its `txFinal` is gone.
+    // This write runs BEFORE the decode below, which can throw on a malformed
+    // wallet output and would otherwise strand the old fields.
     statusManager.updateAction(step, action.type, 'PENDING', {
       ...CLEARED_TRANSACTION_FIELDS,
       signedAt: Date.now(),

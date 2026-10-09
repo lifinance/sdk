@@ -338,6 +338,11 @@ export type ExecutionAction = {
   taskId?: string
   txType?: TransactionMethodType
   /**
+   * The number of calls of a batched (EIP-5792) transaction. Set with
+   * `taskId` when `txType` is `batched`.
+   */
+  callCount?: number
+  /**
    * Provider-specific serialized signed transaction (hex, XDR, base64 or JSON).
    * Present while the transaction may still need to be (re)sent or looked up.
    * Stellar keeps it, and Bitcoin keeps it unless every node refuses its first

@@ -100,14 +100,16 @@ const mergeLateTransaction = (
       // merged earlier); it is kept.
       return false
     } else {
-      // All five fields, so a stale `txFinal` goes and the action is open.
-      // `txType` goes with them: the live one described no open transaction.
+      // Every field of `CLEARED_TRANSACTION_FIELDS`, so a stale `txFinal`
+      // goes and the action is open. `txType` goes with them: the live one
+      // described no open transaction.
       Object.assign(liveAction, {
         txHash: lateAction.txHash,
         txLink: lateAction.txLink,
         txHex: lateAction.txHex,
         txFinal: lateAction.txFinal,
         taskId: lateAction.taskId,
+        callCount: lateAction.callCount,
         txType: lateAction.txType,
       })
     }

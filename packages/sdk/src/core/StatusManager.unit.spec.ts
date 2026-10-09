@@ -641,7 +641,7 @@ describe('StatusManager after stopRouteExecution', () => {
   })
 
   describe('with a newer execution of the same route id', () => {
-    it('copies all five transaction fields, txType and signedAt into a live action without a transaction', () => {
+    it('copies the transaction fields, txType and signedAt into a live action without a transaction', () => {
       const { route, step, statusManager } = startOldExecution()
       stopRouteExecution(route)
       const liveRoute = startLiveExecution(
@@ -677,6 +677,40 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(liveHook.mock.calls[0][0]).toBe(liveRoute)
       expect(swapOf(liveRoutes[0])?.txHash).toBe('0xlate')
       expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    // The wait reads the call count to decide if a lost bundle was sent. A
+    // stale count of the final-failed bundle must not describe the late one.
+    it('copies the call count of a late bundle into a live action without a transaction', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({
+          status: 'FAILED',
+          taskId: '0xreverted-bundle',
+          txType: 'batched',
+          callCount: 1,
+          txFinal: true,
+        })
+      )
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', {
+        ...CLEARED_TRANSACTION_FIELDS,
+        taskId: '0xlate-bundle',
+        txType: 'batched',
+        callCount: 2,
+        signedAt: SOME_DATE + 5,
+      })
+
+      const live = swapOf(liveRoute)!
+      expect(live).toMatchObject({
+        taskId: '0xlate-bundle',
+        txType: 'batched',
+        callCount: 2,
+      })
+      expect(hasOpenTransaction(live)).toBe(true)
+      expect(liveHook).toHaveBeenCalledTimes(1)
+      expect(swapOf(liveRoutes[0])?.callCount).toBe(2)
     })
 
     it('opens a live FAILED + txFinal action by removing txFinal', () => {
@@ -954,6 +988,7 @@ describe('provider writes of transaction data after stopRouteExecution', () => {
         ...CLEARED_TRANSACTION_FIELDS,
         taskId: '0xbatch',
         txType: 'batched',
+        callCount: 1,
         signedAt: SOME_DATE,
       },
     },

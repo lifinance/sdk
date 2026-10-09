@@ -182,8 +182,10 @@ describe('CLEARED_TRANSACTION_FIELDS', () => {
       txHex: undefined,
       txFinal: undefined,
       taskId: undefined,
+      callCount: undefined,
     })
     expect(Object.keys(CLEARED_TRANSACTION_FIELDS).sort()).toEqual([
+      'callCount',
       'taskId',
       'txFinal',
       'txHash',
