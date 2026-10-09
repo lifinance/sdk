@@ -8,7 +8,8 @@ import {
   type StatusManager,
   stopRouteExecution,
 } from '@lifi/sdk'
-import { createClient, custom, type Hex } from 'viem'
+import { type Chain, createClient, custom, type Hex } from 'viem'
+import { sendCalls } from 'viem/actions'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@lifi/sdk', async (importOriginal) => {
@@ -42,7 +43,9 @@ import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransa
 import {
   buildStep,
   buildTransactionRequest,
+  CHAIN_ID,
   createScenario,
+  FROM_ADDRESS,
   type Scenario,
 } from './harness.mock.js'
 
@@ -52,6 +55,11 @@ import {
 // wallet: the step fails as a rejection, and "Try again" signs anew. A bundle
 // that is unknown from the first answer may still land: the action keeps
 // its bundle id, and "Try again" waits for it again.
+//
+// A batch of two or more calls (EIP-7702) is different. MetaMask returns its
+// id only after the user approved it and the wallet sent it, and a reject
+// fails `wallet_sendCalls` with 4001. A multi-call bundle that the wallet
+// then no longer knows was sent, so it may still land.
 
 const POLL_MS = 1_000
 
@@ -61,31 +69,49 @@ const SETTLE_MS = 10_000
 /** The hash of the one call of an approved bundle. */
 const RECEIPT_HASH: Hex = `0x${'e5'.repeat(32)}`
 
-type BundleState = 'pending' | 'approved' | 'rejected'
+/**
+ * `pending` while the prompt is open, `sent` after the approval until the
+ * bundle is in a block, `approved` in a block, `rejected` after a reject.
+ */
+type BundleState = 'pending' | 'sent' | 'approved' | 'rejected'
 
 /**
- * MetaMask's EIP-5792 answers for a single call: `wallet_getCallsStatus`
- * answers 100 while the prompt is open and 200 with the receipt after the
- * approval. A rejected bundle is removed, so the wallet fails with 5730
- * "No matching bundle found". One wallet serves every page of a test.
+ * MetaMask's EIP-5792 answers. `wallet_sendCalls` returns the id of a
+ * single call at once, and the id of two or more calls only after the
+ * approval; a reject of those fails with 4001. `wallet_getCallsStatus`
+ * answers 100 while the prompt is open or the bundle is not in a block,
+ * and 200 with the receipt in a block. A rejected or deleted bundle is
+ * removed, so the wallet fails with 5730 "No matching bundle found". One
+ * wallet serves every page of a test.
  */
 interface MetaMask {
+  /** Bundle ids in the order their prompts opened. */
+  prompts: Hex[]
   /** Bundle ids in the order `wallet_sendCalls` returned them. */
   sent: Hex[]
-  /** The user's decision in the prompt of a bundle. */
+  /**
+   * The user's decision in the prompt of a bundle. `sent` approves it and
+   * keeps it out of a block; `approved` puts it in a block at once.
+   */
   decide(id: Hex, state: Exclude<BundleState, 'pending'>): void
+  /**
+   * Settings > Developer Tools > "Delete activity and nonce data": the
+   * wallet removes every bundle, also a sent one.
+   */
+  deleteActivity(): void
   /** The answers for a bundle, 100, 200 or 5730, with repeats collapsed. */
   answers(id: Hex): number[]
   /** How many times the wallet was asked for a bundle, retries included. */
   requests(id: Hex): number
-  sendCalls(): Hex
   request(args: { method: string; params?: unknown }): Promise<unknown>
 }
 
 const createMetaMask = (): MetaMask => {
   const bundles = new Map<Hex, BundleState>()
+  const decisions = new Map<Hex, () => void>()
   const answers = new Map<Hex, number[]>()
   const requests = new Map<Hex, number>()
+  const prompts: Hex[] = []
   const sent: Hex[] = []
   const answer = (id: Hex, code: number): void => {
     requests.set(id, (requests.get(id) ?? 0) + 1)
@@ -95,20 +121,41 @@ const createMetaMask = (): MetaMask => {
     }
     answers.set(id, codes)
   }
+  const sendCalls = async (callCount: number): Promise<{ id: Hex }> => {
+    const id: Hex = `0x${(prompts.length + 1).toString(16).padStart(64, 'b')}`
+    prompts.push(id)
+    bundles.set(id, 'pending')
+    if (callCount > 1) {
+      await new Promise<void>((resolve) => {
+        decisions.set(id, resolve)
+      })
+      if (bundles.get(id) === 'rejected') {
+        throw Object.assign(new Error('User rejected the request.'), {
+          code: 4001,
+        })
+      }
+    }
+    sent.push(id)
+    return { id }
+  }
   return {
+    prompts,
     sent,
     decide: (id, state) => {
       bundles.set(id, state)
+      decisions.get(id)?.()
+      decisions.delete(id)
+    },
+    deleteActivity: () => {
+      bundles.clear()
     },
     answers: (id) => answers.get(id) ?? [],
     requests: (id) => requests.get(id) ?? 0,
-    sendCalls: () => {
-      const id: Hex = `0x${(sent.length + 1).toString(16).padStart(64, 'b')}`
-      sent.push(id)
-      bundles.set(id, 'pending')
-      return id
-    },
     request: async ({ method, params }) => {
+      if (method === 'wallet_sendCalls') {
+        const [{ calls }] = params as [{ calls: unknown[] }]
+        return sendCalls(calls.length)
+      }
       if (method !== 'wallet_getCallsStatus') {
         throw new Error(`${method} is not part of this fake.`)
       }
@@ -120,7 +167,7 @@ const createMetaMask = (): MetaMask => {
           code: 5730,
         })
       }
-      if (state === 'pending') {
+      if (state === 'pending' || state === 'sent') {
         answer(id, 100)
         return {
           version: '2.0.0',
@@ -170,28 +217,19 @@ interface Page {
 }
 
 /**
- * One page: an ERC-20 swap with enough allowance on a wallet with batching,
- * so the bundle holds one call. The batched wait runs for real, down to
- * viem's `waitForCallsStatus` and its RPC error mapping, on a viem client of
- * this page. A new page gets a new client: viem shares a poll only between
- * waits on the same client.
+ * One page: an ERC-20 swap on a wallet with batching. With enough allowance
+ * the bundle holds one call; with `calls` 2 the allowance is zero, and the
+ * bundle holds the approval and the swap. `wallet_sendCalls` and the batched
+ * wait run for real, down to viem's `sendCalls`, `waitForCallsStatus` and
+ * their RPC error mapping, on a viem client of this page. A new page gets a
+ * new client: viem shares a poll only between waits on the same client.
  */
-const openPage = async (metamask: MetaMask): Promise<Page> => {
+const openPage = async (
+  metamask: MetaMask,
+  calls: 1 | 2 = 1
+): Promise<Page> => {
   const snapshots: RouteExtended[] = []
   let closed = false
-  const scenario = createScenario({
-    step: buildStep({ transactionRequest: buildTransactionRequest() }),
-    allowance: 10n ** 24n,
-    capabilities: { atomic: { status: 'supported' } },
-    onStepTransaction: (step: LiFiStep) => {
-      const { typedData: _typedData, ...rest } = step
-      return { ...rest, transactionRequest: buildTransactionRequest() }
-    },
-    onSendCalls: async () => ({ id: metamask.sendCalls() }),
-    onRouteUpdate: (route) => {
-      snapshots.push(persist(route))
-    },
-  })
   const walletClient = createClient({
     transport: custom(
       {
@@ -205,6 +243,26 @@ const openPage = async (metamask: MetaMask): Promise<Page> => {
       { retryCount: 0 }
     ),
     pollingInterval: POLL_MS,
+  })
+  const scenario = createScenario({
+    step: buildStep({ transactionRequest: buildTransactionRequest() }),
+    allowance: calls === 1 ? 10n ** 24n : 0n,
+    capabilities: { atomic: { status: 'supported' } },
+    onStepTransaction: (step: LiFiStep) => {
+      const { typedData: _typedData, ...rest } = step
+      return { ...rest, transactionRequest: buildTransactionRequest() }
+    },
+    onSendCalls: async (request) => {
+      const { id } = await sendCalls(walletClient, {
+        account: FROM_ADDRESS,
+        chain: { id: CHAIN_ID } as Chain,
+        calls: request.calls as Parameters<typeof sendCalls>[1]['calls'],
+      })
+      return { id: id as Hex }
+    },
+    onRouteUpdate: (route) => {
+      snapshots.push(persist(route))
+    },
   })
   const actual = await vi.importActual<
     typeof import('../../actions/waitForBatchTransactionReceipt.js')
@@ -246,31 +304,37 @@ const track = (promise: Promise<RouteExtended>): Outcome => {
 }
 
 /**
- * "Try again" with what storage holds: it signs exactly one new bundle, the
- * user approves it, and the route completes.
+ * "Try again" with what storage holds: it signs exactly one new bundle of
+ * `calls` calls, the user approves it, and the route completes.
  */
 const expectTryAgainSignsOnceAndCompletes = async (
   metamask: MetaMask,
-  page: Page
+  page: Page,
+  calls: 1 | 2 = 1
 ): Promise<void> => {
   const from = page.scenario.timeline.length
-  const sentBefore = metamask.sent.length
+  const promptsBefore = metamask.prompts.length
 
   const tryAgain = track(page.scenario.resume(page.stored()))
   await vi.advanceTimersByTimeAsync(0)
 
-  expect(page.scenario.events('sendCalls', from)).toHaveLength(1)
-  expect(metamask.sent).toHaveLength(sentBefore + 1)
-  const bundle = metamask.sent.at(-1)!
+  const batches = page.scenario.events('sendCalls', from)
+  expect(batches).toHaveLength(1)
+  expect(batches[0].calls).toHaveLength(calls)
+  expect(metamask.prompts).toHaveLength(promptsBefore + 1)
+  const bundle = metamask.prompts.at(-1)!
   metamask.decide(bundle, 'approved')
   await vi.advanceTimersByTimeAsync(SETTLE_MS)
 
   expect(tryAgain).toMatchObject({ settled: true, resolved: true })
-  expect(metamask.answers(bundle)).toEqual([100, 200])
+  expect(metamask.sent.at(-1)).toBe(bundle)
+  // The id of one call comes back while the prompt is open (100).
+  expect(metamask.answers(bundle)).toEqual(calls === 1 ? [100, 200] : [200])
   expect(page.scenario.events('sendCalls', from)).toHaveLength(1)
   expect(page.stored().steps[0].execution?.status).toBe('DONE')
   expect(swapOf(page.stored())).toMatchObject({
     taskId: bundle,
+    callCount: calls,
     txHash: RECEIPT_HASH,
   })
 }
@@ -349,6 +413,8 @@ describe('EVM batched wait: a bundle rejected in the wallet', () => {
   it('after a reload while the prompt is open: the bundle is pending, then rejected, and "Try again" signs once', async () => {
     const metamask = createMetaMask()
     const { stored, bundle } = await sendAndReload(metamask)
+    // The new page has no calls in its context: the wait reads this count.
+    expect(swapOf(stored)).toMatchObject({ taskId: bundle, callCount: 1 })
 
     const page = await openPage(metamask)
     const resumed = track(page.scenario.resume(stored))
@@ -417,6 +483,110 @@ describe('EVM batched wait: a bundle rejected in the wallet', () => {
       taskId: bundle,
       txHash: RECEIPT_HASH,
     })
+  })
+})
+
+describe('EVM batched wait: a bundle of two calls (an approval and a swap)', () => {
+  /**
+   * A run of the first page up to the open prompt of its bundle. The wallet
+   * has returned no id yet, so the SDK stored none.
+   */
+  const runUntilPrompt = async (
+    metamask: MetaMask,
+    page: Page
+  ): Promise<{ run: Outcome; bundle: Hex }> => {
+    const run = track(page.scenario.run())
+    await vi.advanceTimersByTimeAsync(0)
+    const [batch] = page.scenario.events('sendCalls')
+    // Fixture guard: the approval and the swap in one batch.
+    expect(batch.calls).toHaveLength(2)
+    expect(metamask.prompts).toHaveLength(1)
+    expect(metamask.sent).toEqual([])
+    const [bundle] = metamask.prompts
+    expect(swapOf(page.stored())?.taskId).toBeUndefined()
+    return { run, bundle }
+  }
+
+  it('fails a reject with SignatureRejected and stores no bundle id, and "Try again" signs once', async () => {
+    const metamask = createMetaMask()
+    const page = await openPage(metamask, 2)
+    const { run, bundle } = await runUntilPrompt(metamask, page)
+
+    metamask.decide(bundle, 'rejected')
+    await vi.advanceTimersByTimeAsync(SETTLE_MS)
+
+    expect(run).toMatchObject({ settled: true, resolved: false })
+    expect(run.error).toMatchObject({ code: LiFiErrorCode.SignatureRejected })
+    expect(metamask.sent).toEqual([])
+    // The SDK never had the id, so it never asked for the bundle.
+    expect(metamask.requests(bundle)).toBe(0)
+    const swap = swapOf(page.stored())
+    expect(swap).toMatchObject({
+      status: 'FAILED',
+      error: { code: LiFiErrorCode.SignatureRejected },
+    })
+    expect(swap?.taskId).toBeUndefined()
+    expect(swap?.callCount).toBeUndefined()
+    expect(hasOpenTransaction(swap)).toBe(false)
+
+    await expectTryAgainSignsOnceAndCompletes(metamask, page, 2)
+  })
+
+  // The wallet sent the bundle before it returned the id. When it then has
+  // no record of it (e.g. "Delete activity and nonce data"), the bundle can
+  // still land: the SDK keeps the bundle id and never signs again.
+  it('fails with CallBundleNotFound when the wallet deletes a sent bundle, keeps the bundle id and signs nothing on "Try again"', async () => {
+    const metamask = createMetaMask()
+    const page = await openPage(metamask, 2)
+    const { run, bundle } = await runUntilPrompt(metamask, page)
+
+    metamask.decide(bundle, 'sent')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(metamask.sent).toEqual([bundle])
+    expect(metamask.answers(bundle)).toEqual([100])
+    expect(swapOf(page.stored())).toMatchObject({
+      status: 'PENDING',
+      taskId: bundle,
+      txType: 'batched',
+      callCount: 2,
+    })
+
+    // Well within 10 minutes of signing: only the call count keeps the
+    // bundle from a drop.
+    metamask.deleteActivity()
+    await vi.advanceTimersByTimeAsync(SETTLE_MS)
+
+    expect(run).toMatchObject({ settled: true, resolved: false })
+    expect(run.error).toMatchObject({
+      code: LiFiErrorCode.CallBundleNotFound,
+    })
+    expect(metamask.answers(bundle)).toEqual([100, 5730])
+    const expectBundleKept = (): void => {
+      const swap = swapOf(page.stored())
+      expect(swap).toMatchObject({
+        status: 'FAILED',
+        taskId: bundle,
+        txType: 'batched',
+        callCount: 2,
+        error: { code: LiFiErrorCode.CallBundleNotFound },
+      })
+      expect(swap?.txFinal).toBeUndefined()
+      expect(hasOpenTransaction(swap)).toBe(true)
+    }
+    expectBundleKept()
+
+    const from = page.scenario.timeline.length
+    const tryAgain = track(page.scenario.resume(page.stored()))
+    await vi.advanceTimersByTimeAsync(SETTLE_MS)
+
+    expect(tryAgain).toMatchObject({ settled: true, resolved: false })
+    expect(tryAgain.error).toMatchObject({
+      code: LiFiErrorCode.CallBundleNotFound,
+    })
+    expect(page.scenario.events('sendCalls', from)).toEqual([])
+    expect(page.scenario.events('getStepTransaction', from)).toEqual([])
+    expectBundleKept()
+    expect(metamask.prompts).toEqual([bundle])
   })
 })
 
