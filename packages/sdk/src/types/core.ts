@@ -226,10 +226,10 @@ export type RouteExecutionDictionary = Partial<Record<string, Promise<Route>>>
  * store it.
  *
  * After `stopRouteExecution` it can still be called, but only to deliver the
- * transaction data (`txHash`, `txHex`, `taskId`, `txFinal`) of a task that
- * was still running at the stop, for example in an open wallet prompt. Store
- * that data, so a resume waits for that transaction instead of signing
- * again. If you deleted the route, ignore the call.
+ * transaction data (`txHash`, `txHex`, `taskId`, `callCount`, `txFinal`) of a
+ * task that was still running at the stop, for example in an open wallet
+ * prompt. Store that data, so a resume waits for that transaction instead of
+ * signing again. If you deleted the route, ignore the call.
  */
 export type UpdateRouteHook = (updatedRoute: RouteExtended) => void
 
@@ -338,6 +338,12 @@ export type ExecutionAction = {
   taskId?: string
   txType?: TransactionMethodType
   /**
+   * The number of calls of a batched (EIP-5792) transaction. Set with
+   * `taskId` when `txType` is `batched`. The batched wait reads it after a
+   * reload, when the calls are gone.
+   */
+  callCount?: number
+  /**
    * Provider-specific serialized signed transaction (hex, XDR, base64 or JSON).
    * Present while the transaction may still need to be (re)sent or looked up.
    * Stellar keeps it, and Bitcoin keeps it unless every node refuses its first
@@ -347,7 +353,8 @@ export type ExecutionAction = {
   /**
    * Set together with status `FAILED` when the outcome of this action's
    * transaction is known and final (failed or reverted on chain or at the
-   * relayer, cancelled, replaced, or dropped with proof).
+   * relayer, cancelled (also by a wallet that removed it before it sent it),
+   * replaced, or dropped with proof).
    * A FAILED action without this flag has an unknown outcome and is re-checked
    * on resume instead of being signed again.
    */

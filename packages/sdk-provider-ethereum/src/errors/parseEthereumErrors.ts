@@ -52,14 +52,18 @@ const handleSpecificErrors = async (
 ) => {
   if (
     e.name === 'UserRejectedRequestError' ||
-    e.cause?.name === 'UserRejectedRequestError' ||
-    /**
-     * This error is specific to MetaMask and thrown when the user rejects the signature of the native token transfer, at that point, the bundle id is unknown.
-     * @see https://github.com/MetaMask/metamask-extension/blob/main/app/scripts/lib/transaction/eip5792.ts#L141-L146
-     */
-    e.name === 'UnknownBundleIdError'
+    e.cause?.name === 'UserRejectedRequestError'
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
+  }
+  /**
+   * The wallet has no record of an EIP-5792 bundle (5730), so the outcome is unknown: the bundle may still land.
+   * No call reaches this branch today, because `waitForBatchTransactionReceipt` handles 5730 first. A later call that reaches it gets the unknown outcome.
+   * Only the error itself matches: an error of the batched wait carries it as a cause and keeps its own code.
+   * @see https://github.com/MetaMask/core/blob/main/packages/eip-5792-middleware/src/hooks/getCallsStatus.ts
+   */
+  if (e.name === 'UnknownBundleIdError') {
+    return new TransactionError(LiFiErrorCode.CallBundleNotFound, e.message, e)
   }
   /**
    * Safe Wallet via WalletConnect returns -32000 code when user rejects the signature

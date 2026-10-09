@@ -46,17 +46,22 @@ export const CLOCK_SKEW_MARGIN_MS = 600_000
  * Fields a sign task clears before it writes a new transaction's data, and
  * that re-initializing a final-failed action clears. `taskId` is included: a
  * stale relayed or batched task id would otherwise keep the action open.
+ * `callCount` goes with a batched task id.
  *
  * @internal
  */
 export const CLEARED_TRANSACTION_FIELDS: Readonly<
-  Pick<ExecutionAction, 'txHash' | 'txLink' | 'txHex' | 'txFinal' | 'taskId'>
+  Pick<
+    ExecutionAction,
+    'txHash' | 'txLink' | 'txHex' | 'txFinal' | 'taskId' | 'callCount'
+  >
 > = Object.freeze({
   txHash: undefined,
   txLink: undefined,
   txHex: undefined,
   txFinal: undefined,
   taskId: undefined,
+  callCount: undefined,
 })
 
 /**
@@ -81,11 +86,12 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
  *    stored bytes only while `isResendAllowed` (or the chain's own expiry)
  *    allows it; otherwise it only waits.
  * 5. Mark an error final only on a verdict about the transaction: failed
- *    or reverted (on chain or at the relayer), cancelled, replaced, or
- *    dropped with proof. Dropped needs all three: the transaction can no
- *    longer land, a node that covers its window reports it absent (in the
- *    same response where the chain allows it), and `isKnownToStatusApi` is
- *    false. In doubt, throw without the marker and keep the fields.
+ *    or reverted (on chain or at the relayer), cancelled (also by a wallet
+ *    that removed it before it sent it), replaced, or dropped with proof.
+ *    Dropped needs all three: the transaction can no longer land, a node
+ *    that covers its window reports it absent (in the same response where
+ *    the chain allows it), and `isKnownToStatusApi` is false. In doubt,
+ *    throw without the marker and keep the fields.
  * 6. Give `context.signal` only to waits that start after the broadcast. On
  *    abort, return `PAUSED` and write nothing.
  */

@@ -38,9 +38,10 @@ type StoppedExecution = {
 }
 
 /**
- * A write is transaction data when it changes one of these fields. `txLink`
- * and `signedAt` travel with such a write but never trigger one: the status
- * poll rewrites `txLink` every few seconds.
+ * A write is transaction data when it changes one of these fields. `txLink`,
+ * `signedAt` and `callCount` travel with such a write but never trigger one:
+ * the status poll rewrites `txLink` every few seconds, and `callCount` comes
+ * only with a `taskId`.
  */
 const TRANSACTION_KEYS = ['txHash', 'txHex', 'taskId', 'txFinal'] as const
 
@@ -100,14 +101,16 @@ const mergeLateTransaction = (
       // merged earlier); it is kept.
       return false
     } else {
-      // All five fields, so a stale `txFinal` goes and the action is open.
-      // `txType` goes with them: the live one described no open transaction.
+      // Every field of `CLEARED_TRANSACTION_FIELDS`, so a stale `txFinal`
+      // goes and the action is open. `txType` goes with them: the live one
+      // described no open transaction.
       Object.assign(liveAction, {
         txHash: lateAction.txHash,
         txLink: lateAction.txLink,
         txHex: lateAction.txHex,
         txFinal: lateAction.txFinal,
         taskId: lateAction.taskId,
+        callCount: lateAction.callCount,
         txType: lateAction.txType,
       })
     }

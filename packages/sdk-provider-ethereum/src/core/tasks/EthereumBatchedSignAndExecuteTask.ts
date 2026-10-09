@@ -78,6 +78,7 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       ...CLEARED_TRANSACTION_FIELDS,
       taskId: id as Hash,
       txType: 'batched',
+      callCount: calls.length,
       signedAt: Date.now(),
     })
 

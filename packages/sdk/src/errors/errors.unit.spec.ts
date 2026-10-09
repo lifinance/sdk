@@ -19,6 +19,12 @@ describe('RPCError', () => {
   })
 })
 
+describe('CallBundleNotFound', () => {
+  it('is code 1028', () => {
+    expect(LiFiErrorCode.CallBundleNotFound).toBe(1028)
+  })
+})
+
 describe('TransactionError final option', () => {
   it('defaults final to false', () => {
     expect(

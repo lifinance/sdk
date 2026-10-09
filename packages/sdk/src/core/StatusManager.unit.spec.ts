@@ -641,7 +641,7 @@ describe('StatusManager after stopRouteExecution', () => {
   })
 
   describe('with a newer execution of the same route id', () => {
-    it('copies all five transaction fields, txType and signedAt into a live action without a transaction', () => {
+    it('copies the transaction fields, txType and signedAt into a live action without a transaction', () => {
       const { route, step, statusManager } = startOldExecution()
       stopRouteExecution(route)
       const liveRoute = startLiveExecution(
@@ -677,6 +677,28 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(liveHook.mock.calls[0][0]).toBe(liveRoute)
       expect(swapOf(liveRoutes[0])?.txHash).toBe('0xlate')
       expect(keptHook).not.toHaveBeenCalled()
+    })
+
+    // The merge lists the fields by hand. A field added to the constant
+    // later must be added there too, or a stale value of it stays.
+    it('copies every field of CLEARED_TRANSACTION_FIELDS into a live final-failed action', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({ status: 'FAILED', txHash: '0xdead', txFinal: true })
+      )
+      const keys = Object.keys(CLEARED_TRANSACTION_FIELDS)
+      const lateWrite = Object.fromEntries(
+        keys.map((key) => [key, `late-${key}`])
+      ) as Partial<ExecutionAction>
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', lateWrite)
+
+      const live = swapOf(liveRoute) as Record<string, unknown>
+      expect(Object.fromEntries(keys.map((key) => [key, live[key]]))).toEqual(
+        lateWrite
+      )
+      expect(liveHook).toHaveBeenCalledTimes(1)
     })
 
     it('opens a live FAILED + txFinal action by removing txFinal', () => {
@@ -954,6 +976,7 @@ describe('provider writes of transaction data after stopRouteExecution', () => {
         ...CLEARED_TRANSACTION_FIELDS,
         taskId: '0xbatch',
         txType: 'batched',
+        callCount: 1,
         signedAt: SOME_DATE,
       },
     },

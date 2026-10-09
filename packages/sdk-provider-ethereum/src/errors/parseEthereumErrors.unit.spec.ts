@@ -5,12 +5,16 @@ import {
   ErrorName,
   ExecuteStepRetryError,
   type ExecutionAction,
+  isFinalTransactionError,
   LiFiErrorCode,
   type LiFiStep,
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
-import { AtomicReadyWalletRejectedUpgradeError } from 'viem'
+import {
+  AtomicReadyWalletRejectedUpgradeError,
+  UnknownBundleIdError,
+} from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
 import { parseEthereumErrors } from './parseEthereumErrors.js'
@@ -235,6 +239,58 @@ describe('parseEVMStepErrors', () => {
 
         expect(baseError.cause?.cause).toBe(UserRejectedRequestError)
       })
+    })
+  })
+
+  // The batched wait handles an unknown bundle first. Its errors carry the
+  // viem error as a cause, and the parser must keep their codes.
+  describe('when the batched wait reports a bundle the wallet does not know', () => {
+    const unknownBundle = (): UnknownBundleIdError =>
+      new UnknownBundleIdError(new Error('No matching bundle found'))
+
+    it.each([
+      {
+        outcome: 'a bundle never sent',
+        error: () =>
+          new TransactionError(
+            LiFiErrorCode.SignatureRejected,
+            'The wallet has no record of the call bundle. The SDK treats it as never sent.',
+            unknownBundle(),
+            { final: true }
+          ),
+      },
+      {
+        outcome: 'an unknown bundle',
+        error: () =>
+          new TransactionError(
+            LiFiErrorCode.CallBundleNotFound,
+            'The wallet has no record of the call bundle.',
+            unknownBundle()
+          ),
+      },
+    ])('keeps the code of $outcome', async ({ error }) => {
+      const transactionError = error()
+
+      const parsedError = await parseEthereumErrors(transactionError)
+
+      assertSDKError(parsedError)
+      expect(parsedError.cause).toBe(transactionError)
+      expect(parsedError.code).toBe(transactionError.code)
+      expect(isFinalTransactionError(parsedError)).toBe(transactionError.final)
+    })
+
+    // The batched wait handles 5730 first, so no call reaches the parser
+    // with it today. If one does, the bundle may still land.
+    it('maps a raw UnknownBundleIdError to CallBundleNotFound, which is not final', async () => {
+      const error = unknownBundle()
+
+      const parsedError = await parseEthereumErrors(error)
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(LiFiErrorCode.CallBundleNotFound)
+      expect(parsedError.cause).toBeInstanceOf(TransactionError)
+      expect(parsedError.cause?.cause).toBe(error)
+      expect(isFinalTransactionError(parsedError)).toBe(false)
     })
   })
 

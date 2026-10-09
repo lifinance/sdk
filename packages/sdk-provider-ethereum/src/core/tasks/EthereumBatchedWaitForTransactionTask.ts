@@ -37,19 +37,23 @@ export class EthereumBatchedWaitForTransactionTask extends BaseStepExecutionTask
     const transactionReceipt = await waitForBatchTransactionReceipt(
       updatedClient,
       action.taskId as Hash,
-      (result) => {
-        const receipt = result.receipts?.find((r) => r.status === 'reverted') as
-          | WalletCallReceipt
-          | undefined
-        if (receipt) {
-          updateActionWithReceipt(
-            statusManager,
-            step,
-            fromChain,
-            receipt,
-            action
-          )
-        }
+      {
+        onFailed: (result) => {
+          const receipt = result.receipts?.find(
+            (r) => r.status === 'reverted'
+          ) as WalletCallReceipt | undefined
+          if (receipt) {
+            updateActionWithReceipt(
+              statusManager,
+              step,
+              fromChain,
+              receipt,
+              action
+            )
+          }
+        },
+        signedAt: step.execution?.signedAt,
+        callCount: action.callCount,
       }
     )
 
