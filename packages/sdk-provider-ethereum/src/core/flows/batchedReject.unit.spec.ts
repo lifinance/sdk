@@ -224,6 +224,8 @@ interface Page {
  * wait run for real, down to viem's `sendCalls`, `waitForCallsStatus` and
  * their RPC error mapping, on a viem client of this page. A new page gets a
  * new client: viem shares a poll only between waits on the same client.
+ * The module mock of the wait follows the newest page, so a test runs one
+ * page at a time.
  */
 const openPage = async (
   metamask: MetaMask,

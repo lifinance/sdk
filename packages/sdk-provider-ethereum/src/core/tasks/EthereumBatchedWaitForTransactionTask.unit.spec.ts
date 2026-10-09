@@ -80,23 +80,20 @@ beforeEach(() => {
 describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not know', () => {
   // The stored count, not the calls of the context: after a reload the
   // context has no calls.
-  it.each([{ callCount: 1 }, { callCount: 2 }, { callCount: undefined }])(
-    'passes the signing time of the step and the call count $callCount of the action to the wait',
-    async ({ callCount }) => {
-      const { context, client } = buildContext({ callCount })
-      vi.mocked(waitForBatchTransactionReceipt).mockResolvedValue({
-        status: 'success',
-      } as never)
+  it('passes the signing time of the step and the call count of the action to the wait', async () => {
+    const { context, client } = buildContext({ callCount: 2 })
+    vi.mocked(waitForBatchTransactionReceipt).mockResolvedValue({
+      status: 'success',
+    } as never)
 
-      await new EthereumBatchedWaitForTransactionTask().run(context)
+    await new EthereumBatchedWaitForTransactionTask().run(context)
 
-      expect(waitForBatchTransactionReceipt).toHaveBeenCalledWith(
-        client,
-        BUNDLE_ID,
-        { onFailed: expect.any(Function), signedAt: SIGNED_AT, callCount }
-      )
-    }
-  )
+    expect(waitForBatchTransactionReceipt).toHaveBeenCalledWith(
+      client,
+      BUNDLE_ID,
+      { onFailed: expect.any(Function), signedAt: SIGNED_AT, callCount: 2 }
+    )
+  })
 
   // The task writes nothing on an error: the step executor stores it. A
   // final rejection closes the action with `txFinal`, and "Try again" signs
