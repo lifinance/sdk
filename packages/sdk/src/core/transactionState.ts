@@ -81,19 +81,17 @@ export const CLEARED_TRANSACTION_FIELDS: Readonly<
  * 3. From the last check, nothing awaits until the send or, where the SDK
  *    sends signed bytes, until they are stored as `txHex`, before the first
  *    send. Clear `txHex` only when the outcome is known, no node can still
- *    hold the bytes, or they no longer decode. A wallet that reported a
- *    bundle with a stored `callCount` of 1 in the same wait and then has no
- *    record of it, within 10 minutes of signing, never sent it: clear with
- *    `CLEARED_TRANSACTION_FIELDS` and throw without the marker.
+ *    hold the bytes, or they no longer decode.
  * 4. A resume never signs. It looks the transaction up and resends the
  *    stored bytes only while `isResendAllowed` (or the chain's own expiry)
  *    allows it; otherwise it only waits.
  * 5. Mark an error final only on a verdict about the transaction: failed
- *    or reverted (on chain or at the relayer), cancelled, replaced, or
- *    dropped with proof. Dropped needs all three: the transaction can no
- *    longer land, a node that covers its window reports it absent (in the
- *    same response where the chain allows it), and `isKnownToStatusApi` is
- *    false. In doubt, throw without the marker and keep the fields.
+ *    or reverted (on chain or at the relayer), cancelled (also by a wallet
+ *    that removed it before it sent it), replaced, or dropped with proof.
+ *    Dropped needs all three: the transaction can no longer land, a node
+ *    that covers its window reports it absent (in the same response where
+ *    the chain allows it), and `isKnownToStatusApi` is false. In doubt,
+ *    throw without the marker and keep the fields.
  * 6. Give `context.signal` only to waits that start after the broadcast. On
  *    abort, return `PAUSED` and write nothing.
  */

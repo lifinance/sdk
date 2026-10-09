@@ -339,7 +339,8 @@ export type ExecutionAction = {
   txType?: TransactionMethodType
   /**
    * The number of calls of a batched (EIP-5792) transaction. Set with
-   * `taskId` when `txType` is `batched`.
+   * `taskId` when `txType` is `batched`. The batched wait reads it after a
+   * reload, when the calls are gone.
    */
   callCount?: number
   /**
@@ -352,7 +353,8 @@ export type ExecutionAction = {
   /**
    * Set together with status `FAILED` when the outcome of this action's
    * transaction is known and final (failed or reverted on chain or at the
-   * relayer, cancelled, replaced, or dropped with proof).
+   * relayer, cancelled (also by a wallet that removed it before it sent it),
+   * replaced, or dropped with proof).
    * A FAILED action without this flag has an unknown outcome and is re-checked
    * on resume instead of being signed again.
    */

@@ -38,9 +38,10 @@ type StoppedExecution = {
 }
 
 /**
- * A write is transaction data when it changes one of these fields. `txLink`
- * and `signedAt` travel with such a write but never trigger one: the status
- * poll rewrites `txLink` every few seconds.
+ * A write is transaction data when it changes one of these fields. `txLink`,
+ * `signedAt` and `callCount` travel with such a write but never trigger one:
+ * the status poll rewrites `txLink` every few seconds, and `callCount` comes
+ * only with a `taskId`.
  */
 const TRANSACTION_KEYS = ['txHash', 'txHex', 'taskId', 'txFinal'] as const
 
