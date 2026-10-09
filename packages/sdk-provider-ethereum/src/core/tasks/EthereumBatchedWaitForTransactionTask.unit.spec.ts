@@ -103,9 +103,7 @@ describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not kn
       expect(waitForBatchTransactionReceipt).toHaveBeenCalledWith(
         client,
         BUNDLE_ID,
-        expect.any(Function),
-        SIGNED_AT,
-        callCount
+        { onFailed: expect.any(Function), signedAt: SIGNED_AT, callCount }
       )
     }
   )

@@ -25,12 +25,31 @@ const isDropProvable = (
   now >= signedAt &&
   now - signedAt < DROPPED_BUNDLE_MAX_AGE_MS
 
+/**
+ * Waits until the wallet reports the EIP-5792 call bundle as done or failed.
+ *
+ * @param client - The wallet client that sent the bundle.
+ * @param batchHash - The bundle id that `wallet_sendCalls` returned.
+ * @param options.onFailed - Gets the wallet's answer for a failed bundle, before the error is thrown.
+ * @param options.signedAt - The signing time of the step (`execution.signedAt`).
+ * @param options.callCount - The stored number of calls of the bundle (`action.callCount`).
+ * @returns The receipt of the last call of the bundle.
+ * @throws {TransactionError} If the bundle failed, was canceled, or the wallet has no record of it. Only a verdict of the wallet about the bundle is a final outcome.
+ * @throws {CallBundleDroppedError} If the wallet removed a single-call bundle before it sent it.
+ * @throws Any other error of the wallet, unchanged.
+ */
 export const waitForBatchTransactionReceipt = async (
   client: Client,
   batchHash: Hash,
-  onFailed?: (result: GetCallsStatusReturnType) => void,
-  signedAt?: number,
-  callCount?: number
+  {
+    onFailed,
+    signedAt,
+    callCount,
+  }: {
+    onFailed?: (result: GetCallsStatusReturnType) => void
+    signedAt?: number
+    callCount?: number
+  } = {}
 ): Promise<WalletCallReceipt> => {
   // MetaMask returns the id of a single-call bundle before the user approves
   // it, and removes the bundle on a reject: `wallet_getCallsStatus` then

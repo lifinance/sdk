@@ -141,7 +141,7 @@ const buildBatchedScenario = async (): Promise<BatchedScenario> => {
     typeof import('../../actions/waitForBatchTransactionReceipt.js')
   >('../../actions/waitForBatchTransactionReceipt.js')
   vi.mocked(waitForBatchTransactionReceipt).mockImplementation(
-    async (_client, id, onFailed) => {
+    async (_client, id, options) => {
       const answer = wallet.callsStatus
       const walletClient = {
         waitForCallsStatus: async (): Promise<unknown> => {
@@ -156,7 +156,7 @@ const buildBatchedScenario = async (): Promise<BatchedScenario> => {
           return answer
         },
       } as unknown as Client
-      return actual.waitForBatchTransactionReceipt(walletClient, id, onFailed)
+      return actual.waitForBatchTransactionReceipt(walletClient, id, options)
     }
   )
   vi.mocked(waitForTransactionReceipt).mockImplementation(

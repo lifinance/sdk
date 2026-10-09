@@ -30,7 +30,7 @@ describe('waitForBatchTransactionReceipt', () => {
     })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction was reverted.',
@@ -50,7 +50,7 @@ describe('waitForBatchTransactionReceipt', () => {
     })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction was reverted.',
@@ -71,7 +71,7 @@ describe('waitForBatchTransactionReceipt', () => {
     })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction was reverted.',
@@ -97,7 +97,7 @@ describe('waitForBatchTransactionReceipt', () => {
     const client = clientReturning({ status: 'failure', statusCode: 500 })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction failed.',
@@ -112,7 +112,7 @@ describe('waitForBatchTransactionReceipt', () => {
     const client = clientReturning({ status: 'failure', statusCode: 600 })
 
     await expect(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+      waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
       message: 'Transaction failed.',
@@ -133,7 +133,7 @@ describe('waitForBatchTransactionReceipt', () => {
       const client = clientReturning(result)
 
       await expect(
-        waitForBatchTransactionReceipt(client, BATCH_ID, onFailed)
+        waitForBatchTransactionReceipt(client, BATCH_ID, { onFailed })
       ).rejects.toMatchObject({
         code: LiFiErrorCode.TransactionFailed,
         message: 'Transaction failed.',
@@ -318,13 +318,11 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const { client } = walletAnswering(PENDING, unknown)
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(
-          client,
-          BATCH_ID,
+        waitForBatchTransactionReceipt(client, BATCH_ID, {
           onFailed,
-          Date.now(),
-          1
-        )
+          signedAt: Date.now(),
+          callCount: 1,
+        })
       )
 
       expectDropped(outcome.error)
@@ -338,7 +336,10 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client } = walletAnswering(unknownBundle())
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now(), 1)
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        signedAt: Date.now(),
+        callCount: 1,
+      })
     )
 
     expectBundleNotFound(outcome.error)
@@ -362,7 +363,10 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const signedAt = age === undefined ? undefined : answerAt - age
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
+        waitForBatchTransactionReceipt(client, BATCH_ID, {
+          signedAt,
+          callCount: 1,
+        })
       )
 
       expectBundleNotFound(outcome.error)
@@ -383,13 +387,10 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     })
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(
-        client,
-        BATCH_ID,
-        undefined,
-        answerAt - age,
-        1
-      )
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        signedAt: answerAt - age,
+        callCount: 1,
+      })
     )
 
     expectDropped(outcome.error)
@@ -412,13 +413,11 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       )
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(
-          client,
-          BATCH_ID,
+        waitForBatchTransactionReceipt(client, BATCH_ID, {
           onFailed,
-          Date.now(),
-          callCount
-        )
+          signedAt: Date.now(),
+          callCount,
+        })
       )
 
       expect(outcome.error).not.toBeInstanceOf(CallBundleDroppedError)
@@ -434,7 +433,11 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client, getCallsStatus } = walletAnswering(PENDING, SUCCEEDED)
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, onFailed, Date.now(), 1)
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        onFailed,
+        signedAt: Date.now(),
+        callCount: 1,
+      })
     )
 
     expect(outcome).toEqual({
@@ -457,13 +460,11 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
       const { client } = walletAnswering(...answers, unknownBundle(), SUCCEEDED)
 
       const outcome = await settle(
-        waitForBatchTransactionReceipt(
-          client,
-          BATCH_ID,
+        waitForBatchTransactionReceipt(client, BATCH_ID, {
           onFailed,
-          Date.now(),
-          1
-        )
+          signedAt: Date.now(),
+          callCount: 1,
+        })
       )
 
       expect(outcome).toEqual({
@@ -479,7 +480,10 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client } = walletAnswering(PENDING, walletError)
 
     const outcome = await settle(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, Date.now(), 1)
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        signedAt: Date.now(),
+        callCount: 1,
+      })
     )
 
     expect(outcome.error).toBe(walletError)
@@ -493,12 +497,18 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     const { client, getCallsStatus } = walletAnswering(PENDING, unknownBundle())
 
     const first = track(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        signedAt,
+        callCount: 1,
+      })
     )
     await vi.advanceTimersByTimeAsync(0)
     expect(getCallsStatus).toHaveBeenCalledTimes(1)
     const joined = track(
-      waitForBatchTransactionReceipt(client, BATCH_ID, undefined, signedAt, 1)
+      waitForBatchTransactionReceipt(client, BATCH_ID, {
+        signedAt,
+        callCount: 1,
+      })
     )
     await vi.advanceTimersByTimeAsync(0)
     // The joined wait did not start a poll of its own.
