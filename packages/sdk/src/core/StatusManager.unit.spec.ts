@@ -679,6 +679,28 @@ describe('StatusManager after stopRouteExecution', () => {
       expect(keptHook).not.toHaveBeenCalled()
     })
 
+    // The merge lists the fields by hand. A field added to the constant
+    // later must be added there too, or a stale value of it stays.
+    it('copies every field of CLEARED_TRANSACTION_FIELDS into a live final-failed action', () => {
+      const { route, step, statusManager } = startOldExecution()
+      stopRouteExecution(route)
+      const liveRoute = startLiveExecution(
+        liveStepWith({ status: 'FAILED', txHash: '0xdead', txFinal: true })
+      )
+      const keys = Object.keys(CLEARED_TRANSACTION_FIELDS)
+      const lateWrite = Object.fromEntries(
+        keys.map((key) => [key, `late-${key}`])
+      ) as Partial<ExecutionAction>
+
+      statusManager.updateAction(step, 'SWAP', 'PENDING', lateWrite)
+
+      const live = swapOf(liveRoute) as Record<string, unknown>
+      expect(Object.fromEntries(keys.map((key) => [key, live[key]]))).toEqual(
+        lateWrite
+      )
+      expect(liveHook).toHaveBeenCalledTimes(1)
+    })
+
     // The wait reads the call count to decide if a lost bundle was sent. A
     // stale count of the final-failed bundle must not describe the late one.
     it('copies the call count of a late bundle into a live action without a transaction', () => {
