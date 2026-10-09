@@ -290,7 +290,8 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     expect(error).toBeInstanceOf(TransactionError)
     expect(error).toMatchObject({
       code: LiFiErrorCode.SignatureRejected,
-      message: 'The wallet removed the call bundle before it sent it.',
+      message:
+        'The wallet has no record of the call bundle. The SDK treats it as never sent.',
     })
     expect(isFinalTransactionError(error)).toBe(true)
   }

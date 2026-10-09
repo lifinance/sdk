@@ -108,7 +108,7 @@ describe('EthereumBatchedWaitForTransactionTask: a bundle the wallet does not kn
       thrown: (): Error =>
         new TransactionError(
           LiFiErrorCode.SignatureRejected,
-          'The wallet removed the call bundle before it sent it.',
+          'The wallet has no record of the call bundle. The SDK treats it as never sent.',
           unknownBundle(),
           { final: true }
         ),

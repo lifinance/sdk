@@ -86,7 +86,7 @@ export const waitForBatchTransactionReceipt = async (
     if (known && callCount === 1 && isWithinDropWindow(signedAt)) {
       throw new TransactionError(
         LiFiErrorCode.SignatureRejected,
-        'The wallet removed the call bundle before it sent it.',
+        'The wallet has no record of the call bundle. The SDK treats it as never sent.',
         error as Error,
         { final: true }
       )
