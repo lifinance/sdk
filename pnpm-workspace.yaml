@@ -18,3 +18,8 @@ minimumReleaseAgeExclude:
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
+  # Security (Aikido), 2026-10-12, unflagged copies. Each key has a selector that
+  # covers only the advisory's affected range. These change what this repo's tests
+  # use, not what consumers of @lifi/sdk-provider-tron install.
+  # tronweb 6.2.2 and 6.5.1 pin validator 13.15.23 exactly.
+  'validator@<13.15.26': '>=13.15.26'

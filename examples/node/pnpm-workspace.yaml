@@ -1,3 +1,6 @@
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
+  # zod 4.1.12 is an optional peer of abitype that stayed in the lockfile;
+  # 4.6.0 fixes all three Aikido advisories.
+  'zod@<4.6.0': '>=4.6.0'
