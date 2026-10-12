@@ -5,13 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@solana/kit', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@solana/kit')>()),
   getBase64EncodedWireTransaction: () => 'base64-encoded-tx',
+  getSignatureFromTransaction: () => 'signature',
 }))
 
 const getJitoRpcs = vi.fn()
 const getJitoCapableRpcs = vi.fn()
+const getSolanaRpcs = vi.fn()
 vi.mock('../rpc/registry.js', () => ({
   getJitoRpcs: (...args: unknown[]) => getJitoRpcs(...args),
   getJitoCapableRpcs: (...args: unknown[]) => getJitoCapableRpcs(...args),
+  getSolanaRpcs: (...args: unknown[]) => getSolanaRpcs(...args),
 }))
 
 const getTransactionLifetime = vi.fn()
@@ -60,13 +63,14 @@ describe('sendAndConfirmBundle', () => {
     vi.clearAllMocks()
     sendBundleOptions.length = 0
     getTransactionLifetime.mockResolvedValue({ kind: 'unknown' })
+    getSolanaRpcs.mockResolvedValue([{}])
   })
 
   it('throws a configuration error, not a bare rpc-unavailable, when no Jito RPC is configured', async () => {
     // The default LI.FI Solana RPCs answer `getBundleStatuses` with "method
     // not found", so an integrator who configured nothing reaches this path
-    // on every bundle route. Racing zero RPCs would produce `rpc-unavailable`
-    // with an empty error list - indistinguishable from an outage - so the
+    // on every bundle route. Submitting to zero RPCs would make every branch
+    // fail with no usable error - indistinguishable from an outage - so the
     // configuration gap must be named before anything is raced.
     getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
@@ -113,7 +117,7 @@ describe('sendAndConfirmBundle', () => {
     // `confirmBundle` owns the submission now, so the failure surfaces through
     // the callback it was handed.
     confirmBundle.mockImplementation(
-      (options: { send: () => Promise<string> }) => options.send()
+      (options: { send: () => Promise<unknown> }) => options.send()
     )
 
     const result = await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
@@ -139,9 +143,9 @@ describe('sendAndConfirmBundle', () => {
     expect(sendBundle).not.toHaveBeenCalled()
 
     const { send } = confirmBundle.mock.calls[0][0] as {
-      send: () => Promise<string>
+      send: () => Promise<unknown>
     }
-    await expect(send()).resolves.toBe('bundle-1')
+    await send()
     expect(sendBundle).toHaveBeenCalledWith([
       'base64-encoded-tx',
       'base64-encoded-tx',
@@ -155,7 +159,7 @@ describe('sendAndConfirmBundle', () => {
     getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockImplementation(
-      async (options: { send: () => Promise<string> }) => {
+      async (options: { send: () => Promise<unknown> }) => {
         await options.send()
         return { kind: 'not-confirmed' }
       }
@@ -170,23 +174,16 @@ describe('sendAndConfirmBundle', () => {
     expect(sendBundleOptions).toEqual([{ abortSignal: signal }])
   })
 
-  it('reports the broadcast once, however many branches submit successfully', async () => {
-    // Two Jito RPCs both accept the submission; the caller's callback fires
-    // for the first only. The once-guard lives here so the wait task's
-    // status write happens a single time.
-    const rpcB = {
-      sendBundle: (...args: unknown[]) => ({
-        send: (options: unknown) => {
-          sendBundleOptions.push(options)
-          return sendBundle(...args)
-        },
-      }),
-    }
-    getJitoRpcs.mockResolvedValue({ rpcs: [rpc, rpcB], unreachable: 0 })
+  it('reports the broadcast once, however many branches see the submission', async () => {
+    // Two read RPCs confirm and share one submission; the caller's callback
+    // fires for the first branch only. The once-guard lives here so the wait
+    // task's status write happens a single time.
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
+    getSolanaRpcs.mockResolvedValue([{}, {}])
     sendBundle.mockResolvedValue('bundle-1')
     confirmBundle.mockImplementation(
       async (options: {
-        send: () => Promise<string>
+        send: () => Promise<unknown>
         onBroadcast: () => void
       }) => {
         await options.send()
@@ -212,7 +209,8 @@ describe('sendAndConfirmBundle', () => {
         return { kind: 'confirmed', value: { signatureResults: [] } }
       }
     )
-    getJitoRpcs.mockResolvedValue({ rpcs: [rpc, { ...rpc }], unreachable: 0 })
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
+    getSolanaRpcs.mockResolvedValue([{}, {}])
     const onBroadcast = vi.fn(() => {
       throw new Error('updateRouteHook blew up')
     })
@@ -235,11 +233,7 @@ describe('sendAndConfirmBundle', () => {
     getTransactionLifetime
       .mockResolvedValueOnce({ kind: 'blockhash', blockhash: 'A' })
       .mockResolvedValueOnce({ kind: 'blockhash', blockhash: 'B' })
-    const confirmation = {
-      bundleId: 'bundle-1',
-      txSignatures: ['sig0', 'sig1'],
-      signatureResults: [{ err: null }, { err: null }],
-    }
+    const confirmation = { signatureResults: [{ err: null }, { err: null }] }
     confirmBundle.mockResolvedValue({ kind: 'confirmed', value: confirmation })
 
     const result = await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
@@ -248,12 +242,38 @@ describe('sendAndConfirmBundle', () => {
     expect(getTransactionLifetime).toHaveBeenCalledTimes(2)
     expect(confirmBundle).toHaveBeenCalledWith(
       expect.objectContaining({
+        signatures: ['signature', 'signature'],
         lifetimes: [
           { kind: 'blockhash', blockhash: 'A' },
           { kind: 'blockhash', blockhash: 'B' },
         ],
       })
     )
+  })
+
+  it('confirms on every read RPC, not only the Jito-capable ones', async () => {
+    // Plain read RPCs: a `sendBundle` on one would mean a branch submits.
+    const reads = [{ sendBundle: vi.fn() }, { sendBundle: vi.fn() }]
+    getJitoRpcs.mockResolvedValue({ rpcs: [rpc], unreachable: 0 })
+    getSolanaRpcs.mockResolvedValue(reads)
+    sendBundle.mockResolvedValue('bundle-1')
+    confirmBundle.mockImplementation(
+      async (options: { send: () => Promise<unknown> }) => {
+        await options.send()
+        return { kind: 'not-confirmed' }
+      }
+    )
+
+    await sendAndConfirmBundle(clientWith(), TRANSACTIONS)
+
+    expect(
+      confirmBundle.mock.calls.map((call) => (call[0] as { rpc: unknown }).rpc)
+    ).toEqual(reads)
+    // The Jito-capable read RPC submits once, for both branches.
+    expect(sendBundle).toHaveBeenCalledTimes(1)
+    for (const read of reads) {
+      expect(read.sendBundle).not.toHaveBeenCalled()
+    }
   })
 
   it('passes an expired verdict through', async () => {
@@ -269,12 +289,10 @@ describe('sendAndConfirmBundle', () => {
 describe('sendAndConfirmBundle with write RPCs', () => {
   const WRITE_URLS = ['https://write-a.example', 'https://write-b.example']
 
-  /** A configured Jito RPC: it polls for the bundle, but must never submit it. */
-  const createReadJitoRpc = () => ({
+  /** A read RPC: it confirms the bundle, but must never submit it. */
+  const createReadRpc = () => ({
     sendBundle: vi.fn(() => {
-      throw new Error(
-        'a configured Jito RPC must not submit when a write RPC can'
-      )
+      throw new Error('a read RPC must not submit a bundle')
     }),
   })
 
@@ -286,27 +304,20 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getTransactionLifetime.mockResolvedValue({ kind: 'unknown' })
+    getSolanaRpcs.mockResolvedValue([{}])
     confirmBundle.mockImplementation(
-      async (options: { send: () => Promise<string> }) => {
-        const bundleId = await options.send()
-        return {
-          kind: 'confirmed',
-          value: {
-            bundleId,
-            txSignatures: [],
-            signatureResults: [],
-            bundleErr: null,
-          },
-        }
+      async (options: { send: () => Promise<unknown> }) => {
+        await options.send()
+        return { kind: 'confirmed', value: { signatureResults: [] } }
       }
     )
   })
 
-  it('submits once through the write RPCs and polls on the configured Jito RPCs', async () => {
-    const readA = createReadJitoRpc()
-    const readB = createReadJitoRpc()
+  it('submits once through the write RPCs and confirms on every read RPC', async () => {
+    const readA = createReadRpc()
+    const readB = createReadRpc()
     const write = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({ rpcs: [readA, readB], unreachable: 0 })
+    getSolanaRpcs.mockResolvedValue([readA, readB])
     getJitoCapableRpcs.mockResolvedValue({ rpcs: [write], unreachable: 0 })
 
     const result = await sendAndConfirmBundle(
@@ -315,12 +326,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     )
 
     expect(getJitoCapableRpcs).toHaveBeenCalledWith(WRITE_URLS)
-    expect(result).toMatchObject({
-      kind: 'confirmed',
-      value: { bundleId: 'bundle-1' },
-    })
-    // One submission shared by both polling branches: the bundle id is
-    // derived from the transactions, so every branch polls the same bundle.
+    // With a write list, the read RPCs need no Jito probe.
+    expect(getJitoRpcs).not.toHaveBeenCalled()
+    expect(result.kind).toBe('confirmed')
+    // One submission shared by both confirming branches.
     expect(write.sendBundle).toHaveBeenCalledTimes(1)
     expect(write.sendBundle).toHaveBeenCalledWith([
       'base64-encoded-tx',
@@ -336,10 +345,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   it('submits through every Jito-capable write RPC and takes the first acceptance', async () => {
     const refusing = createWriteJitoRpc(() => Promise.reject(new Error('403')))
     const accepting = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockResolvedValue({
       rpcs: [refusing, accepting],
       unreachable: 0,
@@ -356,10 +361,10 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   })
 
   it('returns rpc-unavailable when every write RPC refuses the bundle', async () => {
-    // The configured RPC would accept the bundle, so this only passes when the
-    // submission really goes to the write RPCs.
+    // A read RPC that would accept the bundle confirms only, so this passes
+    // only when the submission really goes to the write RPCs.
     const acceptingRead = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({ rpcs: [acceptingRead], unreachable: 0 })
+    getSolanaRpcs.mockResolvedValue([acceptingRead])
     getJitoCapableRpcs.mockResolvedValue({
       rpcs: [createWriteJitoRpc(() => Promise.reject(new Error('403')))],
       unreachable: 0,
@@ -395,28 +400,9 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(thrown).toBeInstanceOf(RPCError)
     expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
     expect(thrown.message).toContain('rpcUrls[ChainId.SOL]')
+    // With a list set, the read RPCs are not even probed for Jito.
+    expect(getJitoRpcs).not.toHaveBeenCalled()
     expect(read.sendBundle).not.toHaveBeenCalled()
-    expect(confirmBundle).not.toHaveBeenCalled()
-  })
-
-  it('names the read list when only a write RPC supports Jito', async () => {
-    // The write RPC can submit, but polling needs a Jito-capable read RPC.
-    // "No configured RPC supports sendBundle" would be false here.
-    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue({
-      rpcs: [createWriteJitoRpc(() => Promise.resolve('bundle-1'))],
-      unreachable: 0,
-    })
-
-    const thrown = await sendAndConfirmBundle(
-      clientWith(WRITE_URLS),
-      TRANSACTIONS
-    ).catch((e) => e)
-
-    expect(thrown).toBeInstanceOf(RPCError)
-    expect(thrown.code).toBe(LiFiErrorCode.RpcUnavailable)
-    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].read')
-    expect(thrown.message).not.toContain('no configured Solana RPC supports')
     expect(confirmBundle).not.toHaveBeenCalled()
   })
 
@@ -434,10 +420,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     const BUNDLE_URLS = ['https://bundle.example']
     const bundleRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
     const writeRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     // Both pass the Jito probe; only the bundle list may submit.
     getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
       rpcs: urls === BUNDLE_URLS ? [bundleRpc] : [writeRpc],
@@ -452,15 +434,13 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(result.kind).toBe('confirmed')
     expect(bundleRpc.sendBundle).toHaveBeenCalledTimes(1)
     expect(writeRpc.sendBundle).not.toHaveBeenCalled()
+    // With a list set, the read RPCs are not probed for Jito.
+    expect(getJitoRpcs).not.toHaveBeenCalled()
   })
 
   it('submits through the Jito-capable write RPCs when no bundle RPC passes the probe', async () => {
     const BUNDLE_URLS = ['https://bundle.example']
     const writeRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
       rpcs: urls === BUNDLE_URLS ? [] : [writeRpc],
       unreachable: 0,
@@ -478,10 +458,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   it('does not probe the write RPCs when a bundle RPC passes the probe', async () => {
     const BUNDLE_URLS = ['https://bundle.example']
     const bundleRpc = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockResolvedValue({ rpcs: [bundleRpc], unreachable: 0 })
 
     await sendAndConfirmBundle(
@@ -506,6 +482,8 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     ).catch((e) => e)
 
     expect(thrown).toBeInstanceOf(RPCError)
+    // With a list set, the read RPCs are not even probed for Jito.
+    expect(getJitoRpcs).not.toHaveBeenCalled()
     expect(read.sendBundle).not.toHaveBeenCalled()
   })
 
@@ -525,6 +503,11 @@ describe('sendAndConfirmBundle with write RPCs', () => {
       [['https://bundle.example']],
       [WRITE_URLS],
     ])
+    expect(thrown.message).toContain(
+      '`rpcUrls[ChainId.SOL].bundle` or `rpcUrls[ChainId.SOL].write`'
+    )
+    // With a list set, the read RPCs are not even probed for Jito.
+    expect(getJitoRpcs).not.toHaveBeenCalled()
     expect(read.sendBundle).not.toHaveBeenCalled()
   })
 
@@ -532,10 +515,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     // confirmBundle awaits the submission before it polls. Without the signal,
     // BRANCH_TIMEOUT_MS could not end a submission to a hung write RPC.
     const write = createWriteJitoRpc(() => Promise.resolve('bundle-1'))
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockResolvedValue({ rpcs: [write], unreachable: 0 })
 
     await sendAndConfirmBundle(clientWith(WRITE_URLS), TRANSACTIONS)
@@ -546,10 +525,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
   })
 
   it('does not ask for a retry when the listed URLs do not support bundles', async () => {
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
 
     const thrown = await sendAndConfirmBundle(
@@ -558,8 +533,8 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     ).catch((e) => e)
 
     expect(thrown).toBeInstanceOf(RPCError)
-    // Only the list that is set is named, no retry is promised for an answer
-    // that never changes, and the read RPCs are fine, so they are not named.
+    // Only the list that is set is named, and no retry is promised for an
+    // answer that never changes.
     expect(thrown.message).toBe(
       'Jito bundle required, but no URL in `rpcUrls[ChainId.SOL].bundle` passed the Jito capability probe. They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`. Bundles never go to the read RPCs while `bundle` or `write` is set.'
     )
@@ -567,10 +542,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
 
   it('asks for a retry when only the bundle list probe failed and the write list is unsupported', async () => {
     const BUNDLE_URLS = ['https://bundle.example']
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockImplementation(async (urls: string[]) => ({
       rpcs: [],
       unreachable: urls === BUNDLE_URLS ? 1 : 0,
@@ -584,24 +555,7 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(thrown.message).toContain('retry')
   })
 
-  it('does not blame the read list when its probe was only unreachable', async () => {
-    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 1 })
-    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
-
-    const thrown = await sendAndConfirmBundle(
-      clientWith(WRITE_URLS),
-      TRANSACTIONS
-    ).catch((e) => e)
-
-    expect(thrown).toBeInstanceOf(RPCError)
-    expect(thrown.message).not.toContain('rpcUrls[ChainId.SOL].read')
-  })
-
   it('asks for a retry when the probe of a listed URL failed', async () => {
-    getJitoRpcs.mockResolvedValue({
-      rpcs: [createReadJitoRpc()],
-      unreachable: 0,
-    })
     getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 1 })
 
     const thrown = await sendAndConfirmBundle(
@@ -613,20 +567,6 @@ describe('sendAndConfirmBundle with write RPCs', () => {
     expect(thrown.message).toContain('rpcUrls[ChainId.SOL].write')
     expect(thrown.message).not.toContain('.bundle')
     expect(thrown.message).toContain('retry')
-  })
-
-  it('also names the read gap when no read RPC can confirm a bundle either', async () => {
-    getJitoRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
-    getJitoCapableRpcs.mockResolvedValue({ rpcs: [], unreachable: 0 })
-
-    const thrown = await sendAndConfirmBundle(
-      clientWith(WRITE_URLS, ['https://bundle.example']),
-      TRANSACTIONS
-    ).catch((e) => e)
-
-    expect(thrown).toBeInstanceOf(RPCError)
-    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].bundle')
-    expect(thrown.message).toContain('rpcUrls[ChainId.SOL].read')
   })
 
   it('does not probe write RPCs when the chain has none', async () => {

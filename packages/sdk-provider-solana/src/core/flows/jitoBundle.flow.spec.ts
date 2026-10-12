@@ -72,13 +72,14 @@ describe('Solana Jito bundle swap', () => {
     const signed = wallet.signCalls[0].outputs
     expect(signed).toHaveLength(2)
 
-    // Both read RPCs are probed; only the Jito one submits and confirms. No
-    // simulation, and nothing goes out through `sendTransaction`.
+    // Both read RPCs are probed and only the Jito one submits. Both confirm,
+    // by the signatures. No simulation, and nothing goes out through
+    // `sendTransaction`.
     expect(submitTrail(network)).toEqual([
       'getBundleStatuses@read',
       'getBundleStatuses@jito',
       'sendBundle@jito',
-      'getBundleStatuses@jito',
+      'getSignatureStatuses@read',
       'getSignatureStatuses@jito',
     ])
     expect(
@@ -113,5 +114,38 @@ describe('Solana Jito bundle swap', () => {
         },
       ],
     })
+  })
+
+  it('confirms by the signatures when the bundle RPC answers without a bundle id', async () => {
+    // JUM-1669: the bundle RPC is a sender that answers `sendBundle` with the
+    // signatures. The SDK used to poll `getBundleStatuses` with that array.
+    network = createFakeNetwork({
+      read: 'standard',
+      jito: 'jito',
+      sender: 'sender',
+    })
+    vi.stubGlobal('fetch', network.fetch)
+    const client = openPage(wallet, {
+      rpcUrls: {
+        read: [network.url('read'), network.url('jito')],
+        bundle: [network.url('sender')],
+      },
+      routeOptions: { jitoBundle: true },
+    })
+
+    const route = await executeRoute(
+      client,
+      buildRoute(network, wallet.address)
+    )
+
+    // Only the probe calls `getBundleStatuses`: the `sendBundle` answer never
+    // reaches a status read.
+    expect(submitTrail(network)).toEqual([
+      'getBundleStatuses@sender',
+      'sendBundle@sender',
+      'getSignatureStatuses@read',
+      'getSignatureStatuses@jito',
+    ])
+    expect(route.steps[0].execution?.status).toBe('DONE')
   })
 })

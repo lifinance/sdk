@@ -1,18 +1,26 @@
 import { ChainId, LiFiErrorCode, RPCError, type SDKClient } from '@lifi/sdk'
-import { getBase64EncodedWireTransaction, type Transaction } from '@solana/kit'
+import {
+  getBase64EncodedWireTransaction,
+  getSignatureFromTransaction,
+  type Transaction,
+} from '@solana/kit'
 import {
   type BundleConfirmation,
   confirmBundle,
 } from '../confirmation/confirmBundle.js'
 import { BRANCH_TIMEOUT_MS } from '../confirmation/createConfirmationDeadline.js'
 import { type RaceResult, raceRpcs } from '../confirmation/raceRpcs.js'
-import { getJitoCapableRpcs, getJitoRpcs } from '../rpc/registry.js'
+import {
+  getJitoCapableRpcs,
+  getJitoRpcs,
+  getSolanaRpcs,
+} from '../rpc/registry.js'
 import type { JitoRpcType } from '../rpc/types.js'
 import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /**
- * Sends a Jito bundle to every Jito-capable RPC and returns as soon as one of
- * them confirms it.
+ * Sends a Jito bundle once and returns as soon as one read RPC sees every
+ * transaction of it confirmed.
  *
  * The deadline receives the lifetime of *every* signed transaction, not just
  * the first: a bundle is an array of independently built backend transactions
@@ -22,23 +30,24 @@ import { getTransactionLifetime } from '../utils/getTransactionLifetime.js'
  * deadline starts on the same clock as `BRANCH_TIMEOUT_MS` instead of after
  * the submission returns.
  *
- * When the client has Solana bundle or write RPCs (`rpcUrls[ChainId.SOL]`),
- * the bundle is submitted once through those that pass the Jito probe - the
- * bundle list first, else the write list - and the read Jito RPCs only poll.
- * With either list set, bundles never go to the read RPCs.
+ * The bundle is submitted once through the RPCs that pass the Jito probe: the
+ * bundle list of `rpcUrls[ChainId.SOL]` first, else the write list, else the
+ * read RPCs. With either list set, bundles never go to the read RPCs. Every
+ * read RPC confirms the bundle by its transaction signatures, so no read RPC
+ * needs Jito support and the `sendBundle` answer is not read.
  */
 export async function sendAndConfirmBundle(
   client: SDKClient,
   signedTransactions: Transaction[],
   options?: {
-    /** Runs once, when the first Jito RPC accepts the submission. */
+    /** Runs once, when the first submit RPC accepts the submission. */
     onBroadcast?: () => void
   }
 ): Promise<RaceResult<BundleConfirmation>> {
   // With a bundle or write list set, bundles go only to those: the bundle
   // RPCs that pass the Jito probe, else the write RPCs that do. The write list
-  // is probed only when it is needed. With neither list, each branch submits
-  // through its own read Jito RPC, as before.
+  // is probed only when it is needed. With neither list, the read RPCs that
+  // pass the Jito probe submit.
   const [bundleUrls = [], writeUrls = []] = await Promise.all([
     client.getBundleRpcUrlsByChainId?.(ChainId.SOL),
     client.getWriteRpcUrlsByChainId?.(ChainId.SOL),
@@ -57,39 +66,32 @@ export async function sendAndConfirmBundle(
       unreachable: bundle.unreachable + write.unreachable,
     }
   }
-  const [
-    { rpcs: jitoRpcs, unreachable },
-    { rpcs: submitRpcs, unreachable: submitUnreachable },
-  ] = await Promise.all([getJitoRpcs(client), findSubmitRpcs()])
+  const hasSubmitLists = bundleUrls.length > 0 || writeUrls.length > 0
+  const [{ rpcs: submitRpcs, unreachable }, confirmRpcs] = await Promise.all([
+    hasSubmitLists ? findSubmitRpcs() : getJitoRpcs(client),
+    getSolanaRpcs(client),
+  ])
 
-  if ((bundleUrls.length || writeUrls.length) && !submitRpcs.length) {
-    const lists = [
-      bundleUrls.length && '`rpcUrls[ChainId.SOL].bundle`',
-      writeUrls.length && '`rpcUrls[ChainId.SOL].write`',
-    ]
-      .filter(Boolean)
+  if (hasSubmitLists && !submitRpcs.length) {
+    // Names only the lists that are set.
+    const lists = Object.entries({ bundle: bundleUrls, write: writeUrls })
+      .filter(([, urls]) => urls.length > 0)
+      .map(([name]) => `\`rpcUrls[ChainId.SOL].${name}\``)
       .join(' or ')
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
       [
         `Jito bundle required, but no URL in ${lists} passed the Jito capability probe.`,
-        submitUnreachable > 0
+        unreachable > 0
           ? 'The probe got no answer from some of them. This is usually temporary - retry. If it persists, the endpoint may refuse `sendBundle` for your plan.'
           : 'They do not support `sendBundle`: add a Jito-capable URL to `rpcUrls[ChainId.SOL].bundle`.',
         'Bundles never go to the read RPCs while `bundle` or `write` is set.',
-        // Only a definite gap: a read RPC that did not answer the probe may
-        // support bundles, and the next attempt reports that case itself.
-        jitoRpcs.length === 0 &&
-          unreachable === 0 &&
-          'No read RPC supports `getBundleStatuses` to confirm a bundle either: also add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.',
-      ]
-        .filter(Boolean)
-        .join(' ')
+      ].join(' ')
     )
   }
 
-  // Named here, where the emptiness is known: racing zero RPCs would surface
-  // as a bare `rpc-unavailable`, indistinguishable from a total outage. The
+  // Named here, where the emptiness is known: submitting to zero RPCs would
+  // surface as a bare `rpc-unavailable`, indistinguishable from an outage. The
   // two causes get different messages - a configuration gap the integrator can
   // close, or endpoints that never answered.
   //
@@ -98,14 +100,12 @@ export async function sendAndConfirmBundle(
   // cannot tell a gated endpoint from a provider mid-deploy and classifies
   // both as `unreachable`. "Retry" alone would loop an integrator forever on a
   // gate no retry can clear.
-  if (jitoRpcs.length === 0) {
+  if (!submitRpcs.length) {
     throw new RPCError(
       LiFiErrorCode.RpcUnavailable,
       unreachable > 0
         ? `Jito bundle required, but the capability probe failed against ${unreachable} configured Solana RPC(s). This is usually temporary - retry. If it persists, the endpoint may refuse \`sendBundle\` for your plan.`
-        : submitRpcs.length > 0
-          ? 'Jito bundle required. A bundle or write RPC can submit it, but no read RPC supports `getBundleStatuses` to confirm it. Add a Jito-capable URL to `rpcUrls[ChainId.SOL].read`.'
-          : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
+        : 'Jito bundle required, but no configured Solana RPC supports `sendBundle`. Supply a Jito-capable URL via the `rpcUrls` client config option.'
     )
   }
 
@@ -134,6 +134,9 @@ export async function sendAndConfirmBundle(
     }
   }
 
+  const signatures = signedTransactions.map((transaction) =>
+    getSignatureFromTransaction(transaction)
+  )
   const serializedTransactions = signedTransactions.map((transaction) =>
     getBase64EncodedWireTransaction(transaction)
   )
@@ -142,11 +145,12 @@ export async function sendAndConfirmBundle(
     signedTransactions.map((transaction) => getTransactionLifetime(transaction))
   )
 
-  // One submission for every polling branch: the bundle id is derived from
-  // the transactions, so each branch polls the same bundle. Started by the
-  // first branch that asks, so its deadline already runs.
-  let submission: Promise<string> | undefined
-  const submitOnce = (signal: AbortSignal): Promise<string> => {
+  // One submission for every confirming branch. Its answer is not read: the
+  // branches read the signatures, and senders answer `sendBundle` in different
+  // shapes. Started by the first branch that asks, so its deadline already
+  // runs.
+  let submission: Promise<unknown> | undefined
+  const submitOnce = (signal: AbortSignal): Promise<unknown> => {
     submission ??= Promise.any(
       submitRpcs.map((rpc) =>
         rpc.sendBundle(serializedTransactions).send({ abortSignal: signal })
@@ -160,18 +164,14 @@ export async function sendAndConfirmBundle(
   }
 
   return raceRpcs(
-    jitoRpcs,
+    confirmRpcs,
     (rpc, signal) =>
       confirmBundle({
         rpc,
         signal,
+        signatures,
         lifetimes,
-        send: () =>
-          submitRpcs.length
-            ? submitOnce(signal)
-            : rpc
-                .sendBundle(serializedTransactions)
-                .send({ abortSignal: signal }),
+        send: () => submitOnce(signal),
         onBroadcast: reportBroadcast,
       }),
     { timeoutMs: BRANCH_TIMEOUT_MS }

@@ -20,45 +20,29 @@ import { resumeFromStore } from './resumeFromStore.js'
 import {
   canResendStored,
   clearStoredTransactions,
+  failureOf,
   getTxLink,
   sendAndSettle,
 } from './transactionOutcome.js'
 
 // The `rpc-unavailable` message is distinct from the empty-list throw inside
 // `sendAndConfirmBundle`: RPCs were configured and every one of them failed.
-// That is an outage, and the collected branch errors say what each endpoint
-// did.
+// Every read RPC confirms and waits for the one shared submission, so a
+// refused submission fails every branch with the same error.
 const MESSAGES: ConfirmationMessages = {
-  rpcUnavailable: 'Unable to confirm bundle: every configured Jito RPC failed.',
+  rpcUnavailable:
+    'Unable to confirm bundle: every configured Solana RPC failed.',
   notConfirmed: 'Bundle was not confirmed before the SDK stopped waiting.',
-  allRpcsFailed: 'All Jito RPCs failed',
+  allRpcsFailed: 'All Solana RPCs failed',
   someRpcsFailed:
-    'Some Jito RPCs failed while the confirmation window was open',
+    'Some Solana RPCs failed while the confirmation window was open',
 }
 
-/** Jito encodes `err` as a Rust `Result`: a landed bundle carries
- * `{ Ok: null }`, so only an explicit `{ Err: … }` counts as a failure. */
-function getBundleFailure(err: unknown): { failure: unknown } | undefined {
-  if (typeof err !== 'object' || err === null || !('Err' in err)) {
-    return undefined
-  }
-  return { failure: (err as { Err: unknown }).Err }
-}
-
-/** The failure of a landed bundle, if any. A `null` in `signatureResults` is
- * indexing lag, never failure. The bundle-level `err` is checked first: it
- * survives a failed `getSignatureStatuses` read. */
+/** The failure of a landed bundle, if any: the first transaction `err`. */
 function bundleFailureOf(
   confirmation: BundleConfirmation
 ): { err: unknown } | undefined {
-  const bundleFailure = getBundleFailure(confirmation.bundleErr)
-  if (bundleFailure) {
-    return { err: bundleFailure.failure }
-  }
-  const failedResult = confirmation.signatureResults.find(
-    (signatureResult) => signatureResult?.err
-  )
-  return failedResult?.err ? { err: failedResult.err } : undefined
+  return confirmation.signatureResults.map(failureOf).find(Boolean)
 }
 
 export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
@@ -126,8 +110,10 @@ export class SolanaJitoWaitForTransactionTask extends BaseStepExecutionTask {
 
 /**
  * Submits the signed bundle once, confirms it and applies the result rules
- * of `sendAndSettle`, on the first run and on a resume alike. A bundle lands
- * whole or not at all, so the first transaction's signature stands for it.
+ * of `sendAndSettle`, on the first run and on a resume alike. A Jito bundle
+ * lands whole or not at all, so the first transaction's signature stands for
+ * it. A sender that is not Jito can land the transactions one by one; a
+ * lookup by the first signature then misses a partial landing.
  */
 function sendSigned(
   context: SolanaStepExecutorContext,
