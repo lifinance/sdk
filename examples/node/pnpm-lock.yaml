@@ -7,6 +7,7 @@ settings:
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
+  zod@<4.6.0: '>=4.6.0'
 
 importers:
 
@@ -20,13 +21,13 @@ importers:
         version: 4.10.0
       '@lifi/sdk-provider-ethereum':
         specifier: ^4.2.6
-        version: 4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)
+        version: 4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       dotenv:
         specifier: ^18.0.6
         version: 18.0.6
       viem:
         specifier: ^2.57.3
-        version: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)
+        version: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/node':
         specifier: ^26.6.4
@@ -362,7 +363,7 @@ packages:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
     peerDependencies:
       typescript: '>=5.0.4'
-      zod: ^3.22.0 || ^4.0.0
+      zod: '>=4.6.0'
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -444,9 +445,6 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
-
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
 
 snapshots:
 
@@ -534,10 +532,10 @@ snapshots:
     dependencies:
       '@lifi/types': 18.4.0
 
-  '@lifi/sdk-provider-ethereum@4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)':
+  '@lifi/sdk-provider-ethereum@4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@lifi/sdk': 4.10.0
-      viem: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12)
+      viem: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -637,10 +635,9 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  abitype@1.2.3(typescript@7.0.2)(zod@4.1.12):
+  abitype@1.2.3(typescript@7.0.2):
     optionalDependencies:
       typescript: 7.0.2
-      zod: 4.1.12
 
   bufferutil@4.0.9:
     dependencies:
@@ -690,7 +687,7 @@ snapshots:
   node-gyp-build@4.8.4:
     optional: true
 
-  ox@0.14.45(typescript@7.0.2)(zod@4.1.12):
+  ox@0.14.45(typescript@7.0.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -698,7 +695,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)(zod@4.1.12)
+      abitype: 1.2.3(typescript@7.0.2)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 7.0.2
@@ -741,15 +738,15 @@ snapshots:
       node-gyp-build: 4.8.4
     optional: true
 
-  viem@2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)(zod@4.1.12):
+  viem@2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)(zod@4.1.12)
+      abitype: 1.2.3(typescript@7.0.2)
       isows: 1.0.7(ws@8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      ox: 0.14.45(typescript@7.0.2)(zod@4.1.12)
+      ox: 0.14.45(typescript@7.0.2)
       ws: 8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
       typescript: 7.0.2
@@ -762,6 +759,3 @@ snapshots:
     optionalDependencies:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
-
-  zod@4.1.12:
-    optional: true
