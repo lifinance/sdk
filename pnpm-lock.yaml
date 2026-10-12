@@ -166,6 +166,7 @@ overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
   validator@<13.15.26: '>=13.15.26'
+  google-protobuf@<4.0.3: ^4.0.3
 
 importers:
 
@@ -2843,8 +2844,8 @@ packages:
     engines: {node: '>=0.6.0'}
     hasBin: true
 
-  google-protobuf@3.21.4:
-    resolution: {integrity: sha512-MnG7N936zcKTco4Jd2PX2U96Kf9PxygAPKBug+74LHzmHXmceN16MmRcdgZv+DGef/S9YvQAfRsNCn4cjf9yyQ==}
+  google-protobuf@4.0.3:
+    resolution: {integrity: sha512-DI6iiRmF8fE/EzvGK5F9b8RxZeumHC2AAhi3xwOEh+GT5eRhJeW1aOtkDxn0W7cVCFQAtwK+ZDwIO1BYz+9WMA==}
 
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
@@ -6136,7 +6137,7 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
-  google-protobuf@3.21.4: {}
+  google-protobuf@4.0.3: {}
 
   gopd@1.2.0: {}
 
@@ -6828,7 +6829,7 @@ snapshots:
       ethereum-cryptography: 2.2.1
       ethers: 6.13.5
       eventemitter3: 5.0.1
-      google-protobuf: 3.21.4
+      google-protobuf: 4.0.3
       semver: 7.7.1
       validator: 13.15.35
     transitivePeerDependencies:
@@ -6844,7 +6845,7 @@ snapshots:
       ethereum-cryptography: 2.2.1
       ethers: 6.17.0
       eventemitter3: 5.0.1
-      google-protobuf: 3.21.4
+      google-protobuf: 4.0.3
       semver: 7.7.1
       tslib: 2.7.0
       validator: 13.15.35

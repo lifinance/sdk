@@ -23,3 +23,7 @@ overrides:
   # use, not what consumers of @lifi/sdk-provider-tron install.
   # tronweb 6.2.2 and 6.5.1 pin validator 13.15.23 exactly.
   'validator@<13.15.26': '>=13.15.26'
+  # Forced major (unflagged copy). tronweb 6.2.2 and 6.5.1 pin google-protobuf
+  # 3.21.4 exactly; no tronweb release fixes it. A TRX and a TRC-20 round trip give
+  # the same bytes on 4.x.
+  'google-protobuf@<4.0.3': '^4.0.3'
