@@ -17,21 +17,21 @@ importers:
         specifier: ^7.1.6
         version: 7.1.6
       '@lifi/sdk':
-        specifier: ^4.10.0
-        version: 4.10.0
+        specifier: ^4.12.1
+        version: 4.12.1
       '@lifi/sdk-provider-ethereum':
-        specifier: ^4.2.6
-        version: 4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+        specifier: ^4.2.9
+        version: 4.2.9(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
       dotenv:
-        specifier: ^18.0.6
-        version: 18.0.6
+        specifier: ^18.0.7
+        version: 18.0.7
       viem:
-        specifier: ^2.57.3
-        version: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+        specifier: ^2.57.4
+        version: 2.57.4(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.4
-        version: 26.6.4
+        specifier: ^26.6.5
+        version: 26.6.5
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -203,14 +203,14 @@ packages:
   '@lifi/data-types@7.1.6':
     resolution: {integrity: sha512-3WJ02zhHIWr8CJgZSXVMQVlcLC6aBpLqwAmIMt6iPP0AFSAzIgYeL40p/pxtdHby3JmsouBiQZ/OKuwa4Ltv4A==}
 
-  '@lifi/sdk-provider-ethereum@4.2.6':
-    resolution: {integrity: sha512-gjTuocs+vzwkxT5UXpiTtIzSgOUNCkV4j45PKycnGjquODc9LsVpfXj8QPvh9ZqEUbb08d1XkoyBEdKqkXOOhQ==}
+  '@lifi/sdk-provider-ethereum@4.2.9':
+    resolution: {integrity: sha512-Uw6ulsq2nzAILUPsgWZDb0TRCjQSsXFmMiVcpJuTrQ0YRpByqzgWnWljiLn9ydH7TXzpY3I8QOhrzGwnZ5QWkQ==}
 
-  '@lifi/sdk@4.10.0':
-    resolution: {integrity: sha512-UxQNNyWeeAKCxXraHvPqqp/FTxqLHUwIryZDgk/PLccbXup+er5b8OkZZjE6FYA0EOTwLk17BIytXGRYm8aOVQ==}
+  '@lifi/sdk@4.12.1':
+    resolution: {integrity: sha512-y3Ay06NU9h5siR41EIXJecoMu+A/rA8cXI2bE1QQ1akuDDa6qIVFy0/TDpYDGfEveDTJScfU8x0r5jzRR/aUxg==}
 
-  '@lifi/types@18.12.1':
-    resolution: {integrity: sha512-+sJISKY544osyOp1aaoILrNPRDGDTl1vef9to5kqBpnLnCHVqJQxaY+5AGZq42z/fDs3xTg4l59VlSRAGGyQSg==}
+  '@lifi/types@18.13.0':
+    resolution: {integrity: sha512-WHZTVeN6/ijMnducCNcEeW6uirVtNW86CrB6JKZki7hBgI0rg106nSuD+yf1599q4i7igezppS02Z+M6W6BPAA==}
 
   '@lifi/types@18.4.0':
     resolution: {integrity: sha512-H0c2fwrS7fyPLVzEf8UydZ1rfNXCxW7TGfsqf0goGH2BiLIkcBAVIpiCzuIB+YBgKCwZ53wIvgBa+6AZe7Y5PQ==}
@@ -236,8 +236,8 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@types/node@26.6.4':
-    resolution: {integrity: sha512-ldVPDCzj7fsaGZrLB0NuHuTvJcsNasysBAqMolr/cgxrLd1xbqxIr3XJiPnHHJUCxj5sNF1vnRj9aWnrVh5Jcg==}
+  '@types/node@26.6.5':
+    resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -374,8 +374,8 @@ packages:
     resolution: {integrity: sha512-WDtdLmJvAuNNPzByAYpRo2rF1Mmradw6gvWsQKf63476DDXmomT9zUiGypLcG4ibIM67vhAj8jJRdbmEws2Aqw==}
     engines: {node: '>=6.14.2'}
 
-  dotenv@18.0.6:
-    resolution: {integrity: sha512-ZMVmohV6CvAJtj++pZNyggluUt6hbRdQAxc2+Z635RL6/AG/ruXv5lHnybUFoxMPL/yrTL/tsF4paZu2l7RA6Q==}
+  dotenv@18.0.7:
+    resolution: {integrity: sha512-QEvMEF8ca3GNZJJnAbOgxpj5ULhBvnMcURp+XKrtvqFNPgjBvYoswQ0Jl2cO7JzCjxZjJhr9ZuIEhlrRxMft/Q==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -401,8 +401,8 @@ packages:
     resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
     hasBin: true
 
-  ox@0.14.45:
-    resolution: {integrity: sha512-jpsQ+p0JZh9mKCxxzxz0d5qFHZZg2/O9xW18IpEC/dNXXPVqmDJ0c//9RMz0CILkbSGPA42+cbU0fC/ghwJ03w==}
+  ox@0.14.54:
+    resolution: {integrity: sha512-52PGH6ldJmWY9+iy/TBSJUsCSy5NmLvkVBYTINmO8srsjRrCmCdO575kGizmZ1jpNQ1gnlpVwiciIpU37fcULA==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -426,8 +426,8 @@ packages:
     resolution: {integrity: sha512-Z6czzLq4u8fPOyx7TU6X3dvUZVvoJmxSQ+IcrlmagKhilxlhZgxPK6C5Jqbkw1IDUmFTM+cz9QDnnLTwDz/2gQ==}
     engines: {node: '>=6.14.2'}
 
-  viem@2.57.3:
-    resolution: {integrity: sha512-441q6Z42ZU7+mTJrYAjQsBpVWK76nyGQcKOCGT6hp+tBpw1XsnTIgKaqZFLTaW5xmBN1ummEFgzFWmR05FISTg==}
+  viem@2.57.4:
+    resolution: {integrity: sha512-ro+8AKrcGU6tPfou0gBRYv6bxnU3tPxxJGY4qpJwjiR40eHCWzeGhrAgYMlIncFtlnry2/yGjz57WOC67oshCQ==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -532,21 +532,21 @@ snapshots:
     dependencies:
       '@lifi/types': 18.4.0
 
-  '@lifi/sdk-provider-ethereum@4.2.6(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
+  '@lifi/sdk-provider-ethereum@4.2.9(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)':
     dependencies:
-      '@lifi/sdk': 4.10.0
-      viem: 2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
+      '@lifi/sdk': 4.12.1
+      viem: 2.57.4(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
       - zod
 
-  '@lifi/sdk@4.10.0':
+  '@lifi/sdk@4.12.1':
     dependencies:
-      '@lifi/types': 18.12.1
+      '@lifi/types': 18.13.0
 
-  '@lifi/types@18.12.1': {}
+  '@lifi/types@18.13.0': {}
 
   '@lifi/types@18.4.0': {}
 
@@ -571,7 +571,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@types/node@26.6.4':
+  '@types/node@26.6.5':
     dependencies:
       undici-types: 8.9.0
 
@@ -644,7 +644,7 @@ snapshots:
       node-gyp-build: 4.8.4
     optional: true
 
-  dotenv@18.0.6: {}
+  dotenv@18.0.7: {}
 
   esbuild@0.28.2:
     optionalDependencies:
@@ -687,7 +687,7 @@ snapshots:
   node-gyp-build@4.8.4:
     optional: true
 
-  ox@0.14.45(typescript@7.0.2):
+  ox@0.14.54(typescript@7.0.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -738,7 +738,7 @@ snapshots:
       node-gyp-build: 4.8.4
     optional: true
 
-  viem@2.57.3(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10):
+  viem@2.57.4(bufferutil@4.0.9)(typescript@7.0.2)(utf-8-validate@5.0.10):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -746,7 +746,7 @@ snapshots:
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@7.0.2)
       isows: 1.0.7(ws@8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      ox: 0.14.45(typescript@7.0.2)
+      ox: 0.14.54(typescript@7.0.2)
       ws: 8.22.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
       typescript: 7.0.2
