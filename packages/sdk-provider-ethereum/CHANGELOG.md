@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.10
+
+### Patch Changes
+
+- [#519](https://github.com/lifinance/sdk/pull/519) [`950bdbd`](https://github.com/lifinance/sdk/commit/950bdbd6c0415b950f3f5cf896a100c67ad5902f) Thanks [@chybisov](https://github.com/chybisov)! - Bump the runtime dependency viem to 2.57.4.
+
 ## 4.2.9
 
 ### Patch Changes
