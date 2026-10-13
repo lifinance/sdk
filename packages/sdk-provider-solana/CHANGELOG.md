@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.6
+
+### Patch Changes
+
+- [#518](https://github.com/lifinance/sdk/pull/518) [`54ef885`](https://github.com/lifinance/sdk/commit/54ef8856baabf030072602144aa667f69627d3fc) Thanks [@chybisov](https://github.com/chybisov)! - Jito bundles now confirm by the signatures of their transactions (`getSignatureStatuses`) on every read RPC. Only the RPCs that send a bundle need Jito support. The SDK no longer reads the `sendBundle` answer, so a sender that answers with the transaction signatures instead of a bundle ID no longer makes the step fail with `RpcUnavailable` (1027). The bundle confirmation errors now say "Solana RPC" instead of "Jito RPC".
+- Updated dependencies [[`07cc186`](https://github.com/lifinance/sdk/commit/07cc1869a6966980ce2226036f8b441ce68f0a36)]:
+  - @lifi/sdk@4.12.1
+
 ## 4.3.5
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @lifi/sdk
 
+## 4.12.1
+
+### Patch Changes
+
+- [#516](https://github.com/lifinance/sdk/pull/516) [`07cc186`](https://github.com/lifinance/sdk/commit/07cc1869a6966980ce2226036f8b441ce68f0a36) Thanks [@chybisov](https://github.com/chybisov)! - `fetchTxErrorDetails` now checks its input before it calls Tenderly. If `txHash` is not a 32-byte hex hash, or `chainId` is not a positive safe integer, it returns `undefined` and sends no request.
+
 ## 4.12.0
 
 ### Minor Changes
