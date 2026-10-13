@@ -14,8 +14,8 @@ import {
 export const RESEND_INTERVAL_MS = 1000
 /**
  * How often this poller re-reads `getSignatureStatuses`. The default Solana
- * RPCs tolerate 2.5 req/s of status reads; the Jito bundle poller runs slower
- * because its endpoints do not (see `confirmBundle`).
+ * RPCs tolerate 2.5 req/s of status reads; the bundle poller runs slower
+ * (see `confirmBundle`).
  */
 export const SIGNATURE_POLL_INTERVAL_MS = 400
 

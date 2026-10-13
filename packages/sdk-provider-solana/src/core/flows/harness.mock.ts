@@ -232,9 +232,10 @@ const toBase64 = (bytes: Uint8Array): string => getBase64Decoder().decode(bytes)
 /**
  * `standard`: a plain Solana node; the Jito methods answer "Method not
  * found", as on a real node. `jito`: a Jito block engine that also answers
- * the Solana methods.
+ * the Solana methods. `sender`: like `jito`, but it answers `sendBundle` with
+ * the transaction signatures instead of a bundle id, as some senders do.
  */
-export type NodeKind = 'standard' | 'jito'
+export type NodeKind = 'standard' | 'jito' | 'sender'
 
 export interface RpcCall {
   /** The node URL the request went to. */
@@ -431,7 +432,7 @@ export const createFakeNetwork = (
       }
       case 'sendBundle':
       case 'getBundleStatuses': {
-        if (kind !== 'jito') {
+        if (kind === 'standard') {
           // What a plain Solana node answers; the Jito probe reads it as
           // "unsupported".
           return rpcError({ code: -32601, message: 'Method not found' })
@@ -472,7 +473,7 @@ export const createFakeNetwork = (
             network.landed.set(signature, null)
           }
         }
-        return bundleId
+        return kind === 'sender' ? signatures : bundleId
       }
       default:
         return NOT_ANSWERED

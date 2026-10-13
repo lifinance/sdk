@@ -117,7 +117,7 @@ describe('Solana Jito bundle resume (#507)', () => {
       'getSignatureStatuses@read',
       'getSignatureStatuses@jito',
       'sendBundle@jito',
-      'getBundleStatuses@jito',
+      'getSignatureStatuses@read',
       'getSignatureStatuses@jito',
     ])
     expect(statusLookups().slice(0, 2)).toEqual([

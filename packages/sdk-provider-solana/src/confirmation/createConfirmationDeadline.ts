@@ -29,7 +29,7 @@ export const EXPIRY_CONFIRMATIONS: number =
  * Prober-only; the status pollers have `MAX_STATUS_READ_SILENCE_MS`. */
 export const MAX_PROBE_ERRORS = 5
 
-/** Structural, so one implementation serves both the Solana and Jito RPC. */
+/** Structural: the deadline needs nothing but `isBlockhashValid`. */
 export type BlockhashProbeRpc = Pick<SolanaRpcType, 'isBlockhashValid'>
 
 export interface ConfirmationDeadline {

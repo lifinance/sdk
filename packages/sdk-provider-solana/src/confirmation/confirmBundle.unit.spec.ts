@@ -1,6 +1,6 @@
 import type { Signature } from '@solana/kit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { JitoRpcType } from '../rpc/types.js'
+import type { SolanaRpcType } from '../rpc/types.js'
 import type { TransactionLifetime } from '../utils/getTransactionLifetime.js'
 
 /** Every `sleep` duration requested, poll loop and deadline loop together. */
@@ -43,36 +43,27 @@ const { DEADLINE_TICK_INTERVAL_MS, STATUS_RETRY_BACKOFF_CAP_MS } = await import(
   './pollUntilDeadline.js'
 )
 
-const getBundleStatuses = vi.fn()
 const getSignatureStatuses = vi.fn()
 
-/** Options every `getBundleStatuses(...).send(...)` call received. */
-const bundleSendOptions: unknown[] = []
 /** Options every `getSignatureStatuses(...).send(...)` call received. */
 const signatureSendOptions: unknown[] = []
 
 const rpc = {
-  getBundleStatuses: (...args: unknown[]) => ({
-    send: (options: unknown) => {
-      bundleSendOptions.push(options)
-      return getBundleStatuses(...args)
-    },
-  }),
   getSignatureStatuses: (...args: unknown[]) => ({
     send: (options: unknown) => {
       signatureSendOptions.push(options)
       return getSignatureStatuses(...args)
     },
   }),
-} as unknown as JitoRpcType
+} as unknown as SolanaRpcType
 
 const TX_SIGNATURES = ['sigA', 'sigB'] as Signature[]
 const LIFETIMES: TransactionLifetime[] = [{ kind: 'unknown' }]
 
-const bundle = (confirmation_status: string | null) => ({
-  value: [{ confirmation_status, transactions: TX_SIGNATURES }],
+const bundle = (confirmationStatus: string | null) => ({
+  value: TX_SIGNATURES.map(() => ({ confirmationStatus, err: null })),
 })
-const noBundle = () => ({ value: [null] })
+const noBundle = () => ({ value: [null, null] })
 
 const send = vi.fn(() => {
   events.push('send')
@@ -83,6 +74,7 @@ const run = (signal: AbortSignal = new AbortController().signal) =>
   confirmBundle({
     rpc,
     signal,
+    signatures: TX_SIGNATURES,
     lifetimes: LIFETIMES,
     send,
   })
@@ -92,7 +84,6 @@ describe('confirmBundle', () => {
     vi.clearAllMocks()
     events.length = 0
     deadlineCalls.length = 0
-    bundleSendOptions.length = 0
     signatureSendOptions.length = 0
     sleepCalls.length = 0
     reached.mockReturnValue(false)
@@ -101,37 +92,27 @@ describe('confirmBundle', () => {
   })
 
   it('confirms on a later poll, not only the first', async () => {
-    getBundleStatuses
+    getSignatureStatuses
       .mockResolvedValueOnce(noBundle())
       .mockResolvedValueOnce(bundle('processed'))
       .mockResolvedValueOnce(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
 
     const result = await run()
 
     expect(result).toEqual({
       kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: TX_SIGNATURES,
-        signatureResults: [null, null],
-      },
+      value: { signatureResults: bundle('confirmed').value },
     })
-    expect(getBundleStatuses).toHaveBeenCalledTimes(3)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(3)
     // The deadline now advances on its own detached cadence (pinned in
     // pollUntilDeadline.unit.spec.ts), so no per-iteration tick count is
     // asserted here.
   })
 
-  it('polls bundle statuses no faster than the documented Jito rate limit', async () => {
-    // Jito's own block engine documents a default limit of 1 request per
-    // second per IP per region. The signature poller's 400 ms cadence (2.5
-    // req/s) would exceed it on its own, so the bundle poller must keep its
-    // own, slower interval.
-    getBundleStatuses
+  it('polls signature statuses no faster than the bundle interval', async () => {
+    getSignatureStatuses
       .mockResolvedValueOnce(noBundle())
       .mockResolvedValueOnce(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
 
     const result = await run()
 
@@ -141,7 +122,7 @@ describe('confirmBundle', () => {
     )
     expect(pollSleeps.length).toBeGreaterThan(0)
     for (const ms of pollSleeps) {
-      expect(ms).toBeGreaterThanOrEqual(1000)
+      expect(ms).toBeGreaterThanOrEqual(BUNDLE_POLL_INTERVAL_MS)
     }
   })
 
@@ -154,11 +135,10 @@ describe('confirmBundle', () => {
     expect(STATUS_RETRY_BACKOFF_CAP_MS).toBeGreaterThan(BUNDLE_POLL_INTERVAL_MS)
   })
 
-  it('slows down after a failed bundle status read', async () => {
-    getBundleStatuses
+  it('slows down after a failed status read', async () => {
+    getSignatureStatuses
       .mockRejectedValueOnce(new Error('429'))
       .mockResolvedValueOnce(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
 
     const result = await run()
 
@@ -169,26 +149,59 @@ describe('confirmBundle', () => {
     expect(pollSleeps[0]).toBeGreaterThan(BUNDLE_POLL_INTERVAL_MS)
   })
 
-  it('hands the caller signal to the bundle and signature reads', async () => {
+  it('hands the caller signal to every status read', async () => {
     // The abort signal is the only way `raceRpcs` and `BRANCH_TIMEOUT_MS` can
     // end a read that hangs. A read sent without it never rejects, the race
     // never settles, and the task hangs forever - so the *caller's* signal
     // must reach the transport on every read, by identity.
     const controller = new AbortController()
     reached.mockReturnValueOnce(false)
-    getBundleStatuses
+    getSignatureStatuses
       .mockResolvedValueOnce(noBundle())
       .mockResolvedValueOnce(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
 
     const result = await run(controller.signal)
 
     expect(result.kind).toBe('confirmed')
-    expect(bundleSendOptions).toHaveLength(2)
-    for (const options of bundleSendOptions) {
+    expect(signatureSendOptions).toHaveLength(2)
+    for (const options of signatureSendOptions) {
       expect(options).toEqual({ abortSignal: controller.signal })
     }
-    expect(signatureSendOptions).toEqual([{ abortSignal: controller.signal }])
+  })
+
+  it('reads every signature of the bundle in one request', async () => {
+    getSignatureStatuses.mockResolvedValue(bundle('confirmed'))
+
+    await run()
+
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
+    expect(getSignatureStatuses).toHaveBeenCalledWith(TX_SIGNATURES)
+  })
+
+  it('keeps polling while any signature of the bundle is unconfirmed', async () => {
+    // One read sees a bundle whole: it lands in one slot. A partial or short
+    // answer says nothing yet.
+    getSignatureStatuses
+      .mockResolvedValueOnce({
+        value: [{ confirmationStatus: 'confirmed' }, null],
+      })
+      .mockResolvedValueOnce({ value: [{ confirmationStatus: 'confirmed' }] })
+      .mockResolvedValueOnce(bundle('confirmed'))
+
+    const result = await run()
+
+    expect(result.kind).toBe('confirmed')
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(3)
+  })
+
+  it('confirms by the signatures whatever sendBundle answered', async () => {
+    // JUM-1669: a sender answered with signatures, not a bundle id. The
+    // answer differs from the bundle's signatures, so a read of it would show.
+    send.mockResolvedValueOnce(['sigX', 'sigY'] as never)
+    getSignatureStatuses.mockResolvedValue(bundle('confirmed'))
+
+    await expect(run()).resolves.toMatchObject({ kind: 'confirmed' })
+    expect(getSignatureStatuses).toHaveBeenCalledWith(TX_SIGNATURES)
   })
 
   it('builds the deadline from the caller lifetimes and rpc', async () => {
@@ -196,73 +209,11 @@ describe('confirmBundle', () => {
     // an empty lifetime set silently disables that policy and degrades every
     // confirmation to the 90 s ceiling, so the hand-off itself is pinned.
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(noBundle())
+    getSignatureStatuses.mockResolvedValue(noBundle())
 
     await run()
 
     expect(deadlineCalls).toEqual([{ lifetimes: LIFETIMES, rpc }])
-  })
-
-  it('enriches the confirmation with statuses for the transactions the bundle reported', async () => {
-    // The signature query must ask about the bundle's own transactions - a
-    // query for anything else silently strips the `err` details that the
-    // defence-in-depth scan in `SolanaJitoWaitForTransactionTask` relies on.
-    // The returned payload must also be the one surfaced: a usable response
-    // must not be replaced by the all-null degrade.
-    const err = { InstructionError: [0, 'AccountInUse'] }
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [{ err: null }, { err }] })
-
-    const result = await run()
-
-    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
-    expect(getSignatureStatuses).toHaveBeenCalledWith(TX_SIGNATURES)
-    if (result.kind !== 'confirmed') {
-      throw new Error('unreachable')
-    }
-    expect(result.value.signatureResults).toEqual([{ err: null }, { err }])
-  })
-
-  it('confirms with all-null signature results when the signature payload is unusable', async () => {
-    // The bundle status is the atomic fact: `confirmed` means every
-    // transaction in the bundle landed. A missing `getSignatureStatuses`
-    // payload must degrade to `null` results - the enrichment is for the
-    // `err` scan only - not veto a confirmation the bundle status already
-    // made and end in `TransactionExpired` for a landed bundle.
-    reached.mockReturnValueOnce(false).mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: null })
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: TX_SIGNATURES,
-        signatureResults: [null, null],
-      },
-    })
-    // Confirmed on the first read: a loop that kept polling for a usable
-    // payload would read more than once.
-    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
-  })
-
-  it('confirms with all-null signature results when the signature read fails', async () => {
-    // Same atomicity argument for a thrown read: a confirmed bundle status
-    // followed by a failing `getSignatureStatuses` must not spend the
-    // MAX_STATUS_READ_SILENCE_MS budget and end as `rpc-unavailable` for a
-    // landed bundle.
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockRejectedValue(new Error('502'))
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: TX_SIGNATURES,
-        signatureResults: [null, null],
-      },
-    })
-    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
   })
 
   it('does not report a broadcast that fulfils after the branch was aborted', async () => {
@@ -271,13 +222,13 @@ describe('confirmBundle', () => {
     // finalized action back to PENDING.
     const controller = new AbortController()
     const onBroadcast = vi.fn()
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+    getSignatureStatuses.mockResolvedValue(bundle('confirmed'))
     controller.abort()
 
     await confirmBundle({
       rpc,
       signal: controller.signal,
+      signatures: TX_SIGNATURES,
       lifetimes: LIFETIMES,
       send,
       onBroadcast,
@@ -286,94 +237,19 @@ describe('confirmBundle', () => {
     expect(onBroadcast).not.toHaveBeenCalled()
   })
 
-  it('confirms when `transactions` is a non-array payload', async () => {
-    // `??` tests null/undefined alone, so a truthy non-array kept the module's
-    // array type and threw a TypeError out of `.map` - reported as
-    // UnknownError for a bundle that landed. main guarded this.
-    getBundleStatuses.mockResolvedValue({
-      value: [{ confirmation_status: 'confirmed', transactions: 'sigA' }],
-    })
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: { bundleId: 'bundle-1', txSignatures: [], signatureResults: [] },
-    })
-  })
-
-  it('confirms when getSignatureStatuses returns a non-array value', async () => {
-    // Same hole one level down: `SolanaJitoWaitForTransactionTask` calls
-    // `.find()` on `signatureResults`.
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: 'not-an-array' })
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: TX_SIGNATURES,
-        signatureResults: [null, null],
-      },
-    })
-  })
-
-  it('confirms a status that carries no transactions list at all', async () => {
-    // `transactions` is unvalidated wire data. Before the guard, a confirmed
-    // status arriving without it made `txSignatures.map` a `TypeError` on the
-    // failing-read path - thrown out of the probe on every poll, spending the
-    // MAX_STATUS_READ_SILENCE_MS budget, and ending as `rpc-unavailable` for a
-    // bundle that had already landed.
-    getBundleStatuses.mockResolvedValue({
-      value: [{ confirmation_status: 'confirmed' }],
-    })
-    getSignatureStatuses.mockRejectedValue(
-      new Error('invalid params: signatures must be an array')
-    )
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: [],
-        signatureResults: [],
-      },
-    })
-    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
-    // Nothing to enrich, so the signature read is never attempted.
-    expect(getSignatureStatuses).not.toHaveBeenCalled()
-  })
-
-  it('confirms in the final probe even when the signature payload is unusable', async () => {
-    // The final probe and the loop body share `readBundle`, so the two must
-    // agree: a confirmed bundle status confirms here too, `null` payload or
-    // not.
-    reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: null })
-
-    await expect(run()).resolves.toEqual({
-      kind: 'confirmed',
-      value: {
-        bundleId: 'bundle-1',
-        txSignatures: TX_SIGNATURES,
-        signatureResults: [null, null],
-      },
-    })
-  })
-
   it('confirms in the final probe after the deadline is reached', async () => {
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(bundle('finalized'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+    getSignatureStatuses.mockResolvedValue(bundle('finalized'))
 
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
   })
 
   it('returns not-confirmed when the deadline passes with no confirmation', async () => {
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(noBundle())
+    getSignatureStatuses.mockResolvedValue(noBundle())
 
     await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
   })
@@ -385,43 +261,29 @@ describe('confirmBundle', () => {
     // observation, misreporting an answering endpoint as one that never
     // completed a read.
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue({ value: null })
+    getSignatureStatuses.mockResolvedValue({ value: null })
 
     await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
   })
 
-  it('carries the bundle-level err verbatim into the confirmation', async () => {
-    // The wait task's defence-in-depth scan reads it - shape-aware, because
-    // a landed bundle carries the truthy `{ Ok: null }`. This module only
-    // transports it; interpreting the Result shape is the task's job.
-    const err = { Ok: null }
-    getBundleStatuses.mockResolvedValue({
-      value: [
-        {
-          confirmation_status: 'confirmed',
-          transactions: TX_SIGNATURES,
-          err,
-        },
-      ],
-    })
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+  it('treats a non-array payload with a length as an answer, not a failed read', async () => {
+    // Unvalidated wire data: an object with a numeric `length` would pass a
+    // bare length check and then throw out of `.every`.
+    reached.mockReturnValue(true)
+    getSignatureStatuses.mockResolvedValue({ value: { length: 2 } })
 
-    const result = await run()
-
-    if (result.kind !== 'confirmed') {
-      throw new Error('unreachable')
-    }
-    expect(result.value.bundleErr).toBe(err)
+    await expect(run()).resolves.toEqual({ kind: 'not-confirmed' })
   })
 
   it('reports the broadcast once the submission is accepted', async () => {
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(noBundle())
+    getSignatureStatuses.mockResolvedValue(noBundle())
     const onBroadcast = vi.fn()
 
     await confirmBundle({
       rpc,
       signal: new AbortController().signal,
+      signatures: TX_SIGNATURES,
       lifetimes: LIFETIMES,
       send,
       onBroadcast,
@@ -441,6 +303,7 @@ describe('confirmBundle', () => {
       confirmBundle({
         rpc,
         signal: new AbortController().signal,
+        signatures: TX_SIGNATURES,
         lifetimes: LIFETIMES,
         send,
         onBroadcast,
@@ -453,17 +316,16 @@ describe('confirmBundle', () => {
     // Twenty failures, none of them consecutive. Only a budget that resets on
     // every answer survives them.
     for (let i = 0; i < 20; i += 1) {
-      getBundleStatuses
+      getSignatureStatuses
         .mockRejectedValueOnce(new Error('502'))
         .mockResolvedValueOnce(noBundle())
     }
-    getBundleStatuses.mockResolvedValueOnce(bundle('confirmed'))
-    getSignatureStatuses.mockResolvedValue({ value: [null, null] })
+    getSignatureStatuses.mockResolvedValueOnce(bundle('confirmed'))
 
     const result = await run()
 
     expect(result.kind).toBe('confirmed')
-    expect(getBundleStatuses).toHaveBeenCalledTimes(41)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(41)
   })
 
   it('builds the deadline before it submits the bundle', async () => {
@@ -472,7 +334,7 @@ describe('confirmBundle', () => {
     // branch's own timeout, and a slow `sendBundle` would eat the margin that
     // protects the final probe.
     reached.mockReturnValue(true)
-    getBundleStatuses.mockResolvedValue(noBundle())
+    getSignatureStatuses.mockResolvedValue(noBundle())
 
     await run()
 
@@ -483,7 +345,7 @@ describe('confirmBundle', () => {
     send.mockRejectedValueOnce(new Error('jito rejected the bundle'))
 
     await expect(run()).rejects.toThrow('jito rejected the bundle')
-    expect(getBundleStatuses).not.toHaveBeenCalled()
+    expect(getSignatureStatuses).not.toHaveBeenCalled()
   })
 
   it('throws instead of returning not-confirmed when every status read hung', async () => {
@@ -493,14 +355,14 @@ describe('confirmBundle', () => {
     // loop then exits on the aborted signal and the final probe is skipped.
     const controller = new AbortController()
     reached.mockReturnValue(false)
-    getBundleStatuses.mockImplementation(() => {
+    getSignatureStatuses.mockImplementation(() => {
       controller.abort()
       return Promise.reject(new Error('request aborted'))
     })
 
     await expect(run(controller.signal)).rejects.toThrow(/ever completed/i)
     // Exactly one read, so the throw cannot be the silence-budget rule.
-    expect(getBundleStatuses).toHaveBeenCalledTimes(1)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(1)
   })
 
   it('throws instead of returning not-confirmed when the endpoint answers once and then hangs', async () => {
@@ -511,7 +373,7 @@ describe('confirmBundle', () => {
     // the deadline and `not-confirmed` outranks every error in `raceRpcs`.
     const controller = new AbortController()
     reached.mockReturnValue(false)
-    getBundleStatuses
+    getSignatureStatuses
       .mockResolvedValueOnce(noBundle())
       .mockImplementationOnce(() => {
         controller.abort()
@@ -522,13 +384,13 @@ describe('confirmBundle', () => {
     // Two reads: the first answered, so the never-observed rule cannot be the
     // thrower, and the second never renewed the silence budget, so that rule
     // cannot be either.
-    expect(getBundleStatuses).toHaveBeenCalledTimes(2)
+    expect(getSignatureStatuses).toHaveBeenCalledTimes(2)
   })
 
   it('returns expired with its slot when the deadline ends on the blockhash verdict', async () => {
     reached.mockReturnValue(true)
     expiredAt.mockReturnValue(900n)
-    getBundleStatuses.mockResolvedValue(noBundle())
+    getSignatureStatuses.mockResolvedValue(noBundle())
 
     await expect(run()).resolves.toEqual({ kind: 'expired', slot: 900n })
   })

@@ -73,12 +73,7 @@ describe('SolanaJitoWaitForTransactionTask on resume', () => {
           options.onBroadcast()
           return {
             kind: 'confirmed',
-            value: {
-              bundleId: 'bundle-id',
-              txSignatures: [],
-              signatureResults: [],
-              bundleErr: { Ok: null },
-            },
+            value: { signatureResults: [] },
           }
         }
       )

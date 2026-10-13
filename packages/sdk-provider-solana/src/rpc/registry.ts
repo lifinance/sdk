@@ -120,9 +120,10 @@ const readProbeFailure = (error: unknown): JitoProbeResult => {
 const PROBE_TIMEOUT_MS = 5_000
 
 /**
- * Probes with `getBundleStatuses` rather than `getTipAccounts`: it is the
- * method bundle confirmation actually uses, and providers such as Helius
- * support it without exposing `getTipAccounts`.
+ * Picks the RPCs that may submit a bundle; confirmation reads signatures on
+ * every read RPC. Probes with `getBundleStatuses` rather than
+ * `getTipAccounts`: providers such as Helius support it without exposing
+ * `getTipAccounts`.
  */
 export const probeJitoRpc = async (
   rpcUrl: string

@@ -6,7 +6,7 @@ type SignatureStatusesResponse = Awaited<
 >
 
 /** Derived from the RPC type rather than hand-written, which removes every
- * `as SignatureStatus` cast. A `JitoRpcType` response assigns without one. */
+ * `as SignatureStatus` cast. */
 export type SignatureStatus = NonNullable<
   SignatureStatusesResponse['value'][number]
 >
