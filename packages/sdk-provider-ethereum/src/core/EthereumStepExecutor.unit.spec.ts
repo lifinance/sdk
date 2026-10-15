@@ -14,6 +14,7 @@ import { EthereumCheckPermitsTask } from './tasks/EthereumCheckPermitsTask.js'
 import { EthereumNativePermitTask } from './tasks/EthereumNativePermitTask.js'
 import { EthereumPermit2AllowanceTask } from './tasks/EthereumPermit2AllowanceTask.js'
 import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
+import { EthereumRecheckAllowanceTask } from './tasks/EthereumRecheckAllowanceTask.js'
 import { EthereumResetAllowanceTask } from './tasks/EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
@@ -284,6 +285,7 @@ const ETHEREUM_TASKS: TaskClass[] = [
   EthereumCheckBalanceTask,
   EthereumPermit2AllowanceTask,
   EthereumPrepareTransactionTask,
+  EthereumRecheckAllowanceTask,
   EthereumSignAndExecuteTask,
   EthereumWaitForTransactionTask,
   EthereumWaitForTransactionStatusTask,
