@@ -1,41 +1,29 @@
 import type { EthereumStepExecutorContext } from '../../../types.js'
-import { resolveAllowanceSpender } from './resolveAllowanceSpender.js'
 import { shouldCheckForAllowance } from './shouldCheckForAllowance.js'
 
 /**
  * Whether the step had no `estimate.approvalAddress` before prepare and the
  * re-quote brought one. No allowance was checked then (`allowanceSpender` is
- * unset), and the step now needs it checked. The Permit2 lane is left out: its
- * allowance and signature tasks run before prepare.
+ * unset), and the step now needs it checked. The allowance tasks resolve the
+ * spender themselves, so on a Permit2 chain they approve `fromChain.permit2`.
  */
-export const hasApprovalAddressAppearedAtPrepare = async (
+export const hasApprovalAddressAppearedAtPrepare = (
   context: EthereumStepExecutorContext
-): Promise<boolean> => {
+): boolean => {
   const {
     step,
     allowanceSpender,
-    hasMatchingPermit,
-    executionStrategy,
     isBridgeExecution,
     isFromNativeToken,
     statusManager,
   } = context
-  if (
-    allowanceSpender ||
-    hasMatchingPermit ||
-    !executionStrategy ||
-    !shouldCheckForAllowance(
+  return (
+    !allowanceSpender &&
+    shouldCheckForAllowance(
       step,
       isBridgeExecution,
       isFromNativeToken,
       statusManager
     )
-  ) {
-    return false
-  }
-  const { permit2Supported } = await resolveAllowanceSpender(
-    context,
-    executionStrategy
   )
-  return !permit2Supported
 }

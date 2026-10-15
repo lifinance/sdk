@@ -6,4 +6,6 @@ An ERC-20 step can now get its spender from `/stepTransaction`. Some providers, 
 
 Now a new task runs after the transaction is prepared and before it is signed. When the step had no `approvalAddress` before prepare and the re-quote brings one, the task reads the allowance for it, and resets and sets it only if it falls short. In `batched`, the approval goes into the batch with the transaction.
 
-A step that already had an `approvalAddress` before prepare behaves as before, even if the re-quote changes it. The task also does not run when a signed native permit covers the allowance, when the step skips approval, or on the Permit2 lane.
+On a chain with Permit2, the approval goes to the Permit2 contract, as it would before prepare.
+
+A step that already had an `approvalAddress` before prepare behaves as before, even if the re-quote changes it. The task also does not run when the step skips approval.
