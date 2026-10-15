@@ -131,6 +131,31 @@ describe('the spender appears at /stepTransaction', () => {
     expect(approvedSpender(batch.calls[0].data)).toBe(EXECUTION_SPENDER)
     expect(batch.calls[1].data).toBe(SWAP_CALLDATA)
   })
+
+  it('approves it directly on a Permit2 chain when the step is not a lifi step', async () => {
+    const scenario = buildScenario({
+      chain: buildChain(),
+      step: buildStep({
+        type: 'jumper',
+        approvalAddress: '',
+        transactionRequest: buildTransactionRequest({ data: SWAP_CALLDATA }),
+      }),
+    })
+
+    await scenario.run()
+
+    expect(allowanceReads(scenario)).toEqual([
+      [FROM_ADDRESS, EXECUTION_SPENDER],
+    ])
+    expect(scenario.events('signTypedData')).toEqual([])
+    const sends = scenario.events('sendTransaction')
+    expect(sends.map(({ to }) => to)).toEqual([
+      FROM_TOKEN_ADDRESS,
+      APPROVAL_ADDRESS,
+    ])
+    expect(approvedSpender(sends[0].data)).toBe(EXECUTION_SPENDER)
+    expect(sends[1].data).toBe(SWAP_CALLDATA)
+  })
 })
 
 describe('the allowance is left alone after prepare', () => {
