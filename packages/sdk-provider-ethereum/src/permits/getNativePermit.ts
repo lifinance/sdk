@@ -18,6 +18,7 @@ import {
   DAI_LIKE_PERMIT_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH_WITH_SALT,
+  EIP712_DOMAINS_WITHOUT_VERSION,
   eip2612Types,
 } from './constants.js'
 import type { NativePermitData } from './types.js'
@@ -78,7 +79,34 @@ function makeDomainSeparator({
   return keccak256(encoded)
 }
 
-function validateDomainSeparator({
+/**
+ * Builds a domain separator for the EIP-712 shapes that omit `version`, e.g.
+ * `EIP712Domain(string name,uint256 chainId,address verifyingContract)`.
+ *
+ * Both no-version signatures encode to the same ABI layout — `uint` and
+ * `uint256` are the same type on the wire — so only the typehash differs and
+ * the caller picks which one to try.
+ */
+function makeDomainSeparatorWithoutVersion({
+  name,
+  chainId,
+  verifyingContract,
+  typeHash,
+}: {
+  name: string
+  chainId: number
+  verifyingContract: Address
+  typeHash: Hex
+}): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      parseAbiParameters('bytes32, bytes32, uint256, address'),
+      [typeHash, keccak256(toBytes(name)), BigInt(chainId), verifyingContract]
+    )
+  )
+}
+
+export function validateDomainSeparator({
   name,
   version,
   chainId,
@@ -122,6 +150,35 @@ function validateDomainSeparator({
               chainId,
               verifyingContract,
             },
+      }
+    }
+  }
+
+  // Tokens whose DOMAIN_SEPARATOR was built from a no-version typehash — the
+  // shapes documented by EIP712_DOMAINS_WITHOUT_VERSION — match neither branch
+  // above, so `isValid` came back false, `getNativePermit` reported no native
+  // permit, and the flow paid for a separate approval transaction instead of
+  // signing a gasless one. The failure was silent and on the safe side, which
+  // is why it survived unnoticed.
+  //
+  // The domain carries no `version` field here on purpose: the signed payload
+  // has to reproduce the contract's own separator, and that separator has no
+  // version to reproduce.
+  for (const typeHash of EIP712_DOMAINS_WITHOUT_VERSION) {
+    const computedDS = makeDomainSeparatorWithoutVersion({
+      name,
+      chainId,
+      verifyingContract,
+      typeHash,
+    })
+    if (domainSeparator.toLowerCase() === computedDS.toLowerCase()) {
+      return {
+        isValid: true,
+        domain: {
+          name,
+          chainId,
+          verifyingContract,
+        },
       }
     }
   }
