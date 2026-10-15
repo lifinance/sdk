@@ -1,4 +1,4 @@
-import { BaseStepExecutionTask, type TaskResult } from '@lifi/sdk'
+import { BaseStepExecutionTask, TaskPipeline, type TaskResult } from '@lifi/sdk'
 import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumCheckAllowanceTask } from './EthereumCheckAllowanceTask.js'
 import { EthereumResetAllowanceTask } from './EthereumResetAllowanceTask.js'
@@ -16,11 +16,11 @@ import { hasApprovalAddressAppearedAtPrepare } from './helpers/hasApprovalAddres
  * A spender that was already set before prepare is not checked again here.
  */
 export class EthereumCheckAllowanceAfterPrepareTask extends BaseStepExecutionTask {
-  private readonly allowanceTasks: BaseStepExecutionTask[] = [
+  private readonly allowancePipeline = new TaskPipeline([
     new EthereumCheckAllowanceTask(),
     new EthereumResetAllowanceTask(),
     new EthereumSetAllowanceTask(),
-  ]
+  ])
 
   override async shouldRun(
     context: EthereumStepExecutorContext
@@ -29,17 +29,6 @@ export class EthereumCheckAllowanceAfterPrepareTask extends BaseStepExecutionTas
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    for (const task of this.allowanceTasks) {
-      if (!(await task.shouldRun(context))) {
-        continue
-      }
-      const result = await task.run(context)
-      if (result.status === 'PAUSED') {
-        return result
-      }
-      Object.assign(context, result.context)
-    }
-
-    return { status: 'COMPLETED' }
+    return this.allowancePipeline.run(context)
   }
 }
