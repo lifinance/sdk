@@ -39,7 +39,7 @@ import {
 
 const SWAP_CALLDATA: Hex = `0x${'e3'.repeat(36)}`
 
-/** The spender `/stepTransaction` answers with, unlike the routing-time one. */
+/** The spender `/stepTransaction` answers with. */
 const EXECUTION_SPENDER: Address = '0x5567954cD026CEbFE486062cb75848e0f1c12E58'
 
 /** No Permit2: the spender is `estimate.approvalAddress`. */
@@ -49,8 +49,8 @@ const CLASSIC_CHAIN: ExtendedChain = {
   permit2Proxy: undefined,
 } as unknown as ExtendedChain
 
-/** `/stepTransaction` moves the spender, as Relay's executable quote can. */
-const moveSpender = (step: LiFiStep): LiFiStep => {
+/** `/stepTransaction` sets the spender, as Relay's executable quote can. */
+const setSpender = (step: LiFiStep): LiFiStep => {
   const { typedData: _typedData, ...rest } = step
   return {
     ...rest,
@@ -58,68 +58,67 @@ const moveSpender = (step: LiFiStep): LiFiStep => {
   }
 }
 
+/** A routing-time step with no spender, as an indicative quote gives. */
 const buildScenario = (options: Partial<ScenarioOptions> = {}): Scenario =>
   createScenario({
     chain: CLASSIC_CHAIN,
     step: buildStep({
+      approvalAddress: '',
       transactionRequest: buildTransactionRequest({ data: SWAP_CALLDATA }),
     }),
     allowance: 0n,
-    onStepTransaction: moveSpender,
+    onStepTransaction: setSpender,
     ...options,
   })
 
-const approvedSpenders = (data: (string | undefined)[]): Address[] =>
-  data.map((calldata) => decodeApproval(calldata as Hex).spender)
+const allowanceReads = (scenario: Scenario): unknown[] =>
+  scenario
+    .events('readContract')
+    .filter(({ functionName }) => functionName === 'allowance')
+    .map(({ args }) => args)
+
+const approvedSpender = (data: string | undefined): Address =>
+  decodeApproval(data as Hex).spender
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('the spender moves at /stepTransaction', () => {
-  it('approves the new spender before the swap when it holds no allowance', async () => {
+describe('the spender appears at /stepTransaction', () => {
+  it('approves it before the swap when it holds no allowance', async () => {
     const scenario = buildScenario()
 
     await scenario.run()
 
+    expect(allowanceReads(scenario)).toEqual([
+      [FROM_ADDRESS, EXECUTION_SPENDER],
+    ])
     const sends = scenario.events('sendTransaction')
     expect(sends.map(({ to }) => to)).toEqual([
       FROM_TOKEN_ADDRESS,
-      FROM_TOKEN_ADDRESS,
       APPROVAL_ADDRESS,
     ])
-    // The routing-time approval is already on-chain; the second one is the
-    // allowance the swap pulls through.
-    expect(approvedSpenders(sends.slice(0, 2).map(({ data }) => data))).toEqual(
-      [APPROVAL_ADDRESS, EXECUTION_SPENDER]
-    )
-    expect(sends[2].data).toBe(SWAP_CALLDATA)
+    expect(approvedSpender(sends[0].data)).toBe(EXECUTION_SPENDER)
+    expect(sends[1].data).toBe(SWAP_CALLDATA)
     expect(scenario.events('getStepTransaction')).toHaveLength(1)
   })
 
-  it('reads the new allowance and sends no second approval when it suffices', async () => {
+  it('sends no approval when its allowance suffices', async () => {
     const scenario = buildScenario({
       allowanceBySpender: { [EXECUTION_SPENDER]: BigInt(FROM_AMOUNT) },
     })
 
     await scenario.run()
 
-    expect(
-      scenario
-        .events('readContract')
-        .filter(({ functionName }) => functionName === 'allowance')
-        .map(({ args }) => args)
-    ).toEqual([
-      [FROM_ADDRESS, APPROVAL_ADDRESS],
+    expect(allowanceReads(scenario)).toEqual([
       [FROM_ADDRESS, EXECUTION_SPENDER],
     ])
     const sends = scenario.events('sendTransaction')
-    expect(sends).toHaveLength(2)
-    expect(approvedSpenders([sends[0].data])).toEqual([APPROVAL_ADDRESS])
-    expect(sends[1].data).toBe(SWAP_CALLDATA)
+    expect(sends).toHaveLength(1)
+    expect(sends[0].data).toBe(SWAP_CALLDATA)
   })
 
-  it('batches the approval for the new spender only', async () => {
+  it('batches the approval with the swap', async () => {
     const scenario = buildScenario({
       capabilities: { atomic: { status: 'supported' } },
     })
@@ -129,20 +128,35 @@ describe('the spender moves at /stepTransaction', () => {
     expect(scenario.events('sendTransaction')).toEqual([])
     const [batch] = scenario.events('sendCalls')
     expect(batch.calls).toHaveLength(2)
-    expect(approvedSpenders([batch.calls[0].data])).toEqual([EXECUTION_SPENDER])
+    expect(approvedSpender(batch.calls[0].data)).toBe(EXECUTION_SPENDER)
     expect(batch.calls[1].data).toBe(SWAP_CALLDATA)
   })
+})
 
-  it('checks the allowance once when the spender holds', async () => {
+describe('the allowance is left alone after prepare', () => {
+  it('when the step had a spender before prepare, even if the re-quote moves it', async () => {
+    const scenario = buildScenario({
+      step: buildStep({
+        transactionRequest: buildTransactionRequest({ data: SWAP_CALLDATA }),
+      }),
+    })
+
+    await scenario.run()
+
+    expect(allowanceReads(scenario)).toEqual([[FROM_ADDRESS, APPROVAL_ADDRESS]])
+    const sends = scenario.events('sendTransaction')
+    expect(sends).toHaveLength(2)
+    expect(approvedSpender(sends[0].data)).toBe(APPROVAL_ADDRESS)
+  })
+
+  it('when the re-quote brings no spender either', async () => {
     const scenario = buildScenario({ onStepTransaction: undefined })
 
     await scenario.run()
 
-    expect(
-      scenario
-        .events('readContract')
-        .filter(({ functionName }) => functionName === 'allowance')
-    ).toHaveLength(1)
-    expect(scenario.events('sendTransaction')).toHaveLength(2)
+    expect(allowanceReads(scenario)).toEqual([])
+    const sends = scenario.events('sendTransaction')
+    expect(sends).toHaveLength(1)
+    expect(sends[0].data).toBe(SWAP_CALLDATA)
   })
 })

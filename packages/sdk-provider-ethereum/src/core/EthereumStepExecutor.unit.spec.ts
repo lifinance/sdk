@@ -8,13 +8,13 @@ import type { Address, Client } from 'viem'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { EthereumStepExecutorContext } from '../types.js'
 import { EthereumStepExecutor } from './EthereumStepExecutor.js'
+import { EthereumCheckAllowanceAfterPrepareTask } from './tasks/EthereumCheckAllowanceAfterPrepareTask.js'
 import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
 import { EthereumCheckBalanceTask } from './tasks/EthereumCheckBalanceTask.js'
 import { EthereumCheckPermitsTask } from './tasks/EthereumCheckPermitsTask.js'
 import { EthereumNativePermitTask } from './tasks/EthereumNativePermitTask.js'
 import { EthereumPermit2AllowanceTask } from './tasks/EthereumPermit2AllowanceTask.js'
 import { EthereumPrepareTransactionTask } from './tasks/EthereumPrepareTransactionTask.js'
-import { EthereumRecheckAllowanceTask } from './tasks/EthereumRecheckAllowanceTask.js'
 import { EthereumResetAllowanceTask } from './tasks/EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from './tasks/EthereumSetAllowanceTask.js'
 import { EthereumSignAndExecuteTask } from './tasks/EthereumSignAndExecuteTask.js'
@@ -285,7 +285,7 @@ const ETHEREUM_TASKS: TaskClass[] = [
   EthereumCheckBalanceTask,
   EthereumPermit2AllowanceTask,
   EthereumPrepareTransactionTask,
-  EthereumRecheckAllowanceTask,
+  EthereumCheckAllowanceAfterPrepareTask,
   EthereumSignAndExecuteTask,
   EthereumWaitForTransactionTask,
   EthereumWaitForTransactionStatusTask,

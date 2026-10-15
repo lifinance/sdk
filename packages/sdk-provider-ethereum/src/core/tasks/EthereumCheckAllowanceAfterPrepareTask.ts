@@ -3,20 +3,19 @@ import type { EthereumStepExecutorContext } from '../../types.js'
 import { EthereumCheckAllowanceTask } from './EthereumCheckAllowanceTask.js'
 import { EthereumResetAllowanceTask } from './EthereumResetAllowanceTask.js'
 import { EthereumSetAllowanceTask } from './EthereumSetAllowanceTask.js'
-import { hasAllowanceSpenderChanged } from './helpers/hasAllowanceSpenderChanged.js'
+import { hasApprovalAddressAppearedAtPrepare } from './helpers/hasApprovalAddressAppearedAtPrepare.js'
 
 /**
  * Runs after PrepareTransaction. Some providers only know the spender once
- * `/stepTransaction` builds the executable transaction, so the re-quote can
- * move `estimate.approvalAddress` after the allowance tasks approved the
- * routing-time one. The allowance is then read again for the new spender, and
- * reset and set only if it falls short, before the transaction is signed.
+ * `/stepTransaction` builds the executable transaction, so the routing-time
+ * step carries no `estimate.approvalAddress` and the allowance tasks before
+ * prepare do not run. When the re-quote brings one, the allowance is read for
+ * it, and reset and set only if it falls short, before the transaction is
+ * signed.
  *
- * Without this, the transaction goes out against a spender holding no
- * allowance and reverts. In `standard` the approval to the old spender is
- * already on-chain; this only adds the one the transaction needs.
+ * A spender that was already set before prepare is not checked again here.
  */
-export class EthereumRecheckAllowanceTask extends BaseStepExecutionTask {
+export class EthereumCheckAllowanceAfterPrepareTask extends BaseStepExecutionTask {
   private readonly allowanceTasks: BaseStepExecutionTask[] = [
     new EthereumCheckAllowanceTask(),
     new EthereumResetAllowanceTask(),
@@ -26,14 +25,10 @@ export class EthereumRecheckAllowanceTask extends BaseStepExecutionTask {
   override async shouldRun(
     context: EthereumStepExecutorContext
   ): Promise<boolean> {
-    return hasAllowanceSpenderChanged(context)
+    return hasApprovalAddressAppearedAtPrepare(context)
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    // Before prepare, only the allowance tasks queue calls, and those calls
-    // approve the old spender: drop them so the batch carries the new ones.
-    context.calls = []
-
     for (const task of this.allowanceTasks) {
       if (!(await task.shouldRun(context))) {
         continue
