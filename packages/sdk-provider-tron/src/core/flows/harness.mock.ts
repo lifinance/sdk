@@ -344,6 +344,8 @@ export interface FakeTronNetwork {
   readonly unknown: string[]
   /** Contract result (`'REVERT'`, …) of the next transaction that lands. */
   failNextWith: string | undefined
+  /** Changes every `/advanced/stepTransaction` answer before it is sent. */
+  onStepTransaction: ((step: LiFiStep) => LiFiStep) | undefined
   /** On-chain TRC-20 allowance of `owner` for `spender`. */
   allowance(token: string, owner: string, spender: string): bigint
   setAllowance(
@@ -506,6 +508,7 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
     statusRequests: [] as Record<string, string>[],
     unknown: [] as string[],
     failNextWith: undefined as string | undefined,
+    onStepTransaction: undefined as ((step: LiFiStep) => LiFiStep) | undefined,
     allowance(token: string, owner: string, spender: string): bigint {
       return allowances.get(allowanceKey(token, owner, spender)) ?? 0n
     },
@@ -649,9 +652,10 @@ const createFakeTronNetwork = (): FakeTronNetwork & {
       network.apiCalls.push(`${method} ${path}`)
       if (method === 'POST' && path === '/advanced/stepTransaction') {
         const requested = JSON.parse(String(init?.body)) as LiFiStep
+        const answered = network.onStepTransaction?.(requested) ?? requested
         const quote = {
-          ...requested,
-          transactionRequest: { data: quoteTransactionData(requested) },
+          ...answered,
+          transactionRequest: { data: quoteTransactionData(answered) },
         }
         network.requotes.push(quote)
         return json(quote)
