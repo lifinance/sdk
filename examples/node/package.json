@@ -10,8 +10,8 @@
   "dependencies": {
     "@lifi/data-types": "^7.1.6",
     "@lifi/sdk": "^4.12.1",
-    "@lifi/sdk-provider-ethereum": "^4.2.9",
-    "dotenv": "^18.0.7",
+    "@lifi/sdk-provider-ethereum": "^4.2.10",
+    "dotenv": "^18.0.8",
     "viem": "^2.57.4"
   },
   "scripts": {
