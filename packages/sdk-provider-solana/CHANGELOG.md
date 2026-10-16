@@ -1,5 +1,11 @@
 # @lifi/sdk-provider-solana
 
+## 4.3.7
+
+### Patch Changes
+
+- [#522](https://github.com/lifinance/sdk/pull/522) [`1bf151e`](https://github.com/lifinance/sdk/commit/1bf151e347ae06c3688b0fa5fa08422e49a7fa76) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: bitcoinjs-lib to 7.0.4, @solana/kit to 8.5.0, @mysten/sui to 2.36.0.
+
 ## 4.3.6
 
 ### Patch Changes

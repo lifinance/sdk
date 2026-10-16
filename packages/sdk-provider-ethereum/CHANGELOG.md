@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.11
+
+### Patch Changes
+
+- [#523](https://github.com/lifinance/sdk/pull/523) [`cdbc058`](https://github.com/lifinance/sdk/commit/cdbc0584d1750d9d765a85970a0cb87fbd0d6c01) Thanks [@chybisov](https://github.com/chybisov)! - Keep one wallet poll per call bundle with every viem version. Since viem 2.57.5 a wait for a call bundle shares its poll only when it passes the same `status` function. The SDK passed a new function on each call. Two waits for one bundle then polled the wallet twice, and the second wait could report a final `SignatureRejected` for a bundle that it did not start. Now all waits for one bundle pass the same function.
+
+- [#525](https://github.com/lifinance/sdk/pull/525) [`abb0ab6`](https://github.com/lifinance/sdk/commit/abb0ab658007a7b4d73301d8fea3d89bbfe467cd) Thanks [@chybisov](https://github.com/chybisov)! - Raise the `viem` range to `^2.57.7`.
+
 ## 4.2.10
 
 ### Patch Changes
