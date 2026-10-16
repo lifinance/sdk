@@ -524,3 +524,65 @@ describe('waitForBatchTransactionReceipt: a bundle the wallet does not know', ()
     expectBundleNotFound(joined.error)
   })
 })
+
+// viem 2.57.5 and later share a poll only for waits that pass the same `status`
+// function. The test does not depend on the installed viem version.
+describe('waitForBatchTransactionReceipt: one status function per bundle', () => {
+  const walletWithRecordedStatus = (uid: string) => {
+    const statuses: unknown[] = []
+    const client = {
+      uid,
+      waitForCallsStatus: vi.fn(async ({ status }: { status: unknown }) => {
+        statuses.push(status)
+        throw new Error('stop')
+      }),
+    } as unknown as Client
+    return { client, statuses }
+  }
+
+  it('passes the same status function to every wait for one bundle', async () => {
+    const { client, statuses } = walletWithRecordedStatus('shared-1')
+    const waits = [
+      waitForBatchTransactionReceipt(client, BATCH_ID),
+      waitForBatchTransactionReceipt(client, BATCH_ID),
+    ].map((wait) => wait.catch(() => undefined))
+    await Promise.all(waits)
+
+    expect(statuses).toHaveLength(2)
+    expect(statuses[0]).toBeTypeOf('function')
+    expect(statuses[1]).toBe(statuses[0])
+  })
+
+  it('starts with a new status function after every wait of the bundle ended', async () => {
+    const { client, statuses } = walletWithRecordedStatus('shared-2')
+    await waitForBatchTransactionReceipt(client, BATCH_ID).catch(
+      () => undefined
+    )
+    await waitForBatchTransactionReceipt(client, BATCH_ID).catch(
+      () => undefined
+    )
+
+    expect(statuses).toHaveLength(2)
+    expect(statuses[1]).not.toBe(statuses[0])
+  })
+
+  it('does not share the status function between bundles or clients', async () => {
+    const first = walletWithRecordedStatus('shared-3')
+    const second = walletWithRecordedStatus('shared-4')
+    const otherBatch = `0x${'cd'.repeat(32)}` as Hash
+    await Promise.all([
+      waitForBatchTransactionReceipt(first.client, BATCH_ID).catch(
+        () => undefined
+      ),
+      waitForBatchTransactionReceipt(first.client, otherBatch).catch(
+        () => undefined
+      ),
+      waitForBatchTransactionReceipt(second.client, BATCH_ID).catch(
+        () => undefined
+      ),
+    ])
+
+    const all = [...first.statuses, ...second.statuses]
+    expect(new Set(all).size).toBe(3)
+  })
+})
