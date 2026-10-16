@@ -165,6 +165,7 @@ settings:
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
+  '@lifi/data-types>@lifi/types': ^18.13.0
   zod@<4.6.0: '>=4.6.0'
 
 importers:
@@ -178,11 +179,11 @@ importers:
         specifier: ^4.12.1
         version: 4.12.1
       '@lifi/sdk-provider-ethereum':
-        specifier: ^4.2.9
-        version: 4.2.9(typescript@7.0.2)
+        specifier: ^4.2.10
+        version: 4.2.10(typescript@7.0.2)
       dotenv:
-        specifier: ^18.0.7
-        version: 18.0.7
+        specifier: ^18.0.8
+        version: 18.0.8
       viem:
         specifier: ^2.57.4
         version: 2.57.4(typescript@7.0.2)
@@ -361,17 +362,14 @@ packages:
   '@lifi/data-types@7.1.6':
     resolution: {integrity: sha512-3WJ02zhHIWr8CJgZSXVMQVlcLC6aBpLqwAmIMt6iPP0AFSAzIgYeL40p/pxtdHby3JmsouBiQZ/OKuwa4Ltv4A==}
 
-  '@lifi/sdk-provider-ethereum@4.2.9':
-    resolution: {integrity: sha512-Uw6ulsq2nzAILUPsgWZDb0TRCjQSsXFmMiVcpJuTrQ0YRpByqzgWnWljiLn9ydH7TXzpY3I8QOhrzGwnZ5QWkQ==}
+  '@lifi/sdk-provider-ethereum@4.2.10':
+    resolution: {integrity: sha512-6WL5WCz1PgQF46vu+RTcLRiBBK1s6uy0qcIuy0+G/Zc6X4Mpd8PUNVATTd+m1xR4RQse39gP6NkpbrCBTmreHQ==}
 
   '@lifi/sdk@4.12.1':
     resolution: {integrity: sha512-y3Ay06NU9h5siR41EIXJecoMu+A/rA8cXI2bE1QQ1akuDDa6qIVFy0/TDpYDGfEveDTJScfU8x0r5jzRR/aUxg==}
 
   '@lifi/types@18.13.0':
     resolution: {integrity: sha512-WHZTVeN6/ijMnducCNcEeW6uirVtNW86CrB6JKZki7hBgI0rg106nSuD+yf1599q4i7igezppS02Z+M6W6BPAA==}
-
-  '@lifi/types@18.4.0':
-    resolution: {integrity: sha512-H0c2fwrS7fyPLVzEf8UydZ1rfNXCxW7TGfsqf0goGH2BiLIkcBAVIpiCzuIB+YBgKCwZ53wIvgBa+6AZe7Y5PQ==}
 
   '@noble/ciphers@1.3.0':
     resolution: {integrity: sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==}
@@ -528,8 +526,8 @@ packages:
       zod:
         optional: true
 
-  dotenv@18.0.7:
-    resolution: {integrity: sha512-QEvMEF8ca3GNZJJnAbOgxpj5ULhBvnMcURp+XKrtvqFNPgjBvYoswQ0Jl2cO7JzCjxZjJhr9ZuIEhlrRxMft/Q==}
+  dotenv@18.0.8:
+    resolution: {integrity: sha512-2KDeoFoK/zRtcnbunCDlLG5VWVMcyqeQc6iK65o231nfNAcuGrKoqUQfJFUtBI+QlShk5HKIHxwebBtUl3rEfA==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -676,9 +674,9 @@ snapshots:
 
   '@lifi/data-types@7.1.6':
     dependencies:
-      '@lifi/types': 18.4.0
+      '@lifi/types': 18.13.0
 
-  '@lifi/sdk-provider-ethereum@4.2.9(typescript@7.0.2)':
+  '@lifi/sdk-provider-ethereum@4.2.10(typescript@7.0.2)':
     dependencies:
       '@lifi/sdk': 4.12.1
       viem: 2.57.4(typescript@7.0.2)
@@ -693,8 +691,6 @@ snapshots:
       '@lifi/types': 18.13.0
 
   '@lifi/types@18.13.0': {}
-
-  '@lifi/types@18.4.0': {}
 
   '@noble/ciphers@1.3.0': {}
 
@@ -785,7 +781,7 @@ snapshots:
     optionalDependencies:
       typescript: 7.0.2
 
-  dotenv@18.0.7: {}
+  dotenv@18.0.8: {}
 
   esbuild@0.28.2:
     optionalDependencies:
