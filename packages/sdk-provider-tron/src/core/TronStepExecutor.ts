@@ -19,6 +19,7 @@ import type {
   TronStepExecutorOptions,
 } from '../types.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
+import { TronCheckAllowanceAfterPrepareTask } from './tasks/TronCheckAllowanceAfterPrepareTask.js'
 import { TronCheckAllowanceTask } from './tasks/TronCheckAllowanceTask.js'
 import { TronSetAllowanceTask } from './tasks/TronSetAllowanceTask.js'
 import { TronSignAndExecuteTask } from './tasks/TronSignAndExecuteTask.js'
@@ -70,6 +71,7 @@ export class TronStepExecutor extends BaseStepExecutor {
       new TronSetAllowanceTask(),
       new CheckBalanceTask(),
       new PrepareTransactionTask(),
+      new TronCheckAllowanceAfterPrepareTask(),
       new TronSignAndExecuteTask(),
       new TronWaitForTransactionTask(),
       new WaitForTransactionStatusTask(

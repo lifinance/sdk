@@ -21,6 +21,7 @@ import { getAction } from 'viem/utils'
 import { parseEthereumErrors } from '../errors/parseEthereumErrors.js'
 import type { EthereumStepExecutorContext } from '../types.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
+import { EthereumCheckAllowanceAfterPrepareTask } from './tasks/EthereumCheckAllowanceAfterPrepareTask.js'
 import { EthereumCheckAllowanceTask } from './tasks/EthereumCheckAllowanceTask.js'
 import { EthereumCheckBalanceTask } from './tasks/EthereumCheckBalanceTask.js'
 import { EthereumCheckPermitsTask } from './tasks/EthereumCheckPermitsTask.js'
@@ -147,6 +148,7 @@ export class EthereumStepExecutor extends BaseStepExecutor {
       new EthereumCheckBalanceTask(),
       new EthereumPermit2AllowanceTask(),
       new EthereumPrepareTransactionTask(),
+      new EthereumCheckAllowanceAfterPrepareTask(),
       new EthereumSignAndExecuteTask(),
       new EthereumWaitForTransactionTask(),
       new EthereumWaitForTransactionStatusTask(),

@@ -6,6 +6,7 @@ import {
 } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TronStepExecutor } from './TronStepExecutor.js'
+import { TronCheckAllowanceAfterPrepareTask } from './tasks/TronCheckAllowanceAfterPrepareTask.js'
 import { TronCheckAllowanceTask } from './tasks/TronCheckAllowanceTask.js'
 import { TronSetAllowanceTask } from './tasks/TronSetAllowanceTask.js'
 import { TronSignAndExecuteTask } from './tasks/TronSignAndExecuteTask.js'
@@ -220,6 +221,7 @@ const TRON_TASKS: TaskClass[] = [
   TronSetAllowanceTask,
   CheckBalanceTask,
   PrepareTransactionTask,
+  TronCheckAllowanceAfterPrepareTask,
   TronSignAndExecuteTask,
   TronWaitForTransactionTask,
   WaitForTransactionStatusTask,
