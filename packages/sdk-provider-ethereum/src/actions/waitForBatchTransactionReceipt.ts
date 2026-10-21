@@ -7,6 +7,25 @@ import type { WalletCallReceipt } from '../types.js'
 // Some wallets answer from a remote service that can forget an old bundle.
 const DROPPED_BUNDLE_MAX_AGE_MS = 10 * 60_000
 
+type BundleWait = {
+  /** The one `status` predicate that every wait for the bundle passes. */
+  status: (result: { statusCode: number }) => boolean
+  /** True after the wallet answered for the bundle in the shared poll. */
+  answered: boolean
+  /** The waits that did not finish yet. */
+  waiters: number
+}
+
+/**
+ * viem shares one poll between the waits for the same client and id, and
+ * calls only the predicate of the wait that started it. Since viem 2.57.5 the
+ * shared poll also needs the same `status` function (compared by identity).
+ * All waits for one bundle thus pass the same predicate from this map. Then
+ * they share one poll in every viem version, and only the first wait of the
+ * bundle can see the wallet's answers.
+ */
+const bundleWaits = new Map<string, BundleWait>()
+
 const isUnknownBundleIdError = (error: any): boolean =>
   error?.name === 'UnknownBundleIdError' ||
   error?.cause?.name === 'UnknownBundleIdError' ||
@@ -58,7 +77,27 @@ export const waitForBatchTransactionReceipt = async (
     callCount?: number
   } = {}
 ): Promise<WalletCallReceipt> => {
-  let known = false
+  const waitKey = `${client.uid}:${batchHash}`
+  let bundleWait = bundleWaits.get(waitKey)
+  // The first wait of a bundle starts the poll. A wait that joins it does not
+  // see the wallet's answers, so it never has a record of them.
+  const startedPoll = !bundleWait
+  if (!bundleWait) {
+    const created: BundleWait = {
+      // viem's default, and a record that the wallet answered for this id.
+      status: ({ statusCode }) => {
+        created.answered = true
+        return statusCode === 200 || statusCode >= 300
+      },
+      answered: false,
+      waiters: 0,
+    }
+    bundleWait = created
+    bundleWaits.set(waitKey, created)
+  }
+  const sharedWait = bundleWait
+  sharedWait.waiters += 1
+
   let result: GetCallsStatusReturnType
   try {
     result = await getAction(
@@ -68,15 +107,10 @@ export const waitForBatchTransactionReceipt = async (
     )({
       id: batchHash,
       timeout: 3_600_000 * 24,
-      // viem's default, and a record that the wallet answered for this id.
-      // viem shares one poll between waits for the same client and id, and
-      // calls only the predicate of the wait that started it.
-      status: ({ statusCode }) => {
-        known = true
-        return statusCode === 200 || statusCode >= 300
-      },
+      status: sharedWait.status,
     })
   } catch (error) {
+    const known = startedPoll && sharedWait.answered
     if (!isUnknownBundleIdError(error)) {
       throw error
     }
@@ -100,6 +134,13 @@ export const waitForBatchTransactionReceipt = async (
       'The wallet has no record of the call bundle.',
       error as Error
     )
+  } finally {
+    // The last wait of the bundle removes the shared predicate. A later wait
+    // then starts a new poll and sees the wallet's answers again.
+    sharedWait.waiters -= 1
+    if (sharedWait.waiters === 0 && bundleWaits.get(waitKey) === sharedWait) {
+      bundleWaits.delete(waitKey)
+    }
   }
 
   if (result.status === 'success') {

@@ -7,9 +7,19 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
+  - '@commitlint/cli@21.2.4'
+  - '@commitlint/config-conventional@21.2.4'
+  - '@commitlint/ensure@21.2.4'
+  - '@commitlint/lint@21.2.4'
+  - '@commitlint/load@21.2.4'
+  - '@commitlint/rules@21.2.4'
+  - knip@6.42.0
 overrides:
   axios: ^1.20.0
   ws@<=8.22.0: 8.22.0
+  # @lifi/data-types 7.1.6 pins @lifi/types 18.4.0 exactly. Keep one copy with
+  # the range that @lifi/sdk asks for.
+  '@lifi/data-types>@lifi/types': ^18.13.0
   # Security (Aikido), 2026-10-12, unflagged copies. Each key has a selector that
   # covers only the advisory's affected range. These change what this repo's tests
   # use, not what consumers of @lifi/sdk-provider-tron install.

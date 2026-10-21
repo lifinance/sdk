@@ -1,2 +1,2 @@
 export const name = '@lifi/sdk-provider-solana'
-export const version = '4.3.6'
+export const version = '4.3.7'

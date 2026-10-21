@@ -10,9 +10,9 @@
   "dependencies": {
     "@lifi/data-types": "^7.1.6",
     "@lifi/sdk": "^4.12.1",
-    "@lifi/sdk-provider-ethereum": "^4.2.9",
-    "dotenv": "^18.0.7",
-    "viem": "^2.57.4"
+    "@lifi/sdk-provider-ethereum": "^4.2.11",
+    "dotenv": "^18.0.8",
+    "viem": "^2.57.7"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",
@@ -28,5 +28,5 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
-  "packageManager": "pnpm@12.11.2+sha512.25a51652a196785af5f28bda6dfe8dc582ebefa4ac1d180221ce1390231c5fb76637822ea4b6e4633ce74acdcb0a77f725af11bad38177fdeddaee818a955cb9"
+  "packageManager": "pnpm@12.14.0+sha512.c18ba6d87993d3d164cb5e8948f32b2c06ee854487e06cd8d86781342fb3e5bb4634367034711e86802baa9c37bea906ce1929ad08d70884c97d801df13389a6"
 }
