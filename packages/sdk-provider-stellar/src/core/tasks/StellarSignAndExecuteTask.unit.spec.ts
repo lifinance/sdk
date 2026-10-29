@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TransactionBuilder } from '@stellar/stellar-sdk'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildSignedTransaction,
   coveringNotFound,
@@ -76,7 +77,9 @@ const makeContext = (
 
 describe('StellarSignAndExecuteTask', () => {
   beforeEach(() => {
-    getTransactionRequestData.mockReset().mockResolvedValue('UNSIGNED_XDR')
+    getTransactionRequestData
+      .mockReset()
+      .mockResolvedValue(buildSignedTransaction().toXdr())
     submitStellarTransaction.mockReset().mockResolvedValue('network-hash')
   })
 
@@ -117,13 +120,15 @@ describe('StellarSignAndExecuteTask', () => {
   })
 
   it('signs the payload returned by getTransactionRequestData', async () => {
+    const payload = buildSignedTransaction().toXdr()
+    getTransactionRequestData.mockResolvedValueOnce(payload)
     const { context, signTransaction } = makeContext(
       buildSignedTransaction().toXdr()
     )
 
     await new StellarSignAndExecuteTask().run(context)
 
-    expect(signTransaction).toHaveBeenCalledWith('UNSIGNED_XDR', {
+    expect(signTransaction).toHaveBeenCalledWith(payload, {
       address: keypair.publicKey(),
       networkPassphrase: NETWORK,
     })
@@ -150,7 +155,9 @@ describe('StellarSignAndExecuteTask submit rejection (first run)', () => {
   }
 
   beforeEach(() => {
-    getTransactionRequestData.mockReset().mockResolvedValue('UNSIGNED_XDR')
+    getTransactionRequestData
+      .mockReset()
+      .mockResolvedValue(buildSignedTransaction().toXdr())
     submitStellarTransaction.mockReset()
     getTransaction.mockReset().mockResolvedValue(coveringNotFound())
     isKnownToStatusApi.mockReset().mockResolvedValue(false)
@@ -211,7 +218,9 @@ describe('StellarSignAndExecuteTask submit rejection (first run)', () => {
 
 describe('StellarSignAndExecuteTask pre-sign guard', () => {
   beforeEach(() => {
-    getTransactionRequestData.mockReset().mockResolvedValue('UNSIGNED_XDR')
+    getTransactionRequestData
+      .mockReset()
+      .mockResolvedValue(buildSignedTransaction().toXdr())
     submitStellarTransaction.mockReset().mockResolvedValue('network-hash')
   })
 
@@ -359,3 +368,58 @@ describe('StellarSignAndExecuteTask pre-sign guard', () => {
     expect(params.taskId).toBeUndefined()
   })
 })
+
+describe.each(['transaction', 'fee-bump'])(
+  'StellarSignAndExecuteTask %s time bounds',
+  (envelopeType) => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(MAX_TIME * 1000 + 999)
+      getTransactionRequestData.mockReset()
+      submitStellarTransaction.mockReset().mockResolvedValue('network-hash')
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it.each([
+      ['expired', MAX_TIME - 1, true],
+      ['at the inclusive upper bound', MAX_TIME, false],
+      ['valid for less than one minute', MAX_TIME + 1, false],
+      ['without an upper bound', 0, false],
+    ])('%s', async (_label, maxTime, expired) => {
+      const transaction = buildSignedTransaction({ minTime: 0, maxTime })
+      const payload =
+        envelopeType === 'fee-bump'
+          ? TransactionBuilder.buildFeeBumpTransaction(
+              keypair.publicKey(),
+              '100',
+              transaction,
+              NETWORK
+            ).toXdr()
+          : transaction.toXdr()
+      // This is the final payload after any request hook has completed.
+      getTransactionRequestData.mockResolvedValueOnce(payload)
+      const { context, signTransaction, updateAction } = makeContext(payload)
+
+      const execution = new StellarSignAndExecuteTask().run(context)
+
+      if (expired) {
+        await expect(execution).rejects.toMatchObject({
+          code: LiFiErrorCode.TransactionExpired,
+        })
+        expect(signTransaction).not.toHaveBeenCalled()
+        expect(submitStellarTransaction).not.toHaveBeenCalled()
+        expect(updateAction).not.toHaveBeenCalled()
+      } else {
+        await expect(execution).resolves.toMatchObject({ status: 'COMPLETED' })
+        expect(signTransaction).toHaveBeenCalledWith(payload, {
+          address: keypair.publicKey(),
+          networkPassphrase: NETWORK,
+        })
+        expect(submitStellarTransaction).toHaveBeenCalledTimes(1)
+      }
+    })
+  }
+)

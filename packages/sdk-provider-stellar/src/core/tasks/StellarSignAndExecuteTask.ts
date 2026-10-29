@@ -8,6 +8,7 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { StellarStepExecutorContext } from '../../types.js'
+import { assertTransactionNotExpired } from './helpers/assertTransactionNotExpired.js'
 import { classifySubmitFailure } from './helpers/classifySubmitFailure.js'
 import { deriveTransactionHash } from './helpers/deriveTransactionHash.js'
 import { getStellarTxLink } from './helpers/getStellarTxLink.js'
@@ -53,6 +54,8 @@ export class StellarSignAndExecuteTask extends BaseStepExecutionTask {
     // Checked again right before the wallet: a late write of an older run
     // can merge its transaction into this action during the await above.
     assertNoOpenTransaction(statusManager.findAction(step, action.type))
+
+    assertTransactionNotExpired(transactionRequestData, networkPassphrase)
 
     const { signedTxXdr } = await wallet.signTransaction(
       transactionRequestData,
