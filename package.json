@@ -20,6 +20,7 @@
     "check:types": "pnpm -r --parallel check:types",
     "check:circular-deps": "pnpm -r --parallel check:circular-deps",
     "test": "pnpm -r --parallel test",
+    "test:affected": "pnpm -r --parallel test:affected",
     "test:cov": "pnpm -r --parallel test:cov",
     "test:unit": "pnpm -r --parallel test:unit",
     "link:all": "pnpm -r exec pnpm link --global",
@@ -44,13 +45,13 @@
     "@size-limit/file": "^14.2.0",
     "@types/node": "^26.6.5",
     "@types/ws": "^8.18.2",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/coverage-v8": "^5.1.0",
     "husky": "^9.1.7",
     "knip": "^6.42.0",
     "size-limit": "^14.2.0",
     "tsdown": "^0.23.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "publishConfig": {
     "access": "public"
