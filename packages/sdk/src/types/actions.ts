@@ -11,6 +11,13 @@ export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
 }
 
+export type SmartDepositsStatusRequest = {
+  depositAddress: string
+  fromChain: number | string
+  txHash?: never
+  taskId?: never
+}
+
 /**
  * Optional limit-order fields. Supplying them opts a request into limit-order
  * handling; resolution happens on the backend.
