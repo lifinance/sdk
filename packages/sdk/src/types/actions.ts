@@ -11,6 +11,7 @@ export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
 }
 
+/** A Smart Deposits lookup by deposit address and source chain; resolves `getStatus` to `SmartDepositsStatusResponse`. */
 export type SmartDepositsStatusRequest = Extract<
   GetStatusRequestExtended,
   { depositAddress: string; fromChain: number | string }

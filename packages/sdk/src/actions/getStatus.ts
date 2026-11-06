@@ -26,6 +26,15 @@ export async function getStatus(
   params: SmartDepositsStatusRequest,
   options?: RequestOptions
 ): Promise<SmartDepositsStatusResponse>
+/**
+ * Check the status of a transfer. For cross chain transfers, the "bridge" parameter is required.
+ * A Smart Deposits transfer can be looked up by "depositAddress" and "fromChain".
+ * @param client - The SDK client
+ * @param params - Configuration of the requested status
+ * @param options - Request options.
+ * @throws {LiFiError} - Throws a LiFiError if request fails
+ * @returns Returns status response.
+ */
 export async function getStatus(
   client: SDKClient,
   params: GetStatusRequestExtended,
