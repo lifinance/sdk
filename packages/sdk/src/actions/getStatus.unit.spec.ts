@@ -3,17 +3,22 @@ import {
   type SmartDepositsStatusResponse,
   type StatusResponse,
 } from '@lifi/types'
-import { describe, expect, expectTypeOf, it, vi } from 'vitest'
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'
 import { getStatus } from './getStatus.js'
+import { actions } from './index.js'
 
 const mockedFetch = vi.spyOn(request, 'request')
 
 describe('getStatus', () => {
   setupTestServer()
+
+  beforeEach(() => {
+    mockedFetch.mockClear()
+  })
 
   const fromChain = ChainId.DAI
   const toChain = ChainId.POL
@@ -50,7 +55,6 @@ describe('getStatus', () => {
     )
 
     it('requests the status by deposit address and source chain', async () => {
-      mockedFetch.mockClear()
       await getStatus(client, { depositAddress, fromChain })
       const url = new URL(mockedFetch.mock.calls[0][1] as string)
       expect(url.pathname.endsWith('/status')).toBe(true)
@@ -59,7 +63,6 @@ describe('getStatus', () => {
     })
 
     it('throws without a source chain', async () => {
-      mockedFetch.mockClear()
       await expect(
         getStatus(client, { depositAddress } as unknown as Parameters<
           typeof getStatus
@@ -69,7 +72,6 @@ describe('getStatus', () => {
     })
 
     it('throws on an empty deposit address', async () => {
-      mockedFetch.mockClear()
       await expect(
         getStatus(client, { depositAddress: '', fromChain })
       ).rejects.toThrowError(invalid)
@@ -81,6 +83,9 @@ describe('getStatus', () => {
         getStatus(client, { depositAddress, fromChain })
       ).returns.toEqualTypeOf<Promise<SmartDepositsStatusResponse>>()
       expectTypeOf(() =>
+        getStatus(client, { depositAddress, fromChain, toChain })
+      ).returns.toEqualTypeOf<Promise<SmartDepositsStatusResponse>>()
+      expectTypeOf(() =>
         getStatus(client, { txHash, fromChain })
       ).returns.toEqualTypeOf<Promise<StatusResponse>>()
       expectTypeOf(() =>
@@ -88,6 +93,16 @@ describe('getStatus', () => {
       ).returns.toEqualTypeOf<Promise<StatusResponse>>()
       expectTypeOf(() =>
         getStatus(client, { txHash, depositAddress, fromChain })
+      ).returns.toEqualTypeOf<Promise<StatusResponse>>()
+    })
+
+    it('keeps the overloads on the client-bound action', () => {
+      const bound = actions(client)
+      expectTypeOf(() =>
+        bound.getStatus({ depositAddress, fromChain })
+      ).returns.toEqualTypeOf<Promise<SmartDepositsStatusResponse>>()
+      expectTypeOf(() =>
+        bound.getStatus({ txHash, fromChain })
       ).returns.toEqualTypeOf<Promise<StatusResponse>>()
     })
   })

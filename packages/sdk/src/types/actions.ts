@@ -11,12 +11,10 @@ export type GetStatusRequestExtended = GetStatusRequest & {
   fromAddress?: string
 }
 
-export type SmartDepositsStatusRequest = {
-  depositAddress: string
-  fromChain: number | string
-  txHash?: never
-  taskId?: never
-}
+export type SmartDepositsStatusRequest = Extract<
+  GetStatusRequestExtended,
+  { depositAddress: string; fromChain: number | string }
+> & { txHash?: never; taskId?: never }
 
 /**
  * Optional limit-order fields. Supplying them opts a request into limit-order
