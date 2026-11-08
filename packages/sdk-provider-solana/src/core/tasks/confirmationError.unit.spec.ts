@@ -1,6 +1,13 @@
-import { LiFiErrorCode, RPCError, TransactionError } from '@lifi/sdk'
+import {
+  isFinalTransactionError,
+  LiFiErrorCode,
+  RPCError,
+  TransactionError,
+} from '@lifi/sdk'
 import { describe, expect, it } from 'vitest'
 import type { UnconfirmedRaceResult } from '../../confirmation/raceRpcs.js'
+import { raceRpcs } from '../../confirmation/raceRpcs.js'
+import type { ConfirmationOutcome } from '../../confirmation/types.js'
 import { confirmationError } from './confirmationError.js'
 
 const MESSAGES = {
@@ -78,5 +85,34 @@ describe('confirmationError', () => {
     expect(error.message).toBe('not confirmed before the SDK stopped waiting')
     expect(error.final).toBe(false)
     expect((error.cause as AggregateError).errors).toEqual(errors)
+  })
+
+  it('maps an RPC timeout on every endpoint to RpcUnavailable', async () => {
+    const result = await raceRpcs(
+      ['primary', 'fallback'],
+      (_rpc, signal) =>
+        new Promise<ConfirmationOutcome<string>>((_resolve, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason), {
+            once: true,
+          })
+        }),
+      { timeoutMs: 15 }
+    )
+
+    expect(result.kind).toBe('rpc-unavailable')
+    if (result.kind !== 'rpc-unavailable') {
+      throw new Error('unreachable')
+    }
+
+    const thrown = confirmationError(result, MESSAGES)
+
+    expect(thrown).toBeInstanceOf(RPCError)
+    expect(thrown).toMatchObject({
+      code: LiFiErrorCode.RpcUnavailable,
+      message: 'every RPC failed',
+    })
+    // An outage is not a verdict. A resume can look the signature up again.
+    expect(isFinalTransactionError(thrown)).toBe(false)
+    expect((thrown.cause as AggregateError).errors).toHaveLength(2)
   })
 })

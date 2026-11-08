@@ -334,4 +334,48 @@ describe('parseEVMStepErrors', () => {
       vi.clearAllMocks()
     })
   })
+
+  describe('when a reverted transaction carries its revert data', () => {
+    it('keeps TransactionFailed and the original selector', async () => {
+      // Error(string). Present on the revert payload, absent from the trace text.
+      const selector = '0x08c379a0'
+      const revertData = `${selector}${'ab'.repeat(32)}`
+      const reverted = Object.assign(new Error('execution reverted'), {
+        data: revertData,
+      })
+      vi.spyOn(helpers, 'fetchTxErrorDetails').mockResolvedValue({
+        error_message: `execution reverted: ${selector}`,
+      })
+
+      const mockTransactionError = new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        ErrorMessage.TransactionReverted,
+        reverted,
+        { final: true }
+      )
+      const mockStep = {
+        action: { fromChainId: 10 },
+      } as LiFiStep
+      const mockAction = {
+        txHash:
+          '0x5c73f72a72a75d8b716ed42cd620042f53b958f028d0c9ad772908b7791c017b',
+      } as ExecutionAction
+
+      const parsedError = await parseEthereumErrors(
+        mockTransactionError,
+        mockStep,
+        mockAction
+      )
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(LiFiErrorCode.TransactionFailed)
+      expect(parsedError.cause).toBe(mockTransactionError)
+      expect(parsedError.cause.cause).toBe(reverted)
+      const payload = parsedError.cause.cause as unknown as { data: string }
+      expect(payload.data.startsWith(selector)).toBe(true)
+      expect(isFinalTransactionError(parsedError)).toBe(true)
+
+      vi.clearAllMocks()
+    })
+  })
 })
