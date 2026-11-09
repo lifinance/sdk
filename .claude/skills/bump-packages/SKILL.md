@@ -325,7 +325,12 @@ regeneration is always last, so it covers everything before it.
    `pnpm --version` (it must be 12.x) and stop. A bump can overtake an open override
    floor, for example `viem: ^2.57.7` when viem moves to 2.57.16. Then move the floor to
    the new version in the same commit. For widget, also move the example pins (see
-   `references/repo-notes.md`).
+   `references/repo-notes.md`). A Biome bump can change the formatter, so the hook's
+   `pnpm check` fails on files that the bump did not touch. Prefer a config fix in
+   `biome.json` that keeps the old output. An example is
+   `"yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } }` for
+   Biome 2.6. Run `pnpm check:write` only if no option keeps the old output. Report new
+   lint warnings in the PR.
 3. **`chore(examples): bump packages`**, for each extra pnpm project. Run the `upCommands`
    of its plan (they already carry `-C <project>`), then `pnpm -C <project> install`.
 4. **`chore: bump <pkg> to <major>`**, one commit for each approved major or group. Run
@@ -363,6 +368,9 @@ regeneration is always last, so it covers everything before it.
    node -p "require('./package.json').scripts.regen" | grep -q dedupe && pnpm dedupe
    pnpm build
    ```
+   An extra pnpm project has its own `packageManager`. Run
+   `(cd <project> && corepack use "pnpm@$P")` for each one, in the same commit.
+   Otherwise its frozen install fails with `ERR_PNPM_BAD_PM_VERSION`.
    Step 6 checks the age of the new pnpm version as well.
 
 Each commit runs the husky hooks of the repo. If a hook fails on an error that the
@@ -407,7 +415,9 @@ The summary ends with `Result: OK` or `Result: STOP`. On STOP, fix the cause fir
 Run the same checks as in step 2, but write the results to `$OUT/after-*.txt`. Do not
 overwrite the `before-*` files. Also run
 `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm dedupe --check`, `pnpm audit`,
-and `pnpm changeset status`. If the repo has `scripts/size-measure.mjs`, run it too. For
+and `pnpm changeset status`. If the repo has `scripts/size-measure.mjs`, run
+`node scripts/size-measure.mjs . "$OUT/size.json"`. The CI `bundle-size` job compares it
+with `main` on the PR. For
 each extra pnpm project, run `pnpm -C <project> install --frozen-lockfile` and its type
 check (for example `pnpm -C examples/node exec tsc --noEmit`). Restore the `version.ts`
 files afterwards.

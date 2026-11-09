@@ -10,7 +10,7 @@ repo and fix the note. Find the repo from `git remote get-url origin`.
 | Workspace | `packages/*` | `packages/*`, `examples/*`, `e2e` | `packages/*`, `e2e` |
 | Extra pnpm projects | `examples/node` (own lockfile) | none | none |
 | Unit tests | `pnpm test:unit` (the pre-push hook) | `pnpm test` | `pnpm test` |
-| Pre-commit hook | `pnpm pre-commit`: check, check:types, circular-deps, knip | `lint-staged` | `lint-staged` |
+| Pre-commit hook | `pnpm pre-commit`: check, check:types, circular-deps, knip | `lint-staged`, which runs `pnpm pre-commit` and `knip:check` | `lint-staged`, which runs `pnpm pre-commit` and `knip:check` |
 | Pre-push hook | `pnpm test:unit` | none | none |
 | `pnpm regen` | no `dedupe` at the end | runs `pnpm dedupe` | runs `pnpm dedupe` |
 | Generated files (do not commit) | `packages/*/src/version.ts` | `packages/widget/src/config/version.ts`, `packages/widget-light/src/config/version.ts` | `packages/widget/src/config/version.ts` |
@@ -20,6 +20,10 @@ repo and fix the note. Find the repo from `git remote get-url origin`.
 | PR repo | `lifinance/sdk` | `lifinance/widget` | `jumperexchange/jumper-widget` (not a fork) |
 
 ## All repos
+
+- **Commit hooks run the full type check.** A worktree without `dist/` fails with TS6305
+  or TS2307. Run `pnpm build` once before the first commit, then restore the `version.ts`
+  files.
 
 - **Earlier holds.** Read the latest merged `chore: bump packages` PR (step 3). Do not trust a
   PR number written here; it gets old after each bump.
