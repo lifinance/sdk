@@ -1,4 +1,4 @@
-import { blake2b } from '@noble/hashes/blake2b'
+import { blake2b } from '@noble/hashes/blake2.js'
 import { bech32m } from '@scure/base'
 
 const ORCHARD = 0x03

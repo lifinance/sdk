@@ -448,11 +448,11 @@ importers:
         specifier: workspace:*
         version: link:../sdk
       '@noble/hashes':
-        specifier: ^1.8.0
-        version: 1.8.0
+        specifier: ^2.4.0
+        version: 2.4.0
       '@scure/base':
-        specifier: ^1.2.6
-        version: 1.2.6
+        specifier: ^2.4.0
+        version: 2.4.0
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^5.1.0
