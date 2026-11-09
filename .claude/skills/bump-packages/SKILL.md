@@ -149,6 +149,8 @@ node -e "const j=require('$OUT/before-audit.json');console.log(JSON.stringify(j.
   trial, and step 7 run `pnpm -r --parallel --no-bail check:types` to see every error.
 - A parallel `pnpm test` can fail once with `ENOTEMPTY` on `node_modules/.vitest-cache`
   after a dependency change. Run it again once before you call it a regression.
+- If a runtime or UI dependency can get a major, record the e2e baseline now. Write it to
+  `$OUT/before-e2e.txt`. `references/repo-notes.md` gives the commands and the traps.
 
 ## 3. Analyze (read-only)
 
@@ -194,7 +196,9 @@ node "$SKILL/scripts/analyze-outdated.mjs"  --root "$WT/examples/node" > "$OUT/n
   outside `packages/` (examples, e2e) never get one. `changesetIfApproved` gives the same
   for the majors.
 - `peerFloors`: caret or tilde peer ranges of versioned packages that are behind the latest
-  release. Ask the user in step 4.
+  release. Each entry has `project`, `name`, `range` (the current peer range), and
+  `target` (the new range, with the same prefix). Ask the user in step 4. A moved floor
+  changes a published manifest, so that package needs a changeset (step 5.8).
 - `staleExcludes`: `minimumReleaseAgeExclude` entries whose version has aged out.
 - `kind`: `runtime-published` ships to users ("runtime (released)" in the table).
   `runtime-private` is a private app or the root. `dev` does not ship.
@@ -311,7 +315,9 @@ Keep the commits in this order. A reviewer can then drop one change. The lockfil
 regeneration is always last, so it covers everything before it.
 
 1. **`chore: allow <pkg>@<version> past the release-age gate`**, only for approved
-   fast-tracks. Add to `minimumReleaseAgeExclude` exactly the `excludeSet` that the user
+   fast-tracks. The user approves each fast-track directly. In auto mode, the permission
+   system blocks an exclude edit that a subagent makes on approval relayed by the main
+   session. If that occurs, stop and give the exact entries to the main session. Add to `minimumReleaseAgeExclude` exactly the `excludeSet` that the user
    saw in step 4. It is in `$OUT/upgrade-table.md`. Add a dated line with the reason to
    the comment block above the key. If an extra pnpm project uses the same
    package, add the same entries to its `pnpm-workspace.yaml` too. If a rerun gives a
@@ -325,12 +331,18 @@ regeneration is always last, so it covers everything before it.
    `pnpm --version` (it must be 12.x) and stop. A bump can overtake an open override
    floor, for example `viem: ^2.57.7` when viem moves to 2.57.16. Then move the floor to
    the new version in the same commit. For widget, also move the example pins (see
-   `references/repo-notes.md`). A Biome bump can change the formatter, so the hook's
-   `pnpm check` fails on files that the bump did not touch. Prefer a config fix in
-   `biome.json` that keeps the old output. An example is
-   `"yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } }` for
-   Biome 2.6. Run `pnpm check:write` only if no option keeps the old output. Report new
-   lint warnings in the PR.
+   `references/repo-notes.md`).
+   - **Biome.** A Biome minor can change the formatter, so the hook's `pnpm check` fails
+     on files that the bump did not touch. Prefer a config fix in `biome.json` that keeps
+     the old output. An example for Biome 2.6 is
+     `"yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } }`. If no
+     option keeps the old output, disable that formatter (`"enabled": false`). Run
+     `pnpm check:write` only if the user wants the new style.
+   - A new recommended lint rule can fail as an error, for example
+     `noComponentHookFactories` in Biome 2.6. Make the small code fix in this commit, and
+     name it in the PR. If the fix is not small, set the rule to `"warn"` in `biome.json`
+     and report it. Report new warnings (for example `useMathMinMax`), but do not fix
+     them in a bump PR.
 3. **`chore(examples): bump packages`**, for each extra pnpm project. Run the `upCommands`
    of its plan (they already carry `-C <project>`), then `pnpm -C <project> install`.
 4. **`chore: bump <pkg> to <major>`**, one commit for each approved major or group. Run
@@ -351,9 +363,9 @@ regeneration is always last, so it covers everything before it.
    block above the key. Do the same in each extra pnpm project.
 8. **`chore: add changesets for the dependency bump`**. Use the `changeset` skill of the
    repo. Give each package in the plan's `changeset` map a `patch` with a one-line summary.
-   Add the `changesetIfApproved` lines of the approved majors, and the
-   `changesetPackages` of each approved fast-track. Dev-only bumps and private projects get
-   no changeset.
+   Add the `changesetIfApproved` lines of the approved majors, the
+   `changesetPackages` of each approved fast-track, and each package whose peer floor
+   moved in step 5.6. Dev-only bumps and private projects get no changeset.
 9. **`chore: bump pnpm to <X> and regenerate the lockfile`**. Do the steps of the repo's
    `regen` script by hand. Never run `pnpm regen` itself: it runs
    `corepack use pnpm@latest`, and corepack has no age gate. Use `pnpm.target` from the
@@ -389,12 +401,25 @@ node "$SKILL/scripts/lockfile-report.mjs" --root "$WT/examples/node" --approved 
   --expect-majors "$MAJORS" > "$OUT/lockfile-examples-node.json"
 ```
 
+`MAJORS` lists every major that the user approved:
+
+- the npm majors of step 5.4 and the packages in their `requires`,
+- the `regenOnly` majors,
+- the lockfile-only majors of the step-3 preview.
+
+The preview does not apply the approved bumps. So a transitive major that an approved bump
+brings shows up first in this report. It is a STOP. Show it to the user, and add it to
+`MAJORS` only after approval.
+
 The summary ends with `Result: OK` or `Result: STOP`. On STOP, fix the cause first.
 
 - **Major jumps.** Every major jump outside `--expect-majors` is a STOP. It comes from an
   open override or a transitive range (often a dependency of an approved bump). Find the
   cause with `pnpm why <pkg>`. Then add an upper bound to the override, or show the jump
   to the user. If the user keeps it, add the name to `--expect-majors` and run again.
+  A new `0.x` line (0.3 → 0.4) is breaking under caret rules. It is a STOP only when an
+  open override of the repo moved it. A transitive `0.x` line moves with its parent, so
+  the report lists it with `(0.x line)` but does not stop. Name it in the PR.
 - **Single-copy packages.** `@lifi/sdk`, `@lifi/types`, `wagmi`, `viem`, and
   `@creit.tech/stellar-wallets-kit` must each have one copy in each app. Two copies cause
   runtime errors such as "Execution data not found". The report counts runtime instances
@@ -417,17 +442,24 @@ overwrite the `before-*` files. Also run
 `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm dedupe --check`, `pnpm audit`,
 and `pnpm changeset status`. If the repo has `scripts/size-measure.mjs`, run
 `node scripts/size-measure.mjs . "$OUT/size.json"`. The CI `bundle-size` job compares it
-with `main` on the PR. For
+with `main` on the PR. Run it for patch-only bumps too: it is the only local bundler check.
+A patch can break a bundler. For example, `viem` 2.57.16 added a literal dynamic import of
+the optional peer `mppx`, and esbuild failed in the size check. For
 each extra pnpm project, run `pnpm -C <project> install --frozen-lockfile` and its type
 check (for example `pnpm -C examples/node exec tsc --noEmit`). Restore the `version.ts`
 files afterwards.
 
 - Compare every output with its `before-*` file. Only a new error is a regression.
   Compare the test counts with `before-test-count.txt`.
-- If a runtime or UI dependency had a major, run the e2e suite as
-  `references/repo-notes.md` describes.
+- If a runtime or UI dependency had a major, run `pnpm exec playwright install` first.
+  A `@playwright/test` bump needs new browsers. Then run the e2e suite as
+  `references/repo-notes.md` describes, and compare it with `before-e2e.txt`.
+- A bump can need a change outside the manifests, for example a size-limit budget or a
+  build config. Put it in a `fix: adapt to <pkg> <version>` commit before the
+  regeneration commit (see below).
 - **If something breaks**, the regeneration commit must stay last. Drop it, fix, and
-  regenerate again. This is safe, because the regeneration is reproducible:
+  regenerate again. The new regeneration is not identical bit for bit: transitive
+  versions that aged in the meantime can land. So step 6 runs again on it:
   1. Confirm that `git log -1 --format=%s` starts with `chore: bump pnpm to`. Then run
      `git reset --hard HEAD~1`.
   2. Small break: add a commit `fix: adapt to <pkg> <version>`. Large break in a

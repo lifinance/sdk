@@ -130,4 +130,5 @@ Not applicable. This is a dependency-only change with no UI change.
 - `pnpm changeset status`: <result>.
 - Bundle size: <result, if the repo measures it>.
 - e2e: <result, or "not run" with the reason>.
+- Public docs: <the docs pages that a major or a peer floor makes wrong, or "no change">.
 ```

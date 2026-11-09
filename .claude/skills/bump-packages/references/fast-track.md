@@ -12,6 +12,9 @@ that the repo needs now, for example a security fix in `viem`. Then the user can
   say the same. The only bare entries are the first-party `@bigmi/*` and `@lifi/*`.
 - **The user approves each one** at the step-4 checkpoint. The default is to wait: the
   version passes the gate by itself within `eligibleInHours`, and the next run takes it.
+  In auto mode, the permission system blocks an exclude edit that a subagent makes on
+  approval relayed by another session. Then the subagent stops and returns the exact
+  entries. The session that has the user's approval makes the edit.
 - **Commit the exclusion.** CI runs `pnpm install --frozen-lockfile` with the committed
   `pnpm-workspace.yaml`. Never install with `--config.minimum-release-age=0`.
 - **The entry cleans itself up.** The version passes the gate after 24h. The next run

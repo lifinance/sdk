@@ -41,15 +41,23 @@ back does not land in this PR.
    second copy or a peer conflict. The script's `requires` field links majors
    that need each other. Present them as one decision.
 
+9. **The copies for each published package.** A runtime major of a package that also
+   comes in transitively (for example `@noble/hashes` from `viem`) can add a second copy.
+   Count the versions in the lockfile before and after. Then check each published package
+   that uses it: `pnpm --filter <pkg> why <dep>`. A consumer that installs one provider
+   gets the copies of that provider only. Report each new copy and its size. A second
+   copy of a stateless package costs size only. A second copy of a stateful package (a
+   registry, a context, or `instanceof` checks) can break at runtime.
+
 Use primary sources. If you cannot find the breaking changes, write "No changelog found.
 The risk is unknown." Do not guess.
 
-9. **A trial.** Release notes do not know this repo. Install the target in the worktree
+10. **A trial.** Release notes do not know this repo. Install the target in the worktree
    (`pnpm -C "$WT" up -r --latest <pkg>`), run `pnpm -r --parallel --no-bail check:types`
    and the tests, then revert (`git checkout -- . && pnpm install --frozen-lockfile`).
    Report the real errors. A trial found 4 type errors in the i18next 27 bump that the
    notes did not name.
-10. **A major that only the lockfile brings.** This is a transitive major in the step-3
+11. **A major that only the lockfile brings.** This is a transitive major in the step-3
    preview. Name its cause from the report. Say whether it is dev-only, optional, or a
    prerelease. Ask the user like for any other major.
 

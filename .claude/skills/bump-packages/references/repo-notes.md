@@ -25,6 +25,17 @@ repo and fix the note. Find the repo from `git remote get-url origin`.
   or TS2307. Run `pnpm build` once before the first commit, then restore the `version.ts`
   files.
 
+- **e2e runs.** The e2e suites call the LI.FI API and start local servers.
+  - Run the baseline on `main` in step 2, not just before the branch run. Two full runs
+    back to back hit HTTP 429 (rate limit) from the API. A failure with 429 in its trace
+    is not a regression. Wait some minutes, then run only the failed spec files again.
+  - Compare failures by spec file and test title. Line and column numbers move.
+  - Stop your own dev and preview servers first. The Playwright config does not reuse a
+    server on its port (`reuseExistingServer: false`), so a server that is still there makes
+    the run fail.
+  - widget `scripts/test-example.sh` runs `kill -9` on each process that holds its port.
+    Do not run it while other work uses that port.
+  - After a `@playwright/test` bump, run `pnpm exec playwright install`.
 - **Earlier holds.** Read the latest merged `chore: bump packages` PR (step 3). Do not trust a
   PR number written here; it gets old after each bump.
 - **Fast-track.** Earlier bumps took fresh releases on purpose (the Dynamic SDK 5.9.6 set,
