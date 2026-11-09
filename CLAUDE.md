@@ -9,6 +9,10 @@ is the hub; each provider depends on it via `workspace:*` as a **regular** depen
 - `pnpm build` runs all packages in parallel — no dependency ordering needed
 - `isolatedDeclarations: true` — all exports need explicit return type annotations
 
+## Testing
+- After a change, run `vitest run --since-last-run` (`pnpm test:affected`) to test only what the change affects
+- Before you finish, run `vitest run` (`pnpm test`) once for the whole suite
+
 ## Code Style
 - No default exports in library code
 
