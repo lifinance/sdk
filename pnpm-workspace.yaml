@@ -7,13 +7,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
-  - '@commitlint/cli@21.2.4'
-  - '@commitlint/config-conventional@21.2.4'
-  - '@commitlint/ensure@21.2.4'
-  - '@commitlint/lint@21.2.4'
-  - '@commitlint/load@21.2.4'
-  - '@commitlint/rules@21.2.4'
-  - knip@6.42.0
 overrides:
   axios: ^1.20.0
   ws@<=8.22.2: 8.22.2
