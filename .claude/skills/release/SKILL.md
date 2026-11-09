@@ -78,9 +78,8 @@ the script — which is how `sdk-provider-tron` was missed.
 ## Changesets v3 notes
 
 - **`format: false` is required, not cosmetic.** The v3 default (`format: "auto"`) skips Biome
-  when versioning and falls through to the tracked root `.prettierrc`, then fails the job with
-  `pnpm exec prettier … exited with a non-zero status (1)` because prettier isn't installed.
-  Formatting is `pnpm check:write`'s job at the end of `changeset:version`.
+  when versioning and falls back to Prettier, which isn't installed. Formatting is
+  `pnpm check:write`'s job at the end of `changeset:version`.
 - **`changeset version` exits 1 when no changesets exist.** Any unconditional call needs a
   guard — see the `Check for changesets` step in `.github/actions/preview-publish/action.yml`.
 - `changesets/action` v2 reads published packages from the `CHANGESETS_OUTPUT` file it injects
