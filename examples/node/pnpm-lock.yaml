@@ -173,24 +173,24 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^7.1.6
-        version: 7.1.6
+        specifier: ^7.2.1
+        version: 7.2.1
       '@lifi/sdk':
         specifier: ^4.12.1
         version: 4.12.1
       '@lifi/sdk-provider-ethereum':
-        specifier: ^4.2.11
-        version: 4.2.11(typescript@7.0.2)
+        specifier: ^4.2.12
+        version: 4.2.12(typescript@7.0.2)
       dotenv:
-        specifier: ^18.0.8
-        version: 18.0.8
+        specifier: ^18.0.9
+        version: 18.0.9
       viem:
-        specifier: ^2.57.7
-        version: 2.57.7(typescript@7.0.2)
+        specifier: ^2.57.16
+        version: 2.57.16(typescript@7.0.2)
     devDependencies:
       '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
+        specifier: ^26.6.6
+        version: 26.6.6
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -359,11 +359,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@lifi/data-types@7.1.6':
-    resolution: {integrity: sha512-3WJ02zhHIWr8CJgZSXVMQVlcLC6aBpLqwAmIMt6iPP0AFSAzIgYeL40p/pxtdHby3JmsouBiQZ/OKuwa4Ltv4A==}
+  '@lifi/data-types@7.2.1':
+    resolution: {integrity: sha512-ou5p6SWE2J71YeBxClPr0vzP0zK7+Z/HyYoIdwshHHYzI3BWTXSfKoWdBC4iZslHIbrgqE64h7mkkQWYQnvaMw==}
 
-  '@lifi/sdk-provider-ethereum@4.2.11':
-    resolution: {integrity: sha512-zOr02kwhs+E9TVB2/uwhZwl/7/7CKdBzAPrfBMrGnAB8NJkZ3uW+qEK8EEQHLSt/iTCgAgMaidh5/IKfp9aI/w==}
+  '@lifi/sdk-provider-ethereum@4.2.12':
+    resolution: {integrity: sha512-VVxj4bM9Qpv2qS+7NLCToEU2+kU4YCrj4lrgUgYZX7LiiUx8cwDPl+vFuADt0jfGiettdvsZ4wyVTjicSsX6Ag==}
 
   '@lifi/sdk@4.12.1':
     resolution: {integrity: sha512-y3Ay06NU9h5siR41EIXJecoMu+A/rA8cXI2bE1QQ1akuDDa6qIVFy0/TDpYDGfEveDTJScfU8x0r5jzRR/aUxg==}
@@ -392,8 +392,8 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@types/node@26.6.5':
-    resolution: {integrity: sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==}
+  '@types/node@26.6.6':
+    resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -526,8 +526,8 @@ packages:
       zod:
         optional: true
 
-  dotenv@18.0.8:
-    resolution: {integrity: sha512-2KDeoFoK/zRtcnbunCDlLG5VWVMcyqeQc6iK65o231nfNAcuGrKoqUQfJFUtBI+QlShk5HKIHxwebBtUl3rEfA==}
+  dotenv@18.0.9:
+    resolution: {integrity: sha512-3fVOW4cB02R066PUSwn8O4TJyz9NckQl7F81blIbaq9jKBm2tSmOKky7ZHIXzGvkVPXCSn6jkpziBPZdGFs8Tw==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -549,8 +549,8 @@ packages:
     peerDependencies:
       ws: 8.22.0
 
-  ox@0.14.56:
-    resolution: {integrity: sha512-Feinlj+deWEam6RIwurRE+eHZ2N3hoUb3AAjQ10BmxRCYIymfqNkv0eZ+4ln4GkgDmSGLD2rGtTMqsFYSVDC6w==}
+  ox@0.14.59:
+    resolution: {integrity: sha512-Y+DPEQScTEGKteQATjtytE1JRQ5cg1R2+DvYQ/lbhUCm/xS9n0Jnkkf2AqQyIntefQxs8xY6dZ+kyNZ7zf2FzA==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -570,11 +570,14 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  viem@2.57.7:
-    resolution: {integrity: sha512-x3UqqrcQuESaRVK6a0BvNmoNP0SVhu913uxEAxYLJx1lNYnj6ylTntfUdakCUKjk1+T+63gkdwFGJQ2O5C/nRw==}
+  viem@2.57.16:
+    resolution: {integrity: sha512-+4uaUw3NfkqjaqsZp8Zci94K33oc9rv7mIUgvPduJxsY/tI0ASi2YkaXoUVSBGfdIw/QPWuVnIf9LTFf35IoMg==}
     peerDependencies:
+      mppx: '>=0.17.0'
       typescript: '>=5.0.4'
     peerDependenciesMeta:
+      mppx:
+        optional: true
       typescript:
         optional: true
 
@@ -672,16 +675,17 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@lifi/data-types@7.1.6':
+  '@lifi/data-types@7.2.1':
     dependencies:
       '@lifi/types': 18.13.0
 
-  '@lifi/sdk-provider-ethereum@4.2.11(typescript@7.0.2)':
+  '@lifi/sdk-provider-ethereum@4.2.12(typescript@7.0.2)':
     dependencies:
       '@lifi/sdk': 4.12.1
-      viem: 2.57.7(typescript@7.0.2)
+      viem: 2.57.16(typescript@7.0.2)
     transitivePeerDependencies:
       - bufferutil
+      - mppx
       - typescript
       - utf-8-validate
       - zod
@@ -713,7 +717,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@types/node@26.6.5':
+  '@types/node@26.6.6':
     dependencies:
       undici-types: 8.9.0
 
@@ -781,7 +785,7 @@ snapshots:
     optionalDependencies:
       typescript: 7.0.2
 
-  dotenv@18.0.8: {}
+  dotenv@18.0.9: {}
 
   esbuild@0.28.2:
     optionalDependencies:
@@ -821,7 +825,7 @@ snapshots:
     dependencies:
       ws: 8.22.0
 
-  ox@0.14.56(typescript@7.0.2):
+  ox@0.14.59(typescript@7.0.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -867,7 +871,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  viem@2.57.7(typescript@7.0.2):
+  viem@2.57.16(typescript@7.0.2):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -875,7 +879,7 @@ snapshots:
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@7.0.2)
       isows: 1.0.7(ws@8.22.0)
-      ox: 0.14.56(typescript@7.0.2)
+      ox: 0.14.59(typescript@7.0.2)
       ws: 8.22.0
     optionalDependencies:
       typescript: 7.0.2
