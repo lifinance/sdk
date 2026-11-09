@@ -164,7 +164,7 @@ settings:
 
 overrides:
   axios: ^1.20.0
-  ws@<=8.22.0: 8.22.0
+  ws@<=8.22.2: 8.22.2
   '@lifi/data-types>@lifi/types': ^18.16.0
   validator@<13.15.26: '>=13.15.26'
   google-protobuf@<4.0.3: ^4.0.3
@@ -3009,7 +3009,7 @@ packages:
   isows@1.0.7:
     resolution: {integrity: sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==}
     peerDependencies:
-      ws: 8.22.0
+      ws: 8.22.2
 
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
@@ -3836,8 +3836,8 @@ packages:
     resolution: {integrity: sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww==}
     engines: {node: '>=18'}
 
-  ws@8.22.0:
-    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+  ws@8.22.2:
+    resolution: {integrity: sha512-/rEZ2ejown2N5gxVTHUu9bVVC7ttu0/Tgzf5hbTOixR3Fs7mbbXgn2DbdbcKgJOmpQMtrIUWivtYuVMnp/W/yA==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -5137,7 +5137,7 @@ snapshots:
       '@solana/functional': 8.6.0(typescript@7.0.2)
       '@solana/rpc-subscriptions-spec': 8.6.0(typescript@7.0.2)
       '@solana/subscribable': 8.6.0(typescript@7.0.2)
-      ws: 8.22.0
+      ws: 8.22.2
     optionalDependencies:
       typescript: 7.0.2
     transitivePeerDependencies:
@@ -6014,7 +6014,7 @@ snapshots:
       '@types/node': 22.7.5
       aes-js: 4.0.0-beta.5
       tslib: 2.7.0
-      ws: 8.22.0
+      ws: 8.22.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -6027,7 +6027,7 @@ snapshots:
       '@types/node': 22.7.5
       aes-js: 4.0.0-beta.5
       tslib: 2.7.0
-      ws: 8.22.0
+      ws: 8.22.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -6284,9 +6284,9 @@ snapshots:
 
   is-url-superb@4.0.0: {}
 
-  isows@1.0.7(ws@8.22.0):
+  isows@1.0.7(ws@8.22.2):
     dependencies:
-      ws: 8.22.0
+      ws: 8.22.2
 
   jiti@2.7.0: {}
 
@@ -7036,9 +7036,9 @@ snapshots:
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@7.0.2)(zod@4.6.7)
-      isows: 1.0.7(ws@8.22.0)
+      isows: 1.0.7(ws@8.22.2)
       ox: 0.14.59(typescript@7.0.2)(zod@4.6.7)
-      ws: 8.22.0
+      ws: 8.22.2
     optionalDependencies:
       typescript: 7.0.2
     transitivePeerDependencies:
@@ -7098,7 +7098,7 @@ snapshots:
       string-width: 7.2.0
       strip-ansi: 7.2.0
 
-  ws@8.22.0: {}
+  ws@8.22.2: {}
 
   y18n@5.0.8: {}
 
