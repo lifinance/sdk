@@ -149,8 +149,6 @@ node -e "const j=require('$OUT/before-audit.json');console.log(JSON.stringify(j.
   trial, and step 7 run `pnpm -r --parallel --no-bail check:types` to see every error.
 - A parallel `pnpm test` can fail once with `ENOTEMPTY` on `node_modules/.vitest-cache`
   after a dependency change. Run it again once before you call it a regression.
-- If a runtime or UI dependency can get a major, record the e2e baseline now. Write it to
-  `$OUT/before-e2e.txt`. `references/repo-notes.md` gives the commands and the traps.
 
 ## 3. Analyze (read-only)
 
@@ -310,6 +308,10 @@ conflicts in the PR. If more than about 3 hours passed since step 3, run both sc
 again first. Targets
 and held-back versions change quickly. A fast-track candidate that has aged in the
 meantime needs no exclude entry.
+
+If the user approved a major of a runtime or UI dependency, record the e2e baseline now,
+while the worktree is still clean. Write it to `$OUT/before-e2e.txt`.
+`references/repo-notes.md` gives the commands and the traps.
 
 Keep the commits in this order. A reviewer can then drop one change. The lockfile
 regeneration is always last, so it covers everything before it.

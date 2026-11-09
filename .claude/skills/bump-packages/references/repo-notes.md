@@ -26,9 +26,9 @@ repo and fix the note. Find the repo from `git remote get-url origin`.
   files.
 
 - **e2e runs.** The e2e suites call the LI.FI API and start local servers.
-  - Run the baseline on `main` in step 2, not just before the branch run. Two full runs
-    back to back hit HTTP 429 (rate limit) from the API. A failure with 429 in its trace
-    is not a regression. Wait some minutes, then run only the failed spec files again.
+  - Run the baseline on the clean worktree at the start of step 5, not just before the
+    branch run. Two full runs back to back hit HTTP 429 (rate limit) from the API.
+    A failure with 429 in its trace is not a regression. Wait some minutes, then run only the failed spec files again.
   - Compare failures by spec file and test title. Line and column numbers move.
   - Stop your own dev and preview servers first. The Playwright config does not reuse a
     server on its port (`reuseExistingServer: false`), so a server that is still there makes
