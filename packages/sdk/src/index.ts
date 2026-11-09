@@ -86,6 +86,7 @@ export type {
   QuoteRequest,
   QuoteRequestFromAmount,
   QuoteRequestToAmount,
+  SmartDepositsStatusRequest,
 } from './types/actions.js'
 export type {
   AcceptExchangeRateUpdateHook,

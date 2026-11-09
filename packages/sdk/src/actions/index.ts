@@ -17,6 +17,7 @@ import type {
   RelayStatusResponseData,
   RequestOptions,
   RoutesResponse,
+  SmartDepositsStatusResponse,
   StatusResponse,
   Token,
   TokenAmount,
@@ -34,6 +35,7 @@ import type {
   LiFiStepRequest,
   QuoteRequestFromAmount,
   RoutesRequest,
+  SmartDepositsStatusRequest,
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
 import { getChains } from './getChains.js'
@@ -168,10 +170,16 @@ export type Actions = {
    * @param options - Request options
    * @returns Status of the transaction
    */
-  getStatus: (
-    params: GetStatusRequestExtended,
-    options?: RequestOptions
-  ) => Promise<StatusResponse>
+  getStatus: {
+    (
+      params: SmartDepositsStatusRequest,
+      options?: RequestOptions
+    ): Promise<SmartDepositsStatusResponse>
+    (
+      params: GetStatusRequestExtended,
+      options?: RequestOptions
+    ): Promise<StatusResponse>
+  }
 
   /**
    * Get a step transaction. The step's `action` may carry the optional
@@ -314,7 +322,8 @@ export function actions(client: SDKClient): Actions {
     getRelayerQuote: (params, options) =>
       getRelayerQuote(client, params, options),
     getRoutes: (params, options) => getRoutes(client, params, options),
-    getStatus: (params, options) => getStatus(client, params, options),
+    getStatus: ((params: GetStatusRequestExtended, options?: RequestOptions) =>
+      getStatus(client, params, options)) as Actions['getStatus'],
     getStepTransaction: (params, options) =>
       getStepTransaction(client, params, options),
     getToken: (chain, token, options) =>
