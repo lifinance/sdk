@@ -7,4 +7,4 @@
 "@lifi/sdk-provider-sui": patch
 ---
 
-Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.16, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.

@@ -185,8 +185,8 @@ importers:
         specifier: ^18.0.9
         version: 18.0.9
       viem:
-        specifier: ^2.57.16
-        version: 2.57.16(typescript@7.0.2)
+        specifier: ^2.57.17
+        version: 2.57.17(typescript@7.0.2)
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
@@ -549,8 +549,8 @@ packages:
     peerDependencies:
       ws: 8.22.0
 
-  ox@0.14.59:
-    resolution: {integrity: sha512-Y+DPEQScTEGKteQATjtytE1JRQ5cg1R2+DvYQ/lbhUCm/xS9n0Jnkkf2AqQyIntefQxs8xY6dZ+kyNZ7zf2FzA==}
+  ox@0.14.63:
+    resolution: {integrity: sha512-TSKYN151boL1Aq/vsFrd8Buvd7v+oTQr8V7z4f4QQTSMB+ohD8cbNbHCtKRLI0Gs8LuYKirf5qvElTKVIFe2jw==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -570,8 +570,8 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
-  viem@2.57.16:
-    resolution: {integrity: sha512-+4uaUw3NfkqjaqsZp8Zci94K33oc9rv7mIUgvPduJxsY/tI0ASi2YkaXoUVSBGfdIw/QPWuVnIf9LTFf35IoMg==}
+  viem@2.57.17:
+    resolution: {integrity: sha512-yIMqNoKoVAMwX+zVbqkxfqq7qbGHmKXZidh/xfVpiPTJlAbbDDdDIMH5dDQWxhZcj56L8tPOwsIIxF618P+TOg==}
     peerDependencies:
       mppx: '>=0.17.0'
       typescript: '>=5.0.4'
@@ -682,7 +682,7 @@ snapshots:
   '@lifi/sdk-provider-ethereum@4.2.12(typescript@7.0.2)':
     dependencies:
       '@lifi/sdk': 4.12.1
-      viem: 2.57.16(typescript@7.0.2)
+      viem: 2.57.17(typescript@7.0.2)
     transitivePeerDependencies:
       - bufferutil
       - mppx
@@ -825,7 +825,7 @@ snapshots:
     dependencies:
       ws: 8.22.0
 
-  ox@0.14.59(typescript@7.0.2):
+  ox@0.14.63(typescript@7.0.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -871,7 +871,7 @@ snapshots:
 
   undici-types@8.9.0: {}
 
-  viem@2.57.16(typescript@7.0.2):
+  viem@2.57.17(typescript@7.0.2):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
@@ -879,7 +879,7 @@ snapshots:
       '@scure/bip39': 1.6.0
       abitype: 1.2.3(typescript@7.0.2)
       isows: 1.0.7(ws@8.22.0)
-      ox: 0.14.59(typescript@7.0.2)
+      ox: 0.14.63(typescript@7.0.2)
       ws: 8.22.0
     optionalDependencies:
       typescript: 7.0.2
