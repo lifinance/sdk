@@ -1,224 +1,29 @@
-// End-to-end test of bump.mjs on a throwaway repo: a bare origin at
-// <tmp>/github.com/acme/fixture.git, a main checkout with a small pnpm workspace,
-// and a stub `gh` that answers `gh pr` from a JSON file (`gh api` goes to the
-// real gh). Opt-in: it needs the npm registry and gh; it takes about a minute.
+// End-to-end test of bump.mjs on a throwaway repo (see e2e-fixture.js): the main
+// flows. e2e-flows.test.mjs has the rerun and approval flows.
+// Opt-in: it needs the npm registry and gh; it takes about a minute.
 // Run: BUMP_E2E=1 node --test <skill>/scripts/test/e2e.test.mjs
 
 import assert from 'node:assert/strict'
-import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
-import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { describe, test } from 'node:test'
-import { fileURLToPath } from 'node:url'
-
-const BUMP = join(dirname(fileURLToPath(import.meta.url)), '..', 'bump.mjs')
-const skip = process.env.BUMP_E2E !== '1' && 'set BUMP_E2E=1 (network, ~1 min)'
-const pad = (n) => String(n).padStart(2, '0')
-const D = new Date()
-// The local date, as bump.mjs makes it.
-const DATE = `${D.getFullYear()}-${pad(D.getMonth() + 1)}-${pad(D.getDate())}`
-const BRANCH = `chore/bump-deps-${DATE.replaceAll('-', '')}`
-const LIST = `list --repo acme/fixture --state open --search "chore: bump packages" in:title --json number,headRefName,title,isCrossRepository,headRepositoryOwner`
-
-// The stub gh (CommonJS). It logs every call to GH_STUB_CALLS, answers `pr` and
-// `repo` from GH_STUB_STATE, and passes anything else to the real gh.
-const STUB = `const fs = require('node:fs')
-const a = process.argv.slice(2)
-fs.appendFileSync(process.env.GH_STUB_CALLS, JSON.stringify(a) + '\\n')
-if (a[0] !== 'pr' && a[0] !== 'repo') {
-  const r = require('node:child_process').spawnSync(process.env.GH_REAL, a, { stdio: 'inherit' })
-  process.exit(r.status ?? 1)
-}
-const file = process.env.GH_STUB_STATE
-const st = JSON.parse(fs.readFileSync(file, 'utf8'))
-const opt = (n) => (a.includes(n) ? a[a.indexOf(n) + 1] : undefined)
-const repo = opt('--repo') || 'acme/fixture'
-const find = () => st.prs.find((p) => String(p.number) === a[2])
-const pick = (p) => Object.fromEntries(opt('--json').split(',').map((k) => [k, p[k]]))
-const body = () => fs.readFileSync(opt('--body-file'), 'utf8')
-let out = ''
-if (a[0] === 'repo') {
-  out = JSON.stringify({ nameWithOwner: repo, defaultBranchRef: { name: 'main' } })
-} else if (a[1] === 'list') {
-  out = JSON.stringify(st.prs.filter((p) => p.state === 'OPEN').map(pick))
-} else if (a[1] === 'create') {
-  const number = st.next++
-  st.prs.push({ number, state: 'OPEN', title: opt('--title'), headRefName: opt('--head'),
-    isCrossRepository: false, headRepositoryOwner: { login: repo.split('/')[0] }, body: body() })
-  out = 'https://github.com/' + repo + '/pull/' + number
-} else if (a[1] === 'edit') {
-  find().body = body()
-} else if (a[1] === 'view') {
-  out = opt('-q') === '.body' ? find().body : JSON.stringify(pick(find()))
-} else {
-  process.stderr.write('gh stub: not supported: ' + a.join(' ') + '\\n')
-  process.exit(1)
-}
-fs.writeFileSync(file, JSON.stringify(st, null, 2))
-process.stdout.write(out + '\\n')
-`
-const GITCONFIG = `[user]\n\tname = e2e\n\temail = e2e@example.com
-[commit]\n\tgpgsign = false\n[tag]\n\tgpgsign = false\n`
-
-const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'))
-const writeJson = (p, v) => {
-  fs.mkdirSync(dirname(p), { recursive: true })
-  fs.writeFileSync(p, `${JSON.stringify(v, null, 2)}\n`)
-}
-
-// A throwaway repo. `check` is the root check script; `pnpm` the packageManager
-// version (default: the pnpm that runs here, so corepack downloads nothing).
-function fixture({ check = 'node -e 0', pnpm, prs = [] } = {}) {
-  const tmp = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'bump-e2e-')))
-  const bin = join(tmp, 'bin')
-  fs.mkdirSync(bin)
-  fs.writeFileSync(join(bin, 'gh.cjs'), STUB)
-  const sh = `#!/bin/sh\nexec node '${bin}/gh.cjs' "$@"\n`
-  fs.writeFileSync(join(bin, 'gh'), sh, { mode: 0o755 })
-  fs.writeFileSync(join(tmp, 'gitconfig'), GITCONFIG)
-  const fx = {
-    tmp,
-    origin: join(tmp, 'github.com', 'acme', 'fixture.git'),
-    main: join(tmp, 'main'),
-    state: join(tmp, 'gh-state.json'),
-    calls: join(tmp, 'gh-calls.jsonl'),
-    runs: 0,
-  }
-  fx.env = {
-    ...process.env,
-    PATH: `${bin}:${process.env.PATH}`,
-    GIT_CONFIG_GLOBAL: join(tmp, 'gitconfig'),
-    GIT_CONFIG_NOSYSTEM: '1',
-    GH_REAL: execFileSync('sh', ['-c', 'command -v gh'], { encoding: 'utf8' }),
-    GH_STUB_STATE: fx.state,
-    GH_STUB_CALLS: fx.calls,
-    COREPACK_ENABLE_DOWNLOAD_PROMPT: '0',
-  }
-  fx.env.GH_REAL = fx.env.GH_REAL.trim()
-  const opts = { env: fx.env, encoding: 'utf8', maxBuffer: 64 << 20 }
-  fx.sh = (cwd, cmd, ...args) =>
-    execFileSync(cmd, args, { ...opts, cwd, stdio: 'pipe' }).trim()
-  fx.git = (cwd, ...args) => fx.sh(cwd, 'git', ...args)
-  fx.og = (...args) => fx.git(fx.origin, ...args)
-  writeJson(fx.state, { next: 10, prs })
-  fs.writeFileSync(fx.calls, '')
-  fx.git(tmp, 'init', '-q', '--bare', '-b', 'main', fx.origin)
-  const m = fx.main
-  writeJson(join(m, 'package.json'), {
-    name: 'fixture',
-    private: true,
-    packageManager: `pnpm@${pnpm ?? fx.sh(tmp, 'pnpm', '--version')}`,
-    scripts: {
-      build: 'node -e 0',
-      check,
-      'check:types': 'node -e 0',
-      test: 'node -e 0',
-      regen: 'rm -f pnpm-lock.yaml && pnpm install && pnpm dedupe',
-    },
-    devDependencies: { picocolors: '1.0.0' },
-  })
-  const scripts = { 'check:types': 'node -e 0' }
-  const deps = { kleur: '3.0.3', ms: '2.1.1' }
-  writeJson(join(m, 'packages/lib/package.json'), {
-    ...{ name: 'fx-lib', version: '1.0.0', scripts, dependencies: deps },
-  })
-  writeJson(join(m, 'packages/app/package.json'), {
-    ...{ name: 'fx-app', version: '1.0.0', private: true, scripts },
-    dependencies: { 'fx-lib': 'workspace:*' },
-  })
-  writeJson(join(m, '.changeset/config.json'), {
-    ...{ changelog: false, commit: false, access: 'public' },
-    baseBranch: 'main',
-    privatePackages: { version: false, tag: false },
-  })
-  const yaml = 'packages:\n  - packages/*\nminimumReleaseAge: 1440\n'
-  fs.writeFileSync(join(m, 'pnpm-workspace.yaml'), yaml)
-  fs.writeFileSync(join(m, '.gitignore'), '.claude/worktrees/\nnode_modules\n')
-  fx.git(m, 'init', '-q', '-b', 'main')
-  lockAt(fx, m, [
-    ['.', 'devDependencies', 'picocolors', '1.0.0', '^1.0.0'],
-    ['packages/lib', 'dependencies', 'ms', '2.1.1', '^2.1.1'],
-    ['packages/lib', 'dependencies', 'kleur', '3.0.3', '^3.0.3'],
-  ])
-  fx.git(m, 'add', '-A')
-  fx.git(m, 'commit', '-q', '-m', 'chore: init')
-  fx.git(m, 'remote', 'add', 'origin', fx.origin)
-  fx.git(m, 'push', '-q', '-u', 'origin', 'main')
-  fx.git(m, 'remote', 'set-head', 'origin', 'main')
-  return fx
-}
-
-// Install exact versions, then write `spec` into package.json and the lockfile
-// importer: the lockfile keeps the old version under a caret range (a plain
-// install takes the newest). `deps` is [[project, field, name, version, spec]].
-function lockAt(fx, dir, deps) {
-  const set = (rel, field, name, v) => {
-    const file = join(dir, rel, 'package.json')
-    const pj = readJson(file)
-    pj[field][name] = v
-    writeJson(file, pj)
-  }
-  for (const [rel, field, name, version] of deps) {
-    set(rel, field, name, version)
-  }
-  fx.sh(dir, 'pnpm', 'install')
-  const lockFile = join(dir, 'pnpm-lock.yaml')
-  let lock = fs.readFileSync(lockFile, 'utf8')
-  for (const [rel, field, name, version, spec] of deps) {
-    set(rel, field, name, spec)
-    const re = new RegExp(`(\\n\\s+${name}:\\n\\s+specifier: )${version}\\n`)
-    assert.match(lock, re)
-    lock = lock.replace(re, `$1${spec}\n`)
-  }
-  fs.writeFileSync(lockFile, lock)
-  fx.sh(dir, 'pnpm', 'install', '--frozen-lockfile')
-}
-
-// Run bump.mjs on the fixture: { code, json, err }. Async, so fixtures can run
-// in parallel.
-function runBump(fx, ...args) {
-  const out = join(fx.tmp, `out-${++fx.runs}`)
-  const argv = [BUMP, '--repo', fx.main, '--out', out, ...args]
-  const child = spawn('node', argv, { env: fx.env })
-  let stdout = ''
-  let err = ''
-  child.stdout.on('data', (d) => (stdout += d))
-  child.stderr.on('data', (d) => (err += d))
-  return new Promise((done) =>
-    child.on('close', (code) => {
-      let json = null
-      try {
-        json = JSON.parse(stdout)
-      } catch {}
-      done({ code, json, err })
-    })
-  )
-}
-
-const why = (r) => r.err.slice(-4000) // the tail of stderr, for a failure
-// The `gh pr` calls, as strings without the leading `pr`.
-const ghCalls = (fx) =>
-  fs
-    .readFileSync(fx.calls, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => JSON.parse(l))
-    .filter((a) => a[0] === 'pr')
-    .map((a) => a.slice(1).join(' '))
-const git0 = (fx, ...args) =>
-  spawnSync('git', args, { cwd: fx.origin, env: fx.env, encoding: 'utf8' })
-const originRef = (fx, ref) => {
-  const r = git0(fx, 'rev-parse', '--verify', '--quiet', ref)
-  return r.status === 0 ? r.stdout.trim() : null
-}
-const isAncestor = (fx, a, b) =>
-  git0(fx, 'merge-base', '--is-ancestor', a, b).status === 0
-const showAt = (fx, ref, path) => fx.git(fx.origin, 'show', `${ref}:${path}`)
-const mainState = (fx) =>
-  ['symbolic-ref HEAD', 'rev-parse HEAD', 'status --porcelain'].map((c) =>
-    fx.git(fx.main, ...c.split(' '))
-  )
+import {
+  BRANCH,
+  DATE,
+  fixture,
+  ghCalls,
+  isAncestor,
+  LIST,
+  lockAt,
+  mainState,
+  originRef,
+  readJson,
+  runBump,
+  showAt,
+  skip,
+  why,
+  writeJson,
+} from './e2e-fixture.js'
 
 describe('bump.mjs end to end', { skip, concurrency: true }, () => {
   describe('one fixture, in order: 1-4, 6', { concurrency: false }, () => {
@@ -235,7 +40,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.json.branch, null)
       const bumps = r.json.applied.bumps.map((b) => b.name).sort()
       assert.deepEqual(bumps, ['ms', 'picocolors'])
-      const major = r.json.decisions.find((d) => d.name === 'kleur')
+      const major = r.json.needsUser.find((d) => d.name === 'kleur')
       assert.equal(major?.kind, 'major')
       assert.deepEqual(mainState(fx), before)
       assert.equal(fx.git(fx.main, 'branch', '--list', 'chore/*'), '')
@@ -278,8 +83,14 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       const head = `--head ${BRANCH} --title chore: bump packages --body-file`
       assert.ok(create?.includes(`--base main ${head}`), create)
       const pr = readJson(fx.state).prs.find((p) => p.headRefName === BRANCH)
-      assert.match(pr.body, /`ms` .* 2\.1\.1 \| 2\.1\.3/)
-      assert.match(pr.body, /`picocolors` .* 1\.0\.0 \| 1\.1\.1/)
+      assert.match(
+        pr.body,
+        /`ms` \| packages\/lib \| \^2\.1\.1 \| \^2\.1\.3 \| patch/
+      )
+      assert.match(
+        pr.body,
+        /`picocolors` \| root \| \^1\.0\.0 \| \^1\.1\.1 \| minor/
+      )
       assert.match(r.json.pr, /\/pull\/10$/)
       assert.deepEqual(mainState(fx), before)
       wt = r.json.worktree
@@ -297,10 +108,16 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.deepEqual(r.json.commits, [])
       assert.equal(originRef(fx, BRANCH), prHead, 'nothing pushed')
       assert.deepEqual(ghCalls(fx).slice(calls), [LIST])
-      const todo = 'regen, the checks and the audit run with nothing applied'
-      await t.test('no wasted work', { todo }, () =>
-        assert.ok(!('checks' in r.json.timings))
-      )
+      // A9: nothing changed after the regeneration: no review, checks or audit.
+      assert.deepEqual(Object.keys(r.json.timings), [
+        'git',
+        'install',
+        'analyze',
+        'decide',
+        'edit',
+        'regen',
+        'total',
+      ])
     })
 
     test('4. open PR after main moved: a lockfile-only conflict', async () => {
@@ -334,8 +151,33 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
         edits.map((c) => c.split(' ').slice(0, 2).join(' ')),
         ['list --repo', 'view 10', 'edit 10']
       )
-      assert.match(readJson(fx.state).prs[0].body, /\n## Run /)
+      // F4: one generated block, replaced (not appended).
+      const body = readJson(fx.state).prs[0].body
+      assert.equal(body.split('<!-- bump-packages:start -->').length, 2)
       prHead = tip
+    })
+
+    test('4b. remote commits on the PR branch are refused, not pulled', async () => {
+      const other = join(fx.tmp, 'other')
+      fx.git(other, 'fetch', '-q', 'origin')
+      fx.git(other, 'checkout', '-q', '-b', 'pr', `origin/${BRANCH}`)
+      fs.writeFileSync(join(other, 'NOTE.md'), 'pushed by someone else\n')
+      fx.git(other, 'add', 'NOTE.md')
+      fx.git(other, 'commit', '-q', '-m', 'docs: a remote commit')
+      fx.git(other, 'push', '-q', 'origin', `pr:${BRANCH}`)
+      const remote = originRef(fx, BRANCH)
+      const r = await runBump(fx)
+      assert.equal(r.code, 2, why(r))
+      assert.match(
+        r.json.message,
+        /has commits that the local branch does not have/
+      )
+      assert.match(r.json.message, /docs: a remote commit/)
+      assert.match(r.json.message, /merge --ff-only origin\/chore\/bump-deps-/)
+      assert.equal(fx.git(wt, 'rev-parse', 'HEAD'), prHead, 'not pulled')
+      // After a review, the person fast-forwards by hand, as the message says.
+      fx.git(wt, 'merge', '-q', '--ff-only', `origin/${BRANCH}`)
+      prHead = remote
     })
 
     test('6. lockfile STOP: an unapproved major exits 3', async () => {
@@ -346,10 +188,10 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       writeJson(file, pj)
       fx.git(wt, 'commit', '-q', '--no-verify', '-am', 'chore: bump kleur to 4')
       const head = fx.git(wt, 'rev-parse', 'HEAD')
-      // A dry run cannot install this state; it stops and leaves the worktree.
+      // A dry run installs without --frozen-lockfile (A7), then puts the files back.
       const dry = await runBump(fx, '--dry-run')
-      assert.equal(dry.code, 2, why(dry))
-      assert.match(dry.json.message, /install --frozen-lockfile failed/)
+      assert.equal(dry.code, 0, why(dry))
+      assert.match(dry.json.notes.join('\n'), /frozen-lockfile failed/)
       assert.equal(fx.git(wt, 'status', '--porcelain'), '', 'dry run: clean')
       const calls = ghCalls(fx).length
       const r = await runBump(fx)
@@ -359,10 +201,10 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(fx.git(wt, 'rev-parse', 'HEAD'), head, 'nothing committed')
       assert.equal(originRef(fx, BRANCH), prHead, 'nothing pushed')
       assert.deepEqual(ghCalls(fx).slice(calls), [LIST])
-      // The approval: reset as the summary says, run again with --expect-majors.
+      // The approval: reset as the summary says, run again with --majors.
       fx.git(wt, 'reset', '-q', '--hard', 'HEAD')
       fx.git(wt, 'clean', '-qfd', '--', '.changeset')
-      const ok = await runBump(fx, '--expect-majors', 'kleur')
+      const ok = await runBump(fx, '--majors', 'kleur')
       assert.equal(ok.code, 0, why(ok))
       assert.deepEqual(
         ok.json.commits.map((c) => c.message),
@@ -386,13 +228,19 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
     assert.equal(ahead, '0', 'no commit on the local branch')
     assert.equal(originRef(fx, BRANCH), null, 'nothing pushed')
     assert.deepEqual(ghCalls(fx), [LIST])
+    // G2: the check passes on the commit the run started from: a regression.
+    assert.equal(r.json.checks.find((c) => c.name === 'check').regression, true)
+    assert.match(r.err, /- Checks: .*check FAIL \(regression\)/)
     assert.match(r.err, /### FAILED: check /)
     assert.match(r.err, /Nothing was committed/)
     assert.match(
       r.err,
       /reset --hard HEAD && git -C '.+' clean -fd -- \.changeset/
     )
-    assert.match(r.err, /pnpm -C '.+' install --frozen-lockfile/)
+    assert.match(
+      r.err,
+      /\nRerun: node .*bump\.mjs' --repo '.+' --worktree '.+'\n/
+    )
   })
 
   test('7. guards: a fork PR, a PR on main or on another branch', async () => {

@@ -1,10 +1,11 @@
 # Research a major bump
 
-Do this for each entry in `needsApproval`: an npm major, a `0.x` minor, or a GitHub Action
-major. The user needs enough facts to say yes or no without reading the changelog. Report
-what breaks for the usage in this repo. Do not copy the upstream release notes.
+Do this for each major in the list "Needs the user": an npm major, a `0.x` minor, or a
+GitHub Action major. The user needs enough facts to say yes or no without reading the
+changelog. Report what breaks for the usage in this repo. Do not copy the upstream release
+notes.
 
-Research the plan's `target`, not `registryLatest`. A newer version that the gate holds
+Research the target version that the summary names. A newer version that the gate holds
 back does not land in this PR.
 
 ## Where to look
@@ -38,8 +39,8 @@ back does not land in this PR.
 8. **The peers around it.** Run `pnpm why <pkg>`. For each package that depends on it, read
    `npm view <dependent> peerDependencies`. A peer range can refuse the target. An example
    is `@solana/wallet-adapter-base` with `@solana/web3.js: ^1.99.0`. The major then adds a
-   second copy or a peer conflict. The script's `requires` field links majors
-   that need each other. Present them as one decision.
+   second copy or a peer conflict. The summary names majors that need each other (for
+   example `i18next` with `react-i18next`). Present them as one decision.
 
 9. **The copies for each published package.** A runtime major of a package that also
    comes in transitively (for example `@noble/hashes` from `viem`) can add a second copy.
@@ -52,13 +53,12 @@ back does not land in this PR.
 Use primary sources. If you cannot find the breaking changes, write "No changelog found.
 The risk is unknown." Do not guess.
 
-10. **A trial.** Release notes do not know this repo. Install the target in the worktree
-   (`pnpm -C "$WT" up -r --latest <pkg>`), run `pnpm -r --parallel --no-bail check:types`
-   and the tests, then revert (`git checkout -- . && pnpm install --frozen-lockfile`).
-   Report the real errors. A trial found 4 type errors in the i18next 27 bump that the
-   notes did not name.
-11. **A major that only the lockfile brings.** This is a transitive major in the step-3
-   preview. Name its cause from the report. Say whether it is dev-only, optional, or a
+10. **A trial.** Release notes do not know this repo. In the bump worktree, change the range
+   by hand, run `pnpm install`, the type check and the tests, and report the real errors.
+   Then discard the trial with `git reset --hard HEAD && pnpm install --frozen-lockfile`.
+   A trial found 4 type errors in the i18next 27 bump that the notes did not name.
+11. **A major that only the lockfile brings.** This is a "major jump" of a lockfile STOP.
+   Name its parent (`pnpm why <pkg>`). Say whether it is dev-only, optional, or a
    prerelease. Ask the user like for any other major.
 
 ## Report (one block for each package)
@@ -80,7 +80,9 @@ Then give that one first, and say that the others do not apply.
 
 ## After the decision
 
-- **Small migration** (a rename, a moved import, a changed option): make the edit in the
-  commit of that bump. Make sure the build and the tests pass.
+- **Approved.** Run the script with `--majors <pkg>`. It writes the range and the changeset,
+  and it runs the checks.
+- **Small migration** (a rename, a moved import, a changed option): when a check fails,
+  make the edit in the worktree and commit it (`SKILL.md`, failed check).
 - **Large migration** (an API redesign, a change of behavior): do not do it in a bump PR.
-  Revert that package. Report it as deferred, with a short description of the work.
+  Hold the package, and report it as deferred with a short description of the work.

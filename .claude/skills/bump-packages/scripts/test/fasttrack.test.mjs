@@ -6,20 +6,21 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   addedKeys,
-  advisoryHits,
-  decideFamily,
   freshVersionsOf,
-  groupFamilies,
   invalidExcludeEntries,
-  malwareCoveringAny,
-  normalizeRepo,
   overrideUpdate,
-  parseProvenance,
-  provenanceFlags,
-  provenanceVerdict,
   resolveLockfileBases,
   toolStatus,
 } from '../lib.js'
+import {
+  advisoryHits,
+  decideFamily,
+  groupFamilies,
+  malwareCoveringAny,
+  normalizeRepo,
+  parseProvenance,
+  provenanceVerdict,
+} from '../security.js'
 
 const H = 3600000
 const NOW = Date.parse('2026-11-10T12:00:00Z')
@@ -440,7 +441,8 @@ test('parseProvenance reads SLSA v1 and v0.2 and checks the subject (scoped too)
   )
 })
 
-test('provenanceFlags: same source passes, a changed source or a missing one fails', () => {
+test('provenanceVerdict flags: same source passes, a changed source or a missing one fails', () => {
+  const provenanceFlags = (...args) => provenanceVerdict(...args).flags
   const info = (repository, path) => ({ repository, path })
   const ref = {
     has: true,
@@ -893,4 +895,80 @@ test('provenanceVerdict: auto needs verified provenance on both sides', () => {
   assert.equal(unreadable.flags.length, 1)
   assert.equal(unreadable.compromise.length, 0)
   assert.equal(unreadable.verified, false)
+})
+
+// lockfile-report.mjs end to end on a temporary git repo, without a registry: an unknown age
+// counts as fresh, so `ageUnknown` shows which versions the age check covers.
+test('lockfile-report: the age check compares with the trust anchor, not with --base', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const { mkdtempSync, rmSync, writeFileSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const dir = mkdtempSync(join(tmpdir(), 'lockfile-report-'))
+  const git = (...args) =>
+    execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim()
+  const lock = (pkgs) =>
+    `lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n\npackages:\n\n${pkgs
+      .map((p) => `  ${p}:\n    resolution: {integrity: sha512-x}\n`)
+      .join('\n')}\nsnapshots:\n\n${pkgs.map((p) => `  ${p}: {}\n`).join('')}`
+  const commit = (pkgs, msg) => {
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), lock(pkgs))
+    git('add', '-A')
+    git('commit', '-q', '-m', msg)
+    return git('rev-parse', 'HEAD')
+  }
+  try {
+    git('init', '-q')
+    git('config', 'user.email', 'test@example.com')
+    git('config', 'user.name', 'test')
+    writeFileSync(join(dir, 'package.json'), '{}\n')
+    writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'minimumReleaseAge: 1440\n')
+    commit(['foo@1.0.0'], 'anchor')
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    // An earlier run on the bump branch moved foo; this run adds bar.
+    const earlier = commit(['foo@1.0.1'], 'earlier run')
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), lock(['bar@2.0.0', 'foo@1.0.1']))
+    const script = new URL('../lockfile-report.mjs', import.meta.url).pathname
+    const env = {
+      ...process.env,
+      npm_config_registry: 'http://127.0.0.1:9/',
+      npm_config_fetch_retries: '0',
+      npm_config_cache: join(dir, '.npm-cache'),
+    }
+    const run = (...args) =>
+      JSON.parse(
+        execFileSync('node', [script, '--root', dir, ...args], {
+          cwd: dir,
+          env,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        })
+      )
+    const r = run(`--base=${earlier}`)
+    const specs = (list) => list.map((a) => `${a.name}@${a.version}`)
+    // `added` (and the major and split checks) use --base ...
+    assert.deepEqual(specs(r.added), ['bar@2.0.0'])
+    // ... but the age check covers every version that the anchor does not have.
+    assert.deepEqual(specs(r.ageUnknown), ['bar@2.0.0', 'foo@1.0.1'])
+    // An approved entry is exempt from the age check.
+    const ok = run(`--base=${earlier}`, '--approved', 'foo@1.0.1')
+    assert.deepEqual(specs(ok.ageUnknown), ['bar@2.0.0'])
+    // A major jump since --base stops, unless the user approved it.
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), lock(['foo@2.0.0']))
+    const jump = run(`--base=${earlier}`)
+    assert.deepEqual(
+      jump.unexpectedMajors.map((j) => [j.name, j.from, j.to, j.realMajor]),
+      [['foo', ['1.0.1'], ['2.0.0'], true]]
+    )
+    const expected = run(`--base=${earlier}`, '--expect-majors', 'foo')
+    assert.equal(expected.majorJumps.length, 1)
+    assert.equal(expected.unexpectedMajors.length, 0)
+    // --approved takes exact name@x.y.z entries only.
+    assert.throws(
+      () => run('--approved', 'foo'),
+      (e) => e.status === 2
+    )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

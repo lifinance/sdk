@@ -7,18 +7,23 @@ import {
   bumpSpec,
   changesetText,
   EXIT,
-  editExcludes,
+  editExcludesDetailed,
   groupCommits,
+  newPrBody,
+  PR_END,
+  PR_START,
   packageManagerValue,
   parseChangesetLine,
-  prBody,
-  prRunSection,
+  prBlock,
   replaceOverride,
+  replacePrBlock,
   setDependencySpec,
   setPackageManager,
   wrapLines,
-  yamlList,
-} from '../lib.js'
+} from '../bump-helpers.js'
+import { yamlList } from '../lib.js'
+
+const editExcludesText = (yaml, opts) => editExcludesDetailed(yaml, opts).text
 
 const WS = `packages:
   - 'packages/*'
@@ -39,7 +44,7 @@ overrides:
 `
 
 test('editExcludes: add sorted and quoted, remove stale entries and their comment lines', () => {
-  const out = editExcludes(WS, {
+  const out = editExcludesText(WS, {
     add: ['@dynamic-labs/sdk@4.5.1', 'i18next@27.1.1'],
     remove: ['viem@2.57.17', '@lifi/*'],
     comment:
@@ -78,9 +83,9 @@ test('editExcludes: add sorted and quoted, remove stale entries and their commen
   // The rest of the file is unchanged.
   assert.equal(out.split('overrides:')[1], WS.split('overrides:')[1])
   // Nothing to do: same text.
-  assert.equal(editExcludes(WS, {}), WS)
+  assert.equal(editExcludesText(WS, {}), WS)
   // No key yet: a new block at the end.
-  const fresh = editExcludes('packages:\n  - a\n', {
+  const fresh = editExcludesText('packages:\n  - a\n', {
     add: ['x@1.0.0'],
     comment: '# why',
   })
@@ -241,61 +246,82 @@ test('wrapLines keeps commit body lines at 100 characters or less', () => {
   }
 })
 
-test('prRunSection and prBody: table, fast-tracks, decisions, audit and the hooks line', () => {
+test('prBlock, replacePrBlock and newPrBody: one stateless block between markers', () => {
+  const state = {
+    packages: [
+      {
+        name: '@mysten/sui',
+        where: 'packages/sui',
+        from: '^2.36.0',
+        to: '^2.39.1',
+        bump: 'minor',
+      },
+    ],
+    excludes: ['vite@8.3.7'],
+    overrides: [{ key: 'axios', from: '^1.20.0', to: '^1.21.0' }],
+    toolchain: ['pnpm 12.14.0 → 12.18.0'],
+  }
   const r = {
-    applied: {
-      bumps: [
-        {
-          name: '@mysten/sui',
-          where: ['packages/sui'],
-          from: '2.36.0',
-          to: '2.39.1',
-          bump: 'minor',
-        },
-      ],
-      fastTracks: [
-        {
-          spec: 'vite@8.3.7',
-          ageHours: 20,
-          excludeSet: ['vite@8.3.7', 'rolldown@1.2.18'],
-        },
-      ],
-      overrides: [
-        {
-          key: 'axios',
-          value: '^1.20.0',
-          newKey: 'axios',
-          newValue: '^1.21.0',
-        },
-      ],
-      removedExcludes: ['viem@2.57.17'],
-      pnpm: { from: '12.14.0', to: '12.18.0' },
-    },
-    decisions: [
+    needsUser: [
       {
         kind: 'major',
         name: 'i18next',
         project: '.',
-        detail: '26.5.2 → 27.0.1.',
+        text: '26.5.2 → 27.0.1 (major).',
+        flag: '--majors i18next',
       },
     ],
     lockfile: { majors: [], singleCopy: ['viem 2.57.17'] },
     audit: { before: { high: 2, low: 1 }, after: { high: 0, low: 1 } },
     checks: [{ name: 'build', ok: true, seconds: 40 }],
+    skippedChecks: ['knip:check'],
   }
-  const s = prRunSection(r)
+  const block = prBlock(state, r)
+  assert.ok(block.startsWith(PR_START) && block.endsWith(PR_END))
   assert.match(
-    s,
-    /\| `@mysten\/sui` \| packages\/sui \| 2\.36\.0 \| 2\.39\.1 \| minor \|/
+    block,
+    /\| `@mysten\/sui` \| packages\/sui \| \^2\.36\.0 \| \^2\.39\.1 \| minor \|/
   )
-  assert.match(s, /`vite@8\.3\.7` \(20 h old, all checks pass\)/)
-  assert.match(s, /`i18next`: major\. 26\.5\.2 → 27\.0\.1\./)
-  assert.match(s, /3 advisories before, 1 after/)
   assert.match(
-    s,
-    /Commits skip the git hooks; the same checks ran once before the commit\.$/
+    block,
+    /### Allowed past the release-age gate\n\n- `vite@8\.3\.7`/
   )
-  assert.match(prBody(r), /^## Which Linear task/)
+  assert.match(block, /- `axios`: `\^1\.20\.0` → `\^1\.21\.0`/)
+  assert.match(
+    block,
+    /Needs the user:\n\n- `i18next`: 26\.5\.2 → 27\.0\.1 \(major\)\. Apply: `--majors i18next`/
+  )
+  assert.match(block, /3 advisories before, 1 after/)
+  assert.match(block, /skipped \(they also fail on main\): `knip:check`/)
+  // A long list is cut.
+  const many = {
+    ...state,
+    excludes: Array.from({ length: 5 }, (_, i) => `x@1.0.${i}`),
+  }
+  assert.match(prBlock(many, r, 2), /… and 3 more\./)
+  // The second run replaces the block; the text around it stays.
+  const body = `Intro by a person.\n\n${block}\n\nOutro.`
+  const next = replacePrBlock(body, prBlock({ ...state, excludes: [] }, r))
+  assert.equal(next.split(PR_START).length, 2, 'one block')
+  assert.match(next, /^Intro by a person\.\n\n/)
+  assert.match(next, /\n\nOutro\.$/)
+  assert.doesNotMatch(next, /vite@8\.3\.7/)
+  // An old body without markers gets the block once.
+  assert.equal(replacePrBlock('Old text.', block), `Old text.\n\n${block}\n`)
+  // A new PR with the template shape.
+  const template =
+    '## Which Linear task is linked to this PR?\n\n## Why was it implemented this way?\n\n## Checklist before requesting a review\n- [ ] I have performed a self-review\n- [ ] Tests pass\n- [ ] Docs updated\n'
+  const pr = newPrBody(block, template)
+  assert.match(pr, /^## Which Linear task is linked to this PR\?\n\nNone\./)
+  assert.match(
+    pr,
+    /## Visual showcase \(Screenshots or Videos\)\n\nNot applicable\./
+  )
+  assert.match(
+    pr,
+    /- \[x\] I have performed a self-review\n- \[x\] Tests pass\n- \[ \] Docs updated/
+  )
+  assert.equal(newPrBody(block, null), `${block}\n`)
 })
 
 test('exit codes', () => {

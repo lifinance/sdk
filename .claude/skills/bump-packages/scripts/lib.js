@@ -1,4 +1,6 @@
-// lib.js — shared helpers for the bump-packages scripts.
+// lib.js — shared helpers for the bump-packages scripts: files, semver, the
+// pnpm-workspace.yaml reader, lockfiles, ranges and the npm registry.
+// security.js holds the fast-track checks; bump-helpers.js the helpers of bump.mjs.
 //
 // The same file ships in the sdk, widget and jumper-widget repos. Keep the copies identical:
 // a fix here must be copied to the other two repos.
@@ -6,8 +8,9 @@
 // Everything here is read-only. File reads are confined to the repo root.
 
 import { execFile } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 export const execFileP = promisify(execFile)
@@ -17,7 +20,7 @@ export const execFileP = promisify(execFile)
 export const failures = []
 
 // pnpm >= 11 enforces a 24h release-age gate by default (minimumReleaseAge: 1440 minutes).
-export const DEFAULT_MIN_AGE_MINUTES = 1440
+const DEFAULT_MIN_AGE_MINUTES = 1440
 
 // --- files ------------------------------------------------------------------
 
@@ -182,8 +185,44 @@ function blockLines(yaml, key) {
   return out
 }
 
-// Items of a top-level list, e.g. `packages:` or `minimumReleaseAgeExclude:`.
+// The release-age keys must be in the one form this reader understands: a top-level plain
+// key, once; `minimumReleaseAge: <digits>`; `minimumReleaseAgeExclude:` with a block list.
+// Any other form (flow list, quoted key, nested or duplicate key) reads as "not set" here
+// while pnpm applies it. Returns null, or a message that names the line.
+const GATE_KEY_RE = /^\s*["']?(minimumReleaseAge(?:Exclude)?)["']?\s*:/
+export function gateYamlProblem(yaml) {
+  const seen = new Set()
+  const lines = String(yaml ?? '').split('\n')
+  for (const [i, line] of lines.entries()) {
+    const m = GATE_KEY_RE.exec(line)
+    if (!m) {
+      continue
+    }
+    const ok =
+      m[1] === 'minimumReleaseAge'
+        ? /^minimumReleaseAge:\s*\d+\s*(#.*)?$/.test(line)
+        : /^minimumReleaseAgeExclude:\s*(#.*)?$/.test(line)
+    if (!ok || seen.has(m[1])) {
+      return `pnpm-workspace.yaml line ${i + 1} (${line.trim()}): ${seen.has(m[1]) ? 'a second' : 'a'} ${m[1]} key in a form that the scripts cannot read. Use the plain block form, once.`
+    }
+    seen.add(m[1])
+  }
+  return null
+}
+
+function assertGateYaml(yaml, key) {
+  if (key.startsWith('minimumReleaseAge')) {
+    const problem = gateYamlProblem(yaml)
+    if (problem) {
+      throw new Error(problem)
+    }
+  }
+}
+
+// Items of a top-level list, e.g. `packages:` or `minimumReleaseAgeExclude:`. Throws on a
+// release-age key in a form that this reader cannot read (gateYamlProblem).
 export function yamlList(yaml, key) {
+  assertGateYaml(yaml, key)
   return blockLines(yaml, key)
     .map((l) => l.match(/^\s+-\s*(.+?)\s*$/))
     .filter(Boolean)
@@ -221,6 +260,7 @@ export function yamlMap(yaml, key) {
 }
 
 export function minAgeMinutesFromYaml(yaml) {
+  assertGateYaml(yaml, 'minimumReleaseAge')
   const m = yaml.match(/^minimumReleaseAge\s*:\s*(\d+)/m)
   return m ? Number(m[1]) : DEFAULT_MIN_AGE_MINUTES
 }
@@ -275,85 +315,6 @@ export function isExcluded(matchers, name, version) {
   )
 }
 
-// --- workspace projects -----------------------------------------------------
-
-function findPackageDirs(dir, recursive, out) {
-  let entries = []
-  try {
-    entries = readdirSync(dir)
-  } catch {
-    return
-  }
-  for (const e of entries) {
-    if (e === 'node_modules' || e.startsWith('.')) {
-      continue
-    }
-    const p = join(dir, e)
-    let st
-    try {
-      st = statSync(p)
-    } catch {
-      continue
-    }
-    if (!st.isDirectory()) {
-      continue
-    }
-    if (existsSync(join(p, 'package.json'))) {
-      out.add(p)
-    }
-    if (recursive) {
-      findPackageDirs(p, true, out)
-    }
-  }
-}
-
-// Map of absolute dir -> { name, private, json, rel } for the root and every project that the
-// `packages:` globs of pnpm-workspace.yaml match. Supports `dir`, `dir/*`, `dir/**`, `!dir`.
-export function listWorkspaceProjects(root, yaml) {
-  const dirs = new Set([root])
-  const negated = []
-  for (const glob of yamlList(yaml, 'packages')) {
-    if (glob.startsWith('!')) {
-      negated.push(globToRegExp(glob.slice(1).replace(/\/\*\*$/, '/*')))
-      continue
-    }
-    const clean = glob.replace(/\/$/, '')
-    if (clean.endsWith('/**')) {
-      const base = confine(root, clean.slice(0, -3))
-      if (base) {
-        findPackageDirs(base, true, dirs)
-      }
-    } else if (clean.endsWith('/*')) {
-      const base = confine(root, clean.slice(0, -2))
-      if (base) {
-        findPackageDirs(base, false, dirs)
-      }
-    } else {
-      const p = confine(root, clean)
-      if (p && existsSync(join(p, 'package.json'))) {
-        dirs.add(p)
-      }
-    }
-  }
-  const map = new Map()
-  for (const dir of dirs) {
-    const rel = relative(root, dir) || '.'
-    if (negated.some((re) => re.test(rel))) {
-      continue
-    }
-    const json = readJson(dir, 'package.json')
-    if (json) {
-      map.set(dir, {
-        name: json.name || rel,
-        private: !!json.private,
-        json,
-        rel,
-      })
-    }
-  }
-  return map
-}
-
 export const DEP_FIELDS = [
   'dependencies',
   'devDependencies',
@@ -379,9 +340,194 @@ export async function pool(items, limit, fn) {
   return out
 }
 
-// `npm view <name> time dist-tags --json`. Uses npm (not a raw fetch) so .npmrc
-// registry, scope and auth settings apply. Returns { time, distTags } or null.
+// --- registry reader (D5) -------------------------------------------------------
+//
+// One analysis needs `time`, `dist-tags` and per-version metadata of a few hundred
+// packages. `npm view` starts one process per question (about 285 for widget). Here one
+// fetch of the packument (https://registry.npmjs.org/<name>) per package answers all of
+// them, with a cache, a timeout, a concurrency limit and one retry. A package that npm
+// would get from another registry (a non-default `registry=`, an `@scope:registry=` line
+// in .npmrc, or npm_config_registry) keeps the `npm view` path: auth stays npm's job. A
+// failed fetch falls back to `npm view` once.
+
+const NPMJS = 'https://registry.npmjs.org/'
+const normRegistry = (u) =>
+  String(u)
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\/*$/, '/')
+
+// Which package names the reader may fetch from registry.npmjs.org. `texts` are .npmrc
+// contents, the lowest priority first (user, then the project's folders from the top).
+// Returns name => boolean. Pure.
+export function npmrcRouting(texts, env = {}) {
+  let registry = NPMJS
+  const scopes = new Map()
+  for (const text of texts) {
+    for (const raw of String(text ?? '').split('\n')) {
+      const line = raw.trim()
+      if (!line || line.startsWith('#') || line.startsWith(';')) {
+        continue
+      }
+      const scoped = /^(@[^:\s]+):registry\s*=\s*(.+)$/.exec(line)
+      if (scoped) {
+        scopes.set(scoped[1], normRegistry(scoped[2]))
+        continue
+      }
+      const def = /^registry\s*=\s*(.+)$/.exec(line)
+      if (def) {
+        registry = normRegistry(def[1])
+      }
+    }
+  }
+  const envRegistry = env.npm_config_registry ?? env.NPM_CONFIG_REGISTRY
+  if (envRegistry) {
+    registry = normRegistry(envRegistry)
+  }
+  return (name) => {
+    if (registry !== NPMJS) {
+      return false
+    }
+    const scope = name.startsWith('@') ? name.split('/')[0] : null
+    return !scope || (scopes.get(scope) ?? NPMJS) === NPMJS
+  }
+}
+
+// The routing for one working folder: ~/.npmrc, then each .npmrc from the top folder
+// down to `cwd` (more files than npm reads, so the reader is used in fewer cases).
+const routings = new Map()
+function routingFor(cwd) {
+  const dir = resolve(cwd ?? process.cwd())
+  if (!routings.has(dir)) {
+    const chain = []
+    for (let d = dir; ; d = dirname(d)) {
+      chain.unshift(join(d, '.npmrc'))
+      if (dirname(d) === d) {
+        break
+      }
+    }
+    const read = (f) => {
+      try {
+        return readFileSync(f, 'utf8')
+      } catch {
+        return ''
+      }
+    }
+    routings.set(
+      dir,
+      npmrcRouting(
+        [read(join(homedir(), '.npmrc')), ...chain.map(read)],
+        process.env
+      )
+    )
+  }
+  return routings.get(dir)
+}
+
+let active = 0
+const waiting = []
+async function fetchSlot(fn) {
+  if (active >= 8) {
+    await new Promise((r) => waiting.push(r))
+  }
+  active++
+  try {
+    return await fn()
+  } finally {
+    active--
+    waiting.shift()?.()
+  }
+}
+
+// Only what the checks read, so that a large packument does not stay in memory whole.
+const KEEP = [
+  'name',
+  'version',
+  '_npmUser',
+  'dist',
+  'scripts',
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+]
+const packuments = new Map()
+// The packument of one package: { time, distTags, versions } or { error }.
+function packument(name) {
+  if (!packuments.has(name)) {
+    packuments.set(
+      name,
+      fetchSlot(async () => {
+        const url = `${NPMJS}${name.replace('/', '%2f')}`
+        let last = null
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const res = await fetch(url, {
+              signal: AbortSignal.timeout(60000),
+              headers: { accept: 'application/json' },
+            })
+            if (!res.ok) {
+              last = `HTTP ${res.status}`
+              if (res.status < 500) {
+                break
+              }
+              continue
+            }
+            const j = await res.json()
+            const versions = {}
+            for (const [v, doc] of Object.entries(j.versions ?? {})) {
+              versions[v] = Object.fromEntries(
+                KEEP.filter((k) => doc?.[k] !== undefined).map((k) => [
+                  k,
+                  doc[k],
+                ])
+              )
+            }
+            return {
+              time: j.time ?? {},
+              distTags: j['dist-tags'] ?? {},
+              versions,
+            }
+          } catch (err) {
+            last = String(err.message)
+          }
+        }
+        return { error: last }
+      })
+    )
+  }
+  return packuments.get(name)
+}
+
+// One field of a version document in the form that `npm view --json` prints it:
+// `_npmUser` as "name <email>", the trusted-publisher config id masked.
+function viewField(doc, field) {
+  if (field === '_npmUser') {
+    const u = doc._npmUser
+    return u && typeof u === 'object'
+      ? u.email
+        ? `${u.name} <${u.email}>`
+        : u.name
+      : u
+  }
+  if (field === '_npmUser.trustedPublisher') {
+    const tp = doc._npmUser?.trustedPublisher
+    return tp && typeof tp === 'object'
+      ? { ...tp, ...(tp.oidcConfigId ? { oidcConfigId: '***' } : {}) }
+      : tp
+  }
+  return field.split('.').reduce((o, k) => o?.[k], doc)
+}
+
+// `npm view <name> time dist-tags --json`: { time, distTags } or null (recorded in
+// `failures`). From the packument when the routing allows it; else, or when the fetch
+// fails, npm itself (so .npmrc registry, scope and auth settings apply).
 export async function npmView(name, cwd) {
+  if (routingFor(cwd)(name)) {
+    const doc = await packument(name)
+    if (!doc.error) {
+      return { time: doc.time, distTags: doc.distTags }
+    }
+  }
   try {
     const { stdout } = await execFileP(
       'npm',
@@ -399,32 +545,37 @@ export async function npmView(name, cwd) {
   }
 }
 
-// `npm view --json -- <spec> <fields…>` -> parsed JSON (an object when several fields are
-// asked for), or null on failure (recorded in `failures`).
+// Fields of one exact version (`npm view --json name@version name version <fields>`):
+// an object, or null (recorded in `failures`). `name` and `version` keep the object form
+// (with one other field, npm prints that value bare).
 export async function npmViewFields(spec, fields, cwd) {
+  const name = spec.slice(0, spec.lastIndexOf('@'))
+  const version = spec.slice(name.length + 1)
+  if (routingFor(cwd)(name)) {
+    const doc = await packument(name)
+    const v = doc.versions?.[version]
+    if (v) {
+      const out = { name: v.name, version: v.version }
+      for (const f of fields) {
+        const value = viewField(v, f)
+        if (value !== undefined) {
+          out[f] = value
+        }
+      }
+      return out
+    }
+  }
   try {
-    // With several fields npm prints an object, but if only ONE of them exists it prints
-    // that value bare. `name` and `version` always exist, so asking for them too keeps
-    // the object form.
-    const all = fields.length > 1 ? ['name', 'version', ...fields] : fields
     const { stdout } = await execFileP(
       'npm',
-      ['view', '--json', '--', spec, ...all],
+      ['view', '--json', '--', spec, 'name', 'version', ...fields],
       { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
     )
     const j = stdout.trim() ? JSON.parse(stdout) : {}
-    if (fields.length > 1) {
-      // Only a plain object for exactly the requested version counts as an answer.
-      const at = spec.lastIndexOf('@')
-      const want = at > 0 ? spec.slice(at + 1) : null
-      if (
-        !j ||
-        typeof j !== 'object' ||
-        Array.isArray(j) ||
-        (want && /^\d/.test(want) && j.version !== want)
-      ) {
-        throw new Error(`unexpected npm view output for ${spec}`)
-      }
+    // Only a plain object for exactly the requested version counts as an answer.
+    const want = spec.slice(spec.lastIndexOf('@') + 1)
+    if (!j || typeof j !== 'object' || Array.isArray(j) || j.version !== want) {
+      throw new Error(`unexpected npm view output for ${spec}`)
     }
     return j
   } catch (err) {
@@ -801,16 +952,6 @@ export function isStopJump(jump, openOverrideNames, expected) {
   return jump.realMajor || openOverrideNames.has(jump.name)
 }
 
-// Markdown table helper.
-export function mdTable(headers, rows) {
-  const esc = (c) => String(c ?? '').replace(/\|/g, '\\|')
-  return [
-    `| ${headers.join(' | ')} |`,
-    `| ${headers.map(() => '---').join(' | ')} |`,
-    ...rows.map((r) => `| ${r.map(esc).join(' | ')} |`),
-  ].join('\n')
-}
-
 // --- fast-track helpers (pure, unit-tested) -----------------------------------
 
 // Every stable version above `aboveRaw` and at or below the `latest` dist-tag that has NOT
@@ -892,362 +1033,12 @@ export function invalidExcludeEntries(entries) {
   )
 }
 
-// Lockstep families. A package belongs to the family of the first rule that matches, or to
-// its own family. There is no generic same-scope rule: unrelated `@types/*` releases must
-// not block each other.
-const FAMILY_RULES = [
-  [/^(next|@next\/.+)$/, 'next'],
-  [/^(typescript-eslint|@typescript-eslint\/.+)$/, 'typescript-eslint'],
-  [/^(motion|framer-motion|motion-dom|motion-utils)$/, 'motion'],
-  [/^@dynamic-labs\/.+$/, '@dynamic-labs'],
-]
-
-export function familyKeyOf(name) {
-  for (const [re, key] of FAMILY_RULES) {
-    if (re.test(name)) {
-      return key
-    }
-  }
-  return null
-}
-
-// Group candidates into families. Each member is { name, excludeSet }. Two members join
-// only when (1) a family rule names both, or (2) one exclude set holds the other member or
-// both hold the same entry (a lockstep pin). Returns arrays of member indexes, in input order.
-export function groupFamilies(members) {
-  const parent = members.map((_, i) => i)
-  const find = (i) => {
-    let r = i
-    while (parent[r] !== r) {
-      r = parent[r]
-    }
-    return r
-  }
-  const join = (a, b) => {
-    parent[find(a)] = find(b)
-  }
-  const byKey = new Map()
-  const bySpec = new Map()
-  members.forEach((m, i) => {
-    const k = familyKeyOf(m.name)
-    if (k) {
-      if (byKey.has(k)) {
-        join(i, byKey.get(k))
-      } else {
-        byKey.set(k, i)
-      }
-    }
-    for (const spec of m.excludeSet ?? []) {
-      if (bySpec.has(spec)) {
-        join(i, bySpec.get(spec))
-      } else {
-        bySpec.set(spec, i)
-      }
-    }
-  })
-  members.forEach((m, i) => {
-    members.forEach((o, j) => {
-      if (i !== j && (m.excludeSet ?? []).some((s) => specName(s) === o.name)) {
-        join(i, j)
-      }
-    })
-  })
-  const groups = new Map()
-  members.forEach((_, i) => {
-    const r = find(i)
-    if (!groups.has(r)) {
-      groups.set(r, [])
-    }
-    groups.get(r).push(i)
-  })
-  return [...groups.values()]
-}
-
 export const specName = (spec) => spec.slice(0, spec.lastIndexOf('@'))
 
 // Keys of `next` that `prev` does not have as its OWN key. `in` would treat `constructor`
 // or `toString` as present (they are on Object.prototype).
 export const addedKeys = (next, prev) =>
   Object.keys(next ?? {}).filter((k) => !Object.hasOwn(prev ?? {}, k))
-
-// Pick the versions for one family and its decision.
-//
-// `members` is [{ id?, name, fresh: [versions, newest first] }]; `id` (default: the name)
-// keys the result. `check(member, version)` resolves to { redFlags, compromiseFlags,
-// unverifiedProvenance, excludeSet, … }. `packageCheck(member)` (optional) resolves to
-// { compromiseFlags } for checks on the whole package (a malware advisory on any fresh
-// version).
-//
-// 1. Every fresh version of every member is checked. A compromise flag (advisory hit,
-//    publisher change, dropped or changed provenance, new or changed install script) on ANY
-//    of them blocks the whole family: no fallback.
-// 2. Otherwise the levels are tried in order: the newest of each member, then each version
-//    that ALL members have, newest first (a family never splits across versions). The first
-//    level without any red flag wins. Older fresh versions are a fallback only for other
-//    flags (ranges, coverage, new dependencies, specs).
-// 3. The winning level is 'auto' only when every exclude entry of every member has verified
-//    provenance (reference and fresh version, same repository and workflow). Otherwise it is
-//    'needs-approval'. Without a clean level the family is 'blocked'.
-// A blocked family keeps the exclude set of its newest level, so a person can approve it by
-// name; the caller keeps it out of autoExcludes.
-export async function decideFamily(members, check, packageCheck = null) {
-  const key = (m) => m.id ?? m.name
-  const levels = [Object.fromEntries(members.map((m) => [key(m), m.fresh[0]]))]
-  const common = members[0].fresh.filter((v) =>
-    members.every((m) => m.fresh.includes(v))
-  )
-  for (const v of common.sort((a, b) => cmpRaw(b, a))) {
-    if (!levels.some((l) => members.every((m) => l[key(m)] === v))) {
-      levels.push(Object.fromEntries(members.map((m) => [key(m), v])))
-    }
-  }
-  // Step 1: every fresh version, newest first, plus the package-level checks.
-  const tried = {}
-  const packageFlags = {}
-  const compromise = new Set()
-  await Promise.all(
-    members.map(async (m) => {
-      const results = await Promise.all(m.fresh.map((v) => check(m, v)))
-      tried[key(m)] = m.fresh.map((version, i) => ({
-        version,
-        ...results[i],
-      }))
-      for (const r of results) {
-        for (const f of r.compromiseFlags ?? []) {
-          compromise.add(f)
-        }
-      }
-      packageFlags[key(m)] = packageCheck
-        ? ((await packageCheck(m)).compromiseFlags ?? [])
-        : []
-      for (const f of packageFlags[key(m)]) {
-        compromise.add(f)
-      }
-    })
-  )
-  const resultAt = (m, v) => tried[key(m)].find((t) => t.version === v)
-  const unionExcludes = (level) =>
-    [
-      ...new Set(members.flatMap((m) => resultAt(m, level[key(m)]).excludeSet)),
-    ].sort()
-  const allFlags = () => [
-    ...new Set([
-      ...compromise,
-      ...members.flatMap((m) => tried[key(m)].flatMap((t) => t.redFlags)),
-    ]),
-  ]
-  const blocked = {
-    decision: 'blocked',
-    versions: levels[0],
-    tried,
-    skippedFlags: Object.fromEntries(members.map((m) => [key(m), []])),
-    packageFlags,
-    excludeSet: unionExcludes(levels[0]),
-    unverifiedProvenance: [],
-  }
-  if (compromise.size) {
-    return {
-      ...blocked,
-      redFlags: allFlags(),
-      compromiseFlags: [...compromise],
-    }
-  }
-  for (const level of levels) {
-    const results = members.map((m) => resultAt(m, level[key(m)]))
-    if (results.some((r) => r.redFlags.length)) {
-      continue
-    }
-    const unverified = [
-      ...new Set(results.flatMap((r) => r.unverifiedProvenance ?? [])),
-    ].sort()
-    // Per member: the flags of the newer fresh versions that this level skips.
-    const skippedFlags = Object.fromEntries(
-      members.map((m) => [
-        key(m),
-        [
-          ...new Set(
-            tried[key(m)]
-              .filter((t) => cmpRaw(t.version, level[key(m)]) > 0)
-              .flatMap((t) => t.redFlags)
-          ),
-        ],
-      ])
-    )
-    return {
-      decision: unverified.length ? 'needs-approval' : 'auto',
-      versions: level,
-      tried,
-      skippedFlags,
-      packageFlags,
-      redFlags: [],
-      compromiseFlags: [],
-      excludeSet: unionExcludes(level),
-      unverifiedProvenance: unverified,
-    }
-  }
-  return { ...blocked, redFlags: allFlags(), compromiseFlags: [] }
-}
-
-// GitHub advisory database: the advisories in a `GET /advisories?affects=name@version`
-// answer that really hit this exact version. Malware always counts, also when withdrawn:
-// GitHub withdraws a malware advisory once npm removes the version, so a withdrawn one that
-// still matches a published version is suspect (fail closed; the cost is a wait of <24h).
-// A reviewed advisory counts when it is high or critical and not withdrawn. Returns the
-// hits, or null when the answer cannot be trusted (not an array, or a full page that may
-// hide more).
-export function advisoryHits(list, name, version, pageSize = 100) {
-  if (!Array.isArray(list) || list.length >= pageSize) {
-    return null
-  }
-  const hits = []
-  for (const a of list) {
-    if (
-      !a ||
-      typeof a !== 'object' ||
-      (a.withdrawn_at && a.type !== 'malware')
-    ) {
-      continue
-    }
-    const serious =
-      a.type === 'malware' ||
-      (a.type === 'reviewed' &&
-        (a.severity === 'high' || a.severity === 'critical'))
-    if (!serious) {
-      continue
-    }
-    const vulns = (a.vulnerabilities ?? []).filter(
-      (v) =>
-        v?.package?.name === name &&
-        (v.package.ecosystem ?? 'npm').toLowerCase() === 'npm'
-    )
-    // The API already filtered by `affects`; a range that we cannot parse still counts.
-    const affected = vulns.some((v) => {
-      const range = String(v.vulnerable_version_range ?? '').replace(/,/g, ' ')
-      return !range.trim() || satisfies(version, range) !== false
-    })
-    if (affected) {
-      hits.push({
-        ghsa: a.ghsa_id,
-        type: a.type,
-        severity: a.severity,
-        withdrawn: !!a.withdrawn_at,
-      })
-    }
-  }
-  return hits
-}
-
-// Source repository and workflow path from an npm attestation bundle
-// (`/-/npm/v1/attestations/<name>@<version>`). Reads SLSA provenance v1
-// (buildDefinition.externalParameters.workflow) and v0.2 (invocation.configSource). The
-// statement subject must name this exact package version. Returns { repository, path } or
-// { error }.
-export function parseProvenance(bundle, name, version) {
-  const purl = `pkg:npm/${name.replace(/^@/, '%40')}@${version}`
-  for (const a of bundle?.attestations ?? []) {
-    if (!/^https:\/\/slsa\.dev\/provenance\//.test(a?.predicateType ?? '')) {
-      continue
-    }
-    let st
-    try {
-      st = JSON.parse(
-        Buffer.from(a.bundle.dsseEnvelope.payload, 'base64').toString('utf8')
-      )
-    } catch {
-      return { error: 'provenance statement does not decode' }
-    }
-    if (!(st?.subject ?? []).some((s) => s?.name === purl)) {
-      return { error: `provenance subject is not ${purl}` }
-    }
-    const wf = st.predicate?.buildDefinition?.externalParameters?.workflow
-    if (wf?.repository && wf?.path) {
-      return { repository: normalizeRepo(wf.repository), path: wf.path }
-    }
-    const cs = st.predicate?.invocation?.configSource
-    if (cs?.uri && cs?.entryPoint) {
-      return { repository: normalizeRepo(cs.uri), path: cs.entryPoint }
-    }
-    return { error: 'provenance has no source repository or workflow path' }
-  }
-  return { error: 'no SLSA provenance statement in the bundle' }
-}
-
-// `git+https://github.com/Org/Repo.git@refs/heads/main` -> `https://github.com/org/repo`.
-export function normalizeRepo(uri) {
-  return String(uri)
-    .trim()
-    .replace(/^git\+/, '')
-    .replace(/@refs\/.*$/, '')
-    .replace(/\/+$/, '')
-    .replace(/\.git$/, '')
-    .toLowerCase()
-}
-
-// Compare the provenance of a fresh version with its reference. Each side is
-// { has: boolean (dist.attestations present), info: { repository, path } | { error } | null }.
-// Only the repository and the workflow path count; the ref (branch or tag) changes for
-// legitimate reasons. Returns
-//   flags:      every red flag,
-//   compromise: the flags of the compromise class (provenance dropped, repository or
-//               workflow changed),
-//   verified:   true only when both sides have readable provenance with the same repository
-//               and workflow. Without it, a clean version needs approval (never 'auto').
-export function provenanceVerdict(label, ref, fresh) {
-  const out = (flags, compromise = [], verified = false) => ({
-    flags,
-    compromise,
-    verified,
-  })
-  if (!ref.has) {
-    return out([])
-  }
-  if (!fresh.has) {
-    const f = `${label}: provenance attestation dropped`
-    return out([f], [f])
-  }
-  if (!ref.info || ref.info.error) {
-    return out([
-      `${label}: cannot check provenance of the reference (${ref.info?.error ?? 'not fetched'})`,
-    ])
-  }
-  if (!fresh.info || fresh.info.error) {
-    return out([
-      `${label}: provenance unreadable, cannot check (${fresh.info?.error ?? 'not fetched'})`,
-    ])
-  }
-  const flags = []
-  if (fresh.info.repository !== ref.info.repository) {
-    flags.push(
-      `${label}: provenance source repository changed ${ref.info.repository} → ${fresh.info.repository}`
-    )
-  }
-  if (fresh.info.path !== ref.info.path) {
-    flags.push(
-      `${label}: provenance workflow changed ${ref.info.path} → ${fresh.info.path}`
-    )
-  }
-  return out(flags, flags, flags.length === 0)
-}
-
-export const provenanceFlags = (label, ref, fresh) =>
-  provenanceVerdict(label, ref, fresh).flags
-
-// Malware advisories of a whole package (`/advisories?type=malware&affects=<name>`, no
-// version) whose range covers any of `versions`. Returns [{ ghsa, version }] or null when
-// the answer cannot be trusted (the caller blocks).
-export function malwareCoveringAny(list, name, versions) {
-  const out = []
-  for (const v of versions) {
-    const hits = advisoryHits(list, name, v)
-    if (hits == null) {
-      return null
-    }
-    for (const h of hits.filter((x) => x.type === 'malware')) {
-      out.push({ ghsa: h.ghsa, version: v, withdrawn: h.withdrawn })
-    }
-  }
-  return out
-}
 
 // Proposed update for one override, or null. `o` is { key, value, name, kind, reason }.
 //   - A comment that names a hold (hold, held, regressed, "do not lift", …) keeps every
@@ -1348,52 +1139,16 @@ export function resolveLockfileBases(baseOpt, git) {
   return { compareBase, trustAnchor }
 }
 
-// --- fast-track network checks -------------------------------------------------
-
-// Advisory hits for one exact version from the GitHub advisory database: malware, plus
-// reviewed advisories that are high or critical. Verified by hand on 2026-11-10:
-//   type=malware  affects=chalk@5.6.1            -> GHSA-2v46-p5h4-248w (malware, critical)
-//   type=malware  affects=debug@4.4.2            -> GHSA-8mgj-vmr8-frr6 (withdrawn 2025-09-15)
-//   type=reviewed affects=debug@4.4.2            -> GHSA-4x49-vf9v-38px (high)
-//   type=malware  affects=@ctrl/tinycolor@4.1.1  -> GHSA-qjqf-7j6f-82c4 (scoped name works)
-//   type=reviewed affects=event-stream@3.3.6     -> GHSA-mh6f-8j2x-4483 (critical)
-//   type=malware / reviewed affects=viem@2.57.17, debug@4.4.1, @ctrl/tinycolor@4.1.0 -> []
-// Returns { hits } or { error } (the check could not run: the caller fails closed).
-export async function advisoriesFor(name, version) {
-  const affects = encodeURIComponent(`${name}@${version}`)
-  const hits = []
-  for (const type of ['malware', 'reviewed']) {
-    const list = await ghApi(
-      `/advisories?type=${type}&ecosystem=npm&affects=${affects}&per_page=100`,
-      30000
-    )
-    const h = advisoryHits(list, name, version)
-    if (h == null) {
-      return {
-        error: `GitHub ${type} advisory query failed or was incomplete`,
-      }
+// The raw version document from registry.npmjs.org, or { error }. One retry on a network
+// error or an HTTP 5xx.
+export async function registryVersionDoc(name, version, timeoutMs = 20000) {
+  if (routingFor(process.cwd())(name)) {
+    const v = (await packument(name)).versions?.[version]
+    if (v) {
+      return v
     }
-    hits.push(...h)
   }
-  return { hits }
-}
-
-// Malware advisories of a whole package (no version in `affects`). Returns { list } or
-// { error }. analyze-outdated blocks the package when one covers any fresh version.
-export async function packageMalwareFor(name) {
-  const list = await ghApi(
-    `/advisories?type=malware&ecosystem=npm&affects=${encodeURIComponent(name)}&per_page=100`,
-    30000
-  )
-  return Array.isArray(list)
-    ? { list }
-    : { error: 'GitHub malware advisory query for the package failed' }
-}
-
-// Provenance source of one version from the npm attestation bundle. Returns
-// { repository, path } or { error }. One retry on a network error or an HTTP 5xx.
-export async function provenanceOf(name, version, timeoutMs = 20000) {
-  const url = `https://registry.npmjs.org/-/npm/v1/attestations/${name.replace('/', '%2f')}@${version}`
+  const url = `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}`
   let last = null
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -1402,592 +1157,11 @@ export async function provenanceOf(name, version, timeoutMs = 20000) {
         last = `HTTP ${res.status}`
         continue
       }
-      if (!res.ok) {
-        return { error: `HTTP ${res.status}` }
-      }
-      return parseProvenance(await res.json(), name, version)
+      return res.ok ? await res.json() : { error: `HTTP ${res.status}` }
     } catch (err) {
       last = String(err.message)
     }
   }
   failures.push({ call: `GET ${url}`, error: last })
   return { error: last }
-}
-
-// --- bump.mjs helpers (pure, unit-tested) -------------------------------------
-
-const EXACT_TOKEN_RE = /(?:@[\w.~-]+\/)?[\w.~-]+@\d+\.\d+\.\d+/g
-const KEEP_EXCLUDES = new Set(['@bigmi/*', '@lifi/*'])
-const quoteIfScoped = (s) => (s.startsWith('@') ? `'${s}'` : s)
-
-// Edit `minimumReleaseAgeExclude` in a pnpm-workspace.yaml text. Returns { text, removed }.
-//   add:     exact entries to add (deduplicated);
-//   remove:  `name@version` entries to remove (never `@bigmi/*` or `@lifi/*`). An item with
-//            several versions (`foo@1.0.0 || 1.1.0`) loses only the removed versions. Every
-//            line of the comment block above the key that names only removed entries goes
-//            too. `removed` lists what the edit really removed;
-//   comment: one comment line (with `#`) to add at the end of that block (pnpm drops
-//            comments between the items, so the reason lives above the key).
-// The item region follows the same rule as yamlList (blank lines and comments do not end
-// it). Lines that are not items stay where they are; the items are written at the place of
-// the first one. Items without one exact version (globs, `a || b`) keep their order and
-// come first; exact entries follow, sorted by name and version. New scoped entries are
-// quoted.
-export function editExcludesDetailed(
-  yaml,
-  { add = [], remove = [], comment = null }
-) {
-  if (!add.length && !remove.length && !comment) {
-    return { text: yaml, removed: [] }
-  }
-  const lines = yaml.split('\n')
-  const k = lines.findIndex((l) =>
-    /^minimumReleaseAgeExclude:\s*(#.*)?$/.test(l)
-  )
-  if (k === -1) {
-    if (!add.length) {
-      return { text: yaml, removed: [] }
-    }
-    const body = [
-      ...(comment ? [comment] : []),
-      'minimumReleaseAgeExclude:',
-      ...[...new Set(add)].sort().map((a) => `  - ${quoteIfScoped(a)}`),
-    ]
-    return {
-      text: `${yaml.replace(/\n*$/, '\n')}${body.join('\n')}\n`,
-      removed: [],
-    }
-  }
-  // The region: the same rule as blockLines (blank, indented, `- x` or `#` at column 0).
-  let end = k + 1
-  while (
-    end < lines.length &&
-    (lines[end].trim() === '' ||
-      /^\s/.test(lines[end]) ||
-      /^- /.test(lines[end]) ||
-      lines[end].startsWith('#'))
-  ) {
-    end++
-  }
-  const isItem = (l) => /^\s*-\s/.test(l)
-  const region = lines.slice(k + 1, end)
-  const items = region.filter(isItem).map((line) => ({
-    line,
-    value: unquote(line.replace(/^\s*-\s*/, '').replace(/\s+#.*$/, '')),
-  }))
-  const indent = items[0]?.line.match(/^(\s*)-/)[1] ?? '  '
-  const removeSet = new Set(remove.filter((r) => !KEEP_EXCLUDES.has(r)))
-  const removed = []
-  const kept = []
-  for (const item of items) {
-    if (KEEP_EXCLUDES.has(item.value)) {
-      kept.push(item)
-      continue
-    }
-    const pieces = parseExcludes([item.value])
-    if (!pieces.length || pieces.some((m) => m.version == null)) {
-      kept.push(item)
-      continue
-    }
-    const gone = pieces.filter((m) => removeSet.has(`${m.name}@${m.version}`))
-    removed.push(...gone.map((m) => `${m.name}@${m.version}`))
-    const left = pieces.filter((m) => !gone.includes(m))
-    if (!left.length) {
-      continue
-    }
-    if (!gone.length) {
-      kept.push(item)
-      continue
-    }
-    const value = `${left[0].name}@${left.map((m) => m.version).join(' || ')}`
-    kept.push({ line: `${indent}- ${quoteIfScoped(value)}`, value })
-  }
-  for (const a of add) {
-    if (!kept.some((i) => i.value === a)) {
-      kept.push({ line: `${indent}- ${quoteIfScoped(a)}`, value: a })
-    }
-  }
-  const exact = (v) => EXACT_EXCLUDE_RE.test(v)
-  const sorted = [
-    ...kept.filter((i) => !exact(i.value)),
-    ...kept
-      .filter((i) => exact(i.value))
-      .sort((a, b) => {
-        const [an, av] = [specName(a.value), a.value.split('@').pop()]
-        const [bn, bv] = [specName(b.value), b.value.split('@').pop()]
-        return an.localeCompare(bn) || cmpRaw(av, bv)
-      }),
-  ].map((i) => i.line)
-  const firstItem = region.findIndex(isItem)
-  const at = firstItem === -1 ? 0 : firstItem
-  const others = region.filter((l) => !isItem(l))
-  const othersBefore = region.slice(0, at).filter((l) => !isItem(l))
-  const newRegion = [
-    ...othersBefore,
-    ...sorted,
-    ...others.slice(othersBefore.length),
-  ]
-  // The comment block directly above the key.
-  const removedSet = new Set(removed)
-  let start = k
-  while (start > 0 && lines[start - 1].startsWith('#')) {
-    start--
-  }
-  const block = lines.slice(start, k).filter((l) => {
-    const tokens = l.match(EXACT_TOKEN_RE) ?? []
-    return !(tokens.length && tokens.every((t) => removedSet.has(t)))
-  })
-  if (comment) {
-    block.push(comment)
-  }
-  return {
-    text: [
-      ...lines.slice(0, start),
-      ...block,
-      lines[k],
-      ...newRegion,
-      ...lines.slice(end),
-    ].join('\n'),
-    removed,
-  }
-}
-
-export const editExcludes = (yaml, opts) =>
-  editExcludesDetailed(yaml, opts).text
-
-// Replace one override line (`key: value`) in the `overrides:` block, keeping the quote
-// style of the key and the value. Returns the new text, or null when the line is missing.
-export function replaceOverride(yaml, key, value, newKey, newValue) {
-  const lines = yaml.split('\n')
-  const k = lines.findIndex((l) => /^overrides:\s*(#.*)?$/.test(l))
-  if (k === -1) {
-    return null
-  }
-  const q = (orig, s) => {
-    const c = /^["']/.test(orig) ? orig[0] : /^[@'"&*!|>%`]/.test(s) ? "'" : ''
-    return `${c}${s}${c}`
-  }
-  for (let i = k + 1; i < lines.length; i++) {
-    const l = lines[i]
-    if (l.trim() !== '' && !/^\s/.test(l)) {
-      break
-    }
-    const m = l.match(
-      /^(\s+)("[^"]+"|'[^']+'|[^:#\s][^:]*?):\s*("[^"]*"|'[^']*'|[^#]*?)(\s*#.*)?$/
-    )
-    if (m && unquote(m[2]) === key && unquote(m[3]) === value) {
-      lines[i] = `${m[1]}${q(m[2], newKey)}: ${q(m[3], newValue)}${m[4] ?? ''}`
-      return lines.join('\n')
-    }
-  }
-  return null
-}
-
-// The specifier that `pnpm up --latest` writes for a bump to `target`, or null when the
-// specifier is not bumpable (peer ranges are never passed here; `>=`/`<`, protocols,
-// `||`, x-ranges and tags stay as they are). Keeps the `^`, `~` or exact prefix.
-export function bumpSpec(spec, target) {
-  const s = String(spec).trim()
-  if (/^(workspace:|catalog:|link:|file:|npm:|git|https?:)/.test(s)) {
-    return null
-  }
-  const m = /^([\^~]?)v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.exec(s)
-  return m ? `${m[1]}${target}` : null
-}
-
-// Set `name` to `newSpec` inside the top-level `field` object of a package.json text,
-// keeping the formatting. Only a key at depth 1 counts: a nested `"dependencies"` (for
-// example in `pnpm.packageExtensions`) is never edited, and a name in `peerDependencies`
-// stays. Returns the new text, or null when the entry is missing.
-export function setDependencySpec(text, field, name, newSpec) {
-  const range = topLevelObject(text, field)
-  if (!range) {
-    return null
-  }
-  const [from, close] = range
-  const body = text.slice(from, close)
-  const re = new RegExp(`("${escapeRegExp(name)}"\\s*:\\s*")([^"]*)(")`)
-  if (!re.test(body)) {
-    return null
-  }
-  return (
-    text.slice(0, from) +
-    body.replace(re, (_m, a, _v, c) => `${a}${newSpec}${c}`) +
-    text.slice(close)
-  )
-}
-
-// [start, end) of the body of the object value of the top-level key `key` in a JSON text,
-// or null. Walks the text with string and depth tracking.
-function topLevelObject(text, key) {
-  let depth = 0
-  let i = 0
-  while (i < text.length) {
-    const c = text[i]
-    if (c === '"') {
-      let j = i + 1
-      while (j < text.length && text[j] !== '"') {
-        j += text[j] === '\\' ? 2 : 1
-      }
-      const str = text.slice(i + 1, j)
-      i = j + 1
-      if (depth === 1 && str === key) {
-        const m = /^\s*:\s*\{/.exec(text.slice(i))
-        if (m) {
-          const from = i + m[0].length
-          // Find the matching `}` (string-aware).
-          let d = 1
-          let k = from
-          while (k < text.length && d > 0) {
-            if (text[k] === '"') {
-              k++
-              while (k < text.length && text[k] !== '"') {
-                k += text[k] === '\\' ? 2 : 1
-              }
-            } else if (text[k] === '{') {
-              d++
-            } else if (text[k] === '}') {
-              d--
-            }
-            k++
-          }
-          return d === 0 ? [from, k - 1] : null
-        }
-      }
-      continue
-    }
-    if (c === '{' || c === '[') {
-      depth++
-    } else if (c === '}' || c === ']') {
-      depth--
-    }
-    i++
-  }
-  return null
-}
-
-// `packageManager` value as corepack writes it: pnpm@X+sha512.<hex of the npm integrity>.
-export function packageManagerValue(version, integrity) {
-  const m = /^sha512-(.+)$/.exec(String(integrity ?? ''))
-  if (!m) {
-    return null
-  }
-  return `pnpm@${version}+sha512.${Buffer.from(m[1], 'base64').toString('hex')}`
-}
-
-export function setPackageManager(text, value) {
-  return text.replace(
-    /("packageManager"\s*:\s*")[^"]*(")/,
-    (_m, a, b) => `${a}${value}${b}`
-  )
-}
-
-// One changeset for the bump: a patch for each package, one line per dependency.
-// `updates` is [{ pkg, dep, version }].
-export function changesetText(updates) {
-  const pkgs = [...new Set(updates.map((u) => u.pkg))].sort()
-  const lines = [
-    ...new Set(updates.map((u) => `Update \`${u.dep}\` to ${u.version}.`)),
-  ].sort()
-  return `---\n${pkgs.map((p) => `"${p}": patch`).join('\n')}\n---\n\n${lines.join('\n')}\n`
-}
-
-// `name a→b` (the plan's changeset lines) -> { dep, from, version }.
-export function parseChangesetLine(s) {
-  const m = /^(.+) (\S+)→(\S+)$/.exec(String(s))
-  return m ? { dep: m[1], from: m[2], version: m[3] } : null
-}
-
-// Group the changed files into the commits, in order. `files` are repo-relative paths.
-// The lockfile commit is always last. Files outside the known groups are `unexpected`
-// (never committed).
-export function groupCommits(
-  files,
-  { excludeAddFiles = [], packageManagerFiles = [], pnpmTarget = null } = {}
-) {
-  const lock = (f) => /(^|\/)pnpm-lock\.yaml$/.test(f)
-  const ci = (f) => f.startsWith('.github/')
-  const bump = (f) =>
-    /(^|\/)(package\.json|pnpm-workspace\.yaml)$/.test(f) ||
-    /^\.changeset\/[^/]+\.md$/.test(f)
-  const commits = []
-  if (excludeAddFiles.length) {
-    commits.push({
-      id: 'excludes',
-      message: 'chore: allow fresh releases past the release-age gate',
-      files: [...excludeAddFiles].sort(),
-    })
-  }
-  const bumpFiles = files.filter(bump)
-  if (bumpFiles.length) {
-    commits.push({
-      id: 'bump',
-      message: 'chore: bump packages',
-      files: bumpFiles.sort(),
-    })
-  }
-  const ciFiles = files.filter(ci)
-  if (ciFiles.length) {
-    commits.push({
-      id: 'ci',
-      message: 'ci: bump GitHub Actions and CI tools',
-      files: ciFiles.sort(),
-    })
-  }
-  const lockFiles = [
-    ...new Set([...files.filter(lock), ...packageManagerFiles]),
-  ]
-  if (lockFiles.length) {
-    commits.push({
-      id: 'lockfile',
-      message: pnpmTarget
-        ? `chore: bump pnpm to ${pnpmTarget} and regenerate the lockfile`
-        : 'chore: regenerate the lockfile',
-      files: lockFiles.sort(),
-    })
-  }
-  const known = new Set(commits.flatMap((c) => c.files))
-  return { commits, unexpected: files.filter((f) => !known.has(f)) }
-}
-
-// Wrap commit body lines at `width` characters (git log stays readable).
-export function wrapLines(text, width = 100) {
-  const out = []
-  for (const para of String(text).split('\n')) {
-    let line = ''
-    for (const word of para.split(' ')) {
-      if (line && `${line} ${word}`.length > width) {
-        out.push(line)
-        line = word
-      } else {
-        line = line ? `${line} ${word}` : word
-      }
-    }
-    out.push(line)
-  }
-  return out.join('\n')
-}
-
-// Exit codes of bump.mjs.
-export const EXIT = { ok: 0, cannotRun: 2, lockfileStop: 3, checkFailed: 4 }
-
-// The PR text of one run: what moved, the fast-tracks, the decisions left, the lockfile,
-// the audit and the checks. Used as the PR body (new PR) or appended as a "Run" section.
-export function prRunSection(r) {
-  const code = (s) => `\`${s}\``
-  const out = []
-  const bumps = r.applied?.bumps ?? []
-  if (bumps.length) {
-    out.push(
-      '### Packages',
-      '',
-      '| Package | Where | From | To | Bump |',
-      '|---|---|---|---|---|',
-      ...bumps.map(
-        (b) =>
-          `| ${code(b.name)} | ${b.where.join(', ')} | ${b.from} | ${b.to} | ${b.bump}${b.fastTrack ? ' (fast-track)' : ''} |`
-      ),
-      ''
-    )
-  }
-  const ft = r.applied?.fastTracks ?? []
-  if (ft.length) {
-    out.push(
-      '### Allowed past the release-age gate',
-      '',
-      ...ft.map(
-        (f) =>
-          `- ${code(f.spec)} (${f.ageHours ?? '?'} h old, ${f.approved ? 'approved by the user' : 'all checks pass'}). Checks: publisher, provenance source, advisories, install scripts, dependencies. Exclude set: ${f.excludeSet.map(code).join(', ')}.`
-      ),
-      ''
-    )
-  }
-  const other = [
-    ...(r.applied?.overrides ?? []).map(
-      (o) =>
-        `- Override ${code(`${o.key}: ${o.value}`)} → ${code(`${o.newKey}: ${o.newValue}`)}.`
-    ),
-    ...(r.applied?.removedExcludes ?? []).map(
-      (e) => `- Removed the aged-out exclude entry ${code(e)}.`
-    ),
-    ...(r.applied?.actions ?? []).map(
-      (a) => `- GitHub Action ${code(a.repo)} ${a.from} → ${a.to}.`
-    ),
-    ...(r.applied?.tools ?? []).map(
-      (t) => `- CI tool ${code(t.pkg)} ${t.from} → ${t.to}.`
-    ),
-    ...(r.applied?.pnpm
-      ? [`- pnpm ${r.applied.pnpm.from} → ${r.applied.pnpm.to}.`]
-      : []),
-  ]
-  if (other.length) {
-    out.push('### Other changes', '', ...other, '')
-  }
-  if (r.decisions?.length) {
-    out.push(
-      '### Held back or left for a decision',
-      '',
-      ...r.decisions.map(
-        (d) =>
-          `- ${code(d.name)}${d.project && d.project !== '.' ? ` (${d.project})` : ''}: ${d.kind}. ${d.detail}`
-      ),
-      ''
-    )
-  }
-  if (r.lockfile) {
-    out.push(
-      '### Lockfile',
-      '',
-      `- Major jumps: ${r.lockfile.majors.length ? r.lockfile.majors.map(code).join(', ') : 'none'}.`,
-      `- Single-copy packages: ${r.lockfile.singleCopy.length ? r.lockfile.singleCopy.map(code).join(', ') : 'none'}.`,
-      ''
-    )
-  }
-  const n = (a) =>
-    a ? Object.values(a).reduce((x, y) => x + (Number(y) || 0), 0) : '?'
-  out.push(
-    '### Security',
-    '',
-    `- \`pnpm audit\`: ${n(r.audit?.before)} advisories before, ${n(r.audit?.after)} after.`,
-    '',
-    '### Validation',
-    '',
-    ...(r.checks ?? []).map(
-      (c) => `- ${code(c.name)}: ${c.ok ? 'pass' : 'FAIL'} (${c.seconds} s).`
-    ),
-    '',
-    'Commits skip the git hooks; the same checks ran once before the commit.'
-  )
-  return mdSafe(out.join('\n'))
-}
-
-export function prBody(r) {
-  return [
-    '## Which Linear task is linked to this PR?',
-    '',
-    'None. This PR is routine dependency maintenance.',
-    '',
-    '## Why was it implemented this way?',
-    '',
-    'This PR moves the dependencies, the GitHub Actions and pnpm to their latest releases that are older than the 24 h release-age gate. Fresh patches and minors that pass all checks go in by default.',
-    '',
-    prRunSection(r),
-    '',
-  ].join('\n')
-}
-
-// --- bump.mjs guards (pure, unit-tested) ---------------------------------------------
-
-// The branch names that bump.mjs makes. An open PR is reused only on such a branch.
-export const BUMP_BRANCH_RE = /^chore\/bump-deps-\d{8}(-\d+)?$/
-
-// The open bump PR to reuse: same repository (never a fork), the exact title, and a
-// branch that bump.mjs made. `prs` comes from `gh pr list --json
-// number,headRefName,title,isCrossRepository,headRepositoryOwner`. Returns { pr, rejected }.
-export function pickBumpPr(prs, owner) {
-  const rejected = []
-  const ok = []
-  for (const p of prs ?? []) {
-    if (p.title !== 'chore: bump packages') {
-      continue
-    }
-    const why = p.isCrossRepository
-      ? 'from a fork'
-      : owner &&
-          p.headRepositoryOwner?.login &&
-          p.headRepositoryOwner.login !== owner
-        ? `head owner ${p.headRepositoryOwner.login}`
-        : !BUMP_BRANCH_RE.test(p.headRefName ?? '')
-          ? `branch ${p.headRefName} is not chore/bump-deps-<yyyymmdd>`
-          : null
-    ;(why ? rejected : ok).push(why ? { number: p.number, why } : p)
-  }
-  return { pr: ok[0] ?? null, rejected }
-}
-
-// Why a worktree and branch must not be used for commits or a push, or null when they are
-// safe. Never the main checkout, never the default branch, only a bump branch.
-export function branchGuard({ branch, defaultBranch, worktree, mainCheckout }) {
-  if (!branch || branch === 'main' || branch === defaultBranch) {
-    return `branch ${branch ?? '(none)'} is the default branch`
-  }
-  if (!BUMP_BRANCH_RE.test(branch)) {
-    return `branch ${branch} is not a bump branch (chore/bump-deps-<yyyymmdd>)`
-  }
-  if (worktree && mainCheckout && worktree === mainCheckout) {
-    return `the worktree ${worktree} is the main checkout`
-  }
-  return null
-}
-
-// Open-PR mode: which exclude entries of the PR branch an earlier run made. Only entries
-// that a commit of the script itself added (subject `chore: allow …`, on BASE and not on
-// origin/main) are trusted. `commits` is [{ subject, added: [entries] }]. Returns
-// { trusted, untrusted } over the entries that are on BASE and not on origin/main.
-export function earlierExcludes({ baseEntries, mainEntries, commits }) {
-  const onMain = new Set(mainEntries)
-  const own = new Set(
-    commits
-      .filter((c) => c.subject.startsWith('chore: allow '))
-      .flatMap((c) => c.added)
-  )
-  const fresh = [...new Set(baseEntries.filter((e) => !onMain.has(e)))]
-  return {
-    trusted: fresh.filter((e) => own.has(e) && EXACT_EXCLUDE_RE.test(e)),
-    untrusted: fresh.filter((e) => !own.has(e) || !EXACT_EXCLUDE_RE.test(e)),
-  }
-}
-
-// The recheck of one earlier fast-track entry that is still younger than the gate. Any
-// flag stops the run (exit 3): a compromise sign, or a check that could not run.
-//   f, b:   npm metadata (`_npmUser`, `scripts`, `dist.attestations`) of the entry and of
-//           its reference (the aged release below it); null = the call failed.
-//   adv:    advisoriesFor() result; pkg: malwareCoveringAny() result (null = failed);
-//   prov:   provenanceVerdict() result.
-export function recheckFlags(spec, { f, b, adv, pkg, prov }) {
-  const flags = []
-  if (!f || !b) {
-    return [`${spec}: npm metadata unavailable, cannot check`]
-  }
-  const who = (x) => JSON.stringify(x?._npmUser ?? null)
-  if (!f._npmUser || !b._npmUser) {
-    flags.push(`${spec}: publisher unknown, cannot compare`)
-  } else if (who(f) !== who(b)) {
-    flags.push(`${spec}: publisher changed ${who(b)} → ${who(f)}`)
-  }
-  for (const s of ['preinstall', 'install', 'postinstall']) {
-    if (f.scripts?.[s] && f.scripts[s] !== b.scripts?.[s]) {
-      flags.push(`${spec}: new or changed ${s} script`)
-    }
-  }
-  if (!adv || adv.error) {
-    flags.push(`${spec}: advisory check cannot run`)
-  } else {
-    flags.push(...adv.hits.map((h) => `${spec}: ${h.type} advisory ${h.ghsa}`))
-  }
-  if (pkg == null) {
-    flags.push(`${spec}: package malware check cannot run`)
-  } else {
-    flags.push(
-      ...pkg.map((h) => `${spec}: malware advisory ${h.ghsa} on the package`)
-    )
-  }
-  flags.push(...(prov?.flags ?? []))
-  return flags
-}
-
-// Put every `@scope/name` (with an optional `@version`) outside code spans into backticks,
-// so that GitHub does not read it as a mention. Text inside backticks stays as it is.
-export function mdSafe(text) {
-  return String(text)
-    .split(/(`[^`]*`)/)
-    .map((part, i) =>
-      i % 2 === 1
-        ? part
-        : part.replace(
-            /(^|[^\w`])(@[\w.-]+\/[\w.-]+(?:@[\w.^~<>=-]+)?)/g,
-            (_m, pre, name) => `${pre}\`${name}\``
-          )
-    )
-    .join('')
 }

@@ -8,16 +8,22 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
+  branchExcludes,
   branchGuard,
-  earlierExcludes,
   editExcludesDetailed,
   mdSafe,
   pickBumpPr,
-  prRunSection,
-  recheckFlags,
+  plain,
+  prBlock,
   setDependencySpec,
-  yamlList,
-} from '../lib.js'
+} from '../bump-helpers.js'
+import { gateYamlProblem, minAgeMinutesFromYaml, yamlList } from '../lib.js'
+import {
+  checkExactEntry,
+  metadataFlags,
+  referenceVersion,
+  trustedPublisherFlags,
+} from '../security.js'
 
 const BUMP = join(dirname(fileURLToPath(import.meta.url)), '..', 'bump.mjs')
 
@@ -80,87 +86,52 @@ test('branchGuard: never main, the default branch, another branch, or the main c
   assert.match(branchGuard({ ...ok, branch: null }), /default branch/)
 })
 
-test('earlierExcludes: only entries that the script\'s own "chore: allow" commits added', () => {
-  const r = earlierExcludes({
-    baseEntries: [
-      '@lifi/*',
-      'viem@2.57.17',
-      'evil@1.2.3',
-      'motion@14.12.0',
-      'bare-name',
-    ],
-    mainEntries: ['@lifi/*'],
-    commits: [
-      {
-        subject: 'chore: allow fresh releases past the release-age gate',
-        added: ['motion@14.12.0'],
-      },
-      {
-        subject: 'chore: allow viem@2.57.17 past the release-age gate',
-        added: ['viem@2.57.17'],
-      },
-      { subject: 'chore: bump packages', added: ['evil@1.2.3'] },
-      { subject: 'chore: allow anything', added: ['bare-name'] },
-    ],
-  })
-  assert.deepEqual(r.trusted, ['viem@2.57.17', 'motion@14.12.0'])
-  // A hand-pushed entry, and a bare name even from an allow commit, are not trusted.
-  assert.deepEqual(r.untrusted, ['evil@1.2.3', 'bare-name'])
+test('branchExcludes: exact entries that main lacks are rechecked, others stop', () => {
+  const r = branchExcludes(
+    ['@lifi/*', 'viem@2.57.17', 'motion@14.12.0', 'bare-name', 'x@^1.0.0'],
+    ['@lifi/*', 'motion@14.12.0']
+  )
+  assert.deepEqual(r.exact, ['viem@2.57.17'])
+  assert.deepEqual(r.other, ['bare-name', 'x@^1.0.0'])
 })
 
-test('recheckFlags: a compromise sign or a check that cannot run stops the run', () => {
-  const meta = (user, scripts = {}) => ({ _npmUser: { name: user }, scripts })
-  const clean = {
-    f: meta('a'),
-    b: meta('a'),
-    adv: { hits: [] },
-    pkg: [],
-    prov: { flags: [], compromise: [], verified: false },
+test('gateYamlProblem: only the plain block form of the release-age keys', () => {
+  const ok =
+    'packages:\n  - a\nminimumReleaseAge: 1440 # one day\nminimumReleaseAgeExclude:\n  - x@1.0.0\n'
+  assert.equal(gateYamlProblem(ok), null)
+  assert.deepEqual(yamlList(ok, 'minimumReleaseAgeExclude'), ['x@1.0.0'])
+  const bad = {
+    flow: 'minimumReleaseAgeExclude: [evil]\n',
+    quoted: "'minimumReleaseAgeExclude':\n  - '*'\n",
+    duplicate:
+      'minimumReleaseAgeExclude:\n  - a@1.0.0\nminimumReleaseAgeExclude:\n  - b\n',
+    nested: 'settings:\n  minimumReleaseAge: 0\n',
+    quotedValue: "minimumReleaseAge: '0'\n",
   }
-  assert.deepEqual(recheckFlags('x@1.0.1', clean), [])
-  assert.match(
-    recheckFlags('x@1.0.1', { ...clean, f: meta('b') })[0],
-    /publisher changed/
+  for (const [name, yaml] of Object.entries(bad)) {
+    assert.match(gateYamlProblem(yaml) ?? '', /line \d+ /, name)
+    assert.throws(() => yamlList(yaml, 'minimumReleaseAgeExclude'), name)
+    assert.throws(() => minAgeMinutesFromYaml(yaml), name)
+  }
+  // Other keys are read as before.
+  assert.deepEqual(yamlList(bad.flow, 'packages'), [])
+})
+
+test('pickBumpPr returns every qualifying PR, so that two of them can stop the run', () => {
+  const pr = (number, headRefName) => ({
+    number,
+    headRefName,
+    title: 'chore: bump packages',
+    isCrossRepository: false,
+    headRepositoryOwner: { login: 'acme' },
+  })
+  const r = pickBumpPr(
+    [pr(1, 'chore/bump-deps-20261110'), pr(2, 'chore/bump-deps-20261111')],
+    'acme'
   )
-  assert.match(
-    recheckFlags('x@1.0.1', {
-      ...clean,
-      f: meta('a', { postinstall: 'node x' }),
-    })[0],
-    /postinstall/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', {
-      ...clean,
-      adv: { hits: [{ type: 'malware', ghsa: 'GHSA-1' }] },
-    })[0],
-    /malware advisory GHSA-1/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', { ...clean, adv: { error: 'gh failed' } })[0],
-    /cannot run/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', { ...clean, pkg: null })[0],
-    /cannot run/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', {
-      ...clean,
-      pkg: [{ ghsa: 'GHSA-2', version: '1.0.1' }],
-    })[0],
-    /on the package/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', {
-      ...clean,
-      prov: { flags: ['x@1.0.1: provenance attestation dropped'] },
-    })[0],
-    /dropped/
-  )
-  assert.match(
-    recheckFlags('x@1.0.1', { ...clean, f: null })[0],
-    /cannot check/
+  assert.deepEqual(
+    r.all.map((p) => p.number),
+    [1, 2]
   )
 })
 
@@ -251,13 +222,17 @@ test('mdSafe and the PR text: scoped names are always in backticks', () => {
     mdSafe('mail imchybisov@gmail.com stays'),
     'mail imchybisov@gmail.com stays'
   )
-  const s = prRunSection({
-    decisions: [
+  // A bare user mention, and a backtick in untrusted text that would close a span.
+  assert.equal(mdSafe('ping @octocat now'), 'ping `@octocat` now')
+  assert.equal(mdSafe(`flag: ${plain('x` @evil `y')}`), "flag: x' `@evil` 'y")
+  const empty = { packages: [], excludes: [], overrides: [], toolchain: [] }
+  const s = prBlock(empty, {
+    needsUser: [
       {
-        kind: 'fast-track blocked',
+        kind: 'blocked',
         name: '@dynamic-labs/sdk',
         project: '.',
-        detail: 'Red flags: @dynamic-labs/sdk@4.5.1: publisher changed.',
+        text: 'blocked: @dynamic-labs/sdk@4.5.1: publisher changed.',
       },
     ],
     lockfile: { majors: [], singleCopy: ['@lifi/sdk 4.12.1'] },
@@ -284,4 +259,133 @@ test('bump.mjs --help prints the usage; an unknown option exits 2 with the usage
   assert.match(bad.stderr, /Usage: node bump\.mjs --repo/)
   const none = spawnSync(process.execPath, [BUMP], { encoding: 'utf8' })
   assert.equal(none.status, 2)
+})
+
+test('metadataFlags: publisher, trusted publisher, install scripts, dependencies', () => {
+  const m = (extra = {}) => ({
+    _npmUser: 'a <a@x.org>',
+    scripts: {},
+    dependencies: { x: '^1.0.0' },
+    ...extra,
+  })
+  assert.deepEqual(metadataFlags('p@1.0.1', m(), m()), {
+    flags: [],
+    compromise: [],
+  })
+  const changed = metadataFlags('p@1.0.1', m({ _npmUser: 'b <b@x.org>' }), m())
+  assert.match(changed.compromise[0], /publisher changed/)
+  const tp = {
+    '_npmUser.trustedPublisher': { id: 'github', oidcConfigId: '***' },
+  }
+  assert.match(
+    metadataFlags('p@1.0.1', m(), m(tp)).compromise[0],
+    /trusted publisher gone/
+  )
+  assert.match(
+    metadataFlags('p@1.0.1', m({ scripts: { postinstall: 'x' } }), m())
+      .compromise[0],
+    /postinstall/
+  )
+  // A new dependency is a flag, not a compromise flag; `deps: false` skips it.
+  const dep = m({ dependencies: { x: '^1.0.0', y: '1.0.0' } })
+  const withDeps = metadataFlags('p@1.0.1', dep, m())
+  assert.match(withDeps.flags[0], /new dependencies: y/)
+  assert.deepEqual(withDeps.compromise, [])
+  assert.deepEqual(
+    metadataFlags('p@1.0.1', dep, m(), { deps: false }).flags,
+    []
+  )
+  assert.match(metadataFlags('p@1.0.1', null, m()).flags[0], /cannot check/)
+})
+
+test('trustedPublisherFlags: the oidcConfigId from the raw documents', () => {
+  const meta = (integrity) => ({
+    '_npmUser.trustedPublisher': { id: 'github', oidcConfigId: '***' },
+    'dist.integrity': integrity,
+  })
+  const raw = (integrity, oidcConfigId) => ({
+    dist: { integrity },
+    _npmUser: { trustedPublisher: { id: 'github', oidcConfigId } },
+  })
+  const same = trustedPublisherFlags(
+    'p@2',
+    meta('i2'),
+    meta('i1'),
+    raw('i2', 'A'),
+    raw('i1', 'A')
+  )
+  assert.deepEqual(same, { flags: [], compromise: [] })
+  const changed = trustedPublisherFlags(
+    'p@2',
+    meta('i2'),
+    meta('i1'),
+    raw('i2', 'B'),
+    raw('i1', 'A')
+  )
+  assert.match(changed.compromise[0], /oidcConfigId A → B/)
+  // A document that is not the artifact that the metadata described cannot be compared.
+  const other = trustedPublisherFlags(
+    'p@2',
+    meta('i2'),
+    meta('i1'),
+    raw('zz', 'A'),
+    raw('i1', 'A')
+  )
+  assert.match(other.flags[0], /cannot compare/)
+  assert.deepEqual(other.compromise, [])
+})
+
+test('checkExactEntry and referenceVersion: one implementation for every exact entry', async () => {
+  const day = 86400000
+  const now = Date.parse('2026-11-10T12:00:00Z')
+  const view = {
+    time: {
+      '1.0.0': new Date(now - 10 * day).toISOString(),
+      '1.0.1': new Date(now - 3 * day).toISOString(),
+      '1.0.2': new Date(now - 3600000).toISOString(),
+    },
+    distTags: { latest: '1.0.2' },
+  }
+  assert.equal(referenceVersion(view, '1.0.2', day, now), '1.0.1')
+  assert.equal(referenceVersion(view, '1.0.0', day, now), '1.0.1')
+  const meta = { _npmUser: 'a <a@x.org>', scripts: {}, dependencies: {} }
+  const io = (adv, f = meta) => ({
+    advisories: async () => adv,
+    provenance: async () => null,
+    meta: async (spec) => (spec.endsWith('1.0.2') ? f : meta),
+    rawDoc: async () => null,
+  })
+  const clean = await checkExactEntry('p@1.0.2', '1.0.1', io({ hits: [] }), {
+    metadata: true,
+  })
+  assert.deepEqual(clean, { flags: [], compromise: [], verified: false })
+  const malware = await checkExactEntry(
+    'p@1.0.2',
+    '1.0.1',
+    io({ hits: [{ type: 'malware', ghsa: 'GHSA-1', severity: 'critical' }] })
+  )
+  assert.match(malware.compromise[0], /malware advisory GHSA-1/)
+  const blind = await checkExactEntry('p@1.0.2', '1.0.1', io({ error: 'down' }))
+  assert.match(blind.flags[0], /cannot run/)
+  assert.deepEqual(blind.compromise, [])
+  // The metadata checks run only when asked (the analyzer runs them in its walk).
+  const pub = { ...meta, _npmUser: 'b <b@x.org>' }
+  assert.deepEqual(
+    (await checkExactEntry('p@1.0.2', '1.0.1', io({ hits: [] }, pub))).flags,
+    []
+  )
+  const recheck = await checkExactEntry(
+    'p@1.0.2',
+    '1.0.1',
+    io({ hits: [] }, pub),
+    {
+      metadata: true,
+      deps: false,
+    }
+  )
+  assert.match(recheck.compromise[0], /publisher changed/)
+  assert.match(
+    (await checkExactEntry('p@1.0.2', null, io({ hits: [] }))).flags[0],
+    /no aged version to compare with/
+  )
 })
