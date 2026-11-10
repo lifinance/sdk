@@ -126,7 +126,7 @@ const getContractCallUpdatedStep = async (
  * Fields `/advanced/stepTransaction` adds to a gasless step. They are not in
  * `@lifi/types` yet.
  */
-type GaslessStepFields = {
+export type GaslessStepFields = {
   expiresAt?: number
   authorization?: unknown
 }

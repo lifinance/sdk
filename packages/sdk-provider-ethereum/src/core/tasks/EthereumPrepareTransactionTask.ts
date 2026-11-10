@@ -14,7 +14,10 @@ import {
   getEthereumExecutionStrategy,
   STRATEGY_AFTER_PREPARE,
 } from './helpers/getEthereumExecutionStrategy.js'
-import { getUpdatedStep } from './helpers/getUpdatedStep.js'
+import {
+  type GaslessStepFields,
+  getUpdatedStep,
+} from './helpers/getUpdatedStep.js'
 import { isAllowancePreparedForAnotherStrategy } from './helpers/isAllowancePreparedForAnotherStrategy.js'
 import { preservePermit2Allowances } from './helpers/preservePermit2Allowances.js'
 
@@ -70,7 +73,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     // none. The relayer rejects it for now, so signing it would be wasted.
     if (
       isGaslessStep(step) &&
-      (updatedStep as { authorization?: unknown }).authorization
+      (updatedStep as GaslessStepFields).authorization
     ) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,

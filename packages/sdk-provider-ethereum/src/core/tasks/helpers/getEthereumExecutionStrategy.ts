@@ -60,12 +60,13 @@ export async function getEthereumExecutionStrategy(
     return strategyAfterPrepare
   }
 
-  const atomicityNotReady = !!retryParams?.atomicityNotReady
   // A gasless step only executes through the relay. Before prepare it has no
   // typed data yet, so the relay fee is the only signal.
   if (isGaslessStep(step)) {
     return 'relayed'
   }
+
+  const atomicityNotReady = !!retryParams?.atomicityNotReady
 
   // Declared by the backend. It is the only signal that reaches the allowance
   // tasks, which run before a `transactionRequest` can exist.
