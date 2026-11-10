@@ -1,0 +1,104 @@
+packages:
+  - "packages/*"
+  - "examples/*"
+  - "e2e"
+# pnpm 12 applies a supply-chain release-age gate by default. Every entry below names
+# one exact version allowed through it, so an entry dies with its version instead of
+# exempting a package forever. Keep it that way: no bare package names except the
+# first-party '@bigmi/*' and '@lifi/*' wildcards.
+#
+# pnpm rewrites this sequence on install and drops comments placed between the items,
+# so the rationale has to live here, above the key:
+#   - An exact-version entry is a version that was still inside the age window when it
+#     was bumped. Remove it once it ages out or is no longer resolved.
+minimumReleaseAgeExclude:
+  - '@bigmi/*'
+  - '@lifi/*'
+  - "@commitlint/cli@21.2.4"
+  - "@commitlint/config-conventional@21.2.4"
+  - "@commitlint/ensure@21.2.4"
+  - "@commitlint/lint@21.2.4"
+  - "@commitlint/load@21.2.4"
+  - "@commitlint/rules@21.2.4"
+  - "@vitest/mocker@5.1.0"
+  - "@vitest/spy@5.1.0"
+  - framer-motion@14.4.0
+  - knip@6.42.0
+  - motion-dom@14.4.0
+  - motion@14.4.0
+  - "@playwright/test@1.65.0"
+  - playwright-core@1.65.0
+  - playwright@1.65.0
+  - vitest@5.1.0
+overrides:
+  "@react-native-async-storage/async-storage": ">=2.2.0"
+  "@reown/appkit": ">=1.8.20"
+  "@msgpack/msgpack": ">=3.1.3"
+  abitype: ">=1.2.4"
+  axios: "^1.20.0"
+  viem: ">=2.52.0"
+  bs58: ">=4.0.1"
+  preact: ">=10.29.1"
+  # Held at 0.26.0. 0.28.0 regressed for us; an override (not just the specifier)
+  # is what stops the next `pnpm update --latest` from silently taking it again.
+  vite-plugin-node-polyfills: "0.26.0"
+  # GHSA-wq5f-xc86-pv6w (librsvg) affects sharp <0.35.5. @dynamic-labs/iconic 5.10.0 pins 0.35.4.
+  "sharp@<0.35.5": ">=0.35.5"
+  # wagmi pins 1.4.0 and valtio pins 1.2.0, while react-i18next and @tanstack/react-store
+  # need ^1.6.0. One override keeps a single copy.
+  use-sync-external-store: "1.7.0"
+  utf-8-validate: "6.0.6"
+  zod: ">=4.4.3"
+  "ws@>=7.0.0 <8.0.0": ">=7.5.12"
+  "ws@>=8.0.0": ">=8.21.1"
+  esbuild: ">=0.25.0"
+  "es-toolkit@1": ">=1.52.0"
+  # Security (Aikido), 2026-10-12: each selector covers only the affected range.
+  # tronweb pins 13.15.23.
+  "validator@<13.15.26": ">=13.15.26"
+  # WalletConnect packages move together. They resolve to 2.26.0, which widget-playground pins.
+  "@walletconnect/core@<2.23.10": ">=2.23.10"
+  "@walletconnect/sign-client@<2.23.10": ">=2.23.10"
+  "@walletconnect/utils@<2.23.10": ">=2.23.10"
+  "@walletconnect/types@<2.23.10": ">=2.23.10"
+  "@walletconnect/universal-provider@<2.23.10": ">=2.23.10"
+  "@walletconnect/ethereum-provider@<2.23.10": ">=2.23.10"
+  # @walletconnect/logger 3.0.x pins 10.0.0.
+  "pino@<10.1.1": ">=10.1.1"
+  # Forced major. tronweb pins 3.21.4, and no tronweb release fixes it.
+  "google-protobuf@<4.0.3": "^4.0.3"
+  # Forced major. MetaMask calls only v4() and validate(). uuid 12+ has no require() export.
+  "uuid@<11.1.1": "^11.1.1"
+  # Forced major. Dynamic pins 23.4.6 and calls only createInstance().use().init().
+  "i18next@<26.3.4": "^26.3.4"
+  # Forced major. Dynamic imports @noble/ciphers/aes, which 2.x removed.
+  "@noble/ciphers@<1.0.0": "^1.3.0"
+  # Forced major. Privy examples use only APIs that jose 6 keeps.
+  "jose@<6.2.5": "^6.2.5"
+  # Forced major. Remix example. undici 8 has no File export: recheck if it sets v3_singleFetch.
+  "undici@<8.10.2": "^8.10.2"
+  # Forced major. Nuxt example only. This repo uses no Redis.
+  "ioredis@<6.0.0": "^6.0.0"
+  # Forced major. Drops stream-json. @solana/web3.js loads only the browser client. Node 20+.
+  "jayson@<5.0.0": "^5.0.0"
+allowBuilds:
+  "@opensea/seaport-js": false
+  "@parcel/watcher": false
+  "@reown/appkit": false
+  "@stellar/stellar-sdk": false
+  bigint-buffer: false
+  "blake-hash": false
+  bufferutil: false
+  core-js: false
+  esbuild: true
+  keccak: false
+  msgpackr-extract: false
+  nx: true
+  protobufjs: false
+  "secp256k1": false
+  sharp: false
+  svelte-preprocess: false
+  "tiny-secp256k1": false
+  tsl-apple-cloudkit: false
+  usb: false
+  utf-8-validate: false

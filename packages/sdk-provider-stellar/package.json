@@ -46,10 +46,10 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@stellar/stellar-sdk": "^17.2.1"
+    "@stellar/stellar-sdk": "^17.4.0"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.1.6",
+    "@lifi/data-types": "^7.2.1",
     "@vitest/coverage-v8": "^5.1.0",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
