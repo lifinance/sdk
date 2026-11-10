@@ -25,10 +25,11 @@ The file is optional. It is not part of the skill folder, because each repo has 
   package names (the `name` in each `package.json`). Without it, the entry applies to every
   project. Patches and minors still land. Write the reason so that a
   later reader knows when to remove the entry.
-- `fastTrackMinAgeHours`: the minimum age for an automatic fast-track (default 6).
-- The script reads the file from the bump branch. Each `heldMajors` entry needs `name` and
-  `reason`. An unknown key stops the run (exit 2), so that a typing error does not pass
-  without a message.
+- `fastTrackMinAgeHours`: the minimum age for an automatic fast-track (default 6). The
+  script reads this value from `main`, so a change applies after it is merged.
+- The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
+  An unknown key stops the run (exit 2), so that a typing error does not pass without a
+  message.
 
 To hold a package at one exact version, use an exact override with a comment in
 `pnpm-workspace.yaml`, not this file.

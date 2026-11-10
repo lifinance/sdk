@@ -136,7 +136,7 @@ const metaOf = (spec) =>
 const rawCache = new Map()
 const rawDocOf = (name, version) =>
   cached(rawCache, `${name}@${version}`, () =>
-    fetchSlot(() => registryVersionDoc(name, version))
+    fetchSlot(() => registryVersionDoc(name, version, root))
   )
 
 async function runOutdated() {
@@ -264,16 +264,18 @@ async function fastTrackCandidates(items, ctx) {
   const advCache = new Map()
   const advisoryOf = (name, version) =>
     cached(advCache, `${name}@${version}`, () =>
-      ghSlot(() => advisoriesFor(name, version))
+      ghSlot(() => advisoriesFor(name, version, root))
     )
   const provCache = new Map()
   const provOf = (name, version) =>
     cached(provCache, `${name}@${version}`, () =>
-      fetchSlot(() => provenanceOf(name, version))
+      fetchSlot(() => provenanceOf(name, version, root))
     )
   const pkgMalwareCache = new Map()
   const pkgMalwareOf = (name) =>
-    cached(pkgMalwareCache, name, () => ghSlot(() => packageMalwareFor(name)))
+    cached(pkgMalwareCache, name, () =>
+      ghSlot(() => packageMalwareFor(name, root))
+    )
 
   const skipped = []
   const eligible = []

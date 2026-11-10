@@ -1,7 +1,8 @@
 # Research a major bump
 
-Do this for each major in the list "Needs the user": an npm major, a `0.x` minor, or a
-GitHub Action major. The user needs enough facts to say yes or no without reading the
+Do this for each major in the list "Needs the user": an npm major or a `0.x` minor. A major
+of a GitHub Action, a CI tool, or pnpm is in the list "Not applied by the script": research
+it the same way before a person applies it. The user needs enough facts to say yes or no without reading the
 changelog. Report what breaks for the usage in this repo. Do not copy the upstream release
 notes.
 

@@ -116,6 +116,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
         'decide',
         'edit',
         'regen',
+        'recheck',
         'total',
       ])
     })
@@ -136,7 +137,7 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.code, 0, why(r))
       assert.equal(r.json.mode, 'open-pr')
       assert.equal(r.json.mergedMain, true)
-      assert.equal(r.json.lockfileFromMain, true, 'the merge had a conflict')
+      assert.match(r.json.notes.join('\n'), /conflict only in pnpm-lock\.yaml/)
       const tip = originRef(fx, BRANCH)
       assert.ok(isAncestor(fx, prHead, tip), 'no force-push')
       assert.ok(isAncestor(fx, mainTip, tip), 'the PR branch has main')
@@ -170,7 +171,11 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.code, 2, why(r))
       assert.match(
         r.json.message,
-        /has commits that the local branch does not have/
+        /^The PR branch has commits that this checkout did not make:/
+      )
+      assert.match(
+        r.json.message,
+        /Show them to the user\. After the user has reviewed them: git -C/
       )
       assert.match(r.json.message, /docs: a remote commit/)
       assert.match(r.json.message, /merge --ff-only origin\/chore\/bump-deps-/)
@@ -228,9 +233,13 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
     assert.equal(ahead, '0', 'no commit on the local branch')
     assert.equal(originRef(fx, BRANCH), null, 'nothing pushed')
     assert.deepEqual(ghCalls(fx), [LIST])
-    // G2: the check passes on the commit the run started from: a regression.
-    assert.equal(r.json.checks.find((c) => c.name === 'check').regression, true)
+    // H2: the check passes on main: a regression. M7: the command to reproduce it.
+    assert.equal(
+      r.json.checks.find((c) => c.name === 'check').verdict,
+      'regression'
+    )
     assert.match(r.err, /- Checks: .*check FAIL \(regression\)/)
+    assert.match(r.err, /\n {2}Reproduce check: pnpm -C '.+' check\n/)
     assert.match(r.err, /### FAILED: check /)
     assert.match(r.err, /Nothing was committed/)
     assert.match(

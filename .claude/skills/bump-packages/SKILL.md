@@ -40,24 +40,26 @@ The summary on stderr gives the PR link, the applied bumps, and three lists:
 
 | List | What you do |
 |---|---|
-| Needs the user | Show it to the user. Each line ends with the flag that applies it. |
+| Needs the user | Show it to the user. A line that a flag can apply ends with `Apply: <flag>`. Report a line without a flag: no flag applies it. |
 | Not applied by the script | Report it. A person applies these items in a follow-up. An action pin that does not match its comment is a security finding: report it first. |
 | Waiting or held | Report it as one short block. It needs no action. |
 
 | Exit | Meaning | What you do |
 |---|---|---|
 | 0 | Done, or nothing to bump | Report (section 4). |
-| 2 | The script cannot run | The message says what to do. Do that, then run again. |
+| 2 | The script cannot run | The message says what is wrong. Fix that, then run again. If it names remote commits on the PR branch, show them to the user and stop. |
 | 3 | Lockfile STOP | See section 3. Nothing is committed. |
 | 4 | A check failed | See section 3. Nothing is committed. |
 
 The summary ends with a `Rerun:` line. Use that exact command for the next run, and add the
-flags that the user approved.
+flags that the user approved. If the summary prints a reset command, run it before the
+rerun. A run that passes pushes, and opens or updates the PR.
 
 ## 3. Act on what the script hands back
 
 **The user names what to approve.** Pass `--approve <name@x.y.z,...>` (a fresh release) or
-`--majors <names>` (a major) only for items that the user named. "Update everything" does
+`--majors <names>` (a major) only for items that the user named. Use the flag as the line
+gives it. "Update everything" does
 not name them. If you cannot ask the user, report the items and stop.
 
 - **A major.** Research it first (`references/breaking-changes.md`), and show the result to
@@ -74,21 +76,31 @@ not name them. If you cannot ask the user, report the items and stop.
   | anything else | Report it to the user. Do not work around it. |
 
 - **Failed check (exit 4).** The worktree still has the bump. The summary lists the applied
-  bumps and says if the failure is a regression.
-  1. Not a regression (the check also fails without the bump): run again with
-     `--skip-check <name>`, and say so in the report.
+  bumps and says if the failure is a regression. Fix the failed check first. Keep the items
+  of "Needs the user" for the report.
+  1. "Also fails on main": compare the two logs that the summary names. With the same
+     errors, run again with `--skip-check <name>`, and say so in the report. The script
+     accepts the failure only while `main` fails too. With different errors, or with
+     "baseline unknown", treat it as a regression.
   2. A regression: find the cause from the error and the list of applied bumps. Reproduce
-     it in the worktree with the command of the failed check.
-  3. Small fix (a few lines that you can verify with that command): edit, then commit only
-     your files by name: `git commit --no-verify -m "fix: adapt to <pkg> <version>"`.
-  4. No small fix: hold the package (below), and report it as deferred.
-  5. Run the reset command of the summary. Then run the `Rerun:` command.
-- **Hold a package at its version.** Add an exact override in `pnpm-workspace.yaml`
-  (`<pkg>: <current version>`) with a comment above it that says what breaks and when to
-  remove the hold. Commit it as `chore: hold <pkg> at <version>`. The script never moves an
-  exact override that has a comment.
-- **A major that the user declines.** Add it to `heldMajors` in `.claude/bump-packages.json`
-  (`references/repo-notes.md`), so that the script does not ask again.
+     it with the `Reproduce:` command of the summary. A second copy of a package can also
+     cause it: `pnpm -C <worktree> why <pkg>`.
+  3. Small fix (a few lines of source that you can verify with that command): edit, then
+     commit only your files by name: `git commit --no-verify -m "fix: adapt to <pkg>
+     <version>"`. Then run the reset command of the summary. If the fix must change a
+     `package.json`, `pnpm-workspace.yaml`, or the lockfile, run the reset first, and make
+     the change on the clean worktree.
+  4. No small fix: run the reset command first. Then hold the package (below), and report
+     it as deferred.
+  5. Run the `Rerun:` command.
+- **Hold a package at its version.** On a clean worktree, add an exact override in
+  `pnpm-workspace.yaml` (`<pkg>: <current version>`) with a comment above it that says what
+  breaks and when to remove the hold. Commit it as `chore: hold <pkg> at <version>`. The
+  override applies to the whole workspace. The script never moves an exact override that
+  has a comment.
+- **A major that the user declines.** On a clean worktree, add it to `heldMajors` in
+  `.claude/bump-packages.json` (`references/repo-notes.md`), and commit it as
+  `chore: hold the <pkg> major`. The script then does not ask again.
 
 ## 4. Report
 

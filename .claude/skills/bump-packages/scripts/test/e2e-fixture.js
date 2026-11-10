@@ -45,6 +45,9 @@ if (a[0] === 'repo') {
   out = JSON.stringify({ nameWithOwner: repo, defaultBranchRef: { name: 'main' } })
 } else if (a[1] === 'list') {
   out = JSON.stringify(st.prs.filter((p) => p.state === 'OPEN').map(pick))
+} else if (a[1] === 'create' && st.failCreate) {
+  process.stderr.write('gh stub: pr create failed\\n')
+  process.exit(1)
 } else if (a[1] === 'create') {
   const number = st.next++
   st.prs.push({ number, state: 'OPEN', title: opt('--title'), headRefName: opt('--head'),

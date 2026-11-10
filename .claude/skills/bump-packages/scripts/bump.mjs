@@ -36,13 +36,20 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
+  appliedLines,
   branchExcludes,
   branchGuard,
   bumpSpec,
   changesetText,
+  checkText,
   EXIT,
   editExcludesDetailed,
+  fitPrBlock,
   groupCommits,
+  lockstepKey,
+  lockstepWaits,
+  majorLine,
+  majorTargets,
   newPrBody,
   packageManagerValue,
   parseChangesetLine,
@@ -63,7 +70,6 @@ import {
   npmView,
   npmViewFields,
   parseLock,
-  parseVersion,
   pool,
   registryVersionDoc,
   specName,
@@ -72,7 +78,9 @@ import {
 } from './lib.js'
 import {
   advisoriesFor,
+  approvalObstacles,
   checkExactEntry,
+  familyKeyOf,
   META_FIELDS,
   malwareCoveringAny,
   packageMalwareFor,
@@ -86,7 +94,7 @@ const USAGE = `Usage: node bump.mjs --repo <main checkout> [options]
   --dry-run                 analyze and print the plan; change nothing
   --approve a@1.2.3,...     exact fresh versions that the user approved
   --majors a,b              majors that the user approved
-  --skip-check a,b          skip these checks (they also fail without the bump)
+  --skip-check a,b          accept a failure of these checks when main fails them too
   --worktree <path>         continue in this bump worktree (no PR yet)
   --no-push                 commit, but do not push or open or edit a PR
   --out <dir>               the folder for logs and the result (default: a temporary folder)
@@ -100,9 +108,9 @@ try {
     options: {
       repo: { type: 'string' },
       'dry-run': { type: 'boolean' },
-      approve: { type: 'string' },
-      majors: { type: 'string' },
-      'skip-check': { type: 'string' },
+      approve: { type: 'string', multiple: true },
+      majors: { type: 'string', multiple: true },
+      'skip-check': { type: 'string', multiple: true },
       worktree: { type: 'string' },
       'no-push': { type: 'boolean' },
       out: { type: 'string' },
@@ -117,10 +125,11 @@ if (values.help) {
   process.stdout.write(USAGE)
   process.exit(0)
 }
+// L1: a flag can repeat; its values are merged.
 const list = (v) => [
   ...new Set(
-    (v ?? '')
-      .split(',')
+    (v ?? [])
+      .flatMap((x) => x.split(','))
       .map((x) => x.trim())
       .filter(Boolean)
   ),
@@ -128,6 +137,13 @@ const list = (v) => [
 const APPROVE = list(values.approve)
 const MAJORS = list(values.majors)
 const SKIP = list(values['skip-check'])
+// L2: `--majors name` or `name@<major>` (`zustand@6`, `@scope/x@0.5`): name → pin or null.
+const MAJOR_PINS = new Map(
+  MAJORS.map((m) => {
+    const at = m.lastIndexOf('@')
+    return at > 0 ? [m.slice(0, at), m.slice(at + 1)] : [m, null]
+  })
+)
 
 const ENV = { ...process.env, COREPACK_ENABLE_DOWNLOAD_PROMPT: '0' }
 const pad = (n) => String(n).padStart(2, '0')
@@ -161,7 +177,7 @@ const R = {
   waiting: [],
   lockfile: null,
   checks: [],
-  skippedChecks: [],
+  acceptedChecks: [],
   audit: { before: null, after: null },
   timings: {},
   notes: [],
@@ -193,7 +209,32 @@ function rerunCommand() {
       args.push(flag, v.join(','))
     }
   }
+  if (values['no-push']) {
+    args.push('--no-push') // L1
+  }
   return args.join(' ')
+}
+
+// The last `n` lines of a text (K3), or one line joined with " | ".
+const tail = (text, n) =>
+  String(text ?? '')
+    .trimEnd()
+    .split('\n')
+    .slice(-n)
+    .join('\n')
+const tailLine = (text, n = 3) =>
+  tail(String(text ?? '').trim(), n).replaceAll('\n', ' | ')
+
+// True when the worktree exists and has uncommitted changes (M1).
+function hasChanges(wt) {
+  try {
+    return !!execFileSync('git', ['status', '--porcelain'], {
+      cwd: wt,
+      encoding: 'utf8',
+    }).trim()
+  } catch {
+    return false
+  }
 }
 
 const item = (i) =>
@@ -213,30 +254,23 @@ function summary(code, message) {
   w(
     `- Needs the user: ${R.needsUser.length}, not applied: ${R.notApplied.length}, waiting or held: ${R.waiting.length}`
   )
-  // G3: what was applied, one line per package (the model reads this on exit 4).
-  const bumps = [...a.bumps, ...a.majors]
-  for (const b of bumps.slice(0, 30)) {
-    const where = b.where?.length
-      ? ` (${b.where[0]}${b.where.length > 1 ? `, +${b.where.length - 1}` : ''})`
-      : ''
-    w(
-      `  - ${b.name} ${b.from} → ${b.to}${where}${b.fastTrack ? ' fast-track' : ''}${b.major ? ' major' : ''}`
-    )
+  // G3, M6: every applied item, one line each (the model reads this on exit 4).
+  const lines = appliedLines(a)
+  for (const l of lines.slice(0, 30)) {
+    w(`  - ${l}`)
   }
-  if (bumps.length > 30) {
-    w(`  - … and ${bumps.length - 30} more (see the JSON)`)
+  if (lines.length > 30) {
+    w(`  - … and ${lines.length - 30} more (see the JSON)`)
   }
   w(
     `- Commits: ${R.commits.length ? R.commits.map((c) => `${c.sha.slice(0, 9)} ${c.message}`).join('; ') : 'none'}`
   )
-  if (R.checks.length || R.skippedChecks.length) {
-    const checks = R.checks.map(
-      (c) =>
-        `${c.name} ${c.ok ? 'ok' : 'FAIL'}${c.ok ? '' : c.regression === true ? ' (regression)' : c.regression === false ? ` (also fails without the bump: not a regression; rerun with --skip-check ${c.name})` : c.baseline ? ` (${c.baseline})` : ''} (${c.seconds}s)`
-    )
-    w(
-      `- Checks: ${checks.join(', ') || 'none'}${R.skippedChecks.length ? `; skipped: ${R.skippedChecks.join(', ')}` : ''}`
-    )
+  if (R.checks.length) {
+    w(`- Checks: ${R.checks.map(checkText).join(', ')}`)
+    // M7: the command that reproduces each failed check in the worktree.
+    for (const c of R.checks.filter((x) => !x.ok && !x.notRun)) {
+      w(`  Reproduce ${c.name}: ${c.cmd}`)
+    }
   }
   for (const [title, items] of [
     ['Needs the user', R.needsUser],
@@ -269,7 +303,8 @@ function summary(code, message) {
       .map(([k, v]) => `${k} ${v}s`)
       .join(', ')}`
   )
-  if ((code === EXIT.lockfileStop || code === EXIT.checkFailed) && R.worktree) {
+  // M1: every exit after the edit step leaves changes: print how to discard them.
+  if (code !== EXIT.ok && R.dirtied && hasChanges(R.worktree)) {
     // F3: discard only the uncommitted changes; keep a fix commit and a merge commit.
     w(
       `\n${R.mergeCommit ? `The run made one local commit, the merge of origin/main (${R.mergeCommit.slice(0, 9)}); the next run pushes it. Nothing else` : 'Nothing'} was committed. The worktree has the changes. To discard them:\n  git -C ${sq(R.worktree)} reset --hard HEAD && git -C ${sq(R.worktree)} clean -fd -- .changeset`
@@ -384,7 +419,7 @@ async function must(cmd, args, opts, what) {
   if (r.code !== 0) {
     finish(
       EXIT.cannotRun,
-      `${what ?? `${cmd} ${args.join(' ')}`} failed (exit ${r.code}): ${(r.err || r.out).trim().split('\n').slice(-5).join(' | ')}`
+      `${what ?? `${cmd} ${args.join(' ')}`} failed (exit ${r.code}): ${tailLine(r.err || r.out, 5)}`
     )
   }
   return r.out
@@ -542,7 +577,7 @@ async function setupGit() {
       ).out.trim()
       finish(
         EXIT.cannotRun,
-        `${R.base} has commits that the local branch does not have. Review them first:\n${ahead}\nThen run: git -C ${sq(wt)} merge --ff-only ${R.base} — and run the script again.`
+        `The PR branch has commits that this checkout did not make:\n${ahead}\nShow them to the user. After the user has reviewed them: git -C ${sq(wt)} merge --ff-only ${R.base}`
       )
     }
     if (R.dryRun) {
@@ -562,12 +597,7 @@ async function setupGit() {
     await must('git', ['worktree', 'add', '--detach', tmp, 'origin/main'], {
       cwd: repo,
     })
-    CLEANUPS.add(() => {
-      execFileSync('git', ['worktree', 'remove', '--force', tmp], {
-        cwd: repo,
-        stdio: 'ignore',
-      })
-    })
+    CLEANUPS.add(() => removeWorktree(repo, tmp))
     R.worktree = tmp
     R.branch = null
     R.headBefore = (
@@ -657,7 +687,9 @@ async function mergeMain(wt) {
     await must('git', ['checkout', '--theirs', '--', ...conflicts], { cwd: wt })
     await must('git', ['add', '--', ...conflicts], { cwd: wt })
     await must('git', ['commit', '--no-verify', '--no-edit'], { cwd: wt })
-    R.lockfileFromMain = true
+    R.notes.push(
+      "The merge of origin/main had a conflict only in pnpm-lock.yaml: main's lockfile was taken, and the regeneration rewrites it."
+    )
   }
   R.mergedMain = true
   R.mergeCommit = (await must('git', ['rev-parse', 'HEAD'], { cwd: wt })).trim()
@@ -741,7 +773,7 @@ async function analyze(wt, out) {
     if (r.code !== 0) {
       finish(
         EXIT.cannotRun,
-        `${script} failed for ${p.rel} (exit ${r.code}): ${r.err.trim().split('\n').slice(-3).join(' | ')}`
+        `${script} failed for ${p.rel} (exit ${r.code}): ${tailLine(r.err)}`
       )
     }
     const plan = JSON.parse(r.out)
@@ -773,6 +805,10 @@ async function audit(wt) {
   }
 }
 
+// The package name of a project folder (M3).
+const nameOf = (root, w) =>
+  JSON.parse(read(join(root, w, 'package.json')) ?? '{}').name
+
 // --- 4. decide --------------------------------------------------------------------
 
 // The first sentence of a comment or reason, at most 120 characters, without backticks.
@@ -781,6 +817,23 @@ const firstSentence = (s) => {
     .trim()
     .split(/(?<=[.!?])\s/)[0]
   return t.length > 120 ? `${t.slice(0, 117)}…` : t
+}
+
+// Exit 2 when `--approve` cannot apply `what` (M2): a check without an answer ("run
+// again"), or a flag that no approval overrides.
+function refuseApproval(what, { blind, refused }) {
+  if (blind.length) {
+    finish(
+      EXIT.cannotRun,
+      `the checks for --approve ${what} gave no answer: ${blind.map(plain).join('; ')}. Run again.`
+    )
+  }
+  if (refused.length) {
+    finish(
+      EXIT.cannotRun,
+      `--approve cannot apply ${what}: ${refused.map(plain).join('; ')}. It lands through the normal gate when it ages.`
+    )
+  }
 }
 
 // The order of "needs the user": security findings, majors, approvals, blocked.
@@ -797,6 +850,12 @@ async function decide(projects) {
   const familyEntries = new Set()
   const floor = CONFIG.fastTrackMinAgeHours ?? 6
   const usedHeld = new Set()
+  // `name@<major>` of a major in the plan (the Apply hint and the group message, L2).
+  const targets = new Map(
+    projects.flatMap((p) => p.plan.needsApproval.map((e) => [e.name, e.target]))
+  )
+  const pinned = (n) =>
+    targets.has(n) ? `${n}@${majorLine(targets.get(n))}` : n
   for (const p of projects) {
     const plan = p.plan
     p.bumps = []
@@ -843,13 +902,15 @@ async function decide(projects) {
         fam.decision !== 'auto' &&
         set.length > 0 &&
         set.every((x) => APPROVE.includes(x))
-      const compromise = fam.compromiseFlags ?? []
-      // F5: a compromise-class flag cannot be approved.
-      if (approved && compromise.length) {
-        finish(
-          EXIT.cannotRun,
-          `--approve cannot apply ${fam.versions.join(', ')}: ${compromise.map(plain).join('; ')}. It lands through the normal gate when it ages.`
-        )
+      // M2 (F5): an approval overrides only no provenance, too young, and the flag kinds
+      // new dependency / range / spec. A check without an answer, an advisory hit or a
+      // compromise-class flag refuses it.
+      const obstacles = approvalObstacles(
+        fam.redFlags ?? [],
+        fam.compromiseFlags ?? []
+      )
+      if (approved) {
+        refuseApproval(fam.versions.join(', '), obstacles)
       }
       if (fam.decision === 'auto' || approved) {
         for (const x of set) {
@@ -899,12 +960,13 @@ async function decide(projects) {
         missing.length < set.length
           ? ` Only part of the set is approved; missing: ${missing.join(', ')}.`
           : ''
-      if (fam.decision === 'blocked' && compromise.length) {
+      const stuck = [...obstacles.blind, ...obstacles.refused]
+      if (fam.decision === 'blocked' && stuck.length) {
         needs(
           'blocked',
           p.rel,
           name,
-          `${fam.versions.join(', ')} is blocked: ${compromise.join('; ')}. It cannot be approved; it lands through the normal gate when it ages.`
+          `${fam.versions.join(', ')} is blocked: ${stuck.join('; ')}. It cannot be approved; it lands through the normal gate when it ages.`
         )
       } else if (fam.decision === 'blocked') {
         needs(
@@ -954,26 +1016,41 @@ async function decide(projects) {
       const rest = held?.projects
         ? projs.filter((x) => !held.projects.includes(x))
         : []
-      if (MAJORS.includes(e.name)) {
-        if (held) {
+      // L2: a pinned major applies only when the plan's target has that major.
+      const asked = MAJOR_PINS.has(e.name)
+      const pin = MAJOR_PINS.get(e.name)
+      if (asked && pin != null && pin !== majorLine(e.target)) {
+        R.notes.push(
+          `--majors ${e.name}@${pin}: the plan's target is ${e.target}; not applied.`
+        )
+      }
+      if (asked && (pin == null || pin === majorLine(e.target))) {
+        // M3: never into a project that heldMajors holds, unless every project is held.
+        const t = majorTargets(e.where, held, (w) => nameOf(p.dir, w))
+        if (t.stale) {
           R.notes.push(
             `heldMajors in .claude/bump-packages.json still holds ${e.name}, but --majors applies it: remove the entry.`
+          )
+        } else if (t.kept.length) {
+          usedHeld.add(held)
+          R.notes.push(
+            `--majors ${e.name}: applied to ${t.where.join(', ')}; ${t.kept.join(', ')} stay held (.claude/bump-packages.json).`
           )
         }
         if (e.regenOnly) {
           continue // lockfile-only: lockfile-report gets it as expected
         }
         const group = [e.name, ...(e.requires ?? [])]
-        const lacking = group.filter((n) => !MAJORS.includes(n))
+        const lacking = group.filter((n) => !MAJOR_PINS.has(n))
         if (lacking.length) {
           finish(
             EXIT.cannotRun,
-            `--majors ${e.name} needs ${lacking.join(', ')} too (a peer of the new version). Approve them together: --majors ${group.join(',')}.`
+            `--majors ${e.name} needs ${lacking.join(', ')} too (a peer of the new version). Approve them together: --majors ${group.map(pinned).join(',')}.`
           )
         }
         p.majors.push({
           name: e.name,
-          where: e.where,
+          where: t.where,
           from: e.current,
           to: e.target,
           bump: e.bumpType,
@@ -997,8 +1074,8 @@ async function decide(projects) {
         'major',
         p.rel,
         e.name,
-        `${desc}${e.requires?.length ? ` Goes with ${e.requires.join(', ')}.` : ''}${e.regenOnly ? ' Only the lockfile regeneration moves it.' : ''}${rest.length ? ` Held in .claude/bump-packages.json except for ${rest.join(', ')}.` : ''}`,
-        `--majors ${group.join(',')}`
+        `${desc}${e.requires?.length ? ` Goes with ${e.requires.join(', ')}.` : ''}${e.regenOnly ? ' Only the lockfile regeneration moves it.' : ''}${rest.length ? ` Held in .claude/bump-packages.json for ${held.projects.join(', ')}; the flag changes only ${rest.join(', ')}.` : ''}`,
+        `--majors ${group.map(pinned).join(',')}`
       )
     }
     for (const e of plan.held) {
@@ -1038,6 +1115,20 @@ async function decide(projects) {
         `override ${m.override} would move ${m.lockVersions.join(', ')} → ${m.target} (a major).`
       )
     }
+    // M5: an aged bump waits while a lockstep sibling's same version is too young.
+    const lw = lockstepWaits(
+      p.bumps.filter((b) => !b.fastTrack),
+      plan.tooFresh,
+      (n) => lockstepKey(n, familyKeyOf)
+    )
+    p.bumps = [...lw.keep, ...p.bumps.filter((b) => b.fastTrack)]
+    for (const w of lw.waits) {
+      waiting(
+        p.rel,
+        `${w.key} (${w.names.length} package${w.names.length > 1 ? 's' : ''})`,
+        `waits for ${w.blocker} ${w.version} (in ~${w.inHours} h).`
+      )
+    }
     decideToolchain(p, { needs, notApplied, waiting })
     R.applied.bumps.push(...p.bumps.map((b) => ({ ...b, project: p.rel })))
     R.applied.majors.push(...p.majors.map((b) => ({ ...b, project: p.rel })))
@@ -1046,13 +1137,13 @@ async function decide(projects) {
     )
   }
   for (const h of CONFIG.heldMajors) {
-    if (!usedHeld.has(h) && !MAJORS.includes(h.name)) {
+    if (!usedHeld.has(h) && !MAJOR_PINS.has(h.name)) {
       R.notes.push(
         `heldMajors entry ${h.name}: no such major in this run (stale?).`
       )
     }
   }
-  for (const m of MAJORS) {
+  for (const m of MAJOR_PINS.keys()) {
     const known = projects.some((p) =>
       p.plan.needsApproval.some((e) => e.name === m)
     )
@@ -1079,22 +1170,7 @@ async function decide(projects) {
       R.notes.push(`--approve ${a}: already older than the gate, not added.`)
       return
     }
-    if (r.compromise.length) {
-      finish(
-        EXIT.cannotRun,
-        `--approve cannot apply ${a}: ${r.compromise.map(plain).join('; ')}. It lands through the normal gate when it ages.`
-      )
-    }
-    // Fail closed: an approval never skips a check that could not run.
-    const blind = r.flags.filter((f) =>
-      /cannot (run|check)|unavailable/.test(f)
-    )
-    if (blind.length) {
-      finish(
-        EXIT.cannotRun,
-        `the checks for --approve ${a} cannot run: ${blind.map(plain).join('; ')}. Run again.`
-      )
-    }
+    refuseApproval(a, approvalObstacles(r.flags, r.compromise))
     if (r.flags.length) {
       R.notes.push(
         plain(
@@ -1132,6 +1208,8 @@ async function decide(projects) {
 // Actions and CI tools (root only), and pnpm for each project.
 function decideToolchain(p, { needs, notApplied, waiting }) {
   const tc = p.tc
+  // K2: actions, CI tools and pnpm share one status → list rule.
+  const items = []
   if (p.rel === '.') {
     for (const a of tc.actions.actions) {
       if (a.pinMatchesComment === false) {
@@ -1142,40 +1220,27 @@ function decideToolchain(p, { needs, notApplied, waiting }) {
           'ACTION PIN DOES NOT MATCH ITS COMMENT. Report it as a security finding.'
         )
       }
-      if (a.status === 'safe') {
-        R.applied.actions.push({ repo: a.repo, from: a.current, to: a.target })
-      } else if (a.status === 'needs-approval') {
-        notApplied(
-          p.rel,
-          a.repo,
-          `action ${a.current} → ${a.target}: ${a.approvalReason}.`
-        )
-      } else if (a.status === 'too-fresh') {
-        waiting(
-          p.rel,
-          a.repo,
-          `action ${a.newest} is ${a.newestAgeHours} h old.`
-        )
-      } else if (a.status === 'no-release' || a.status === 'unknown-current') {
-        notApplied(p.rel, a.repo, `action status ${a.status}: check by hand.`)
-      }
+      items.push({
+        ...a,
+        id: a.repo,
+        label: 'action',
+        why: a.approvalReason,
+        apply: () =>
+          R.applied.actions.push({
+            repo: a.repo,
+            from: a.current,
+            to: a.target,
+          }),
+      })
     }
     for (const t of tc.ciTools) {
-      if (t.status === 'safe') {
-        R.applied.tools.push({ pkg: t.pkg, from: t.current, to: t.target })
-      } else if (t.status === 'too-fresh') {
-        waiting(
-          p.rel,
-          t.pkg,
-          `CI tool ${t.newest} is ${t.newestAgeHours} h old.`
-        )
-      } else if (t.status !== 'up-to-date') {
-        notApplied(
-          p.rel,
-          t.pkg,
-          `CI tool ${t.status}: ${t.current} → ${t.target ?? t.newest ?? '?'}.`
-        )
-      }
+      items.push({
+        ...t,
+        id: t.pkg,
+        label: 'CI tool',
+        apply: () =>
+          R.applied.tools.push({ pkg: t.pkg, from: t.current, to: t.target }),
+      })
     }
     if (tc.node?.upToDate === false) {
       notApplied(
@@ -1192,23 +1257,40 @@ function decideToolchain(p, { needs, notApplied, waiting }) {
       )
     }
   }
-  if (tc.pnpm.status === 'safe' && tc.pnpm.target) {
-    p.pnpmTarget = tc.pnpm.target
-    if (p.rel === '.') {
-      R.applied.pnpm = { from: tc.pnpm.current, to: tc.pnpm.target }
+  items.push({
+    ...tc.pnpm,
+    id: 'pnpm',
+    label: '',
+    why: 'a major; not applied by any flag',
+    apply: () => {
+      p.pnpmTarget = tc.pnpm.target
+      if (p.rel === '.') {
+        R.applied.pnpm = { from: tc.pnpm.current, to: tc.pnpm.target }
+      }
+    },
+  })
+  for (const x of items) {
+    if (x.status === 'safe' && x.target) {
+      x.apply()
+    } else if (x.status === 'needs-approval') {
+      notApplied(
+        p.rel,
+        x.id,
+        `${x.label ? `${x.label} ` : ''}${x.current} → ${x.target}: ${x.why ?? 'needs approval'}.`
+      )
+    } else if (x.status === 'too-fresh') {
+      waiting(
+        p.rel,
+        x.id,
+        `${x.label ? `${x.label} ` : ''}${x.newest} is ${x.newestAgeHours} h old.`
+      )
+    } else if (x.status !== 'up-to-date' && x.status !== 'safe') {
+      notApplied(
+        p.rel,
+        x.id,
+        `${x.label ? `${x.label} ` : ''}status ${x.status}: check by hand.`
+      )
     }
-  } else if (tc.pnpm.status === 'needs-approval') {
-    notApplied(
-      p.rel,
-      'pnpm',
-      `${tc.pnpm.current} → ${tc.pnpm.target} (a major; not applied by any flag).`
-    )
-  } else if (tc.pnpm.status === 'too-fresh') {
-    waiting(
-      p.rel,
-      'pnpm',
-      `${tc.pnpm.newest} is ${tc.pnpm.newestAgeHours} h old.`
-    )
   }
 }
 
@@ -1409,7 +1491,7 @@ async function regen(p, out, headLock) {
     })
     if (r.code !== 0) {
       throw new Error(
-        `pnpm install failed (exit ${r.code}): ${r.err.trim().split('\n').slice(-3).join(' | ')}`
+        `pnpm install failed (exit ${r.code}): ${tailLine(r.err)}`
       )
     }
     if (/resolution step is skipped/i.test(r.out + r.err)) {
@@ -1524,15 +1606,15 @@ async function recheckEarlier(spec, minAgeMs, cwd) {
     return { aged: true, flags: [], compromise: [] } // the gate covers it now
   }
   const io = {
-    advisories: advisoriesFor,
-    provenance: provenanceOf,
+    advisories: (n, v) => advisoriesFor(n, v, cwd),
+    provenance: (n, v) => provenanceOf(n, v, cwd),
     meta: (s) => npmViewFields(s, META_FIELDS, cwd),
-    rawDoc: registryVersionDoc,
+    rawDoc: (n, v) => registryVersionDoc(n, v, cwd),
   }
   const ref = referenceVersion(view, version, minAgeMs, Date.now())
   const [r, pkgRes] = await Promise.all([
     checkExactEntry(spec, ref, io, { metadata: true, deps: false }),
-    packageMalwareFor(name),
+    packageMalwareFor(name, cwd),
   ])
   const hits = pkgRes.error
     ? null
@@ -1548,11 +1630,9 @@ async function recheckEarlier(spec, minAgeMs, cwd) {
   }
 }
 
-async function lockfileReview(projects, wt, out) {
+async function lockfileReview(projects, out) {
   // --majors: a lockfile major of these names is expected (direct or transitive).
-  const majors = MAJORS
-  // Always: a --worktree run in new mode can have earlier entries too.
-  await earlierExcludes(projects, wt)
+  const majors = [...MAJOR_PINS.keys()]
   const reports = await pool(projects, 2, async (p) => {
     const approved = [...new Set([...p.excludeAdd, ...(p.earlier ?? [])])]
     const args = [join(HERE, 'lockfile-report.mjs'), '--root', p.dir]
@@ -1570,7 +1650,7 @@ async function lockfileReview(projects, wt, out) {
     if (r.code !== 0) {
       finish(
         EXIT.cannotRun,
-        `lockfile-report failed for ${p.rel}: ${r.err.trim().split('\n').slice(-3).join(' | ')}`
+        `lockfile-report failed for ${p.rel}: ${tailLine(r.err)}`
       )
     }
     return { p, rep: JSON.parse(r.out) }
@@ -1669,26 +1749,26 @@ function writeChangeset(wt, root) {
 const logOf = (out, name) =>
   join(out, `check-${name.replace(/[^\w.-]+/g, '-')}.log`)
 
-// The checks of this repo: [{ name, build?, afterBuild?, fn }]. D1: the checks that do
-// not need `dist` run while `build` runs; the `afterBuild` ones start after it.
+// The checks of this repo: [{ name, cmd, build?, afterBuild?, fn }]. `cmd` reproduces the
+// check by hand (M7). D1: the checks that do not need `dist` run while `build` runs; the
+// `afterBuild` ones start after it.
 function planChecks(wt, projects, out) {
   const pkg = JSON.parse(read(join(wt, 'package.json')))
   const has = (s) => !!pkg.scripts?.[s]
   const tasks = []
-  const add = (name, fn, extra = {}) => tasks.push({ name, fn, ...extra })
+  const add = (name, cmd, fn, extra = {}) =>
+    tasks.push({ name, cmd, fn, ...extra })
+  const pnpmIn = (dir, args) => `pnpm -C ${sq(dir)} ${args.join(' ')}`
   const pnpmTask = (name, args, extra) =>
     add(
       name,
+      pnpmIn(wt, args),
       () => run('pnpm', args, { cwd: wt, log: logOf(out, name) }),
       extra
     )
   const after = { afterBuild: true }
   if (has('build')) {
-    add(
-      'build',
-      () => run('pnpm', ['build'], { cwd: wt, log: logOf(out, 'build') }),
-      { build: true }
-    )
+    pnpmTask('build', ['build'], { build: true })
   }
   if (has('check')) {
     pnpmTask('check', ['check'])
@@ -1714,6 +1794,7 @@ function planChecks(wt, projects, out) {
   if (testScript) {
     add(
       testScript,
+      pnpmIn(wt, [testScript]),
       async () => {
         const log = logOf(out, testScript)
         const r = await run('pnpm', [testScript], { cwd: wt, log })
@@ -1725,7 +1806,7 @@ function planChecks(wt, projects, out) {
   }
   pnpmTask('dedupe --check', ['dedupe', '--check'])
   // A13: registry signatures of every package in the lockfile.
-  add('signatures', async () => {
+  add('signatures', pnpmIn(wt, ['audit', 'signatures']), async () => {
     const r = await run('pnpm', ['audit', 'signatures'], {
       cwd: wt,
       log: logOf(out, 'signatures'),
@@ -1736,23 +1817,22 @@ function planChecks(wt, projects, out) {
       : { ...r, code: 0, unsupported: true }
   })
   if (existsSync(join(wt, 'scripts', 'size-measure.mjs'))) {
+    const args = ['scripts/size-measure.mjs', '.', join(out, 'size.json')]
     add(
       'size-measure',
-      () =>
-        run('node', ['scripts/size-measure.mjs', '.', join(out, 'size.json')], {
-          cwd: wt,
-          log: logOf(out, 'size-measure'),
-        }),
+      `cd ${sq(wt)} && node ${args.map(sq).join(' ')}`,
+      () => run('node', args, { cwd: wt, log: logOf(out, 'size-measure') }),
       after
     )
   }
   for (const p of projects.slice(1)) {
     const name = `${p.rel}: install + tsc`
     const dir = join(wt, p.rel) // also for the baseline worktree
-    add(name, async () => {
+    const cmd = `${pnpmIn(dir, ['install', '--frozen-lockfile'])} && ${pnpmIn(dir, ['exec', 'tsc', '--noEmit'])}`
+    add(name, cmd, async () => {
       const i = await run('pnpm', ['install', '--frozen-lockfile'], {
         cwd: dir,
-        log: logOf(out, `${name}-install`),
+        log: logOf(out, name),
       })
       if (i.code !== 0) {
         return i
@@ -1771,27 +1851,26 @@ function planChecks(wt, projects, out) {
   return tasks
 }
 
+// Run the checks once and record each one in R.checks. H1: when the build fails, the
+// checks that need it are recorded as not run.
 async function checks(wt, projects, out) {
-  const all = planChecks(wt, projects, out)
-  R.skippedChecks = all.filter((t) => SKIP.includes(t.name)).map((t) => t.name)
-  const tasks = all.filter((t) => !SKIP.includes(t.name))
   const record = (t, r) => {
     if (r.unsupported) {
       R.notes.push(
         `This pnpm has no \`pnpm audit signatures\`: the ${t.name} check did not run.`
       )
-      return true
+      return
     }
     R.checks.push({
       name: t.name,
       ok: r.code === 0,
       seconds: r.seconds,
       log: logOf(out, t.name),
+      cmd: t.cmd,
     })
-    return r.code === 0
   }
   // The regeneration already ran `pnpm dedupe`: `dedupe --check` adds nothing.
-  const todo = tasks.filter(
+  const todo = planChecks(wt, projects, out).filter(
     (t) => !(t.name === 'dedupe --check' && projects[0].deduped)
   )
   const build = todo.find((t) => t.build)
@@ -1801,46 +1880,58 @@ async function checks(wt, projects, out) {
     R.audit.after = a
   })
   const earlyRuns = pool(early, 3, (t) => t.fn())
-  let ok = true
-  const buildOk = build ? record(build, await build.fn()) : true
-  const lateResults = buildOk ? await pool(late, 3, (t) => t.fn()) : []
+  const buildResult = build ? await build.fn() : { code: 0 }
+  if (build) {
+    record(build, buildResult)
+  }
+  const lateResults =
+    buildResult.code === 0 ? await pool(late, 3, (t) => t.fn()) : null
   const earlyResults = await earlyRuns
   await auditAfter
   early.forEach((t, i) => {
-    ok = record(t, earlyResults[i]) && ok
+    record(t, earlyResults[i])
   })
   late.forEach((t, i) => {
-    ok = record(t, lateResults[i]) && ok
+    if (lateResults) {
+      record(t, lateResults[i])
+    } else {
+      R.checks.push({
+        name: t.name,
+        ok: false,
+        notRun: 'build failed',
+        cmd: t.cmd,
+      })
+    }
   })
-  return buildOk && ok
 }
 
-// G2: run the failed checks again on a temporary detached worktree of the commit the
-// run started from. Each failed check gets `regression`: true (it passes there), false
-// (it fails there too), or null with `baseline` = why the baseline could not run.
-async function baseline(repo, failed, projects, out) {
+// H2: run the failed checks again on a temporary detached worktree of the merge-base with
+// origin/main (main's code, not the PR's own commits). Each failed check gets `verdict`:
+// 'regression' (it passes on main), 'fails-on-main', or 'unknown' with `baselineWhy`.
+// The baseline logs stay in <out>/baseline/.
+async function baseline(repo, wt, failed, projects, out) {
   const dir = join(out, 'baseline-worktree')
   const logs = join(out, 'baseline')
   mkdirSync(logs, { recursive: true })
   const unknown = (why, list = failed) => {
     for (const c of list) {
-      c.regression = null
-      c.baseline = `baseline unknown: ${why}`
+      c.verdict = 'unknown'
+      c.baselineWhy = why
     }
   }
-  const add = await run(
-    'git',
-    ['worktree', 'add', '--detach', dir, R.headBefore],
-    { cwd: repo }
-  )
+  const base = await git(wt, ['merge-base', 'HEAD', 'origin/main'])
+  const add =
+    base.code === 0
+      ? await run(
+          'git',
+          ['worktree', 'add', '--detach', dir, base.out.trim()],
+          { cwd: repo }
+        )
+      : base
   if (add.code !== 0) {
-    return unknown('git worktree add failed')
+    return unknown('no worktree of the merge-base with origin/main')
   }
-  const remove = () =>
-    execFileSync('git', ['worktree', 'remove', '--force', dir], {
-      cwd: repo,
-      stdio: 'ignore',
-    })
+  const remove = () => removeWorktree(repo, dir)
   CLEANUPS.add(remove)
   try {
     const i = await run('pnpm', ['install', '--frozen-lockfile'], {
@@ -1848,30 +1939,38 @@ async function baseline(repo, failed, projects, out) {
       log: join(logs, 'install.log'),
     })
     if (i.code !== 0) {
-      return unknown('pnpm install failed on the base')
+      return unknown('pnpm install failed on main')
     }
     const tasks = planChecks(dir, projects, logs)
     const build = tasks.find((t) => t.build)
-    let buildOk = true
-    if (build) {
-      buildOk = (await build.fn()).code === 0
-    }
+    const buildOk = build ? (await build.fn()).code === 0 : true
     for (const c of failed) {
       const t = tasks.find((x) => x.name === c.name)
       if (!t) {
-        unknown('the check does not exist on the base', [c])
-      } else if (t.build) {
-        c.regression = buildOk
+        unknown('the check does not exist on main', [c])
+        continue
+      }
+      c.baselineLog = logOf(logs, c.name)
+      if (t.build) {
+        c.verdict = buildOk ? 'regression' : 'fails-on-main'
       } else if (!buildOk) {
-        unknown('the build fails on the base', [c])
+        unknown('the build fails on main', [c])
       } else {
-        c.regression = (await t.fn()).code === 0
+        c.verdict = (await t.fn()).code === 0 ? 'regression' : 'fails-on-main'
       }
     }
   } finally {
     CLEANUPS.delete(remove)
     remove()
   }
+}
+
+// K1: one way to remove a worktree of this run.
+function removeWorktree(repo, dir) {
+  execFileSync('git', ['worktree', 'remove', '--force', dir], {
+    cwd: repo,
+    stdio: 'ignore',
+  })
 }
 
 async function restoreVersionFiles(wt) {
@@ -1903,12 +2002,6 @@ async function assertBumpBranch(wt) {
   if (why) {
     finish(EXIT.cannotRun, `refused before a commit or a push: ${why}`)
   }
-}
-
-// "4" for 4.1.5, "0.5" for 0.5.2: the line a major moves to.
-const majorLine = (v) => {
-  const x = parseVersion(v)
-  return x.major > 0 ? `${x.major}` : `0.${x.minor}`
 }
 
 async function commit(wt, message, body, files) {
@@ -2073,6 +2166,7 @@ async function prState(wt, projects) {
     .map((r) => ({ ...r, where: r.where.join(', ') }))
     .sort((x, y) => x.name.localeCompare(y.name))
   const excludes = []
+  const removedExcludes = []
   const overrides = []
   for (const p of projects) {
     const path = `${p.rel === '.' ? '' : `${p.rel}/`}pnpm-workspace.yaml`
@@ -2085,6 +2179,13 @@ async function prState(wt, projects) {
       yamlList(main ?? '', 'minimumReleaseAgeExclude')
     )
     excludes.push(...exact, ...other)
+    // M6: the aged entries this branch removed (on main, not on the branch).
+    removedExcludes.push(
+      ...branchExcludes(
+        yamlList(main ?? '', 'minimumReleaseAgeExclude'),
+        yamlList(head ?? '', 'minimumReleaseAgeExclude')
+      ).exact
+    )
     const om = new Map(
       yamlMap(main ?? '', 'overrides').map((o) => [o.key, o.value])
     )
@@ -2120,7 +2221,13 @@ async function prState(wt, projects) {
       toolchain.push(`${file}: \`${plain(l.slice(1).trim())}\``)
     }
   }
-  return { packages, excludes: [...new Set(excludes)], overrides, toolchain }
+  return {
+    packages,
+    excludes: [...new Set(excludes)],
+    removedExcludes: [...new Set(removedExcludes)],
+    overrides,
+    toolchain,
+  }
 }
 
 const GITHUB_BODY_MAX = 65536
@@ -2149,20 +2256,19 @@ async function pushAndPr(wt, ghRepo, out, projects) {
   const template =
     read(join(wt, '.github', 'pull_request_template.md')) ??
     read(join(wt, '.github', 'PULL_REQUEST_TEMPLATE.md'))
-  let body = ''
+  // F4, M4: smaller lists until the body fits; then cut the block. Never exit 2 here:
+  // the commits exist already.
+  const wrap = (block) =>
+    old != null ? replacePrBlock(old, block) : newPrBody(block, template)
+  let block = ''
   for (const cap of [150, 50, 10]) {
-    const block = prBlock(state, R, cap)
-    body = old != null ? replacePrBlock(old, block) : newPrBody(block, template)
-    if (body.length <= GITHUB_BODY_MAX) {
+    block = prBlock(state, R, cap)
+    if (wrap(block).length <= GITHUB_BODY_MAX) {
       break
     }
   }
-  if (body.length > GITHUB_BODY_MAX) {
-    finish(
-      EXIT.cannotRun,
-      `the PR body has ${body.length} characters even with short lists; GitHub allows ${GITHUB_BODY_MAX}. Shorten the text outside the generated block.`
-    )
-  }
+  const room = GITHUB_BODY_MAX - (wrap('').length + 1)
+  const body = wrap(fitPrBlock(block, room))
   writeFileSync(bodyFile, body)
   if (values['no-push']) {
     R.notes.push(`--no-push: nothing pushed. The PR text is in ${bodyFile}.`)
@@ -2207,13 +2313,10 @@ let CONFIG = { heldMajors: [], fastTrackMinAgeHours: null }
 
 // `.claude/bump-packages.json` of the worktree (A10). A malformed file or an unknown key
 // is exit 2.
-function loadConfig(wt) {
-  const file = join(wt, '.claude', 'bump-packages.json')
-  const text = read(file)
-  if (text == null) {
-    return
-  }
-  const bad = (why) => finish(EXIT.cannotRun, `${file}: ${why}`)
+// One copy of `.claude/bump-packages.json`: { heldMajors, fastTrackMinAgeHours }, or
+// exit 2 for a malformed file or an unknown key.
+function parseConfig(text, where) {
+  const bad = (why) => finish(EXIT.cannotRun, `${where}: ${why}`)
   let c
   try {
     c = JSON.parse(text)
@@ -2250,7 +2353,38 @@ function loadConfig(wt) {
   if (ft !== undefined && !(Number.isFinite(ft) && ft >= 0)) {
     bad('fastTrackMinAgeHours must be a number of hours (0 or more)')
   }
-  CONFIG = { heldMajors: held, fastTrackMinAgeHours: ft ?? null }
+  return { heldMajors: held, fastTrackMinAgeHours: ft ?? null }
+}
+
+// A10: `heldMajors` from the worktree's copy. L4: `fastTrackMinAgeHours` only from
+// origin/main's copy (default 6): a control is lowered only by a merged change on main.
+function loadConfig(wt) {
+  const file = join(wt, '.claude', 'bump-packages.json')
+  const text = read(file)
+  const branch = text == null ? null : parseConfig(text, file)
+  let mainText = null
+  try {
+    mainText = execFileSync(
+      'git',
+      ['show', 'origin/main:.claude/bump-packages.json'],
+      { cwd: wt, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    )
+  } catch {}
+  const main =
+    mainText == null
+      ? null
+      : parseConfig(mainText, 'origin/main:.claude/bump-packages.json')
+  const ft = main?.fastTrackMinAgeHours ?? null
+  if (
+    branch?.fastTrackMinAgeHours != null &&
+    branch.fastTrackMinAgeHours !== (ft ?? 6)
+  ) {
+    R.notes.push(
+      `fastTrackMinAgeHours ${branch.fastTrackMinAgeHours} on the branch is not used: the value comes from origin/main (${ft ?? 6}).`
+    )
+  }
+  CONFIG = { heldMajors: branch?.heldMajors ?? [], fastTrackMinAgeHours: ft }
+  R.fastTrackMinAgeHours = ft ?? 6
 }
 
 // --- main ---------------------------------------------------------------------------------
@@ -2274,10 +2408,7 @@ function removeEmptyWorktree(repo, wt) {
   if (R.mode !== 'new' || !R.createdWorktree) {
     return
   }
-  execFileSync('git', ['worktree', 'remove', '--force', wt], {
-    cwd: repo,
-    stdio: 'ignore',
-  })
+  removeWorktree(repo, wt)
   execFileSync('git', ['branch', '-D', R.branch], {
     cwd: repo,
     stdio: 'ignore',
@@ -2302,6 +2433,17 @@ async function main() {
     finish(
       EXIT.cannotRun,
       `--approve takes exact name@x.y.z entries only: ${bad.join(', ')}`
+    )
+  }
+  const badPins = MAJORS.filter(
+    (m) =>
+      MAJOR_PINS.get(m.slice(0, m.lastIndexOf('@'))) != null &&
+      !/@\d+(\.\d+)?$/.test(m)
+  )
+  if (badPins.length) {
+    finish(
+      EXIT.cannotRun,
+      `--majors takes name or name@<major> (zustand@6, x@0.5): ${badPins.join(', ')}`
     )
   }
   const t0 = Date.now()
@@ -2350,6 +2492,14 @@ async function main() {
       `--skip-check: unknown check ${unknown.join(', ')}. The checks: ${checkNames.join(', ')}.`
     )
   }
+  // H2: a failed build or signature check is never accepted.
+  const never = SKIP.filter((n) => n === 'build' || n === 'signatures')
+  if (never.length) {
+    finish(
+      EXIT.cannotRun,
+      `--skip-check cannot accept a failure of ${never.join(', ')}.`
+    )
+  }
   await step('decide', () => decide(projects))
   if (R.dryRun) {
     total(t0)
@@ -2357,6 +2507,7 @@ async function main() {
   }
   const headLocks = new Map()
   await step('edit', async () => {
+    R.dirtied = true // M1: from here on, an exit prints the reset command
     for (const p of projects) {
       headLocks.set(
         p.rel,
@@ -2409,52 +2560,53 @@ async function main() {
     // D3: the root and the extra projects in parallel.
     await Promise.all(projects.map((p) => regen(p, out, headLocks.get(p.rel))))
   })
-  // A9: nothing changed after the regeneration: no review, changeset, checks or audit.
-  if (!(await must('git', ['status', '--porcelain'], { cwd: wt })).trim()) {
-    if (!(await unpushed(wt))) {
-      removeEmptyWorktree(repo, wt)
-      total(t0)
-      finish(
-        EXIT.ok,
-        `nothing to bump${R.worktreeRemoved ? '; the worktree and the branch of this run are removed' : ''}`
-      )
-    }
-    await step('push', () => pushAndPr(wt, ghRepo, out, projects))
+  // H3: the recheck of earlier exclude entries runs before any early exit.
+  await step('recheck', () => earlierExcludes(projects, wt))
+  // A9: nothing changed and nothing unpushed: no review, changeset, checks or audit.
+  // Unpushed commits (a merge of main, a fix commit) get the review and the checks.
+  const clean = !(
+    await must('git', ['status', '--porcelain'], { cwd: wt })
+  ).trim()
+  // New mode: a branch on origin without a PR (an earlier `gh pr create` failed) still
+  // goes to the push step, which opens the PR.
+  const needsPr = R.mode === 'new' && !!R.base
+  if (clean && !(await unpushed(wt)) && !needsPr) {
+    removeEmptyWorktree(repo, wt)
     total(t0)
     finish(
       EXIT.ok,
-      values['no-push']
-        ? 'nothing else to bump; the local commits are not pushed (--no-push)'
-        : R.mergedMain
-          ? 'merged main; nothing else to bump'
-          : 'pushed the local commits; nothing else to bump'
+      `nothing to bump${R.worktreeRemoved ? '; the worktree and the branch of this run are removed' : ''}`
     )
   }
-  await step('lockfile', () => lockfileReview(projects, wt, out))
+  await step('lockfile', () => lockfileReview(projects, out))
   await step('changeset', () => writeChangeset(wt, projects[0]))
-  const ok = await step('checks', () => checks(wt, projects, out))
+  await step('checks', () => checks(wt, projects, out))
   await restoreVersionFiles(wt)
-  if (!ok) {
-    const failed = R.checks.filter((c) => !c.ok)
-    await step('baseline', () => baseline(repo, failed, projects, out))
-    for (const c of failed) {
-      const tail = (read(c.log) ?? '')
-        .trimEnd()
-        .split('\n')
-        .slice(-40)
-        .join('\n')
-      process.stderr.write(`\n### FAILED: ${c.name} (${c.log})\n\n${tail}\n`)
+  const failed = R.checks.filter((c) => !c.ok && !c.notRun)
+  if (failed.length) {
+    await step('baseline', () => baseline(repo, wt, failed, projects, out))
+  }
+  // H2: --skip-check accepts a failure only when main fails the same check.
+  for (const c of failed) {
+    c.accepted = SKIP.includes(c.name) && c.verdict === 'fails-on-main'
+  }
+  R.acceptedChecks = failed.filter((c) => c.accepted).map((c) => c.name)
+  const blocking = R.checks.filter((c) => !c.ok && !c.accepted)
+  if (blocking.length) {
+    for (const c of blocking.filter((x) => !x.notRun)) {
+      process.stderr.write(
+        `\n### FAILED: ${c.name} (${c.log})\n\n${tail(read(c.log), 40)}\n`
+      )
     }
     total(t0)
     finish(
       EXIT.checkFailed,
-      `${failed.length} check(s) failed: ${failed.map((c) => c.name).join(', ')}`
+      `${blocking.length} check(s) failed: ${blocking.map((c) => c.name).join(', ')}`
     )
   }
   await step('commit', () => commitAll(wt, projects))
-  // F7: no new commit, but local commits that origin does not have: push them.
   if (!R.commits.length) {
-    if (!(await unpushed(wt))) {
+    if (!(await unpushed(wt)) && !needsPr) {
       total(t0)
       finish(EXIT.ok, 'nothing to bump')
     }
@@ -2464,9 +2616,18 @@ async function main() {
   }
   await step('push', () => pushAndPr(wt, ghRepo, out, projects))
   total(t0)
+  const what = R.commits.length
+    ? 'committed'
+    : R.mergedMain
+      ? 'merged main; nothing else to bump'
+      : 'pushed the local commits; nothing else to bump'
   finish(
     EXIT.ok,
-    values['no-push'] ? 'committed, not pushed (--no-push)' : 'done'
+    values['no-push']
+      ? `${what}; not pushed (--no-push)`
+      : R.commits.length
+        ? 'done'
+        : what
   )
 }
 

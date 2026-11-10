@@ -6,6 +6,8 @@ import {
   cmpRaw,
   failures,
   ghApi,
+  OTHER_REGISTRY,
+  onNpmjs,
   pickAgedTarget,
   satisfies,
   specName,
@@ -369,7 +371,10 @@ export function malwareCoveringAny(list, name, versions) {
 //   type=reviewed affects=event-stream@3.3.6     -> GHSA-mh6f-8j2x-4483 (critical)
 //   type=malware / reviewed affects=viem@2.57.17, debug@4.4.1, @ctrl/tinycolor@4.1.0 -> []
 // Returns { hits } or { error } (the check could not run: the caller fails closed).
-export async function advisoriesFor(name, version) {
+export async function advisoriesFor(name, version, cwd) {
+  if (!onNpmjs(name, cwd)) {
+    return { error: OTHER_REGISTRY }
+  }
   const affects = encodeURIComponent(`${name}@${version}`)
   const hits = []
   for (const type of ['malware', 'reviewed']) {
@@ -390,7 +395,10 @@ export async function advisoriesFor(name, version) {
 
 // Malware advisories of a whole package (no version in `affects`). Returns { list } or
 // { error }. analyze-outdated blocks the package when one covers any fresh version.
-export async function packageMalwareFor(name) {
+export async function packageMalwareFor(name, cwd) {
+  if (!onNpmjs(name, cwd)) {
+    return { error: OTHER_REGISTRY }
+  }
   const list = await ghApi(
     `/advisories?type=malware&ecosystem=npm&affects=${encodeURIComponent(name)}&per_page=100`,
     30000
@@ -402,7 +410,10 @@ export async function packageMalwareFor(name) {
 
 // Provenance source of one version from the npm attestation bundle. Returns
 // { repository, path } or { error }. One retry on a network error or an HTTP 5xx.
-export async function provenanceOf(name, version, timeoutMs = 20000) {
+export async function provenanceOf(name, version, cwd, timeoutMs = 20000) {
+  if (!onNpmjs(name, cwd)) {
+    return { error: OTHER_REGISTRY }
+  }
   const url = `https://registry.npmjs.org/-/npm/v1/attestations/${name.replace('/', '%2f')}@${version}`
   let last = null
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -413,7 +424,9 @@ export async function provenanceOf(name, version, timeoutMs = 20000) {
         continue
       }
       if (!res.ok) {
-        return { error: `HTTP ${res.status}` }
+        // The caller asks only when `dist.attestations` exists: a 4xx is a failure too.
+        last = `HTTP ${res.status}`
+        break
       }
       return parseProvenance(await res.json(), name, version)
     } catch (err) {
@@ -616,4 +629,31 @@ export async function checkExactEntry(
     compromise: [...compromise, ...pv.compromise, ...tp.compromise],
     verified: pv.verified,
   }
+}
+
+// --- what `--approve` may override (M2) ------------------------------------------
+
+// A check that gave no answer. An approval never skips one: the run stops ("run again").
+export const isBlindFlag = (flag) =>
+  /cannot (run|check|compare)|\bunknown\b|unavailable|not checked|no aged version to compare/.test(
+    flag
+  )
+
+// The flag kinds that a person may approve: a new dependency, a range that only a fresh
+// version meets, an alias or non-registry spec. Everything else (an advisory hit, a
+// compromise-class flag, an unknown kind) refuses the approval.
+const APPROVABLE_RE =
+  /: new (dependencies|optionalDependencies|peerDependencies): |uses the (alias|non-registry spec)|range of .+ changed .+ only a fresh version meets it|no published version meets it|only a prerelease meets it/
+
+// Why `--approve` cannot apply these flags: { blind: [...], refused: [...] }. Both empty
+// means the approval may go ahead (no provenance and too young are not flags).
+export function approvalObstacles(flags = [], compromise = []) {
+  const all = [...new Set([...compromise, ...flags])]
+  const blind = all.filter(isBlindFlag)
+  const refused = all.filter(
+    (f) =>
+      !isBlindFlag(f) &&
+      (compromise.includes(f) || /advisory/.test(f) || !APPROVABLE_RE.test(f))
+  )
+  return { blind, refused }
 }

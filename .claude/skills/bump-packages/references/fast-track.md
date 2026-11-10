@@ -12,14 +12,14 @@ list by hand: the script does it.
 |---|---|---|
 | auto | No red flag. Each entry of the exclude set, and the release it replaces, have provenance from the same repo and workflow. Each entry is at least 6 h old. | The script applies it without a question. |
 | needs approval | No red flag, but one side has no provenance, or an entry is younger than 6 h. | It goes in only when the user names it: `--approve <entries>`. |
-| blocked | A red flag. | It waits for the normal gate. With a compromise flag, `--approve` is refused. |
+| blocked | A red flag. | It waits for the normal gate. `--approve` is refused for a compromise flag, for an advisory, and for a check that could not run. |
 
 - **Why provenance.** For a package without provenance, the checks cannot see a code-only
   release from a hijacked account. `debug` 4.4.2 (September 2025) had the same publisher, no
   provenance, and no install script.
 - **Why 6 h.** The script builds and tests on this machine right after the bump. Recent npm
-  compromises were found within about 3 to 4 h. `.claude/bump-packages.json` can change the
-  value (`fastTrackMinAgeHours`).
+  compromises were found within about 3 to 4 h. `fastTrackMinAgeHours` in
+  `.claude/bump-packages.json` on `main` can change the value.
 - **Majors** are never fast-tracked. Actions and CI tools have no exclude list, so they keep
   the gate.
 

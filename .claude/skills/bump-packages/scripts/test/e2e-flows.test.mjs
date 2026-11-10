@@ -22,6 +22,7 @@ import {
   showAt,
   skip,
   why,
+  writeJson,
 } from './e2e-fixture.js'
 
 const RESET =
@@ -31,7 +32,26 @@ const messages = (r) => r.json.commits.map((c) => c.message)
 describe('bump.mjs flows', { skip, concurrency: true }, () => {
   test('--majors: the range, its own commit, and the changeset line', async () => {
     const fx = fixture()
-    const r = await runBump(fx, '--majors', 'kleur', '--no-push')
+    // L2: a pin that does not match the plan's target is not applied.
+    const wrong = await runBump(fx, '--majors', 'kleur@5', '--dry-run')
+    assert.equal(wrong.code, 0, why(wrong))
+    assert.match(
+      wrong.json.notes.join('\n'),
+      /--majors kleur@5: the plan's target is 4\.1\.5; not applied/
+    )
+    assert.equal(
+      wrong.json.needsUser.find((i) => i.name === 'kleur')?.flag,
+      '--majors kleur@4'
+    )
+    // L1: a repeated flag keeps every value.
+    const r = await runBump(
+      fx,
+      '--majors',
+      'kleur@4',
+      '--majors',
+      'nope',
+      '--no-push'
+    )
     assert.equal(r.code, 0, why(r))
     assert.deepEqual(messages(r), [
       'chore: bump packages',
@@ -56,7 +76,29 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
       r.err,
       /\n {2}- kleur 3\.0\.3 → 4\.1\.5 \(packages\/lib\) major/
     )
-    assert.match(r.err, /Rerun: .* --worktree '.+' --majors kleur/)
+    assert.match(
+      r.err,
+      /Rerun: .* --worktree '.+' --majors kleur@4,nope --no-push\n/
+    )
+    // H3: the next run has unpushed commits: the review and the checks run first.
+    // M1: `gh pr create` fails after the commits: the tree is clean, so no reset line.
+    const rerun = rerunOf(r).replace(' --no-push', '')
+    const state = readJson(fx.state)
+    writeJson(fx.state, { ...state, failCreate: true })
+    const failed = await runLine(fx, rerun)
+    assert.equal(failed.code, 2, why(failed))
+    assert.ok('checks' in failed.json.timings, 'the checks ran')
+    assert.doesNotMatch(failed.err, /To discard them/)
+    assert.ok(originRef(fx, BRANCH), 'pushed before the PR step')
+    // The branch is on origin now, but no PR: the next run opens it.
+    writeJson(fx.state, { ...readJson(fx.state), failCreate: false })
+    const again = await runLine(fx, rerun)
+    assert.equal(again.code, 0, why(again))
+    assert.match(again.json.pr, /\/pull\/10$/)
+    assert.equal(
+      again.json.message,
+      'pushed the local commits; nothing else to bump'
+    )
   })
 
   test('exit 4, a fix commit, the reset, then the Rerun line (new mode)', async () => {
@@ -66,6 +108,15 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
     const r = await runBump(fx)
     assert.equal(r.code, 4, why(r))
     const wt = r.json.worktree
+    fx.sh(wt, 'sh', '-c', RESET.exec(r.err)[1])
+    const skipFirst = await runLine(fx, `${rerunOf(r)} --skip-check check`)
+    assert.equal(skipFirst.code, 4, why(skipFirst))
+    assert.equal(
+      skipFirst.json.checks.find((c) => c.name === 'check').verdict,
+      'regression',
+      'a regression cannot be skipped (H2)'
+    )
+    fx.sh(wt, 'sh', '-c', RESET.exec(skipFirst.err)[1])
     const pj = readJson(join(wt, 'package.json'))
     pj.scripts.check = 'node -e 0'
     fs.writeFileSync(
@@ -81,9 +132,7 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
       'fix: adapt',
       'package.json'
     )
-    const fix = fx.git(wt, 'rev-parse', 'HEAD')
-    fx.sh(wt, 'sh', '-c', RESET.exec(r.err)[1])
-    assert.equal(fx.git(wt, 'rev-parse', 'HEAD'), fix, 'the reset keeps it')
+    assert.equal(fx.git(wt, 'status', '--porcelain'), '')
     const again = await runLine(fx, rerunOf(r))
     assert.equal(again.code, 0, why(again))
     assert.equal(again.json.mode, 'new')
@@ -93,25 +142,34 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
     assert.match(again.json.pr, /\/pull\/10$/)
   })
 
-  test('auto baseline: not a regression, then --skip-check', async () => {
+  test('auto baseline: fails on main, then --skip-check accepts it', async () => {
     const fx = fixture({ check: 'node -e "process.exit(1)"' })
     const r = await runBump(fx)
     assert.equal(r.code, 4, why(r))
-    assert.equal(
-      r.json.checks.find((c) => c.name === 'check').regression,
-      false
-    )
+    const c = r.json.checks.find((x) => x.name === 'check')
+    assert.equal(c.verdict, 'fails-on-main')
+    assert.ok(fs.existsSync(c.baselineLog), 'the baseline log stays')
     assert.match(
       r.err,
-      /check FAIL \(also fails without the bump: not a regression; rerun with --skip-check check\)/
+      /check FAIL \(also fails on main; compare .+check-check\.log with .+baseline\/check-check\.log\)/
     )
     fx.sh(r.json.worktree, 'sh', '-c', RESET.exec(r.err)[1])
     const again = await runLine(fx, `${rerunOf(r)} --skip-check check`)
     assert.equal(again.code, 0, why(again))
-    assert.deepEqual(again.json.skippedChecks, ['check'])
-    assert.match(again.err, /- Checks: .*; skipped: check/)
+    assert.deepEqual(again.json.acceptedChecks, ['check'])
+    assert.match(
+      again.err,
+      /check FAIL \(fails on main too; accepted with --skip-check\)/
+    )
     const body = readJson(fx.state).prs[0].body
-    assert.match(body, /skipped \(they also fail on main\): `check`/)
+    assert.match(
+      body,
+      /`check` FAIL \(fails on main too; accepted with --skip-check\)/
+    )
+    // A failed build or signature check is never accepted.
+    const build = await runBump(fx, '--skip-check', 'build', '--dry-run')
+    assert.equal(build.code, 2, why(build))
+    assert.match(build.json.message, /cannot accept a failure of build/)
     // An unknown check name stops the run before any change.
     const bad = await runBump(fx, '--skip-check', 'nope', '--dry-run')
     assert.equal(bad.code, 2, why(bad))
@@ -119,6 +177,29 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
       bad.json.message,
       /unknown check nope\. The checks: build, check/
     )
+  })
+
+  test('a failed build: the later checks do not run, exit 4 with the baseline', async () => {
+    const fx = fixture()
+    const pj = readJson(join(fx.main, 'package.json'))
+    pj.scripts.build = `node -e "process.exit(require('fs').readdirSync('.changeset').some((f) => f.startsWith('bump-')) ? 1 : 0)"`
+    pushToMain(
+      fx,
+      { 'package.json': `${JSON.stringify(pj, null, 2)}\n` },
+      'chore: a build that fails on the bump'
+    )
+    const r = await runBump(fx)
+    assert.equal(r.code, 4, why(r))
+    const by = Object.fromEntries(r.json.checks.map((c) => [c.name, c]))
+    assert.equal(by.build.verdict, 'regression')
+    assert.equal(by['check:types'].notRun, 'build failed')
+    assert.equal(by.test.notRun, 'build failed')
+    assert.match(
+      r.err,
+      /build FAIL \(regression\).*check:types not run \(build failed\)/
+    )
+    assert.match(r.err, /To discard them:/)
+    assert.deepEqual(r.json.commits, [])
   })
 
   test('new mode with nothing to bump removes its worktree and branch', async () => {
@@ -172,7 +253,11 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
       '.claude/bump-packages.json': `${JSON.stringify(c, null, 2)}\n`,
     })
     const held = { name: 'kleur', reason: 'Held for this test. More text.' }
-    pushToMain(fx, cfg({ heldMajors: [held] }), 'chore: hold kleur 4')
+    pushToMain(
+      fx,
+      cfg({ heldMajors: [held], fastTrackMinAgeHours: 12 }),
+      'chore: hold kleur 4'
+    )
     const r = await runBump(fx, '--dry-run')
     assert.equal(r.code, 0, why(r))
     assert.ok(!r.json.needsUser.some((i) => i.name === 'kleur'))
@@ -180,6 +265,32 @@ describe('bump.mjs flows', { skip, concurrency: true }, () => {
     assert.equal(
       w?.text,
       '4.1.5 is held (.claude/bump-packages.json): Held for this test.'
+    )
+    assert.equal(r.json.fastTrackMinAgeHours, 12)
+    // L4: a branch cannot lower the floor; main's value counts.
+    const wt = join(fx.main, '.claude', 'worktrees', 'bump-floor')
+    fx.git(fx.main, 'fetch', '-q', 'origin')
+    fx.git(
+      fx.main,
+      'worktree',
+      'add',
+      '-q',
+      '-b',
+      'chore/bump-deps-20991230',
+      wt,
+      'origin/main'
+    )
+    fs.writeFileSync(
+      join(wt, '.claude/bump-packages.json'),
+      `${JSON.stringify({ heldMajors: [held], fastTrackMinAgeHours: 0 })}\n`
+    )
+    fx.git(wt, 'commit', '-q', '--no-verify', '-am', 'chore: lower the floor')
+    const floor = await runBump(fx, '--worktree', wt, '--dry-run')
+    assert.equal(floor.code, 0, why(floor))
+    assert.equal(floor.json.fastTrackMinAgeHours, 12)
+    assert.match(
+      floor.json.notes.join('\n'),
+      /fastTrackMinAgeHours 0 on the branch is not used/
     )
     pushToMain(fx, cfg({ heldMajors: [], other: 1 }), 'chore: bad config')
     const bad = await runBump(fx, '--dry-run')

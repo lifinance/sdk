@@ -3,22 +3,33 @@
 // Run: node --test <skill>/scripts/test/*.test.mjs
 
 import assert from 'node:assert/strict'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   addedKeys,
+  failures,
   freshVersionsOf,
   invalidExcludeEntries,
+  OTHER_REGISTRY,
   overrideUpdate,
+  registryVersionDoc,
   resolveLockfileBases,
   toolStatus,
 } from '../lib.js'
 import {
+  advisoriesFor,
   advisoryHits,
+  approvalObstacles,
   decideFamily,
   groupFamilies,
+  isBlindFlag,
   malwareCoveringAny,
   normalizeRepo,
+  packageMalwareFor,
   parseProvenance,
+  provenanceOf,
   provenanceVerdict,
 } from '../security.js'
 
@@ -970,5 +981,79 @@ test('lockfile-report: the age check compares with the trust anchor, not with --
     )
   } finally {
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('approvalObstacles: --approve overrides only new dependencies, ranges and specs', () => {
+  const ok = approvalObstacles([
+    'a@1.0.1: new dependencies: b',
+    'a@1.0.1: dependencies range of b changed ^1 → ^2, and only a fresh version meets it',
+    'a@1.0.1: dependencies c uses the alias "npm:d@1"',
+  ])
+  assert.deepEqual(ok, { blind: [], refused: [] })
+  const advisory = approvalObstacles([
+    'a@1.0.1: reviewed advisory GHSA-1 (high)',
+  ])
+  assert.equal(advisory.refused.length, 1)
+  const compromise = approvalObstacles([], ['a@1.0.1: publisher changed x → y'])
+  assert.equal(compromise.refused.length, 1)
+  const unknownKind = approvalObstacles(['a@1.0.1: something new'])
+  assert.equal(unknownKind.refused.length, 1, 'an allow-list, not a deny-list')
+  for (const f of [
+    'a@1.0.1: advisory check cannot run, cannot check (down)',
+    'a@1.0.1: publisher unknown, cannot compare',
+    'a: registry data unavailable, cannot check',
+    'a@1.0.1: no aged version to compare with',
+    'a@1.0.1: b@^2 needs a fresh version below depth 4, not checked',
+  ]) {
+    assert.ok(isBlindFlag(f), f)
+  }
+  // A package-level check without an answer is in the compromise list: still "blind".
+  const pkg = approvalObstacles(
+    [],
+    ['a: package malware advisory check cannot run, cannot check (down)']
+  )
+  assert.equal(pkg.blind.length, 1)
+  assert.equal(pkg.refused.length, 0)
+})
+
+test('provenanceOf: an HTTP 4xx answer is a failure, not "no provenance"', async () => {
+  const real = globalThis.fetch
+  globalThis.fetch = async () => new Response('not found', { status: 404 })
+  try {
+    const before = failures.length
+    const r = await provenanceOf('x', '1.0.0')
+    assert.equal(r.error, 'HTTP 404')
+    assert.equal(failures.length, before + 1, 'a degraded plan')
+  } finally {
+    globalThis.fetch = real
+  }
+})
+
+test('a package routed to another registry is never sent to npmjs or GitHub (L3)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bump-npmrc-'))
+  writeFileSync(
+    join(dir, '.npmrc'),
+    '@corp:registry=https://npm.corp.example/\n'
+  )
+  const real = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    throw new Error('no request expected')
+  }
+  try {
+    for (const r of [
+      await provenanceOf('@corp/x', '1.0.0', dir),
+      await registryVersionDoc('@corp/x', '1.0.0', dir),
+      await advisoriesFor('@corp/x', '1.0.0', dir),
+      await packageMalwareFor('@corp/x', dir),
+    ]) {
+      assert.equal(r.error, OTHER_REGISTRY)
+    }
+    assert.equal(calls, 0)
+    assert.match(OTHER_REGISTRY, /cannot check/, 'an approval stops on it (M2)')
+  } finally {
+    globalThis.fetch = real
   }
 })

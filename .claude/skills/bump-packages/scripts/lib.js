@@ -1139,14 +1139,27 @@ export function resolveLockfileBases(baseOpt, git) {
   return { compareBase, trustAnchor }
 }
 
+// L3: true when npm gets `name` from registry.npmjs.org for the project in `cwd`. A
+// package that .npmrc routes to another registry is never sent to npmjs or to the GitHub
+// advisory API: its checks give a "cannot check" answer instead.
+export const onNpmjs = (name, cwd) => routingFor(cwd)(name)
+export const OTHER_REGISTRY =
+  'another registry in .npmrc, cannot check on registry.npmjs.org'
+
 // The raw version document from registry.npmjs.org, or { error }. One retry on a network
 // error or an HTTP 5xx.
-export async function registryVersionDoc(name, version, timeoutMs = 20000) {
-  if (routingFor(process.cwd())(name)) {
-    const v = (await packument(name)).versions?.[version]
-    if (v) {
-      return v
-    }
+export async function registryVersionDoc(
+  name,
+  version,
+  cwd,
+  timeoutMs = 20000
+) {
+  if (!onNpmjs(name, cwd)) {
+    return { error: OTHER_REGISTRY }
+  }
+  const v = (await packument(name)).versions?.[version]
+  if (v) {
+    return v
   }
   const url = `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}`
   let last = null

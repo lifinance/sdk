@@ -4,21 +4,30 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  appliedLines,
   bumpSpec,
   changesetText,
+  checkText,
   EXIT,
   editExcludesDetailed,
+  fitPrBlock,
   groupCommits,
+  lockstepKey,
+  lockstepWaits,
+  majorLine,
+  majorTargets,
   newPrBody,
   PR_END,
   PR_START,
   packageManagerValue,
   parseChangesetLine,
+  plain,
   prBlock,
   replaceOverride,
   replacePrBlock,
   setDependencySpec,
   setPackageManager,
+  whereText,
   wrapLines,
 } from '../bump-helpers.js'
 import { yamlList } from '../lib.js'
@@ -258,6 +267,7 @@ test('prBlock, replacePrBlock and newPrBody: one stateless block between markers
       },
     ],
     excludes: ['vite@8.3.7'],
+    removedExcludes: ['viem@2.57.17'],
     overrides: [{ key: 'axios', from: '^1.20.0', to: '^1.21.0' }],
     toolchain: ['pnpm 12.14.0 → 12.18.0'],
   }
@@ -273,8 +283,10 @@ test('prBlock, replacePrBlock and newPrBody: one stateless block between markers
     ],
     lockfile: { majors: [], singleCopy: ['viem 2.57.17'] },
     audit: { before: { high: 2, low: 1 }, after: { high: 0, low: 1 } },
-    checks: [{ name: 'build', ok: true, seconds: 40 }],
-    skippedChecks: ['knip:check'],
+    checks: [
+      { name: 'build', ok: true, seconds: 40 },
+      { name: 'knip:check', ok: false, accepted: true, seconds: 3 },
+    ],
   }
   const block = prBlock(state, r)
   assert.ok(block.startsWith(PR_START) && block.endsWith(PR_END))
@@ -287,27 +299,61 @@ test('prBlock, replacePrBlock and newPrBody: one stateless block between markers
     /### Allowed past the release-age gate\n\n- `vite@8\.3\.7`/
   )
   assert.match(block, /- `axios`: `\^1\.20\.0` → `\^1\.21\.0`/)
+  assert.match(block, /### Aged exclude entries removed\n\n- `viem@2\.57\.17`/)
   assert.match(
     block,
     /Needs the user:\n\n- `i18next`: 26\.5\.2 → 27\.0\.1 \(major\)\. Apply: `--majors i18next`/
   )
   assert.match(block, /3 advisories before, 1 after/)
-  assert.match(block, /skipped \(they also fail on main\): `knip:check`/)
+  assert.match(
+    block,
+    /`knip:check` FAIL \(fails on main too; accepted with --skip-check\) \(3 s\)/
+  )
+  // Without the baseline's proof, a failure is only "FAIL".
+  const unproved = prBlock(state, {
+    ...r,
+    checks: [{ name: 'knip:check', ok: false, seconds: 3 }],
+  })
+  assert.doesNotMatch(unproved, /fails on main/)
   // A long list is cut.
   const many = {
     ...state,
     excludes: Array.from({ length: 5 }, (_, i) => `x@1.0.${i}`),
   }
   assert.match(prBlock(many, r, 2), /… and 3 more\./)
-  // The second run replaces the block; the text around it stays.
+  // M4: each run removes every block and stray marker and appends one; the text of
+  // people stays.
   const body = `Intro by a person.\n\n${block}\n\nOutro.`
-  const next = replacePrBlock(body, prBlock({ ...state, excludes: [] }, r))
-  assert.equal(next.split(PR_START).length, 2, 'one block')
-  assert.match(next, /^Intro by a person\.\n\n/)
-  assert.match(next, /\n\nOutro\.$/)
+  let next = replacePrBlock(body, prBlock({ ...state, excludes: [] }, r))
+  next = replacePrBlock(`${next}\n${PR_END} stray`, block)
+  next = replacePrBlock(next, prBlock({ ...state, excludes: [] }, r))
+  assert.equal(next.split(PR_START).length, 2, 'one block after three runs')
+  assert.equal(next.split(PR_END).length, 2)
+  assert.match(
+    next,
+    /^Intro by a person\.\n\nOutro\.\n\n stray\n\n<!-- bump-packages:start -->/
+  )
   assert.doesNotMatch(next, /vite@8\.3\.7/)
-  // An old body without markers gets the block once.
   assert.equal(replacePrBlock('Old text.', block), `Old text.\n\n${block}\n`)
+  // M4: untrusted text cannot open a comment or end the block; a long item is capped.
+  const evil = prBlock(state, {
+    ...r,
+    needsUser: [
+      { name: 'x', text: plain(`a ${PR_END} <!-- b`), flag: null },
+      { name: 'y', text: 'z'.repeat(400) },
+    ],
+  })
+  assert.equal(evil.split(PR_END).length, 2)
+  assert.match(evil, /- `x`: a &lt;!-- bump-packages:end --&gt; &lt;!-- b\n/)
+  assert.match(evil, /- `y`: z{299}…\n/)
+  // M4: a block that does not fit is cut at a line end, with a note.
+  const cut = fitPrBlock(block, 200)
+  assert.ok(cut.length <= 200)
+  assert.match(
+    cut,
+    /The full lists are in the run output\.\n\n<!-- bump-packages:end -->$/
+  )
+  assert.equal(fitPrBlock(block, 1e6), block)
   // A new PR with the template shape.
   const template =
     '## Which Linear task is linked to this PR?\n\n## Why was it implemented this way?\n\n## Checklist before requesting a review\n- [ ] I have performed a self-review\n- [ ] Tests pass\n- [ ] Docs updated\n'
@@ -331,4 +377,182 @@ test('exit codes', () => {
     lockfileStop: 3,
     checkFailed: 4,
   })
+})
+
+test('checkText: the three verdicts, an accepted failure, and a check that did not run', () => {
+  const c = {
+    name: 'check:types',
+    ok: false,
+    seconds: 9,
+    log: '/o/check-check-types.log',
+  }
+  assert.equal(
+    checkText({ ...c, verdict: 'regression' }),
+    'check:types FAIL (regression) (9s)'
+  )
+  assert.equal(
+    checkText({
+      ...c,
+      verdict: 'fails-on-main',
+      baselineLog: '/o/baseline/check-check-types.log',
+    }),
+    'check:types FAIL (also fails on main; compare /o/check-check-types.log with /o/baseline/check-check-types.log) (9s)'
+  )
+  assert.equal(
+    checkText({
+      ...c,
+      verdict: 'unknown',
+      baselineWhy: 'pnpm install failed on main',
+    }),
+    'check:types FAIL (baseline unknown: pnpm install failed on main) (9s)'
+  )
+  assert.equal(
+    checkText({ ...c, verdict: 'fails-on-main', accepted: true }),
+    'check:types FAIL (fails on main too; accepted with --skip-check) (9s)'
+  )
+  assert.equal(
+    checkText({ name: 'test', ok: false, notRun: 'build failed' }),
+    'test not run (build failed)'
+  )
+  assert.equal(
+    checkText({ name: 'build', ok: true, seconds: 3 }),
+    'build ok (3s)'
+  )
+})
+
+test('appliedLines and whereText: every applied item, one line each', () => {
+  assert.equal(whereText(['packages/widget']), ' (packages/widget)')
+  assert.equal(
+    whereText(['packages/widget', 'a', 'b']),
+    ' (packages/widget and 2 more projects)'
+  )
+  assert.equal(whereText(['.', 'a']), ' (root and 1 more project)')
+  const lines = appliedLines({
+    bumps: [
+      {
+        name: 'zustand',
+        from: '5.1.0',
+        to: '5.2.0',
+        where: ['packages/widget'],
+      },
+    ],
+    majors: [
+      {
+        name: 'kleur',
+        from: '3.0.3',
+        to: '4.1.5',
+        where: ['packages/lib'],
+        major: true,
+      },
+    ],
+    overrides: [
+      { key: 'axios', value: '^1.21.0', newKey: 'axios', newValue: '^1.21.1' },
+    ],
+    removedExcludes: ['viem@2.57.17'],
+    approved: ['x@1.0.1'],
+    actions: [{ repo: 'actions/checkout', from: 'v4.1.0', to: 'v4.2.0' }],
+    tools: [{ pkg: 'wrangler', from: '4.158.0', to: '4.159.0' }],
+    pnpm: { from: '12.14.0', to: '12.18.0' },
+  })
+  assert.deepEqual(lines, [
+    'zustand 5.1.0 → 5.2.0 (packages/widget)',
+    'kleur 3.0.3 → 4.1.5 (packages/lib) major',
+    'override axios: ^1.21.0 → ^1.21.1',
+    'removed the aged exclude entry viem@2.57.17',
+    'approved exclude entry x@1.0.1',
+    'action actions/checkout v4.1.0 → v4.2.0',
+    'CI tool wrangler 4.158.0 → 4.159.0',
+    'pnpm 12.14.0 → 12.18.0',
+  ])
+})
+
+test('majorTargets and majorLine: --majors never writes into a held project', () => {
+  const names = {
+    'examples/vue': 'vue',
+    'examples/svelte': 'svelte',
+    'packages/widget': 'widget',
+  }
+  const where = Object.keys(names)
+  const nameOf = (w) => names[w]
+  assert.deepEqual(majorTargets(where, undefined, nameOf), {
+    where,
+    kept: [],
+    stale: false,
+  })
+  const held = { name: 'typescript', projects: ['vue', 'svelte'], reason: 'x' }
+  assert.deepEqual(majorTargets(where, held, nameOf), {
+    where: ['packages/widget'],
+    kept: ['examples/vue', 'examples/svelte'],
+    stale: false,
+  })
+  // Every project held, or a hold without projects: all folders, and the entry is stale.
+  assert.deepEqual(majorTargets(['examples/vue'], held, nameOf), {
+    where: ['examples/vue'],
+    kept: [],
+    stale: true,
+  })
+  assert.equal(
+    majorTargets(where, { name: 'typescript', reason: 'x' }, nameOf).stale,
+    true
+  )
+  assert.equal(majorLine('6.0.1'), '6')
+  assert.equal(majorLine('0.5.2'), '0.5')
+})
+
+test('lockstepWaits: aged siblings wait for a sibling whose same version is too young', () => {
+  // The real widget case (19:40 UTC): six @dynamic-labs/* packages had an aged 5.15.0,
+  // @dynamic-labs/sdk-react-core 5.15.0 was 23.9 h old.
+  const six = [
+    'ethereum',
+    'ethereum-aa',
+    'solana',
+    'sui',
+    'wallet-connector-core',
+    'zerodev-extension',
+  ].map((n) => ({ name: `@dynamic-labs/${n}`, from: '5.14.0', to: '5.15.0' }))
+  const bumps = [...six, { name: 'zustand', from: '5.1.0', to: '5.2.0' }]
+  const others = [
+    {
+      name: '@dynamic-labs/sdk-react-core',
+      current: '5.14.0',
+      freshVersions: [{ version: '5.15.0', eligibleInHours: 0.1 }],
+    },
+  ]
+  const keyOf = (n) => lockstepKey(n, () => null)
+  const r = lockstepWaits(bumps, others, keyOf)
+  assert.deepEqual(
+    r.keep.map((b) => b.name),
+    ['zustand']
+  )
+  assert.deepEqual(r.waits, [
+    {
+      key: '@dynamic-labs/*',
+      version: '5.15.0',
+      blocker: '@dynamic-labs/sdk-react-core',
+      inHours: 0.1,
+      names: six.map((b) => b.name),
+    },
+  ])
+  // A sibling that moves to the same version in this run (a fast-track): no wait.
+  const together = lockstepWaits(
+    [
+      ...bumps,
+      { name: '@dynamic-labs/sdk-react-core', from: '5.14.0', to: '5.15.0' },
+    ],
+    others,
+    keyOf
+  )
+  assert.equal(together.waits.length, 0)
+  // Another current version, or another scope: no wait.
+  assert.equal(
+    lockstepWaits(six, [{ ...others[0], current: '5.13.0' }], keyOf).waits
+      .length,
+    0
+  )
+  // Unscoped families come from the family table.
+  const fam = (n) =>
+    lockstepKey(n, (x) => (/^(next|@next\/.+)$/.test(x) ? 'next' : null))
+  assert.equal(fam('next'), 'next')
+  assert.equal(fam('@next/env'), 'next')
+  assert.equal(fam('@other/x'), '@other/*')
 })

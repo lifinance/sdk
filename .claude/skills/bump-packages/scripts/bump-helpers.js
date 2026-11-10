@@ -6,6 +6,7 @@ import {
   EXACT_EXCLUDE_RE,
   escapeRegExp,
   parseExcludes,
+  parseVersion,
   specName,
   unquote,
 } from './lib.js'
@@ -405,6 +406,10 @@ export function prBlock(state, r, cap = 150) {
     state.excludes.map((e) => `- ${code(e)}`)
   )
   section(
+    'Aged exclude entries removed',
+    (state.removedExcludes ?? []).map((e) => `- ${code(e)}`)
+  )
+  section(
     'Overrides',
     state.overrides.map(
       (o) =>
@@ -428,7 +433,7 @@ export function prBlock(state, r, cap = 150) {
         ...capped(
           items.map(
             (i) =>
-              `- ${code(i.name)}${i.project && i.project !== '.' ? ` (${i.project})` : ''}: ${i.text}${i.flag ? ` Apply: ${code(i.flag)}` : ''}`
+              `- ${code(i.name)}${i.project && i.project !== '.' ? ` (${i.project})` : ''}: ${capText(i.text)}${i.flag ? ` Apply: ${code(i.flag)}` : ''}`
           )
         ),
         ''
@@ -445,11 +450,13 @@ export function prBlock(state, r, cap = 150) {
   out.push(
     `- \`pnpm audit\`: ${n(r.audit?.before)} advisories before, ${n(r.audit?.after)} after.`
   )
+  // A failure counts as "fails on main too" only when the baseline proved it (H2).
   const checks = (r.checks ?? []).map(
-    (c) => `${code(c.name)} ${c.ok ? 'pass' : 'FAIL'} (${c.seconds} s)`
+    (c) =>
+      `${code(c.name)} ${c.ok ? 'pass' : c.accepted ? 'FAIL (fails on main too; accepted with --skip-check)' : 'FAIL'} (${c.seconds} s)`
   )
   out.push(
-    `- Checks: ${checks.join(', ') || 'none in this run'}${r.skippedChecks?.length ? `; skipped (they also fail on main): ${r.skippedChecks.map(code).join(', ')}` : ''}.`,
+    `- Checks: ${checks.join(', ') || 'none in this run'}.`,
     '',
     'Commits skip the git hooks; the same checks ran once before the commit.',
     '',
@@ -459,13 +466,32 @@ export function prBlock(state, r, cap = 150) {
 }
 
 // The old body with the block replaced; a body without markers gets the block once.
+// M4: every old block and every stray marker goes; then one block is appended. The text
+// of people outside the markers stays.
 export function replacePrBlock(body, block) {
-  const a = body.indexOf(PR_START)
-  const b = body.indexOf(PR_END)
-  if (a !== -1 && b > a) {
-    return `${body.slice(0, a)}${block}${body.slice(b + PR_END.length)}`
+  const pair = new RegExp(
+    `${escapeRegExp(PR_START)}[\\s\\S]*?${escapeRegExp(PR_END)}`,
+    'g'
+  )
+  const rest = String(body ?? '')
+    .replace(pair, '')
+    .split(PR_START)
+    .join('')
+    .split(PR_END)
+    .join('')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return rest ? `${rest}\n\n${block}\n` : `${block}\n`
+}
+
+// M4: a block that does not fit in `room` characters is cut at a line end, with a note.
+export function fitPrBlock(block, room) {
+  if (block.length <= room) {
+    return block
   }
-  return `${body.trimEnd()}\n\n${block}\n`
+  const note = `\n\nThe full lists are in the run output.\n\n${PR_END}`
+  const head = block.slice(0, Math.max(0, room - note.length))
+  return `${head.slice(0, head.lastIndexOf('\n'))}${note}`
 }
 
 // The body of a new PR (A14). With a template that has "Which Linear task", the block
@@ -585,4 +611,131 @@ export function mdSafe(text) {
 
 // Text from the registry, an advisory or a branch (a comment, a flag, a reason): no
 // backticks, so that it cannot close a code span; mdSafe then wraps its mentions.
-export const plain = (s) => String(s ?? '').replace(/`/g, "'")
+// M4: also `<` and `>`, so that `<!--` or a marker in untrusted text cannot hide or break
+// the generated PR block.
+export const plain = (s) =>
+  String(s ?? '')
+    .replace(/`/g, "'")
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+// M4: one list item of the PR text, at most 300 characters.
+const capText = (s) => (s.length > 300 ? `${s.slice(0, 299)}…` : s)
+
+// The summary text of one check (H1, H2).
+export function checkText(c) {
+  if (c.notRun) {
+    return `${c.name} not run (${c.notRun})`
+  }
+  if (c.ok) {
+    return `${c.name} ok (${c.seconds}s)`
+  }
+  const why = c.accepted
+    ? 'fails on main too; accepted with --skip-check'
+    : c.verdict === 'regression'
+      ? 'regression'
+      : c.verdict === 'fails-on-main'
+        ? `also fails on main; compare ${c.log} with ${c.baselineLog}`
+        : `baseline unknown: ${c.baselineWhy ?? 'not run'}`
+  return `${c.name} FAIL (${why}) (${c.seconds}s)`
+}
+
+// "packages/widget and 5 more projects" (M7).
+export const whereText = (where) =>
+  where?.length
+    ? ` (${where[0] === '.' ? 'root' : where[0]}${where.length > 1 ? ` and ${where.length - 1} more project${where.length > 2 ? 's' : ''}` : ''})`
+    : ''
+
+// Every applied item, one line each (G3, M6).
+export function appliedLines(a) {
+  return [
+    ...[...a.bumps, ...a.majors].map(
+      (b) =>
+        `${b.name} ${b.from} → ${b.to}${whereText(b.where)}${b.fastTrack ? ' fast-track' : ''}${b.major ? ' major' : ''}`
+    ),
+    ...a.overrides.map(
+      (o) =>
+        `override ${o.key}: ${o.value} → ${o.newKey === o.key ? '' : `${o.newKey}: `}${o.newValue}`
+    ),
+    ...a.removedExcludes.map((e) => `removed the aged exclude entry ${e}`),
+    ...a.approved.map((e) => `approved exclude entry ${e}`),
+    ...a.actions.map((x) => `action ${x.repo} ${x.from} → ${x.to}`),
+    ...a.tools.map((t) => `CI tool ${t.pkg} ${t.from} → ${t.to}`),
+    ...(a.pnpm ? [`pnpm ${a.pnpm.from} → ${a.pnpm.to}`] : []),
+  ]
+}
+
+// "4" for 4.1.5, "0.5" for 0.5.2: the line a major moves to.
+export const majorLine = (v) => {
+  const x = parseVersion(v)
+  return x.major > 0 ? `${x.major}` : `0.${x.minor}`
+}
+
+// M3: the project folders that `--majors` changes for one plan entry. A `heldMajors`
+// entry with `projects` (package names) keeps those projects; `nameOf(folder)` gives the
+// name. Every project held, or no `projects`: all folders, and the entry is stale.
+// Returns { where, kept, stale }.
+export function majorTargets(where, held, nameOf) {
+  if (!held) {
+    return { where, kept: [], stale: false }
+  }
+  const free = held.projects
+    ? where.filter((w) => !held.projects.includes(nameOf(w)))
+    : []
+  return free.length
+    ? {
+        where: free,
+        kept: where.filter((w) => !free.includes(w)),
+        stale: false,
+      }
+    : { where, kept: [], stale: true }
+}
+
+// M5: lockstep siblings. A safe bump of A to V waits when a sibling B (same npm scope, or
+// the same family of the family table) has the same current version as A, has V as a
+// release that is still younger than the gate, and does not move to V in this run.
+// Every bump of that group to V waits too.
+//   bumps:  [{ name, from, to }] (the bumps of one project)
+//   others: [{ name, current, freshVersions: [{ version, eligibleInHours }] }]
+//   keyOf:  name -> group key, or null
+// Returns { keep: bumps that go ahead, waits: [{ key, names, blocker, version, inHours }] }.
+export function lockstepWaits(bumps, others, keyOf) {
+  const moving = new Set(bumps.map((b) => `${b.name}@${b.to}`))
+  const blocked = new Map() // `${key} ${version}` -> { key, version, blocker, inHours }
+  for (const a of bumps) {
+    const key = keyOf(a.name)
+    if (!key) {
+      continue
+    }
+    for (const b of others) {
+      if (b.name === a.name || keyOf(b.name) !== key || b.current !== a.from) {
+        continue
+      }
+      const young = (b.freshVersions ?? []).find((f) => f.version === a.to)
+      if (young && !moving.has(`${b.name}@${a.to}`)) {
+        blocked.set(`${key} ${a.to}`, {
+          key,
+          version: a.to,
+          blocker: b.name,
+          inHours: young.eligibleInHours,
+        })
+      }
+    }
+  }
+  const waits = [...blocked.values()].map((w) => ({
+    ...w,
+    names: bumps
+      .filter((b) => keyOf(b.name) === w.key && b.to === w.version)
+      .map((b) => b.name),
+  }))
+  const waiting = new Set(waits.flatMap((w) => w.names))
+  return { keep: bumps.filter((b) => !waiting.has(b.name)), waits }
+}
+
+// The group key of a package for lockstepWaits: its family (the family table puts `next`
+// and `@next/*` together), else its npm scope. A scope reads `@scope/*`.
+export function lockstepKey(name, familyKeyOf) {
+  const key =
+    familyKeyOf(name) ?? (name.startsWith('@') ? name.split('/')[0] : null)
+  return key?.startsWith('@') && !key.includes('/') ? `${key}/*` : key
+}
