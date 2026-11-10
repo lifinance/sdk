@@ -4,23 +4,7 @@ import type {
   LiFiStepExtended,
   TypedData,
 } from '@lifi/sdk'
-
-/**
- * A Permit2 signature transfer the relayer submits: a witness, or a message
- * whose spender is canonical Permit2.
- */
-function isSignatureTransferTypedData(
-  typedData: TypedData,
-  chain: ExtendedChain
-): boolean {
-  const spender = typedData.message?.spender
-  return (
-    typedData.primaryType === 'PermitWitnessTransferFrom' ||
-    (!!chain.permit2 &&
-      typeof spender === 'string' &&
-      spender.toLowerCase() === chain.permit2.toLowerCase())
-  )
-}
+import { isGaslessTypedData } from './isGaslessStep.js'
 
 /** Which execution lane one `step.typedData` entry belongs to. */
 export type TypedDataLane =
@@ -41,7 +25,7 @@ export function getTypedDataLane(
   if (typedData.primaryType === 'Permit') {
     return 'native-permit'
   }
-  if (isSignatureTransferTypedData(typedData, chain)) {
+  if (isGaslessTypedData(typedData, chain)) {
     return 'relayer-message'
   }
   if (typedData.primaryType === 'PermitSingle') {

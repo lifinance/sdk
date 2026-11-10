@@ -1,6 +1,7 @@
 import {
   type BaseToken,
   ChainType,
+  type LiFiStep,
   type LiFiStepExtended,
   type SDKClient,
   type SDKProvider,
@@ -120,4 +121,8 @@ export type WalletCallReceipt = _WalletCallReceipt<
   'success' | 'reverted'
 > & {
   transactionLink?: string
+}
+
+export type RelayerStep = (LiFiStepExtended | LiFiStep) & {
+  typedData: NonNullable<(LiFiStepExtended | LiFiStep)['typedData']>
 }

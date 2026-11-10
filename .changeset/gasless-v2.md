@@ -16,7 +16,7 @@ For a gasless step, the EVM provider now does the following:
 - It tracks the relay on `/v1/status?taskId=`. Other relayed steps keep `getRelayedTransactionStatus`.
 - It fails before signing when `disableMessageSigning` is set, or when the step needs an EIP-7702 authorization.
 
-Breaking changes, released as a minor version because the legacy gasless service is shut down:
+Deprecated (still exported, so that published consumers keep building):
 
-- `getRelayerQuote` is removed from `@lifi/sdk` and from the client actions.
-- `isGaslessStep(step, chain)` is removed from `@lifi/sdk-provider-ethereum`. Use `isGaslessStep(step)` from `@lifi/sdk`.
+- `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down. Use `getRoutes` with `options.gasless: true`.
+- `isGaslessStep(step, chain)` in `@lifi/sdk-provider-ethereum`. It detects only the legacy typed data. Use `isGaslessStep(step)` from `@lifi/sdk`.
