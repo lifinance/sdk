@@ -1420,17 +1420,25 @@ const EXACT_TOKEN_RE = /(?:@[\w.~-]+\/)?[\w.~-]+@\d+\.\d+\.\d+/g
 const KEEP_EXCLUDES = new Set(['@bigmi/*', '@lifi/*'])
 const quoteIfScoped = (s) => (s.startsWith('@') ? `'${s}'` : s)
 
-// Edit `minimumReleaseAgeExclude` in a pnpm-workspace.yaml text.
+// Edit `minimumReleaseAgeExclude` in a pnpm-workspace.yaml text. Returns { text, removed }.
 //   add:     exact entries to add (deduplicated);
-//   remove:  entries to remove (never `@bigmi/*` or `@lifi/*`), with every line of the
-//            comment block above the key that names only removed entries;
+//   remove:  `name@version` entries to remove (never `@bigmi/*` or `@lifi/*`). An item with
+//            several versions (`foo@1.0.0 || 1.1.0`) loses only the removed versions. Every
+//            line of the comment block above the key that names only removed entries goes
+//            too. `removed` lists what the edit really removed;
 //   comment: one comment line (with `#`) to add at the end of that block (pnpm drops
 //            comments between the items, so the reason lives above the key).
-// Items without an exact version (globs) keep their order and come first; exact entries
-// follow, sorted by name and version. New scoped entries are quoted.
-export function editExcludes(yaml, { add = [], remove = [], comment = null }) {
+// The item region follows the same rule as yamlList (blank lines and comments do not end
+// it). Lines that are not items stay where they are; the items are written at the place of
+// the first one. Items without one exact version (globs, `a || b`) keep their order and
+// come first; exact entries follow, sorted by name and version. New scoped entries are
+// quoted.
+export function editExcludesDetailed(
+  yaml,
+  { add = [], remove = [], comment = null }
+) {
   if (!add.length && !remove.length && !comment) {
-    return yaml
+    return { text: yaml, removed: [] }
   }
   const lines = yaml.split('\n')
   const k = lines.findIndex((l) =>
@@ -1438,31 +1446,62 @@ export function editExcludes(yaml, { add = [], remove = [], comment = null }) {
   )
   if (k === -1) {
     if (!add.length) {
-      return yaml
+      return { text: yaml, removed: [] }
     }
     const body = [
       ...(comment ? [comment] : []),
       'minimumReleaseAgeExclude:',
       ...[...new Set(add)].sort().map((a) => `  - ${quoteIfScoped(a)}`),
     ]
-    return `${yaml.replace(/\n*$/, '\n')}${body.join('\n')}\n`
+    return {
+      text: `${yaml.replace(/\n*$/, '\n')}${body.join('\n')}\n`,
+      removed: [],
+    }
   }
-  // The items: `  - x` (or `- x` at column 0) and comment lines between them.
+  // The region: the same rule as blockLines (blank, indented, `- x` or `#` at column 0).
   let end = k + 1
-  while (end < lines.length && /^(\s*-\s|\s+#)/.test(lines[end])) {
+  while (
+    end < lines.length &&
+    (lines[end].trim() === '' ||
+      /^\s/.test(lines[end]) ||
+      /^- /.test(lines[end]) ||
+      lines[end].startsWith('#'))
+  ) {
     end++
   }
+  const isItem = (l) => /^\s*-\s/.test(l)
   const region = lines.slice(k + 1, end)
-  const inner = region.filter((l) => /^\s+#/.test(l))
-  const items = region
-    .filter((l) => /^\s*-\s/.test(l))
-    .map((line) => ({
-      line,
-      value: unquote(line.replace(/^\s*-\s*/, '').replace(/\s+#.*$/, '')),
-    }))
+  const items = region.filter(isItem).map((line) => ({
+    line,
+    value: unquote(line.replace(/^\s*-\s*/, '').replace(/\s+#.*$/, '')),
+  }))
   const indent = items[0]?.line.match(/^(\s*)-/)[1] ?? '  '
   const removeSet = new Set(remove.filter((r) => !KEEP_EXCLUDES.has(r)))
-  const kept = items.filter((i) => !removeSet.has(i.value))
+  const removed = []
+  const kept = []
+  for (const item of items) {
+    if (KEEP_EXCLUDES.has(item.value)) {
+      kept.push(item)
+      continue
+    }
+    const pieces = parseExcludes([item.value])
+    if (!pieces.length || pieces.some((m) => m.version == null)) {
+      kept.push(item)
+      continue
+    }
+    const gone = pieces.filter((m) => removeSet.has(`${m.name}@${m.version}`))
+    removed.push(...gone.map((m) => `${m.name}@${m.version}`))
+    const left = pieces.filter((m) => !gone.includes(m))
+    if (!left.length) {
+      continue
+    }
+    if (!gone.length) {
+      kept.push(item)
+      continue
+    }
+    const value = `${left[0].name}@${left.map((m) => m.version).join(' || ')}`
+    kept.push({ line: `${indent}- ${quoteIfScoped(value)}`, value })
+  }
   for (const a of add) {
     if (!kept.some((i) => i.value === a)) {
       kept.push({ line: `${indent}- ${quoteIfScoped(a)}`, value: a })
@@ -1478,28 +1517,43 @@ export function editExcludes(yaml, { add = [], remove = [], comment = null }) {
         const [bn, bv] = [specName(b.value), b.value.split('@').pop()]
         return an.localeCompare(bn) || cmpRaw(av, bv)
       }),
+  ].map((i) => i.line)
+  const firstItem = region.findIndex(isItem)
+  const at = firstItem === -1 ? 0 : firstItem
+  const others = region.filter((l) => !isItem(l))
+  const othersBefore = region.slice(0, at).filter((l) => !isItem(l))
+  const newRegion = [
+    ...othersBefore,
+    ...sorted,
+    ...others.slice(othersBefore.length),
   ]
   // The comment block directly above the key.
+  const removedSet = new Set(removed)
   let start = k
   while (start > 0 && lines[start - 1].startsWith('#')) {
     start--
   }
   const block = lines.slice(start, k).filter((l) => {
     const tokens = l.match(EXACT_TOKEN_RE) ?? []
-    return !(tokens.length && tokens.every((t) => removeSet.has(t)))
+    return !(tokens.length && tokens.every((t) => removedSet.has(t)))
   })
   if (comment) {
     block.push(comment)
   }
-  return [
-    ...lines.slice(0, start),
-    ...block,
-    lines[k],
-    ...inner,
-    ...sorted.map((i) => i.line),
-    ...lines.slice(end),
-  ].join('\n')
+  return {
+    text: [
+      ...lines.slice(0, start),
+      ...block,
+      lines[k],
+      ...newRegion,
+      ...lines.slice(end),
+    ].join('\n'),
+    removed,
+  }
 }
+
+export const editExcludes = (yaml, opts) =>
+  editExcludesDetailed(yaml, opts).text
 
 // Replace one override line (`key: value`) in the `overrides:` block, keeping the quote
 // style of the key and the value. Returns the new text, or null when the line is missing.
@@ -1541,16 +1595,16 @@ export function bumpSpec(spec, target) {
   return m ? `${m[1]}${target}` : null
 }
 
-// Set `name` to `newSpec` inside the `field` object of a package.json text, keeping the
-// formatting. A name can be in `dependencies` and in `peerDependencies`: only `field`
-// changes. Returns the new text, or null when the entry is missing.
+// Set `name` to `newSpec` inside the top-level `field` object of a package.json text,
+// keeping the formatting. Only a key at depth 1 counts: a nested `"dependencies"` (for
+// example in `pnpm.packageExtensions`) is never edited, and a name in `peerDependencies`
+// stays. Returns the new text, or null when the entry is missing.
 export function setDependencySpec(text, field, name, newSpec) {
-  const open = new RegExp(`"${escapeRegExp(field)}"\\s*:\\s*\\{`).exec(text)
-  if (!open) {
+  const range = topLevelObject(text, field)
+  if (!range) {
     return null
   }
-  const from = open.index + open[0].length
-  const close = text.indexOf('}', from)
+  const [from, close] = range
   const body = text.slice(from, close)
   const re = new RegExp(`("${escapeRegExp(name)}"\\s*:\\s*")([^"]*)(")`)
   if (!re.test(body)) {
@@ -1561,6 +1615,55 @@ export function setDependencySpec(text, field, name, newSpec) {
     body.replace(re, (_m, a, _v, c) => `${a}${newSpec}${c}`) +
     text.slice(close)
   )
+}
+
+// [start, end) of the body of the object value of the top-level key `key` in a JSON text,
+// or null. Walks the text with string and depth tracking.
+function topLevelObject(text, key) {
+  let depth = 0
+  let i = 0
+  while (i < text.length) {
+    const c = text[i]
+    if (c === '"') {
+      let j = i + 1
+      while (j < text.length && text[j] !== '"') {
+        j += text[j] === '\\' ? 2 : 1
+      }
+      const str = text.slice(i + 1, j)
+      i = j + 1
+      if (depth === 1 && str === key) {
+        const m = /^\s*:\s*\{/.exec(text.slice(i))
+        if (m) {
+          const from = i + m[0].length
+          // Find the matching `}` (string-aware).
+          let d = 1
+          let k = from
+          while (k < text.length && d > 0) {
+            if (text[k] === '"') {
+              k++
+              while (k < text.length && text[k] !== '"') {
+                k += text[k] === '\\' ? 2 : 1
+              }
+            } else if (text[k] === '{') {
+              d++
+            } else if (text[k] === '}') {
+              d--
+            }
+            k++
+          }
+          return d === 0 ? [from, k - 1] : null
+        }
+      }
+      continue
+    }
+    if (c === '{' || c === '[') {
+      depth++
+    } else if (c === '}' || c === ']') {
+      depth--
+    }
+    i++
+  }
+  return null
 }
 
 // `packageManager` value as corepack writes it: pnpm@X+sha512.<hex of the npm integrity>.
@@ -1736,7 +1839,7 @@ export function prRunSection(r) {
       '### Lockfile',
       '',
       `- Major jumps: ${r.lockfile.majors.length ? r.lockfile.majors.map(code).join(', ') : 'none'}.`,
-      `- Single-copy packages: ${r.lockfile.singleCopy.length ? r.lockfile.singleCopy.join(', ') : 'none'}.`,
+      `- Single-copy packages: ${r.lockfile.singleCopy.length ? r.lockfile.singleCopy.map(code).join(', ') : 'none'}.`,
       ''
     )
   }
@@ -1755,7 +1858,7 @@ export function prRunSection(r) {
     '',
     'Commits skip the git hooks; the same checks ran once before the commit.'
   )
-  return out.join('\n')
+  return mdSafe(out.join('\n'))
 }
 
 export function prBody(r) {
@@ -1771,4 +1874,120 @@ export function prBody(r) {
     prRunSection(r),
     '',
   ].join('\n')
+}
+
+// --- bump.mjs guards (pure, unit-tested) ---------------------------------------------
+
+// The branch names that bump.mjs makes. An open PR is reused only on such a branch.
+export const BUMP_BRANCH_RE = /^chore\/bump-deps-\d{8}(-\d+)?$/
+
+// The open bump PR to reuse: same repository (never a fork), the exact title, and a
+// branch that bump.mjs made. `prs` comes from `gh pr list --json
+// number,headRefName,title,isCrossRepository,headRepositoryOwner`. Returns { pr, rejected }.
+export function pickBumpPr(prs, owner) {
+  const rejected = []
+  const ok = []
+  for (const p of prs ?? []) {
+    if (p.title !== 'chore: bump packages') {
+      continue
+    }
+    const why = p.isCrossRepository
+      ? 'from a fork'
+      : owner &&
+          p.headRepositoryOwner?.login &&
+          p.headRepositoryOwner.login !== owner
+        ? `head owner ${p.headRepositoryOwner.login}`
+        : !BUMP_BRANCH_RE.test(p.headRefName ?? '')
+          ? `branch ${p.headRefName} is not chore/bump-deps-<yyyymmdd>`
+          : null
+    ;(why ? rejected : ok).push(why ? { number: p.number, why } : p)
+  }
+  return { pr: ok[0] ?? null, rejected }
+}
+
+// Why a worktree and branch must not be used for commits or a push, or null when they are
+// safe. Never the main checkout, never the default branch, only a bump branch.
+export function branchGuard({ branch, defaultBranch, worktree, mainCheckout }) {
+  if (!branch || branch === 'main' || branch === defaultBranch) {
+    return `branch ${branch ?? '(none)'} is the default branch`
+  }
+  if (!BUMP_BRANCH_RE.test(branch)) {
+    return `branch ${branch} is not a bump branch (chore/bump-deps-<yyyymmdd>)`
+  }
+  if (worktree && mainCheckout && worktree === mainCheckout) {
+    return `the worktree ${worktree} is the main checkout`
+  }
+  return null
+}
+
+// Open-PR mode: which exclude entries of the PR branch an earlier run made. Only entries
+// that a commit of the script itself added (subject `chore: allow …`, on BASE and not on
+// origin/main) are trusted. `commits` is [{ subject, added: [entries] }]. Returns
+// { trusted, untrusted } over the entries that are on BASE and not on origin/main.
+export function earlierExcludes({ baseEntries, mainEntries, commits }) {
+  const onMain = new Set(mainEntries)
+  const own = new Set(
+    commits
+      .filter((c) => c.subject.startsWith('chore: allow '))
+      .flatMap((c) => c.added)
+  )
+  const fresh = [...new Set(baseEntries.filter((e) => !onMain.has(e)))]
+  return {
+    trusted: fresh.filter((e) => own.has(e) && EXACT_EXCLUDE_RE.test(e)),
+    untrusted: fresh.filter((e) => !own.has(e) || !EXACT_EXCLUDE_RE.test(e)),
+  }
+}
+
+// The recheck of one earlier fast-track entry that is still younger than the gate. Any
+// flag stops the run (exit 3): a compromise sign, or a check that could not run.
+//   f, b:   npm metadata (`_npmUser`, `scripts`, `dist.attestations`) of the entry and of
+//           its reference (the aged release below it); null = the call failed.
+//   adv:    advisoriesFor() result; pkg: malwareCoveringAny() result (null = failed);
+//   prov:   provenanceVerdict() result.
+export function recheckFlags(spec, { f, b, adv, pkg, prov }) {
+  const flags = []
+  if (!f || !b) {
+    return [`${spec}: npm metadata unavailable, cannot check`]
+  }
+  const who = (x) => JSON.stringify(x?._npmUser ?? null)
+  if (!f._npmUser || !b._npmUser) {
+    flags.push(`${spec}: publisher unknown, cannot compare`)
+  } else if (who(f) !== who(b)) {
+    flags.push(`${spec}: publisher changed ${who(b)} → ${who(f)}`)
+  }
+  for (const s of ['preinstall', 'install', 'postinstall']) {
+    if (f.scripts?.[s] && f.scripts[s] !== b.scripts?.[s]) {
+      flags.push(`${spec}: new or changed ${s} script`)
+    }
+  }
+  if (!adv || adv.error) {
+    flags.push(`${spec}: advisory check cannot run`)
+  } else {
+    flags.push(...adv.hits.map((h) => `${spec}: ${h.type} advisory ${h.ghsa}`))
+  }
+  if (pkg == null) {
+    flags.push(`${spec}: package malware check cannot run`)
+  } else {
+    flags.push(
+      ...pkg.map((h) => `${spec}: malware advisory ${h.ghsa} on the package`)
+    )
+  }
+  flags.push(...(prov?.flags ?? []))
+  return flags
+}
+
+// Put every `@scope/name` (with an optional `@version`) outside code spans into backticks,
+// so that GitHub does not read it as a mention. Text inside backticks stays as it is.
+export function mdSafe(text) {
+  return String(text)
+    .split(/(`[^`]*`)/)
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part.replace(
+            /(^|[^\w`])(@[\w.-]+\/[\w.-]+(?:@[\w.^~<>=-]+)?)/g,
+            (_m, pre, name) => `${pre}\`${name}\``
+          )
+    )
+    .join('')
 }
