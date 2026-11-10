@@ -21,7 +21,7 @@ export async function isSafeSignature(
 ): Promise<boolean> {
   // Signature: 65 bytes = 130 hex chars + 0x prefix = 132 chars
   // Tx hash: 32 bytes = 64 hex chars + 0x prefix = 66 chars
-  if (!hash.startsWith('0x') || hash.length <= 66) {
+  if (typeof hash !== 'string' || !hash.startsWith('0x') || hash.length <= 66) {
     return false
   }
 

@@ -39,6 +39,7 @@ const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const APPROVE_DATA = '0x095ea7b3' as Hex
 const TX_HASH = `0x${'ab'.repeat(32)}` as Hex
+const SAFE_SIGNATURE = `0x${'cd'.repeat(65)}` as Hex
 
 const nativePermit = (): TypedData =>
   ({
@@ -158,5 +159,29 @@ describe('EthereumSetAllowanceTask.run', () => {
     await task.run(context)
 
     expect(vi.mocked(setAllowance).mock.calls[0][3]).toBe(APPROVAL_ADDRESS)
+  })
+
+  // A Safe signer queues the approve and the wallet returns a 65-byte
+  // signature. Only the hash that `resolveTransactionHash` finds after the
+  // Safe runs it has a receipt.
+  it('waits for the receipt of the resolved hash, not the Safe signature', async () => {
+    vi.mocked(setAllowance).mockResolvedValue(SAFE_SIGNATURE)
+    const context = buildContext({
+      typedData: [nativePermit()],
+      disableMessageSigning: true,
+    })
+
+    await task.run(context)
+
+    expect(resolveTransactionHash).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      SAFE_SIGNATURE,
+      SOURCE_CHAIN
+    )
+    expect(waitForTransactionReceipt).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ txHash: TX_HASH })
+    )
   })
 })
