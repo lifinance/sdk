@@ -641,6 +641,9 @@ async function fastTrackCandidates(items, ctx) {
           ? `pnpm -C '${root}' up -r --latest ${entry.name} ${entry.projects.map((p) => `--filter '${p}'`).join(' ')}`
           : null,
         changesetPackages: entry.changesetPackages ?? [],
+        // The project folders that declare it (bump.mjs edits their bumpable specifiers).
+        where: entry.where,
+        bumpable: !!entry.bumpable,
         // The exact entries this version needs, each checked against `comparedWith`.
         excludeSet: chosen?.excludeSet ?? [],
         checkedAgainst: chosen?.checkedAgainst ?? [],

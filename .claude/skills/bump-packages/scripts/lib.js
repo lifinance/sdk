@@ -1331,7 +1331,7 @@ export function resolveLockfileBases(baseOpt, git) {
     trustAnchor = git(['merge-base', 'HEAD', 'origin/main']).trim()
   } catch {
     throw new Error(
-      'Cannot find the merge-base of HEAD and origin/main (the trust anchor). Run git fetch origin, then run again.'
+      'Cannot find the merge-base of HEAD and origin/main (the trust anchor). Run git fetch --no-prune-tags origin, then run again.'
     )
   }
   if (!trustAnchor) {
@@ -1412,4 +1412,363 @@ export async function provenanceOf(name, version, timeoutMs = 20000) {
   }
   failures.push({ call: `GET ${url}`, error: last })
   return { error: last }
+}
+
+// --- bump.mjs helpers (pure, unit-tested) -------------------------------------
+
+const EXACT_TOKEN_RE = /(?:@[\w.~-]+\/)?[\w.~-]+@\d+\.\d+\.\d+/g
+const KEEP_EXCLUDES = new Set(['@bigmi/*', '@lifi/*'])
+const quoteIfScoped = (s) => (s.startsWith('@') ? `'${s}'` : s)
+
+// Edit `minimumReleaseAgeExclude` in a pnpm-workspace.yaml text.
+//   add:     exact entries to add (deduplicated);
+//   remove:  entries to remove (never `@bigmi/*` or `@lifi/*`), with every line of the
+//            comment block above the key that names only removed entries;
+//   comment: one comment line (with `#`) to add at the end of that block (pnpm drops
+//            comments between the items, so the reason lives above the key).
+// Items without an exact version (globs) keep their order and come first; exact entries
+// follow, sorted by name and version. New scoped entries are quoted.
+export function editExcludes(yaml, { add = [], remove = [], comment = null }) {
+  if (!add.length && !remove.length && !comment) {
+    return yaml
+  }
+  const lines = yaml.split('\n')
+  const k = lines.findIndex((l) =>
+    /^minimumReleaseAgeExclude:\s*(#.*)?$/.test(l)
+  )
+  if (k === -1) {
+    if (!add.length) {
+      return yaml
+    }
+    const body = [
+      ...(comment ? [comment] : []),
+      'minimumReleaseAgeExclude:',
+      ...[...new Set(add)].sort().map((a) => `  - ${quoteIfScoped(a)}`),
+    ]
+    return `${yaml.replace(/\n*$/, '\n')}${body.join('\n')}\n`
+  }
+  // The items: `  - x` (or `- x` at column 0) and comment lines between them.
+  let end = k + 1
+  while (end < lines.length && /^(\s*-\s|\s+#)/.test(lines[end])) {
+    end++
+  }
+  const region = lines.slice(k + 1, end)
+  const inner = region.filter((l) => /^\s+#/.test(l))
+  const items = region
+    .filter((l) => /^\s*-\s/.test(l))
+    .map((line) => ({
+      line,
+      value: unquote(line.replace(/^\s*-\s*/, '').replace(/\s+#.*$/, '')),
+    }))
+  const indent = items[0]?.line.match(/^(\s*)-/)[1] ?? '  '
+  const removeSet = new Set(remove.filter((r) => !KEEP_EXCLUDES.has(r)))
+  const kept = items.filter((i) => !removeSet.has(i.value))
+  for (const a of add) {
+    if (!kept.some((i) => i.value === a)) {
+      kept.push({ line: `${indent}- ${quoteIfScoped(a)}`, value: a })
+    }
+  }
+  const exact = (v) => EXACT_EXCLUDE_RE.test(v)
+  const sorted = [
+    ...kept.filter((i) => !exact(i.value)),
+    ...kept
+      .filter((i) => exact(i.value))
+      .sort((a, b) => {
+        const [an, av] = [specName(a.value), a.value.split('@').pop()]
+        const [bn, bv] = [specName(b.value), b.value.split('@').pop()]
+        return an.localeCompare(bn) || cmpRaw(av, bv)
+      }),
+  ]
+  // The comment block directly above the key.
+  let start = k
+  while (start > 0 && lines[start - 1].startsWith('#')) {
+    start--
+  }
+  const block = lines.slice(start, k).filter((l) => {
+    const tokens = l.match(EXACT_TOKEN_RE) ?? []
+    return !(tokens.length && tokens.every((t) => removeSet.has(t)))
+  })
+  if (comment) {
+    block.push(comment)
+  }
+  return [
+    ...lines.slice(0, start),
+    ...block,
+    lines[k],
+    ...inner,
+    ...sorted.map((i) => i.line),
+    ...lines.slice(end),
+  ].join('\n')
+}
+
+// Replace one override line (`key: value`) in the `overrides:` block, keeping the quote
+// style of the key and the value. Returns the new text, or null when the line is missing.
+export function replaceOverride(yaml, key, value, newKey, newValue) {
+  const lines = yaml.split('\n')
+  const k = lines.findIndex((l) => /^overrides:\s*(#.*)?$/.test(l))
+  if (k === -1) {
+    return null
+  }
+  const q = (orig, s) => {
+    const c = /^["']/.test(orig) ? orig[0] : /^[@'"&*!|>%`]/.test(s) ? "'" : ''
+    return `${c}${s}${c}`
+  }
+  for (let i = k + 1; i < lines.length; i++) {
+    const l = lines[i]
+    if (l.trim() !== '' && !/^\s/.test(l)) {
+      break
+    }
+    const m = l.match(
+      /^(\s+)("[^"]+"|'[^']+'|[^:#\s][^:]*?):\s*("[^"]*"|'[^']*'|[^#]*?)(\s*#.*)?$/
+    )
+    if (m && unquote(m[2]) === key && unquote(m[3]) === value) {
+      lines[i] = `${m[1]}${q(m[2], newKey)}: ${q(m[3], newValue)}${m[4] ?? ''}`
+      return lines.join('\n')
+    }
+  }
+  return null
+}
+
+// The specifier that `pnpm up --latest` writes for a bump to `target`, or null when the
+// specifier is not bumpable (peer ranges are never passed here; `>=`/`<`, protocols,
+// `||`, x-ranges and tags stay as they are). Keeps the `^`, `~` or exact prefix.
+export function bumpSpec(spec, target) {
+  const s = String(spec).trim()
+  if (/^(workspace:|catalog:|link:|file:|npm:|git|https?:)/.test(s)) {
+    return null
+  }
+  const m = /^([\^~]?)v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.exec(s)
+  return m ? `${m[1]}${target}` : null
+}
+
+// Set `name` to `newSpec` inside the `field` object of a package.json text, keeping the
+// formatting. A name can be in `dependencies` and in `peerDependencies`: only `field`
+// changes. Returns the new text, or null when the entry is missing.
+export function setDependencySpec(text, field, name, newSpec) {
+  const open = new RegExp(`"${escapeRegExp(field)}"\\s*:\\s*\\{`).exec(text)
+  if (!open) {
+    return null
+  }
+  const from = open.index + open[0].length
+  const close = text.indexOf('}', from)
+  const body = text.slice(from, close)
+  const re = new RegExp(`("${escapeRegExp(name)}"\\s*:\\s*")([^"]*)(")`)
+  if (!re.test(body)) {
+    return null
+  }
+  return (
+    text.slice(0, from) +
+    body.replace(re, (_m, a, _v, c) => `${a}${newSpec}${c}`) +
+    text.slice(close)
+  )
+}
+
+// `packageManager` value as corepack writes it: pnpm@X+sha512.<hex of the npm integrity>.
+export function packageManagerValue(version, integrity) {
+  const m = /^sha512-(.+)$/.exec(String(integrity ?? ''))
+  if (!m) {
+    return null
+  }
+  return `pnpm@${version}+sha512.${Buffer.from(m[1], 'base64').toString('hex')}`
+}
+
+export function setPackageManager(text, value) {
+  return text.replace(
+    /("packageManager"\s*:\s*")[^"]*(")/,
+    (_m, a, b) => `${a}${value}${b}`
+  )
+}
+
+// One changeset for the bump: a patch for each package, one line per dependency.
+// `updates` is [{ pkg, dep, version }].
+export function changesetText(updates) {
+  const pkgs = [...new Set(updates.map((u) => u.pkg))].sort()
+  const lines = [
+    ...new Set(updates.map((u) => `Update \`${u.dep}\` to ${u.version}.`)),
+  ].sort()
+  return `---\n${pkgs.map((p) => `"${p}": patch`).join('\n')}\n---\n\n${lines.join('\n')}\n`
+}
+
+// `name a→b` (the plan's changeset lines) -> { dep, from, version }.
+export function parseChangesetLine(s) {
+  const m = /^(.+) (\S+)→(\S+)$/.exec(String(s))
+  return m ? { dep: m[1], from: m[2], version: m[3] } : null
+}
+
+// Group the changed files into the commits, in order. `files` are repo-relative paths.
+// The lockfile commit is always last. Files outside the known groups are `unexpected`
+// (never committed).
+export function groupCommits(
+  files,
+  { excludeAddFiles = [], packageManagerFiles = [], pnpmTarget = null } = {}
+) {
+  const lock = (f) => /(^|\/)pnpm-lock\.yaml$/.test(f)
+  const ci = (f) => f.startsWith('.github/')
+  const bump = (f) =>
+    /(^|\/)(package\.json|pnpm-workspace\.yaml)$/.test(f) ||
+    /^\.changeset\/[^/]+\.md$/.test(f)
+  const commits = []
+  if (excludeAddFiles.length) {
+    commits.push({
+      id: 'excludes',
+      message: 'chore: allow fresh releases past the release-age gate',
+      files: [...excludeAddFiles].sort(),
+    })
+  }
+  const bumpFiles = files.filter(bump)
+  if (bumpFiles.length) {
+    commits.push({
+      id: 'bump',
+      message: 'chore: bump packages',
+      files: bumpFiles.sort(),
+    })
+  }
+  const ciFiles = files.filter(ci)
+  if (ciFiles.length) {
+    commits.push({
+      id: 'ci',
+      message: 'ci: bump GitHub Actions and CI tools',
+      files: ciFiles.sort(),
+    })
+  }
+  const lockFiles = [
+    ...new Set([...files.filter(lock), ...packageManagerFiles]),
+  ]
+  if (lockFiles.length) {
+    commits.push({
+      id: 'lockfile',
+      message: pnpmTarget
+        ? `chore: bump pnpm to ${pnpmTarget} and regenerate the lockfile`
+        : 'chore: regenerate the lockfile',
+      files: lockFiles.sort(),
+    })
+  }
+  const known = new Set(commits.flatMap((c) => c.files))
+  return { commits, unexpected: files.filter((f) => !known.has(f)) }
+}
+
+// Wrap commit body lines at `width` characters (git log stays readable).
+export function wrapLines(text, width = 100) {
+  const out = []
+  for (const para of String(text).split('\n')) {
+    let line = ''
+    for (const word of para.split(' ')) {
+      if (line && `${line} ${word}`.length > width) {
+        out.push(line)
+        line = word
+      } else {
+        line = line ? `${line} ${word}` : word
+      }
+    }
+    out.push(line)
+  }
+  return out.join('\n')
+}
+
+// Exit codes of bump.mjs.
+export const EXIT = { ok: 0, cannotRun: 2, lockfileStop: 3, checkFailed: 4 }
+
+// The PR text of one run: what moved, the fast-tracks, the decisions left, the lockfile,
+// the audit and the checks. Used as the PR body (new PR) or appended as a "Run" section.
+export function prRunSection(r) {
+  const code = (s) => `\`${s}\``
+  const out = []
+  const bumps = r.applied?.bumps ?? []
+  if (bumps.length) {
+    out.push(
+      '### Packages',
+      '',
+      '| Package | Where | From | To | Bump |',
+      '|---|---|---|---|---|',
+      ...bumps.map(
+        (b) =>
+          `| ${code(b.name)} | ${b.where.join(', ')} | ${b.from} | ${b.to} | ${b.bump}${b.fastTrack ? ' (fast-track)' : ''} |`
+      ),
+      ''
+    )
+  }
+  const ft = r.applied?.fastTracks ?? []
+  if (ft.length) {
+    out.push(
+      '### Allowed past the release-age gate',
+      '',
+      ...ft.map(
+        (f) =>
+          `- ${code(f.spec)} (${f.ageHours ?? '?'} h old, ${f.approved ? 'approved by the user' : 'all checks pass'}). Checks: publisher, provenance source, advisories, install scripts, dependencies. Exclude set: ${f.excludeSet.map(code).join(', ')}.`
+      ),
+      ''
+    )
+  }
+  const other = [
+    ...(r.applied?.overrides ?? []).map(
+      (o) =>
+        `- Override ${code(`${o.key}: ${o.value}`)} → ${code(`${o.newKey}: ${o.newValue}`)}.`
+    ),
+    ...(r.applied?.removedExcludes ?? []).map(
+      (e) => `- Removed the aged-out exclude entry ${code(e)}.`
+    ),
+    ...(r.applied?.actions ?? []).map(
+      (a) => `- GitHub Action ${code(a.repo)} ${a.from} → ${a.to}.`
+    ),
+    ...(r.applied?.tools ?? []).map(
+      (t) => `- CI tool ${code(t.pkg)} ${t.from} → ${t.to}.`
+    ),
+    ...(r.applied?.pnpm
+      ? [`- pnpm ${r.applied.pnpm.from} → ${r.applied.pnpm.to}.`]
+      : []),
+  ]
+  if (other.length) {
+    out.push('### Other changes', '', ...other, '')
+  }
+  if (r.decisions?.length) {
+    out.push(
+      '### Held back or left for a decision',
+      '',
+      ...r.decisions.map(
+        (d) =>
+          `- ${code(d.name)}${d.project && d.project !== '.' ? ` (${d.project})` : ''}: ${d.kind}. ${d.detail}`
+      ),
+      ''
+    )
+  }
+  if (r.lockfile) {
+    out.push(
+      '### Lockfile',
+      '',
+      `- Major jumps: ${r.lockfile.majors.length ? r.lockfile.majors.map(code).join(', ') : 'none'}.`,
+      `- Single-copy packages: ${r.lockfile.singleCopy.length ? r.lockfile.singleCopy.join(', ') : 'none'}.`,
+      ''
+    )
+  }
+  const n = (a) =>
+    a ? Object.values(a).reduce((x, y) => x + (Number(y) || 0), 0) : '?'
+  out.push(
+    '### Security',
+    '',
+    `- \`pnpm audit\`: ${n(r.audit?.before)} advisories before, ${n(r.audit?.after)} after.`,
+    '',
+    '### Validation',
+    '',
+    ...(r.checks ?? []).map(
+      (c) => `- ${code(c.name)}: ${c.ok ? 'pass' : 'FAIL'} (${c.seconds} s).`
+    ),
+    '',
+    'Commits skip the git hooks; the same checks ran once before the commit.'
+  )
+  return out.join('\n')
+}
+
+export function prBody(r) {
+  return [
+    '## Which Linear task is linked to this PR?',
+    '',
+    'None. This PR is routine dependency maintenance.',
+    '',
+    '## Why was it implemented this way?',
+    '',
+    'This PR moves the dependencies, the GitHub Actions and pnpm to their latest releases that are older than the 24 h release-age gate. Fresh patches and minors that pass all checks go in by default.',
+    '',
+    prRunSection(r),
+    '',
+  ].join('\n')
 }

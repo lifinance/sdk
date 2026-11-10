@@ -131,7 +131,7 @@ Not applicable. This is a dependency-only change with no UI change.
 - `pnpm check:types`: pass (or: the same errors as `main`).
 - `pnpm test` / `pnpm test:unit`: pass, <N> tests (the same count as `main`).
 - `pnpm knip:check`, `pnpm check:circular-deps`, `pnpm dedupe --check`: pass.
-- `pnpm changeset status`: <result>.
+- `pnpm changeset status`: <result, or "exit 1: no changesets, dev-only changes">.
 - Bundle size: <result, if the repo measures it>.
 - e2e: <result, or "not run" with the reason>.
 - Public docs: <the docs pages that a major or a peer floor makes wrong, or "no change">.

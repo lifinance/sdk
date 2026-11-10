@@ -114,7 +114,7 @@ async function main() {
   } catch (err) {
     // Without a base every package looks "added" and no major jump shows: fail closed.
     process.stderr.write(
-      `Cannot read ${baseRef}:pnpm-lock.yaml (${String(err.message).split('\n')[0]}). Run git fetch origin, then run again.\n`
+      `Cannot read ${baseRef}:pnpm-lock.yaml (${String(err.message).split('\n')[0]}). Run git fetch --no-prune-tags origin, then run again.\n`
     )
     process.exit(2)
   }
