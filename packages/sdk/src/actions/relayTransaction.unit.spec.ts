@@ -147,9 +147,9 @@ describe('relayTransaction', () => {
       expect(result).toEqual(mockSuccessResponse.data)
     })
 
-    it('should relay transaction successfully for gasless relayer', async () => {
+    it('should relay a PermitWitnessTransferFrom (gasless) through /advanced/relay', async () => {
       server.use(
-        http.post(`${client.config.apiUrl}/relayer/relay`, async () => {
+        http.post(`${client.config.apiUrl}/advanced/relay`, async () => {
           return HttpResponse.json(mockSuccessResponse)
         })
       )

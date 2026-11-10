@@ -1,4 +1,4 @@
-import type { TransactionMethodType } from '@lifi/sdk'
+import { isGaslessStep, type TransactionMethodType } from '@lifi/sdk'
 import { isBatchingSupported } from '../../../actions/isBatchingSupported.js'
 import type { EthereumStepExecutorContext } from '../../../types.js'
 import { isPermit2AllowanceLane } from '../../../utils/getTypedDataLane.js'
@@ -61,6 +61,12 @@ export async function getEthereumExecutionStrategy(
   }
 
   const atomicityNotReady = !!retryParams?.atomicityNotReady
+  // A gasless step only executes through the relay. Before prepare it has no
+  // typed data yet, so the relay fee is the only signal.
+  if (isGaslessStep(step)) {
+    return 'relayed'
+  }
+
   // Declared by the backend. It is the only signal that reaches the allowance
   // tasks, which run before a `transactionRequest` can exist.
   if (step.executionType === 'message') {

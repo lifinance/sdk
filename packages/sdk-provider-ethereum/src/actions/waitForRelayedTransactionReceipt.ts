@@ -3,6 +3,8 @@ import {
   type ExtendedTransactionInfo,
   type FullStatusData,
   getRelayedTransactionStatus,
+  getStatus,
+  isGaslessStep,
   LiFiErrorCode,
   type LiFiStep,
   TransactionError,
@@ -10,6 +12,65 @@ import {
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import type { WalletCallReceipt } from '../types.js'
+
+type GaslessStatus = {
+  status?: string
+  substatus?: string
+  sending?: Partial<ExtendedTransactionInfo>
+}
+
+/**
+ * One poll of a gasless relay on `/v1/status?taskId=`. The task id alone
+ * routes the request: a `bridge` would let a proxy such as the Jumper backend
+ * answer it with its own order lookup.
+ *
+ * The source wait ends once the relayed transaction has landed on the source
+ * chain, and only a FAILED answer or the timeout ends it otherwise: on DONE, or on PENDING with a hash past `WAIT_SOURCE_CONFIRMATIONS`
+ * (a bridge transfer that now waits for its destination).
+ */
+const pollGaslessStatus = async (
+  client: SDKClient,
+  taskId: Hash,
+  signal?: AbortSignal
+): Promise<WalletCallReceipt | undefined> => {
+  const result = (await getStatus(client, { taskId }, { signal }).catch((e) => {
+    if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
+      console.debug('Fetching the gasless relay status failed.', e)
+    }
+    return undefined
+  })) as GaslessStatus | undefined
+
+  const sending = result?.sending
+  switch (result?.status) {
+    case 'FAILED':
+      throw new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        'Transaction was reverted.',
+        undefined,
+        { final: true }
+      )
+    case 'DONE':
+    case 'PENDING':
+      if (
+        !sending?.txHash ||
+        (result.status === 'PENDING' &&
+          result.substatus === 'WAIT_SOURCE_CONFIRMATIONS')
+      ) {
+        return undefined
+      }
+      return {
+        status: 'success',
+        gasUsed: sending.gasUsed,
+        transactionHash: sending.txHash,
+        transactionLink: sending.txLink,
+      } as unknown as WalletCallReceipt
+    default:
+      // A failed request, `NOT_FOUND` and the 422/1004 answer of a failed
+      // lookup do not end the relay, which the backend has already accepted.
+      // The timeout of the wait bounds the polling.
+      return undefined
+  }
+}
 
 /**
  * Polls the relayer until the relayed transaction is done or has failed.
@@ -45,6 +106,10 @@ export const waitForRelayedTransactionReceipt = async (
         )
       }
 
+      if (isGaslessStep(step)) {
+        return pollGaslessStatus(client, taskId, signal)
+      }
+
       const result = await getRelayedTransactionStatus(
         client,
         {
@@ -73,7 +138,7 @@ export const waitForRelayedTransactionReceipt = async (
           return {
             status: 'success',
             gasUsed: sending?.gasUsed,
-            transactionHash: result?.metadata.txHash || sending?.txHash,
+            transactionHash: result?.metadata?.txHash || sending?.txHash,
             transactionLink: sending?.txLink,
           } as unknown as WalletCallReceipt
         }

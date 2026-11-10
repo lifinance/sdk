@@ -1,5 +1,6 @@
 import {
   hasOpenTransaction,
+  isGaslessStep,
   type LiFiStepExtended,
   type StatusManager,
 } from '@lifi/sdk'
@@ -13,6 +14,13 @@ export const shouldCheckForAllowance = (
   const exchangeActionType = isBridgeExecution ? 'CROSS_CHAIN' : 'SWAP'
 
   const swapOrBridgeAction = statusManager.findAction(step, exchangeActionType)
+
+  // The relayer handles the allowance of a gasless step: the backend signs it
+  // in as a `Permit` companion or uses the Permit2 allowance the account has.
+  // An approve or an SDK permit here would cost the user gas they do not have.
+  if (isGaslessStep(step)) {
+    return false
+  }
 
   return (
     // No swap/bridge transaction (hash, batch/relay id or stored bytes) that may

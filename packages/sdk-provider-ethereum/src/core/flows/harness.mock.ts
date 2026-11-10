@@ -26,7 +26,6 @@
  *   return {
  *     ...actual,
  *     getStepTransaction: vi.fn(),
- *     getRelayerQuote: vi.fn(),
  *     relayTransaction: vi.fn(),
  *     WaitForTransactionStatusTask: class WaitForTransactionStatusTask {
  *       shouldRun = async (): Promise<boolean> => true
@@ -58,7 +57,7 @@
  * ## One scenario at a time
  *
  * {@link createScenario} installs its implementations on the *module-level*
- * `@lifi/sdk` mocks — `getStepTransaction`, `getRelayerQuote`,
+ * `@lifi/sdk` mocks — `getStepTransaction`,
  * `relayTransaction`, `getPublicClient` and both receipt fetchers. The last
  * `createScenario` wins, and `vi.clearAllMocks()` clears calls but not
  * implementations. So a spec that needs two runs must construct, run, then
@@ -88,7 +87,6 @@ import {
   type ExtendedChain,
   executeRoute,
   type GasCost,
-  getRelayerQuote,
   getStepTransaction,
   type LiFiStep,
   type LiFiStepExtended,
@@ -197,7 +195,6 @@ export type TimelineEventDetail =
   | { kind: 'sendCalls'; calls: { to?: string; data?: string }[] }
   | { kind: 'relayTransaction'; typedData: SignedTypedData[] }
   | { kind: 'getStepTransaction' }
-  | { kind: 'getRelayerQuote' }
   | {
       kind: 'readContract'
       address: string
@@ -544,8 +541,11 @@ export interface ScenarioOptions {
    * posted, so a scenario that wants typed data back has to say so.
    */
   onStepTransaction?: (step: LiFiStep) => LiFiStep | Promise<LiFiStep>
-  /** What `getRelayerQuote` answers with. Defaults to the step unchanged. */
-  onRelayerQuote?: (step: LiFiStep) => LiFiStep
+  /**
+   * Wallet balance by lowercase token address. A token not listed holds a
+   * balance no check can exceed.
+   */
+  balances?: Record<string, bigint>
   /**
    * Destination chain, for a cross-chain step. Supplying it registers a second
    * chain with the client; `isBridgeExecution` is then true because
@@ -900,7 +900,10 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       _address: string,
       tokens: Token[]
     ): Promise<TokenAmount[]> =>
-      tokens.map((token) => ({ ...token, amount: HUGE_BALANCE })),
+      tokens.map((token) => ({
+        ...token,
+        amount: options.balances?.[token.address.toLowerCase()] ?? HUGE_BALANCE,
+      })),
     async getStepExecutor(executorOptions: StepExecutorOptions) {
       const executor = await baseProvider.getStepExecutor(executorOptions)
       instrumentStatusManager(executor, record, probe)
@@ -962,16 +965,6 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
       return rest
     }
   )
-  asMock(getRelayerQuote, 'getRelayerQuote').mockImplementation(async () => {
-    record({ kind: 'getRelayerQuote' })
-    const answer = options.onRelayerQuote
-      ? options.onRelayerQuote(options.step)
-      : options.step
-    // The relayer endpoint answers with a whole step; strip the live execution
-    // object the way a fresh API response would not carry one.
-    const { execution: _execution, ...rest } = answer as LiFiStepExtended
-    return rest
-  })
   asMock(relayTransaction, 'relayTransaction').mockImplementation(
     async (
       _client: SDKClient,

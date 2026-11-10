@@ -12,13 +12,12 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@lifi/sdk')>()
   return {
     ...actual,
-    getRelayerQuote: vi.fn(),
     getStepTransaction: vi.fn(),
     getContractCallsQuote: vi.fn(),
   }
 })
 
-import { getRelayerQuote, getStepTransaction } from '@lifi/sdk'
+import { getStepTransaction } from '@lifi/sdk'
 import { getUpdatedStep } from './getUpdatedStep.js'
 
 const SOURCE_CHAIN = 1
@@ -85,27 +84,47 @@ const client = {} as SDKClient
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(getRelayerQuote).mockResolvedValue({
-    id: 'relayer-step',
-  } as never)
   vi.mocked(getStepTransaction).mockResolvedValue({
     id: 'standard-step',
   } as never)
 })
 
 describe('getUpdatedStep', () => {
-  it('re-quotes a gasless witness step through the relayer', async () => {
-    await getUpdatedStep(client, buildStep([witness()]), chain)
+  it('re-quotes a gasless step through /advanced/stepTransaction without its typed data, expiresAt and authorization', async () => {
+    const step = {
+      ...buildStep([witness()]),
+      estimate: {
+        approvalAddress: PERMIT2,
+        gasCosts: [],
+        feeCosts: [{ name: 'LIFI Gasless Relay Fee', included: true }],
+      },
+      expiresAt: 1794322574,
+      authorization: { chainId: SOURCE_CHAIN, address: PERMIT2, nonce: 0 },
+    } as unknown as LiFiStepExtended
+    const signedTypedData = [
+      { ...witness(), signature: SIGNATURE },
+    ] as unknown as SignedTypedData[]
 
-    expect(getRelayerQuote).toHaveBeenCalledTimes(1)
-    expect(getStepTransaction).not.toHaveBeenCalled()
+    await getUpdatedStep(client, step, chain, undefined, signedTypedData)
+
+    expect(getStepTransaction).toHaveBeenCalledTimes(1)
+    const requested = vi.mocked(getStepTransaction).mock.calls[0][1]
+    expect(requested).not.toHaveProperty('typedData')
+    expect(requested).not.toHaveProperty('expiresAt')
+    expect(requested).not.toHaveProperty('authorization')
+    expect(requested).toMatchObject({ id: 'step-1', tool: 'uniswap' })
   })
 
-  it('re-quotes a step whose only relayer marker is the Permit2 spender through the relayer', async () => {
+  it('re-quotes a witness step without the relay fee through /advanced/stepTransaction', async () => {
+    await getUpdatedStep(client, buildStep([witness()]), chain)
+
+    expect(getStepTransaction).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-quotes a step whose only Permit2 marker is the spender through /advanced/stepTransaction', async () => {
     await getUpdatedStep(client, buildStep([permit2SpenderIntent()]), chain)
 
-    expect(getRelayerQuote).toHaveBeenCalledTimes(1)
-    expect(getStepTransaction).not.toHaveBeenCalled()
+    expect(getStepTransaction).toHaveBeenCalledTimes(1)
   })
 
   it('re-quotes a Permit2 allowance step through /advanced/stepTransaction', async () => {
@@ -122,7 +141,6 @@ describe('getUpdatedStep', () => {
     )
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
-    expect(getRelayerQuote).not.toHaveBeenCalled()
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).toMatchObject({
       typedData: signedTypedData,
     })
@@ -140,6 +158,5 @@ describe('getUpdatedStep', () => {
     await getUpdatedStep(client, buildStep([order()]), chain)
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
-    expect(getRelayerQuote).not.toHaveBeenCalled()
   })
 })

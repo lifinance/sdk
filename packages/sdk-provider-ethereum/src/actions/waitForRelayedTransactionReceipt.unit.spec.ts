@@ -1,5 +1,6 @@
 import {
   getRelayedTransactionStatus,
+  getStatus,
   LiFiErrorCode,
   type LiFiStep,
   type SDKClient,
@@ -10,7 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@lifi/sdk', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@lifi/sdk')>()
-  return { ...actual, getRelayedTransactionStatus: vi.fn() }
+  return {
+    ...actual,
+    getRelayedTransactionStatus: vi.fn(),
+    getStatus: vi.fn(),
+  }
 })
 
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
@@ -280,5 +285,151 @@ describe('waitForRelayedTransactionReceipt — development log', () => {
     )
     controller.abort()
     await vi.advanceTimersByTimeAsync(0)
+  })
+})
+
+describe('waitForRelayedTransactionReceipt for a gasless step', () => {
+  const TX_HASH = `0x${'cd'.repeat(32)}`
+  // Only fields a stored route keeps: the selection must also work after a
+  // page reload, when nothing else of the run is left.
+  const gaslessStep = {
+    tool: 'sushiswap',
+    action: { fromChainId: 42161, toChainId: 42161 },
+    estimate: {
+      feeCosts: [{ name: 'LIFI Gasless Relay Fee', included: true }],
+    },
+  } as unknown as LiFiStep
+
+  beforeEach(() => {
+    vi.mocked(getStatus).mockReset()
+  })
+
+  const runGasless = (): Promise<unknown> =>
+    waitForRelayedTransactionReceipt({} as SDKClient, TASK_ID, gaslessStep)
+
+  const statusAnswers = (...answers: unknown[]): void => {
+    for (const answer of answers) {
+      vi.mocked(getStatus).mockResolvedValueOnce(answer as never)
+    }
+  }
+
+  it('polls /v1/status by taskId alone, never the relayer status', async () => {
+    statusAnswers({
+      status: 'DONE',
+      sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+    })
+
+    await runGasless()
+
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(getStatus).mock.calls[0][1]).toEqual({ taskId: TASK_ID })
+    expect(getRelayedTransactionStatus).not.toHaveBeenCalled()
+  })
+
+  it('keeps polling while the relay is PENDING without a transaction hash', async () => {
+    vi.useFakeTimers()
+    statusAnswers(
+      { status: 'PENDING', sending: { chainId: 42161 } },
+      {
+        status: 'PENDING',
+        substatus: 'WAIT_SOURCE_CONFIRMATIONS',
+        sending: { txHash: TX_HASH },
+      },
+      { status: 'DONE', sending: { txHash: TX_HASH } }
+    )
+
+    const outcome = track(runGasless())
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(outcome.settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(5_000)
+
+    expect(outcome).toEqual({ settled: true })
+    expect(getStatus).toHaveBeenCalledTimes(3)
+  })
+
+  it('resolves with the source hash once a bridge transfer waits for the destination', async () => {
+    statusAnswers({
+      status: 'PENDING',
+      substatus: 'WAIT_DESTINATION_TRANSACTION',
+      sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+    })
+
+    await expect(runGasless()).resolves.toMatchObject({
+      status: 'success',
+      transactionHash: TX_HASH,
+      transactionLink: 'https://arbiscan.io/tx/x',
+    })
+  })
+
+  it('resolves with sending.txHash on DONE, without a metadata field', async () => {
+    statusAnswers({ status: 'DONE', sending: { txHash: TX_HASH } })
+
+    await expect(runGasless()).resolves.toMatchObject({
+      status: 'success',
+      transactionHash: TX_HASH,
+    })
+  })
+
+  it('keeps polling through status errors while the relay is pending', async () => {
+    vi.useFakeTimers()
+    // `/status` answers 422/1004 for a real task id when its lookup fails, and
+    // a network error looks the same to the poll. Neither ends the relay.
+    const lookupFailed = Object.assign(new Error('Unprocessable task id'), {
+      code: 1004,
+    })
+    vi.mocked(getStatus)
+      .mockRejectedValueOnce(lookupFailed)
+      .mockRejectedValueOnce(lookupFailed)
+      .mockResolvedValueOnce({ status: 'NOT_FOUND' } as never)
+      .mockRejectedValueOnce(new Error('fetch failed'))
+      .mockResolvedValueOnce({
+        status: 'DONE',
+        sending: { txHash: TX_HASH },
+      } as never)
+
+    const outcome = track(runGasless())
+    await vi.advanceTimersByTimeAsync(5_000 * 4)
+
+    expect(outcome).toEqual({ settled: true })
+    expect(getStatus).toHaveBeenCalledTimes(5)
+  })
+
+  it('marks FAILED / EXPIRED as final', async () => {
+    statusAnswers({ status: 'FAILED', substatus: 'EXPIRED' })
+
+    await expect(runGasless()).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      final: true,
+    })
+    expect(getStatus).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('waitForRelayedTransactionReceipt for a relayed step that is not gasless', () => {
+  it('still asks the relayer status with the bridge', async () => {
+    vi.mocked(getRelayedTransactionStatus).mockResolvedValue({
+      status: 'DONE',
+      transactionStatus: { sending: { txHash: `0x${'ef'.repeat(32)}` } },
+    } as never)
+
+    await run()
+
+    expect(getRelayedTransactionStatus).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(getRelayedTransactionStatus).mock.calls[0][1]).toEqual({
+      taskId: TASK_ID,
+      fromChain: 1,
+      toChain: 1,
+      bridge: 'lifi',
+    })
+    expect(getStatus).not.toHaveBeenCalled()
+  })
+
+  it('does not throw a TypeError when the DONE answer has no metadata', async () => {
+    vi.mocked(getRelayedTransactionStatus).mockResolvedValue({
+      status: 'DONE',
+      sending: { txHash: `0x${'ef'.repeat(32)}` },
+    } as never)
+
+    await expect(run()).resolves.toMatchObject({ status: 'success' })
   })
 })

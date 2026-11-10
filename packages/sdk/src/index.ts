@@ -8,7 +8,6 @@ export { getGasRecommendation } from './actions/getGasRecommendation.js'
 export { getNameServiceAddress } from './actions/getNameServiceAddress.js'
 export { getQuote } from './actions/getQuote.js'
 export { getRelayedTransactionStatus } from './actions/getRelayedTransactionStatus.js'
-export { getRelayerQuote } from './actions/getRelayerQuote.js'
 export { getRoutes } from './actions/getRoutes.js'
 export { getStatus } from './actions/getStatus.js'
 export { getStepTransaction } from './actions/getStepTransaction.js'
@@ -136,6 +135,10 @@ export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export { formatUnits } from './utils/formatUnits.js'
+export {
+  GASLESS_RELAY_FEE_NAME,
+  isGaslessStep,
+} from './utils/isGaslessStep.js'
 export { isHex } from './utils/isHex.js'
 export { LruMap } from './utils/lru.js'
 export { parseUnits } from './utils/parseUnits.js'

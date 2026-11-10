@@ -32,7 +32,6 @@ import type {
 import type {
   GetStatusRequestExtended,
   LiFiStepRequest,
-  QuoteRequestFromAmount,
   RoutesRequest,
 } from '../types/actions.js'
 import type { SDKClient } from '../types/core.js'
@@ -43,7 +42,6 @@ import { getGasRecommendation } from './getGasRecommendation.js'
 import { getNameServiceAddress } from './getNameServiceAddress.js'
 import { getQuote } from './getQuote.js'
 import { getRelayedTransactionStatus } from './getRelayedTransactionStatus.js'
-import { getRelayerQuote } from './getRelayerQuote.js'
 import { getRoutes } from './getRoutes.js'
 import { getStatus } from './getStatus.js'
 import { getStepTransaction } from './getStepTransaction.js'
@@ -137,17 +135,6 @@ export type Actions = {
     params: RelayStatusRequest,
     options?: RequestOptions
   ) => Promise<RelayStatusResponseData>
-
-  /**
-   * Get a quote from a relayer
-   * @param params - The configuration of the requested relayer quote
-   * @param options - Request options
-   * @returns Quote from a relayer
-   */
-  getRelayerQuote: (
-    params: QuoteRequestFromAmount,
-    options?: RequestOptions
-  ) => Promise<LiFiStep>
 
   /**
    * Get a set of routes for a request that describes a transfer of tokens.
@@ -311,8 +298,6 @@ export function actions(client: SDKClient): Actions {
     getQuote: (params, options) => getQuote(client, params, options),
     getRelayedTransactionStatus: (params, options) =>
       getRelayedTransactionStatus(client, params, options),
-    getRelayerQuote: (params, options) =>
-      getRelayerQuote(client, params, options),
     getRoutes: (params, options) => getRoutes(client, params, options),
     getStatus: (params, options) => getStatus(client, params, options),
     getStepTransaction: (params, options) =>

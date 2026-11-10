@@ -16,7 +16,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The relayer status that the real relayed wait polls.
     getRelayedTransactionStatus: vi.fn(),

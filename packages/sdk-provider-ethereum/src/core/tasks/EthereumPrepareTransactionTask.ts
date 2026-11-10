@@ -1,6 +1,7 @@
 import {
   BaseStepExecutionTask,
   ExecuteStepRetryError,
+  isGaslessStep,
   LiFiErrorCode,
   stepComparison,
   type TaskResult,
@@ -30,6 +31,7 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       signedTypedData,
       ethereumClient,
       fromChain,
+      disableMessageSigning,
     } = context
 
     const action = statusManager.findAction(
@@ -44,6 +46,15 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       )
     }
 
+    // The relayer executes a gasless step from the user's signature, and the
+    // user has no gas to send it themselves. Fail before the re-quote.
+    if (isGaslessStep(step) && disableMessageSigning) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. A gasless step needs message signing, which is disabled.'
+      )
+    }
+
     // A replay restores it, so the replay re-quotes like this attempt did.
     const typedDataBeforePrepare = step.typedData
 
@@ -55,6 +66,15 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
       executionOptions,
       signedTypedData
     )
+
+    // An EIP-7702 authorization installs a delegation on an account that has
+    // none. The relayer rejects it for now, so signing it would be wasted.
+    if ((updatedStep as { authorization?: unknown }).authorization) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionUnprepared,
+        'Unable to prepare transaction. The gasless step needs an EIP-7702 authorization, which the relayer does not support yet.'
+      )
+    }
 
     const comparedStep = await stepComparison(
       statusManager,

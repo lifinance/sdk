@@ -41,7 +41,6 @@
  *         actual
  *       ),
  *       getStepTransaction: vi.fn(),
- *       getRelayerQuote: vi.fn(),
  *       relayTransaction: vi.fn(),
  *     }
  *   })
