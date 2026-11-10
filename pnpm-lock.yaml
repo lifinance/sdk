@@ -163,12 +163,12 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  axios: ^1.20.0
+  axios: ^1.21.0
   ws@<=8.22.2: 8.22.2
   '@lifi/data-types>@lifi/types': ^18.16.0
   validator@<13.15.26: '>=13.15.26'
   google-protobuf@<4.0.3: ^4.0.3
-  '@typescript-eslint/typescript-estree>minimatch': ^11.0.1
+  '@typescript-eslint/typescript-estree>minimatch': ^11.0.5
 
 importers:
 
@@ -230,8 +230,8 @@ importers:
         version: 18.16.0
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -273,8 +273,8 @@ importers:
         version: 7.0.5(typescript@7.0.2)
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@vitest/coverage-v8':
         specifier: ^5.1.0
         version: 5.1.0(vitest@5.1.0)
@@ -301,8 +301,8 @@ importers:
         version: 2.57.17(typescript@7.0.2)(zod@4.6.7)
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -338,8 +338,8 @@ importers:
         version: 1.1.1
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@vitest/coverage-v8':
         specifier: ^5.1.0
         version: 5.1.0(vitest@5.1.0)
@@ -366,8 +366,8 @@ importers:
         version: 17.4.0(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@vitest/coverage-v8':
         specifier: ^5.1.0
         version: 5.1.0(vitest@5.1.0)
@@ -394,8 +394,8 @@ importers:
         version: 2.39.1(typescript@7.0.2)
     devDependencies:
       '@lifi/data-types':
-        specifier: ^7.2.1
-        version: 7.2.1
+        specifier: ^7.2.2
+        version: 7.2.2
       '@vitest/coverage-v8':
         specifier: ^5.1.0
         version: 5.1.0(vitest@5.1.0)
@@ -1026,8 +1026,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@lifi/data-types@7.2.1':
-    resolution: {integrity: sha512-ou5p6SWE2J71YeBxClPr0vzP0zK7+Z/HyYoIdwshHHYzI3BWTXSfKoWdBC4iZslHIbrgqE64h7mkkQWYQnvaMw==}
+  '@lifi/data-types@7.2.2':
+    resolution: {integrity: sha512-J0xPVCRqSBaSv71ei8gXJ4E+mhNXrSD/vdvjICLKkCUlZP3THMh1xaoW1eU+gO10IE7MpQmhwldsg82j1iysLw==}
 
   '@lifi/types@18.16.0':
     resolution: {integrity: sha512-UWpAkkMjX4KTSvyoRLwrjzEWUFKPrANvijlO6dF+Vw6MrLYctcpmjWPp41sCcSqJboon0mtjs7x9CVGMgqJ4Fw==}
@@ -4417,7 +4417,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@lifi/data-types@7.2.1':
+  '@lifi/data-types@7.2.2':
     dependencies:
       '@lifi/types': 18.16.0
 
