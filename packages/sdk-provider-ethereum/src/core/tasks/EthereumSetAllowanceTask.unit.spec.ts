@@ -160,8 +160,6 @@ describe('EthereumSetAllowanceTask.run', () => {
     expect(vi.mocked(setAllowance).mock.calls[0][3]).toBe(APPROVAL_ADDRESS)
   })
 
-  // JUMPER-FRONT-CH. `client.chain` can be stale, so the approve names the
-  // step's chain itself.
   it('sends the approve on the step chain', async () => {
     const context = buildContext({
       typedData: [nativePermit()],

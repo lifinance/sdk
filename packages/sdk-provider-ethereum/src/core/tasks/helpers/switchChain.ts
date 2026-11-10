@@ -48,8 +48,7 @@ export const switchChain = async (
   try {
     updatedClient = await switchChainCallback(targetChainId)
   } catch (error) {
-    // The wallet error stays the cause. `parseEthereumErrors` classifies it, so
-    // a user rejection keeps its own code.
+    // `parseEthereumErrors` classifies the cause, rejections included.
     throw new ProviderError(
       LiFiErrorCode.ChainSwitchError,
       `The wallet could not switch to chain ${targetChainId}.`,

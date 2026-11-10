@@ -17,12 +17,7 @@ const TOKEN = '0xcccc000000000000000000000000000000000003' as Address
 const SPENDER = '0xbbbb000000000000000000000000000000000002' as Address
 const TX_HASH = `0x${'ab'.repeat(32)}` as Hash
 
-/**
- * A wallet on `walletChain` behind a viem client whose `chain` is `clientChain`.
- * The widget builds its client with `getConnectorClient(config, {
- * assertChainId: false })`, so `client.chain` is wagmi's last known chain and
- * can differ from the chain the wallet is on (JUMPER-FRONT-CH).
- */
+/** A wallet on `walletChain` behind a client whose `chain` is `clientChain`. */
 const createWalletClient = (clientChain: Chain, walletChain: Chain) => {
   const requests: { method: string; params?: unknown }[] = []
   const request = (async ({ method, params }) => {
@@ -59,8 +54,7 @@ describe('setAllowance', () => {
       base
     )
 
-    // viem checks the given chain against `eth_chainId`, then sends. A
-    // JSON-RPC account's `eth_sendTransaction` carries no chain id.
+    // A JSON-RPC account's `eth_sendTransaction` carries no chain id.
     expect(hash).toBe(TX_HASH)
     expect(requests.map(({ method }) => method)).toEqual([
       'eth_chainId',
@@ -84,8 +78,6 @@ describe('setAllowance', () => {
       { ...celo, serializers: undefined, fees: undefined }
     )
 
-    // No `chain` parameter, so viem uses `client.chain` with its serializers
-    // and fee logic.
     expect(sendTransaction).toHaveBeenCalledWith(
       expect.not.objectContaining({ chain: expect.anything() })
     )

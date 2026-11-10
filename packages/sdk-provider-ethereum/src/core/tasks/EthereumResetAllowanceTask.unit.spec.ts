@@ -81,8 +81,6 @@ beforeEach(() => {
 })
 
 describe('EthereumResetAllowanceTask.run', () => {
-  // JUMPER-FRONT-CH. `client.chain` can be stale, so the reset names the
-  // step's chain itself.
   it('sends the reset on the step chain', async () => {
     const result = await new EthereumResetAllowanceTask().run(buildContext())
 

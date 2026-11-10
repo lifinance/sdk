@@ -58,9 +58,6 @@ describe('switchChain', () => {
     })
 
     describe('when allowUserInteraction is true', () => {
-      // JUMPER-FRONT-9F, -K4, -7V. A wallet that cannot switch (for example
-      // "Unknown Network: eip155:130") must give a chain switch error, not an
-      // unknown error.
       describe('when the switchChainHook fails', () => {
         const hookError = new Error('Unknown Network: eip155:130')
 
@@ -87,8 +84,6 @@ describe('switchChain', () => {
         })
       })
 
-      // `parseEthereumErrors` reads the cause, so a rejection keeps its code
-      // there. `switchChain` does not classify the hook error itself.
       describe('when the user rejects the chain switch', () => {
         it('should throw a chain switch error with the rejection as cause', async () => {
           const rejection = new UserRejectedRequestError(

@@ -28,8 +28,7 @@ export const setAllowance = async (
   amount: bigint,
   executionOptions?: ExecutionOptions,
   returnPopulatedTransaction?: boolean,
-  // The chain to send on. Without it viem uses `viemClient.chain`, which a
-  // connector client can hold stale while the wallet is on another chain.
+  // Without it viem uses `viemClient.chain`, which can be stale.
   chain?: Chain
 ): Promise<Hash | Hex> => {
   const data = encodeFunctionData({
@@ -76,8 +75,7 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-    // Keep `viemClient.chain` when it is already the target chain: it can carry
-    // serializers, fee logic and formatters that a converted chain lacks.
+    // A matching `viemClient.chain` keeps its serializers, fees and formatters.
     ...(chain && viemClient.chain?.id !== chain.id && { chain }),
   } as SendTransactionParameters)
 }

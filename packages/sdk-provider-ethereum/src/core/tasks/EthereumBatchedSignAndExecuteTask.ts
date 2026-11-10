@@ -71,9 +71,7 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     )({
       account: updatedClient.account!,
       calls,
-      // `sendCalls` takes the bundle's `chainId` from `client.chain` by
-      // default. A connector client can hold a stale chain while the wallet is
-      // on `fromChain` (checked by `checkClient`), so name the chain here.
+      // Without it `sendCalls` uses `client.chain`, which can be stale.
       chain: convertExtendedChain(fromChain),
     })
 

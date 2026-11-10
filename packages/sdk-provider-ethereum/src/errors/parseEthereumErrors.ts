@@ -52,9 +52,8 @@ const handleSpecificErrors = async (
   action?: ExecutionAction
 ): Promise<BaseError> => {
   /**
-   * `switchChain` wraps a failed chain switch in a `ChainSwitchError` and keeps the wallet error as `cause`.
-   * The cause gets the same checks as any other error, so a user rejection stays `SignatureRejected`.
-   * Only a cause without a known code stays a `ChainSwitchError` (for example, "Unknown Network: eip155:130").
+   * `switchChain` wraps a failed switch in a `ChainSwitchError` with the wallet error as `cause`.
+   * A cause with a known code (for example, a user rejection) keeps it; any other cause stays a `ChainSwitchError`.
    */
   if (
     e instanceof ProviderError &&

@@ -338,8 +338,6 @@ describe('parseEVMStepErrors', () => {
     })
   })
 
-  // JUMPER-FRONT-9F, -K4, -7V. The code is what makes the widget show "Chain
-  // switch required"; a cause code check must not replace it.
   describe('when the chain switch fails', () => {
     it.each([
       {
@@ -367,8 +365,6 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.cause).toBe(error)
     })
 
-    // `switchChain` wraps every hook error. The cause gets the same checks as
-    // an error that is not wrapped, so a rejection keeps its own code.
     it.each([
       {
         kind: 'a UserRejectedRequestError',

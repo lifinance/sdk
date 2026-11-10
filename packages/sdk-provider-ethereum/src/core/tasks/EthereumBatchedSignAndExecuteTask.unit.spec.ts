@@ -159,11 +159,6 @@ describe('EthereumBatchedSignAndExecuteTask.run second pre-sign guard', () => {
   })
 })
 
-// JUMPER-FRONT-8Z. The widget builds its client with `getConnectorClient(config,
-// { assertChainId: false })`, so `client.chain` is wagmi's last known chain.
-// The wallet is on the step's chain, so `checkClient` (which asks the wallet
-// with `eth_chainId`) keeps that client. The bundle must still name the step's
-// chain, not the stale `client.chain`.
 describe('EthereumBatchedSignAndExecuteTask.run chain of the bundle', () => {
   const BASE = 8453
 
