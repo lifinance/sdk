@@ -1,4 +1,5 @@
 import {
+  ExecuteStepRetryError,
   LiFiErrorCode,
   type LiFiStep,
   ProviderError,
@@ -144,6 +145,37 @@ describe('switchChain', () => {
           ).catch((e: unknown) => e)
 
           expect(error).toBe(hookError)
+        })
+
+        it('should rethrow an ExecuteStepRetryError from the hook unchanged', async () => {
+          const hookError = new ExecuteStepRetryError('Retry the step.', {
+            atomicityNotReady: true,
+          })
+          switchChainHookMock.mockRejectedValue(hookError)
+
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect(error).toBe(hookError)
+        })
+
+        it('should add the reason of a thrown string to the message', async () => {
+          switchChainHookMock.mockRejectedValue('Unknown Network: eip155:130')
+
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect((error as ProviderError).message).toBe(
+            `The wallet could not switch to chain ${step.action.fromChainId}. Unknown Network: eip155:130`
+          )
         })
       })
 
