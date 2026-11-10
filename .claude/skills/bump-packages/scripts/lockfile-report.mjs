@@ -153,6 +153,8 @@ async function main() {
   const parents = parseParents(headText)
   const headSnap = parseLock(headText, 'snapshots')
   const baseSnap = parseLock(baseText, 'snapshots')
+  const anchorSnap =
+    trustAnchor === baseRef ? baseSnap : parseLock(anchorText, 'snapshots')
   const yaml = readWorkspaceYaml(root)
   // A project without pnpm-workspace.yaml on a ref has no exclude list there.
   const baseYaml = showAt(baseRef, 'pnpm-workspace.yaml') ?? ''
@@ -192,15 +194,17 @@ async function main() {
       }
     }
     // Any major that the base did not have: a raised top major, or a lower copy that moved
-    // to a new major (1.x + 3.x -> 2.x + 3.x).
+    // to a new major (1.x + 3.x -> 2.x + 3.x). A major that the trust anchor (main) already
+    // has is not new: it came in with a merge of main, and main was reviewed.
     const wasMajors = breakingLines(was)
+    const trustedMajors = breakingLines(trusted)
     const newLines = [...breakingLines(versions)].filter(
-      (m) => !wasMajors.has(m)
+      (m) => !wasMajors.has(m) && !trustedMajors.has(m)
     )
     if (was.size && newLines.length) {
       // Name the cause: the packages that depend on each new version.
       const causes = [...versions]
-        .filter((v) => !was.has(v))
+        .filter((v) => !was.has(v) && !trusted.has(v))
         .flatMap((v) =>
           [...(parents.get(`${name}@${v}`) ?? [])].map((p) => `${p} → ${v}`)
         )
@@ -220,7 +224,16 @@ async function main() {
   const singleCopy = WATCH.filter((n) => head.has(n)).map((n) => {
     // Count runtime instances: each peer variant in `snapshots:` is its own copy.
     const instances = headSnap.get(n) ?? head.get(n)
-    const was = (baseSnap.get(n) ?? base.get(n) ?? new Set()).size
+    // Known = the base or the trust anchor (main) already has it: a split that came in
+    // with a merge of main is not new.
+    const was = Math.max(
+      (baseSnap.get(n) ?? base.get(n) ?? new Set()).size,
+      (anchorSnap.get(n) ?? anchor.get(n) ?? new Set()).size
+    )
+    const wasVersions = Math.max(
+      base.get(n)?.size ?? 0,
+      anchor.get(n)?.size ?? 0
+    )
     return {
       name: n,
       versions: [...head.get(n)].sort(),
@@ -231,7 +244,7 @@ async function main() {
       status:
         instances.size === 1
           ? 'single'
-          : instances.size > was || head.get(n).size > (base.get(n)?.size ?? 0)
+          : instances.size > was || head.get(n).size > wasVersions
             ? 'new-split'
             : 'same-as-base',
     }

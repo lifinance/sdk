@@ -655,9 +655,14 @@ export function appliedLines(a) {
     ),
     ...a.overrides.map(
       (o) =>
-        `override ${o.key}: ${o.value} → ${o.newKey === o.key ? '' : `${o.newKey}: `}${o.newValue}`
+        `override ${o.key}: ${o.value} → ${o.newKey === o.key ? '' : `${o.newKey}: `}${o.newValue}${o.project && o.project !== '.' ? ` (${o.project})` : ''}`
     ),
-    ...a.removedExcludes.map((e) => `removed the aged exclude entry ${e}`),
+    // One line for many entries: 19 removed entries of two families are noise.
+    ...(a.removedExcludes.length > 3
+      ? [
+          `removed ${a.removedExcludes.length} aged exclude entries (${a.removedExcludes.slice(0, 2).join(', ')}, …)`,
+        ]
+      : a.removedExcludes.map((e) => `removed the aged exclude entry ${e}`)),
     ...a.approved.map((e) => `approved exclude entry ${e}`),
     ...a.actions.map((x) => `action ${x.repo} ${x.from} → ${x.to}`),
     ...a.tools.map((t) => `CI tool ${t.pkg} ${t.from} → ${t.to}`),

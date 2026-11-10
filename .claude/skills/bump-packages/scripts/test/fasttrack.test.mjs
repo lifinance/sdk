@@ -974,6 +974,20 @@ test('lockfile-report: the age check compares with the trust anchor, not with --
     const expected = run(`--base=${earlier}`, '--expect-majors', 'foo')
     assert.equal(expected.majorJumps.length, 1)
     assert.equal(expected.unexpectedMajors.length, 0)
+    // A major that main already has is not a jump: main moved to foo 2 (a merged PR), and
+    // the bump branch merged main. Comparing with --base (the PR branch before the merge)
+    // alone would stop on it.
+    const branch = git('rev-parse', '--abbrev-ref', 'HEAD')
+    git('checkout', '-q', '--', 'pnpm-lock.yaml')
+    git('checkout', '-q', '-b', 'mainline', 'refs/remotes/origin/main')
+    commit(['foo@2.0.0'], 'main moved')
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD')
+    git('checkout', '-q', branch)
+    git('merge', '-q', '-s', 'ours', '--no-edit', 'mainline')
+    writeFileSync(join(dir, 'pnpm-lock.yaml'), lock(['foo@2.0.0']))
+    const merged = run(`--base=${earlier}`)
+    assert.equal(merged.majorJumps.length, 0)
+    assert.equal(merged.unexpectedMajors.length, 0)
     // --approved takes exact name@x.y.z entries only.
     assert.throws(
       () => run('--approved', 'foo'),
