@@ -67,7 +67,8 @@ const handleSpecificErrors = async (
     e.name === 'UserRejectedRequestError' ||
     e.cause?.name === 'UserRejectedRequestError' ||
     // A raw EIP-1193 rejection, for example from a hook that calls the provider directly.
-    e.code === 4001
+    e.code === 4001 ||
+    e.cause?.code === 4001
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }

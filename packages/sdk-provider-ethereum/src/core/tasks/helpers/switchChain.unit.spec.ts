@@ -147,6 +147,23 @@ describe('switchChain', () => {
           expect(error).toBe(hookError)
         })
 
+        it('should rethrow a BaseError from the hook unchanged', async () => {
+          const hookError = new ProviderError(
+            LiFiErrorCode.ProviderUnavailable,
+            'No provider for this chain.'
+          )
+          switchChainHookMock.mockRejectedValue(hookError)
+
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect(error).toBe(hookError)
+        })
+
         it('should rethrow an ExecuteStepRetryError from the hook unchanged', async () => {
           const hookError = new ExecuteStepRetryError('Retry the step.', {
             atomicityNotReady: true,

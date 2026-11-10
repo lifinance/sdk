@@ -257,6 +257,20 @@ describe('parseEVMStepErrors', () => {
         expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
         expect(parsedError.cause?.cause).toBe(rejection)
       })
+
+      it('should return the SignatureRejected code when the rejection is the cause', async () => {
+        const rejection = Object.assign(
+          new Error('User rejected the request.'),
+          { code: 4001 }
+        )
+        const error = new Error('Switch failed.', { cause: rejection })
+
+        const parsedError = await parseEthereumErrors(error)
+
+        assertSDKError(parsedError)
+        expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
+        expect(parsedError.cause?.cause).toBe(error)
+      })
     })
   })
 

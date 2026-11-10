@@ -1,9 +1,4 @@
-import {
-  ExecuteStepRetryError,
-  LiFiErrorCode,
-  ProviderError,
-  SDKError,
-} from '@lifi/sdk'
+import { BaseError, LiFiErrorCode, ProviderError, SDKError } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
@@ -53,8 +48,9 @@ export const switchChain = async (
   try {
     updatedClient = await switchChainCallback(targetChainId)
   } catch (error) {
-    // Already classified: a wrap would hide its code or the retry request.
-    if (error instanceof SDKError || error instanceof ExecuteStepRetryError) {
+    // Already classified (`ExecuteStepRetryError` included): a wrap would hide
+    // its code or the retry request.
+    if (error instanceof SDKError || error instanceof BaseError) {
       throw error
     }
     // `parseEthereumErrors` classifies the cause, rejections included.
