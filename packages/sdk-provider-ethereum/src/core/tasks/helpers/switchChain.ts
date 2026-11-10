@@ -1,5 +1,9 @@
 import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
-import type { Client, GetChainIdReturnType } from 'viem'
+import {
+  type Client,
+  type GetChainIdReturnType,
+  UserRejectedRequestError,
+} from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
 
@@ -44,7 +48,22 @@ export const switchChain = async (
       'Chain switch hook is not provided.'
     )
   }
-  const updatedClient = await switchChainCallback(targetChainId)
+  let updatedClient: Client | undefined
+  try {
+    updatedClient = await switchChainCallback(targetChainId)
+  } catch (error) {
+    // A user rejection keeps its own meaning (`SignatureRejected`).
+    if (isUserRejection(error)) {
+      throw error
+    }
+    // Any other failure (for example, the wallet does not know the chain)
+    // is a chain switch error, not an unknown one.
+    throw new ProviderError(
+      LiFiErrorCode.ChainSwitchError,
+      `The wallet could not switch to chain ${targetChainId}.`,
+      error as Error
+    )
+  }
   let updatedChainId: number | undefined
   if (updatedClient) {
     updatedChainId = (await getAction(
@@ -61,4 +80,12 @@ export const switchChain = async (
   }
 
   return updatedClient
+}
+
+const isUserRejection = (error: unknown): boolean => {
+  const e = error as { name?: string; code?: number } | undefined
+  return (
+    e?.name === 'UserRejectedRequestError' ||
+    e?.code === UserRejectedRequestError.code
+  )
 }

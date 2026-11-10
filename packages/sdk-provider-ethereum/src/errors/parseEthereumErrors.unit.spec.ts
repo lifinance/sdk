@@ -8,11 +8,13 @@ import {
   isFinalTransactionError,
   LiFiErrorCode,
   type LiFiStep,
+  ProviderError,
   SDKError,
   TransactionError,
 } from '@lifi/sdk'
 import {
   AtomicReadyWalletRejectedUpgradeError,
+  SwitchChainError,
   UnknownBundleIdError,
 } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
@@ -332,6 +334,36 @@ describe('parseEVMStepErrors', () => {
       expect(baseError.cause).toBe(mockTransactionError)
 
       vi.clearAllMocks()
+    })
+  })
+
+  // JUMPER-FRONT-9F, -K4, -7V. The code is what makes the widget show "Chain
+  // switch required"; a cause code check must not replace it.
+  describe('when the chain switch fails', () => {
+    it.each([
+      {
+        kind: 'a SwitchChainError',
+        cause: new SwitchChainError(new Error('Unknown Network: eip155:130')),
+      },
+      {
+        kind: 'an error with code 4902',
+        cause: Object.assign(new Error('Unrecognized chain ID'), {
+          code: 4902,
+        }),
+      },
+    ])('should keep the ChainSwitchError code for $kind', async ({ cause }) => {
+      const step = buildStepObject({ includingExecution: true })
+      const error = new ProviderError(
+        LiFiErrorCode.ChainSwitchError,
+        'The wallet could not switch to chain 130.',
+        cause
+      )
+
+      const parsedError = await parseEthereumErrors(error, step)
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(LiFiErrorCode.ChainSwitchError)
+      expect(parsedError.cause).toBe(error)
     })
   })
 })

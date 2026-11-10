@@ -58,14 +58,52 @@ describe('switchChain', () => {
     })
 
     describe('when allowUserInteraction is true', () => {
+      // JUMPER-FRONT-9F, -K4, -7V. A wallet that cannot switch (for example
+      // "Unknown Network: eip155:130") must give a chain switch error, not an
+      // unknown error.
       describe('when the switchChainHook fails', () => {
+        const hookError = new Error('Unknown Network: eip155:130')
+
         beforeEach(() => {
-          switchChainHookMock.mockRejectedValue(
-            new Error('something went wrong')
-          )
+          switchChainHookMock.mockRejectedValue(hookError)
         })
 
-        it('should throw the error', async () => {
+        it('should throw a chain switch error with the hook error as cause', async () => {
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect(error).toBeInstanceOf(ProviderError)
+          expect(error).toMatchObject({
+            code: LiFiErrorCode.ChainSwitchError,
+            cause: hookError,
+          })
+          expect(switchChainHookMock).toHaveBeenCalledWith(
+            step.action.fromChainId
+          )
+        })
+      })
+
+      describe('when the user rejects the chain switch', () => {
+        it.each([
+          {
+            kind: 'a UserRejectedRequestError',
+            error: Object.assign(new Error('User rejected the request.'), {
+              name: 'UserRejectedRequestError',
+            }),
+          },
+          {
+            kind: 'an EIP-1193 4001 error',
+            error: Object.assign(new Error('User rejected the request.'), {
+              code: 4001,
+            }),
+          },
+        ])('should throw $kind unchanged', async ({ error }) => {
+          switchChainHookMock.mockRejectedValue(error)
+
           await expect(
             switchChain(
               client,
@@ -73,11 +111,7 @@ describe('switchChain', () => {
               true,
               switchChainHookMock
             )
-          ).rejects.toThrowError(new Error('something went wrong'))
-
-          expect(switchChainHookMock).toHaveBeenCalledWith(
-            step.action.fromChainId
-          )
+          ).rejects.toBe(error)
         })
       })
 
