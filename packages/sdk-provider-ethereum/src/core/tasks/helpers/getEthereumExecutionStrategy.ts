@@ -29,11 +29,10 @@ const isTransactionMethodType = (
  * the wallet rejected the 7702 upgrade, or the tool doesn't support it.
  *
  * `afterPrepare` marks the single call from `EthereumPrepareTransactionTask`.
- * The step has just been re-quoted, so the cached strategy is stale and, for
- * the first time, the absence of a `transactionRequest` is final rather than
- * merely not-yet-known. Both effects come from that one fact, which is why they
- * share a parameter. The wallet's batching answer is not stale: it is read once
- * per execution and kept on `context.batchingSupported`.
+ * The step has just been re-quoted, so the cached verdict is stale and, for the
+ * first time, the absence of a `transactionRequest` is final rather than merely
+ * not-yet-known. Both effects come from that one fact, which is why they share
+ * a parameter.
  */
 export async function getEthereumExecutionStrategy(
   context: EthereumStepExecutorContext,
@@ -92,10 +91,8 @@ export async function getEthereumExecutionStrategy(
   }
 
   const updatedClient = (await checkClient(step)) ?? ethereumClient
-  // The wallet's answer, not the step's: a re-quote cannot change it, so
-  // prepare reuses the one the allowance tasks got. Asking again let a wallet
-  // that answered late at one read move the step to the other strategy after
-  // its allowance was prepared (JUMEMB-196).
+  // A re-quote changes the step, not the wallet: prepare reuses the answer the
+  // allowance tasks acted on, so a late read cannot flip the strategy.
   context.batchingSupported ??= isBatchingSupported(client, {
     client: updatedClient,
     chainId: fromChain.id,

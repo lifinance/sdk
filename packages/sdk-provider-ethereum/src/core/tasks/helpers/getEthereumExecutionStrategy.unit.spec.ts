@@ -158,8 +158,6 @@ describe('getEthereumExecutionStrategy', () => {
     expect(await getEthereumExecutionStrategy(context, true)).toBe('relayed')
   })
 
-  // JUMEMB-196: a re-quote changes the step, not the wallet, so prepare keeps
-  // the batching answer the allowance tasks got.
   it('reuses the batching answer when afterPrepare is set', async () => {
     vi.mocked(isBatchingSupported).mockResolvedValue(true)
     const context = buildContext(undefined, undefined, true)

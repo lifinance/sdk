@@ -522,10 +522,8 @@ export interface ScenarioOptions {
   /** `wallet_getCapabilities` answer for the source chain (EIP-5792). */
   capabilities?: Record<string, unknown>
   /**
-   * A `wallet_getCapabilities` answer per call, for a wallet that does not
-   * answer the same way each time. `callIndex` counts the scenario's reads
-   * from 0. Throw to model a read that fails. Replaces
-   * {@link ScenarioOptions.capabilities} when set.
+   * A `wallet_getCapabilities` answer per read, counted from 0. Throw to model
+   * a failed read. Replaces {@link ScenarioOptions.capabilities}.
    */
   onGetCapabilities?: (callIndex: number) => Promise<Record<string, unknown>>
   /** Whether the source token answers the EIP-2612 / EIP-5267 reads. */
