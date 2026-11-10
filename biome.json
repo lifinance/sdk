@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/*.md", "!**/*.lock", "!**/*.json"]
+    "includes": [
+      "**",
+      "!**/*.md",
+      "!**/*.lock",
+      "!**/*.json",
+      "!.claude/skills/bump-packages/scripts/test/fixtures"
+    ]
   },
   "formatter": {
     "enabled": true,
