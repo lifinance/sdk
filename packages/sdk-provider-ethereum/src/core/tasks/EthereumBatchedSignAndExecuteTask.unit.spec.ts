@@ -1,9 +1,18 @@
 import {
   CLEARED_TRANSACTION_FIELDS,
+  type ExtendedChain,
   LiFiErrorCode,
   type LiFiStep,
 } from '@lifi/sdk'
-import type { Address, Hex } from 'viem'
+import {
+  type Address,
+  createClient,
+  custom,
+  type EIP1193RequestFn,
+  type Hex,
+  numberToHex,
+} from 'viem'
+import { mainnet } from 'viem/chains'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
 import { EthereumBatchedSignAndExecuteTask } from './EthereumBatchedSignAndExecuteTask.js'
@@ -22,6 +31,19 @@ const APPROVE_CALL: Call = {
   data: '0x095ea7b3',
 }
 
+/** The fields of an `ExtendedChain` that `convertExtendedChain` reads. */
+const buildFromChain = (id: number): ExtendedChain =>
+  ({
+    id,
+    metamask: {
+      chainId: numberToHex(id),
+      chainName: `Chain ${id}`,
+      nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://rpc.example/'],
+      blockExplorerUrls: ['https://explorer.example/'],
+    },
+  }) as unknown as ExtendedChain
+
 const buildContext = (
   calls: Call[] = []
 ): {
@@ -37,7 +59,7 @@ const buildContext = (
       tool: 'lifi',
       action: { fromChainId: SOURCE_CHAIN, fromAddress: FROM_ADDRESS },
     } as unknown as LiFiStep,
-    fromChain: { id: SOURCE_CHAIN },
+    fromChain: buildFromChain(SOURCE_CHAIN),
     isBridgeExecution: false,
     statusManager: {
       findAction: vi.fn().mockReturnValue({ type: 'SWAP' }),
@@ -134,5 +156,45 @@ describe('EthereumBatchedSignAndExecuteTask.run second pre-sign guard', () => {
     expect(context.checkClient).toHaveBeenCalledTimes(1)
     expect(sendCalls).not.toHaveBeenCalled()
     expect(context.statusManager.updateAction).not.toHaveBeenCalled()
+  })
+})
+
+// JUMPER-FRONT-8Z. The widget builds its client with `getConnectorClient(config,
+// { assertChainId: false })`, so `client.chain` is wagmi's last known chain.
+// The wallet is on the step's chain, so `checkClient` (which asks the wallet
+// with `eth_chainId`) keeps that client. The bundle must still name the step's
+// chain, not the stale `client.chain`.
+describe('EthereumBatchedSignAndExecuteTask.run chain of the bundle', () => {
+  const BASE = 8453
+
+  it('sends the bundle on the step chain when the client holds a stale chain', async () => {
+    const requests: { method: string; params?: unknown }[] = []
+    const request = (async ({ method, params }) => {
+      requests.push({ method, params })
+      switch (method) {
+        case 'eth_chainId':
+          return numberToHex(BASE)
+        case 'wallet_sendCalls':
+          return { id: BATCH_ID }
+        default:
+          throw new Error(`Unexpected wallet request: ${method}`)
+      }
+    }) as EIP1193RequestFn
+    const staleClient = createClient({
+      account: FROM_ADDRESS,
+      chain: mainnet,
+      transport: custom({ request }),
+    })
+    const { context } = buildContext()
+    context.fromChain = buildFromChain(BASE)
+    vi.mocked(context.checkClient).mockResolvedValue(staleClient)
+
+    const result = await new EthereumBatchedSignAndExecuteTask().run(context)
+
+    expect(result.status).toBe('COMPLETED')
+    const sent = requests.find(({ method }) => method === 'wallet_sendCalls')
+    expect(sent?.params).toEqual([
+      expect.objectContaining({ chainId: numberToHex(BASE) }),
+    ])
   })
 })

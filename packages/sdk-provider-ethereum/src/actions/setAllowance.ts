@@ -5,6 +5,7 @@ import type {
 } from '@lifi/sdk'
 import type {
   Address,
+  Chain,
   Client,
   Hash,
   Hex,
@@ -26,7 +27,10 @@ export const setAllowance = async (
   contractAddress: Address,
   amount: bigint,
   executionOptions?: ExecutionOptions,
-  returnPopulatedTransaction?: boolean
+  returnPopulatedTransaction?: boolean,
+  // The chain to send on. Without it viem uses `viemClient.chain`, which a
+  // connector client can hold stale while the wallet is on another chain.
+  chain?: Chain
 ): Promise<Hash | Hex> => {
   const data = encodeFunctionData({
     abi: approveAbi,
@@ -72,6 +76,7 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+    ...(chain && { chain }),
   } as SendTransactionParameters)
 }
 

@@ -10,6 +10,7 @@ import type { Address, Hash, Hex } from 'viem'
 import { sendCalls } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
+import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 
 export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -70,6 +71,10 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     )({
       account: updatedClient.account!,
       calls,
+      // `sendCalls` takes the bundle's `chainId` from `client.chain` by
+      // default. A connector client can hold a stale chain while the wallet is
+      // on `fromChain` (checked by `checkClient`), so name the chain here.
+      chain: convertExtendedChain(fromChain),
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
