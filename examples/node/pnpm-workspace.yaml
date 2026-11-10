@@ -9,5 +9,9 @@ overrides:
   'zod@<4.6.0': '>=4.6.0'
 allowBuilds:
   esbuild: false
+# 2026-11-09: viem 2.57.17 is taken inside the age window on purpose. 2.57.16 adds a
+# literal import('mppx/client') for an optional peer, which some bundlers cannot resolve.
+# 2.57.17 fixes it (wevm/viem#5437). Remove the entry when it ages out.
 minimumReleaseAgeExclude:
+  - viem@2.57.17
   - '@lifi/*'
