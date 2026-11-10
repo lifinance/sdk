@@ -8,7 +8,7 @@ minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
 overrides:
-  axios: ^1.21.0
+  axios: ^1.21.1
   ws@<=8.22.2: 8.22.2
   # @lifi/data-types 7.2.2 pins @lifi/types 18.15.0 exactly. Keep one copy with
   # the range that @lifi/sdk asks for.
