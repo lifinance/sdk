@@ -382,8 +382,9 @@ describe('parseEVMStepErrors', () => {
       const parsedError = await parseEthereumErrors(error, step)
 
       assertSDKError(parsedError)
+      expect(parsedError).toBe(hookError)
       expect(parsedError.code).toBe(LiFiErrorCode.ProviderUnavailable)
-      expect(parsedError.cause).toBe(hookError.cause)
+      expect(parsedError.step).toBe(step)
     })
 
     it.each([

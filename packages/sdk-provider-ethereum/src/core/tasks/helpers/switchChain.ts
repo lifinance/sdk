@@ -50,7 +50,10 @@ export const switchChain = async (
   } catch (error) {
     // `parseEthereumErrors` classifies the cause, rejections included.
     // Keep the wallet's reason: the action error stores only this message.
-    const reason = (error as Error | undefined)?.message
+    // viem `details` is the reason without the "Version:" and docs lines.
+    const reason =
+      (error as { details?: string } | undefined)?.details ||
+      (error as Error | undefined)?.message
     throw new ProviderError(
       LiFiErrorCode.ChainSwitchError,
       `The wallet could not switch to chain ${targetChainId}.${reason ? ` ${reason}` : ''}`,

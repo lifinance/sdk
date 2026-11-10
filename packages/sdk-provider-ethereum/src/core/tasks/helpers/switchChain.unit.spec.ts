@@ -1,5 +1,5 @@
 import { LiFiErrorCode, type LiFiStep, ProviderError } from '@lifi/sdk'
-import { type Client, UserRejectedRequestError } from 'viem'
+import { type Client, SwitchChainError, UserRejectedRequestError } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { switchChain } from './switchChain.js'
@@ -83,6 +83,23 @@ describe('switchChain', () => {
           )
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
+          )
+        })
+
+        it('should add only the wallet reason of a viem error to the message', async () => {
+          switchChainHookMock.mockRejectedValue(
+            new SwitchChainError(new Error('Unknown Network: eip155:130'))
+          )
+
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect((error as ProviderError).message).toBe(
+            `The wallet could not switch to chain ${step.action.fromChainId}. Unknown Network: eip155:130`
           )
         })
       })

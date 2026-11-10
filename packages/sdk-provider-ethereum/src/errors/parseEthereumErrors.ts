@@ -35,10 +35,17 @@ export const parseEthereumErrors = async (
     )
   }
 
-  if (e instanceof SDKError) {
-    e.step = e.step ?? step
-    e.action = e.action ?? action
-    return e
+  // `switchChain` wraps a hook error; an `SDKError` from the hook stays as it was.
+  const sdkError =
+    e instanceof ProviderError &&
+    e.code === LiFiErrorCode.ChainSwitchError &&
+    e.cause instanceof SDKError
+      ? e.cause
+      : e
+  if (sdkError instanceof SDKError) {
+    sdkError.step = sdkError.step ?? step
+    sdkError.action = sdkError.action ?? action
+    return sdkError
   }
 
   const baseError = await handleSpecificErrors(e, step, action)
@@ -60,10 +67,6 @@ const handleSpecificErrors = async (
     e.code === LiFiErrorCode.ChainSwitchError &&
     e.cause
   ) {
-    // A hook that throws an `SDKError` keeps its code, as before the wrap.
-    if (e.cause instanceof SDKError) {
-      return e.cause.cause
-    }
     const causeError = await handleSpecificErrors(e.cause, step, action)
     return causeError instanceof UnknownError ? e : causeError
   }
