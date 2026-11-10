@@ -35,17 +35,10 @@ export const parseEthereumErrors = async (
     )
   }
 
-  // `switchChain` wraps a hook error; an `SDKError` from the hook stays as it was.
-  const sdkError =
-    e instanceof ProviderError &&
-    e.code === LiFiErrorCode.ChainSwitchError &&
-    e.cause instanceof SDKError
-      ? e.cause
-      : e
-  if (sdkError instanceof SDKError) {
-    sdkError.step = sdkError.step ?? step
-    sdkError.action = sdkError.action ?? action
-    return sdkError
+  if (e instanceof SDKError) {
+    e.step = e.step ?? step
+    e.action = e.action ?? action
+    return e
   }
 
   const baseError = await handleSpecificErrors(e, step, action)
@@ -72,7 +65,9 @@ const handleSpecificErrors = async (
   }
   if (
     e.name === 'UserRejectedRequestError' ||
-    e.cause?.name === 'UserRejectedRequestError'
+    e.cause?.name === 'UserRejectedRequestError' ||
+    // A raw EIP-1193 rejection, for example from a hook that calls the provider directly.
+    e.code === 4001
   ) {
     return new TransactionError(LiFiErrorCode.SignatureRejected, e.message, e)
   }

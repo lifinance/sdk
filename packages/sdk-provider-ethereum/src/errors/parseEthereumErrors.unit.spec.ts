@@ -243,6 +243,21 @@ describe('parseEVMStepErrors', () => {
         expect(baseError.cause?.cause).toBe(UserRejectedRequestError)
       })
     })
+
+    describe('when the error is a raw EIP-1193 4001 rejection', () => {
+      it('should return the SignatureRejected code', async () => {
+        const rejection = Object.assign(
+          new Error('User rejected the request.'),
+          { code: 4001 }
+        )
+
+        const parsedError = await parseEthereumErrors(rejection)
+
+        assertSDKError(parsedError)
+        expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
+        expect(parsedError.cause?.cause).toBe(rejection)
+      })
+    })
   })
 
   // The batched wait handles an unknown bundle first. Its errors carry the
@@ -365,28 +380,6 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.cause).toBe(error)
     })
 
-    it('should keep the code of an SDKError that the hook throws', async () => {
-      const step = buildStepObject({ includingExecution: true })
-      const hookError = new SDKError(
-        new ProviderError(
-          LiFiErrorCode.ProviderUnavailable,
-          'No provider for this chain.'
-        )
-      )
-      const error = new ProviderError(
-        LiFiErrorCode.ChainSwitchError,
-        'The wallet could not switch to chain 130.',
-        hookError
-      )
-
-      const parsedError = await parseEthereumErrors(error, step)
-
-      assertSDKError(parsedError)
-      expect(parsedError).toBe(hookError)
-      expect(parsedError.code).toBe(LiFiErrorCode.ProviderUnavailable)
-      expect(parsedError.step).toBe(step)
-    })
-
     it.each([
       {
         kind: 'a UserRejectedRequestError',
@@ -398,6 +391,13 @@ describe('parseEVMStepErrors', () => {
         cause: new SwitchChainError(
           new UserRejectedRequestError(new Error('User rejected.'))
         ),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a raw EIP-1193 4001 rejection',
+        cause: Object.assign(new Error('User rejected the request.'), {
+          code: 4001,
+        }),
         code: LiFiErrorCode.SignatureRejected,
       },
       {

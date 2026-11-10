@@ -1,4 +1,4 @@
-import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
+import { LiFiErrorCode, ProviderError, SDKError } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
@@ -48,11 +48,15 @@ export const switchChain = async (
   try {
     updatedClient = await switchChainCallback(targetChainId)
   } catch (error) {
+    if (error instanceof SDKError) {
+      throw error
+    }
     // `parseEthereumErrors` classifies the cause, rejections included.
     // Keep the wallet's reason: the action error stores only this message.
     // viem `details` is the reason without the "Version:" and docs lines.
+    const details = (error as { details?: unknown } | undefined)?.details
     const reason =
-      (error as { details?: string } | undefined)?.details ||
+      (typeof details === 'string' && details) ||
       (error as Error | undefined)?.message
     throw new ProviderError(
       LiFiErrorCode.ChainSwitchError,
