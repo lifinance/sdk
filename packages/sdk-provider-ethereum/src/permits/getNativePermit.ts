@@ -18,6 +18,7 @@ import {
   DAI_LIKE_PERMIT_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH_WITH_SALT,
+  EIP712_DOMAINS_WITHOUT_VERSION,
   eip2612Types,
 } from './constants.js'
 import type { NativePermitData } from './types.js'
@@ -78,7 +79,29 @@ function makeDomainSeparator({
   return keccak256(encoded)
 }
 
-function validateDomainSeparator({
+/** Domain separator for tokens whose EIP-712 domain omits `version`. */
+function makeDomainSeparatorWithoutVersion({
+  typeHash,
+  name,
+  chainId,
+  verifyingContract,
+}: {
+  typeHash: Hex
+  name: string
+  chainId: number
+  verifyingContract: Address
+}): Hex {
+  const nameHash = keccak256(toBytes(name))
+
+  const encoded = encodeAbiParameters(
+    parseAbiParameters('bytes32, bytes32, uint256, address'),
+    [typeHash, nameHash, BigInt(chainId), verifyingContract]
+  )
+
+  return keccak256(encoded)
+}
+
+export function validateDomainSeparator({
   name,
   version,
   chainId,
@@ -122,6 +145,26 @@ function validateDomainSeparator({
               chainId,
               verifyingContract,
             },
+      }
+    }
+  }
+
+  // Some tokens build their DOMAIN_SEPARATOR without the `version` field.
+  for (const typeHash of EIP712_DOMAINS_WITHOUT_VERSION) {
+    const computedDS = makeDomainSeparatorWithoutVersion({
+      typeHash,
+      name,
+      chainId,
+      verifyingContract,
+    })
+    if (domainSeparator.toLowerCase() === computedDS.toLowerCase()) {
+      return {
+        isValid: true,
+        domain: {
+          name,
+          chainId,
+          verifyingContract,
+        },
       }
     }
   }
