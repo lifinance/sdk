@@ -163,7 +163,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  axios: ^1.21.0
+  axios: ^1.21.1
   ws@<=8.22.2: 8.22.2
   '@lifi/data-types>@lifi/types': ^18.16.0
   zod@<4.6.0: '>=4.6.0'
