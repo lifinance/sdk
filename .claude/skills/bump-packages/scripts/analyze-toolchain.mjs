@@ -31,11 +31,11 @@ import {
   minAgeMinutesFromYaml,
   npmView,
   parseVersion,
-  pickAgedTarget,
   pool,
   readJson,
   readText,
   readWorkspaceYaml,
+  toolStatus,
 } from './lib.js'
 
 const { values } = parseArgs({
@@ -279,9 +279,13 @@ async function analyzePnpm(minAgeMs, nowMs) {
   const m = pm.match(/^pnpm@([^+]+)/)
   const current = m ? m[1] : null
   const view = await npmView('pnpm', root)
-  const target = current
-    ? pickAgedTarget(view, current, minAgeMs, nowMs, () => false)
-    : null
+  // too-fresh (not up-to-date) when every newer release is younger than the gate. pnpm is
+  // never fast-tracked: it has no exclude list, so it keeps the gate.
+  const st =
+    current && view
+      ? toolStatus(view, current, minAgeMs, nowMs)
+      : { target: null, status: view ? 'up-to-date' : 'unknown' }
+  const target = st.target
   const latest = view?.distTags?.latest ?? null
   // CI must read pnpm from packageManager. A hardcoded version would drift.
   const hardcoded = []
@@ -307,11 +311,11 @@ async function analyzePnpm(minAgeMs, nowMs) {
         : null,
     bumpType: current && target ? classify(current, target).bumpType : null,
     // A pnpm major (or any non-safe move) needs the user's approval like any other major.
-    status: !target
-      ? 'up-to-date'
-      : classify(current, target).safe
-        ? 'safe'
-        : 'needs-approval',
+    // 'too-fresh': only releases younger than the gate are newer; 'unknown': npm failed.
+    status: st.status,
+    // The newest release above the target (or above current), and its age.
+    newest: st.newest ?? null,
+    newestAgeHours: st.newestAgeHours ?? null,
     hardcodedInCi: hardcoded,
   }
 }
@@ -370,15 +374,17 @@ async function analyzeCiTools(minAgeMs, nowMs) {
     const current = occ
       .map((o) => o.version)
       .sort((a, b) => cmp(parseVersion(a), parseVersion(b)))[0]
-    const target = view
-      ? pickAgedTarget(view, current, minAgeMs, nowMs, () => false)
-      : null
+    // CI tools are never fast-tracked (no exclude list): they keep the gate.
+    const st = view ? toolStatus(view, current, minAgeMs, nowMs) : null
+    const target = st?.target ?? null
     const entry = {
       pkg,
       via: [...new Set(occ.map((o) => o.via))].join(', '),
       current,
       target,
       latest: view?.distTags?.latest ?? null,
+      newest: st?.newest ?? null,
+      newestAgeHours: st?.newestAgeHours ?? null,
       occurrences: occ,
       mixedVersions: new Set(occ.map((o) => o.version)).size > 1,
       unknownPackage: !view,
@@ -386,13 +392,15 @@ async function analyzeCiTools(minAgeMs, nowMs) {
     if (!view) {
       entry.status = 'unknown-package'
     } else if (!target) {
-      entry.status = 'up-to-date'
+      // 'too-fresh' when newer releases exist but all are younger than the gate.
+      entry.status = st.status
     } else {
-      const cls = classify(current, target)
-      entry.bumpType = cls.bumpType
+      entry.bumpType = st.bumpType
       entry.mappingConfirmed = occ.every((o) => o.mappingConfirmed !== false)
       entry.status =
-        cls.safe && entry.mappingConfirmed ? 'safe' : 'needs-approval'
+        st.status === 'safe' && entry.mappingConfirmed
+          ? 'safe'
+          : 'needs-approval'
     }
     return entry
   })
@@ -657,7 +665,11 @@ function printSummary(plan) {
     `- packageManager: ${p.current ?? 'not set'} → ${p.target ?? p.current} ${
       p.target
         ? `(${p.bumpType}${p.status === 'needs-approval' ? ', NEEDS APPROVAL' : ''})`
-        : '(up to date: step 5.9 regenerates with the current pnpm)'
+        : p.status === 'too-fresh'
+          ? `(too fresh: ${p.newest} is ${p.newestAgeHours}h old; step 5.9 regenerates with the current pnpm)`
+          : p.status === 'unknown'
+            ? '(UNKNOWN: npm call failed)'
+            : '(up to date: step 5.9 regenerates with the current pnpm)'
     }; npm latest ${p.latest}${p.latestAgeHours != null ? ` (${p.latestAgeHours}h old)` : ''}\n`
   )
   e.write(
@@ -677,6 +689,12 @@ function printSummary(plan) {
               ? `${x.bumpType} (approval)`
               : (x.bumpType ?? x.status),
             [
+              x.status === 'too-fresh'
+                ? `newest ${x.newest} is ${x.newestAgeHours}h old (<${plan.actions.minAgeHours}h)`
+                : '',
+              x.target && x.newest && x.newest !== x.target
+                ? `newest ${x.newest} is too fresh (${x.newestAgeHours}h)`
+                : '',
               x.mixedVersions ? 'mixed versions in repo' : '',
               x.unknownPackage
                 ? 'no npm package with this name; check by hand'

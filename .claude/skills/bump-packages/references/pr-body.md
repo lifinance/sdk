@@ -12,8 +12,8 @@ name inside each area. Use `—` in "To" when nothing changes. A family that mov
 same version (for example `@dynamic-labs/*`) can use one row. Collapse the actions that
 are up to date into one row.
 
-The Plan column is one of: auto, needs approval, held, lockfile regen, too fresh, or
-fast-track?. A short note in brackets is allowed.
+The Plan column is one of: auto, needs approval, held, lockfile regen, too fresh,
+fast-track, fast-track? (needs approval), or blocked. A short note in brackets is allowed.
 
 ```markdown
 | Area | Package | From | To | Bump | Plan |
@@ -24,7 +24,7 @@ fast-track?. A short note in brackets is allowed.
 | npm dev | `@biomejs/biome` | 2.5.15 | 2.6.6 | minor | auto |
 | npm dev | `vite-plugin-node-polyfills` | 0.26.0 | — | — | held: override, 0.28 breaks `pnpm dev` |
 | npm dev | `vitest` | 5.1.0 | — | — | too fresh (5.1.1 eligible in ~6h) |
-| npm runtime (released) | `viem` | 2.57.16 | 2.57.17 | patch | fast-track? (20h old; security fix GHSA-…; no red flags; set: `viem@2.57.17`) |
+| npm runtime (released) | `viem` | 2.57.16 | 2.57.17 | patch | fast-track (20h old; all checks pass; set: `viem@2.57.17`) |
 | npm lockfile | `viem` (`>=2.52.0`) | 2.57.7 | 2.57.16 | patch | lockfile regen (2.57.17 is <24h) |
 | npm lockfile | `preact` (override `>=10.29.1`) | 11.0.1 | 11.2.0 | minor | lockfile regen |
 | GitHub Actions | `pnpm/action-setup` | v6.1.0 | v6.1.1 | patch | auto |
@@ -63,7 +63,7 @@ are older than the 24 h release-age gate.
 
 | Commit | Content |
 |---|---|
-| `chore: allow <pkg>@<ver> past the release-age gate` | Approved fast-tracks |
+| `chore: allow <pkg>@<ver> past the release-age gate` | Fast-tracks (auto and approved) |
 | `chore: bump packages` | Patch and minor bumps |
 | `chore: bump <pkg> to <N>` | Major, <runtime/dev> |
 | `chore(examples): bump packages` | <extra pnpm project> |
@@ -95,7 +95,11 @@ are older than the 24 h release-age gate.
 
 ### Allowed past the release-age gate
 
-- **`<pkg>@<version>`** (<age> h old): <reason, with the advisory or issue link>. Checks: same publisher, provenance kept, no new install script, no new dependency. Exclude set: <entries>.
+Fresh patches and minors that pass all checks go in by default. Each one gets a line:
+
+- **`<pkg>@<version>`** (<age> h old): <what it changes, with a link>. Checks: same publisher, the same provenance source (repo and workflow), no malware advisory, no new install script, no new dependency. Exclude set: <entries>.
+
+Blocked fresh versions go under "Held back on purpose", with the red flag.
 
 ### Release-age gate (`minimumReleaseAgeExclude`)
 

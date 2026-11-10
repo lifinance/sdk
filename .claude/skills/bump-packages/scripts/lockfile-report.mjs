@@ -3,16 +3,25 @@
 //
 // `pnpm outdated` sees direct dependencies only. A regeneration can also move transitive
 // packages, e.g. an open override (`preact: ">=10.29.1"`) that jumps a major. This script
-// reports, against the base ref (default origin/main):
+// uses two refs:
+//   - the compare base (--base, default: the merge-base of HEAD and origin/main). Any
+//     ancestor of HEAD, e.g. the head of an open bump PR branch. All diffs use it.
+//   - the trust anchor: always the merge-base of HEAD and origin/main. Only its
+//     minimumReleaseAgeExclude list (reviewed and merged) plus --approved is trusted, so
+//     --base cannot widen the trusted list.
+// It reports, against the compare base:
 //   - transitive and direct major jumps,
 //   - new duplicate copies, and the copies of the single-copy packages,
-//   - added versions younger than the release-age gate (unless --skip-age),
+//   - every added version with its age, and the ones younger than the release-age gate
+//     (unless --skip-age),
 //   - new minimumReleaseAgeExclude entries that nobody approved. pnpm's default gate is
 //     not strict: when no mature version fits, pnpm installs a fresh one and adds it to the
-//     list by itself. So the gate check trusts only the BASE list plus --approved entries.
-// Output: JSON on stdout, Markdown on stderr. Read-only.
+//     list by itself. So the gate check trusts only the ANCHOR list plus --approved entries.
+// Output: JSON on stdout, Markdown on stderr. Read-only. Exits 2 (fail closed) when a base
+// is not usable: no merge-base with origin/main, a --base that is not an ancestor of HEAD,
+// or no lockfile on the compare base.
 //
-// Usage: node lockfile-report.mjs [--root <repo>] [--base origin/main]
+// Usage: node lockfile-report.mjs [--root <repo>] [--base <ancestor of HEAD>]
 //        [--watch name,name] [--skip-age] [--approved name@1.2.3,name@4.5.6]
 //        [--expect-majors name,name]   (the majors the user approved)
 
@@ -22,6 +31,7 @@ import { parseArgs } from 'node:util'
 import {
   ageHours,
   breakingLines,
+  cmpRaw,
   isExcluded,
   isStopJump,
   isVersionLike,
@@ -35,6 +45,7 @@ import {
   pool,
   readText,
   readWorkspaceYaml,
+  resolveLockfileBases,
   yamlList,
   yamlMap,
 } from './lib.js'
@@ -50,18 +61,24 @@ const { values } = parseArgs({
   },
 })
 const root = values.root ? resolve(values.root) : process.cwd()
-// Default base: the merge-base with origin/main. origin/main can move while the branch is
-// open (another session fetches); its new commits are not changes of this branch.
-let baseRef = values.base
-if (!baseRef) {
-  try {
-    baseRef = execFileSync('git', ['merge-base', 'HEAD', 'origin/main'], {
-      cwd: root,
-      encoding: 'utf8',
-    }).trim()
-  } catch {
-    baseRef = 'origin/main'
-  }
+const git = (args) =>
+  execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+// The merge-base, not origin/main itself: origin/main can move while the branch is open
+// (another session fetches); its new commits are not changes of this branch.
+let baseRef
+let trustAnchor
+try {
+  ;({ compareBase: baseRef, trustAnchor } = resolveLockfileBases(
+    values.base,
+    git
+  ))
+} catch (err) {
+  process.stderr.write(`${err.message}\n`)
+  process.exit(2)
 }
 
 // Packages that must be single-copy in these repos (see each repo's CLAUDE.md).
@@ -83,23 +100,6 @@ const DEFAULT_WATCH = [
 // The "breaking line" of a version under caret rules: the major, or 0.minor, or 0.0.patch.
 // A new line on the branch is a breaking move (2.x, but also 0.3 -> 0.4).
 async function main() {
-  // The base is the trust anchor (its exclude list is trusted), so it must already be on
-  // origin/main. A ref from the bump branch would trust the branch's own new entries.
-  try {
-    execFileSync(
-      'git',
-      ['merge-base', '--is-ancestor', baseRef, 'origin/main'],
-      {
-        cwd: root,
-        stdio: 'ignore',
-      }
-    )
-  } catch {
-    process.stderr.write(
-      `--base ${baseRef} is not an ancestor of origin/main. Use origin/main (the default) after git fetch.\n`
-    )
-    process.exit(2)
-  }
   const headText = readText(root, 'pnpm-lock.yaml')
   let baseText = ''
   try {
@@ -109,6 +109,7 @@ async function main() {
       cwd: root,
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
   } catch (err) {
     // Without a base every package looks "added" and no major jump shows: fail closed.
@@ -127,19 +128,16 @@ async function main() {
   const headSnap = parseLock(headText, 'snapshots')
   const baseSnap = parseLock(baseText, 'snapshots')
   const yaml = readWorkspaceYaml(root)
-  let baseYaml = ''
-  try {
-    baseYaml = execFileSync(
-      'git',
-      ['show', `${baseRef}:./pnpm-workspace.yaml`],
-      {
-        cwd: root,
-        encoding: 'utf8',
-      }
-    )
-  } catch {
-    // A project without pnpm-workspace.yaml on the base has no exclude list there.
+  // A project without pnpm-workspace.yaml on a ref has no exclude list there.
+  const yamlAt = (ref) => {
+    try {
+      return git(['show', `${ref}:./pnpm-workspace.yaml`])
+    } catch {
+      return ''
+    }
   }
+  const baseYaml = yamlAt(baseRef)
+  const anchorYaml = trustAnchor === baseRef ? baseYaml : yamlAt(trustAnchor)
   const approved = (values.approved ?? '')
     .split(',')
     .map((s) => s.trim())
@@ -154,18 +152,24 @@ async function main() {
     )
     process.exit(2)
   }
-  const baseEntries = yamlList(baseYaml, 'minimumReleaseAgeExclude')
+  // Trusted: the exclude list of the trust anchor (merged on main), never of --base.
+  const anchorEntries = yamlList(anchorYaml, 'minimumReleaseAgeExclude')
   const headEntries = yamlList(yaml, 'minimumReleaseAgeExclude')
-  // Entries on the branch that are neither on the base nor approved: pnpm (or someone)
+  // Entries on the branch that are neither on the anchor nor approved: pnpm (or someone)
   // added them. Each one is a version past the gate that nobody reviewed.
   const unapprovedExcludes = headEntries.filter(
-    (e) => !baseEntries.includes(e) && !approved.includes(e)
+    (e) => !anchorEntries.includes(e) && !approved.includes(e)
   )
   // The gate check uses only what was trusted before plus what the user approved.
-  const excludes = parseExcludes([...baseEntries, ...approved])
-  // The stricter of the base and the branch: a branch cannot lower the gate for itself.
+  const excludes = parseExcludes([...anchorEntries, ...approved])
+  // The strictest of the branch, the compare base and the anchor: a branch cannot lower
+  // the gate for itself.
   const minAgeHours =
-    Math.max(minAgeMinutesFromYaml(yaml), minAgeMinutesFromYaml(baseYaml)) / 60
+    Math.max(
+      minAgeMinutesFromYaml(yaml),
+      minAgeMinutesFromYaml(baseYaml),
+      minAgeMinutesFromYaml(anchorYaml)
+    ) / 60
 
   // pnpm itself (packageManager) is not in the project lockfile document. Age-check a new
   // pnpm version here: corepack has no release-age gate.
@@ -180,10 +184,7 @@ async function main() {
   }
   let basePkgText = ''
   try {
-    basePkgText = execFileSync('git', ['show', `${baseRef}:./package.json`], {
-      cwd: root,
-      encoding: 'utf8',
-    })
+    basePkgText = git(['show', `${baseRef}:./package.json`])
   } catch {}
   const pnpmBefore = pmOf(basePkgText)
   const pnpmAfter = pmOf(readText(root, 'package.json') ?? '')
@@ -283,20 +284,30 @@ async function main() {
 
   let fresh = []
   let ageUnknown = []
+  added.sort(
+    (a, b) => a.name.localeCompare(b.name) || cmpRaw(a.version, b.version)
+  )
   if (!values['skip-age'] && added.length) {
     const names = [...new Set(added.map((a) => a.name))]
     const views = await pool(names, 12, (n) => npmView(n, root))
     const byName = new Map(names.map((n, i) => [n, views[i]]))
     const nowMs = Date.now()
-    const aged = added
-      .filter((a) => !isExcluded(excludes, a.name, a.version))
-      .map((a) => {
-        const iso = byName.get(a.name)?.time?.[a.version]
-        return { ...a, ageHours: iso ? ageHours(iso, nowMs) : null }
-      })
+    for (const a of added) {
+      const iso = byName.get(a.name)?.time?.[a.version]
+      a.ageHours = iso ? ageHours(iso, nowMs) : null
+    }
+    const checked = added.filter(
+      (a) => !isExcluded(excludes, a.name, a.version)
+    )
     // Fail closed: a version whose age npm cannot confirm is treated like a fresh one.
-    fresh = aged.filter((a) => a.ageHours != null && a.ageHours < minAgeHours)
-    ageUnknown = aged.filter((a) => a.ageHours == null)
+    fresh = checked.filter(
+      (a) => a.ageHours != null && a.ageHours < minAgeHours
+    )
+    ageUnknown = checked.filter((a) => a.ageHours == null)
+  } else {
+    for (const a of added) {
+      a.ageHours = null
+    }
   }
 
   // Majors the user approved are expected; every other major jump is a STOP.
@@ -331,12 +342,16 @@ async function main() {
   const report = {
     unchanged,
     base: baseRef,
+    // The ref whose exclude list is trusted: always the merge-base of HEAD and origin/main.
+    trustAnchor,
     counts: {
       packagesBefore: base.size,
       packagesAfter: head.size,
       addedVersions: added.length,
       removedPackages: removed.length,
     },
+    // Every version that the compare base did not have: { name, version, ageHours }.
+    added,
     majorJumps,
     newDuplicates,
     singleCopy,
@@ -359,7 +374,9 @@ async function main() {
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
 
   const e = process.stderr
-  e.write(`\n## Lockfile compared with ${baseRef}\n\n`)
+  e.write(
+    `\n## Lockfile compared with ${baseRef}${trustAnchor === baseRef ? '' : ` (trusted excludes from ${trustAnchor})`}\n\n`
+  )
   if (report.unchanged) {
     e.write(
       '- **The lockfile is identical to the base.** Nothing was regenerated. In a preview, move node_modules/.pnpm/lock.yaml aside first.\n'
@@ -367,6 +384,22 @@ async function main() {
   }
   e.write(
     `- ${head.size} packages (was ${base.size}); ${added.length} added versions; ${removed.length} packages removed.\n`
+  )
+  // Every added version; a long list is cut to a count (the JSON has all of them).
+  const ADDED_LINES = 40
+  e.write(
+    `- Added versions (${added.length})${
+      added.length > ADDED_LINES
+        ? `: more than ${ADDED_LINES}, so not listed here. Read \`added\` in the JSON.`
+        : added.length
+          ? `:\n${added
+              .map(
+                (a) =>
+                  `  - \`${a.name}@${a.version}\` (${a.ageHours == null ? 'age not checked' : `${a.ageHours}h old`})`
+              )
+              .join('\n')}`
+          : ''
+    }\n`
   )
   e.write(
     `- Major jumps (${majorJumps.length}): ${

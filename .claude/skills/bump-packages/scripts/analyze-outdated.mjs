@@ -9,10 +9,14 @@
 //   - exact-version overrides (holds), also on transitive packages,
 //   - open overrides that the lockfile regeneration will move, and whether by a major,
 //   - deprecated packages that are already on their final release,
-//   - `minimumReleaseAgeExclude` entries that have aged out.
+//   - `minimumReleaseAgeExclude` entries that have aged out,
+//   - fast-track decisions for fresh releases (`fastTrack`, `fastTrackFamilies`,
+//     `autoExcludes`, `needsApprovalExcludes`), override lifts and floors that fell behind (`overrideUpdates`).
 //
 // Output: a JSON plan on stdout, a Markdown summary on stderr. Read-only. Exits 2 if
-// `pnpm outdated` fails (the plan would be wrong), otherwise 0.
+// `pnpm outdated` fails (the plan would be wrong) or an `autoExcludes` entry is not an exact
+// `name@x.y.z` (nothing is written then), otherwise 0. Needs an authenticated `gh` CLI for
+// the advisory check (without it every fast-track candidate is blocked).
 //
 // Usage: node analyze-outdated.mjs [--root <repo>] [--min-age-hours <N>]
 
@@ -20,28 +24,40 @@ import { execFileSync } from 'node:child_process'
 import { relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import {
+  addedKeys,
+  advisoriesFor,
   agedOrExempt,
   ageHours,
   classify,
   cmpRaw,
   DEP_FIELDS,
+  decideFamily,
   execFileP,
   failures,
+  familyKeyOf,
+  freshVersionsOf,
   globToRegExp,
+  groupFamilies,
   groupOutdated,
+  invalidExcludeEntries,
   isExcluded,
   isVersionLike,
   listWorkspaceProjects,
+  malwareCoveringAny,
   mdTable,
   minAgeMinutesFromYaml,
   npmView,
   npmViewFields,
+  overrideUpdate,
+  packageMalwareFor,
   parseExcludes,
   parseLock,
   parseSelector,
   parseVersion,
   pickAgedTarget,
   pool,
+  provenanceOf,
+  provenanceVerdict,
   readJson,
   readText,
   readWorkspaceYaml,
@@ -167,9 +183,12 @@ const FT_FIELDS = [
 const DEP_MAPS = ['dependencies', 'optionalDependencies', 'peerDependencies']
 const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall']
 
-// The four checks that replace the gate, for one fresh version `f` against a trusted
-// reference `b` (the version that lands otherwise, or the newest aged version).
-function redFlagsOf(label, f, b) {
+// The metadata checks for one fresh version `f` against a trusted reference `b` (the
+// version that lands otherwise, or the aged release below it). Provenance, advisories and
+// the dependency walk run separately (see checkVersion). Flags of the compromise class (a
+// publisher change, a new or changed install script) also go into `compromise`: they block
+// every fresh version of the package and its family, with no fallback.
+function redFlagsOf(label, f, b, compromise = []) {
   if (!f || !b) {
     return [`${label}: npm metadata unavailable, cannot check`]
   }
@@ -178,18 +197,19 @@ function redFlagsOf(label, f, b) {
   if (!f._npmUser || !b._npmUser) {
     flags.push(`${label}: publisher unknown, cannot compare`)
   } else if (who(f) !== who(b)) {
-    flags.push(`${label}: publisher changed ${who(b)} → ${who(f)}`)
-  }
-  if (b['dist.attestations'] && !f['dist.attestations']) {
-    flags.push(`${label}: provenance attestation dropped`)
+    const msg = `${label}: publisher changed ${who(b)} → ${who(f)}`
+    flags.push(msg)
+    compromise.push(msg)
   }
   for (const s of INSTALL_SCRIPTS) {
     if (f.scripts?.[s] && f.scripts?.[s] !== b.scripts?.[s]) {
-      flags.push(`${label}: new or changed ${s} script`)
+      const msg = `${label}: new or changed ${s} script`
+      flags.push(msg)
+      compromise.push(msg)
     }
   }
   for (const m of DEP_MAPS) {
-    const added = Object.keys(f[m] ?? {}).filter((d) => !(d in (b[m] ?? {})))
+    const added = addedKeys(f[m], b[m])
     if (added.length) {
       flags.push(`${label}: new ${m}: ${added.join(', ')}`)
     }
@@ -197,52 +217,176 @@ function redFlagsOf(label, f, b) {
   return flags
 }
 
-// For each fresh release, check it against the version that lands otherwise (`base`),
-// then walk its dependency ranges (up to 4 levels). A range that no aged version meets
-// needs an exact exclude entry: take the EARLIEST fresh version that meets it (later ones
-// stay gated, so pnpm resolves to it) and check it against the aged release below it.
-// Candidates that would cross a major are skipped: a major is never fast-tracked.
+// Fast-track: a fresh patch or minor (younger than the gate) that passes all checks AND has
+// verified provenance (same repository and workflow as its reference) is let through by
+// default ('auto') with exact `name@version` exclude entries. A clean one without verified
+// provenance is 'needs-approval'. No person reviews an 'auto' one, so every check fails
+// closed: a check that cannot run is a red flag.
+//
+// For each candidate, checkVersion() tests one fresh version against the version that lands
+// otherwise (`base`): the metadata checks, then its dependency ranges (up to 4 levels). A
+// range that no aged version meets needs an exact exclude entry: take the EARLIEST fresh
+// version that meets it (later ones stay gated, so pnpm resolves to it) and check it against
+// the aged release below it. Every entry of the exclude set then gets the advisory check
+// and the provenance-source check.
+//
+// Candidates that move together form a family (groupFamilies). decideFamily() checks every
+// fresh version: a compromise flag on any of them blocks the family with no fallback.
+// Otherwise it picks the newest level where every member is clean (older fresh versions are
+// a fallback for other flags). One red flag in the family blocks the whole family. A fresh
+// major is never fast-tracked.
 async function fastTrackCandidates(items, ctx) {
   const viewCache = new Map(
     [...ctx.views].map(([n, v]) => [n, Promise.resolve(v)])
   )
-  const viewOf = (n) => {
-    if (!viewCache.has(n)) {
-      viewCache.set(n, npmView(n, root))
+  const cached = (map, k, fn) => {
+    if (!map.has(k)) {
+      map.set(k, fn())
     }
-    return viewCache.get(n)
+    return map.get(k)
   }
+  const viewOf = (n) => cached(viewCache, n, () => npmView(n, root))
   const metaCache = new Map()
-  const metaOf = (spec) => {
-    if (!metaCache.has(spec)) {
-      metaCache.set(spec, npmViewFields(spec, FT_FIELDS, root))
-    }
-    return metaCache.get(spec)
-  }
+  const metaOf = (spec) =>
+    cached(metaCache, spec, () => npmViewFields(spec, FT_FIELDS, root))
+  const advCache = new Map()
+  const advisoryOf = (name, version) =>
+    cached(advCache, `${name}@${version}`, () => advisoriesFor(name, version))
+  const provCache = new Map()
+  const provOf = (name, version) =>
+    cached(provCache, `${name}@${version}`, () => provenanceOf(name, version))
+  const pkgMalwareCache = new Map()
+  const pkgMalwareOf = (name) =>
+    cached(pkgMalwareCache, name, () => packageMalwareFor(name))
+
   const skipped = []
-  const eligible = items.filter(({ entry, base }) => {
-    if (cmpRaw(entry.registryLatest, base) <= 0) {
-      return false // the dist-tag is not above what lands anyway: nothing to fast-track
+  const eligible = []
+  for (const { entry, base } of items) {
+    const view = await viewOf(entry.name)
+    if (!view) {
+      skipped.push({
+        name: entry.name,
+        fresh: entry.registryLatest,
+        reason: 'registry data unavailable: cannot list the fresh versions',
+      })
+      continue
     }
-    if (classify(base, entry.registryLatest).safe) {
-      return true
+    const fresh = freshVersionsOf(
+      view,
+      base,
+      ctx.minAgeMs,
+      ctx.nowMs,
+      ctx.exempt(entry.name)
+    )
+    const majors = fresh.filter((x) => !classify(base, x.version).safe)
+    if (majors.length) {
+      const top = majors[majors.length - 1].version
+      skipped.push({
+        name: entry.name,
+        fresh: top,
+        reason: `${classify(base, top).bumpType} above ${base}: wait, then review it as a major`,
+      })
     }
-    skipped.push({
-      name: entry.name,
-      fresh: entry.registryLatest,
-      reason: `${classify(base, entry.registryLatest).bumpType} above ${base}: wait, then review it as a major`,
-    })
-    return false
-  })
-  const candidates = await pool(eligible, 4, async ({ entry, base }) => {
-    const fresh = entry.registryLatest
+    const ok = fresh.filter((x) => classify(base, x.version).safe).reverse()
+    if (ok.length) {
+      eligible.push({ id: String(eligible.length), entry, base, fresh: ok })
+    }
+  }
+
+  const splitSpec = (spec) => {
+    const at = spec.lastIndexOf('@')
+    return [spec.slice(0, at), spec.slice(at + 1)]
+  }
+
+  // The advisory and provenance checks for one exclude entry, against its reference.
+  // Returns { flags, compromise (malware hits, provenance dropped or changed), verified
+  // (both sides have provenance with the same repository and workflow) }.
+  async function networkFlags({ spec, comparedWith }) {
+    const [name, version] = splitSpec(spec)
+    const flags = []
+    const compromise = []
+    const adv = await advisoryOf(name, version)
+    if (adv.error) {
+      flags.push(
+        `${spec}: advisory check cannot run, cannot check (${adv.error})`
+      )
+    } else {
+      for (const h of adv.hits) {
+        const msg = `${spec}: ${h.type} advisory ${h.ghsa} (${h.severity}${h.withdrawn ? ', withdrawn' : ''})`
+        flags.push(msg)
+        // Only malware blocks every fresh version. A reviewed advisory flags this version
+        // only, so the fix release above it can still be the fast-track.
+        if (h.type === 'malware') {
+          compromise.push(msg)
+        }
+      }
+    }
+    if (!comparedWith) {
+      // Flagged in the walk: no aged version to compare with.
+      return { flags, compromise, verified: false }
+    }
+    const [fm, bm] = await Promise.all([
+      metaOf(spec),
+      metaOf(`${name}@${comparedWith}`),
+    ])
+    if (!fm || !bm) {
+      // Flagged by redFlagsOf: metadata unavailable.
+      return { flags, compromise, verified: false }
+    }
+    const refHas = !!bm['dist.attestations']
+    const freshHas = !!fm['dist.attestations']
+    const [ri, fi] = await Promise.all([
+      refHas ? provOf(name, comparedWith) : null,
+      refHas && freshHas ? provOf(name, version) : null,
+    ])
+    const pv = provenanceVerdict(
+      spec,
+      { has: refHas, info: ri },
+      { has: freshHas, info: fi }
+    )
+    return {
+      flags: [...flags, ...pv.flags],
+      compromise: [...compromise, ...pv.compromise],
+      verified: pv.verified,
+    }
+  }
+
+  // Malware advisories on the whole package that cover any of its fresh versions: a
+  // compromise flag for the family. A failed query blocks too (fail closed).
+  async function packageCheck(m) {
+    const r = await pkgMalwareOf(m.name)
+    const hits = r.error ? null : malwareCoveringAny(r.list, m.name, m.fresh)
+    if (hits == null) {
+      return {
+        compromiseFlags: [
+          `${m.name}: package malware advisory check cannot run, cannot check (${r.error ?? 'incomplete answer'})`,
+        ],
+      }
+    }
+    return {
+      compromiseFlags: hits.map(
+        (h) =>
+          `${m.name}@${h.version}: malware advisory ${h.ghsa} on the package${h.withdrawn ? ' (withdrawn)' : ''}`
+      ),
+    }
+  }
+
+  const checkCache = new Map()
+  const checkVersion = (item, fresh) =>
+    cached(checkCache, `${item.entry.name}@${fresh} vs ${item.base}`, () =>
+      checkVersionUncached(item, fresh)
+    )
+
+  async function checkVersionUncached({ entry, base }, fresh) {
+    const label = `${entry.name}@${fresh}`
     const [f, b] = await Promise.all([
-      metaOf(`${entry.name}@${fresh}`),
+      metaOf(label),
       metaOf(`${entry.name}@${base}`),
     ])
-    const redFlags = redFlagsOf(entry.name, f, b)
+    const compromise = []
+    const redFlags = redFlagsOf(label, f, b, compromise)
     const notes = []
-    const excludeSet = [{ spec: `${entry.name}@${fresh}`, comparedWith: base }]
+    const excludeSet = [{ spec: label, comparedWith: base }]
     // One dependency edge: resolve an alias, flag non-registry specs, and say whether the
     // range needs a fresh version (`need`) or is already met by an aged one.
     const inspect = async (owner, ref, m, key, spec) => {
@@ -296,7 +440,7 @@ async function fastTrackCandidates(items, ctx) {
         Object.entries(from?.[m] ?? {}).map(([key, spec]) => ({ m, key, spec }))
       )
 
-    let frontier = [{ from: f, ref: b, owner: entry.name, ownerVersion: fresh }]
+    let frontier = [{ from: f, ref: b, owner: label, ownerVersion: fresh }]
     const MAX_DEPTH = 4
     for (let depth = 0; depth < MAX_DEPTH && frontier.length; depth++) {
       // Pass 1: fetch the whole level at once and find every edge that needs a fresh
@@ -364,7 +508,7 @@ async function fastTrackCandidates(items, ctx) {
         ])
         redFlags.push(
           ...(n.trusted
-            ? redFlagsOf(`${n.dep}@${n.need}`, nf, nb)
+            ? redFlagsOf(`${n.dep}@${n.need}`, nf, nb, compromise)
             : [`${n.dep}@${n.need}: no aged version to compare with`])
         )
         next.push({
@@ -393,32 +537,127 @@ async function fastTrackCandidates(items, ctx) {
         }
       }
     }
-    const iso = (await viewOf(entry.name))?.time?.[fresh]
-    const age = iso ? ageHours(iso, ctx.nowMs) : null
+    // Advisories and provenance source for every exclude entry, a few at a time.
+    const net = await pool(excludeSet, 4, networkFlags)
+    for (const r of net) {
+      redFlags.push(...r.flags)
+      compromise.push(...r.compromise)
+    }
     return {
-      name: entry.name,
-      kind: entry.kind,
-      current: entry.current,
-      landsWithoutFastTrack: base === entry.current ? null : base,
-      fresh,
-      bumpType: classify(base, fresh).bumpType,
-      ageHours: age,
-      eligibleInHours:
-        age == null ? null : Math.max(0, Math.ceil(ctx.minAgeHours - age)),
-      redFlags,
+      redFlags: [...new Set(redFlags)],
+      compromiseFlags: [...new Set(compromise)],
+      // Entries without verified provenance: a clean version then needs approval.
+      unverifiedProvenance: excludeSet
+        .filter((_, i) => !net[i].verified)
+        .map((x) => x.spec),
       notes,
-      // After approval: the command that lands it (null = only the lockfile regeneration
-      // moves it), and the packages whose changeset must name it.
-      upCommand: entry.bumpable
-        ? `pnpm -C '${root}' up -r --latest ${entry.name} ${entry.projects.map((p) => `--filter '${p}'`).join(' ')}`
-        : null,
-      changesetPackages: entry.changesetPackages ?? [],
-      // The exact entries to add, each checked against the version in `comparedWith`.
       excludeSet: excludeSet.map((x) => x.spec),
       checkedAgainst: excludeSet,
     }
+  }
+
+  // Phase 1: the newest fresh version of every candidate (its exclude set joins families).
+  const first = await pool(eligible, 4, (it) =>
+    checkVersion(it, it.fresh[0].version)
+  )
+  // Phase 2: families, then one decision per family (results of phase 1 are cached).
+  const groups = groupFamilies(
+    eligible.map((it, i) => ({
+      name: it.entry.name,
+      excludeSet: first[i].excludeSet,
+    }))
+  )
+  const decisions = await pool(groups, 2, (g) =>
+    decideFamily(
+      g.map((i) => ({
+        id: eligible[i].id,
+        name: eligible[i].entry.name,
+        fresh: eligible[i].fresh.map((x) => x.version),
+        item: eligible[i],
+      })),
+      (m, v) => checkVersion(m.item, v),
+      packageCheck
+    )
+  )
+
+  const candidates = []
+  const families = []
+  groups.forEach((g, gi) => {
+    const d = decisions[gi]
+    const names = g.map((i) => eligible[i].entry.name)
+    const family = names.map(familyKeyOf).find(Boolean) ?? names[0]
+    families.push({
+      family,
+      members: names,
+      versions: g.map(
+        (i) => `${eligible[i].entry.name}@${d.versions[eligible[i].id]}`
+      ),
+      // auto / needs-approval: the entries of the chosen versions. blocked: the entries of
+      // the newest versions, so a person can still approve them by name.
+      excludeSet: d.excludeSet,
+      redFlags: d.redFlags,
+      // The flags that blocked every fresh version with no fallback.
+      compromiseFlags: d.compromiseFlags,
+      // Exclude entries without verified provenance (the reason for 'needs-approval').
+      unverifiedProvenance: d.unverifiedProvenance,
+      decision: d.decision,
+    })
+    for (const i of g) {
+      const { id, entry, base, fresh } = eligible[i]
+      const version = d.versions[id]
+      const tried = d.tried[id]
+      const chosen = tried.find((t) => t.version === version)
+      const ownFlags = [
+        ...new Set([
+          ...d.packageFlags[id],
+          ...tried.flatMap((t) => t.redFlags),
+        ]),
+      ]
+      const info = fresh.find((x) => x.version === version)
+      candidates.push({
+        name: entry.name,
+        kind: entry.kind,
+        current: entry.current,
+        landsWithoutFastTrack: base === entry.current ? null : base,
+        family,
+        decision: d.decision,
+        // The version that the fast-track lets through ('auto'), or the newest tried one.
+        fresh: version,
+        bumpType: classify(base, version).bumpType,
+        ageHours: info?.ageHours ?? null,
+        eligibleInHours: info?.eligibleInHours ?? null,
+        // Own flags: none unless 'blocked'; then every flag of every fresh version of this
+        // member. A member can be clean and still blocked by a sibling (blockedByFamily).
+        redFlags: d.decision === 'blocked' ? ownFlags : [],
+        blockedByFamily: d.decision === 'blocked' && ownFlags.length === 0,
+        // auto / needs-approval: the flags of newer fresh versions that were skipped.
+        skippedFlags: d.skippedFlags[id],
+        // Exclude entries of `fresh` without verified provenance on both sides.
+        provenanceUnverified: chosen?.unverifiedProvenance ?? [],
+        notes: chosen?.notes ?? [],
+        // The command that lands it (null = only the lockfile regeneration moves it), and
+        // the packages whose changeset must name it.
+        upCommand: entry.bumpable
+          ? `pnpm -C '${root}' up -r --latest ${entry.name} ${entry.projects.map((p) => `--filter '${p}'`).join(' ')}`
+          : null,
+        changesetPackages: entry.changesetPackages ?? [],
+        // The exact entries this version needs, each checked against `comparedWith`.
+        excludeSet: chosen?.excludeSet ?? [],
+        checkedAgainst: chosen?.checkedAgainst ?? [],
+        // Every fresh version (all are checked), newest first, with its own flags.
+        tried: tried.map((t) => ({
+          version: t.version,
+          ageHours:
+            fresh.find((x) => x.version === t.version)?.ageHours ?? null,
+          redFlags: t.redFlags,
+          compromiseFlags: t.compromiseFlags,
+          provenanceVerified: t.unverifiedProvenance.length === 0,
+          excludeSet: t.excludeSet,
+        })),
+      })
+    }
   })
-  return { candidates, skipped }
+  return { candidates, skipped, families }
 }
 
 const isRuntimeField = (f) =>
@@ -627,9 +866,18 @@ async function main() {
       tooFresh.push({
         ...base,
         registryLatestAgeHours: h,
+        // Hours until the OLDEST newer release passes the gate (not registryLatest).
         hoursUntilEligible:
           oldest == null ? null : Math.max(0, Math.ceil(minAgeHours - oldest)),
         ageUnknown: !view,
+        // Every newer release, oldest first, each with its own age and eligible time.
+        freshVersions: freshVersionsOf(
+          view,
+          info.current,
+          minAgeMs,
+          nowMs,
+          exempt(name)
+        ),
       })
       continue
     }
@@ -661,6 +909,13 @@ async function main() {
         registryLatestAgeHours: rAge,
         hoursUntilEligible:
           rAge == null ? null : Math.max(0, Math.ceil(minAgeHours - rAge)),
+        freshVersions: freshVersionsOf(
+          view,
+          target,
+          minAgeMs,
+          nowMs,
+          exempt(name)
+        ),
         note: 'no bumpable specifier; the lockfile regeneration moves it',
       })
       continue
@@ -676,10 +931,19 @@ async function main() {
       target,
       heldBack,
       registryLatestAgeHours: latestAge,
+      // Hours until registryLatest passes the gate. freshVersions gives each version.
       hoursUntilEligible:
         latestAge == null
           ? null
           : Math.max(0, Math.ceil(minAgeHours - latestAge)),
+      // Every release above the target that the gate holds back, oldest first.
+      freshVersions: freshVersionsOf(
+        view,
+        target,
+        minAgeMs,
+        nowMs,
+        exempt(name)
+      ),
       bumpType: cls.bumpType,
       reason: cls.reason,
       changesetPackages,
@@ -738,6 +1002,27 @@ async function main() {
       }
     }
   }
+
+  // New dependencies that an aged target brings: no block (the gate covers the target),
+  // but each new package lands unseen, so the table names it. null = the check failed.
+  await pool(safe, 8, async (e) => {
+    const fields = ['dependencies', 'optionalDependencies']
+    const [t, c] = await Promise.all([
+      npmViewFields(`${e.name}@${e.target}`, fields, root),
+      npmViewFields(`${e.name}@${e.current}`, fields, root),
+    ])
+    if (!t || !c) {
+      e.newDependencies = null
+      return
+    }
+    const now = { ...t.dependencies, ...t.optionalDependencies }
+    e.newDependencies = addedKeys(now, {
+      ...c.dependencies,
+      ...c.optionalDependencies,
+    })
+      .map((d) => `${d}@${now[d]}`)
+      .sort()
+  })
 
   // Exact-version overrides on packages that no project declares (transitive holds).
   for (const o of overrides.filter(
@@ -885,6 +1170,23 @@ async function main() {
     })
   }
 
+  // Overrides that fall behind: lifts (`ws@<=8.22.0: 8.22.0`) and caret or tilde floors
+  // with a newer aged release in the same major, and exact pins without a hold comment
+  // (`check by hand`). Never across a major.
+  const overrideUpdates = []
+  for (const o of overrides) {
+    const u = overrideUpdate(
+      o,
+      views.get(o.name),
+      minAgeMs,
+      nowMs,
+      exempt(o.name)
+    )
+    if (u) {
+      overrideUpdates.push({ file: 'pnpm-workspace.yaml', ...u })
+    }
+  }
+
   // Cross-check with pnpm's own resolver: the gated `pnpm outdated` `latest` must equal
   // the predicted target. A difference means the prediction drifted from pnpm.
   const gated = groupOutdated(gatedRaw)
@@ -902,20 +1204,47 @@ async function main() {
     }
   }
 
-  // Fast-track candidates: a fresh release (younger than the gate) that the user may let
-  // through with an exact `name@version` exclude entry. Checks replace the gate.
-  const { candidates: fastTrack, skipped: fastTrackSkipped } =
-    await fastTrackCandidates(
-      [
-        // Not needsApproval: its target is an unapproved major, and a major is never
-        // fast-tracked (also not a fresh patch on top of one).
-        ...[...safe, ...regen]
-          .filter((e) => e.heldBack)
-          .map((e) => ({ entry: e, base: e.target })),
-        ...tooFresh.map((e) => ({ entry: e, base: e.current })),
-      ],
-      { minAgeMs, nowMs, minAgeHours, exempt, views }
+  // Fast-track candidates: a fresh patch or minor (younger than the gate) that passes every
+  // check goes through by default ('auto') with exact `name@version` exclude entries. The
+  // checks replace the gate; one that cannot run blocks the candidate.
+  const {
+    candidates: fastTrack,
+    skipped: fastTrackSkipped,
+    families: fastTrackFamilies,
+  } = await fastTrackCandidates(
+    [
+      // Not needsApproval: its target is an unapproved major, and a major is never
+      // fast-tracked (also not a fresh patch on top of one).
+      ...[...safe, ...regen]
+        .filter((e) => e.heldBack)
+        .map((e) => ({ entry: e, base: e.target })),
+      ...tooFresh.map((e) => ({ entry: e, base: e.current })),
+    ],
+    { minAgeMs, nowMs, minAgeHours, exempt, views }
+  )
+  // The exact entries that every 'auto' family needs: the default fast-track. Fail closed
+  // on any entry that is not one exact stable version (never a name, range, tag or glob).
+  const excludesOf = (decision) =>
+    [
+      ...new Set(
+        fastTrackFamilies
+          .filter((f) => f.decision === decision)
+          .flatMap((f) => f.excludeSet)
+      ),
+    ].sort()
+  const autoExcludes = excludesOf('auto')
+  // Clean, but without verified provenance: the user approves these by name.
+  const needsApprovalExcludes = excludesOf('needs-approval')
+  const badExcludes = invalidExcludeEntries([
+    ...autoExcludes,
+    ...needsApprovalExcludes,
+  ])
+  if (badExcludes.length) {
+    process.stderr.write(
+      `autoExcludes or needsApprovalExcludes hold entries that are not exact name@x.y.z: ${badExcludes.join(', ')}. No plan written.\n`
     )
+    process.exit(2)
+  }
 
   const staleExcludes = []
   for (const m of excludes) {
@@ -954,6 +1283,15 @@ async function main() {
       overrideMoves: overrideMoves.length,
       peerFloors: peerFloors.length,
       fastTrack: fastTrack.length,
+      fastTrackAuto: fastTrack.filter((x) => x.decision === 'auto').length,
+      fastTrackNeedsApproval: fastTrack.filter(
+        (x) => x.decision === 'needs-approval'
+      ).length,
+      fastTrackBlocked: fastTrack.filter((x) => x.decision === 'blocked')
+        .length,
+      autoExcludes: autoExcludes.length,
+      needsApprovalExcludes: needsApprovalExcludes.length,
+      overrideUpdates: overrideUpdates.length,
       targetMismatch: targetMismatch.length,
       degraded: failures.length,
       staleExcludes: staleExcludes.length,
@@ -971,9 +1309,13 @@ async function main() {
     changesetIfApproved,
     peerFloors,
     otherOverrides,
+    overrideUpdates,
     targetMismatch,
     fastTrack,
+    fastTrackFamilies,
     fastTrackSkipped,
+    autoExcludes,
+    needsApprovalExcludes,
     staleExcludes,
     // Calls that failed. Non-null means the plan is incomplete: rerun, do not trust "none".
     degraded: failures.length ? failures : null,
@@ -998,12 +1340,25 @@ function printSummary(plan) {
     x.where.length > 3
       ? `${x.where.slice(0, 3).join(', ')} +${x.where.length - 3}`
       : x.where.join(', ')
+  // "fresh: 14.11.1 (22.4h old, eligible in ~1.6h), 14.12.0 (2.8h old, eligible in ~21.2h)"
+  const freshList = (list) =>
+    list
+      .map(
+        (f) =>
+          `${f.version} (${f.ageHours ?? '?'}h old, eligible in ~${f.eligibleInHours ?? '?'}h)`
+      )
+      .join(', ')
   const notes = (x) =>
     [
       where(x),
-      x.heldBack
-        ? `newest ${x.registryLatest} is <${h}h, eligible in ~${x.hoursUntilEligible ?? '?'}h`
+      x.freshVersions?.length
+        ? `fresh (<${h}h): ${freshList(x.freshVersions)}`
         : '',
+      x.newDependencies === null
+        ? 'new dependencies: UNKNOWN (npm call failed)'
+        : x.newDependencies?.length
+          ? `new dependencies: ${x.newDependencies.join(', ')}`
+          : '',
       x.ifDeclined ? `if declined: ${x.ifDeclined}` : '',
       x.requires?.length ? `goes with ${x.requires.join(', ')}` : '',
       x.peerRanges.length ? `peer: ${x.peerRanges.join('; ')}` : '',
@@ -1058,31 +1413,69 @@ function printSummary(plan) {
     )
   )
   section(
-    'Fast-track candidates (fresh releases the gate holds back)',
+    'Fast-track candidates (auto = let through by default; needs approval = clean, but no verified provenance; BLOCKED = red flag)',
     plan.fastTrack,
     (l) =>
       mdTable(
         [
           'Package',
           'Kind',
-          'Fresh',
+          'Family',
+          'Decision',
+          'Version',
           'Age',
           'Eligible in',
+          'Tried',
           'Red flags',
+          'Skipped newer versions',
           'Notes',
           'Exclude entries needed',
         ],
         l.map((x) => [
           `\`${x.name}\``,
           kindLabel[x.kind] ?? x.kind,
+          x.family,
+          x.decision === 'blocked'
+            ? 'BLOCKED'
+            : x.decision === 'needs-approval'
+              ? `needs approval (no verified provenance: ${x.provenanceUnverified.join(', ')})`
+              : 'auto',
           x.fresh,
           x.ageHours == null ? '?' : `${x.ageHours}h`,
           x.eligibleInHours == null ? '?' : `~${x.eligibleInHours}h`,
-          x.redFlags.length ? x.redFlags.join('; ') : 'none',
-          x.notes.length ? `${x.notes.length} lockstep pins` : '',
+          x.tried
+            .map((t) => `${t.version} (${t.redFlags.length} flags)`)
+            .join(', '),
+          x.redFlags.length
+            ? x.redFlags.join('; ')
+            : x.blockedByFamily
+              ? 'none of its own: a family member is flagged'
+              : 'none',
+          x.skippedFlags.length ? x.skippedFlags.join('; ') : '',
+          x.notes.length
+            ? `${x.notes.length} lockstep pins, exclude set of ${x.excludeSet.length}`
+            : '',
           x.excludeSet.join(', '),
         ])
       )
+  )
+  const fams = plan.fastTrackFamilies.filter((f) => f.members.length > 1)
+  if (fams.length) {
+    e.write(
+      `\nFamilies (one red flag blocks every member): ${fams
+        .map(
+          (f) =>
+            `${f.family} [${f.versions.join(', ')}] ${f.decision === 'blocked' ? `BLOCKED: ${f.redFlags.length} flags` : `${f.decision}, exclude set of ${f.excludeSet.length}`}`
+        )
+        .join('; ')}\n`
+    )
+  }
+  e.write(
+    `\n**autoExcludes (${plan.autoExcludes.length}):** ${
+      plan.autoExcludes.map((x) => `\`${x}\``).join(', ') || 'none'
+    }\n\n**needsApprovalExcludes (${plan.needsApprovalExcludes.length}):** ${
+      plan.needsApprovalExcludes.map((x) => `\`${x}\``).join(', ') || 'none'
+    }\n`
   )
   if (plan.fastTrackSkipped.length) {
     e.write(
@@ -1103,6 +1496,20 @@ function printSummary(plan) {
           x.lockVersions.join(', ') || '—',
           x.newestAged ?? '?',
           x.reason ?? '',
+        ])
+      )
+  )
+  section(
+    'Override updates (lifts and floors behind the newest aged release)',
+    plan.overrideUpdates,
+    (l) =>
+      mdTable(
+        ['File', 'Override now', 'Proposed', 'Reason'],
+        l.map((x) => [
+          x.file,
+          `\`${x.key}: ${x.value}\``,
+          `\`${x.newKey}: ${x.newValue}\``,
+          x.reason,
         ])
       )
   )
@@ -1133,13 +1540,13 @@ function printSummary(plan) {
     plan.tooFresh,
     (l) =>
       mdTable(
-        ['Package', 'Current', 'Newest', 'Age', 'Eligible in'],
+        ['Package', 'Current', 'Fresh versions (age, eligible in)'],
         l.map((x) => [
           `\`${x.name}\``,
           x.current,
-          x.registryLatest,
-          x.ageUnknown ? 'unknown' : `${x.registryLatestAgeHours}h`,
-          x.ageUnknown ? '?' : `~${x.hoursUntilEligible}h`,
+          x.ageUnknown
+            ? `${x.registryLatest} (age unknown)`
+            : freshList(x.freshVersions ?? []) || x.registryLatest,
         ])
       )
   )

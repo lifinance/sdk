@@ -38,9 +38,9 @@ repo and fix the note. Find the repo from `git remote get-url origin`.
   - After a `@playwright/test` bump, run `pnpm exec playwright install`.
 - **Earlier holds.** Read the latest merged `chore: bump packages` PR (step 3). Do not trust a
   PR number written here; it gets old after each bump.
-- **Fast-track.** Earlier bumps took fresh releases on purpose (the Dynamic SDK 5.9.6 set,
-  Next.js 16.4.0, React 19.3.0). The comment above `minimumReleaseAgeExclude` records them.
-  See `fast-track.md` for the rules.
+- **Fast-track.** Since 2026-11-10, the user wants each fresh patch and minor that passes
+  the security checks in the bump (see `fast-track.md`). The comment above
+  `minimumReleaseAgeExclude` records each one with its date.
 - **Strict gate (a policy option for the user).** None of the repos sets
   `minimumReleaseAge`. So pnpm uses its default, which is not strict. If no mature version
   fits, pnpm takes a fresh one. It also adds that version to `minimumReleaseAgeExclude`. Step 6 catches every

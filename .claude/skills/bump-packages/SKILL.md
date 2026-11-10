@@ -3,7 +3,8 @@ name: bump-packages
 description: >-
   Routine dependency bump for this pnpm monorepo: every external npm dependency, the
   SHA-pinned GitHub Actions, tool versions in CI, and pnpm itself go to their latest
-  release that is older than the 24h release-age gate. The work happens in a fresh
+  release that is older than the 24h release-age gate. A fresh patch or minor that passes
+  the security checks goes in as a fast-track. The work happens in a fresh
   worktree from the latest origin/main. The skill shows one upgrade table and waits for
   approval, then commits, validates, and opens a "chore: bump packages" PR. Use it when
   the user types /bump-packages or says "bump packages", "bump deps", "update
@@ -37,9 +38,12 @@ differences between the repos. The source of truth is always the repo itself:
   default is not strict: when no aged version fits a range, pnpm takes a fresh one and adds
   it to `minimumReleaseAgeExclude`. Step 6 stops on each such entry. The scripts use the same rule for npm, Actions, CI tools, and pnpm. The npm script
   cross-checks its targets with pnpm's own resolver. A held-back version shows in the
-  table, so it is not silently lost. The only way past the gate is an approved
-  **fast-track**: an exact `name@version` entry in `minimumReleaseAgeExclude` (see
-  `references/fast-track.md`). Never install with `--config.minimum-release-age=0`.
+  table, so it is not silently lost. The only way past the gate is a **fast-track**: an
+  exact `name@version` entry in `minimumReleaseAgeExclude`. A fresh patch or minor whose
+  whole exclude set passes the security checks, with provenance on both sides, is
+  fast-tracked by default. Without provenance it needs the user. A red flag blocks it. A major is never fast-tracked without the user's approval. Actions and CI
+  tools have no exclude list, so their gate stays. See `references/fast-track.md`.
+  Never install with `--config.minimum-release-age=0`.
 - **Holds stay held.** An override with an exact version keeps that version. An example
   is `vite-plugin-node-polyfills: "0.26.0"`. The comment above the override decides what
   it is. A comment that gives a regression is a hold. A comment about copies, or no
@@ -72,24 +76,71 @@ differences between the repos. The source of truth is always the repo itself:
 ## 1. Make a fresh worktree from the latest main
 
 `REPO` is the main checkout of the repo to bump. When the user names a repo, or a
-multi-repo run passes one, set it. Otherwise it defaults to the repo that holds this skill.
-Then check for an open bump PR. A second bump PR conflicts on the lockfile.
+multi-repo run passes one, set it. Otherwise it defaults to the repo of the current
+directory. Then check for an open bump PR. A second bump PR conflicts on the lockfile.
 
 ```bash
 SKILL=/absolute/path/to/this/skill/folder          # the folder that holds this SKILL.md
-REPO=${REPO:-$(dirname "$(git -C "$SKILL" rev-parse --path-format=absolute --git-common-dir)")}
+REPO=${REPO:-$(dirname "$( { git rev-parse --path-format=absolute --git-common-dir ||
+  git -C "$SKILL" rev-parse --path-format=absolute --git-common-dir; } 2>/dev/null)")}
 GH_REPO=$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)
 gh pr list --repo "$GH_REPO" --state open --search '"chore: bump packages" in:title' \
   --json number,title,headRefName
 ```
 
-If an open bump PR exists, stop and ask the user. Otherwise continue. This is a new Bash
-call, so set the three variables again:
+**If an open bump PR exists**, continue on its branch (open-PR mode). Use this block
+instead of the next one. Never rebase or force-push a PR branch. Add the new commits after
+the old ones. Step 5.9 makes a new regeneration commit at the end. Step 8 updates the PR
+body instead of opening a new PR.
 
 ```bash
 SKILL=/absolute/path/to/this/skill/folder
-REPO=${REPO:-$(dirname "$(git -C "$SKILL" rev-parse --path-format=absolute --git-common-dir)")}
+REPO=<the same value as above>
+GH_REPO=<the same value as above>
+PR=<the number of the open bump PR>
+BRANCH=<its headRefName>
+BASE="origin/$BRANCH"                              # lockfile-report compares with it
+TMP=${TMPDIR:-/tmp}; TMP=${TMP%/}
+DATE=$(date +%Y-%m-%d)
+git -C "$REPO" fetch origin --prune
+WT=$(git -C "$REPO" worktree list --porcelain |
+  awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=substr($0,10)} $0==b{print w}')
+if [ -n "$WT" ]; then
+  [ -z "$(git -C "$WT" status --porcelain)" ] || { echo "STOP: $WT has local changes"; exit 1; }
+else
+  WT="$REPO/.claude/worktrees/bump-$DATE-pr$PR"
+  git -C "$REPO" worktree add "$WT" "$BRANCH"     # tracks origin/$BRANCH
+fi
+git -C "$WT" pull --ff-only || { echo "STOP: the local branch differs from $BASE"; exit 1; }
+OUT=$(mktemp -d "$TMP/bump-$(basename "$REPO")-$DATE-pr$PR-XXXX")
+printf 'SKILL=%q\nREPO=%q\nGH_REPO=%q\nDATE=%q\nBRANCH=%q\nWT=%q\nOUT=%q\nBASE=%q\nPR=%q\n' \
+  "$SKILL" "$REPO" "$GH_REPO" "$DATE" "$BRANCH" "$WT" "$OUT" "$BASE" "$PR" > "$OUT/env.sh"
+echo "env: $OUT/env.sh"
+cd "$WT"
+if ! git merge --no-edit origin/main; then
+  # Only the lockfile may conflict. Step 5.9 regenerates it anyway.
+  [ "$(git diff --name-only --diff-filter=U)" = pnpm-lock.yaml ] ||
+    { echo "STOP: merge conflict outside pnpm-lock.yaml"; exit 1; }
+  git checkout origin/main -- pnpm-lock.yaml && pnpm install --lockfile-only &&
+    git diff --quiet -- pnpm-workspace.yaml ||
+    { echo "STOP: pnpm added exclude entries by itself; show them to the user"; exit 1; }
+  git add pnpm-lock.yaml && git commit --no-edit
+fi
+COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm install --frozen-lockfile
+pnpm build
+git restore -- $(git ls-files '*version.ts')
+git ls-files '*pnpm-lock.yaml' ':!pnpm-lock.yaml'   # extra pnpm projects, e.g. examples/node
+```
+
+**Without an open bump PR**, make a new worktree. This is a new Bash call, so set the
+variables again:
+
+```bash
+SKILL=/absolute/path/to/this/skill/folder
+REPO=${REPO:-$(dirname "$( { git rev-parse --path-format=absolute --git-common-dir ||
+  git -C "$SKILL" rev-parse --path-format=absolute --git-common-dir; } 2>/dev/null)")}
 GH_REPO=$(gh repo view "$(git -C "$REPO" remote get-url origin)" --json nameWithOwner -q .nameWithOwner)
+BASE=""                                           # empty: there is no open bump PR
 TMP=${TMPDIR:-/tmp}; TMP=${TMP%/}                  # TMPDIR is not set on every shell
 DATE=$(date +%Y-%m-%d)
 git -C "$REPO" fetch origin --prune
@@ -105,8 +156,8 @@ WT="$REPO/.claude/worktrees/bump-$DATE$SFX"
 BRANCH="chore/bump-deps-${DATE//-/}$SFX"
 OUT="$TMP/bump-$(basename "$REPO")-$DATE$SFX"; mkdir -p "$OUT" || exit 1
 git -C "$REPO" worktree add --no-track -b "$BRANCH" "$WT" origin/main
-printf 'SKILL=%q\nREPO=%q\nGH_REPO=%q\nDATE=%q\nBRANCH=%q\nWT=%q\nOUT=%q\n' \
-  "$SKILL" "$REPO" "$GH_REPO" "$DATE" "$BRANCH" "$WT" "$OUT" > "$OUT/env.sh"
+printf 'SKILL=%q\nREPO=%q\nGH_REPO=%q\nDATE=%q\nBRANCH=%q\nWT=%q\nOUT=%q\nBASE=%q\n' \
+  "$SKILL" "$REPO" "$GH_REPO" "$DATE" "$BRANCH" "$WT" "$OUT" "$BASE" > "$OUT/env.sh"
 echo "env: $OUT/env.sh"
 cd "$WT"
 COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm install --frozen-lockfile
@@ -183,10 +234,19 @@ node "$SKILL/scripts/analyze-outdated.mjs"  --root "$WT/examples/node" > "$OUT/n
   needs approval. `otherOverrides`: range-selector (`ws@<=8.22.0`) and path (`a>b`)
   overrides with the newest aged version. Recheck that each lift or floor is still current.
 - `tooFresh`: updates where every newer version is younger than the gate.
-- `fastTrack`: every fresh release that the gate holds back, with red flags and the exact
-  exclude entries that installing it needs. Every entry of `excludeSet` is checked
-  (`checkedAgainst`). `fastTrackSkipped` lists fresh majors: a major is never
-  fast-tracked. See `references/fast-track.md`.
+- `fastTrack`: every fresh release that the gate holds back, with red flags, the
+  versions it `tried`, the flags of skipped newer versions (`skippedFlags`), and
+  `decision`: `auto`, `needs-approval` (no provenance on one side), or `blocked`. `fastTrackFamilies` groups
+  the packages that move together, with one `excludeSet` and one decision. `autoExcludes`
+  is the list for step 5.1. `needsApprovalExcludes` holds the sets that need the user. `fastTrackSkipped` lists fresh majors. See
+  `references/fast-track.md`.
+- `freshVersions` (on `safe` and `tooFresh` entries): each version newer than the aged
+  target, with its own age and eligible time.
+- `newDependencies` (on `safe` entries): dependencies that the aged target adds. The gate
+  does not check them. Name each one in the table, and read what it is.
+- `overrideUpdates`: range-selector, path, and floor overrides that are behind, with the new
+  key and value. Step 5.2 applies the `lift:` and `floor:` entries. A `check by hand`
+  entry is a proposal for step 4.
 - `targetMismatch`: entries where the predicted target differs from pnpm's gated resolver.
   Trust pnpm, and report the difference.
 - `changeset`: each package that Changesets versions, with its safe runtime bumps. The
@@ -225,7 +285,9 @@ Do these checks next:
   # pnpm rebuilds a deleted lockfile from this copy; move it aside, or nothing changes.
   mv node_modules/.pnpm/lock.yaml "$OUT/modules-lock.backup"
   rm pnpm-lock.yaml && pnpm install --lockfile-only > "$OUT/regen-preview.log" 2>&1
-  node "$SKILL/scripts/lockfile-report.mjs" --root "$WT" > "$OUT/regen-preview.json" 2> "$OUT/regen-preview.md"
+  cp pnpm-lock.yaml "$OUT/regen-preview-lock.yaml"   # keep it for later diffs
+  node "$SKILL/scripts/lockfile-report.mjs" --root "$WT" ${BASE:+--base=$BASE} \
+    > "$OUT/regen-preview.json" 2> "$OUT/regen-preview.md"
   pnpm audit --json > "$OUT/regen-preview-audit.json" 2>/dev/null || true
   git diff -- pnpm-workspace.yaml   # exclude entries that pnpm added by itself
   cp "$OUT/lock.backup" pnpm-lock.yaml && cp "$OUT/ws.backup" pnpm-workspace.yaml
@@ -233,6 +295,8 @@ Do these checks next:
   git status --short                # must be empty again
   ```
   If the preview says "identical to the base", it did not run: check the `mv` above.
+  Do the same for each extra pnpm project in its own folder, with its own file names. It
+  has no `node_modules/.pnpm/lock.yaml`, so skip the two `mv` lines there.
   Put the preview's results in the table, in the area "npm lockfile". Include the major
   jumps with their causes, the new splits, the added versions, and the exclude entries
   that pnpm added. A STOP in the preview is not an error here: each STOP item becomes a
@@ -265,8 +329,11 @@ Do these checks next:
   each major jump in the preview. A known
   hold from the last bump PR is not a new decision. An example is TypeScript 7 in some
   examples. Show it as "held (known)" with its reason. Do not research it again.
-- **Fast-track.** Review the `fastTrack` candidates as `references/fast-track.md`
-  describes. The default is to wait: the version lands on the next run anyway.
+- **Fast-track.** Read `fastTrackFamilies` and `autoExcludes` as
+  `references/fast-track.md` describes. An `auto` family goes in without a question. A
+  `needs-approval` family goes in only if the user names it. Report each `blocked`
+  family with its red flags, and each `skippedFlags` entry. Read the release notes of each
+  runtime fast-track for behavior changes that need a functional check.
 
 ## 4. Show the upgrade table and stop
 
@@ -275,13 +342,14 @@ Give the user one message that contains these items:
 1. **One table for all areas.** Use the template in `references/pr-body.md` ("Upgrade
    table"). The areas are npm runtime (released), npm runtime (private), npm dev, npm
    lockfile, GitHub Actions, CI tools, pnpm, and Node. The Plan column is one of: auto,
-   needs approval, held, lockfile regen, too fresh, or fast-track?. Add a short note in
+   needs approval, held, lockfile regen, too fresh, fast-track, fast-track? (needs
+   approval), or blocked. Add a short note in
    brackets when it helps, for example "auto (2.57.17 is <24h, eligible in ~5h)". Collapse
    the actions that are up to date into one row. A family that moves to the same version
    (for example `@dynamic-labs/*`) can use one row.
 2. One breaking-changes block for each major. Give the `ifDeclined` version too.
-3. The fast-track group: each candidate with its age, red flags, exclude set, the reason
-   from its notes, and your recommendation.
+3. The fast-track group: each family with its version, age, the result of each check,
+   its exclude set, and its decision. Give each blocked family with its red flags.
 4. The holds: the ones that stay and the ones that you propose to lift.
 5. The aged-out exclude entries that you will remove.
 6. The paths of `$WT` and `$OUT`.
@@ -289,7 +357,9 @@ Give the user one message that contains these items:
 Save the same message to `$OUT/upgrade-table.md`. A later session can then continue.
 
 Then ask with `AskUserQuestion`. Give one option for each major, each proposed lift, each
-recommended fast-track, and the peer floors. Majors that `requires` links go in one
+`needs-approval` fast-track family, each blocked family that the user may want, each
+`check by hand` override, and the peer floors. The
+`auto` fast-tracks need no option: they are part of the auto bumps. Majors that `requires` links go in one
 option, because one does not install without the other. Add the option "Apply the auto
 bumps and open the PR". One question takes at most 4 options, and one call takes at most
 4 questions. Use multi-select questions, grouped by topic. If there are more items, number
@@ -316,16 +386,19 @@ while the worktree is still clean. Write it to `$OUT/before-e2e.txt`.
 Keep the commits in this order. A reviewer can then drop one change. The lockfile
 regeneration is always last, so it covers everything before it.
 
-1. **`chore: allow <pkg>@<version> past the release-age gate`**, only for approved
-   fast-tracks. The user approves each fast-track directly. In auto mode, the permission
+1. **`chore: allow <pkg>@<version> past the release-age gate`**, for the `autoExcludes`
+   and for each fast-track that the user approved. The user's instruction to fast-track
+   clean releases covers the `auto` ones. In auto mode, the permission
    system blocks an exclude edit that a subagent makes on approval relayed by the main
    session. If that occurs, stop and give the exact entries to the main session. Add to `minimumReleaseAgeExclude` exactly the `excludeSet` that the user
-   saw in step 4. It is in `$OUT/upgrade-table.md`. Add a dated line with the reason to
+   saw in step 4. It is in `$OUT/upgrade-table.md`. Use one commit for all entries. Add a dated line with the reason to
    the comment block above the key. If an extra pnpm project uses the same
    package, add the same entries to its `pnpm-workspace.yaml` too. If a rerun gives a
-   different set, stop and ask the user again.
+   different set, use it only if each family in it is still `auto`. Report the change.
 2. **`chore: bump packages`**. Run each command in the plan's `upCommands`. Also run the
-   `upCommand` of each approved fast-track candidate. pnpm's gated resolver now returns its
+   `upCommand` of each fast-tracked package. Apply the `overrideUpdates` with a `lift:` or
+   `floor:` reason: change the key and the value together. Apply a `check by hand`
+   entry only if the user approved it. pnpm's gated resolver now returns its
    fresh version. Check
    `git diff -- '**/package.json'`. Each new version must equal the plan's `target`, or
    the approved fast-track version. pnpm keeps `^`, `~`, exact pins, and `>=` floors as
@@ -394,10 +467,16 @@ the PR. Never use `--no-verify` to hide a failure that the bump caused.
 ## 6. Review the regenerated lockfile
 
 ```bash
-APPROVED="<the approved excludeSet entries, comma-separated, or empty>"
+APPROVED="<autoExcludes plus the user-approved entries, comma-separated, or empty>"
+# Open-PR mode: also add the entries of the earlier run. Read them from the PR head before
+# this run ($BASE), never from the working tree: pnpm can add entries by itself during
+# this run. Keep only the entries that the PR body lists under "Allowed past the
+# release-age gate". This lists the candidates without the YAML prefix and quotes:
+#   git diff origin/main "$BASE" -- pnpm-workspace.yaml |
+#     sed -nE "s/^\+ +- '?([^' ]+@[0-9][^' ]*)'?$/\1/p"
 MAJORS="<the package names of the approved majors, comma-separated, or empty>"
 node "$SKILL/scripts/lockfile-report.mjs" --root "$WT" --approved "$APPROVED" \
-  --expect-majors "$MAJORS" > "$OUT/lockfile.json"
+  --expect-majors "$MAJORS" ${BASE:+--base=$BASE} > "$OUT/lockfile.json"
 # For each extra pnpm project, against its own lockfile on main, with the same approvals:
 node "$SKILL/scripts/lockfile-report.mjs" --root "$WT/examples/node" --approved "$APPROVED" \
   --expect-majors "$MAJORS" > "$OUT/lockfile-examples-node.json"
@@ -480,6 +559,9 @@ git push -u origin HEAD
 gh pr create --repo "$GH_REPO" --base main --title "chore: bump packages" \
   --body-file "$OUT/pr-body.md"
 ```
+
+In open-PR mode, push to the PR branch and update its body with
+`gh pr edit <number> --repo "$GH_REPO" --body-file "$OUT/pr-body.md"`.
 
 Write the PR body from the template in `references/pr-body.md`. Write it in Simplified
 Technical English: short sentences, active voice, one term for one thing. Open the PR
