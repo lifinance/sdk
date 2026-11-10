@@ -1,5 +1,5 @@
 import { LiFiErrorCode, type LiFiStep, ProviderError } from '@lifi/sdk'
-import type { Client } from 'viem'
+import { type Client, UserRejectedRequestError } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { switchChain } from './switchChain.js'
@@ -87,31 +87,27 @@ describe('switchChain', () => {
         })
       })
 
+      // `parseEthereumErrors` reads the cause, so a rejection keeps its code
+      // there. `switchChain` does not classify the hook error itself.
       describe('when the user rejects the chain switch', () => {
-        it.each([
-          {
-            kind: 'a UserRejectedRequestError',
-            error: Object.assign(new Error('User rejected the request.'), {
-              name: 'UserRejectedRequestError',
-            }),
-          },
-          {
-            kind: 'an EIP-1193 4001 error',
-            error: Object.assign(new Error('User rejected the request.'), {
-              code: 4001,
-            }),
-          },
-        ])('should throw $kind unchanged', async ({ error }) => {
-          switchChainHookMock.mockRejectedValue(error)
+        it('should throw a chain switch error with the rejection as cause', async () => {
+          const rejection = new UserRejectedRequestError(
+            new Error('User rejected the request.')
+          )
+          switchChainHookMock.mockRejectedValue(rejection)
 
-          await expect(
-            switchChain(
-              client,
-              step.action.fromChainId,
-              true,
-              switchChainHookMock
-            )
-          ).rejects.toBe(error)
+          const error = await switchChain(
+            client,
+            step.action.fromChainId,
+            true,
+            switchChainHookMock
+          ).catch((e: unknown) => e)
+
+          expect(error).toBeInstanceOf(ProviderError)
+          expect(error).toMatchObject({
+            code: LiFiErrorCode.ChainSwitchError,
+            cause: rejection,
+          })
         })
       })
 

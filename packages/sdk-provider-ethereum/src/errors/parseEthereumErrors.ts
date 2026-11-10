@@ -7,6 +7,7 @@ import {
   fetchTxErrorDetails,
   LiFiErrorCode,
   type LiFiStep,
+  ProviderError,
   SDKError,
   TransactionError,
   UnknownError,
@@ -49,7 +50,20 @@ const handleSpecificErrors = async (
   e: any,
   step?: LiFiStep,
   action?: ExecutionAction
-) => {
+): Promise<BaseError> => {
+  /**
+   * `switchChain` wraps a failed chain switch in a `ChainSwitchError` and keeps the wallet error as `cause`.
+   * The cause gets the same checks as any other error, so a user rejection stays `SignatureRejected`.
+   * Only a cause without a known code stays a `ChainSwitchError` (for example, "Unknown Network: eip155:130").
+   */
+  if (
+    e instanceof ProviderError &&
+    e.code === LiFiErrorCode.ChainSwitchError &&
+    e.cause
+  ) {
+    const causeError = await handleSpecificErrors(e.cause, step, action)
+    return causeError instanceof UnknownError ? e : causeError
+  }
   if (
     e.name === 'UserRejectedRequestError' ||
     e.cause?.name === 'UserRejectedRequestError'

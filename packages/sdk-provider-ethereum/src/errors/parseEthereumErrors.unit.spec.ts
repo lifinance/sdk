@@ -16,6 +16,7 @@ import {
   AtomicReadyWalletRejectedUpgradeError,
   SwitchChainError,
   UnknownBundleIdError,
+  UserRejectedRequestError,
 } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
@@ -365,5 +366,56 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.code).toBe(LiFiErrorCode.ChainSwitchError)
       expect(parsedError.cause).toBe(error)
     })
+
+    // `switchChain` wraps every hook error. The cause gets the same checks as
+    // an error that is not wrapped, so a rejection keeps its own code.
+    it.each([
+      {
+        kind: 'a UserRejectedRequestError',
+        cause: new UserRejectedRequestError(new Error('User rejected.')),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a UserRejectedRequestError',
+        cause: new SwitchChainError(
+          new UserRejectedRequestError(new Error('User rejected.'))
+        ),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a Safe -32000 rejection',
+        cause: new SwitchChainError(
+          Object.assign(new Error('User rejected transaction'), {
+            code: -32000,
+          })
+        ),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a -32603 error',
+        cause: new SwitchChainError(
+          Object.assign(new Error('Pop up window failed to open'), {
+            code: -32603,
+          })
+        ),
+        code: LiFiErrorCode.TransactionRejected,
+      },
+    ])(
+      'should give the code of the cause for $kind',
+      async ({ cause, code }) => {
+        const step = buildStepObject({ includingExecution: true })
+        const error = new ProviderError(
+          LiFiErrorCode.ChainSwitchError,
+          'The wallet could not switch to chain 130.',
+          cause
+        )
+
+        const parsedError = await parseEthereumErrors(error, step)
+
+        assertSDKError(parsedError)
+        expect(parsedError.code).toBe(code)
+        expect(parsedError.cause?.cause).toBe(cause)
+      }
+    )
   })
 })
