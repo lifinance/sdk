@@ -76,7 +76,9 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-    ...(chain && { chain }),
+    // Keep `viemClient.chain` when it is already the target chain: it can carry
+    // serializers, fee logic and formatters that a converted chain lacks.
+    ...(chain && viemClient.chain?.id !== chain.id && { chain }),
   } as SendTransactionParameters)
 }
 

@@ -9,7 +9,7 @@ import {
   numberToHex,
 } from 'viem'
 import { base, celo } from 'viem/chains'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { setAllowance } from './setAllowance.js'
 
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
@@ -66,6 +66,29 @@ describe('setAllowance', () => {
       'eth_chainId',
       'eth_sendTransaction',
     ])
+  })
+
+  it('keeps the client chain when it is already the given chain', async () => {
+    const { client } = createWalletClient(celo, celo)
+    const sendTransaction = vi.fn(async () => TX_HASH)
+    const extendedClient = client.extend(() => ({ sendTransaction }))
+
+    await setAllowance(
+      {} as SDKClient,
+      extendedClient,
+      TOKEN,
+      SPENDER,
+      1n,
+      undefined,
+      false,
+      { ...celo, serializers: undefined, fees: undefined }
+    )
+
+    // No `chain` parameter, so viem uses `client.chain` with its serializers
+    // and fee logic.
+    expect(sendTransaction).toHaveBeenCalledWith(
+      expect.not.objectContaining({ chain: expect.anything() })
+    )
   })
 
   it('keeps the client chain when no chain is given', async () => {
