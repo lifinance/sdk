@@ -1,5 +1,4 @@
 import type {
-  ExtendedChain,
   LiFiStepExtended,
   SDKClient,
   SignedTypedData,
@@ -26,8 +25,6 @@ const TOKEN_ADDRESS = '0xcccc000000000000000000000000000000000003' as Address
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address
 const UNIVERSAL_ROUTER = '0x66a9893cc07d91d95644aedd05d03f95e1dba8af' as Address
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
-
-const chain = { id: SOURCE_CHAIN, permit2: PERMIT2 } as unknown as ExtendedChain
 
 const witness = (): TypedData =>
   ({
@@ -105,7 +102,7 @@ describe('getUpdatedStep', () => {
       { ...witness(), signature: SIGNATURE },
     ] as unknown as SignedTypedData[]
 
-    await getUpdatedStep(client, step, chain, undefined, signedTypedData)
+    await getUpdatedStep(client, step, undefined, signedTypedData)
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
     const requested = vi.mocked(getStepTransaction).mock.calls[0][1]
@@ -116,13 +113,13 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes a witness step without the relay fee through /advanced/stepTransaction', async () => {
-    await getUpdatedStep(client, buildStep([witness()]), chain)
+    await getUpdatedStep(client, buildStep([witness()]))
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
   })
 
   it('re-quotes a step whose only Permit2 marker is the spender through /advanced/stepTransaction', async () => {
-    await getUpdatedStep(client, buildStep([permit2SpenderIntent()]), chain)
+    await getUpdatedStep(client, buildStep([permit2SpenderIntent()]))
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
   })
@@ -135,7 +132,6 @@ describe('getUpdatedStep', () => {
     await getUpdatedStep(
       client,
       buildStep([permit2Allowance()]),
-      chain,
       undefined,
       signedTypedData
     )
@@ -147,7 +143,7 @@ describe('getUpdatedStep', () => {
   })
 
   it('strips the unsigned declaration from the request when nothing is signed yet', async () => {
-    await getUpdatedStep(client, buildStep([permit2Allowance()]), chain)
+    await getUpdatedStep(client, buildStep([permit2Allowance()]))
 
     expect(vi.mocked(getStepTransaction).mock.calls[0][1]).not.toHaveProperty(
       'typedData'
@@ -155,7 +151,7 @@ describe('getUpdatedStep', () => {
   })
 
   it('re-quotes an Order step through /advanced/stepTransaction, never the relayer', async () => {
-    await getUpdatedStep(client, buildStep([order()]), chain)
+    await getUpdatedStep(client, buildStep([order()]))
 
     expect(getStepTransaction).toHaveBeenCalledTimes(1)
   })

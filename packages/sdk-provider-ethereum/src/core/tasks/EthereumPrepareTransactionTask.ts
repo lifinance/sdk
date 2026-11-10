@@ -62,14 +62,16 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
     const updatedStep = await getUpdatedStep(
       client,
       step,
-      fromChain,
       executionOptions,
       signedTypedData
     )
 
     // An EIP-7702 authorization installs a delegation on an account that has
     // none. The relayer rejects it for now, so signing it would be wasted.
-    if ((updatedStep as { authorization?: unknown }).authorization) {
+    if (
+      isGaslessStep(step) &&
+      (updatedStep as { authorization?: unknown }).authorization
+    ) {
       throw new TransactionError(
         LiFiErrorCode.TransactionUnprepared,
         'Unable to prepare transaction. The gasless step needs an EIP-7702 authorization, which the relayer does not support yet.'

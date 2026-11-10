@@ -29,6 +29,8 @@ import {
   buildGaslessRouteStep,
 } from './gaslessStep.mock.js'
 import {
+  buildStep,
+  buildTransactionRequest,
   CANONICAL_PERMIT2,
   createScenario,
   FROM_TOKEN_ADDRESS,
@@ -228,5 +230,23 @@ describe('G7 — an EIP-7702 authorization in the answer', () => {
     expect(error.message).toMatch(/authorization/i)
     expect(scenario.events('signTypedData')).toEqual([])
     expect(scenario.events('relayTransaction')).toEqual([])
+  })
+})
+
+describe('G8 — an authorization field on a step that is not gasless', () => {
+  it('does not fail the step', async () => {
+    const scenario = createScenario({
+      step: buildStep({ approvalAddress: '' }),
+      onStepTransaction: (step) =>
+        ({
+          ...step,
+          transactionRequest: buildTransactionRequest(),
+          authorization: { chainId: 137, address: `0x${'cc'.repeat(20)}` },
+        }) as LiFiStep,
+    })
+
+    await scenario.run()
+
+    expect(scenario.events('sendTransaction')).toHaveLength(1)
   })
 })

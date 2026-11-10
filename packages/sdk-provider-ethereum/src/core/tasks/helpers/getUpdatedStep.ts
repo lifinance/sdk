@@ -1,7 +1,6 @@
 import {
   convertQuoteToRoute,
   type ExecutionOptions,
-  type ExtendedChain,
   getContractCallsQuote,
   getStepTransaction,
   isGaslessStep,
@@ -19,7 +18,6 @@ import { isContractCallStep } from '../../../utils/isContractCallStep.js'
 export const getUpdatedStep = async (
   client: SDKClient,
   step: LiFiStepExtended,
-  _fromChain: ExtendedChain,
   executionOptions?: ExecutionOptions,
   signedTypedData?: SignedTypedData[]
 ): Promise<LiFiStepExtended> => {

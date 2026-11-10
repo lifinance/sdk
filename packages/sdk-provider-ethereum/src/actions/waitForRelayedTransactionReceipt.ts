@@ -7,17 +7,12 @@ import {
   isGaslessStep,
   LiFiErrorCode,
   type LiFiStep,
+  type StatusResponse,
   TransactionError,
   waitForResult,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
 import type { WalletCallReceipt } from '../types.js'
-
-type GaslessStatus = {
-  status?: string
-  substatus?: string
-  sending?: Partial<ExtendedTransactionInfo>
-}
 
 /**
  * One poll of a gasless relay on `/v1/status?taskId=`. The task id alone
@@ -25,22 +20,26 @@ type GaslessStatus = {
  * answer it with its own order lookup.
  *
  * The source wait ends once the relayed transaction has landed on the source
- * chain, and only a FAILED answer or the timeout ends it otherwise: on DONE, or on PENDING with a hash past `WAIT_SOURCE_CONFIRMATIONS`
- * (a bridge transfer that now waits for its destination).
+ * chain: on DONE, or on PENDING with a hash past `WAIT_SOURCE_CONFIRMATIONS`
+ * (a bridge transfer that now waits for its destination). Only FAILED or the
+ * timeout of the wait ends it otherwise.
  */
 const pollGaslessStatus = async (
   client: SDKClient,
   taskId: Hash,
   signal?: AbortSignal
 ): Promise<WalletCallReceipt | undefined> => {
-  const result = (await getStatus(client, { taskId }, { signal }).catch((e) => {
+  const result: StatusResponse | undefined = await getStatus(
+    client,
+    { taskId },
+    { signal }
+  ).catch((e) => {
     if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
       console.debug('Fetching the gasless relay status failed.', e)
     }
     return undefined
-  })) as GaslessStatus | undefined
+  })
 
-  const sending = result?.sending
   switch (result?.status) {
     case 'FAILED':
       throw new TransactionError(
@@ -50,24 +49,23 @@ const pollGaslessStatus = async (
         { final: true }
       )
     case 'DONE':
-    case 'PENDING':
+    case 'PENDING': {
+      const { sending, status, substatus } = result
       if (
         !sending?.txHash ||
-        (result.status === 'PENDING' &&
-          result.substatus === 'WAIT_SOURCE_CONFIRMATIONS')
+        (status === 'PENDING' && substatus === 'WAIT_SOURCE_CONFIRMATIONS')
       ) {
         return undefined
       }
       return {
         status: 'success',
-        gasUsed: sending.gasUsed,
         transactionHash: sending.txHash,
         transactionLink: sending.txLink,
       } as unknown as WalletCallReceipt
+    }
     default:
       // A failed request, `NOT_FOUND` and the 422/1004 answer of a failed
       // lookup do not end the relay, which the backend has already accepted.
-      // The timeout of the wait bounds the polling.
       return undefined
   }
 }
@@ -92,6 +90,7 @@ export const waitForRelayedTransactionReceipt = async (
   signal?: AbortSignal
 ): Promise<WalletCallReceipt> => {
   const startTime = Date.now()
+  const isGasless = isGaslessStep(step)
   return waitForResult(
     async () => {
       // Without this check, a task that stays PENDING is polled forever:
@@ -106,7 +105,7 @@ export const waitForRelayedTransactionReceipt = async (
         )
       }
 
-      if (isGaslessStep(step)) {
+      if (isGasless) {
         return pollGaslessStatus(client, taskId, signal)
       }
 
