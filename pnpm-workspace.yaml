@@ -26,3 +26,9 @@ overrides:
   # 3.21.4 exactly; no tronweb release fixes it. A TRX and a TRC-20 round trip give
   # the same bytes on 4.x.
   'google-protobuf@<4.0.3': '^4.0.3'
+  # Security, 2026-11-10 (JUMEMB-199, GHSA-g3hv-75wg-m249, fixed only in 11.0.1).
+  # Forced major on one path: @typescript-eslint/typescript-estree (via madge, dev
+  # only) asks for ^10.2.2 up to 8.72.2. It calls only the named minimatch(), which
+  # 11.x keeps, also in CJS. The path selector leaves other minimatch majors alone.
+  # Remove it when typescript-estree allows minimatch 11.
+  '@typescript-eslint/typescript-estree>minimatch': '^11.0.1'
