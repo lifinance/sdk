@@ -168,7 +168,7 @@ overrides:
   '@lifi/data-types>@lifi/types': ^18.16.0
   validator@<13.15.26: '>=13.15.26'
   google-protobuf@<4.0.3: ^4.0.3
-  minimatch@<11.0.1: ^11.0.1
+  '@typescript-eslint/typescript-estree>minimatch': ^11.0.1
 
 importers:
 
