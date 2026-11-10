@@ -521,6 +521,13 @@ export interface ScenarioOptions {
   accountCode?: Hex
   /** `wallet_getCapabilities` answer for the source chain (EIP-5792). */
   capabilities?: Record<string, unknown>
+  /**
+   * A `wallet_getCapabilities` answer per call, for a wallet that does not
+   * answer the same way each time. `callIndex` counts the scenario's reads
+   * from 0. Throw to model a read that fails. Replaces
+   * {@link ScenarioOptions.capabilities} when set.
+   */
+  onGetCapabilities?: (callIndex: number) => Promise<Record<string, unknown>>
   /** Whether the source token answers the EIP-2612 / EIP-5267 reads. */
   nativePermitSupported?: boolean
   /** ERC-1271 probe result; `'revert'` makes `isValidSignature` throw. */
@@ -740,6 +747,7 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
 
   let signCallIndex = 0
   let sendCallIndex = 0
+  let capabilitiesCallIndex = 0
   let txCounter = 0
   const nextHash = (): Hash => {
     txCounter += 1
@@ -832,6 +840,11 @@ export const createScenario = (options: ScenarioOptions): Scenario => {
     getAddresses: async (): Promise<Address[]> => [FROM_ADDRESS],
     getCapabilities: async (): Promise<Record<string, unknown>> => {
       record({ kind: 'getCapabilities' })
+      const index = capabilitiesCallIndex
+      capabilitiesCallIndex += 1
+      if (options.onGetCapabilities) {
+        return options.onGetCapabilities(index)
+      }
       return capabilities
     },
     estimateGas: async ({ to }: { to?: Address }): Promise<bigint> => {

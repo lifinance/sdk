@@ -51,6 +51,16 @@ export interface EthereumTaskContext {
    * indistinguishable from "not looked up yet" under a truthiness check.
    */
   permit2SignerSupported?: Promise<boolean>
+  /**
+   * Whether the wallet batches calls (EIP-5792) on the source chain — the
+   * in-flight or settled lookup, memoized per execution by
+   * `getEthereumExecutionStrategy`. A re-quote changes the step, not the
+   * wallet, so prepare reuses this answer. A wallet that answers late or not at
+   * all at one read and "supported" at the next would otherwise move the step
+   * between `batched` and `standard` after its allowance was prepared. A
+   * promise for the same reason as {@link permit2SignerSupported}.
+   */
+  batchingSupported?: Promise<boolean>
 }
 
 export interface EthereumStepExecutorContext
