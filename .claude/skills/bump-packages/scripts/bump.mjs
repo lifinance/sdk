@@ -343,7 +343,12 @@ async function setupGit() {
     const why = branchGuard({
       branch: R.branch,
       defaultBranch: R.defaultBranch,
-      worktree: R.worktree && realpathSync(R.worktree),
+      // New mode checks before `git worktree add`: the path does not exist yet.
+      worktree:
+        R.worktree &&
+        (existsSync(R.worktree)
+          ? realpathSync(R.worktree)
+          : resolve(R.worktree)),
       mainCheckout: R.mainCheckout,
     })
     if (why) {
@@ -1594,13 +1599,20 @@ async function main() {
       log: join(out, 'install.log'),
     })
     if (r.code !== 0) {
-      if (!R.lockfileFromMain) {
+      // Open-PR mode: local commits on the branch (an approved major, SKILL.md §3) can
+      // change the manifests without the lockfile. Never in a dry run: the install
+      // would write to the PR worktree.
+      const localCommits =
+        R.mode === 'open-pr' &&
+        !R.dryRun &&
+        !(await gitOk(wt, ['merge-base', '--is-ancestor', 'HEAD', R.base]))
+      if (!R.lockfileFromMain && !localCommits) {
         finish(
           EXIT.cannotRun,
           `pnpm install --frozen-lockfile failed; see ${join(out, 'install.log')}`
         )
       }
-      // origin/main's lockfile does not match the branch manifests: step 5 regenerates it.
+      // The lockfile does not match the branch manifests: step 5 regenerates it.
       await must('pnpm', ['install'], {
         cwd: wt,
         log: join(out, 'install-2.log'),
