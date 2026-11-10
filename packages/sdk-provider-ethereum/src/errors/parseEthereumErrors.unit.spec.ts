@@ -365,6 +365,27 @@ describe('parseEVMStepErrors', () => {
       expect(parsedError.cause).toBe(error)
     })
 
+    it('should keep the code of an SDKError that the hook throws', async () => {
+      const step = buildStepObject({ includingExecution: true })
+      const hookError = new SDKError(
+        new ProviderError(
+          LiFiErrorCode.ProviderUnavailable,
+          'No provider for this chain.'
+        )
+      )
+      const error = new ProviderError(
+        LiFiErrorCode.ChainSwitchError,
+        'The wallet could not switch to chain 130.',
+        hookError
+      )
+
+      const parsedError = await parseEthereumErrors(error, step)
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(LiFiErrorCode.ProviderUnavailable)
+      expect(parsedError.cause).toBe(hookError.cause)
+    })
+
     it.each([
       {
         kind: 'a UserRejectedRequestError',

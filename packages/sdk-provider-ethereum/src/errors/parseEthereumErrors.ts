@@ -60,6 +60,10 @@ const handleSpecificErrors = async (
     e.code === LiFiErrorCode.ChainSwitchError &&
     e.cause
   ) {
+    // A hook that throws an `SDKError` keeps its code, as before the wrap.
+    if (e.cause instanceof SDKError) {
+      return e.cause.cause
+    }
     const causeError = await handleSpecificErrors(e.cause, step, action)
     return causeError instanceof UnknownError ? e : causeError
   }

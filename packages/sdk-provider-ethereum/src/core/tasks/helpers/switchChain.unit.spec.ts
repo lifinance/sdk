@@ -78,6 +78,9 @@ describe('switchChain', () => {
             code: LiFiErrorCode.ChainSwitchError,
             cause: hookError,
           })
+          expect((error as ProviderError).message).toContain(
+            'Unknown Network: eip155:130'
+          )
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )

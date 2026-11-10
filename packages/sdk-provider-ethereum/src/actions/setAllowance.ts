@@ -75,7 +75,7 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-    // A matching `viemClient.chain` keeps its serializers, fees and formatters.
+    // For a local account, a matching `viemClient.chain` keeps its serializers and fees.
     ...(chain && viemClient.chain?.id !== chain.id && { chain }),
   } as SendTransactionParameters)
 }
