@@ -28,6 +28,7 @@ import {
   prBlock,
   replaceOverride,
   replacePrBlock,
+  reuseChangesets,
   setDependencySpec,
   setPackageManager,
   terminalText,
@@ -190,6 +191,69 @@ test('packageManagerValue matches what corepack wrote for pnpm 12.6.0', () => {
       'pnpm@12.18.0+sha512.bb'
     ),
     '{\n  "packageManager": "pnpm@12.18.0+sha512.bb",\n  "x": 1\n}'
+  )
+})
+
+test('reuseChangesets: a rerun moves the version in the changeset of the branch', () => {
+  const ethereum = {
+    file: '.changeset/bump-packages-2026-11-09-widget-provider-ethereum.md',
+    text: "---\n'@jumperexchange/widget-provider-ethereum': patch\n---\n\nMove to `viem` 2.57.17.\nThe Ethereum provider now asks for `wagmi` 3.7.11 or later.\n",
+  }
+  const i18n = {
+    file: '.changeset/update-i18n-runtime-deps-2026-11-09.md',
+    text: '---\n"@lifi/wallet-management": patch\n"@lifi/widget": patch\n---\n\nUpdate `i18next` to 27.0.1 and `react-i18next` to 18.0.1.\n',
+  }
+  const { edits, rest } = reuseChangesets(
+    [ethereum, i18n],
+    [
+      {
+        pkg: '@jumperexchange/widget-provider-ethereum',
+        dep: 'viem',
+        version: '2.57.19',
+      },
+      {
+        pkg: '@jumperexchange/widget-provider-ethereum',
+        dep: 'wagmi',
+        version: '3.8.0',
+      },
+      { pkg: '@lifi/widget', dep: 'i18next', version: '27.1.1' },
+      { pkg: '@lifi/wallet-management', dep: 'i18next', version: '27.1.1' },
+      // Not in a changeset of this package: it stays for a new file.
+      { pkg: '@lifi/widget-checkout', dep: 'i18next', version: '27.1.1' },
+      { pkg: '@lifi/widget', dep: 'motion', version: '14.12.0' },
+    ]
+  )
+  assert.deepEqual(edits, [
+    {
+      file: ethereum.file,
+      // A peer floor ("3.7.11 or later") is not a dependency version.
+      text: "---\n'@jumperexchange/widget-provider-ethereum': patch\n---\n\nMove to `viem` 2.57.19.\nThe Ethereum provider now asks for `wagmi` 3.7.11 or later.\n",
+    },
+    {
+      file: i18n.file,
+      text: '---\n"@lifi/wallet-management": patch\n"@lifi/widget": patch\n---\n\nUpdate `i18next` to 27.1.1 and `react-i18next` to 18.0.1.\n',
+    },
+  ])
+  assert.deepEqual(rest, [
+    {
+      pkg: '@jumperexchange/widget-provider-ethereum',
+      dep: 'wagmi',
+      version: '3.8.0',
+    },
+    { pkg: '@lifi/widget-checkout', dep: 'i18next', version: '27.1.1' },
+    { pkg: '@lifi/widget', dep: 'motion', version: '14.12.0' },
+  ])
+})
+
+test('reuseChangesets: no changeset of the branch, or one without front matter', () => {
+  const u = [{ pkg: '@lifi/sdk', dep: 'viem', version: '2.57.19' }]
+  assert.deepEqual(reuseChangesets([], u), { edits: [], rest: u })
+  assert.deepEqual(
+    reuseChangesets(
+      [{ file: '.changeset/x.md', text: 'Update `viem` to 2.57.17.\n' }],
+      u
+    ),
+    { edits: [], rest: u }
   )
 })
 

@@ -286,6 +286,52 @@ export function changesetText(updates) {
   return `---\n${pkgs.map((p) => `"${p}": patch`).join('\n')}\n---\n\n${lines.join('\n')}\n`
 }
 
+// A rerun on a PR: a changeset that the branch added already names `dep` for `pkg`
+// ("`viem` 2.57.17", "`i18next` to 27.0.1"), so the new version goes there and the
+// release notes name each dependency once. `existing` is [{ file, text }] of the
+// branch. Returns the edited files, and the updates that no changeset names.
+export function reuseChangesets(existing, updates) {
+  const texts = new Map(existing.map((e) => [e.file, e.text]))
+  const edited = new Set()
+  const rest = []
+  for (const u of updates) {
+    let named = false
+    for (const [file, text] of texts) {
+      const head = /^---\n([\s\S]*?)\n---\n/.exec(text)
+      const forPkg = new RegExp(
+        `^\\s*["']?${escapeRegExp(u.pkg)}["']?\\s*:`,
+        'm'
+      )
+      if (!head || !forPkg.test(head[1])) {
+        continue
+      }
+      // Not a peer floor ("`wagmi` 3.7.11 or later").
+      const version = new RegExp(
+        `(\`${escapeRegExp(u.dep)}\`(?: to)? )\\d+\\.\\d+\\.\\d+(?:-[\\w.]+)?(?! or later)\\b`,
+        'g'
+      )
+      const body = text.slice(head[0].length)
+      if (!version.test(body)) {
+        continue
+      }
+      named = true
+      const next =
+        head[0] + body.replace(version, (_m, lead) => `${lead}${u.version}`)
+      if (next !== text) {
+        texts.set(file, next)
+        edited.add(file)
+      }
+    }
+    if (!named) {
+      rest.push(u)
+    }
+  }
+  return {
+    edits: [...edited].map((file) => ({ file, text: texts.get(file) })),
+    rest,
+  }
+}
+
 // `name a→b` (the plan's changeset lines) -> { dep, from, version }.
 export function parseChangesetLine(s) {
   const m = /^(.+) (\S+)→(\S+)$/.exec(String(s))

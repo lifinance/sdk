@@ -112,6 +112,11 @@ Give the user:
 - what needs the user, with the flag for each item,
 - the check results and the run time.
 
+**The PR text.** The script writes only the block between the `bump-packages` markers. The
+text above the block is yours. After each run that pushes to an open PR, update that text so
+that it matches the branch: the commits of each run, the majors and how you checked them,
+the changesets, and the holds. Do not copy the tables of the block.
+
 Write all text for people in Simplified Technical English: short sentences, active voice,
 one term for one thing. Put scoped package names in backticks, so that GitHub does not
 mention users.

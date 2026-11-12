@@ -121,6 +121,29 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       ])
     })
 
+    test('3b. a rerun moves the version in the changeset of the branch', async () => {
+      // An earlier run took ms 2.1.2, and its changeset names 2.1.2.
+      lockAt(fx, wt, [
+        ['packages/lib', 'dependencies', 'ms', '2.1.2', '^2.1.2'],
+      ])
+      const csFile = `.changeset/bump-packages-${DATE}.md`
+      const csOld = '---\n"fx-lib": patch\n---\n\nUpdate `ms` to 2.1.2.\n'
+      fs.writeFileSync(join(wt, csFile), csOld)
+      fx.git(wt, 'commit', '-qam', 'chore: an earlier run took ms 2.1.2')
+      const r = await runBump(fx)
+      assert.equal(r.code, 0, why(r))
+      assert.equal(
+        fx.og('ls-tree', '--name-only', BRANCH, '.changeset/'),
+        `${csFile}\n.changeset/config.json`,
+        'no second changeset'
+      )
+      assert.equal(
+        showAt(fx, BRANCH, csFile),
+        '---\n"fx-lib": patch\n---\n\nUpdate `ms` to 2.1.3.'
+      )
+      prHead = originRef(fx, BRANCH)
+    })
+
     test('4. open PR after main moved: a lockfile-only conflict', async () => {
       const other = join(fx.tmp, 'other')
       fx.git(fx.tmp, 'clone', '-q', fx.origin, other)
@@ -138,6 +161,8 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.json.mode, 'open-pr')
       assert.equal(r.json.mergedMain, true)
       assert.match(r.json.notes.join('\n'), /conflict only in pnpm-lock\.yaml/)
+      // The text above the block is from an earlier run: the agent updates it.
+      assert.match(r.json.notes.join('\n'), /PR #10: .*text above the block/)
       const tip = originRef(fx, BRANCH)
       assert.ok(isAncestor(fx, prHead, tip), 'no force-push')
       assert.ok(isAncestor(fx, mainTip, tip), 'the PR branch has main')
