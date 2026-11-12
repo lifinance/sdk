@@ -206,7 +206,7 @@ async function main() {
       const causes = [...versions]
         .filter((v) => !was.has(v) && !trusted.has(v))
         .flatMap((v) =>
-          [...(parents.get(`${name}@${v}`) ?? [])].map((p) => `${p} → ${v}`)
+          [...(parents.get(`${name}@${v}`) ?? [])].map((p) => `${p} needs ${v}`)
         )
       majorJumps.push({
         name,

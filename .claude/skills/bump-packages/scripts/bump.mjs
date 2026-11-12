@@ -50,7 +50,9 @@ import {
   lockstepWaits,
   majorLine,
   majorTargets,
+  mergeItems,
   newPrBody,
+  ownReasons,
   packageManagerValue,
   parseChangesetLine,
   pickBumpPr,
@@ -60,6 +62,7 @@ import {
   replacePrBlock,
   setDependencySpec,
   setPackageManager,
+  terminalText,
   wrapLines,
 } from './bump-helpers.js'
 import {
@@ -311,7 +314,7 @@ function summary(code, message) {
     )
   }
   w(`\nRerun: ${R.rerun}\n`)
-  process.stderr.write(`${out.join('\n')}\n`)
+  process.stderr.write(`${terminalText(out.join('\n'))}\n`)
 }
 
 // Synchronous cleanups that run on every exit and on a signal (the temporary worktree, the
@@ -819,6 +822,12 @@ const firstSentence = (s) => {
   return t.length > 120 ? `${t.slice(0, 117)}…` : t
 }
 
+// The reason of a hold without a first sentence that only says "Held at X." again.
+const heldWhy = (reason) => {
+  const t = (reason ?? '').replace(/^\s*held at \S+\.\s*/i, '')
+  return t ? ` ${firstSentence(t)}` : ''
+}
+
 // Exit 2 when `--approve` cannot apply `what` (M2): a check without an answer ("run
 // again"), or a flag that no approval overrides.
 function refuseApproval(what, { blind, refused }) {
@@ -960,7 +969,10 @@ async function decide(projects) {
         missing.length < set.length
           ? ` Only part of the set is approved; missing: ${missing.join(', ')}.`
           : ''
-      const stuck = [...obstacles.blind, ...obstacles.refused]
+      const stuck = ownReasons(
+        [...obstacles.blind, ...obstacles.refused],
+        fam.versions
+      )
       if (fam.decision === 'blocked' && stuck.length) {
         needs(
           'blocked',
@@ -973,19 +985,25 @@ async function decide(projects) {
           'blocked',
           p.rel,
           name,
-          `${fam.versions.join(', ')} is blocked: ${fam.redFlags.join('; ')}.${part}`,
+          `${fam.versions.join(', ')} is blocked: ${ownReasons(fam.redFlags, fam.versions).join('; ')}.${part}`,
           `--approve ${set.join(',')}`
         )
       } else {
         // The analyzer's reasons: 'no-provenance', 'too-young' (every entry of the set).
         const why = []
         if (fam.reasons?.includes('no-provenance')) {
+          const which = ownReasons(fam.unverifiedProvenance, fam.versions)
           why.push(
-            `no verified provenance (${fam.unverifiedProvenance.join(', ')})`
+            `no verified provenance${which.some(Boolean) ? ` (${which.join(', ')})` : ''}`
           )
         }
         if (fam.reasons?.includes('too-young')) {
-          why.push(`younger than ${floor} h: ${fam.tooYoung.join(', ')}`)
+          // One version: "3.9 h old, younger than 6 h".
+          why.push(
+            fam.versions.length === 1
+              ? `${ownReasons(fam.tooYoung, fam.versions)[0].replace(/^\((.*)\)$/, '$1')} old, younger than ${floor} h`
+              : `younger than ${floor} h: ${fam.tooYoung.join(', ')}`
+          )
         }
         needs(
           'approve',
@@ -1084,7 +1102,7 @@ async function decide(projects) {
         waiting(
           p.rel,
           e.name,
-          `held at ${e.current} by ${e.heldBy}; ${e.target} is available.${e.reason ? ` ${firstSentence(e.reason)}` : ''}`
+          `held at ${e.current} by ${e.heldBy}; ${e.target} is available.${heldWhy(e.reason)}`
         )
       }
     }
@@ -1149,7 +1167,7 @@ async function decide(projects) {
     )
     if (!known) {
       R.notes.push(
-        `--majors ${m}: not a major in this run (a lockfile-only major still goes to the lockfile review as expected).`
+        `--majors ${m}: no direct dependency has this major; the lockfile review accepts it as a transitive major.`
       )
     }
   }
@@ -1203,6 +1221,9 @@ async function decide(projects) {
     seen.add(i.name)
   }
   R.waiting = R.waiting.filter((i) => !seen.has(i.name))
+  R.needsUser = mergeItems(R.needsUser)
+  R.notApplied = mergeItems(R.notApplied)
+  R.waiting = mergeItems(R.waiting)
 }
 
 // Actions and CI tools (root only), and pnpm for each project.
@@ -1660,7 +1681,7 @@ async function lockfileReview(projects, out) {
     const where = p.rel === '.' ? '' : ` (${p.rel})`
     for (const j of rep.unexpectedMajors) {
       stop.push(
-        `major jump${where}: ${j.name} ${j.from.join('/')} → ${j.to.join('/')}${j.causes?.length ? ` (from ${j.causes.join('; ')})` : ''}`
+        `major jump${where}: ${j.name} ${j.from.join('/')} → ${j.to.join('/')}${j.causes?.length ? ` (${j.causes.join('; ')})` : ''}`
       )
     }
     for (const s of rep.singleCopy.filter((x) => x.status === 'new-split')) {

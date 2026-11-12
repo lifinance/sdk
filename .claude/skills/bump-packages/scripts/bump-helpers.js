@@ -648,10 +648,17 @@ export const whereText = (where) =>
 
 // Every applied item, one line each (G3, M6).
 export function appliedLines(a) {
+  // `where` is relative to the project: "." of examples/node is examples/node.
+  const at = (b) =>
+    b.project && b.project !== '.'
+      ? (b.where ?? []).map((w) =>
+          w === '.' ? b.project : `${b.project}/${w}`
+        )
+      : b.where
   return [
     ...[...a.bumps, ...a.majors].map(
       (b) =>
-        `${b.name} ${b.from} → ${b.to}${whereText(b.where)}${b.fastTrack ? ' fast-track' : ''}${b.major ? ' major' : ''}`
+        `${b.name} ${b.from} → ${b.to}${whereText(at(b))}${b.fastTrack ? ' fast-track' : ''}${b.major ? ' major' : ''}`
     ),
     ...a.overrides.map(
       (o) =>
@@ -744,3 +751,42 @@ export function lockstepKey(name, familyKeyOf) {
     familyKeyOf(name) ?? (name.startsWith('@') ? name.split('/')[0] : null)
   return key?.startsWith('@') && !key.includes('/') ? `${key}/*` : key
 }
+
+// A reason list of one version: drop the version from each reason, so that the line does
+// not name it twice ("viem@2.57.19: younger than 6 h: viem@2.57.19 (3.9 h)").
+export function ownReasons(list, versions) {
+  if (versions.length !== 1) {
+    return list
+  }
+  const v = versions[0]
+  return list.map((s) =>
+    s.startsWith(`${v}:`) || s.startsWith(`${v} `) || s === v
+      ? s.slice(v.length).replace(/^:?\s*/, '')
+      : s
+  )
+}
+
+// The same item in more than one project (viem in the root and in examples/node): one
+// line that names every project.
+export function mergeItems(items) {
+  const byKey = new Map()
+  for (const i of items) {
+    const key = [i.kind, i.name, i.text, i.flag].join('\0')
+    const had = byKey.get(key)
+    if (had) {
+      had.projects.push(i.project)
+    } else {
+      byKey.set(key, { ...i, projects: [i.project] })
+    }
+  }
+  return [...byKey.values()].map(({ projects, ...i }) => ({
+    ...i,
+    project:
+      projects.length > 1
+        ? projects.map((p) => (p === '.' ? 'root' : p)).join(', ')
+        : projects[0],
+  }))
+}
+
+// The terminal summary: plain() writes `<` and `>` as entities for the PR text only.
+export const terminalText = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>')

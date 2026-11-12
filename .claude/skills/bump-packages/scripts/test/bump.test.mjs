@@ -16,7 +16,9 @@ import {
   lockstepWaits,
   majorLine,
   majorTargets,
+  mergeItems,
   newPrBody,
+  ownReasons,
   PR_END,
   PR_START,
   packageManagerValue,
@@ -27,6 +29,7 @@ import {
   replacePrBlock,
   setDependencySpec,
   setPackageManager,
+  terminalText,
   whereText,
   wrapLines,
 } from '../bump-helpers.js'
@@ -427,6 +430,27 @@ test('appliedLines and whereText: every applied item, one line each', () => {
     ' (packages/widget and 2 more projects)'
   )
   assert.equal(whereText(['.', 'a']), ' (root and 1 more project)')
+  assert.deepEqual(
+    appliedLines({
+      bumps: [
+        {
+          name: 'viem',
+          from: '1',
+          to: '2',
+          where: ['.'],
+          project: 'examples/node',
+        },
+      ],
+      majors: [],
+      overrides: [],
+      removedExcludes: [],
+      approved: [],
+      actions: [],
+      tools: [],
+    }),
+    ['viem 1 → 2 (examples/node)'],
+    'the root of an extra project is that project'
+  )
   const lines = appliedLines({
     bumps: [
       {
@@ -555,4 +579,37 @@ test('lockstepWaits: aged siblings wait for a sibling whose same version is too 
   assert.equal(fam('next'), 'next')
   assert.equal(fam('@next/env'), 'next')
   assert.equal(fam('@other/x'), '@other/*')
+})
+
+test('summary text: one version is named once, one item for many projects, no entities', () => {
+  const one = ['viem@2.57.19']
+  assert.deepEqual(ownReasons(['viem@2.57.19 (3.9 h)'], one), ['(3.9 h)'])
+  assert.deepEqual(ownReasons(['viem@2.57.19'], one), [''])
+  assert.deepEqual(
+    ownReasons(['viem@2.57.19: publisher changed a → b', 'other: x'], one),
+    ['publisher changed a → b', 'other: x']
+  )
+  // A family keeps the names: each reason says which member.
+  const two = ['motion@14.12.0', 'framer-motion@14.12.0']
+  assert.deepEqual(ownReasons(['motion@14.12.0 (2 h)'], two), [
+    'motion@14.12.0 (2 h)',
+  ])
+  const item = (project, text = 't') => ({
+    kind: 'approve',
+    project,
+    name: 'viem',
+    text,
+    flag: '--approve viem@2.57.19',
+  })
+  assert.deepEqual(mergeItems([item('.'), item('examples/node')]), [
+    { ...item('root, examples/node') },
+  ])
+  assert.equal(mergeItems([item('.'), item('examples/node', 'u')]).length, 2)
+  assert.deepEqual(mergeItems([item('examples/node')]), [item('examples/node')])
+  assert.equal(
+    terminalText(plain('a <b@x.com> c')),
+    'a <b@x.com> c',
+    'the PR text keeps the entities; the terminal does not'
+  )
+  assert.match(plain('<!--'), /^&lt;!--$/)
 })
