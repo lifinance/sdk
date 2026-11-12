@@ -44,9 +44,8 @@ vi.mock('./helpers/probeStellarTransaction.js', () => ({
     probeStellarTransaction(...args),
 }))
 
-const { StellarWaitForTransactionTask } = await import(
-  './StellarWaitForTransactionTask.js'
-)
+const { StellarWaitForTransactionTask } =
+  await import('./StellarWaitForTransactionTask.js')
 
 const makeContext = (
   action: Record<string, unknown>,

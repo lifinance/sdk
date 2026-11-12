@@ -24,9 +24,8 @@ vi.mock('../utils/getTransactionLifetime.js', () => ({
   getTransactionLifetime: async () => ({ kind: 'unknown' }),
 }))
 
-const { sendAndConfirmTransaction } = await import(
-  './sendAndConfirmTransaction.js'
-)
+const { sendAndConfirmTransaction } =
+  await import('./sendAndConfirmTransaction.js')
 
 /** A client whose Solana `rpcUrls` entry has the given write list. */
 const clientWith = (writeRpcUrls: string[] = []) =>

@@ -6,9 +6,8 @@ vi.mock('../../../client/getStellarRpc.js', () => ({
   getStellarRpcs: (...args: unknown[]) => getStellarRpcs(...args),
 }))
 
-const { proveStellarTransactionAbsent } = await import(
-  './proveStellarTransactionAbsent.js'
-)
+const { proveStellarTransactionAbsent } =
+  await import('./proveStellarTransactionAbsent.js')
 
 const HASH = 'ab'.repeat(32)
 const WINDOW = { earliest: 1_800_000_000, maxTime: 1_800_000_300 }

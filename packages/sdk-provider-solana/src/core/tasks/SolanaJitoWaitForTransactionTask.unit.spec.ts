@@ -37,9 +37,8 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-const { SolanaJitoWaitForTransactionTask } = await import(
-  './SolanaJitoWaitForTransactionTask.js'
-)
+const { SolanaJitoWaitForTransactionTask } =
+  await import('./SolanaJitoWaitForTransactionTask.js')
 
 const updateAction = vi.fn()
 

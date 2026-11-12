@@ -7,9 +7,8 @@ vi.mock('./readAllowance.js', () => ({
   readAllowance: (...args: unknown[]) => readAllowance(...args),
 }))
 
-const { assertApprovalStillCovers } = await import(
-  './assertApprovalStillCovers.js'
-)
+const { assertApprovalStillCovers } =
+  await import('./assertApprovalStillCovers.js')
 
 const CIRCLE_ADAPTER = StrKey.encodeContract(Buffer.alloc(32, 7))
 const OTHER_ADAPTER = StrKey.encodeContract(Buffer.alloc(32, 9))
