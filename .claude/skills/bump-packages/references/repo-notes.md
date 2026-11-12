@@ -1,93 +1,78 @@
 # Repo notes
 
-The skill is the same in the three repos. This file gives hints about the differences. The
-repo itself is the source of truth: `pnpm-workspace.yaml`, `package.json`,
-`.changeset/config.json`, and `.github/`. If a note here disagrees with the repo, trust the
-repo and fix the note. Find the repo from `git remote get-url origin`.
+The script reads the repo itself: the workspace, the scripts, the Changesets config, and
+the workflows. This file holds only what the script cannot know.
 
-| Item | `lifinance/sdk` | `lifinance/widget` | `jumperexchange/jumper-widget` |
-|---|---|---|---|
-| Workspace | `packages/*` | `packages/*`, `examples/*`, `e2e` | `packages/*`, `e2e` |
-| Extra pnpm projects | `examples/node` (own lockfile) | none | none |
-| Unit tests | `pnpm test:unit` (the pre-push hook) | `pnpm test` | `pnpm test` |
-| Pre-commit hook | `pnpm pre-commit`: check, check:types, circular-deps, knip | `lint-staged`, which runs `pnpm pre-commit` and `knip:check` | `lint-staged`, which runs `pnpm pre-commit` and `knip:check` |
-| Pre-push hook | `pnpm test:unit` | none | none |
-| `pnpm regen` | no `dedupe` at the end | runs `pnpm dedupe` | runs `pnpm dedupe` |
-| Generated files (do not commit) | `packages/*/src/version.ts` | `packages/widget/src/config/version.ts`, `packages/widget-light/src/config/version.ts` | `packages/widget/src/config/version.ts` |
-| Bundle size | `node scripts/size-measure.mjs` | `node scripts/size-measure.mjs` | `node scripts/size-measure.mjs` |
-| CI tools | none | `npx -y wrangler@x.y.z` in `deploy-test-app.yaml` | `WRANGLER_VERSION` in `deploy-test-app.yaml` and `delete-test-app.yaml` |
-| Published scope | `@lifi/*` on npm | `@lifi/*` on npm | `@jumperexchange/*` on GitHub Packages (`.npmrc`) |
-| PR repo | `lifinance/sdk` | `lifinance/widget` | `jumperexchange/jumper-widget` (not a fork) |
+## Per-repo config: `.claude/bump-packages.json`
 
-## All repos
+The file is optional. It is not part of the skill folder, because each repo has its own.
 
-- **Commit hooks run the full type check.** A worktree without `dist/` fails with TS6305
-  or TS2307. Run `pnpm build` once before the first commit, then restore the `version.ts`
-  files.
+```json
+{
+  "heldMajors": [
+    {
+      "name": "typescript",
+      "projects": ["vue", "svelte"],
+      "reason": "vue-tsc and svelte-check do not support TypeScript 7. Remove when they do."
+    }
+  ],
+  "fastTrackMinAgeHours": 6
+}
+```
 
-- **e2e runs.** The e2e suites call the LI.FI API and start local servers.
-  - Run the baseline on the clean worktree at the start of step 5, not just before the
-    branch run. Two full runs back to back hit HTTP 429 (rate limit) from the API.
-    A failure with 429 in its trace is not a regression. Wait some minutes, then run only the failed spec files again.
-  - Compare failures by spec file and test title. Line and column numbers move.
-  - Stop your own dev and preview servers first. The Playwright config does not reuse a
-    server on its port (`reuseExistingServer: false`), so a server that is still there makes
-    the run fail.
-  - widget `scripts/test-example.sh` runs `kill -9` on each process that holds its port.
-    Do not run it while other work uses that port.
-  - After a `@playwright/test` bump, run `pnpm exec playwright install`.
-- **Earlier holds.** Read the latest merged `chore: bump packages` PR (step 3). Do not trust a
-  PR number written here; it gets old after each bump.
-- **Fast-track.** Earlier bumps took fresh releases on purpose (the Dynamic SDK 5.9.6 set,
-  Next.js 16.4.0, React 19.3.0). The comment above `minimumReleaseAgeExclude` records them.
-  See `fast-track.md` for the rules.
-- **Strict gate (a policy option for the user).** None of the repos sets
-  `minimumReleaseAge`. So pnpm uses its default, which is not strict. If no mature version
-  fits, pnpm takes a fresh one. It also adds that version to `minimumReleaseAgeExclude`. Step 6 catches every
-  such entry. Setting `minimumReleaseAgeStrict: true` makes pnpm refuse instead. Propose
-  it; do not change it in a bump PR.
-- **Peer floors.** Earlier bump PRs moved the caret peer floors of the released packages
-  to the latest release. Examples are `wagmi` and `@mysten/dapp-kit-react`. The script
-  lists the floors that are behind (`peerFloors`). Ask the user before you move them.
-- **Exact overrides on transitive packages** (for example `use-sync-external-store` and
-  `utf-8-validate`) keep one copy. They are dedupe pins, not holds against an upgrade,
-  unless their comment says otherwise.
+- `heldMajors`: majors that the user declined. The script lists each one under "Waiting or
+  held" with the reason, and does not ask again. `projects` is optional: it lists workspace
+  package names (the `name` in each `package.json`). Without it, the entry applies to every
+  project. Patches and minors still land. Write the reason so that a
+  later reader knows when to remove the entry.
+- `fastTrackMinAgeHours`: the minimum age for an automatic fast-track (default 6). The
+  script reads this value from `main`, so a change applies after it is merged.
+- The script reads `heldMajors` from the bump branch. Each entry needs `name` and `reason`.
+  An unknown key stops the run (exit 2), so that a typing error does not pass without a
+  message.
 
-## sdk
+To hold a package at one exact version, use an exact override with a comment in
+`pnpm-workspace.yaml`, not this file.
 
-- `@lifi/types` (runtime, in `@lifi/sdk`) and `@lifi/data-types` (dev) are external pins.
-  Changesets does not track them. A bump of `@lifi/types` needs a changeset for `@lifi/sdk`.
-- Each provider depends on `@lifi/sdk` through `workspace:*`. Do not write cascade-only
-  changesets for providers. Changesets bumps them from the dependency graph.
-- `examples/node` has its own `pnpm-workspace.yaml` (overrides and
-  `minimumReleaseAgeExclude`) and its own lockfile. Bump it in a separate commit
-  `chore(examples): bump packages`. Validate it with
-  `pnpm -C examples/node install --frozen-lockfile` and `pnpm -C examples/node exec tsc --noEmit`.
-- Packages ship a CJS build. An ESM-only major of a runtime dependency is a risk (see
-  `breaking-changes.md`).
+## Single-copy packages
 
-## widget
+`@lifi/sdk`, `@lifi/types`, `wagmi`, `viem`, and `@creit.tech/stellar-wallets-kit` must each
+have one copy in an app. Two copies break at runtime ("Execution data not found",
+`WagmiProviderNotFoundError`, "Please set the wallet first"). The lockfile review stops on
+a new second copy. The `privy` examples in widget carry a known second `wagmi` copy.
 
-- Most `examples/*` pin the published `@lifi/widget`, `@lifi/wallet-management`, and
-  `@lifi/widget-provider-*`. Move these pins to the newest published versions.
-  `scripts/restore-example-versions.sh` reverts the example entries in the version PR.
-- `@lifi/widget-checkout` is private, but Changesets versions it (`privatePackages.version`
-  is true and it is not in `ignore`). It needs a changeset for its runtime bumps.
-- Example-only holds are common: an example can exist to show an older major (for example
-  `examples/nextjs15` for Next.js 15). The plan then has a separate entry for that version,
-  and `upCommands` filters the other projects.
-- e2e: `pnpm e2e` runs the playground suite. `pnpm test:example <name>` runs one example.
-  `e2e/examples.json` lists the examples and their status.
-- `@lifi/sdk`, `@lifi/types`, and `wagmi` must each have one copy in each app. The
-  `privy` examples carry a known `wagmi` 2 copy.
+In jumper-widget, each `@lifi/sdk-provider-*` pins one exact `@lifi/sdk`. They move together.
 
-## jumper-widget
+## e2e runs (only for an approved runtime or UI major)
 
-- A private fork of the widget. Its packages are `@jumperexchange/*`. The `@lifi/sdk` and
-  `@lifi/types` dependencies come from public npm.
-- `@lifi/sdk` and the `@lifi/sdk-provider-*` packages must move together. Each provider pins
-  one exact `@lifi/sdk`. Check `pnpm why @lifi/sdk` for one version.
-- `@creit.tech/stellar-wallets-kit` must have one copy (`pnpm why`).
-- e2e: `pnpm e2e` (preview build) and `pnpm e2e:dev` (smoke subset).
-- `WRANGLER_VERSION`: the deploy workflows read `wrangler pages deployment list --json`.
-  Before a wrangler bump, check in its changelog that the JSON keys did not change.
+- widget: `pnpm e2e` (playground), and `pnpm test:example <name>` for one example.
+- jumper-widget: `pnpm e2e` (preview build), and `pnpm e2e:dev` (smoke subset).
+- The suites call the LI.FI API. Two full runs back to back get HTTP 429. A failure with 429
+  in its trace is not a regression: wait some minutes, then run the failed spec files again.
+- Compare failures by spec file and test title. Line numbers move.
+- Stop your own dev and preview servers first. widget `scripts/test-example.sh` kills each
+  process that holds its port.
+- After a `@playwright/test` bump, run `pnpm exec playwright install`.
+
+## Known causes of a failed check after a bump
+
+- **Biome minor.** A new formatter (YAML since 2.6) fails `pnpm check` on files that the
+  bump did not touch. Keep the old output with options in `biome.json`, for example
+  `"yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } }`. A new
+  recommended lint rule can fail as an error: make the small code fix, or set the rule to
+  `"warn"`. Report new warnings; do not fix them in a bump PR.
+- **A patch can break a bundler.** `viem` 2.57.16 added a literal dynamic import of an
+  optional peer, and the size check failed. The size check is the only local bundler check.
+- **A Next.js app.** No check builds `widget-playground-next`. After a `next` bump, run
+  `pnpm --filter widget-playground-next build` by hand if the PR must prove it.
+
+## Things a person checks after the script
+
+- **`WRANGLER_VERSION` (jumper-widget) and `npx wrangler@x` (widget).** The deploy workflows
+  read the JSON output of `wrangler pages deployment list`. After a wrangler bump, look at
+  the test-app deploy job of the PR.
+- **sdk CJS build.** The sdk packages ship CommonJS. An ESM-only major of a runtime
+  dependency is a risk for consumers (`breaking-changes.md`).
+- **Policy options for the repo owner** (propose them; do not change them in a bump PR): an
+  explicit `minimumReleaseAge: 1440`, which makes pnpm refuse a fresh version instead of
+  adding an exclude entry by itself, and `trustPolicy: no-downgrade`.

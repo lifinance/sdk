@@ -15,6 +15,7 @@ import {
   groupOutdated,
   isExcluded,
   isStopJump,
+  npmrcRouting,
   parseExcludes,
   parseLock,
   parseSelector,
@@ -232,4 +233,26 @@ test('prerelease rules follow node-semver', () => {
     name: 'esbuild',
     kind: 'path',
   })
+})
+
+test('npmrcRouting: only packages that npm gets from registry.npmjs.org are fetched directly', () => {
+  const direct = npmrcRouting([
+    '# user\n@corp:registry=https://npm.corp.example/\n',
+    '@lifi:registry=https://registry.npmjs.org\n; comment\n',
+  ])
+  assert.equal(direct('viem'), true)
+  assert.equal(direct('@lifi/sdk'), true)
+  assert.equal(direct('@corp/tool'), false)
+  const mirror = npmrcRouting(['registry = "https://mirror.example/npm/"\n'])
+  assert.equal(mirror('viem'), false)
+  const env = npmrcRouting([], { npm_config_registry: 'https://other.example' })
+  assert.equal(env('viem'), false)
+  // The project file comes last and wins.
+  assert.equal(
+    npmrcRouting([
+      'registry=https://mirror.example/',
+      'registry=https://registry.npmjs.org/',
+    ])('viem'),
+    true
+  )
 })

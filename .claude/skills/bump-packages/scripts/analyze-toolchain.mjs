@@ -5,15 +5,16 @@
 // `uses: owner/repo[/path]@<sha> # vX.Y.Z` pins. For each action it finds the newest
 // GitHub release that has aged past the release-age gate, resolves its tag to a commit SHA,
 // checks that the current SHA matches its version comment, and classifies the bump. It also
-// reports the pinned pnpm (packageManager) and the Node versions in CI against the latest.
-// Output: JSON plan on stdout, Markdown summary on stderr. Read-only.
+// reports the pinned pnpm (packageManager) and the Node versions in CI against the latest
+// LTS. Output: JSON plan on stdout; errors on stderr. Read-only.
 //
-// Apply: --apply <plan.json> --actions owner/repo,owner/repo
-//   Rewrites the SHA pin and the version comment together for the named actions only.
+// Apply: --apply <plan.json> [--actions owner/repo,...] [--tools pkg,...]
+//   Rewrites the SHA pin and the version comment together for the named actions only, and
+//   the hardcoded version of the named CI tools only.
 //
 // Needs an authenticated `gh` CLI. Usage:
-//   node analyze-toolchain.mjs [--root <repo>] [--min-age-hours <N>]
-//   node analyze-toolchain.mjs --root <repo> --apply plan.json --actions a/b,c/d
+//   node analyze-toolchain.mjs [--root <repo>]
+//   node analyze-toolchain.mjs --root <repo> --apply plan.json --actions a/b --tools c
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
@@ -27,21 +28,19 @@ import {
   escapeRegExp,
   failures,
   ghApi,
-  mdTable,
   minAgeMinutesFromYaml,
   npmView,
   parseVersion,
-  pickAgedTarget,
   pool,
   readJson,
   readText,
   readWorkspaceYaml,
+  toolStatus,
 } from './lib.js'
 
 const { values } = parseArgs({
   options: {
     root: { type: 'string' },
-    'min-age-hours': { type: 'string' },
     apply: { type: 'string' },
     actions: { type: 'string' },
     tools: { type: 'string' },
@@ -110,6 +109,15 @@ function scanUses() {
 }
 
 const isSha = (s) => /^[0-9a-f]{40}$/.test(s)
+
+// One `npm view` per package for the whole run (pnpm can also be a CI tool).
+const viewCache = new Map()
+const viewOf = (name) => {
+  if (!viewCache.has(name)) {
+    viewCache.set(name, npmView(name, root))
+  }
+  return viewCache.get(name)
+}
 
 // Resolve a tag (never a branch of the same name) to its commit. Dereferences annotated
 // tags. Returns { sha, date } (the commit's committer date) or null on any API failure.
@@ -278,10 +286,14 @@ async function analyzePnpm(minAgeMs, nowMs) {
   const pm = readJson(root, 'package.json')?.packageManager ?? ''
   const m = pm.match(/^pnpm@([^+]+)/)
   const current = m ? m[1] : null
-  const view = await npmView('pnpm', root)
-  const target = current
-    ? pickAgedTarget(view, current, minAgeMs, nowMs, () => false)
-    : null
+  const view = await viewOf('pnpm')
+  // too-fresh (not up-to-date) when every newer release is younger than the gate. pnpm is
+  // never fast-tracked: it has no exclude list, so it keeps the gate.
+  const st =
+    current && view
+      ? toolStatus(view, current, minAgeMs, nowMs)
+      : { target: null, status: view ? 'up-to-date' : 'unknown' }
+  const target = st.target
   const latest = view?.distTags?.latest ?? null
   // CI must read pnpm from packageManager. A hardcoded version would drift.
   const hardcoded = []
@@ -307,11 +319,11 @@ async function analyzePnpm(minAgeMs, nowMs) {
         : null,
     bumpType: current && target ? classify(current, target).bumpType : null,
     // A pnpm major (or any non-safe move) needs the user's approval like any other major.
-    status: !target
-      ? 'up-to-date'
-      : classify(current, target).safe
-        ? 'safe'
-        : 'needs-approval',
+    // 'too-fresh': only releases younger than the gate are newer; 'unknown': npm failed.
+    status: st.status,
+    // The newest release above the target (or above current), and its age.
+    newest: st.newest ?? null,
+    newestAgeHours: st.newestAgeHours ?? null,
     hardcodedInCi: hardcoded,
   }
 }
@@ -363,22 +375,24 @@ async function analyzeCiTools(minAgeMs, nowMs) {
       })
   }
   const pkgs = [...new Set(found.map((f) => f.pkg))].sort()
-  const views = await pool(pkgs, 6, (p) => npmView(p, root))
+  const views = await pool(pkgs, 6, viewOf)
   return pkgs.map((pkg, i) => {
     const occ = found.filter((f) => f.pkg === pkg)
     const view = views[i]
     const current = occ
       .map((o) => o.version)
       .sort((a, b) => cmp(parseVersion(a), parseVersion(b)))[0]
-    const target = view
-      ? pickAgedTarget(view, current, minAgeMs, nowMs, () => false)
-      : null
+    // CI tools are never fast-tracked (no exclude list): they keep the gate.
+    const st = view ? toolStatus(view, current, minAgeMs, nowMs) : null
+    const target = st?.target ?? null
     const entry = {
       pkg,
       via: [...new Set(occ.map((o) => o.via))].join(', '),
       current,
       target,
       latest: view?.distTags?.latest ?? null,
+      newest: st?.newest ?? null,
+      newestAgeHours: st?.newestAgeHours ?? null,
       occurrences: occ,
       mixedVersions: new Set(occ.map((o) => o.version)).size > 1,
       unknownPackage: !view,
@@ -386,13 +400,15 @@ async function analyzeCiTools(minAgeMs, nowMs) {
     if (!view) {
       entry.status = 'unknown-package'
     } else if (!target) {
-      entry.status = 'up-to-date'
+      // 'too-fresh' when newer releases exist but all are younger than the gate.
+      entry.status = st.status
     } else {
-      const cls = classify(current, target)
-      entry.bumpType = cls.bumpType
+      entry.bumpType = st.bumpType
       entry.mappingConfirmed = occ.every((o) => o.mappingConfirmed !== false)
       entry.status =
-        cls.safe && entry.mappingConfirmed ? 'safe' : 'needs-approval'
+        st.status === 'safe' && entry.mappingConfirmed
+          ? 'safe'
+          : 'needs-approval'
     }
     return entry
   })
@@ -473,17 +489,13 @@ async function analyzeNode() {
       found.push({ where: f, value: t.trim() })
     }
   }
-  const engines = readJson(root, 'package.json')?.engines?.node
   let lts = null
-  let current = null
   try {
     const res = await fetch('https://nodejs.org/dist/index.json', {
       signal: AbortSignal.timeout(15000),
     })
     const list = await res.json()
-    const stable = list.filter((r) => !/-/.test(r.version))
-    lts = stable.find((r) => r.lts)?.version ?? null
-    current = stable[0]?.version ?? null
+    lts = list.find((r) => !/-/.test(r.version) && r.lts)?.version ?? null
   } catch (err) {
     failures.push({
       call: 'GET nodejs.org/dist/index.json',
@@ -502,10 +514,8 @@ async function analyzeNode() {
     f.unparsed = !f.alias && (codename || !/^v?\d/.test(f.value))
   }
   return {
-    found,
-    engines: engines ?? null,
     latestLts: lts,
-    latestCurrent: current,
+    // true / false; null when nodejs.org failed or a node-version cannot be read.
     upToDate:
       ltsMajor == null || found.some((f) => f.unparsed)
         ? null
@@ -582,132 +592,6 @@ function applyActions(planPath, names) {
   }
 }
 
-function printSummary(plan) {
-  const e = process.stderr
-  const a = plan.actions.actions
-  if (plan.degraded) {
-    e.write(
-      `\n**DEGRADED: ${plan.degraded.length} API call(s) failed. The plan is incomplete. Rerun before you trust it.**\n${plan.degraded
-        .slice(0, 10)
-        .map((f) => `- ${f.call}: ${f.error}`)
-        .join('\n')}\n`
-    )
-  }
-  e.write(
-    `\n## GitHub Actions (release-age gate ${plan.actions.minAgeHours}h)\n\n`
-  )
-  const bump = a.filter(
-    (x) => x.status === 'safe' || x.status === 'needs-approval'
-  )
-  e.write(
-    bump.length
-      ? `${mdTable(
-          ['Action', 'From', 'To', 'Bump', 'Uses', 'Notes'],
-          bump.map((x) => [
-            `\`${x.repo}\``,
-            x.current,
-            x.target,
-            x.status === 'needs-approval'
-              ? `${x.bumpType} (approval)`
-              : x.bumpType,
-            x.occurrences,
-            [
-              x.heldBack ? `newest ${x.newest} is too fresh` : '',
-              x.mixedVersions ? 'mixed versions in repo' : '',
-              x.pinMatchesComment === false ? 'PIN DOES NOT MATCH COMMENT' : '',
-              x.pinMatchesComment === null ? 'pin not verified' : '',
-              x.approvalReason && x.approvalReason !== 'major'
-                ? x.approvalReason
-                : '',
-              x.targetSha
-                ? `→ ${x.targetSha.slice(0, 12)} (${x.targetCommitDate?.slice(0, 10) ?? '?'}${x.targetImmutable ? ', immutable release' : ', mutable release'})`
-                : '',
-              x.ageUnknown ? 'no release dates (tags only)' : '',
-            ]
-              .filter(Boolean)
-              .join(' · '),
-          ])
-        )}\n`
-      : 'All actions use their latest aged release.\n'
-  )
-  const other = a.filter(
-    (x) => !(x.status === 'safe' || x.status === 'needs-approval')
-  )
-  if (other.length) {
-    e.write(
-      `\nUp to date or not bumpable: ${other
-        .map(
-          (x) =>
-            `\`${x.repo}\` ${x.current ?? '?'} (${x.status}${x.status === 'too-fresh' ? `: ${x.newest} is ${x.newestAgeHours}h old` : ''}${x.pinMatchesComment === false ? ', PIN DOES NOT MATCH COMMENT' : ''})`
-        )
-        .join(', ')}\n`
-    )
-  }
-  const unpinned = plan.actions.uses.filter(
-    (u) => !/^[0-9a-f]{40}$/.test(u.ref)
-  )
-  if (unpinned.length) {
-    e.write(
-      `\nNot pinned to a SHA: ${unpinned.map((u) => `${u.file}:${u.line} ${u.action}@${u.ref}`).join(', ')}\n`
-    )
-  }
-  const p = plan.pnpm
-  e.write('\n## pnpm\n\n')
-  e.write(
-    `- packageManager: ${p.current ?? 'not set'} → ${p.target ?? p.current} ${
-      p.target
-        ? `(${p.bumpType}${p.status === 'needs-approval' ? ', NEEDS APPROVAL' : ''})`
-        : '(up to date: step 5.9 regenerates with the current pnpm)'
-    }; npm latest ${p.latest}${p.latestAgeHours != null ? ` (${p.latestAgeHours}h old)` : ''}\n`
-  )
-  e.write(
-    `- Hardcoded pnpm version in CI: ${p.hardcodedInCi.length ? p.hardcodedInCi.join(', ') : 'none (CI reads packageManager)'}\n`
-  )
-  e.write('\n## Tool versions hardcoded in CI\n\n')
-  e.write(
-    plan.ciTools.length
-      ? `${mdTable(
-          ['Tool', 'Via', 'From', 'To', 'Bump', 'Notes'],
-          plan.ciTools.map((x) => [
-            `\`${x.pkg}\``,
-            x.via,
-            x.current,
-            x.target ?? '—',
-            x.status === 'needs-approval'
-              ? `${x.bumpType} (approval)`
-              : (x.bumpType ?? x.status),
-            [
-              x.mixedVersions ? 'mixed versions in repo' : '',
-              x.unknownPackage
-                ? 'no npm package with this name; check by hand'
-                : '',
-              x.mappingConfirmed === false
-                ? 'env name mapped to npm by guess; confirm by hand'
-                : '',
-              x.occurrences.map((o) => `${o.file}:${o.line}`).join(', '),
-            ]
-              .filter(Boolean)
-              .join(' · '),
-          ])
-        )}\n`
-      : 'None.\n'
-  )
-  const n = plan.node
-  e.write('\n## Node\n\n')
-  e.write(
-    `- CI and version files: ${n.found.map((f) => `${f.value} (${f.where})`).join(', ') || 'none'}\n`
-  )
-  e.write(
-    `- engines.node: ${n.engines ?? 'not set'}; latest LTS ${n.latestLts}; latest current ${n.latestCurrent}; ${
-      n.upToDate == null
-        ? 'unknown: nodejs.org not reachable, or a node-version the script cannot read (matrix or expression); check by hand'
-        : n.upToDate
-          ? 'CI is on the latest LTS major (aliases such as lts/* follow it)'
-          : 'CI is NOT on the latest LTS major'
-    }\n\n`
-  )
-}
-
 async function main() {
   if (values.apply) {
     // One JSON document for both kinds, so the caller can read every `missing` list.
@@ -726,16 +610,16 @@ async function main() {
     process.stdout.write(`${JSON.stringify(out, null, 2)}\n`)
     return
   }
-  const yaml = readWorkspaceYaml(root)
-  const minAgeHours = values['min-age-hours']
-    ? Number(values['min-age-hours'])
-    : minAgeMinutesFromYaml(yaml) / 60
+  const minAgeHours = minAgeMinutesFromYaml(readWorkspaceYaml(root)) / 60
   const minAgeMs = minAgeHours * 3600 * 1000
   const nowMs = Date.now()
+  // An extra project (no workflows of its own): bump.mjs reads only its pnpm, so the
+  // actions, CI tools and Node checks have nothing to scan and do not run.
+  const hasWorkflows = workflowFiles().length > 0
   const [actions, pnpm, node, ciTools] = await Promise.all([
     analyzeActions(minAgeMs, nowMs, minAgeHours),
     analyzePnpm(minAgeMs, nowMs),
-    analyzeNode(),
+    hasWorkflows ? analyzeNode() : null,
     analyzeCiTools(minAgeMs, nowMs),
   ])
   const plan = {
@@ -747,15 +631,8 @@ async function main() {
     ciTools,
     // Calls that failed. Non-null means the plan is incomplete: rerun, do not trust "none".
     degraded: failures.length ? failures : null,
-    // Names to pass to --tools for the safe batch.
-    safeTools: ciTools.filter((x) => x.status === 'safe').map((x) => x.pkg),
-    // Names to pass to --actions for the safe batch.
-    safeActions: actions.actions
-      .filter((x) => x.status === 'safe')
-      .map((x) => x.repo),
   }
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`)
-  printSummary(plan)
 }
 
 main()
