@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noConsole: console.log */
+/* oxlint-disable no-console -- console.log */
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 

@@ -192,7 +192,7 @@ describe('withDedupe with abort signals', () => {
     // Counts the handlers added to each promise, so the test can see ours.
     class CountingPromise<T> extends Promise<T> {
       handlers = 0
-      // biome-ignore lint/suspicious/noThenProperty: counts the handlers added to the promise
+      // oxlint-disable-next-line unicorn/no-thenable -- counts the handlers added to the promise
       override then<A = T, B = never>(
         onFulfilled?: ((value: T) => A | PromiseLike<A>) | null,
         onRejected?: ((reason: unknown) => B | PromiseLike<B>) | null
