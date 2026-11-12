@@ -2310,6 +2310,9 @@ async function pushAndPr(wt, ghRepo, out, projects) {
       ['pr', 'edit', String(R.pr), '--repo', ghRepo, '--body-file', bodyFile],
       { cwd: wt }
     )
+    R.notes.push(
+      `PR #${R.pr}: the script rewrote only its block. Update the text above the block so that it matches the branch.`
+    )
   } else {
     const url = await must(
       'gh',

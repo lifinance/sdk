@@ -138,6 +138,8 @@ describe('bump.mjs end to end', { skip, concurrency: true }, () => {
       assert.equal(r.json.mode, 'open-pr')
       assert.equal(r.json.mergedMain, true)
       assert.match(r.json.notes.join('\n'), /conflict only in pnpm-lock\.yaml/)
+      // The text above the block is from an earlier run: the agent updates it.
+      assert.match(r.json.notes.join('\n'), /PR #10: .*text above the block/)
       const tip = originRef(fx, BRANCH)
       assert.ok(isAncestor(fx, prHead, tip), 'no force-push')
       assert.ok(isAncestor(fx, mainTip, tip), 'the PR branch has main')
