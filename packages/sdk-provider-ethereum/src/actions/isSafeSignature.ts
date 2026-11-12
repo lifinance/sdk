@@ -1,10 +1,10 @@
 import type { SDKClient } from '@lifi/sdk'
-import type { Address } from 'viem'
+import { type Address, isHex } from 'viem'
 import { getSafeApiKey } from '../utils/getSafeApiKey.js'
 import { isSafeWallet } from './isSafeWallet.js'
 
 export interface IsSafeSignatureProps {
-  hash: string
+  hash: unknown
   chainId: number
   address?: Address
 }
@@ -21,7 +21,7 @@ export async function isSafeSignature(
 ): Promise<boolean> {
   // Signature: 65 bytes = 130 hex chars + 0x prefix = 132 chars
   // Tx hash: 32 bytes = 64 hex chars + 0x prefix = 66 chars
-  if (typeof hash !== 'string' || !hash.startsWith('0x') || hash.length <= 66) {
+  if (!isHex(hash) || hash.length <= 66) {
     return false
   }
 

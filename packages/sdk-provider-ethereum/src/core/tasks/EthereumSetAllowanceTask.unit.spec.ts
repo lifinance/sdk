@@ -161,17 +161,13 @@ describe('EthereumSetAllowanceTask.run', () => {
     expect(vi.mocked(setAllowance).mock.calls[0][3]).toBe(APPROVAL_ADDRESS)
   })
 
-  // A Safe signer queues the approve and the wallet returns a 65-byte
-  // signature. Only the hash that `resolveTransactionHash` finds after the
-  // Safe runs it has a receipt.
   it('waits for the receipt of the resolved hash, not the Safe signature', async () => {
+    vi.mocked(isBatchingSupported).mockResolvedValue(false)
     vi.mocked(setAllowance).mockResolvedValue(SAFE_SIGNATURE)
-    const context = buildContext({
-      typedData: [nativePermit()],
-      disableMessageSigning: true,
-    })
 
-    await task.run(context)
+    const result = await task.run(buildContext({ typedData: [] }))
+
+    expect(result.context?.executionStrategy).toBe('standard')
 
     expect(resolveTransactionHash).toHaveBeenCalledWith(
       expect.anything(),

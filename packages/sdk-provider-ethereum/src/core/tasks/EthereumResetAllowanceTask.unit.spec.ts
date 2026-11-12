@@ -73,6 +73,7 @@ beforeEach(() => {
     permit2Supported: false,
     spenderAddress: APPROVAL_ADDRESS,
   })
+  vi.mocked(setAllowance).mockResolvedValue(TX_HASH)
   vi.mocked(resolveTransactionHash).mockResolvedValue(TX_HASH)
   vi.mocked(waitForTransactionReceipt).mockResolvedValue({
     transactionHash: TX_HASH,
@@ -80,9 +81,6 @@ beforeEach(() => {
 })
 
 describe('EthereumResetAllowanceTask.run', () => {
-  // A Safe signer queues the reset and the wallet returns a 65-byte
-  // signature. Only the hash that `resolveTransactionHash` finds after the
-  // Safe runs it has a receipt.
   it('waits for the receipt of the resolved hash, not the Safe signature', async () => {
     vi.mocked(setAllowance).mockResolvedValue(SAFE_SIGNATURE)
 

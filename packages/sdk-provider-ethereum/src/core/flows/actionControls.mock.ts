@@ -9,9 +9,10 @@
  * - {@link mockEthereumProviderModule} wraps `EthereumProvider` from
  *   `../../EthereumProvider.js`. The wrapper puts {@link walletControls}
  *   between the SDK and the harness wallet: the user can reject a
- *   `sendTransaction`, the wallet can start on another chain, and an
- *   `acceptExchangeRateUpdateHook` reaches the executor's execution options.
- *   Every spec that uses it needs this preamble:
+ *   `sendTransaction`, the wallet can answer one with any value, the wallet
+ *   can start on another chain, and an `acceptExchangeRateUpdateHook`
+ *   reaches the executor's execution options. Every spec that uses it needs
+ *   this preamble:
  *
  *   ```ts
  *   vi.mock('../../EthereumProvider.js', async (importOriginal) =>
@@ -90,6 +91,11 @@ export interface WalletControls {
   /** The user rejects this many of the next `sendTransaction` prompts. */
   rejectSends: number
   /**
+   * The wallet answers the next `sendTransaction` prompts with these values,
+   * in order, and sends nothing.
+   */
+  sendAnswers: unknown[]
+  /**
    * The chain that every wallet from `getWalletClient` reports, not only the
    * first one. `undefined` keeps the harness wallet's chain. The wallet that
    * `switchChain` returns always reports the harness chain.
@@ -111,6 +117,7 @@ export interface WalletControls {
 export const walletControls: WalletControls = {
   sendAttempts: [],
   rejectSends: 0,
+  sendAnswers: [],
   startChainId: undefined,
   switches: [],
   log: [],
@@ -118,6 +125,7 @@ export const walletControls: WalletControls = {
   reset() {
     this.sendAttempts.length = 0
     this.rejectSends = 0
+    this.sendAnswers.length = 0
     this.startChainId = undefined
     this.switches.length = 0
     this.log.length = 0
@@ -178,6 +186,9 @@ const controlledWallet = (harnessWallet: Client, chainId?: number): Client => {
           ),
           { account: null }
         )
+      }
+      if (walletControls.sendAnswers.length > 0) {
+        return walletControls.sendAnswers.shift() as Hex
       }
       return harness.sendTransaction(request)
     },

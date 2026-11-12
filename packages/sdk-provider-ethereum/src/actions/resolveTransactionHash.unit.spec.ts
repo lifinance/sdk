@@ -16,14 +16,13 @@ import { waitForSafeTransactionExecution } from './waitForSafeTransactionExecuti
 
 const SIGNATURE = `0x${'11'.repeat(65)}` as Hex
 const TX_HASH = `0x${'22'.repeat(32)}` as Hex
+const SAFE_ADDRESS = `0x${'33'.repeat(20)}` as const
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe('resolveTransactionHash', () => {
-  // Some wallets answer `eth_sendTransaction` with `null` or another value
-  // that is not a hash, and viem passes it through unchanged (JUMPER-FRONT-BR).
   it.each([
     ['null', null],
     ['undefined', undefined],
@@ -32,7 +31,9 @@ describe('resolveTransactionHash', () => {
     ['a string that is not hex', 'pending'],
     ['a hex string shorter than a hash', '0x1234'],
     ['an object', { hash: TX_HASH }],
-  ])('rejects %s from the wallet before the Safe check', async (_, value) => {
+  ])('rejects %s from the wallet', async (_, value) => {
+    vi.mocked(isSafeSignature).mockResolvedValue(false)
+
     await expect(
       resolveTransactionHash(
         {} as SDKClient,
@@ -43,18 +44,44 @@ describe('resolveTransactionHash', () => {
     ).rejects.toMatchObject({
       name: 'TransactionError',
       code: LiFiErrorCode.TransactionFailed,
+      message: expect.stringContaining('did not return a transaction hash'),
       final: false,
     })
-    expect(isSafeSignature).not.toHaveBeenCalled()
     expect(waitForSafeTransactionExecution).not.toHaveBeenCalled()
   })
 
-  it('returns a transaction hash that is not a Safe signature unchanged', async () => {
+  it.each([
+    ['a transaction hash', TX_HASH],
+    ['a signature that the Safe lookup did not confirm', SIGNATURE],
+    ['an odd-length hex string longer than a hash', `0x${'2'.repeat(65)}`],
+  ])('returns %s unchanged', async (_, value) => {
     vi.mocked(isSafeSignature).mockResolvedValue(false)
 
     await expect(
-      resolveTransactionHash({} as SDKClient, {} as Client, TX_HASH, 1)
+      resolveTransactionHash({} as SDKClient, {} as Client, value as Hex, 1)
+    ).resolves.toBe(value)
+  })
+
+  it('returns the hash of the transaction that the Safe executes', async () => {
+    vi.mocked(isSafeSignature).mockResolvedValue(true)
+    vi.mocked(waitForSafeTransactionExecution).mockResolvedValue(TX_HASH)
+
+    await expect(
+      resolveTransactionHash(
+        {} as SDKClient,
+        { account: { address: SAFE_ADDRESS } } as unknown as Client,
+        SIGNATURE,
+        1
+      )
     ).resolves.toBe(TX_HASH)
+    expect(waitForSafeTransactionExecution).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        chainId: 1,
+        safeAddress: SAFE_ADDRESS,
+        signature: SIGNATURE,
+      })
+    )
   })
 
   // The real `isSafeSignature` answers false without an address, so this site
@@ -66,8 +93,7 @@ describe('resolveTransactionHash', () => {
       resolveTransactionHash({} as SDKClient, {} as Client, SIGNATURE, 1)
     ).rejects.toMatchObject({
       code: LiFiErrorCode.TransactionFailed,
-      message:
-        'Safe address or signature not available for transaction tracking.',
+      message: 'Safe address not available for transaction tracking.',
       final: false,
     })
     expect(waitForSafeTransactionExecution).not.toHaveBeenCalled()
