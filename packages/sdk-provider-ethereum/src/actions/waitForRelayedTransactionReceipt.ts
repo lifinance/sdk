@@ -42,6 +42,7 @@ export const waitForRelayedTransactionReceipt = async (
 ): Promise<WalletCallReceipt> => {
   const startTime = Date.now()
   const isGasless = isGaslessStep(step)
+  const isCrossChain = step.action.fromChainId !== step.action.toChainId
   let statusErrors = 0
   return waitForResult(
     async () => {
@@ -86,10 +87,28 @@ export const waitForRelayedTransactionReceipt = async (
         return undefined
       })
 
+      // A gasless answer is the transfer status of `/v1/status`: it reports
+      // the relayed source transaction in `sending` once the relayer sent it.
+      const gaslessStatus = isGasless
+        ? (result as unknown as FullStatusData | undefined)
+        : undefined
+      const landedSource =
+        gaslessStatus?.sending?.txHash &&
+        gaslessStatus.substatus !== 'WAIT_SOURCE_CONFIRMATIONS'
+          ? ({
+              status: 'success',
+              transactionHash: gaslessStatus.sending.txHash,
+              transactionLink: gaslessStatus.sending.txLink,
+            } as unknown as WalletCallReceipt)
+          : undefined
+
       switch (result?.status) {
         case 'PENDING':
           statusErrors = 0
-          return undefined
+          // A gasless bridge transfer whose source transaction landed waits for
+          // its destination. The source wait ends here, so a later bridge
+          // failure reaches the status task, not the final FAILED below.
+          return landedSource
         case 'DONE': {
           const sending: ExtendedTransactionInfo | undefined =
             (result?.transactionStatus?.sending as ExtendedTransactionInfo) ||
@@ -103,6 +122,14 @@ export const waitForRelayedTransactionReceipt = async (
           } as unknown as WalletCallReceipt
         }
         case 'FAILED':
+          // A gasless bridge transfer that failed after its source transaction
+          // landed: the tokens left the wallet. The status task follows the
+          // transfer, as for any bridge. A final failure here would let a
+          // resume sign and relay a second transfer. On one chain, FAILED with
+          // a hash is a revert, which moved nothing, so it stays final.
+          if (landedSource && isCrossChain) {
+            return landedSource
+          }
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,
             'Transaction was reverted.',

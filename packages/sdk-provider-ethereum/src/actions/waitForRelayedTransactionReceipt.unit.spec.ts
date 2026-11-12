@@ -374,29 +374,49 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
     expect(getStatus).toHaveBeenCalledTimes(3)
   })
 
-  it('waits for DONE while a bridge transfer waits for the destination', async () => {
-    vi.useFakeTimers()
-    statusAnswers(
-      {
-        status: 'PENDING',
-        substatus: 'WAIT_DESTINATION_TRANSACTION',
-        sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
-      },
-      {
-        status: 'DONE',
-        sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
-      }
-    )
+  it('resolves with the source hash once a bridge transfer waits for the destination', async () => {
+    statusAnswers({
+      status: 'PENDING',
+      substatus: 'WAIT_DESTINATION_TRANSACTION',
+      sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+    })
 
-    const outcome = runGasless()
-    await vi.advanceTimersByTimeAsync(5_000)
-
-    await expect(outcome).resolves.toMatchObject({
+    await expect(runGasless()).resolves.toMatchObject({
       status: 'success',
       transactionHash: TX_HASH,
       transactionLink: 'https://arbiscan.io/tx/x',
     })
-    expect(getStatus).toHaveBeenCalledTimes(2)
+    expect(getStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolves with the source hash when a bridge fails after its source transaction landed', async () => {
+    // The user's tokens left the wallet. A final failure would let a resume
+    // sign and relay a second transfer; the status task follows this one.
+    const gaslessBridgeStep = {
+      ...gaslessStep,
+      action: { fromChainId: 42161, toChainId: 10 },
+    } as unknown as LiFiStep
+    statusAnswers({
+      status: 'FAILED',
+      sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+    })
+
+    await expect(
+      waitForRelayedTransactionReceipt(
+        {} as SDKClient,
+        TASK_ID,
+        gaslessBridgeStep
+      )
+    ).resolves.toMatchObject({ status: 'success', transactionHash: TX_HASH })
+  })
+
+  it('marks FAILED with a source hash as final on one chain: the revert moved nothing', async () => {
+    statusAnswers({ status: 'FAILED', sending: { txHash: TX_HASH } })
+
+    await expect(runGasless()).rejects.toMatchObject({
+      code: LiFiErrorCode.TransactionFailed,
+      final: true,
+    })
   })
 
   it('resolves with sending.txHash on DONE, without a metadata field', async () => {

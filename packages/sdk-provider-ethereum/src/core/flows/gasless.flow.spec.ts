@@ -192,6 +192,10 @@ describe('G5 — retry after a rejected signature', () => {
       expect(step).not.toHaveProperty('authorization')
     }
     expect(scenario.events('relayTransaction')).toHaveLength(1)
+    // The rejected prompt, then the new Permit and witness. The stale Permit of
+    // the first prepare is never signed: the permit tasks do not run.
+    expect(scenario.events('signTypedData')).toHaveLength(3)
+    expectNothingSentOnChain(scenario)
   })
 })
 
