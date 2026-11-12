@@ -7,9 +7,11 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { Address, Hash, Hex } from 'viem'
-import { sendCallsOnChain } from '../../actions/sendOnChain.js'
+import { sendCalls } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
 import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
+import { getSendChain } from '../../utils/getSendChain.js'
 
 export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -63,11 +65,16 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
     // (strategy, chain switch).
     assertNoOpenTransaction(statusManager.findAction(step, action.type))
 
-    const { id } = await sendCallsOnChain(
+    const { id } = await getAction(
       updatedClient,
-      convertExtendedChain(fromChain),
-      { account: updatedClient.account!, calls }
-    )
+      sendCalls,
+      'sendCalls'
+    )({
+      account: updatedClient.account!,
+      calls,
+      // Without it `sendCalls` uses `client.chain`, which can be stale.
+      chain: getSendChain(updatedClient, convertExtendedChain(fromChain)),
+    })
 
     statusManager.updateAction(step, action.type, 'PENDING', {
       // A new transaction: nothing of the previous one may survive, least of

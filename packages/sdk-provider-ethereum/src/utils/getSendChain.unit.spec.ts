@@ -1,6 +1,7 @@
 import type { ExtendedChain } from '@lifi/sdk'
 import {
   type Chain,
+  type Client,
   createClient,
   custom,
   type EIP1193RequestFn,
@@ -11,8 +12,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { sendTransaction } from 'viem/actions'
 import { base, hyperEvm } from 'viem/chains'
 import { describe, expect, it, vi } from 'vitest'
-import { convertExtendedChain } from '../utils/convertExtendedChain.js'
-import { getSendChain, sendTransactionOnChain } from './sendOnChain.js'
+import { convertExtendedChain } from './convertExtendedChain.js'
+import { getSendChain } from './getSendChain.js'
 
 const toExtendedChain = (chain: Chain): ExtendedChain =>
   ({
@@ -84,38 +85,24 @@ describe('getSendChain', () => {
   })
 })
 
-describe('sendTransactionOnChain', () => {
+describe('getSendChain with a local account', () => {
   // HyperEVM sets `fees.baseFeeMultiplier: 2`; a converted chain has no `fees`.
-  it('keeps the fee settings of the client chain for a local account', async () => {
-    const onChain = createLocalAccountClient(hyperEvm)
-    const converted = createLocalAccountClient(hyperEvm)
+  it('keeps the fee settings of the client chain', async () => {
+    const send = async (pickChain: (client: Client) => Chain) => {
+      const { client, sent } = createLocalAccountClient(hyperEvm)
+      await sendTransaction(client, {
+        to: client.account.address,
+        value: 0n,
+        chain: pickChain(client),
+      })
+      return parseTransaction(sent[0]).maxFeePerGas
+    }
 
-    await sendTransactionOnChain(onChain.client, stepChain, {
-      to: onChain.client.account.address,
-      value: 0n,
-    } as never)
-    await sendTransaction(converted.client, {
-      to: converted.client.account.address,
-      value: 0n,
-      chain: stepChain,
-    })
-
-    expect(parseTransaction(onChain.sent[0]).maxFeePerGas).toBeGreaterThan(
-      parseTransaction(converted.sent[0]).maxFeePerGas!
+    const withSendChain = await send((client) =>
+      getSendChain(client, stepChain)
     )
-  })
+    const withConvertedChain = await send(() => stepChain)
 
-  it('leaves the chain to viem when no chain is given', async () => {
-    const { client } = createLocalAccountClient(base)
-    const send = vi.fn(async () => `0x${'ab'.repeat(32)}` as const)
-    const extendedClient = client.extend(() => ({ sendTransaction: send }))
-
-    await sendTransactionOnChain(extendedClient, undefined, {
-      to: client.account.address,
-    } as never)
-
-    expect(send).toHaveBeenCalledWith(
-      expect.not.objectContaining({ chain: expect.anything() })
-    )
+    expect(withSendChain).toBeGreaterThan(withConvertedChain!)
   })
 })

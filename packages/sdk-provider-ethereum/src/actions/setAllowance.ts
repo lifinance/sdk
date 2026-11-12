@@ -12,13 +12,15 @@ import type {
   SendTransactionParameters,
 } from 'viem'
 import { encodeFunctionData } from 'viem'
+import { sendTransaction } from 'viem/actions'
+import { getAction } from 'viem/utils'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from '../types.js'
 import { approveAbi } from '../utils/abi.js'
 import { convertExtendedChain } from '../utils/convertExtendedChain.js'
+import { getSendChain } from '../utils/getSendChain.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
 import { getAllowance } from './getAllowance.js'
 import { getMaxPriorityFeePerGas } from './getMaxPriorityFeePerGas.js'
-import { sendTransactionOnChain } from './sendOnChain.js'
 
 export const setAllowance = async (
   client: SDKClient,
@@ -67,7 +69,11 @@ export const setAllowance = async (
     }
   }
 
-  return sendTransactionOnChain(viemClient, chain, {
+  return getAction(
+    viemClient,
+    sendTransaction,
+    'sendTransaction'
+  )({
     to: transactionRequest.to,
     account: viemClient.account!,
     data: transactionRequest.data,
@@ -75,6 +81,7 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
+    ...(chain && { chain: getSendChain(viemClient, chain) }),
   } as SendTransactionParameters)
 }
 

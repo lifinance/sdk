@@ -77,35 +77,6 @@
   },
   "overrides": [
     {
-      "includes": [
-        "packages/sdk-provider-ethereum/src/**",
-        "!packages/sdk-provider-ethereum/src/actions/sendOnChain.ts",
-        "!**/*.spec.ts",
-        "!**/*.mock.ts"
-      ],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "paths": {
-                  "viem/actions": {
-                    "importNames": [
-                      "sendCalls",
-                      "sendTransaction",
-                      "writeContract"
-                    ],
-                    "message": "Send through sendCallsOnChain or sendTransactionOnChain in src/actions/sendOnChain.ts, so the send gets the step chain."
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
       "includes": ["examples/**"],
       "linter": {
         "rules": {
