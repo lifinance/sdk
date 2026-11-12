@@ -9,5 +9,7 @@ overrides:
   'zod@<4.6.0': '>=4.6.0'
 allowBuilds:
   esbuild: false
+#   - 2026-11-12: fast-track viem@2.57.19 (all checks pass, or approved by the user).
 minimumReleaseAgeExclude:
   - '@lifi/*'
+  - viem@2.57.19
