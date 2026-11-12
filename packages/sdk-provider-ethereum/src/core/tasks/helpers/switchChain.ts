@@ -1,4 +1,4 @@
-import { BaseError, LiFiErrorCode, ProviderError, SDKError } from '@lifi/sdk'
+import { LiFiErrorCode, ProviderError } from '@lifi/sdk'
 import type { Client, GetChainIdReturnType } from 'viem'
 import { getChainId } from 'viem/actions'
 import { getAction } from 'viem/utils'
@@ -44,29 +44,7 @@ export const switchChain = async (
       'Chain switch hook is not provided.'
     )
   }
-  let updatedClient: Client | undefined
-  try {
-    updatedClient = await switchChainCallback(targetChainId)
-  } catch (error) {
-    // Already classified (`ExecuteStepRetryError` included): a wrap would hide
-    // its code or the retry request.
-    if (error instanceof SDKError || error instanceof BaseError) {
-      throw error
-    }
-    // `parseEthereumErrors` classifies the cause, rejections included.
-    // Keep the wallet's reason: the action error stores only this message.
-    // viem `details` is the reason without the "Version:" and docs lines.
-    const details = (error as { details?: unknown } | undefined)?.details
-    const reason =
-      (typeof details === 'string' && details) ||
-      (typeof error === 'string' && error) ||
-      (error as Error | undefined)?.message
-    throw new ProviderError(
-      LiFiErrorCode.ChainSwitchError,
-      `The wallet could not switch to chain ${targetChainId}.${reason ? ` ${reason}` : ''}`,
-      error as Error
-    )
-  }
+  const updatedClient = await switchChainCallback(targetChainId)
   let updatedChainId: number | undefined
   if (updatedClient) {
     updatedChainId = (await getAction(

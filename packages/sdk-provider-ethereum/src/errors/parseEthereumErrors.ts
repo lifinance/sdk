@@ -51,18 +51,6 @@ const handleSpecificErrors = async (
   step?: LiFiStep,
   action?: ExecutionAction
 ): Promise<BaseError> => {
-  /**
-   * `switchChain` wraps a failed switch in a `ChainSwitchError` with the wallet error as `cause`.
-   * A cause with a known code (for example, a user rejection) keeps it; any other cause stays a `ChainSwitchError`.
-   */
-  if (
-    e instanceof ProviderError &&
-    e.code === LiFiErrorCode.ChainSwitchError &&
-    e.cause
-  ) {
-    const causeError = await handleSpecificErrors(e.cause, step, action)
-    return causeError instanceof UnknownError ? e : causeError
-  }
   if (
     e.name === 'UserRejectedRequestError' ||
     e.cause?.name === 'UserRejectedRequestError' ||
@@ -106,6 +94,11 @@ const handleSpecificErrors = async (
    */
   if (e.cause?.code === -32603) {
     return new TransactionError(LiFiErrorCode.TransactionRejected, e.message, e)
+  }
+  // wagmi connectors throw it for a failed switch that is not a rejection,
+  // for example for a chain that the wallet does not support.
+  if (e.name === 'SwitchChainError') {
+    return new ProviderError(LiFiErrorCode.ChainSwitchError, e.message, e)
   }
 
   /**
