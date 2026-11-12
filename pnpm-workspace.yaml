@@ -40,4 +40,4 @@ overrides:
   # only) asks for ^10.2.2 up to 8.72.2. It calls only the named minimatch(), which
   # 11.x keeps, also in CJS. The path selector leaves other minimatch majors alone.
   # Remove it when typescript-estree allows minimatch 11.
-  '@typescript-eslint/typescript-estree>minimatch': '^11.0.5'
+  '@typescript-eslint/typescript-estree>minimatch': '^11.0.7'
