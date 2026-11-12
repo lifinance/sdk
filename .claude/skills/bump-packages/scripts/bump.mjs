@@ -25,6 +25,7 @@ import { execFileSync, spawn } from 'node:child_process'
 import {
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   realpathSync,
@@ -61,6 +62,7 @@ import {
   prBlock,
   replaceOverride,
   replacePrBlock,
+  reuseChangesets,
   setDependencySpec,
   setPackageManager,
   terminalText,
@@ -1730,7 +1732,7 @@ async function lockfileReview(projects, out) {
 
 // --- 7. changeset -----------------------------------------------------------------
 
-function writeChangeset(wt, root) {
+async function writeChangeset(wt, root) {
   if (!existsSync(join(wt, '.changeset', 'config.json'))) {
     return null
   }
@@ -1758,11 +1760,47 @@ function writeChangeset(wt, root) {
   if (!updates.length) {
     return null
   }
+  // A rerun on a PR: the changesets that the branch added get the new versions first.
+  const mb = (
+    await must('git', ['merge-base', 'HEAD', 'origin/main'], { cwd: wt })
+  ).trim()
+  const added = (
+    await must(
+      'git',
+      [
+        'diff',
+        '--name-only',
+        '--diff-filter=A',
+        mb,
+        'HEAD',
+        '--',
+        '.changeset',
+      ],
+      { cwd: wt }
+    )
+  )
+    .split('\n')
+    .filter(
+      (f) =>
+        /^\.changeset\/[^/]+\.md$/.test(f) &&
+        existsSync(join(wt, f)) &&
+        lstatSync(join(wt, f)).isFile()
+    )
+  const { edits, rest } = reuseChangesets(
+    added.map((file) => ({ file, text: readFileSync(join(wt, file), 'utf8') })),
+    updates
+  )
+  for (const e of edits) {
+    writeFileSync(join(wt, e.file), e.text)
+  }
+  if (!rest.length) {
+    return null
+  }
   let file = join(wt, '.changeset', `bump-packages-${DATE}.md`)
   for (let n = 2; existsSync(file); n++) {
     file = join(wt, '.changeset', `bump-packages-${DATE}-${n}.md`)
   }
-  writeFileSync(file, changesetText(updates))
+  writeFileSync(file, changesetText(rest))
   return file
 }
 
