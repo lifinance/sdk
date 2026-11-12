@@ -23,7 +23,7 @@ import { getPublicClient } from '../client/publicClient.js'
  * @param action - The function or method to execute
  * @param actionName - The name of the action (used for error handling)
  * @param params - The parameters for the action
- * @param chainId - The chain of the fallback public client. Defaults to `walletClient.chain`, which can be stale.
+ * @param chainId - The chain of the fallback public client. Pass the step chain: `walletClient.chain` can be stale.
  * @returns The result of the action
  */
 export const getActionWithFallback = async <
@@ -41,7 +41,7 @@ export const getActionWithFallback = async <
   actionFn: (_: client, parameters: parameters) => returnType,
   name: keyof PublicActions | keyof WalletActions | (string & {}),
   params: parameters,
-  chainId: number | undefined = walletClient.chain?.id
+  chainId: number | undefined
 ): Promise<Awaited<returnType>> => {
   try {
     return await getAction(walletClient, actionFn, name)(params)

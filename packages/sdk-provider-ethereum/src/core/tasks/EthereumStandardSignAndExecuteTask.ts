@@ -7,14 +7,13 @@ import {
   TransactionError,
 } from '@lifi/sdk'
 import type { Address, Hex, SendTransactionParameters } from 'viem'
-import { sendTransaction } from 'viem/actions'
-import { getAction } from 'viem/utils'
 import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
+import { sendTransactionOnChain } from '../../actions/sendOnChain.js'
 import { encodeNativePermitData } from '../../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { getStepChain } from '../../utils/getStepChain.js'
+import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { findSignedNativePermit } from './helpers/findSignedNativePermit.js'
 import { getTxLink } from './helpers/getTxLink.js'
@@ -119,21 +118,20 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
     // (strategy, chain switch, permit prompt, gas estimate).
     assertNoOpenTransaction(statusManager.findAction(step, action.type))
 
-    const txHash = await getAction(
+    const txHash = await sendTransactionOnChain(
       updatedClient,
-      sendTransaction,
-      'sendTransaction'
-    )({
-      to: finalTransactionRequest.to as Address,
-      account: updatedClient.account!,
-      data: finalTransactionRequest.data as Hex,
-      value: finalTransactionRequest.value,
-      gas: finalTransactionRequest.gas,
-      gasPrice: finalTransactionRequest.gasPrice,
-      maxFeePerGas: finalTransactionRequest.maxFeePerGas,
-      maxPriorityFeePerGas: finalTransactionRequest.maxPriorityFeePerGas,
-      chain: getStepChain(updatedClient, fromChain),
-    } as SendTransactionParameters)
+      convertExtendedChain(fromChain),
+      {
+        to: finalTransactionRequest.to as Address,
+        account: updatedClient.account!,
+        data: finalTransactionRequest.data as Hex,
+        value: finalTransactionRequest.value,
+        gas: finalTransactionRequest.gas,
+        gasPrice: finalTransactionRequest.gasPrice,
+        maxFeePerGas: finalTransactionRequest.maxFeePerGas,
+        maxPriorityFeePerGas: finalTransactionRequest.maxPriorityFeePerGas,
+      } as SendTransactionParameters
+    )
 
     const resolvedTxHash = await resolveTransactionHash(
       client,

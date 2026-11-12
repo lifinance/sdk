@@ -4,7 +4,7 @@ import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { getStepChain } from '../../utils/getStepChain.js'
+import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
 import { getApprovalAmount } from './helpers/getApprovalAmount.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
@@ -72,7 +72,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       // We need to return the populated transaction when batching is supported
       // instead of executing transaction on-chain
       batchingSupported,
-      getStepChain(updatedClient, fromChain)
+      convertExtendedChain(fromChain)
     )
 
     const calls = [...currentCalls]

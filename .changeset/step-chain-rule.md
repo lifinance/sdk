@@ -2,4 +2,8 @@
 "@lifi/sdk-provider-ethereum": patch
 ---
 
-All step sends now use one rule for the chain: the client's `chain` when it is the step's chain, and the step's chain from the LI.FI API when it is not, for example when `client.chain` is old or missing. The rule applies to the main transaction, batched calls, approvals and allowance resets. Before, the main transaction always used the chain from the API. That chain has no fee settings or serializers, so a local account (for example, a private key account) lost the fee rules of its chain, such as the base fee multiplier on HyperEVM.
+All sends now use one rule for the chain. When `client.chain` is the step's chain, the send keeps it. Otherwise the send uses the step's chain from the LI.FI API. This covers the main transaction, batched calls, approvals and allowance resets.
+
+Before, the main transaction always used the API chain, which has no fee settings or serializers. So a local account lost the fee rules of its chain, for example the HyperEVM base fee multiplier. A matching `client.chain` now also keeps its custom fields and hooks, as viem does when no chain is given.
+
+`setTokenAllowance` and `revokeTokenApproval` now send on the token's chain. An old `walletClient.chain` no longer makes them fail with `ChainMismatchError`.

@@ -10,11 +10,9 @@ vi.mock('../client/publicClient.js', () => ({
 import { getPublicClient } from '../client/publicClient.js'
 import { getActionWithFallback } from './getActionWithFallback.js'
 
-const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
-
-// The wallet RPC fails, so every read goes to the public client fallback.
+// Its `chain` is stale and its RPC fails, so every read falls back.
 const walletClient = createClient({
-  account: FROM_ADDRESS,
+  account: '0xaaaa000000000000000000000000000000000001' as Address,
   chain: mainnet,
   transport: custom({
     request: async () => {
@@ -23,10 +21,15 @@ const walletClient = createClient({
   }),
 })
 
-const readChainId = (client: Client, _: undefined) =>
-  Promise.resolve((client as { chain?: { id: number } }).chain?.id)
+const readOffWallet = async (client: Client) => {
+  if (client === walletClient) {
+    throw new Error('Wallet RPC failed.')
+  }
+  return client.chain?.id
+}
 
 beforeEach(() => {
+  vi.clearAllMocks()
   vi.mocked(getPublicClient).mockImplementation(async (_, chainId) =>
     createClient({
       chain: { ...base, id: chainId },
@@ -36,19 +39,12 @@ beforeEach(() => {
 })
 
 describe('getActionWithFallback', () => {
-  it('falls back to a public client for the given chain', async () => {
-    const failingRead = async (client: Client, params: undefined) => {
-      if (client === walletClient) {
-        throw new Error('Wallet RPC failed.')
-      }
-      return readChainId(client, params)
-    }
-
+  it('falls back to a public client on the given chain', async () => {
     const chainId = await getActionWithFallback(
       {} as SDKClient,
       walletClient,
-      failingRead,
-      'failingRead',
+      readOffWallet,
+      'readOffWallet',
       undefined,
       base.id
     )
@@ -57,22 +53,17 @@ describe('getActionWithFallback', () => {
     expect(chainId).toBe(base.id)
   })
 
-  it('falls back to a public client for the wallet client chain', async () => {
-    const failingRead = async (client: Client, params: undefined) => {
-      if (client === walletClient) {
-        throw new Error('Wallet RPC failed.')
-      }
-      return readChainId(client, params)
-    }
-
-    await getActionWithFallback(
-      {} as SDKClient,
-      walletClient,
-      failingRead,
-      'failingRead',
-      undefined
-    )
-
-    expect(getPublicClient).toHaveBeenCalledWith({}, mainnet.id)
+  it('rethrows the wallet error when no chain is given', async () => {
+    await expect(
+      getActionWithFallback(
+        {} as SDKClient,
+        walletClient,
+        readOffWallet,
+        'readOffWallet',
+        undefined,
+        undefined
+      )
+    ).rejects.toThrow('Wallet RPC failed.')
+    expect(getPublicClient).not.toHaveBeenCalled()
   })
 })

@@ -18,7 +18,7 @@ export const getAllowance = async (
   tokenAddress: Address,
   ownerAddress: Address,
   spenderAddress: Address,
-  chainId?: number
+  chainId: number | undefined
 ): Promise<bigint> => {
   try {
     const approved = await getActionWithFallback(
@@ -112,7 +112,8 @@ export const getTokenAllowance = async (
     viemClient,
     token.address as Address,
     ownerAddress,
-    spenderAddress
+    spenderAddress,
+    token.chainId
   )
   return approved
 }
