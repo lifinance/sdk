@@ -62,7 +62,7 @@ describe('setAllowance', () => {
     ])
   })
 
-  it('keeps the client chain when it is already the given chain', async () => {
+  it('sends the given chain to viem', async () => {
     const { client } = createWalletClient(celo, celo)
     const sendTransaction = vi.fn(async () => TX_HASH)
     const extendedClient = client.extend(() => ({ sendTransaction }))
@@ -75,11 +75,11 @@ describe('setAllowance', () => {
       1n,
       undefined,
       false,
-      { ...celo, serializers: undefined, fees: undefined }
+      celo
     )
 
     expect(sendTransaction).toHaveBeenCalledWith(
-      expect.not.objectContaining({ chain: expect.anything() })
+      expect.objectContaining({ chain: celo })
     )
   })
 

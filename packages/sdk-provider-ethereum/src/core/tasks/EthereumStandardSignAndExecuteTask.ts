@@ -14,7 +14,7 @@ import { encodeNativePermitData } from '../../permits/encodeNativePermitData.js'
 import { encodePermit2Data } from '../../permits/encodePermit2Data.js'
 import { signPermit2Message } from '../../permits/signPermit2Message.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
+import { getStepChain } from '../../utils/getStepChain.js'
 import { estimateTransactionRequest } from './helpers/estimateTransactionRequest.js'
 import { findSignedNativePermit } from './helpers/findSignedNativePermit.js'
 import { getTxLink } from './helpers/getTxLink.js'
@@ -131,7 +131,7 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       gasPrice: finalTransactionRequest.gasPrice,
       maxFeePerGas: finalTransactionRequest.maxFeePerGas,
       maxPriorityFeePerGas: finalTransactionRequest.maxPriorityFeePerGas,
-      chain: convertExtendedChain(fromChain),
+      chain: getStepChain(updatedClient, fromChain),
     } as SendTransactionParameters)
 
     const resolvedTxHash = await resolveTransactionHash(

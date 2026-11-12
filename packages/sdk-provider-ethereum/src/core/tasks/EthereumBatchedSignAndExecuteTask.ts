@@ -10,7 +10,7 @@ import type { Address, Hash, Hex } from 'viem'
 import { sendCalls } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { Call, EthereumStepExecutorContext } from '../../types.js'
-import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
+import { getStepChain } from '../../utils/getStepChain.js'
 
 export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
@@ -72,7 +72,7 @@ export class EthereumBatchedSignAndExecuteTask extends BaseStepExecutionTask {
       account: updatedClient.account!,
       calls,
       // Without it `sendCalls` uses `client.chain`, which can be stale.
-      chain: convertExtendedChain(fromChain),
+      chain: getStepChain(updatedClient, fromChain),
     })
 
     statusManager.updateAction(step, action.type, 'PENDING', {

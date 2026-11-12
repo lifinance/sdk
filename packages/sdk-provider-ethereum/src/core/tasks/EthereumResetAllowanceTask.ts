@@ -4,7 +4,7 @@ import { resolveTransactionHash } from '../../actions/resolveTransactionHash.js'
 import { setAllowance } from '../../actions/setAllowance.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
-import { convertExtendedChain } from '../../utils/convertExtendedChain.js'
+import { getStepChain } from '../../utils/getStepChain.js'
 import { getEthereumExecutionStrategy } from './helpers/getEthereumExecutionStrategy.js'
 import { getTxLink } from './helpers/getTxLink.js'
 import { resolveAllowanceSpender } from './helpers/resolveAllowanceSpender.js'
@@ -73,7 +73,7 @@ export class EthereumResetAllowanceTask extends BaseStepExecutionTask {
       0n,
       executionOptions,
       batchingSupported,
-      convertExtendedChain(fromChain)
+      getStepChain(updatedClient, fromChain)
     )
 
     const calls = [...currentCalls]
