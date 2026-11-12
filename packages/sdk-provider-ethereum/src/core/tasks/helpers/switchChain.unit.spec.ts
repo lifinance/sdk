@@ -1,11 +1,5 @@
-import {
-  ExecuteStepRetryError,
-  LiFiErrorCode,
-  type LiFiStep,
-  ProviderError,
-  SDKError,
-} from '@lifi/sdk'
-import { type Client, SwitchChainError, UserRejectedRequestError } from 'viem'
+import { LiFiErrorCode, type LiFiStep, ProviderError } from '@lifi/sdk'
+import type { Client } from 'viem'
 import type { Mock } from 'vitest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { switchChain } from './switchChain.js'
@@ -65,156 +59,25 @@ describe('switchChain', () => {
 
     describe('when allowUserInteraction is true', () => {
       describe('when the switchChainHook fails', () => {
-        const hookError = new Error('Unknown Network: eip155:130')
-
         beforeEach(() => {
-          switchChainHookMock.mockRejectedValue(hookError)
+          switchChainHookMock.mockRejectedValue(
+            new Error('something went wrong')
+          )
         })
 
-        it('should throw a chain switch error with the hook error as cause', async () => {
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
+        it('should throw the error', async () => {
+          await expect(
+            switchChain(
+              client,
+              step.action.fromChainId,
+              true,
+              switchChainHookMock
+            )
+          ).rejects.toThrowError(new Error('something went wrong'))
 
-          expect(error).toBeInstanceOf(ProviderError)
-          expect(error).toMatchObject({
-            code: LiFiErrorCode.ChainSwitchError,
-            cause: hookError,
-          })
-          expect((error as ProviderError).message).toContain(
-            'Unknown Network: eip155:130'
-          )
           expect(switchChainHookMock).toHaveBeenCalledWith(
             step.action.fromChainId
           )
-        })
-
-        it('should add only the wallet reason of a viem error to the message', async () => {
-          switchChainHookMock.mockRejectedValue(
-            new SwitchChainError(new Error('Unknown Network: eip155:130'))
-          )
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect((error as ProviderError).message).toBe(
-            `The wallet could not switch to chain ${step.action.fromChainId}. Unknown Network: eip155:130`
-          )
-        })
-
-        it('should use the error message when `details` is not a string', async () => {
-          switchChainHookMock.mockRejectedValue(
-            Object.assign(new Error('Unknown Network: eip155:130'), {
-              details: { chainId: 130 },
-            })
-          )
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect((error as ProviderError).message).toBe(
-            `The wallet could not switch to chain ${step.action.fromChainId}. Unknown Network: eip155:130`
-          )
-        })
-
-        it('should rethrow an SDKError from the hook unchanged', async () => {
-          const hookError = new SDKError(
-            new ProviderError(
-              LiFiErrorCode.ProviderUnavailable,
-              'No provider for this chain.'
-            )
-          )
-          switchChainHookMock.mockRejectedValue(hookError)
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect(error).toBe(hookError)
-        })
-
-        it('should rethrow a BaseError from the hook unchanged', async () => {
-          const hookError = new ProviderError(
-            LiFiErrorCode.ProviderUnavailable,
-            'No provider for this chain.'
-          )
-          switchChainHookMock.mockRejectedValue(hookError)
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect(error).toBe(hookError)
-        })
-
-        it('should rethrow an ExecuteStepRetryError from the hook unchanged', async () => {
-          const hookError = new ExecuteStepRetryError('Retry the step.', {
-            atomicityNotReady: true,
-          })
-          switchChainHookMock.mockRejectedValue(hookError)
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect(error).toBe(hookError)
-        })
-
-        it('should add the reason of a thrown string to the message', async () => {
-          switchChainHookMock.mockRejectedValue('Unknown Network: eip155:130')
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect((error as ProviderError).message).toBe(
-            `The wallet could not switch to chain ${step.action.fromChainId}. Unknown Network: eip155:130`
-          )
-        })
-      })
-
-      describe('when the user rejects the chain switch', () => {
-        it('should throw a chain switch error with the rejection as cause', async () => {
-          const rejection = new UserRejectedRequestError(
-            new Error('User rejected the request.')
-          )
-          switchChainHookMock.mockRejectedValue(rejection)
-
-          const error = await switchChain(
-            client,
-            step.action.fromChainId,
-            true,
-            switchChainHookMock
-          ).catch((e: unknown) => e)
-
-          expect(error).toBeInstanceOf(ProviderError)
-          expect(error).toMatchObject({
-            code: LiFiErrorCode.ChainSwitchError,
-            cause: rejection,
-          })
         })
       })
 
