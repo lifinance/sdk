@@ -3,8 +3,8 @@
 
 import {
   cmpRaw,
-  EXACT_EXCLUDE_RE,
   escapeRegExp,
+  EXACT_EXCLUDE_RE,
   parseExcludes,
   parseVersion,
   specName,

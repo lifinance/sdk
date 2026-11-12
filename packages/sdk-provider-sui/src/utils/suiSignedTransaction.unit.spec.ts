@@ -5,13 +5,13 @@ import { isValidTransactionSignature } from '@mysten/sui/verify'
 import { describe, expect, it, vi } from 'vitest'
 import {
   parseSuiSignedTransaction,
-  type SuiSignedTransaction,
   serializeSuiSignedTransaction,
+  type SuiSignedTransaction,
   verifySuiSignedTransaction,
 } from './suiSignedTransaction.js'
 import {
-  BYTES,
   buildTransactionBytes,
+  BYTES,
   SIGNATURE,
 } from './suiSignedTransaction.unit.mock.js'
 
