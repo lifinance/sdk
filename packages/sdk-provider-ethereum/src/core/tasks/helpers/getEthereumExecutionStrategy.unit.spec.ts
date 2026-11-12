@@ -158,6 +158,16 @@ describe('getEthereumExecutionStrategy', () => {
     expect(await getEthereumExecutionStrategy(context, true)).toBe('relayed')
   })
 
+  it('reuses the batching answer when afterPrepare is set', async () => {
+    vi.mocked(isBatchingSupported).mockResolvedValue(true)
+    const context = buildContext(undefined, undefined, true)
+
+    expect(await getEthereumExecutionStrategy(context)).toBe('batched')
+    vi.mocked(isBatchingSupported).mockResolvedValue(false)
+    expect(await getEthereumExecutionStrategy(context, true)).toBe('batched')
+    expect(isBatchingSupported).toHaveBeenCalledTimes(1)
+  })
+
   // The two shapes below are the same step before and after prepare. Only the
   // second one knows whether a transaction ever arrives, which is why the rule
   // is bound to `afterPrepare` and not applied on sight.

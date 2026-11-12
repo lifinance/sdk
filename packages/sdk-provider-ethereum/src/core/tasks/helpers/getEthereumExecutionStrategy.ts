@@ -91,9 +91,11 @@ export async function getEthereumExecutionStrategy(
   }
 
   const updatedClient = (await checkClient(step)) ?? ethereumClient
-  const batchingSupported = await isBatchingSupported(client, {
+  // A re-quote changes the step, not the wallet: prepare reuses the answer the
+  // allowance tasks acted on, so a late read cannot flip the strategy.
+  context.batchingSupported ??= isBatchingSupported(client, {
     client: updatedClient,
     chainId: fromChain.id,
   })
-  return batchingSupported ? 'batched' : 'standard'
+  return (await context.batchingSupported) ? 'batched' : 'standard'
 }
