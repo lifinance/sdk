@@ -272,7 +272,15 @@ test('prBlock, replacePrBlock and newPrBody: one stateless block between markers
     ],
     excludes: ['vite@8.3.7'],
     removedExcludes: ['viem@2.57.17'],
-    overrides: [{ key: 'axios', from: '^1.20.0', to: '^1.21.0' }],
+    overrides: [
+      { key: 'axios', from: '^1.20.0', to: '^1.21.0', project: '.' },
+      {
+        key: 'axios',
+        from: '^1.20.0',
+        to: '^1.21.0',
+        project: 'examples/node',
+      },
+    ],
     toolchain: ['pnpm 12.14.0 → 12.18.0'],
   }
   const r = {
@@ -302,7 +310,12 @@ test('prBlock, replacePrBlock and newPrBody: one stateless block between markers
     block,
     /### Allowed past the release-age gate\n\n- `vite@8\.3\.7`/
   )
-  assert.match(block, /- `axios`: `\^1\.20\.0` → `\^1\.21\.0`/)
+  assert.match(block, /- `axios`: `\^1\.20\.0` → `\^1\.21\.0`\n/)
+  assert.match(
+    block,
+    /- `axios`: `\^1\.20\.0` → `\^1\.21\.0` \(examples\/node\)\n/,
+    'the override of an extra project names the project'
+  )
   assert.match(block, /### Aged exclude entries removed\n\n- `viem@2\.57\.17`/)
   assert.match(
     block,

@@ -2220,6 +2220,7 @@ async function prState(wt, projects) {
           key,
           from: om.get(key) ?? null,
           to: hm.get(key) ?? null,
+          project: p.rel,
         })
       }
     }

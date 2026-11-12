@@ -369,7 +369,7 @@ export const EXIT = { ok: 0, cannotRun: 2, lockfileStop: 3, checkFailed: 4 }
 // text outside the markers stays. The block is stateless: `state` comes from the branch
 // against origin/main (bump.mjs prState), `r` is the result of this run.
 //   state: { packages: [{ name, where, from, to, bump }], excludes: [entry],
-//            overrides: [{ key, from, to }], toolchain: [line] }
+//            overrides: [{ key, from, to, project? }], toolchain: [line] }
 //   cap:   the maximum number of rows per list (GitHub refuses a body over 65,536 chars).
 export const PR_START = '<!-- bump-packages:start -->'
 export const PR_END = '<!-- bump-packages:end -->'
@@ -413,7 +413,7 @@ export function prBlock(state, r, cap = 150) {
     'Overrides',
     state.overrides.map(
       (o) =>
-        `- ${code(o.key)}: ${o.from == null ? '(new)' : code(o.from)} → ${o.to == null ? '(removed)' : code(o.to)}`
+        `- ${code(o.key)}: ${o.from == null ? '(new)' : code(o.from)} → ${o.to == null ? '(removed)' : code(o.to)}${o.project && o.project !== '.' ? ` (${o.project})` : ''}`
     )
   )
   section(
