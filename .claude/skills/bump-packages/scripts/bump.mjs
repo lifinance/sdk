@@ -36,6 +36,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
+  addFastTrackBump,
   appliedLines,
   branchExcludes,
   branchGuard,
@@ -949,7 +950,7 @@ async function decide(projects) {
             )
           }
           if (c.bumpable) {
-            p.bumps.push({
+            p.bumps = addFastTrackBump(p.bumps, {
               name: c.name,
               where: c.where ?? [],
               from: c.current,

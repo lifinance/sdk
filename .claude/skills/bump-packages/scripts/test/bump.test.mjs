@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  addFastTrackBump,
   appliedLines,
   bumpSpec,
   changesetText,
@@ -451,6 +452,24 @@ test('appliedLines and whereText: every applied item, one line each', () => {
     ['viem 1 → 2 (examples/node)'],
     'the root of an extra project is that project'
   )
+  assert.deepEqual(
+    appliedLines({
+      bumps: [{ name: 'a', from: '1', to: '2', where: ['.'], fastTrack: true }],
+      fastTracks: [
+        { project: '.', spec: 'a@2' },
+        { project: '.', spec: 'viem@3' },
+        { project: 'examples/node', spec: 'viem@3' },
+      ],
+      majors: [],
+      overrides: [],
+      removedExcludes: [],
+      approved: [],
+      actions: [],
+      tools: [],
+    }),
+    ['viem@3 fast-track (lockfile only)', 'a 1 → 2 (root) fast-track'],
+    'a fast-track that only the lockfile moves gets one line'
+  )
   const lines = appliedLines({
     bumps: [
       {
@@ -612,4 +631,29 @@ test('summary text: one version is named once, one item for many projects, no en
     'the PR text keeps the entities; the terminal does not'
   )
   assert.match(plain('<!--'), /^&lt;!--$/)
+})
+
+test('addFastTrackBump: the fresh version replaces the aged bump in the same folders', () => {
+  const aged = { name: 'viem', where: ['a', 'b'], from: '1.0.0', to: '1.0.1' }
+  const other = { name: 'ms', where: ['a'], from: '2.0.0', to: '2.0.1' }
+  const fresh = (where) => ({
+    name: 'viem',
+    where,
+    from: '1.0.0',
+    to: '1.0.2',
+    fastTrack: true,
+  })
+  assert.deepEqual(addFastTrackBump([aged, other], fresh(['a', 'b'])), [
+    other,
+    fresh(['a', 'b']),
+  ])
+  // A folder that the fresh bump does not cover keeps the aged bump.
+  assert.deepEqual(addFastTrackBump([aged], fresh(['a'])), [
+    { ...aged, where: ['b'] },
+    fresh(['a']),
+  ])
+  assert.deepEqual(addFastTrackBump([other], fresh(['a'])), [
+    other,
+    fresh(['a']),
+  ])
 })

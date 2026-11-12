@@ -655,7 +655,14 @@ export function appliedLines(a) {
           w === '.' ? b.project : `${b.project}/${w}`
         )
       : b.where
+  // A fast-track without a specifier to edit moves through the lockfile only (an open
+  // override such as viem: ">=2.52.0"): it has no bump line, so give it one.
+  const bumped = new Set(a.bumps.map((b) => `${b.name}@${b.to}`))
+  const lockOnly = [...new Set((a.fastTracks ?? []).map((f) => f.spec))].filter(
+    (s) => !bumped.has(s)
+  )
   return [
+    ...lockOnly.map((s) => `${s} fast-track (lockfile only)`),
     ...[...a.bumps, ...a.majors].map(
       (b) =>
         `${b.name} ${b.from} → ${b.to}${whereText(at(b))}${b.fastTrack ? ' fast-track' : ''}${b.major ? ' major' : ''}`
@@ -790,3 +797,18 @@ export function mergeItems(items) {
 
 // The terminal summary: plain() writes `<` and `>` as entities for the PR text only.
 export const terminalText = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+
+// A fast-track bump replaces the aged bump of the same package in the same folders: viem
+// 2.57.17 → 2.57.18 (aged) and → 2.57.19 (fresh) must not both apply, because the lockfile
+// then has only 2.57.19 and the review stops on "applied bump not in the lockfile".
+export function addFastTrackBump(bumps, fresh) {
+  const covered = new Set(fresh.where ?? [])
+  const kept = bumps.flatMap((b) => {
+    if (b.name !== fresh.name || b.fastTrack) {
+      return [b]
+    }
+    const rest = (b.where ?? []).filter((w) => !covered.has(w))
+    return rest.length ? [{ ...b, where: rest }] : []
+  })
+  return [...kept, fresh]
+}
