@@ -109,7 +109,8 @@ export class EthereumStandardSignAndExecuteTask extends BaseStepExecutionTask {
       finalTransactionRequest = await estimateTransactionRequest(
         client,
         updatedClient,
-        finalTransactionRequest
+        finalTransactionRequest,
+        fromChain.id
       )
     }
 

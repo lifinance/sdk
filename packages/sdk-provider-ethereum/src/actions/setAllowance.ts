@@ -46,7 +46,7 @@ export const setAllowance = async (
     data,
     maxPriorityFeePerGas:
       viemClient.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(client, viemClient)
+        ? await getMaxPriorityFeePerGas(client, viemClient, chain?.id)
         : undefined,
   }
 
@@ -102,7 +102,8 @@ export const setTokenAllowance = async (
     walletClient,
     token.address as Address,
     walletClient.account!.address,
-    spenderAddress as Address
+    spenderAddress as Address,
+    token.chainId
   )
 
   if (amount > approvedAmount) {
@@ -140,7 +141,8 @@ export const revokeTokenApproval = async (
     walletClient,
     token.address as Address,
     walletClient.account!.address,
-    spenderAddress as Address
+    spenderAddress as Address,
+    token.chainId
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(

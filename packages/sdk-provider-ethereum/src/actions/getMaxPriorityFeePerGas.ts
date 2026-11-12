@@ -6,7 +6,8 @@ import { median } from '../utils/median.js'
 
 export const getMaxPriorityFeePerGas = async (
   client: SDKClient,
-  viemClient: Client
+  viemClient: Client,
+  chainId?: number
 ): Promise<bigint | undefined> => {
   const block = await getActionWithFallback(
     client,
@@ -15,7 +16,8 @@ export const getMaxPriorityFeePerGas = async (
     'getBlock',
     {
       includeTransactions: true,
-    }
+    },
+    chainId
   )
 
   const maxPriorityFeePerGasList = (block.transactions as Transaction[])

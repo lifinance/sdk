@@ -41,7 +41,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
-      spenderAddress
+      spenderAddress,
+      step.action.fromChainId
     )
 
     statusManager.updateAction(step, action.type, 'DONE')

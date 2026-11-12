@@ -175,7 +175,8 @@ const getEIP712DomainData = async (
           {
             contracts: contractCalls,
             multicallAddress,
-          }
+          },
+          chainId
         )
 
         if (
@@ -243,7 +244,8 @@ const getEIP712DomainData = async (
           viemClient,
           readContract,
           'readContract',
-          call
+          call,
+          chainId
         )
       )
     )) as [
@@ -367,7 +369,8 @@ const getContractData = async (
           {
             contracts: contractCalls,
             multicallAddress,
-          }
+          },
+          chainId
         )
 
         if (
@@ -420,7 +423,8 @@ const getContractData = async (
           viemClient,
           readContract,
           'readContract',
-          call
+          call,
+          chainId
         )
       )
     )) as [

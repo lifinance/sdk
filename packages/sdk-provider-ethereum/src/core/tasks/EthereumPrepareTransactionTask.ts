@@ -132,7 +132,8 @@ export class EthereumPrepareTransactionTask extends BaseStepExecutionTask {
         }
         maxPriorityFeePerGas = await getMaxPriorityFeePerGas(
           client,
-          updatedClient
+          updatedClient,
+          fromChain.id
         )
       } else {
         maxPriorityFeePerGas = step.transactionRequest.maxPriorityFeePerGas

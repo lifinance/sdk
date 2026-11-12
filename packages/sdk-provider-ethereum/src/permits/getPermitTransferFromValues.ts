@@ -22,7 +22,8 @@ export const getPermitTransferFromValues = async (
       abi: permit2ProxyAbi,
       functionName: 'nextNonce' as const,
       args: [viemClient.account!.address] as const,
-    }
+    },
+    chain.id
   )
 
   return {
