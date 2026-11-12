@@ -1,6 +1,7 @@
 import {
   type ExecutionAction,
   getRelayedTransactionStatus,
+  getStatus,
   hasOpenTransaction,
   LiFiErrorCode,
   type LiFiStepExtended,
@@ -19,6 +20,9 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
     relayTransaction: vi.fn(),
     // The relayer status that the real relayed wait polls.
     getRelayedTransactionStatus: vi.fn(),
+    // The `/status?taskId=` request of the real relayed wait of a gasless step.
+    // The destination watcher below does not call it.
+    getStatus: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP.
     // Here it stands for a `/status` answer of DONE, so a step that gets this
     // far completes and the route ends.
@@ -46,6 +50,10 @@ import { waitForBatchTransactionReceipt } from '../../actions/waitForBatchTransa
 import { waitForRelayedTransactionReceipt } from '../../actions/waitForRelayedTransactionReceipt.js'
 import { waitForTransactionReceipt } from '../../actions/waitForTransactionReceipt.js'
 import {
+  answerWithPermit2Gasless,
+  buildGaslessRouteStep,
+} from './gaslessStep.mock.js'
+import {
   buildChain,
   buildPermitTypedData,
   buildPermitWitnessTypedData,
@@ -57,6 +65,7 @@ import {
   FROM_AMOUNT,
   FROM_TOKEN_ADDRESS,
   futureDeadline,
+  NATIVE_TOKEN,
   RELAY_TASK_ID,
   type Scenario,
   THIRD_PARTY_ROUTER,
@@ -385,6 +394,70 @@ describe('EVM relayed wait: 24 hour deadline', () => {
       expect(scenario.events('signTypedData')).toHaveLength(2)
     }
   )
+})
+
+describe('EVM relayed wait of a gasless step: status errors', () => {
+  it('fails the step without a final outcome after five errors in a row, and "Try again" waits for the same task', async () => {
+    let stored: RouteExtended | undefined
+    const scenario = createScenario({
+      step: buildGaslessRouteStep(),
+      onStepTransaction: answerWithPermit2Gasless,
+      balances: { [NATIVE_TOKEN.address.toLowerCase()]: 0n },
+      allowance: 0n,
+      onRouteUpdate: (route) => {
+        stored = persist(route)
+      },
+    })
+    await useTheRealRelayedWait()
+    vi.mocked(getStatus).mockRejectedValue(
+      Object.assign(new Error('Unprocessable task id'), { code: 1004 })
+    )
+
+    const run = track(scenario.run())
+    await vi.advanceTimersByTimeAsync(0)
+    expect(scenario.events('relayTransaction')).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(5_000 * 4)
+
+    expect(run).toMatchObject({ settled: true, resolved: false })
+    expect(run.error).toMatchObject({
+      code: LiFiErrorCode.TransactionNotFound,
+    })
+    expect(getStatus).toHaveBeenCalledTimes(5)
+    const action = relayedActionOf(stored!)
+    expect(action).toMatchObject({ status: 'FAILED', taskId: RELAY_TASK_ID })
+    expect(action?.txFinal).toBeUndefined()
+    expect(hasOpenTransaction(action)).toBe(true)
+
+    // "Try again": the relay has executed in the meantime.
+    vi.mocked(getStatus).mockReset()
+    vi.mocked(getStatus).mockResolvedValue({
+      status: 'DONE',
+      sending: { txHash: RELAYED_TX_HASH },
+    } as never)
+    const resumeFrom = scenario.timeline.length
+
+    const resumed = track(scenario.resume(stored!))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(resumed).toMatchObject({ settled: true, resolved: true })
+    // No signature, relay request, re-quote or other call: status writes only.
+    expect(
+      scenario
+        .kinds()
+        .slice(resumeFrom)
+        .filter((kind) => !NO_CALL_KINDS.has(kind))
+    ).toEqual([])
+    expect(getStatus).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(getStatus).mock.calls[0][1]).toEqual({
+      taskId: RELAY_TASK_ID,
+    })
+    expect(relayedActionOf(resumed.value!)).toMatchObject({
+      taskId: RELAY_TASK_ID,
+      txHash: RELAYED_TX_HASH,
+    })
+    expect(scenario.events('relayTransaction')).toHaveLength(1)
+    expect(scenario.events('signTypedData')).toHaveLength(2)
+  })
 })
 
 describe('EVM relayed wait: stopRouteExecution', () => {

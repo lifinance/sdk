@@ -7,7 +7,7 @@ import {
   isGaslessStep,
   LiFiErrorCode,
   type LiFiStep,
-  type StatusResponse,
+  type RelayStatusResponseData,
   TransactionError,
   waitForResult,
 } from '@lifi/sdk'
@@ -15,60 +15,11 @@ import type { Hash } from 'viem'
 import type { WalletCallReceipt } from '../types.js'
 
 /**
- * One poll of a gasless relay on `/v1/status?taskId=`. The task id alone
- * routes the request: a `bridge` would let a proxy such as the Jumper backend
- * answer it with its own order lookup.
- *
- * The source wait ends once the relayed transaction has landed on the source
- * chain: on DONE, or on PENDING with a hash past `WAIT_SOURCE_CONFIRMATIONS`
- * (a bridge transfer that now waits for its destination). Only FAILED or the
- * timeout of the wait ends it otherwise.
+ * Status errors in a row that end the wait. A failed request, `NOT_FOUND` and
+ * the 422/1004 answer of a failed lookup each count; an answer resets the
+ * count, so a long relay does not collect errors over its whole wait.
  */
-const pollGaslessStatus = async (
-  client: SDKClient,
-  taskId: Hash,
-  signal?: AbortSignal
-): Promise<WalletCallReceipt | undefined> => {
-  const result: StatusResponse | undefined = await getStatus(
-    client,
-    { taskId },
-    { signal }
-  ).catch((e) => {
-    if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
-      console.debug('Fetching the gasless relay status failed.', e)
-    }
-    return undefined
-  })
-
-  switch (result?.status) {
-    case 'FAILED':
-      throw new TransactionError(
-        LiFiErrorCode.TransactionFailed,
-        'Transaction was reverted.',
-        undefined,
-        { final: true }
-      )
-    case 'DONE':
-    case 'PENDING': {
-      const { sending, status, substatus } = result
-      if (
-        !sending?.txHash ||
-        (status === 'PENDING' && substatus === 'WAIT_SOURCE_CONFIRMATIONS')
-      ) {
-        return undefined
-      }
-      return {
-        status: 'success',
-        transactionHash: sending.txHash,
-        transactionLink: sending.txLink,
-      } as unknown as WalletCallReceipt
-    }
-    default:
-      // A failed request, `NOT_FOUND` and the 422/1004 answer of a failed
-      // lookup do not end the relay, which the backend has already accepted.
-      return undefined
-  }
-}
+const MAX_STATUS_ERRORS = 5
 
 /**
  * Polls the relayer until the relayed transaction is done or has failed.
@@ -79,7 +30,7 @@ const pollGaslessStatus = async (
  * @param timeout - How long to wait for a result in milliseconds. Defaults to 24 hours.
  * @param signal - Ends the wait: no status request starts after it aborts, and the request in flight and the sleep end at once.
  * @returns The receipt of the relayed transaction.
- * @throws {TransactionError} If the transaction failed, was not found, or no result arrived before the timeout. Only the failed transaction is a final outcome.
+ * @throws {TransactionError} If the transaction failed, the status was not found after five status errors in a row, or no result arrived before the timeout. Only the failed transaction is a final outcome.
  * @throws The abort reason of `signal` once it aborts.
  */
 export const waitForRelayedTransactionReceipt = async (
@@ -91,11 +42,12 @@ export const waitForRelayedTransactionReceipt = async (
 ): Promise<WalletCallReceipt> => {
   const startTime = Date.now()
   const isGasless = isGaslessStep(step)
+  let statusErrors = 0
   return waitForResult(
     async () => {
       // Without this check, a task that stays PENDING is polled forever:
-      // PENDING is not an error, so the retry limit does not apply.
-      // TransactionFailed is not retried, so this ends the poll. Not final:
+      // PENDING is no status error, so the error limit does not apply. An
+      // error the poll throws ends it. Not final:
       // the relayer may still execute the task, so the action keeps its task
       // id and a resume waits for it again instead of signing a new one.
       if (Date.now() - startTime > timeout) {
@@ -105,19 +57,27 @@ export const waitForRelayedTransactionReceipt = async (
         )
       }
 
-      if (isGasless) {
-        return pollGaslessStatus(client, taskId, signal)
-      }
-
-      const result = await getRelayedTransactionStatus(
-        client,
-        {
-          taskId,
-          fromChain: step.action.fromChainId,
-          toChain: step.action.toChainId,
-          ...(step.tool !== 'custom' && { bridge: step.tool }),
-        },
-        { signal }
+      // A gasless task id is a hash like a 1inch `Order` task id, so the step
+      // selects the endpoint. The task id alone routes a gasless request: a
+      // `bridge` would let a proxy such as the Jumper backend answer it with
+      // its own order lookup. The cast is the one `getRelayedTransactionStatus`
+      // makes for the Hyperliquid answer of the same endpoint.
+      const result = await (isGasless
+        ? (getStatus(
+            client,
+            { taskId },
+            { signal }
+          ) as unknown as Promise<RelayStatusResponseData>)
+        : getRelayedTransactionStatus(
+            client,
+            {
+              taskId,
+              fromChain: step.action.fromChainId,
+              toChain: step.action.toChainId,
+              ...(step.tool !== 'custom' && { bridge: step.tool }),
+            },
+            { signal }
+          )
       ).catch((e) => {
         // A request that the abort ended is no failure of the relayer.
         if (process.env.NODE_ENV === 'development' && !signal?.aborted) {
@@ -128,6 +88,7 @@ export const waitForRelayedTransactionReceipt = async (
 
       switch (result?.status) {
         case 'PENDING':
+          statusErrors = 0
           return undefined
         case 'DONE': {
           const sending: ExtendedTransactionInfo | undefined =
@@ -149,6 +110,10 @@ export const waitForRelayedTransactionReceipt = async (
             { final: true }
           )
         default:
+          statusErrors++
+          if (statusErrors < MAX_STATUS_ERRORS) {
+            return undefined
+          }
           throw new TransactionError(
             LiFiErrorCode.TransactionNotFound,
             'Transaction not found.'
@@ -156,13 +121,10 @@ export const waitForRelayedTransactionReceipt = async (
       }
     },
     5000,
-    3,
-    (_, error) => {
-      return !(
-        error instanceof TransactionError &&
-        error.code === LiFiErrorCode.TransactionFailed
-      )
-    },
+    undefined,
+    // The poll counts its own status errors, so every error it throws ends
+    // the wait.
+    () => false,
     signal
   )
 }
