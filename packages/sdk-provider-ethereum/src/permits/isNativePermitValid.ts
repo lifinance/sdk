@@ -51,7 +51,7 @@ export const isNativePermitValid = (
   }
 
   // Check deadline (must have at least 5 minutes remaining)
-  const deadlineTimestamp = parseInt(message.deadline || 0, 10)
+  const deadlineTimestamp = Number.parseInt(message.deadline || 0, 10)
   // Add 5 minutes bufferto the current timestamp
   const allowedTimestamp = Math.floor(Date.now() / 1000) + 5 * 60
 

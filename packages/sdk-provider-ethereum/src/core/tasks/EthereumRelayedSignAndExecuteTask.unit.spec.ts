@@ -1,6 +1,7 @@
 import {
   LiFiErrorCode,
   type LiFiStep,
+  relayTransaction,
   type SignedTypedData,
   StatusManager,
   type TypedData,
@@ -28,7 +29,6 @@ vi.mock('../../hyperliquid/agentWallet.js', () => ({
   getOrCreateAgentWallet: vi.fn(),
 }))
 
-import { relayTransaction } from '@lifi/sdk'
 import { signTypedData } from 'viem/actions'
 import { getOrCreateAgentWallet } from '../../hyperliquid/agentWallet.js'
 import type { EthereumStepExecutorContext } from '../../types.js'
