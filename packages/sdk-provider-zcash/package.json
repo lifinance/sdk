@@ -46,8 +46,8 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@noble/hashes": "^1.8.0",
-    "@scure/base": "^1.2.6"
+    "@noble/hashes": "^2.4.0",
+    "@scure/base": "^2.4.0"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^5.1.0",

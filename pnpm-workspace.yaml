@@ -4,22 +4,28 @@ allowBuilds:
   esbuild: false
   msw: true
   nx: true
+#   - 2026-11-12: fast-track @biomejs/biome@2.6.7, @biomejs/cli-android-arm64@2.6.7, @biomejs/cli-android-x64@2.6.7, @biomejs/cli-darwin-arm64@2.6.7, @biomejs/cli-darwin-x64@2.6.7, @biomejs/cli-linux-arm64-musl@2.6.7, @biomejs/cli-linux-arm64@2.6.7, @biomejs/cli-linux-x64-musl@2.6.7, @biomejs/cli-linux-x64@2.6.7, @biomejs/cli-win32-arm64@2.6.7, @biomejs/cli-win32-x64@2.6.7, viem@2.57.19 (all checks pass, or approved by the user).
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
-  - '@commitlint/cli@21.2.4'
-  - '@commitlint/config-conventional@21.2.4'
-  - '@commitlint/ensure@21.2.4'
-  - '@commitlint/lint@21.2.4'
-  - '@commitlint/load@21.2.4'
-  - '@commitlint/rules@21.2.4'
-  - knip@6.42.0
+  - '@biomejs/biome@2.6.7'
+  - '@biomejs/cli-android-arm64@2.6.7'
+  - '@biomejs/cli-android-x64@2.6.7'
+  - '@biomejs/cli-darwin-arm64@2.6.7'
+  - '@biomejs/cli-darwin-x64@2.6.7'
+  - '@biomejs/cli-linux-arm64@2.6.7'
+  - '@biomejs/cli-linux-arm64-musl@2.6.7'
+  - '@biomejs/cli-linux-x64@2.6.7'
+  - '@biomejs/cli-linux-x64-musl@2.6.7'
+  - '@biomejs/cli-win32-arm64@2.6.7'
+  - '@biomejs/cli-win32-x64@2.6.7'
+  - viem@2.57.19
 overrides:
-  axios: ^1.20.0
-  ws@<=8.22.0: 8.22.0
-  # @lifi/data-types 7.1.6 pins @lifi/types 18.4.0 exactly. Keep one copy with
+  axios: ^1.21.1
+  ws@<=8.22.2: 8.22.2
+  # @lifi/data-types 7.2.2 pins @lifi/types 18.15.0 exactly. Keep one copy with
   # the range that @lifi/sdk asks for.
-  '@lifi/data-types>@lifi/types': ^18.13.0
+  '@lifi/data-types>@lifi/types': ^18.16.0
   # Security (Aikido), 2026-10-12, unflagged copies. Each key has a selector that
   # covers only the advisory's affected range. These change what this repo's tests
   # use, not what consumers of @lifi/sdk-provider-tron install.
@@ -29,3 +35,9 @@ overrides:
   # 3.21.4 exactly; no tronweb release fixes it. A TRX and a TRC-20 round trip give
   # the same bytes on 4.x.
   'google-protobuf@<4.0.3': '^4.0.3'
+  # Security, 2026-11-10 (JUMEMB-199, GHSA-g3hv-75wg-m249, fixed only in 11.0.1).
+  # Forced major on one path: @typescript-eslint/typescript-estree (via madge, dev
+  # only) asks for ^10.2.2 up to 8.72.2. It calls only the named minimatch(), which
+  # 11.x keeps, also in CJS. The path selector leaves other minimatch majors alone.
+  # Remove it when typescript-estree allows minimatch 11.
+  '@typescript-eslint/typescript-estree>minimatch': '^11.0.8'

@@ -47,12 +47,12 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@solana/kit": "^8.5.0",
+    "@solana/kit": "^8.6.0",
     "@solana/wallet-standard-features": "^1.5.0",
     "@wallet-standard/base": "^1.1.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.1.6",
+    "@lifi/data-types": "^7.2.2",
     "@vitest/coverage-v8": "^5.1.0",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",

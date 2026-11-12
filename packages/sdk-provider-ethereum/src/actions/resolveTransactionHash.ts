@@ -1,5 +1,5 @@
 import { LiFiErrorCode, type SDKClient, TransactionError } from '@lifi/sdk'
-import type { Client, Hash } from 'viem'
+import { type Client, type Hash, isHex } from 'viem'
 import { isSafeSignature } from './isSafeSignature.js'
 import { waitForSafeTransactionExecution } from './waitForSafeTransactionExecution.js'
 
@@ -16,14 +16,21 @@ export const resolveTransactionHash = async (
   })
 
   if (!isSignature) {
+    // Unchecked wallet answer; longer hex can be a Safe signature the lookup missed.
+    if (!isHex(txHashOrSignature) || txHashOrSignature.length < 66) {
+      throw new TransactionError(
+        LiFiErrorCode.TransactionFailed,
+        'The wallet did not return a transaction hash. The wallet may have sent the transaction. Before you try again, check the activity in your wallet.'
+      )
+    }
     return txHashOrSignature
   }
 
   const safeAddress = viemClient.account?.address
-  if (!safeAddress || !txHashOrSignature) {
+  if (!safeAddress) {
     throw new TransactionError(
       LiFiErrorCode.TransactionFailed,
-      'Safe address or signature not available for transaction tracking.'
+      'Safe address not available for transaction tracking.'
     )
   }
 

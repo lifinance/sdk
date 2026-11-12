@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/*.md", "!**/*.lock", "!**/*.json"]
+    "includes": [
+      "**",
+      "!**/*.md",
+      "!**/*.lock",
+      "!**/*.json",
+      "!.claude/skills/bump-packages/scripts/test/fixtures"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -20,6 +26,7 @@
     "attributePosition": "auto",
     "bracketSpacing": true
   },
+  "yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
