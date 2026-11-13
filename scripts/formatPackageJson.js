@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: allowed in scripts */
 import { copyFile, readFile, unlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 

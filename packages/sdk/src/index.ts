@@ -1,5 +1,4 @@
-// biome-ignore lint/performance/noBarrelFile: module entrypoint
-// biome-ignore lint/performance/noReExportAll: types
+// oxlint-disable-next-line oxc/no-barrel-file -- module entrypoint
 export * from '@lifi/types'
 export { getChains } from './actions/getChains.js'
 export { getConnections } from './actions/getConnections.js'

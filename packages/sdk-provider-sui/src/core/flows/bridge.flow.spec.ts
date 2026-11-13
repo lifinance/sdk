@@ -11,10 +11,10 @@ import {
   installFakeSuiNetwork,
   openPage,
   recordRouteUpdates,
-  SUI_EXPLORER_URL,
   signatures,
   signedBytes,
   stepOf,
+  SUI_EXPLORER_URL,
 } from './harness.mock.js'
 
 let network: FakeSuiNetwork

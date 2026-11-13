@@ -2,8 +2,8 @@ import {
   ChainType,
   executeRoute,
   LiFiErrorCode,
-  type RouteExtended,
   resumeRoute,
+  type RouteExtended,
   type SDKError,
 } from '@lifi/sdk'
 import { RpcError } from '@mysten/sui/grpc'

@@ -21,8 +21,7 @@ export interface TronTaskContext {
 }
 
 export interface TronStepExecutorContext
-  extends StepExecutorContext,
-    TronTaskContext {
+  extends StepExecutorContext, TronTaskContext {
   wallet: Adapter
   checkWallet: (step: LiFiStepExtended) => void
 }

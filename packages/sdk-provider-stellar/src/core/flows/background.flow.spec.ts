@@ -1,8 +1,8 @@
 import { ChainId, executeRoute, resumeRoute } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  ARB_EXPLORER_URL,
   actionOf,
+  ARB_EXPLORER_URL,
   BRIDGE_RECEIVED_AMOUNT,
   buildRoute,
   CCTP_SPENDER,
@@ -15,14 +15,14 @@ import {
   NETWORK_PASSPHRASE,
   openPage,
   recordRouteUpdates,
+  sequenceOf,
+  signedEnvelopes,
   START_LEDGER,
   STARTING_SEQUENCE,
   STATUS_EXPLORER_URL,
   STELLAR_EXPLORER_URL,
-  SWAP_RECEIVED_AMOUNT,
-  sequenceOf,
-  signedEnvelopes,
   stepOf,
+  SWAP_RECEIVED_AMOUNT,
   USDC_FROM_AMOUNT,
   USDC_TOKEN,
 } from './harness.mock.js'

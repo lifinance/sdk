@@ -28,8 +28,7 @@ export interface SolanaTaskContext {
 }
 
 export interface SolanaStepExecutorContext
-  extends StepExecutorContext,
-    SolanaTaskContext {
+  extends StepExecutorContext, SolanaTaskContext {
   wallet: Wallet
   /**
    * Resolves the account that requested the quote. Only the sign task calls

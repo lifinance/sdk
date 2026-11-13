@@ -56,11 +56,13 @@ In jumper-widget, each `@lifi/sdk-provider-*` pins one exact `@lifi/sdk`. They m
 
 ## Known causes of a failed check after a bump
 
-- **Biome minor.** A new formatter (YAML since 2.6) fails `pnpm check` on files that the
-  bump did not touch. Keep the old output with options in `biome.json`, for example
-  `"yaml": { "formatter": { "quoteStyle": "single", "bracketSpacing": false } }`. A new
-  recommended lint rule can fail as an error: make the small code fix, or set the rule to
-  `"warn"`. Report new warnings; do not fix them in a bump PR.
+- **Oxfmt or Oxlint version.** The versions are pinned exactly. Bump `oxlint` and `oxfmt`
+  together in all five repositories. A new Oxfmt version can change the output of files that
+  the bump did not touch, and then `pnpm check` fails. Keep the old output with an option, an
+  override or an `ignorePatterns` entry in `.oxfmtrc.json`. A new default lint rule reports
+  warnings: report them, but do not fix them in a bump PR. Two cases fail `pnpm check`: a rule
+  name in `.oxlintrc.json` that the new version does not know, and an `oxlint-disable` comment
+  that the new version no longer needs. Fix the config, or delete the comment.
 - **A patch can break a bundler.** `viem` 2.57.16 added a literal dynamic import of an
   optional peer, and the size check failed. The size check is the only local bundler check.
 - **A Next.js app.** No check builds `widget-playground-next`. After a `next` bump, run

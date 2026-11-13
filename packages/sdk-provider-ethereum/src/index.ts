@@ -1,4 +1,3 @@
-// biome-ignore lint/performance/noBarrelFile: module entrypoint
 export { checkPermitSupport } from './actions/checkPermitSupport.js'
 export {
   getTokenAllowance,

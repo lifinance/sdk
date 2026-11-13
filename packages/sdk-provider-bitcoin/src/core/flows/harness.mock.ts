@@ -72,10 +72,10 @@ import {
   address as btcAddress,
   crypto as btcCrypto,
   networks,
-  Psbt,
   payments,
-  type Signer,
+  Psbt,
   script,
+  type Signer,
   Transaction,
 } from 'bitcoinjs-lib'
 import { type Mock, vi } from 'vitest'

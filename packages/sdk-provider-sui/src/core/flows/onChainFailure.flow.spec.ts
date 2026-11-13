@@ -13,11 +13,11 @@ import {
   MOVE_ABORT,
   openPage,
   recordRouteUpdates,
-  STATUS_EXPLORER_URL,
-  SUI_EXPLORER_URL,
   signatures,
   signedBytes,
+  STATUS_EXPLORER_URL,
   stepOf,
+  SUI_EXPLORER_URL,
 } from './harness.mock.js'
 
 let network: FakeSuiNetwork

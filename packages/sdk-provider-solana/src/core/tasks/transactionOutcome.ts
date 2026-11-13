@@ -19,8 +19,8 @@ import type { SolanaStepExecutorContext } from '../../types.js'
 import type { TransactionLifetime } from '../../utils/getTransactionLifetime.js'
 import { SolanaTransactionDetailsError } from '../../utils/solanaErrorCause.js'
 import {
-  type ConfirmationMessages,
   confirmationError,
+  type ConfirmationMessages,
 } from './confirmationError.js'
 
 /** Explorer link for a signature, as both wait tasks write it. */
