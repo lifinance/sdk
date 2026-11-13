@@ -1,5 +1,22 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.2.13
+
+### Patch Changes
+
+- [#545](https://github.com/lifinance/sdk/pull/545) [`37688cc`](https://github.com/lifinance/sdk/commit/37688cc732187f08f429062e506b67dee2a2a30a) Thanks [@chybisov](https://github.com/chybisov)! - Update `tronweb` to 6.5.2.
+  Update `viem` to 2.57.19.
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+
+- [#546](https://github.com/lifinance/sdk/pull/546) [`5d236b1`](https://github.com/lifinance/sdk/commit/5d236b1cee56231db6d220af8335d48957f23b9a) Thanks [@chybisov](https://github.com/chybisov)! - Some wallets answer `eth_sendTransaction` with `null`, a value that is not hex, or a value shorter than a transaction hash. The approval, approval reset, swap and bridge steps now throw a `TransactionError` with `TransactionFailed` for this answer.
+
+- [#547](https://github.com/lifinance/sdk/pull/547) [`784c1d5`](https://github.com/lifinance/sdk/commit/784c1d5d4a16be7ab97aca75d2b23fa06bc5a540) Thanks [@chybisov](https://github.com/chybisov)! - Read the wallet capabilities (EIP-5792) one time in each run of a step. Before, prepare read them again, and a late or failed read could move the step between `batched` and `standard` after its approval. Then the step failed with `TransactionUnprepared`, or it sent the swap without the correct approval. Now a step whose first read is late or fails stays in `standard`.
+
+- [#546](https://github.com/lifinance/sdk/pull/546) [`5d236b1`](https://github.com/lifinance/sdk/commit/5d236b1cee56231db6d220af8335d48957f23b9a) Thanks [@chybisov](https://github.com/chybisov)! - The approval and approval reset steps now wait for the receipt of the transaction that the Safe executes, not of the Safe signature. Before, the steps did not check the receipt of a queued Safe approval.
+- Updated dependencies [[`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354)]:
+  - @lifi/sdk@4.12.2
+
 ## 4.2.12
 
 ### Patch Changes
