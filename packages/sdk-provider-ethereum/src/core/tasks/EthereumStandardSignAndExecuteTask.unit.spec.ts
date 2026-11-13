@@ -239,6 +239,36 @@ describe('EthereumStandardSignAndExecuteTask.run', () => {
   })
 })
 
+describe('EthereumStandardSignAndExecuteTask.run send chain', () => {
+  const sentChain = () =>
+    (vi.mocked(sendTransaction).mock.calls[0][1] as { chain?: unknown }).chain
+
+  it('sends on the step chain when the client chain is stale', async () => {
+    const context = buildContext()
+    vi.mocked(context.checkClient).mockResolvedValue({
+      account: { address: FROM_ADDRESS },
+      chain: { id: 137 },
+    } as never)
+
+    await task.run(context)
+
+    expect(sentChain()).toMatchObject({ id: SOURCE_CHAIN })
+  })
+
+  it('keeps the client chain object when it is the step chain', async () => {
+    const context = buildContext()
+    const clientChain = { id: SOURCE_CHAIN, fees: { baseFeeMultiplier: 2 } }
+    vi.mocked(context.checkClient).mockResolvedValue({
+      account: { address: FROM_ADDRESS },
+      chain: clientChain,
+    } as never)
+
+    await task.run(context)
+
+    expect(sentChain()).toBe(clientChain)
+  })
+})
+
 describe('EthereumStandardSignAndExecuteTask.run transaction fields', () => {
   it('clears the previous transaction fields when it writes the new hash', async () => {
     const context = buildContext({

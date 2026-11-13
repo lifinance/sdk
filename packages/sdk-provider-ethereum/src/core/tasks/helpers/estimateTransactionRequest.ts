@@ -8,7 +8,8 @@ const GAS_ESTIMATION_BUFFER = 300_000n
 export const estimateTransactionRequest = async (
   client: SDKClient,
   viemClient: Client,
-  transactionRequest: TransactionParameters
+  transactionRequest: TransactionParameters,
+  chainId: number | undefined
 ): Promise<TransactionParameters> => {
   try {
     // Try to re-estimate the gas due to additional Permit data
@@ -22,7 +23,8 @@ export const estimateTransactionRequest = async (
         to: transactionRequest.to as Address,
         data: transactionRequest.data as Hex,
         value: transactionRequest.value,
-      }
+      },
+      chainId
     )
     // Use the higher of estimated vs original, then add buffer
     const baseGas =

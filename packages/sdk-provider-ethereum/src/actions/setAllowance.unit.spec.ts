@@ -10,7 +10,7 @@ import {
 } from 'viem'
 import { base, celo } from 'viem/chains'
 import { describe, expect, it, vi } from 'vitest'
-import { setAllowance } from './setAllowance.js'
+import { setAllowance, setTokenAllowance } from './setAllowance.js'
 
 const FROM_ADDRESS = '0xaaaa000000000000000000000000000000000001' as Address
 const TOKEN = '0xcccc000000000000000000000000000000000003' as Address
@@ -62,7 +62,7 @@ describe('setAllowance', () => {
     ])
   })
 
-  it('keeps the client chain when it is already the given chain', async () => {
+  it('keeps the client chain object when it is the given chain', async () => {
     const { client } = createWalletClient(celo, celo)
     const sendTransaction = vi.fn(async () => TX_HASH)
     const extendedClient = client.extend(() => ({ sendTransaction }))
@@ -79,7 +79,7 @@ describe('setAllowance', () => {
     )
 
     expect(sendTransaction).toHaveBeenCalledWith(
-      expect.not.objectContaining({ chain: expect.anything() })
+      expect.objectContaining({ chain: celo })
     )
   })
 
@@ -89,5 +89,30 @@ describe('setAllowance', () => {
     await expect(
       setAllowance({} as SDKClient, client, TOKEN, SPENDER, 1n)
     ).rejects.toThrow(/does not match the target chain/)
+  })
+
+  it('sends a public approval on the token chain when the client holds a stale chain', async () => {
+    const { client } = createWalletClient(celo, base)
+    const sdkClient = {
+      getChainById: async () => ({
+        id: base.id,
+        metamask: {
+          chainId: numberToHex(base.id),
+          chainName: base.name,
+          nativeCurrency: base.nativeCurrency,
+          rpcUrls: [...base.rpcUrls.default.http],
+          blockExplorerUrls: ['https://basescan.org/'],
+        },
+      }),
+    } as unknown as SDKClient
+
+    const hash = await setTokenAllowance(sdkClient, {
+      walletClient: client,
+      token: { address: TOKEN, chainId: base.id } as never,
+      spenderAddress: SPENDER,
+      amount: 1n,
+    })
+
+    expect(hash).toBe(TX_HASH)
   })
 })

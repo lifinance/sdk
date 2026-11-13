@@ -16,6 +16,8 @@ import { sendTransaction } from 'viem/actions'
 import { getAction } from 'viem/utils'
 import type { ApproveTokenRequest, RevokeApprovalRequest } from '../types.js'
 import { approveAbi } from '../utils/abi.js'
+import { convertExtendedChain } from '../utils/convertExtendedChain.js'
+import { getSendChain } from '../utils/getSendChain.js'
 import { isZeroAddress } from '../utils/isZeroAddress.js'
 import { getAllowance } from './getAllowance.js'
 import { getMaxPriorityFeePerGas } from './getMaxPriorityFeePerGas.js'
@@ -46,7 +48,11 @@ export const setAllowance = async (
     data,
     maxPriorityFeePerGas:
       viemClient.account?.type === 'local'
-        ? await getMaxPriorityFeePerGas(client, viemClient)
+        ? await getMaxPriorityFeePerGas(
+            client,
+            viemClient,
+            chain?.id ?? viemClient.chain?.id
+          )
         : undefined,
   }
 
@@ -75,10 +81,16 @@ export const setAllowance = async (
     gasPrice: transactionRequest.gasPrice,
     maxFeePerGas: transactionRequest.maxFeePerGas,
     maxPriorityFeePerGas: transactionRequest.maxPriorityFeePerGas,
-    // For a local account, a matching `viemClient.chain` keeps its serializers and fees.
-    ...(chain && viemClient.chain?.id !== chain.id && { chain }),
+    ...(chain && { chain: getSendChain(viemClient, chain) }),
   } as SendTransactionParameters)
 }
+
+// Without a known chain, viem keeps `walletClient.chain`, as before.
+const getTokenChain = (
+  client: SDKClient,
+  chainId: number
+): Promise<Chain | undefined> =>
+  client.getChainById(chainId).then(convertExtendedChain, () => undefined)
 
 /**
  * Set approval for a certain token and amount.
@@ -103,7 +115,8 @@ export const setTokenAllowance = async (
     walletClient,
     token.address as Address,
     walletClient.account!.address,
-    spenderAddress as Address
+    spenderAddress as Address,
+    token.chainId
   )
 
   if (amount > approvedAmount) {
@@ -112,7 +125,10 @@ export const setTokenAllowance = async (
       walletClient,
       token.address as Address,
       spenderAddress as Address,
-      amount
+      amount,
+      undefined,
+      false,
+      await getTokenChain(client, token.chainId)
     )
 
     return approveTx
@@ -141,7 +157,8 @@ export const revokeTokenApproval = async (
     walletClient,
     token.address as Address,
     walletClient.account!.address,
-    spenderAddress as Address
+    spenderAddress as Address,
+    token.chainId
   )
   if (approvedAmount > 0) {
     const approveTx = await setAllowance(
@@ -149,7 +166,10 @@ export const revokeTokenApproval = async (
       walletClient,
       token.address as Address,
       spenderAddress as Address,
-      0n
+      0n,
+      undefined,
+      false,
+      await getTokenChain(client, token.chainId)
     )
 
     return approveTx
