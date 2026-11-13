@@ -12,6 +12,9 @@ import {
   waitForResult,
 } from '@lifi/sdk'
 import type { Hash } from 'viem'
+import { getTransactionReceipt } from 'viem/actions'
+import { getAction } from 'viem/utils'
+import { getPublicClient } from '../client/publicClient.js'
 import type { WalletCallReceipt } from '../types.js'
 
 /**
@@ -20,6 +23,25 @@ import type { WalletCallReceipt } from '../types.js'
  * count, so a long relay does not collect errors over its whole wait.
  */
 const MAX_STATUS_ERRORS = 5
+
+/** The on-chain outcome of a source transaction, or `undefined` when its receipt cannot be loaded. */
+const getSourceOutcome = async (
+  client: SDKClient,
+  chainId: number,
+  hash: Hash
+): Promise<'success' | 'reverted' | undefined> => {
+  try {
+    const publicClient = await getPublicClient(client, chainId)
+    const receipt = await getAction(
+      publicClient,
+      getTransactionReceipt,
+      'getTransactionReceipt'
+    )({ hash })
+    return receipt.status
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Polls the relayer until the relayed transaction is done or has failed.
@@ -89,10 +111,13 @@ export const waitForRelayedTransactionReceipt = async (
 
       // A gasless answer is the transfer status of `/v1/status`: it reports
       // the relayed source transaction in `sending` once the relayer sent it.
+      // Only a bridge transfer ends the wait at its source; on one chain the
+      // relayed transaction is the whole transfer.
       const gaslessStatus = isGasless
         ? (result as unknown as FullStatusData | undefined)
         : undefined
       const landedSource =
+        isCrossChain &&
         gaslessStatus?.sending?.txHash &&
         gaslessStatus.substatus !== 'WAIT_SOURCE_CONFIRMATIONS'
           ? ({
@@ -107,7 +132,7 @@ export const waitForRelayedTransactionReceipt = async (
           statusErrors = 0
           // A gasless bridge transfer whose source transaction landed waits for
           // its destination. The source wait ends here, so a later bridge
-          // failure reaches the status task, not the final FAILED below.
+          // failure reaches the status task, not the FAILED below.
           return landedSource
         case 'DONE': {
           const sending: ExtendedTransactionInfo | undefined =
@@ -122,13 +147,28 @@ export const waitForRelayedTransactionReceipt = async (
           } as unknown as WalletCallReceipt
         }
         case 'FAILED':
-          // A gasless bridge transfer that failed after its source transaction
-          // landed: the tokens left the wallet. The status task follows the
-          // transfer, as for any bridge. A final failure here would let a
-          // resume sign and relay a second transfer. On one chain, FAILED with
-          // a hash is a revert, which moved nothing, so it stays final.
-          if (landedSource && isCrossChain) {
-            return landedSource
+          // FAILED with a hash is mostly a relayed source transaction that
+          // reverted and moved nothing, so a resume may sign again. A bridge
+          // can also fail after its source landed: the tokens left the wallet,
+          // and a resume must not sign and relay a second transfer. The status
+          // task follows that transfer, as for any bridge. The source receipt
+          // tells the two apart.
+          if (landedSource) {
+            const outcome = await getSourceOutcome(
+              client,
+              step.action.fromChainId,
+              landedSource.transactionHash
+            )
+            if (outcome === 'success') {
+              return landedSource
+            }
+            if (outcome === undefined) {
+              // Not final: a resume waits for the same task and checks again.
+              throw new TransactionError(
+                LiFiErrorCode.TransactionFailed,
+                'The relayed transaction failed, and its source transaction could not be checked.'
+              )
+            }
           }
           throw new TransactionError(
             LiFiErrorCode.TransactionFailed,

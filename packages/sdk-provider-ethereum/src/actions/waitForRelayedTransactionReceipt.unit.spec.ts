@@ -18,6 +18,9 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   }
 })
 
+vi.mock('../client/publicClient.js', () => ({ getPublicClient: vi.fn() }))
+
+import { getPublicClient } from '../client/publicClient.js'
 import { waitForRelayedTransactionReceipt } from './waitForRelayedTransactionReceipt.js'
 
 const TASK_ID = `0x${'ab'.repeat(32)}` as Hash
@@ -334,6 +337,17 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
   const runGasless = (): Promise<unknown> =>
     waitForRelayedTransactionReceipt({} as SDKClient, TASK_ID, gaslessStep)
 
+  const gaslessBridgeStep = {
+    ...gaslessStep,
+    action: { fromChainId: 42161, toChainId: 10 },
+  } as unknown as LiFiStep
+  const runBridge = (): Promise<unknown> =>
+    waitForRelayedTransactionReceipt(
+      {} as SDKClient,
+      TASK_ID,
+      gaslessBridgeStep
+    )
+
   const statusAnswers = (...answers: unknown[]): void => {
     for (const answer of answers) {
       vi.mocked(getStatus).mockResolvedValueOnce(answer as never)
@@ -381,7 +395,7 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
       sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
     })
 
-    await expect(runGasless()).resolves.toMatchObject({
+    await expect(runBridge()).resolves.toMatchObject({
       status: 'success',
       transactionHash: TX_HASH,
       transactionLink: 'https://arbiscan.io/tx/x',
@@ -389,25 +403,76 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
     expect(getStatus).toHaveBeenCalledTimes(1)
   })
 
-  it('resolves with the source hash when a bridge fails after its source transaction landed', async () => {
-    // The user's tokens left the wallet. A final failure would let a resume
-    // sign and relay a second transfer; the status task follows this one.
-    const gaslessBridgeStep = {
-      ...gaslessStep,
-      action: { fromChainId: 42161, toChainId: 10 },
-    } as unknown as LiFiStep
-    statusAnswers({
-      status: 'FAILED',
-      sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+  describe('a bridge transfer that FAILED with a source hash', () => {
+    const sourceReceipt = (
+      getTransactionReceipt: () => Promise<unknown>
+    ): ReturnType<typeof vi.fn> => {
+      const receipt = vi.fn(getTransactionReceipt)
+      vi.mocked(getPublicClient).mockResolvedValue({
+        getTransactionReceipt: receipt,
+      } as never)
+      return receipt
+    }
+
+    beforeEach(() => {
+      vi.mocked(getPublicClient).mockReset()
+      statusAnswers({
+        status: 'FAILED',
+        substatus: 'UNKNOWN_FAILED_ERROR',
+        sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
+      })
     })
 
-    await expect(
-      waitForRelayedTransactionReceipt(
-        {} as SDKClient,
-        TASK_ID,
-        gaslessBridgeStep
-      )
-    ).resolves.toMatchObject({ status: 'success', transactionHash: TX_HASH })
+    it('resolves with the source hash when the source transaction landed', async () => {
+      // The user's tokens left the wallet. A final failure would let a resume
+      // sign and relay a second transfer; the status task follows this one.
+      const receipt = sourceReceipt(async () => ({ status: 'success' }))
+
+      await expect(runBridge()).resolves.toMatchObject({
+        status: 'success',
+        transactionHash: TX_HASH,
+      })
+      expect(getPublicClient).toHaveBeenCalledWith(expect.anything(), 42161)
+      expect(receipt).toHaveBeenCalledWith({ hash: TX_HASH })
+    })
+
+    it('marks it as final when the source transaction reverted: it moved nothing', async () => {
+      sourceReceipt(async () => ({ status: 'reverted' }))
+
+      await expect(runBridge()).rejects.toMatchObject({
+        code: LiFiErrorCode.TransactionFailed,
+        final: true,
+      })
+    })
+
+    it('leaves the outcome unknown when the source receipt cannot be loaded', async () => {
+      // Not final: a resume waits for the same task and checks again instead
+      // of signing a second transfer.
+      sourceReceipt(async () => {
+        throw new Error('receipt not found')
+      })
+
+      await expect(runBridge()).rejects.toMatchObject({
+        code: LiFiErrorCode.TransactionFailed,
+        final: false,
+      })
+    })
+  })
+
+  it('keeps waiting on one chain while the source is pending with a hash: the swap can still revert', async () => {
+    vi.useFakeTimers()
+    statusAnswers(
+      { status: 'PENDING', sending: { txHash: TX_HASH } },
+      { status: 'DONE', sending: { txHash: TX_HASH } }
+    )
+
+    const outcome = track(runGasless())
+    await vi.advanceTimersByTimeAsync(0)
+    expect(outcome.settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(5_000)
+
+    expect(outcome).toEqual({ settled: true })
+    expect(getStatus).toHaveBeenCalledTimes(2)
   })
 
   it('marks FAILED with a source hash as final on one chain: the revert moved nothing', async () => {
