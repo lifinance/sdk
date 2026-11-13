@@ -6,9 +6,8 @@ vi.mock('./helpers/readAllowance.js', () => ({
   readAllowance: (...args: unknown[]) => readAllowance(...args),
 }))
 
-const { StellarCheckAllowanceTask } = await import(
-  './StellarCheckAllowanceTask.js'
-)
+const { StellarCheckAllowanceTask } =
+  await import('./StellarCheckAllowanceTask.js')
 
 const ROUTER = StrKey.encodeContract(Buffer.alloc(32, 3))
 const CIRCLE_ADAPTER = StrKey.encodeContract(Buffer.alloc(32, 7))

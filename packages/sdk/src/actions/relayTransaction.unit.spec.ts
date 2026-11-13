@@ -1,5 +1,5 @@
 import type { RelayRequest, RelayResponse, RequestOptions } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { BaseError } from '../errors/baseError.js'
 import { ErrorName } from '../errors/constants.js'

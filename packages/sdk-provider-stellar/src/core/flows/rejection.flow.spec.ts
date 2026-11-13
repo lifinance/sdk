@@ -10,10 +10,10 @@ import {
   openPage,
   recordRouteUpdates,
   rejectNextSignature,
-  STATUS_EXPLORER_URL,
-  SWAP_RECEIVED_AMOUNT,
   signedEnvelopes,
+  STATUS_EXPLORER_URL,
   stepOf,
+  SWAP_RECEIVED_AMOUNT,
 } from './harness.mock.js'
 
 let network: FakeStellarNetwork

@@ -8,11 +8,11 @@ vi.mock('@bigmi/core', async (importOriginal) => {
 
 import { type ReplacementReason, waitForTransaction } from '@bigmi/core'
 import type { BitcoinStepExecutorContext } from '../../types.js'
-import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
 import {
   allTransportsFailed,
   timeoutError,
 } from './bitcoinRpcErrors.unit.mock.js'
+import { BitcoinWaitForTransactionTask } from './BitcoinWaitForTransactionTask.js'
 
 const SENDER = 'bc1qsender'
 const TX_HASH = 'ab'.repeat(32)

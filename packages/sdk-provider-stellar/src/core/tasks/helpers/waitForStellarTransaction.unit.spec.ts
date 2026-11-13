@@ -11,9 +11,8 @@ vi.mock('../../../client/getStellarRpc.js', () => ({
   ) => fn({ getTransaction }),
 }))
 
-const { waitForStellarTransaction } = await import(
-  './waitForStellarTransaction.js'
-)
+const { waitForStellarTransaction } =
+  await import('./waitForStellarTransaction.js')
 
 const POLL_MS = 3_000
 

@@ -1,4 +1,3 @@
-// biome-ignore lint/performance/noBarrelFile: module entrypoint
 export {
   DEFAULT_NETWORK_PASSPHRASE,
   StellarProvider,

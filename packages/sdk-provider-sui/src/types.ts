@@ -18,8 +18,7 @@ export interface SuiTaskContext {
 }
 
 export interface SuiStepExecutorContext
-  extends StepExecutorContext,
-    SuiTaskContext {
+  extends StepExecutorContext, SuiTaskContext {
   suiClient: ClientWithCoreApi
   signer: Signer
   checkWallet: (step: LiFiStepExtended) => void

@@ -60,8 +60,7 @@ export interface EthereumTaskContext {
 }
 
 export interface EthereumStepExecutorContext
-  extends StepExecutorContext,
-    EthereumTaskContext {
+  extends StepExecutorContext, EthereumTaskContext {
   isFromNativeToken: boolean
   ethereumClient: Client
   checkClient: (

@@ -4,7 +4,7 @@ import type {
   RequestOptions,
 } from '@lifi/types'
 import { ChainId } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { ValidationError } from '../errors/errors.js'
 import { SDKError } from '../errors/SDKError.js'

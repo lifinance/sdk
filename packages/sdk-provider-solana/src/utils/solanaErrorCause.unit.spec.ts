@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SolanaTransactionDetailsError,
   safeStringifyBigInt,
+  SolanaTransactionDetailsError,
 } from './solanaErrorCause.js'
 
 describe('safeStringifyBigInt', () => {

@@ -54,18 +54,22 @@ describe('Solana token balance', { concurrent: false }, async () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it('should work for stables on SOL', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const walletAddress = defaultWalletAddress
-    const tokens = [
-      findDefaultToken(CoinKey.SOL, ChainId.SOL),
-      findDefaultToken(CoinKey.USDC, ChainId.SOL),
-    ]
+  it(
+    'should work for stables on SOL',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens = [
+        findDefaultToken(CoinKey.SOL, ChainId.SOL),
+        findDefaultToken(CoinKey.USDC, ChainId.SOL),
+      ]
 
-    await loadAndCompareTokenAmounts(walletAddress, tokens)
-  })
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    }
+  )
 
   // Graceful degradation for unheld / "invalid" mints (known-zero vs unknown)
   // is covered deterministically in getSolanaBalance.unit.spec.ts — that path

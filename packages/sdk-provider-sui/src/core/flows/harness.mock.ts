@@ -103,7 +103,7 @@ vi.mock('@mysten/sui/grpc', async (importOriginal) => ({
       // of any other member (`getBalance`, `stateService`, `mvr`, ...) is
       // recorded in `unexpected`: the fake does not implement it, and
       // `callSuiWithRetry` would swallow the `TypeError` of its call.
-      // biome-ignore lint/correctness/noConstructorReturn: the instance is a Proxy that records every other member read
+      // oxlint-disable-next-line no-constructor-return -- the instance is a Proxy that records every other member read
       return new Proxy(this, {
         get(target, property, receiver) {
           if (property === 'core') {
