@@ -44,6 +44,10 @@ import { getNameServiceAddress } from './getNameServiceAddress.js'
 import { getQuote } from './getQuote.js'
 import { getRelayedTransactionStatus } from './getRelayedTransactionStatus.js'
 import { getRelayerQuote } from './getRelayerQuote.js'
+import {
+  getRouteAvailability,
+  type RouteAvailability,
+} from './getRouteAvailability.js'
 import { getRoutes } from './getRoutes.js'
 import { getStatus } from './getStatus.js'
 import { getStepTransaction } from './getStepTransaction.js'
@@ -157,6 +161,19 @@ export type Actions = {
    * @param options - Request options
    * @returns The resulting routes that can be used to realize the described transfer
    */
+  /**
+   * Classify one routes request as quote-time availability.
+   * A populated response is ROUTABLE, a successful empty list is NO_ROUTE,
+   * and a failed request is UNKNOWN with its cause. Results are not cached.
+   * @param params - A description of the transfer
+   * @param options - Request options
+   * @returns Quote-time availability for this exact request
+   */
+  getRouteAvailability: (
+    params: RoutesRequest,
+    options?: RequestOptions
+  ) => Promise<RouteAvailability>
+
   getRoutes: (
     params: RoutesRequest,
     options?: RequestOptions
@@ -313,6 +330,8 @@ export function actions(client: SDKClient): Actions {
       getRelayedTransactionStatus(client, params, options),
     getRelayerQuote: (params, options) =>
       getRelayerQuote(client, params, options),
+    getRouteAvailability: (params, options) =>
+      getRouteAvailability(client, params, options),
     getRoutes: (params, options) => getRoutes(client, params, options),
     getStatus: (params, options) => getStatus(client, params, options),
     getStepTransaction: (params, options) =>
