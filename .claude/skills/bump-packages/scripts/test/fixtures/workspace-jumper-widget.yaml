@@ -1,0 +1,85 @@
+packages:
+  - 'packages/*'
+  - 'e2e'
+# pnpm 12 applies a supply-chain release-age gate by default. Every entry below names
+# one exact version allowed through it, so an entry dies with its version instead of
+# exempting a package forever. Keep it that way: no bare package names except the
+# first-party '@bigmi/*' and '@lifi/*' wildcards.
+#
+# pnpm rewrites this sequence on install and drops comments placed between the items,
+# so the rationale has to live here, above the key:
+#   - If a bump must take a third-party version inside the age window, add it as an
+#     exact `pkg@x.y.z` entry and give the reason here: an entry does nothing once
+#     its version is older than 24h.
+#   - '@oxlint/binding-*', '@oxfmt/binding-*' and the other platform binaries are added
+#     by pnpm itself to match the package that pulls them; none is pinned here right now.
+minimumReleaseAgeExclude:
+  - '@bigmi/*'
+  - '@lifi/*'
+overrides:
+  '@react-native-async-storage/async-storage': '>=2.2.0'
+  '@reown/appkit': '>=1.8.20'
+  '@safe-global/safe-apps-provider': '>=0.18.6'
+  '@msgpack/msgpack': '>=3.1.3'
+  abitype: '>=1.2.4'
+  axios: '^1.20.0'
+  # Caret, not a bare floor: @lifi/sdk-provider-ethereum 4.2.11 asks for ^2.57.7, and
+  # a '>=' floor would let this override pull a viem 3 stable into every ^2 range.
+  viem: '^2.57.7'
+  bs58: '>=4.0.1'
+  # Floor only; keep so a lockfile refresh cannot drop below 0.25.0.
+  esbuild: '>=0.25.0'
+  # Held at 0.26.0. 0.28.0 regressed for us; an override (not just the specifier)
+  # is what stops the next `pnpm update --latest` from silently taking it again.
+  vite-plugin-node-polyfills: '0.26.0'
+  preact: '>=10.29.1'
+  # Pinned to 1.4.0 in lifinance/widget#662 with no recorded reason. Moved to the
+  # latest release on 2026-10-13: build, types, unit tests and a wallet-menu smoke
+  # run pass, and the playground e2e suite shows no failure that main does not have.
+  use-sync-external-store: '1.7.0'
+  utf-8-validate: '6.0.6'
+  # Upstream lifinance/widget@397034c7e. The fork resolves ws 7.5.11, 8.17.1
+  # and 8.21.0, all below the fixed releases.
+  # Open-ended on purpose: the 7.x consumer (jayson) lands on the single 8.x copy.
+  'ws@>=7.0.0 <8.0.0': '>=7.5.12'
+  'ws@>=8.0.0': '>=8.21.1'
+  zod: '>=4.4.3'
+  # Security (Aikido), 2026-10-12: each selector covers only the affected range.
+  # tronweb pins 13.15.23.
+  'validator@<13.15.26': '>=13.15.26'
+  # WalletConnect packages move together. They resolve to 2.26.0, which @walletconnect/ethereum-provider pins.
+  '@walletconnect/core@<2.23.10': '>=2.23.10'
+  '@walletconnect/sign-client@<2.23.10': '>=2.23.10'
+  '@walletconnect/utils@<2.23.10': '>=2.23.10'
+  '@walletconnect/types@<2.23.10': '>=2.23.10'
+  '@walletconnect/universal-provider@<2.23.10': '>=2.23.10'
+  '@walletconnect/ethereum-provider@<2.23.10': '>=2.23.10'
+  # @walletconnect/logger 3.0.x pins 10.0.0.
+  'pino@<10.1.1': '>=10.1.1'
+  # Forced major. tronweb pins 3.21.4, and no tronweb release fixes it.
+  'google-protobuf@<4.0.3': '^4.0.3'
+  # Forced major. @metamask/utils calls only v4(). uuid 12+ has no require() export.
+  'uuid@<11.1.1': '^11.1.1'
+  # Forced major. Drops stream-json. @solana/web3.js loads only the browser client. Node 20+.
+  'jayson@<5.0.0': '^5.0.0'
+allowBuilds:
+  '@opensea/seaport-js': false
+  '@parcel/watcher': false
+  '@reown/appkit': false
+  '@stellar/stellar-sdk': false
+  bigint-buffer: false
+  blake-hash: false
+  bufferutil: false
+  core-js: false
+  esbuild: true
+  keccak: false
+  msgpackr-extract: false
+  nx: true
+  protobufjs: false
+  secp256k1: false
+  sharp: false
+  svelte-preprocess: false
+  tiny-secp256k1: false
+  tsl-apple-cloudkit: false
+  usb: false
+  utf-8-validate: false

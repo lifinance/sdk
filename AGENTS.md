@@ -1,4 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
+
+This file gives guidance to AI coding agents that work in this repository.
 
 ## Project
 TypeScript monorepo (pnpm workspaces) with 8 packages under `packages/`. `@lifi/sdk`
@@ -8,6 +10,10 @@ is the hub; each provider depends on it via `workspace:*` as a **regular** depen
 ## Build
 - `pnpm build` runs all packages in parallel — no dependency ordering needed
 - `isolatedDeclarations: true` — all exports need explicit return type annotations
+
+## Testing
+- After a change, run `vitest run --since-last-run` (`pnpm test:affected`) to test only what the change affects
+- Before you finish, run `vitest run` (`pnpm test`) once for the whole suite
 
 ## Code Style
 - No default exports in library code
@@ -47,3 +53,10 @@ and the Linear anchor policy live in the **`release` skill**
 - After moving/changing overrides, run `pnpm install --lockfile-only` and grep the lockfile to confirm — "Already up to date" can be misleading
 - Verify a setting is applied: `pnpm config get <kebab-name>` returns `undefined` if pnpm isn't reading it
 - Publish provenance comes from `NPM_CONFIG_PROVENANCE: true` env in `.github/workflows/publish.yaml` (not a valid pnpm-workspace.yaml field)
+
+## Skills
+Task guides live in `.claude/skills/<name>/SKILL.md`. If your agent does not load skills,
+read the `SKILL.md` file before you do that task.
+- `bump-packages` — the routine dependency bump.
+- `changeset` — write a `.changeset/*.md` file.
+- `release` — the release flow, dist-tags and preview builds.

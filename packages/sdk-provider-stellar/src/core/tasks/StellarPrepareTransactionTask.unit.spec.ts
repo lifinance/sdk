@@ -38,9 +38,8 @@ vi.mock('./helpers/assertApprovalStillCovers.js', () => ({
   ) => assertApprovalStillCovers(...args),
 }))
 
-const { StellarPrepareTransactionTask } = await import(
-  './StellarPrepareTransactionTask.js'
-)
+const { StellarPrepareTransactionTask } =
+  await import('./StellarPrepareTransactionTask.js')
 
 const refetchDecision = (task: object): boolean =>
   (

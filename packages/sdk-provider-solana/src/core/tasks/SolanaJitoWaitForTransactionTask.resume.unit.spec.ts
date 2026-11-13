@@ -25,9 +25,8 @@ vi.mock('../../actions/sendAndConfirmBundle.js', () => ({
   sendAndConfirmBundle: (...args: unknown[]) => sendAndConfirmBundle(...args),
 }))
 
-const { SolanaJitoWaitForTransactionTask } = await import(
-  './SolanaJitoWaitForTransactionTask.js'
-)
+const { SolanaJitoWaitForTransactionTask } =
+  await import('./SolanaJitoWaitForTransactionTask.js')
 const { isFinalTransactionError, LiFiErrorCode, MAX_RESEND_AGE_MS, RPCError } =
   await import('@lifi/sdk')
 

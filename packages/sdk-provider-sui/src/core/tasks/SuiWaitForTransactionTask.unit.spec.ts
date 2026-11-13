@@ -63,9 +63,8 @@ vi.mock('../../client/suiClient.js', () => ({
 
 const { isFinalTransactionError, LiFiErrorCode } = await import('@lifi/sdk')
 const { SUI_LOOKUP_TIMEOUT_MS } = await import('../constants.js')
-const { SuiWaitForTransactionTask } = await import(
-  './SuiWaitForTransactionTask.js'
-)
+const { SuiWaitForTransactionTask } =
+  await import('./SuiWaitForTransactionTask.js')
 
 const EXPLORER = 'https://suiscan.xyz/mainnet/'
 const NOW = 1_790_000_000_000

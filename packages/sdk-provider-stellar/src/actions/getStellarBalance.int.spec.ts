@@ -48,45 +48,57 @@ describe.skip('Stellar token balance', { concurrent: false }, async () => {
     }
   }
 
-  it('should handle empty lists', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    await loadAndCompareTokenAmounts(defaultWalletAddress, [])
-  })
+  it(
+    'should handle empty lists',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      await loadAndCompareTokenAmounts(defaultWalletAddress, [])
+    }
+  )
 
-  it('should work for native XLM and USDC', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    await loadAndCompareTokenAmounts(defaultWalletAddress, [
-      findDefaultToken(CoinKey.XLM, ChainId.XLM),
-      findDefaultToken(CoinKey.USDC, ChainId.XLM),
-    ])
-  })
+  it(
+    'should work for native XLM and USDC',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      await loadAndCompareTokenAmounts(defaultWalletAddress, [
+        findDefaultToken(CoinKey.XLM, ChainId.XLM),
+        findDefaultToken(CoinKey.USDC, ChainId.XLM),
+      ])
+    }
+  )
 
-  it('should return the token without an amount for an unreadable contract', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const invalidToken = findDefaultToken(CoinKey.USDC, ChainId.XLM)
-    // A syntactically valid C-address that hosts no SAC — its balance()
-    // simulation fails, which must degrade to an absent amount rather than
-    // rejecting the whole batch.
-    invalidToken.address =
-      'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAV'
+  it(
+    'should return the token without an amount for an unreadable contract',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      const invalidToken = findDefaultToken(CoinKey.USDC, ChainId.XLM)
+      // A syntactically valid C-address that hosts no SAC — its balance()
+      // simulation fails, which must degrade to an absent amount rather than
+      // rejecting the whole batch.
+      invalidToken.address =
+        'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAV'
 
-    const tokenBalances = await getStellarBalance(
-      client,
-      defaultWalletAddress,
-      [findDefaultToken(CoinKey.XLM, ChainId.XLM), invalidToken] as Token[]
-    )
+      const tokenBalances = await getStellarBalance(
+        client,
+        defaultWalletAddress,
+        [findDefaultToken(CoinKey.XLM, ChainId.XLM), invalidToken] as Token[]
+      )
 
-    expect(tokenBalances.length).toBe(2)
-    const invalidBalance = tokenBalances.find(
-      (token) => token.address === invalidToken.address
-    )
-    expect(invalidBalance).toBeDefined()
-    expect(invalidBalance!.amount).toBeUndefined()
-  })
+      expect(tokenBalances.length).toBe(2)
+      const invalidBalance = tokenBalances.find(
+        (token) => token.address === invalidToken.address
+      )
+      expect(invalidBalance).toBeDefined()
+      expect(invalidBalance!.amount).toBeUndefined()
+    }
+  )
 })

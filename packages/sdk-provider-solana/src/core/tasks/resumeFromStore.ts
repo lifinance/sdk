@@ -17,8 +17,8 @@ import {
   type StoredTransactions,
 } from '../../utils/storedTransactions.js'
 import {
-  type ConfirmationMessages,
   confirmationError,
+  type ConfirmationMessages,
 } from './confirmationError.js'
 import {
   canResendStored,

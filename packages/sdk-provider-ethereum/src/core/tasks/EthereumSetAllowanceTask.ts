@@ -97,7 +97,7 @@ export class EthereumSetAllowanceTask extends BaseStepExecutionTask {
       const transactionReceipt = await waitForTransactionReceipt(client, {
         client: updatedClient,
         chainId: fromChain.id,
-        txHash: approveResult,
+        txHash: resolvedTxHash,
         onReplaced(response) {
           const newHash = response.transaction.hash
           statusManager.updateAction(step, action.type, 'PENDING', {

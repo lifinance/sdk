@@ -50,13 +50,17 @@ describe('getBitcoinBalance integration tests', () => {
     }
   }
 
-  it('should work for BTC on Bitcoin', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const walletAddress = defaultWalletAddress
-    const tokens = [findDefaultToken(CoinKey.BTC, ChainId.BTC)]
+  it(
+    'should work for BTC on Bitcoin',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens = [findDefaultToken(CoinKey.BTC, ChainId.BTC)]
 
-    await loadAndCompareTokenAmounts(client, walletAddress, tokens)
-  })
+      await loadAndCompareTokenAmounts(client, walletAddress, tokens)
+    }
+  )
 })

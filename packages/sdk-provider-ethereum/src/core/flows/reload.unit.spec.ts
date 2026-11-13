@@ -3,8 +3,8 @@ import {
   getActiveRoute,
   hasOpenTransaction,
   LiFiErrorCode,
-  type RouteExtended,
   relayTransaction,
+  type RouteExtended,
   stopRouteExecution,
   TransactionError,
 } from '@lifi/sdk'

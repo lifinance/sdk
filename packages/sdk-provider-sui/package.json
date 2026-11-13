@@ -35,6 +35,7 @@
     "clean": "rm -rf dist",
     "coverage": "vitest run --coverage",
     "test": "vitest --run",
+    "test:affected": "pnpm test --since-last-run",
     "test:cov": "pnpm test --coverage",
     "test:unit": "pnpm test .unit.spec.ts --passWithNoTests",
     "check:types": "tsc --noEmit && tsc -p tsconfig.spec.json --noEmit",
@@ -45,15 +46,15 @@
   },
   "dependencies": {
     "@lifi/sdk": "workspace:*",
-    "@mysten/sui": "^2.36.0"
+    "@mysten/sui": "^2.39.1"
   },
   "devDependencies": {
-    "@lifi/data-types": "^7.1.6",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@lifi/data-types": "^7.2.2",
+    "@vitest/coverage-v8": "^5.1.0",
     "cpy-cli": "^7.0.0",
     "madge": "^8.0.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   },
   "publishConfig": {
     "access": "public"

@@ -59,8 +59,8 @@ import { getTokens } from './getTokens.js'
 import { getTools } from './getTools.js'
 import { getTransactionHistory } from './getTransactionHistory.js'
 import {
-  type PatchContractCallsResponse,
   patchContractCalls,
+  type PatchContractCallsResponse,
 } from './patchContractCalls.js'
 import { relayTransaction } from './relayTransaction.js'
 
