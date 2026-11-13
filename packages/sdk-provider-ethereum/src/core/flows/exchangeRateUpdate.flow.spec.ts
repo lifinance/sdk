@@ -12,7 +12,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
     ...actual,
     ...(await import('./actionControls.mock.js')).recordRouteUpdates(actual),
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
   }
 })

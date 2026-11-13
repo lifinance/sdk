@@ -5,7 +5,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The destination-status watcher polls over HTTP and never settles under
     // test; it runs after everything asserted here.

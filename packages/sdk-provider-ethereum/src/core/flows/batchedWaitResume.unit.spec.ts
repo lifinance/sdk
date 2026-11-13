@@ -17,7 +17,6 @@ vi.mock('@lifi/sdk', async (importOriginal) => {
   return {
     ...actual,
     getStepTransaction: vi.fn(),
-    getRelayerQuote: vi.fn(),
     relayTransaction: vi.fn(),
     // The terminal destination-status watcher polls `getStatus` over HTTP.
     // Here it fails `statusPlan.failNext` times with the non-final error the
@@ -103,7 +102,6 @@ const SEND_KINDS: ReadonlySet<TimelineKind> = new Set<TimelineKind>([
   'sendCalls',
   'relayTransaction',
   'getStepTransaction',
-  'getRelayerQuote',
 ])
 
 interface BatchedScenario {

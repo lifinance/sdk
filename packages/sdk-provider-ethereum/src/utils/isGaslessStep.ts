@@ -20,6 +20,13 @@ export function isGaslessTypedData(
   )
 }
 
+/**
+ * Whether the step carries typed data of the legacy gasless relayer.
+ *
+ * @deprecated The legacy gasless relayer service is shut down, and a step of
+ * the new gasless flow has no typed data at routes time. Use `isGaslessStep`
+ * from `@lifi/sdk`, which detects the relay fee.
+ */
 export function isGaslessStep(
   step: LiFiStepExtended | LiFiStep,
   chain?: ExtendedChain

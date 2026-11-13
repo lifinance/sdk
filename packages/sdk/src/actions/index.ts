@@ -143,6 +143,8 @@ export type Actions = {
    * @param params - The configuration of the requested relayer quote
    * @param options - Request options
    * @returns Quote from a relayer
+   * @deprecated The legacy gasless relayer service is shut down. Use
+   * `getRoutes` with `options.gasless: true`.
    */
   getRelayerQuote: (
     params: QuoteRequestFromAmount,

@@ -18,6 +18,9 @@ import { request } from '../utils/request.js'
  * @param options - Request options
  * @throws {LiFiError} - Throws a LiFiError if request fails
  * @returns Relayer quote for a token transfer
+ * @deprecated The legacy gasless relayer service is shut down. Request
+ * gasless routes with `options.gasless: true` on `getRoutes`, or
+ * `gasless: true` on `getQuote`, and detect them with `isGaslessStep`.
  */
 export const getRelayerQuote = async (
   client: SDKClient,

@@ -136,6 +136,10 @@ export { checkPackageUpdates } from './utils/checkPackageUpdates.js'
 export { convertQuoteToRoute } from './utils/convertQuoteToRoute.js'
 export { fetchTxErrorDetails } from './utils/fetchTxErrorDetails.js'
 export { formatUnits } from './utils/formatUnits.js'
+export {
+  GASLESS_RELAY_FEE_NAME,
+  isGaslessStep,
+} from './utils/isGaslessStep.js'
 export { isHex } from './utils/isHex.js'
 export { LruMap } from './utils/lru.js'
 export { parseUnits } from './utils/parseUnits.js'
