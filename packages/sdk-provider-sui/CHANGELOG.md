@@ -1,5 +1,13 @@
 # @lifi/sdk-provider-sui
 
+## 4.2.12
+
+### Patch Changes
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+- Updated dependencies [[`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354)]:
+  - @lifi/sdk@4.12.2
+
 ## 4.2.11
 
 ### Patch Changes
