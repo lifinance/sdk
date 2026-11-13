@@ -18,9 +18,10 @@ import { getPublicClient } from '../client/publicClient.js'
 import type { WalletCallReceipt } from '../types.js'
 
 /**
- * Status errors in a row that end the wait. A failed request, `NOT_FOUND` and
- * the 422/1004 answer of a failed lookup each count; an answer resets the
- * count, so a long relay does not collect errors over its whole wait.
+ * Status errors in a row that end the wait. A failed request, `NOT_FOUND`, the
+ * 422/1004 answer of a failed lookup and a source receipt that cannot be
+ * loaded each count; a PENDING answer resets the count, so a long relay does
+ * not collect errors over its whole wait.
  */
 const MAX_STATUS_ERRORS = 5
 
@@ -116,10 +117,8 @@ export const waitForRelayedTransactionReceipt = async (
       const gaslessStatus = isGasless
         ? (result as unknown as FullStatusData | undefined)
         : undefined
-      const landedSource =
-        isCrossChain &&
-        gaslessStatus?.sending?.txHash &&
-        gaslessStatus.substatus !== 'WAIT_SOURCE_CONFIRMATIONS'
+      const bridgeSource =
+        isCrossChain && gaslessStatus?.sending?.txHash
           ? ({
               status: 'success',
               transactionHash: gaslessStatus.sending.txHash,
@@ -127,13 +126,23 @@ export const waitForRelayedTransactionReceipt = async (
             } as unknown as WalletCallReceipt)
           : undefined
 
+      const statusError = (error: TransactionError): undefined => {
+        statusErrors++
+        if (statusErrors < MAX_STATUS_ERRORS) {
+          return undefined
+        }
+        throw error
+      }
+
       switch (result?.status) {
         case 'PENDING':
           statusErrors = 0
           // A gasless bridge transfer whose source transaction landed waits for
           // its destination. The source wait ends here, so a later bridge
           // failure reaches the status task, not the FAILED below.
-          return landedSource
+          return gaslessStatus?.substatus === 'WAIT_DESTINATION_TRANSACTION'
+            ? bridgeSource
+            : undefined
         case 'DONE': {
           const sending: ExtendedTransactionInfo | undefined =
             (result?.transactionStatus?.sending as ExtendedTransactionInfo) ||
@@ -153,20 +162,24 @@ export const waitForRelayedTransactionReceipt = async (
           // and a resume must not sign and relay a second transfer. The status
           // task follows that transfer, as for any bridge. The source receipt
           // tells the two apart.
-          if (landedSource) {
+          if (bridgeSource) {
             const outcome = await getSourceOutcome(
               client,
               step.action.fromChainId,
-              landedSource.transactionHash
+              bridgeSource.transactionHash
             )
             if (outcome === 'success') {
-              return landedSource
+              return bridgeSource
             }
             if (outcome === undefined) {
-              // Not final: a resume waits for the same task and checks again.
-              throw new TransactionError(
-                LiFiErrorCode.TransactionFailed,
-                'The relayed transaction failed, and its source transaction could not be checked.'
+              // The node may not have the receipt yet, so this counts as a
+              // status error. Not final: a resume waits for the same task and
+              // checks again.
+              return statusError(
+                new TransactionError(
+                  LiFiErrorCode.TransactionFailed,
+                  'The relayed transaction failed, and its source transaction could not be checked.'
+                )
               )
             }
           }
@@ -177,13 +190,11 @@ export const waitForRelayedTransactionReceipt = async (
             { final: true }
           )
         default:
-          statusErrors++
-          if (statusErrors < MAX_STATUS_ERRORS) {
-            return undefined
-          }
-          throw new TransactionError(
-            LiFiErrorCode.TransactionNotFound,
-            'Transaction not found.'
+          return statusError(
+            new TransactionError(
+              LiFiErrorCode.TransactionNotFound,
+              'Transaction not found.'
+            )
           )
       }
     },

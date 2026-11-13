@@ -403,6 +403,27 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
     expect(getStatus).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps waiting on a bridge while its source is pending with a hash but no substatus', async () => {
+    // Only WAIT_DESTINATION_TRANSACTION says that the source landed.
+    vi.useFakeTimers()
+    statusAnswers(
+      { status: 'PENDING', sending: { txHash: TX_HASH } },
+      {
+        status: 'PENDING',
+        substatus: 'WAIT_DESTINATION_TRANSACTION',
+        sending: { txHash: TX_HASH },
+      }
+    )
+
+    const outcome = track(runBridge())
+    await vi.advanceTimersByTimeAsync(0)
+    expect(outcome.settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(5_000)
+
+    expect(outcome).toEqual({ settled: true })
+    expect(getStatus).toHaveBeenCalledTimes(2)
+  })
+
   describe('a bridge transfer that FAILED with a source hash', () => {
     const sourceReceipt = (
       getTransactionReceipt: () => Promise<unknown>
@@ -416,11 +437,11 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
 
     beforeEach(() => {
       vi.mocked(getPublicClient).mockReset()
-      statusAnswers({
+      vi.mocked(getStatus).mockResolvedValue({
         status: 'FAILED',
         substatus: 'UNKNOWN_FAILED_ERROR',
         sending: { txHash: TX_HASH, txLink: 'https://arbiscan.io/tx/x' },
-      })
+      } as never)
     })
 
     it('resolves with the source hash when the source transaction landed', async () => {
@@ -445,17 +466,43 @@ describe('waitForRelayedTransactionReceipt for a gasless step', () => {
       })
     })
 
-    it('leaves the outcome unknown when the source receipt cannot be loaded', async () => {
+    it('checks the source receipt again when the node does not have it yet', async () => {
+      vi.useFakeTimers()
+      const receipt = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('receipt not found'))
+        .mockResolvedValueOnce({ status: 'success' })
+      vi.mocked(getPublicClient).mockResolvedValue({
+        getTransactionReceipt: receipt,
+      } as never)
+
+      const outcome = track(runBridge())
+      await vi.advanceTimersByTimeAsync(0)
+      expect(outcome.settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(5_000)
+
+      expect(outcome).toEqual({ settled: true })
+      expect(getStatus).toHaveBeenCalledTimes(2)
+    })
+
+    it('leaves the outcome unknown when the source receipt cannot be loaded five times in a row', async () => {
       // Not final: a resume waits for the same task and checks again instead
       // of signing a second transfer.
-      sourceReceipt(async () => {
+      vi.useFakeTimers()
+      const receipt = sourceReceipt(async () => {
         throw new Error('receipt not found')
       })
 
-      await expect(runBridge()).rejects.toMatchObject({
+      const outcome = track(runBridge())
+      await vi.advanceTimersByTimeAsync(5_000 * 4)
+
+      expect(outcome.settled).toBe(true)
+      expect(outcome.error).toMatchObject({
         code: LiFiErrorCode.TransactionFailed,
         final: false,
       })
+      expect(getStatus).toHaveBeenCalledTimes(5)
+      expect(receipt).toHaveBeenCalledTimes(5)
     })
   })
 
