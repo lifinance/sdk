@@ -92,7 +92,7 @@ try {
   fail(err.message)
 }
 
-// Packages that must be single-copy in these repos (see each repo's CLAUDE.md).
+// Packages that must be single-copy in these repos (see each repo's AGENTS.md).
 const WATCH = [
   '@lifi/sdk',
   '@lifi/types',
