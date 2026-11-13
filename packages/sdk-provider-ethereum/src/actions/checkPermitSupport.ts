@@ -64,7 +64,8 @@ export const checkPermitSupport = async (
       spenderAddress: chain.permit2Proxy as Address,
       amount,
       ownerAddress,
-    }
+    },
+    chain.id
   )
 
   let permit2Allowance: bigint | undefined
@@ -87,7 +88,8 @@ export const checkPermitSupport = async (
       viemClient,
       tokenAddress,
       ownerAddress,
-      chain.permit2 as Address
+      chain.permit2 as Address,
+      chain.id
     )
   }
 

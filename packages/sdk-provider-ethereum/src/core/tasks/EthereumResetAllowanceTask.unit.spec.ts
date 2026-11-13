@@ -97,4 +97,14 @@ describe('EthereumResetAllowanceTask.run', () => {
       expect.objectContaining({ txHash: TX_HASH })
     )
   })
+
+  it('sends the reset on the step chain', async () => {
+    const result = await task.run(buildContext())
+
+    expect(result.status).toBe('COMPLETED')
+    expect(vi.mocked(setAllowance).mock.calls[0][4]).toBe(0n)
+    expect(vi.mocked(setAllowance).mock.calls[0][7]).toMatchObject({
+      id: SOURCE_CHAIN,
+    })
+  })
 })

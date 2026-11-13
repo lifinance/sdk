@@ -37,7 +37,8 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
       viemClient,
       memeToken.address as Address,
       defaultWalletAddress,
-      defaultSpenderAddress
+      defaultSpenderAddress,
+      memeToken.chainId
     )
 
     expect(allowance).toBeGreaterThanOrEqual(defaultMemeAllowance)
@@ -57,7 +58,8 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
         viemClient,
         token.address as Address,
         defaultWalletAddress,
-        defaultSpenderAddress
+        defaultSpenderAddress,
+        token.chainId
       )
 
       expect(allowance).toBe(0n)
@@ -79,7 +81,8 @@ describe('allowance integration tests', { retry: retryTimes, timeout }, () => {
         viemClient,
         invalidToken.address as Address,
         defaultWalletAddress,
-        defaultSpenderAddress
+        defaultSpenderAddress,
+        invalidToken.chainId
       )
       expect(allowance).toBe(0n)
     }

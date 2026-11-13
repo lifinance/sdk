@@ -17,7 +17,8 @@ export const getAllowance = async (
   viemClient: Client,
   tokenAddress: Address,
   ownerAddress: Address,
-  spenderAddress: Address
+  spenderAddress: Address,
+  chainId: number | undefined
 ): Promise<bigint> => {
   try {
     const approved = await getActionWithFallback(
@@ -30,7 +31,8 @@ export const getAllowance = async (
         abi: allowanceAbi,
         functionName: 'allowance' as const,
         args: [ownerAddress, spenderAddress] as const,
-      }
+      },
+      chainId
     )
     return approved as bigint
   } catch (_e) {
@@ -67,7 +69,8 @@ export const getAllowanceMulticall = async (
     {
       contracts,
       multicallAddress: multicallAddress as Address,
-    }
+    },
+    chainId
   )
 
   if (!results.length) {
@@ -109,7 +112,8 @@ export const getTokenAllowance = async (
     viemClient,
     token.address as Address,
     ownerAddress,
-    spenderAddress
+    spenderAddress,
+    token.chainId
   )
   return approved
 }

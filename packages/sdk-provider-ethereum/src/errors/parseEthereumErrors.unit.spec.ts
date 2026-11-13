@@ -13,7 +13,9 @@ import {
 } from '@lifi/sdk'
 import {
   AtomicReadyWalletRejectedUpgradeError,
+  SwitchChainError,
   UnknownBundleIdError,
+  UserRejectedRequestError,
 } from 'viem'
 import { describe, expect, it, vi } from 'vitest'
 import { buildStepObject } from '../core/tasks/helpers/switchChain.unit.mock.js'
@@ -240,6 +242,35 @@ describe('parseEVMStepErrors', () => {
         expect(baseError.cause?.cause).toBe(UserRejectedRequestError)
       })
     })
+
+    describe('when the error is a raw EIP-1193 4001 rejection', () => {
+      it('should return the SignatureRejected code', async () => {
+        const rejection = Object.assign(
+          new Error('User rejected the request.'),
+          { code: 4001 }
+        )
+
+        const parsedError = await parseEthereumErrors(rejection)
+
+        assertSDKError(parsedError)
+        expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
+        expect(parsedError.cause?.cause).toBe(rejection)
+      })
+
+      it('should return the SignatureRejected code when the rejection is the cause', async () => {
+        const rejection = Object.assign(
+          new Error('User rejected the request.'),
+          { code: 4001 }
+        )
+        const error = new Error('Switch failed.', { cause: rejection })
+
+        const parsedError = await parseEthereumErrors(error)
+
+        assertSDKError(parsedError)
+        expect(parsedError.code).toBe(LiFiErrorCode.SignatureRejected)
+        expect(parsedError.cause?.cause).toBe(error)
+      })
+    })
   })
 
   // The batched wait handles an unknown bundle first. Its errors carry the
@@ -332,6 +363,61 @@ describe('parseEVMStepErrors', () => {
       expect(baseError.cause).toBe(mockTransactionError)
 
       vi.clearAllMocks()
+    })
+  })
+
+  describe('when the chain switch fails', () => {
+    it.each([
+      {
+        kind: 'a SwitchChainError',
+        error: new SwitchChainError(new Error('Unknown Network: eip155:130')),
+        code: LiFiErrorCode.ChainSwitchError,
+      },
+      {
+        kind: 'a SwitchChainError caused by an unknown chain (4902)',
+        error: new SwitchChainError(
+          Object.assign(new Error('Unrecognized chain ID'), { code: 4902 })
+        ),
+        code: LiFiErrorCode.ChainSwitchError,
+      },
+      {
+        kind: 'a UserRejectedRequestError',
+        error: new UserRejectedRequestError(new Error('User rejected.')),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a UserRejectedRequestError',
+        error: new SwitchChainError(
+          new UserRejectedRequestError(new Error('User rejected.'))
+        ),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a Safe -32000 rejection',
+        error: new SwitchChainError(
+          Object.assign(new Error('User rejected transaction'), {
+            code: -32000,
+          })
+        ),
+        code: LiFiErrorCode.SignatureRejected,
+      },
+      {
+        kind: 'a SwitchChainError caused by a -32603 error',
+        error: new SwitchChainError(
+          Object.assign(new Error('Pop up window failed to open'), {
+            code: -32603,
+          })
+        ),
+        code: LiFiErrorCode.TransactionRejected,
+      },
+    ])('should give the matching code for $kind', async ({ error, code }) => {
+      const step = buildStepObject({ includingExecution: true })
+
+      const parsedError = await parseEthereumErrors(error, step)
+
+      assertSDKError(parsedError)
+      expect(parsedError.code).toBe(code)
+      expect(parsedError.cause?.cause).toBe(error)
     })
   })
 })

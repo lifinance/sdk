@@ -13,7 +13,7 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
   }
 
   async run(context: EthereumStepExecutorContext): Promise<TaskResult> {
-    const { step, checkClient, client, statusManager } = context
+    const { step, checkClient, client, statusManager, fromChain } = context
 
     // Start new allowance check
     const action = statusManager.initializeAction({
@@ -41,7 +41,8 @@ export class EthereumCheckAllowanceTask extends BaseStepExecutionTask {
       updatedClient,
       step.action.fromToken.address as Address,
       updatedClient.account!.address,
-      spenderAddress
+      spenderAddress,
+      fromChain.id
     )
 
     statusManager.updateAction(step, action.type, 'DONE')
