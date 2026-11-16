@@ -182,8 +182,8 @@ importers:
   .:
     dependencies:
       '@lifi/data-types':
-        specifier: ^7.2.2
-        version: 7.2.2
+        specifier: ^8.0.0
+        version: 8.0.0
       '@lifi/sdk':
         specifier: ^4.12.1
         version: 4.12.1
@@ -368,8 +368,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@lifi/data-types@7.2.2':
-    resolution: {integrity: sha512-J0xPVCRqSBaSv71ei8gXJ4E+mhNXrSD/vdvjICLKkCUlZP3THMh1xaoW1eU+gO10IE7MpQmhwldsg82j1iysLw==}
+  '@lifi/data-types@8.0.0':
+    resolution: {integrity: sha512-Pkf1gEGsRCoWLglQqK05UQIxy3cijdAZAToDn3epftkTK3XxCZ6ee2mdCgu0ZGg1ZL6DLDOzKiodn5x4OclMaA==}
 
   '@lifi/sdk-provider-ethereum@4.2.12':
     resolution: {integrity: sha512-VVxj4bM9Qpv2qS+7NLCToEU2+kU4YCrj4lrgUgYZX7LiiUx8cwDPl+vFuADt0jfGiettdvsZ4wyVTjicSsX6Ag==}
@@ -684,7 +684,7 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@lifi/data-types@7.2.2':
+  '@lifi/data-types@8.0.0':
     dependencies:
       '@lifi/types': 18.16.0
 
