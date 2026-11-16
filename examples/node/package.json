@@ -8,11 +8,11 @@
   "author": "LI.FI <github@li.finance>",
   "license": "MIT",
   "dependencies": {
-    "@lifi/data-types": "^7.2.1",
+    "@lifi/data-types": "^7.2.2",
     "@lifi/sdk": "^4.12.1",
     "@lifi/sdk-provider-ethereum": "^4.2.12",
-    "dotenv": "^18.0.9",
-    "viem": "^2.57.17"
+    "dotenv": "^18.0.10",
+    "viem": "^2.57.19"
   },
   "scripts": {
     "example:swap": "tsx examples/swap.ts",

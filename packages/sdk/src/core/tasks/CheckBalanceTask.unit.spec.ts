@@ -9,8 +9,8 @@ import { LiFiErrorCode } from '../../errors/constants.js'
 import type { StepExecutorContext } from '../../types/execution.js'
 import { CheckBalanceTask } from './CheckBalanceTask.js'
 import {
-  type CheckBalanceOptions,
   checkBalance,
+  type CheckBalanceOptions,
 } from './helpers/checkBalance.js'
 
 const WALLET = '0xWallet'

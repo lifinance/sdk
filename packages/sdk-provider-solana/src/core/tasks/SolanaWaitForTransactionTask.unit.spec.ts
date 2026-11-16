@@ -19,9 +19,8 @@ vi.mock('./SolanaStandardWaitForTransactionTask.js', () => ({
   },
 }))
 
-const { SolanaWaitForTransactionTask } = await import(
-  './SolanaWaitForTransactionTask.js'
-)
+const { SolanaWaitForTransactionTask } =
+  await import('./SolanaWaitForTransactionTask.js')
 
 /** A resumed context: the sign task did not run, so there is no flag. */
 const resumeContext = (action: object, isBridgeExecution = false) => {

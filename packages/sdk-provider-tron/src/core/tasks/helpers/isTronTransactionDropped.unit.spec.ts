@@ -9,12 +9,10 @@ vi.mock('@lifi/sdk', async (importActual) => {
   }
 })
 
-const { withTronNodes } = await import(
-  '../../../rpc/callTronRpcsWithRetry.unit.mock.js'
-)
-const { isTronTransactionDropped } = await import(
-  './isTronTransactionDropped.js'
-)
+const { withTronNodes } =
+  await import('../../../rpc/callTronRpcsWithRetry.unit.mock.js')
+const { isTronTransactionDropped } =
+  await import('./isTronTransactionDropped.js')
 
 const TX_HASH =
   'c3e7a4c5c0b8d2f1e9a6b7c8d9e0f1a2b3c4d5e6f708192a3b4c5d6e7f809102'

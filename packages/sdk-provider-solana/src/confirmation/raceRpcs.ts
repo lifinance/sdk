@@ -145,9 +145,10 @@ export async function raceRpcs<Rpc, T>(
 
   try {
     const result = await Promise.race([
-      firstConfirmation.then(
-        (value): RaceResult<T> => ({ kind: 'confirmed', value })
-      ),
+      firstConfirmation.then((value): RaceResult<T> => ({
+        kind: 'confirmed',
+        value,
+      })),
       settled.then(classify),
     ])
 

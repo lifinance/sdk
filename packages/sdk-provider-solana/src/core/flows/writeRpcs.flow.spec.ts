@@ -11,9 +11,9 @@ import {
   openPage,
   RECEIVED_SWAP_AMOUNT,
   recordRoute,
-  SOLANA_EXPLORER,
   sentTransactions,
   signatureOf,
+  SOLANA_EXPLORER,
   submitTrail,
 } from './harness.mock.js'
 

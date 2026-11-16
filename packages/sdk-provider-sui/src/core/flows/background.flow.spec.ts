@@ -7,9 +7,9 @@ import {
   installFakeSuiNetwork,
   openPage,
   recordRouteUpdates,
-  STATUS_EXPLORER_URL,
   signatures,
   signedBytes,
+  STATUS_EXPLORER_URL,
   stepOf,
 } from './harness.mock.js'
 

@@ -1,16 +1,18 @@
 ---
-description: Bump npm dependencies, GitHub Actions and pnpm to latest, then open a "chore: bump packages" PR
+description: Bump npm dependencies, GitHub Actions and pnpm to latest, then open or update the "chore: bump packages" PR
 ---
 
 Run the dependency bump with the **`bump-packages` skill**
-(`.claude/skills/bump-packages/SKILL.md`). Follow it step by step:
+(`.claude/skills/bump-packages/SKILL.md`). Its script does the whole bump:
 
-1. Make a fresh worktree from the latest `origin/main`. Do not touch the main checkout.
-2. Analyze the npm dependencies, the GitHub Actions, pnpm and Node.
-3. Show one upgrade table and wait for my approval before you change anything.
-4. After my approval, commit, validate, and open the PR.
+1. Run `scripts/bump.mjs` for the repo. It works in a worktree from the latest `origin/main`,
+   or on the open bump PR. It never touches the main checkout.
+2. It applies the safe bumps and the clean fast-tracks, runs the checks once, commits, and
+   opens or updates the PR.
+3. Show me only what needs me: majors, fast-tracks without provenance, blocked items, and
+   failures.
 
-If I name more than one repo (sdk, widget, jumper-widget), use one subagent for each repo.
-Then give me one merged table.
+If I name more than one repo (sdk, widget, jumper-widget), run one script for each repo in
+parallel, as background commands. Then give me one merged report.
 
 $ARGUMENTS

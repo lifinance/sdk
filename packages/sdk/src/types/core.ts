@@ -38,8 +38,9 @@ export interface SDKBaseConfig {
   storage?: SDKStorage
 }
 
-export interface SDKConfig
-  extends Partial<Omit<SDKBaseConfig, 'integrator' | 'rpcUrls'>> {
+export interface SDKConfig extends Partial<
+  Omit<SDKBaseConfig, 'integrator' | 'rpcUrls'>
+> {
   integrator: string
   /**
    * Per chain, one list for reads and sends, or lists by role. The client

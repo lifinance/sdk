@@ -1,4 +1,4 @@
-import { executeRoute, type RouteExtended, resumeRoute } from '@lifi/sdk'
+import { executeRoute, resumeRoute, type RouteExtended } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   actionOf,

@@ -1,7 +1,7 @@
 import { findDefaultToken } from '@lifi/data-types'
 import type { ConnectionsRequest } from '@lifi/types'
 import { ChainId, CoinKey } from '@lifi/types'
-import { HttpResponse, http } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import * as request from '../utils/request.js'
 import { client, setupTestServer } from './actions.unit.handlers.js'

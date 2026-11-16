@@ -109,8 +109,7 @@ export interface StellarTaskContext {
 }
 
 export interface StellarStepExecutorContext
-  extends StepExecutorContext,
-    StellarTaskContext {
+  extends StepExecutorContext, StellarTaskContext {
   wallet: StellarWallet
   networkPassphrase: string
   checkWallet: (step: LiFiStepExtended) => void

@@ -51,11 +51,16 @@ export interface EthereumTaskContext {
    * indistinguishable from "not looked up yet" under a truthiness check.
    */
   permit2SignerSupported?: Promise<boolean>
+  /**
+   * Whether the wallet batches calls (EIP-5792) on the source chain, memoized
+   * per execution by `getEthereumExecutionStrategy`. A promise for the same
+   * reason as {@link permit2SignerSupported}.
+   */
+  batchingSupported?: Promise<boolean>
 }
 
 export interface EthereumStepExecutorContext
-  extends StepExecutorContext,
-    EthereumTaskContext {
+  extends StepExecutorContext, EthereumTaskContext {
   isFromNativeToken: boolean
   ethereumClient: Client
   checkClient: (

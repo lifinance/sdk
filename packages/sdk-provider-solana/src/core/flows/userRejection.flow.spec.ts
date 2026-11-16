@@ -18,9 +18,9 @@ import {
   type FakeWallet,
   openPage,
   recordRoute,
-  SOLANA_EXPLORER,
   sentTransactions,
   signatureOf,
+  SOLANA_EXPLORER,
   submitTrail,
 } from './harness.mock.js'
 

@@ -34,12 +34,10 @@ vi.mock('../../client/getStellarRpc.js', () => ({
   getStellarRpcs: async () => [{ getTransaction }],
 }))
 
-const { StellarSignAndExecuteTask } = await import(
-  './StellarSignAndExecuteTask.js'
-)
-const { isFinalTransactionError, LiFiErrorCode, StatusManager } = await import(
-  '@lifi/sdk'
-)
+const { StellarSignAndExecuteTask } =
+  await import('./StellarSignAndExecuteTask.js')
+const { isFinalTransactionError, LiFiErrorCode, StatusManager } =
+  await import('@lifi/sdk')
 
 const makeContext = (
   signedTxXdr: string,

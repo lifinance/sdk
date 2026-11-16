@@ -55,41 +55,49 @@ describe('Sui token balance', { concurrent: false }, async () => {
     await loadAndCompareTokenAmounts(walletAddress, tokens)
   })
 
-  it('should work for native SUI token', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const walletAddress = defaultWalletAddress
-    const tokens = [
-      findDefaultToken(CoinKey.SUI, ChainId.SUI),
-      findDefaultToken(CoinKey.USDC, ChainId.SUI),
-    ]
+  it(
+    'should work for native SUI token',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      const walletAddress = defaultWalletAddress
+      const tokens = [
+        findDefaultToken(CoinKey.SUI, ChainId.SUI),
+        findDefaultToken(CoinKey.USDC, ChainId.SUI),
+      ]
 
-    await loadAndCompareTokenAmounts(walletAddress, tokens)
-  })
+      await loadAndCompareTokenAmounts(walletAddress, tokens)
+    }
+  )
 
-  it('should return even with invalid data', {
-    retry: retryTimes,
-    timeout,
-  }, async () => {
-    const walletAddress = defaultWalletAddress
-    const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SUI)
-    invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
-    const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
+  it(
+    'should return even with invalid data',
+    {
+      retry: retryTimes,
+      timeout,
+    },
+    async () => {
+      const walletAddress = defaultWalletAddress
+      const invalidToken = findDefaultToken(CoinKey.USDT, ChainId.SUI)
+      invalidToken.address = '0x2170ed0880ac9a755fd29b2688956bd959f933f8'
+      const tokens = [findDefaultToken(CoinKey.SUI, ChainId.SUI), invalidToken]
 
-    const tokenBalances = await getSuiBalance(
-      client,
-      walletAddress,
-      tokens as Token[]
-    )
-    expect(tokenBalances.length).toBe(2)
+      const tokenBalances = await getSuiBalance(
+        client,
+        walletAddress,
+        tokens as Token[]
+      )
+      expect(tokenBalances.length).toBe(2)
 
-    // A coin type the wallet doesn't hold resolves to a known-zero
-    // balance (0n) when getAllBalances succeeds.
-    const invalidBalance = tokenBalances.find(
-      (token) => token.address === invalidToken.address
-    )
-    expect(invalidBalance).toBeDefined()
-    expect(invalidBalance!.amount).toBe(0n)
-  })
+      // A coin type the wallet doesn't hold resolves to a known-zero
+      // balance (0n) when getAllBalances succeeds.
+      const invalidBalance = tokenBalances.find(
+        (token) => token.address === invalidToken.address
+      )
+      expect(invalidBalance).toBeDefined()
+      expect(invalidBalance!.amount).toBe(0n)
+    }
+  )
 })

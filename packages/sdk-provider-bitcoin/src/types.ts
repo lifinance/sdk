@@ -20,8 +20,7 @@ export interface BitcoinTaskContext {
 }
 
 export interface BitcoinStepExecutorContext
-  extends StepExecutorContext,
-    BitcoinTaskContext {
+  extends StepExecutorContext, BitcoinTaskContext {
   walletClient: Client
   publicClient: PublicClient
   checkClient: (step: LiFiStepExtended) => void

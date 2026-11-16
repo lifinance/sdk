@@ -36,12 +36,10 @@ vi.mock('./createConfirmationDeadline.js', async (importOriginal) => ({
   },
 }))
 
-const { BUNDLE_POLL_INTERVAL_MS, confirmBundle } = await import(
-  './confirmBundle.js'
-)
-const { DEADLINE_TICK_INTERVAL_MS, STATUS_RETRY_BACKOFF_CAP_MS } = await import(
-  './pollUntilDeadline.js'
-)
+const { BUNDLE_POLL_INTERVAL_MS, confirmBundle } =
+  await import('./confirmBundle.js')
+const { DEADLINE_TICK_INTERVAL_MS, STATUS_RETRY_BACKOFF_CAP_MS } =
+  await import('./pollUntilDeadline.js')
 
 const getSignatureStatuses = vi.fn()
 

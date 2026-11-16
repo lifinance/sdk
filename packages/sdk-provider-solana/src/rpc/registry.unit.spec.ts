@@ -214,9 +214,8 @@ describe('getJitoRpcs', () => {
   it('never re-probes an endpoint that named the method unknown', async () => {
     vi.useFakeTimers()
     try {
-      const { getJitoRpcs, JITO_PROBE_GATEWAY_RETRY_MS } = await import(
-        './registry.js'
-      )
+      const { getJitoRpcs, JITO_PROBE_GATEWAY_RETRY_MS } =
+        await import('./registry.js')
       // `-32601` reached the JSON-RPC layer, so the server parsed the request
       // and said it has no such method. That is a definitive answer and never
       // heals; only the gateway verdicts above get a retry window.

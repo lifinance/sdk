@@ -4,7 +4,7 @@ import {
   type TypedData,
   type TypedDataDomain,
 } from 'viem'
-import { MaxSigDeadline, MaxUint48, MaxUint160 } from './constants.js'
+import { MaxSigDeadline, MaxUint160, MaxUint48 } from './constants.js'
 import { permit2Domain } from './domain.js'
 import { invariant } from './invariant.js'
 

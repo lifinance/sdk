@@ -2,8 +2,8 @@ import {
   ChainId,
   executeRoute,
   LiFiErrorCode,
-  type RouteExtended,
   resumeRoute,
+  type RouteExtended,
 } from '@lifi/sdk'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -17,12 +17,12 @@ import {
   openPage,
   type Page,
   recordRouteUpdates,
-  STARTING_SEQUENCE,
-  STATUS_EXPLORER_URL,
-  SWAP_RECEIVED_AMOUNT,
   sequenceOf,
   signedEnvelopes,
+  STARTING_SEQUENCE,
+  STATUS_EXPLORER_URL,
   stepOf,
+  SWAP_RECEIVED_AMOUNT,
 } from './harness.mock.js'
 
 // The Stellar resume variants, on the #507 branch. A reload is: take the

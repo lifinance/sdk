@@ -16,9 +16,9 @@ import { getActionWithFallback } from '../utils/getActionWithFallback.js'
 import { canAccountUseNativePermits } from './canAccountUseNativePermits.js'
 import {
   DAI_LIKE_PERMIT_TYPEHASH,
+  eip2612Types,
   EIP712_DOMAIN_TYPEHASH,
   EIP712_DOMAIN_TYPEHASH_WITH_SALT,
-  eip2612Types,
 } from './constants.js'
 import type { NativePermitData } from './types.js'
 

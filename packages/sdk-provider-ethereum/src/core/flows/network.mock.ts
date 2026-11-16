@@ -78,13 +78,13 @@
 import {
   ChainType,
   createClient,
+  executeRoute,
   type ExecutionOptions,
   type ExtendedChain,
-  executeRoute,
   type LiFiStep,
+  resumeRoute,
   type Route,
   type RouteExtended,
-  resumeRoute,
   type SDKClient,
   type Token,
 } from '@lifi/sdk'
@@ -104,8 +104,8 @@ import {
   parseAbi,
   parseTransaction,
   recoverTransactionAddress,
-  type TransactionSerializedEIP1559,
   toHex,
+  type TransactionSerializedEIP1559,
   type WalletClient,
   zeroAddress,
 } from 'viem'

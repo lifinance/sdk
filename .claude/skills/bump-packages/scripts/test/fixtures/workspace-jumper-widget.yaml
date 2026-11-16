@@ -11,8 +11,8 @@ packages:
 #   - If a bump must take a third-party version inside the age window, add it as an
 #     exact `pkg@x.y.z` entry and give the reason here: an entry does nothing once
 #     its version is older than 24h.
-#   - '@biomejs/cli-*' and the other platform binaries are added by pnpm itself to
-#     match the package that pulls them; none is pinned here right now.
+#   - '@oxlint/binding-*', '@oxfmt/binding-*' and the other platform binaries are added
+#     by pnpm itself to match the package that pulls them; none is pinned here right now.
 minimumReleaseAgeExclude:
   - '@bigmi/*'
   - '@lifi/*'
