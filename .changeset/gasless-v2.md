@@ -18,7 +18,8 @@ For a gasless step, the EVM provider now does the following:
 
 For all relayed steps, the wait now ends after five status errors in a row, not after three errors in total. A status answer resets the count. A failed request, `NOT_FOUND` and 422/1004 count as errors. The error is not final, so a resume waits for the same task and asks for no new signature.
 
+Removed: `getRelayerQuote` in `@lifi/sdk` and in the client actions. It called `/relayer/quote` of the legacy gasless service, which is shut down. Use `getRoutes` with `options.gasless: true`.
+
 Deprecated (still exported, so that published consumers keep building):
 
-- `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down. Use `getRoutes` with `options.gasless: true`.
 - `isGaslessStep(step, chain)` in `@lifi/sdk-provider-ethereum`. It detects only the legacy typed data. Use `isGaslessStep(step)` from `@lifi/sdk`.
