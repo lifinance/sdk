@@ -1,5 +1,39 @@
 # @lifi/sdk
 
+## 4.13.0
+
+### Minor Changes
+
+- [#553](https://github.com/lifinance/sdk/pull/553) [`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac) Thanks [@chybisov](https://github.com/chybisov)! - Update `@lifi/types` to 19.1.0.
+  
+  `@lifi/sdk` re-exports `@lifi/types`. This release therefore removes the deprecated chains from `ChainId` and `ChainKey`: Moonbeam (`MOO`, 1284), Boba (`BOB`, 288), BOB (`BOC`, 60808), opBNB (`OPB`, 204), Lens (`LNS`, 232), Blast (`BLS`, 81457), Fusion (`FSN`, 32659), Gravity (`GRA`, 1625) and Lisk (`LSK`, 1135). It also removes `CoinKey.GLMR`, `CoinKey.FSN`, `CoinKey.USDB`, `CoinKey.GHO`, `CoinKey.WGHO` and `CoinKey.WG`. If your TypeScript code names one of these members, remove that code.
+  
+  The release also adds the `EstimateHop` type and the optional `Estimate.hops` field.
+
+- [#548](https://github.com/lifinance/sdk/pull/548) [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045) Thanks [@chybisov](https://github.com/chybisov)! - Support the new LI.FI gasless flow, and stop calling the legacy gasless service.
+  
+  Request a gasless route with `options.gasless: true`. The `LIFI Gasless Relay Fee` entry in `estimate.feeCosts` marks its step. The new `isGaslessStep(step)` in `@lifi/sdk` checks for this marker, and `GASLESS_RELAY_FEE_NAME` holds its name.
+  
+  For a gasless step, the EVM provider now does the following:
+  
+  - It executes the step through the relayer from the start.
+  - It does not check native gas, does not approve, and does not sign its own permit. The relayer pays the gas, and the backend handles the allowance.
+  - It re-quotes through `/advanced/stepTransaction` without the old typed data.
+  - It relays every typed-data step through `/advanced/relay`, including `PermitWitnessTransferFrom`.
+  - It tracks the relay on `/v1/status?taskId=`, with the same wait as other relayed steps. Other relayed steps keep `getRelayedTransactionStatus`. On a bridge route, the wait ends when the relayed source transaction has landed. A later bridge failure then does not cause a second signature. After a `FAILED` answer, the SDK reads the source receipt to find out if the source landed.
+  - It fails before signing when `disableMessageSigning` is set, or when the step needs an EIP-7702 authorization.
+  
+  For all relayed steps, the wait now ends after five status errors in a row, not after three errors in total. A status answer resets the count. A failed request, `NOT_FOUND` and 422/1004 count as errors. The error is not final, so a resume waits for the same task and asks for no new signature.
+  
+  Deprecated (still exported, so that published consumers keep building):
+  
+  - `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down, so it now rejects at once with a `NotFound` error and sends no request. Use `getRoutes` with `options.gasless: true`.
+  - `isGaslessStep(step, chain)` in `@lifi/sdk-provider-ethereum`. It detects only the legacy typed data. Use `isGaslessStep(step)` from `@lifi/sdk`.
+
+### Patch Changes
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+
 ## 4.12.1
 
 ### Patch Changes

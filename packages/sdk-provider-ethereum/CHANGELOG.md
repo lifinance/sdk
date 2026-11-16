@@ -1,5 +1,59 @@
 # @lifi/sdk-provider-ethereum
 
+## 4.3.0
+
+### Minor Changes
+
+- [#548](https://github.com/lifinance/sdk/pull/548) [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045) Thanks [@chybisov](https://github.com/chybisov)! - Support the new LI.FI gasless flow, and stop calling the legacy gasless service.
+  
+  Request a gasless route with `options.gasless: true`. The `LIFI Gasless Relay Fee` entry in `estimate.feeCosts` marks its step. The new `isGaslessStep(step)` in `@lifi/sdk` checks for this marker, and `GASLESS_RELAY_FEE_NAME` holds its name.
+  
+  For a gasless step, the EVM provider now does the following:
+  
+  - It executes the step through the relayer from the start.
+  - It does not check native gas, does not approve, and does not sign its own permit. The relayer pays the gas, and the backend handles the allowance.
+  - It re-quotes through `/advanced/stepTransaction` without the old typed data.
+  - It relays every typed-data step through `/advanced/relay`, including `PermitWitnessTransferFrom`.
+  - It tracks the relay on `/v1/status?taskId=`, with the same wait as other relayed steps. Other relayed steps keep `getRelayedTransactionStatus`. On a bridge route, the wait ends when the relayed source transaction has landed. A later bridge failure then does not cause a second signature. After a `FAILED` answer, the SDK reads the source receipt to find out if the source landed.
+  - It fails before signing when `disableMessageSigning` is set, or when the step needs an EIP-7702 authorization.
+  
+  For all relayed steps, the wait now ends after five status errors in a row, not after three errors in total. A status answer resets the count. A failed request, `NOT_FOUND` and 422/1004 count as errors. The error is not final, so a resume waits for the same task and asks for no new signature.
+  
+  Deprecated (still exported, so that published consumers keep building):
+  
+  - `getRelayerQuote` in `@lifi/sdk` and in the client actions. The legacy relayer endpoint is shut down, so it now rejects at once with a `NotFound` error and sends no request. Use `getRoutes` with `options.gasless: true`.
+  - `isGaslessStep(step, chain)` in `@lifi/sdk-provider-ethereum`. It detects only the legacy typed data. Use `isGaslessStep(step)` from `@lifi/sdk`.
+
+### Patch Changes
+
+- [#545](https://github.com/lifinance/sdk/pull/545) [`37688cc`](https://github.com/lifinance/sdk/commit/37688cc732187f08f429062e506b67dee2a2a30a) Thanks [@chybisov](https://github.com/chybisov)! - Update `tronweb` to 6.5.2.
+  Update `viem` to 2.57.19.
+
+- [#553](https://github.com/lifinance/sdk/pull/553) [`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac) Thanks [@chybisov](https://github.com/chybisov)! - Update `@bigmi/core` to 0.9.4.
+  Update `viem` to 2.57.20.
+
+- [#539](https://github.com/lifinance/sdk/pull/539) [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354) Thanks [@chybisov](https://github.com/chybisov)! - Bump runtime dependencies: @lifi/types to 18.16.0, bitcoinjs-lib to 7.0.5, viem to 2.57.17, @solana/kit to 8.6.0, @stellar/stellar-sdk to 17.4.0, @mysten/sui to 2.39.1.
+
+- [#540](https://github.com/lifinance/sdk/pull/540) [`b44c152`](https://github.com/lifinance/sdk/commit/b44c1525f301a7b2c3dfa6ae6d7d337f3ce3847e) Thanks [@chybisov](https://github.com/chybisov)! - When the wallet cannot switch to the step's chain, the step now fails with `ChainSwitchError`, not `UnknownError`. wagmi connectors throw viem's `SwitchChainError` for this, for example for "Unknown Network: eip155:130" or "wallet_switchEthereumChain::chainId 0xe708 not supported". `parseEthereumErrors` runs its existing checks first. So a rejected switch still gives `SignatureRejected`, and a switch error with the code -32000 or -32603 keeps the result that it had before. A raw EIP-1193 error with code 4001 now also gives `SignatureRejected`.
+
+- [#540](https://github.com/lifinance/sdk/pull/540) [`b44c152`](https://github.com/lifinance/sdk/commit/b44c1525f301a7b2c3dfa6ae6d7d337f3ce3847e) Thanks [@chybisov](https://github.com/chybisov)! - When a read through the wallet fails, the SDK reads again through a public client. That client now uses the step's chain, not `walletClient.chain`, which can be old. For `setTokenAllowance` and `revokeTokenApproval`, it uses the token's chain. This covers the allowance, permit, gas estimate and priority fee reads.
+
+- [#546](https://github.com/lifinance/sdk/pull/546) [`5d236b1`](https://github.com/lifinance/sdk/commit/5d236b1cee56231db6d220af8335d48957f23b9a) Thanks [@chybisov](https://github.com/chybisov)! - Some wallets answer `eth_sendTransaction` with `null`, a value that is not hex, or a value shorter than a transaction hash. The approval, approval reset, swap and bridge steps now throw a `TransactionError` with `TransactionFailed` for this answer.
+
+- [#547](https://github.com/lifinance/sdk/pull/547) [`784c1d5`](https://github.com/lifinance/sdk/commit/784c1d5d4a16be7ab97aca75d2b23fa06bc5a540) Thanks [@chybisov](https://github.com/chybisov)! - Read the wallet capabilities (EIP-5792) one time in each run of a step. Before, prepare read them again, and a late or failed read could move the step between `batched` and `standard` after its approval. Then the step failed with `TransactionUnprepared`, or it sent the swap without the correct approval. Now a step whose first read is late or fails stays in `standard`.
+
+- [#546](https://github.com/lifinance/sdk/pull/546) [`5d236b1`](https://github.com/lifinance/sdk/commit/5d236b1cee56231db6d220af8335d48957f23b9a) Thanks [@chybisov](https://github.com/chybisov)! - The approval and approval reset steps now wait for the receipt of the transaction that the Safe executes, not of the Safe signature. Before, the steps did not check the receipt of a queued Safe approval.
+
+- [#540](https://github.com/lifinance/sdk/pull/540) [`b44c152`](https://github.com/lifinance/sdk/commit/b44c1525f301a7b2c3dfa6ae6d7d337f3ce3847e) Thanks [@chybisov](https://github.com/chybisov)! - A batched send (`wallet_sendCalls`) and an approval or allowance reset now name the step's chain. Before, viem took the chain from `client.chain`. A connector client (for example, from wagmi `getConnectorClient` with `assertChainId: false`) can keep an old chain while the wallet is already on the step's chain. The wallet then rejected the bundle ("Chain ID must match the dApp selected network"), or viem stopped the approval with `ChainMismatchError`. `setAllowance` takes an optional `chain` as its last parameter.
+
+- [#540](https://github.com/lifinance/sdk/pull/540) [`b44c152`](https://github.com/lifinance/sdk/commit/b44c1525f301a7b2c3dfa6ae6d7d337f3ce3847e) Thanks [@chybisov](https://github.com/chybisov)! - All sends now use one rule for the chain. When `client.chain` is the step's chain, the send keeps it. Otherwise the send uses the step's chain from the LI.FI API. This covers the main transaction, batched calls, approvals and allowance resets.
+  
+  Before, the main transaction always used the API chain, which has no fee settings or serializers. So a local account lost the fee rules of its chain, for example the HyperEVM base fee multiplier. A matching `client.chain` now also keeps its custom fields and hooks, as viem does when no chain is given.
+  
+  `setTokenAllowance` and `revokeTokenApproval` now send on the token's chain. An old `walletClient.chain` no longer makes them fail with `ChainMismatchError`. If the wallet is really on another chain than the token, they now fail with `ChainMismatchError`. Before, they sent the approval on the wallet's chain. To find the token's chain, they read the chain list, which can load it from the API the first time.
+- Updated dependencies [[`aa5d2ff`](https://github.com/lifinance/sdk/commit/aa5d2ffe2acccc7c7e17eac09562f491eb9cc0ac), [`b80e5f4`](https://github.com/lifinance/sdk/commit/b80e5f49941190812935644c55d5c9c075bac354), [`3129a50`](https://github.com/lifinance/sdk/commit/3129a50fadf41317592b2403c42f2816540cb045)]:
+  - @lifi/sdk@4.13.0
+
 ## 4.2.12
 
 ### Patch Changes
